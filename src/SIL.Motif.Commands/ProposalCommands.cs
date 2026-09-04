@@ -1151,10 +1151,10 @@ public static partial class ProposalCommands
                 if (duplicates.Count > 0)
                 {
                     return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
-                        "operation.slot-collision", FailureReason.Refused,
+                        "proposal.split-duplicate-operation", FailureReason.Refused,
                         $"Operation(s) {string.Join(", ", duplicates.Select(d => $"'{d}'"))} were assigned to " +
                         "more than one split group; each operation must go to exactly one.",
-                        Fact(("sourceProposalId", sourceId))));
+                        Fact(("sourceProposalId", sourceId), ("operationIds", string.Join(",", duplicates)))));
                 }
                 var unassigned = allIds.Where(id => !groupOfId.ContainsKey(id)).ToList();
                 if (unassigned.Count > 0)

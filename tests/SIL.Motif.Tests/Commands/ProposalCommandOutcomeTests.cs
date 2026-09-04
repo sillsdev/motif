@@ -151,6 +151,31 @@ public sealed class ProposalCommandOutcomeTests
         Assert.Contains("would orphan", refusal.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SplittingOneOperationIntoTwoGroups_RefusesAsADuplicateAssignment()
+    {
+        var sourceId = CommitOneOperationProposal("split-source");
+        var shown = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, sourceId));
+        Assert.True(shown.Succeeded);
+        var operationId = shown.Value!.Operations.Single().OperationId;
+
+        var outcome = ProposalCommands.Split(new SplitRequest(
+            _fwDataPath, ProductVersion, sourceId,
+            new[]
+            {
+                new SplitGroup("groupA", new[] { operationId }),
+                new SplitGroup("groupB", new[] { operationId }),
+            },
+            Force: false));
+
+        Assert.False(outcome.Succeeded);
+        var refusal = outcome.Refusal!;
+        // Not a slot collision: a slot is (target, field, discriminator), and nothing here addresses one twice.
+        Assert.Equal("proposal.split-duplicate-operation", refusal.Code);
+        Assert.Equal(sourceId, refusal.Facts["sourceProposalId"]);
+        Assert.Equal(operationId, refusal.Facts["operationIds"]);
+    }
+
     private string CommitOneOperationProposal(string draftName)
     {
         ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null));
