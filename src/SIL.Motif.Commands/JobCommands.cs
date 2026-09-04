@@ -22,7 +22,7 @@ using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using DryRunModel = SIL.Motif.Model.DryRun.DryRun;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>
 /// The verbs that put durable work in the queue and read back what became of it.
@@ -77,12 +77,12 @@ public static class JobCommands
             ProposalRecord record;
             try
             {
-                var id = Commands.NormalizeId(proposalId);
+                var id = ProposalCommands.NormalizeId(proposalId);
                 (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
             }
             catch (Exception exception)
             {
-                return Commands.RefuseProposalLoad(exception);
+                return ProposalCommands.RefuseProposalLoad(exception);
             }
 
             var jobs = new JobRepository(database);
@@ -109,12 +109,12 @@ public static class JobCommands
             ProposalRecord record;
             try
             {
-                var id = Commands.NormalizeId(proposalId);
+                var id = ProposalCommands.NormalizeId(proposalId);
                 record = repository.Get(CanonicalId.Parse(id));
             }
             catch (Exception exception)
             {
-                return Commands.RefuseProposalLoad(exception);
+                return ProposalCommands.RefuseProposalLoad(exception);
             }
 
             var jobs = new JobRepository(database);
@@ -166,7 +166,7 @@ public static class JobCommands
             }
 
             var repository = new ProposalRepository(database);
-            var id = Commands.NormalizeId(proposalId);
+            var id = ProposalCommands.NormalizeId(proposalId);
             var canonicalId = CanonicalId.Parse(id);
             var dryRun = ParsePublishedDryRun(job.DryRunJson);
 

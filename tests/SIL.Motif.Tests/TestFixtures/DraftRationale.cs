@@ -1,4 +1,4 @@
-using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
@@ -14,10 +14,10 @@ internal static class DraftRationale
         string shortDescription,
         string extendedExplanation)
     {
-        var label = Commands.Label(fwDataPath, ProductVersion, draftName, shortDescription);
+        var label = ProposalCommands.Label(fwDataPath, ProductVersion, draftName, shortDescription);
         if (label.ExitCode != 0) throw new InvalidOperationException(label.Output);
 
-        var comment = Commands.Comment(fwDataPath, ProductVersion, draftName, extendedExplanation);
+        var comment = ProposalCommands.Comment(fwDataPath, ProductVersion, draftName, extendedExplanation);
         if (comment.ExitCode != 0) throw new InvalidOperationException(comment.Output);
     }
 }

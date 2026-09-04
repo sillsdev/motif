@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Generator;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Store;

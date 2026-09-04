@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
-using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Corpus;

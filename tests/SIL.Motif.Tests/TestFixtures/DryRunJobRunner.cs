@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;

@@ -5,7 +5,7 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Projection.Rendering;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>The <c>config</c> verb: showing a project's resolved Assessment configuration.</summary>
 /// <remarks>

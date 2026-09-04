@@ -1,5 +1,5 @@
 using Microsoft.Data.Sqlite;
-using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 

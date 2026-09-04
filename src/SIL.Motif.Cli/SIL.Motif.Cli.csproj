@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />
     <ProjectReference Include="..\SIL.Motif.Host\SIL.Motif.Host.csproj" />
     <ProjectReference Include="..\SIL.Motif.Runner\SIL.Motif.Runner.csproj" />
     <!-- The durable store the CLI now writes directly; the wire that used to stand between them is going. -->

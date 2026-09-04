@@ -9,7 +9,7 @@ using SIL.Motif.Projection;
 using SIL.Motif.Projection.Rendering;
 using SIL.Motif.Projection.Usage;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>
 /// The CLI verbs that get text into Motif: <c>add-corpus</c>, <c>add-document</c>,

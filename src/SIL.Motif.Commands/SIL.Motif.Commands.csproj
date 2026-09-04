@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SIL.Motif.Commands</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Host\SIL.Motif.Host.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Model\SIL.Motif.Model.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Projection\SIL.Motif.Projection.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Runner\SIL.Motif.Runner.csproj" />
+    <ProjectReference Include="..\SIL.Motif.LiveHost\SIL.Motif.LiveHost.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Worker\SIL.Motif.Worker.csproj" />
+  </ItemGroup>
+
+</Project>

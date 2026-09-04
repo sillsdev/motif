@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;

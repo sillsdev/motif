@@ -3,7 +3,7 @@ using SIL.Motif.Model.DryRun;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Worker.Store;
 
-namespace SIL.Motif.Cli.Store;
+namespace SIL.Motif.Commands.Store;
 
 /// <summary>
 /// Builds the CLI's rendering shapes (<see cref="ManifestDocument"/>) from a repository row, so the

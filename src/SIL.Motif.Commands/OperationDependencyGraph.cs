@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SIL.Motif.Cli.Store;
+using SIL.Motif.Commands.Store;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>
 /// One declared intra-Proposal dependency edge: <see cref="DependentOperationId"/> requires

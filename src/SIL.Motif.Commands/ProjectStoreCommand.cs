@@ -5,7 +5,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>
 /// Runs one verb against a project's paired Motif store, and turns any failure into the CLI's contract.

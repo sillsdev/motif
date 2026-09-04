@@ -1,6 +1,6 @@
 using System;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>
 /// Names which durability step failed after a Proposal's mutation was already committed to a live

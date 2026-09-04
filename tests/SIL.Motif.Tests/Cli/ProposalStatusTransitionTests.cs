@@ -1,5 +1,5 @@
 using System;
-using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Tests.TestFixtures;
@@ -28,12 +28,12 @@ public sealed class ProposalStatusTransitionTests
 
     private string CommitFreshProposal(string draftName = "d")
     {
-        Assert.Equal(0, Commands.New(_fwDataPath, ProductVersion, draftName, null).ExitCode);
+        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, draftName, null).ExitCode);
         var target = CanonicalId.Mint().Value;
-        Assert.Equal(0, Commands.AddSetGloss(_fwDataPath, ProductVersion, draftName, target, "en", "a gloss").ExitCode);
+        Assert.Equal(0, ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, target, "en", "a gloss").ExitCode);
         DraftRationale.Author(
             _fwDataPath, draftName, "Clarify a lexical analysis", "Record the intended gloss so reviewers can assess the change.");
-        var finalize = Commands.Finalize(_fwDataPath, ProductVersion, draftName);
+        var finalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
         Assert.Equal(0, finalize.ExitCode);
         return ExtractProposalId(finalize.Output);
     }
@@ -55,7 +55,7 @@ public sealed class ProposalStatusTransitionTests
     {
         var id = CommitFreshProposal();
 
-        Assert.Equal(0, Commands.Defer(_fwDataPath, ProductVersion, id).ExitCode);
+        Assert.Equal(0, ProposalCommands.Defer(_fwDataPath, ProductVersion, id).ExitCode);
 
         Assert.Equal(ManifestStatus.Deferred, GetRecord(id).Status);
     }
@@ -64,19 +64,19 @@ public sealed class ProposalStatusTransitionTests
     public void Reject_IsAllowedFromProposedAndFromDeferred()
     {
         var proposed = CommitFreshProposal("straight");
-        Assert.Equal(0, Commands.Reject(_fwDataPath, ProductVersion, proposed).ExitCode);
+        Assert.Equal(0, ProposalCommands.Reject(_fwDataPath, ProductVersion, proposed).ExitCode);
         Assert.Equal(ManifestStatus.Rejected, GetRecord(proposed).Status);
 
         var deferred = CommitFreshProposal("later");
-        Assert.Equal(0, Commands.Defer(_fwDataPath, ProductVersion, deferred).ExitCode);
-        Assert.Equal(0, Commands.Reject(_fwDataPath, ProductVersion, deferred).ExitCode);
+        Assert.Equal(0, ProposalCommands.Defer(_fwDataPath, ProductVersion, deferred).ExitCode);
+        Assert.Equal(0, ProposalCommands.Reject(_fwDataPath, ProductVersion, deferred).ExitCode);
         Assert.Equal(ManifestStatus.Rejected, GetRecord(deferred).Status);
     }
 
     [Fact]
     public void Reject_ANotFoundProposal_Refuses()
     {
-        var result = Commands.Reject(_fwDataPath, ProductVersion, CanonicalId.Mint().Value);
+        var result = ProposalCommands.Reject(_fwDataPath, ProductVersion, CanonicalId.Mint().Value);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("not found", result.Output, StringComparison.OrdinalIgnoreCase);
@@ -88,7 +88,7 @@ public sealed class ProposalStatusTransitionTests
         var id = CommitFreshProposal();
         SetStatusRaw(id, ManifestStatus.Applied);
 
-        var result = Commands.Reject(_fwDataPath, ProductVersion, id);
+        var result = ProposalCommands.Reject(_fwDataPath, ProductVersion, id);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("applied", result.Output);
@@ -102,7 +102,7 @@ public sealed class ProposalStatusTransitionTests
         var id = CommitFreshProposal("old");
         var replacementId = CommitFreshProposal("new");
 
-        var result = Commands.Supersede(_fwDataPath, ProductVersion, id, replacementId);
+        var result = ProposalCommands.Supersede(_fwDataPath, ProductVersion, id, replacementId);
 
         Assert.Equal(0, result.ExitCode);
         var record = GetRecord(id);
@@ -114,10 +114,10 @@ public sealed class ProposalStatusTransitionTests
     public void Supersede_IsAllowedFromRejected_SoAReplacementCanPointAtHoweverItEnded()
     {
         var id = CommitFreshProposal("old");
-        Assert.Equal(0, Commands.Reject(_fwDataPath, ProductVersion, id).ExitCode);
+        Assert.Equal(0, ProposalCommands.Reject(_fwDataPath, ProductVersion, id).ExitCode);
         var replacementId = CommitFreshProposal("new");
 
-        Assert.Equal(0, Commands.Supersede(_fwDataPath, ProductVersion, id, replacementId).ExitCode);
+        Assert.Equal(0, ProposalCommands.Supersede(_fwDataPath, ProductVersion, id, replacementId).ExitCode);
 
         Assert.Equal(ManifestStatus.Superseded, GetRecord(id).Status);
     }

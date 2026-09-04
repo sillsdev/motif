@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using SIL.Motif.Cli.Store;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsing;
@@ -30,7 +30,7 @@ using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Store;
 using SIL.LCModel;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>The result of one CLI command: an exit code, the text to print, and why it refused.</summary>
 /// <remarks>
@@ -64,9 +64,9 @@ public sealed record CommandResult(int ExitCode, string Output, FailureReason? R
 /// which command runs first.
 /// </para>
 /// </remarks>
-public static class Commands
+public static class ProposalCommands
 {
-    static Commands()
+    static ProposalCommands()
     {
         // Force the Runner assembly's module initializers to run now; see the class remarks for why.
         RuntimeHelpers.RunModuleConstructor(typeof(LexicalSenseOperationKinds).Module.ModuleHandle);

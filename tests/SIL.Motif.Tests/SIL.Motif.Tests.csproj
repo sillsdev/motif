@@ -29,7 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SIL.Motif.Host\SIL.Motif.Host.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
-    <ProjectReference Include="..\..\src\SIL.Motif.Client\SIL.Motif.Client.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Worker\SIL.Motif.Worker.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Model\SIL.Motif.Model.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Runner\SIL.Motif.Runner.csproj" />

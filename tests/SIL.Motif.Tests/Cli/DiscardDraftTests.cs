@@ -1,6 +1,6 @@
 using System;
 using System.Diagnostics;
-using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
@@ -34,23 +34,23 @@ public sealed class DiscardDraftTests : IDisposable
     [Fact]
     public void DiscardingANeverFinalizedDraftRemovesItAndFreesTheNameImmediately()
     {
-        Assert.Equal(0, Commands.New(Project, ProductVersion, "d", "a label").ExitCode);
+        Assert.Equal(0, ProposalCommands.New(Project, ProductVersion, "d", "a label").ExitCode);
 
-        var discarded = Commands.DiscardDraft(Project, ProductVersion, "d");
+        var discarded = ProposalCommands.DiscardDraft(Project, ProductVersion, "d");
 
         Assert.Equal(0, discarded.ExitCode);
         Assert.Contains("Discarded draft 'd'", discarded.Output);
         Assert.False(OpenRepository().DraftNameExists("d"));
 
         // Reusable immediately, not merely absent from a listing: a fresh 'new' under the same name succeeds.
-        var recreated = Commands.New(Project, ProductVersion, "d", "second label");
+        var recreated = ProposalCommands.New(Project, ProductVersion, "d", "second label");
         Assert.Equal(0, recreated.ExitCode);
     }
 
     [Fact]
     public void DiscardingAnUnknownNameRefusesNotFound()
     {
-        var result = Commands.DiscardDraft(Project, ProductVersion, "nope");
+        var result = ProposalCommands.DiscardDraft(Project, ProductVersion, "nope");
 
         Assert.Equal(2, result.ExitCode);
         Assert.Equal(FailureReason.NotFound, result.Reason);
@@ -61,16 +61,16 @@ public sealed class DiscardDraftTests : IDisposable
     public void DiscardingAFinalizedProposalsIdRefusesNotFoundJustLikeAnAbsentDraft()
     {
         // A finalized Proposal has no DraftName row, so this takes the same NotFound path as an unknown name.
-        Assert.Equal(0, Commands.New(Project, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, ProposalCommands.New(Project, ProductVersion, "d", null).ExitCode);
         Assert.Equal(
             0,
-            Commands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
+            ProposalCommands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
         DraftRationale.Author(Project, "d", "a label", "a comment");
-        var finalize = Commands.Finalize(Project, ProductVersion, "d");
+        var finalize = ProposalCommands.Finalize(Project, ProductVersion, "d");
         Assert.Equal(0, finalize.ExitCode);
         var proposalId = ExtractProposalId(finalize.Output);
 
-        var result = Commands.DiscardDraft(Project, ProductVersion, proposalId);
+        var result = ProposalCommands.DiscardDraft(Project, ProductVersion, proposalId);
 
         Assert.Equal(2, result.ExitCode);
         Assert.Equal(FailureReason.NotFound, result.Reason);
@@ -79,18 +79,18 @@ public sealed class DiscardDraftTests : IDisposable
     [Fact]
     public void DiscardingADraftReopenedFromAFinalizedProposalRevertsToItsPriorCommittedRevision()
     {
-        Assert.Equal(0, Commands.New(Project, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, ProposalCommands.New(Project, ProductVersion, "d", null).ExitCode);
         Assert.Equal(
             0,
-            Commands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
+            ProposalCommands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
         DraftRationale.Author(Project, "d", "a label", "a comment");
-        var finalize = Commands.Finalize(Project, ProductVersion, "d");
+        var finalize = ProposalCommands.Finalize(Project, ProductVersion, "d");
         Assert.Equal(0, finalize.ExitCode);
         var proposalId = ExtractProposalId(finalize.Output);
         var before = OpenRepository().Get(CanonicalId.Parse(proposalId));
-        Assert.Equal(0, Commands.Reopen(Project, ProductVersion, "reopened", proposalId).ExitCode);
+        Assert.Equal(0, ProposalCommands.Reopen(Project, ProductVersion, "reopened", proposalId).ExitCode);
 
-        var result = Commands.DiscardDraft(Project, ProductVersion, "reopened");
+        var result = ProposalCommands.DiscardDraft(Project, ProductVersion, "reopened");
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("Discarded draft 'reopened'", result.Output);
@@ -107,27 +107,27 @@ public sealed class DiscardDraftTests : IDisposable
         Assert.Equal(before.Status, after.Status);
 
         // The name is free again, not merely absent from a listing: a fresh 'new' under it succeeds.
-        Assert.Equal(0, Commands.New(Project, ProductVersion, "reopened", null).ExitCode);
+        Assert.Equal(0, ProposalCommands.New(Project, ProductVersion, "reopened", null).ExitCode);
     }
 
     [Fact]
     public void ShowRendersTheSameProposalAfterReopenThenDiscardAsItDidBeforeTheReopen()
     {
-        Assert.Equal(0, Commands.New(Project, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, ProposalCommands.New(Project, ProductVersion, "d", null).ExitCode);
         Assert.Equal(
             0,
-            Commands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
+            ProposalCommands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
         DraftRationale.Author(Project, "d", "a label", "a comment");
-        var finalize = Commands.Finalize(Project, ProductVersion, "d");
+        var finalize = ProposalCommands.Finalize(Project, ProductVersion, "d");
         Assert.Equal(0, finalize.ExitCode);
         var proposalId = ExtractProposalId(finalize.Output);
-        var shownBefore = Commands.Show(Project, ProductVersion, proposalId);
+        var shownBefore = ProposalCommands.Show(Project, ProductVersion, proposalId);
         Assert.Equal(0, shownBefore.ExitCode);
 
-        Assert.Equal(0, Commands.Reopen(Project, ProductVersion, "reopened", proposalId).ExitCode);
-        Assert.Equal(0, Commands.DiscardDraft(Project, ProductVersion, "reopened").ExitCode);
+        Assert.Equal(0, ProposalCommands.Reopen(Project, ProductVersion, "reopened", proposalId).ExitCode);
+        Assert.Equal(0, ProposalCommands.DiscardDraft(Project, ProductVersion, "reopened").ExitCode);
 
-        var shownAfter = Commands.Show(Project, ProductVersion, proposalId);
+        var shownAfter = ProposalCommands.Show(Project, ProductVersion, proposalId);
         Assert.Equal(0, shownAfter.ExitCode);
         Assert.Equal(shownBefore.Output, shownAfter.Output);
     }

@@ -10,7 +10,7 @@ using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Store;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>
 /// The <c>compare</c> verb. ADR 0042's amendment: comparison is a join on the word, and <c>compare</c> is

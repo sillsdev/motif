@@ -9,7 +9,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Worker.Store;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>The <c>report</c> verb: computing, storing and rendering one report kind over one Assessment.</summary>
 /// <remarks>

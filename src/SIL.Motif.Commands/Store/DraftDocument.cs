@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json;
 
-namespace SIL.Motif.Cli.Store;
+namespace SIL.Motif.Commands.Store;
 
 /// <summary>
 /// The rendering and serialisation shape of a Draft's in-progress content (the paired project

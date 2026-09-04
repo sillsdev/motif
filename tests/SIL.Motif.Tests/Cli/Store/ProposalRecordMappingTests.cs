@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Microsoft.Data.Sqlite;
-using SIL.Motif.Cli.Store;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
