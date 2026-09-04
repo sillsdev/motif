@@ -40,3 +40,25 @@ is settled yet.
 | Q15 | **"Fingerprints".** Which of content digest, Baseline token, Assessment identity was meant? Add the term? | Show the digest and token under their own names; do not add *fingerprint* |
 | Q16 | **Which coverage on the card.** Parse, grammar, or feature coverage? | Parse coverage on the card as a before-and-after pair; grammar and feature coverage on the page as Reports |
 | Q17 | **View names.** Glossary names (*Difference*, *Timing*) or plainer labels? | Plainer labels in the app; glossary terms govern code, docs, and verbs |
+
+## The AI handoff — round 1, asked and answered 2026-09-04
+
+Decided by the owner. Facts checked first: FieldWorks' AI export (#1070) is a temporary patch to be reverted;
+LibLCM saves by writing a temp file, renaming the old `.fwdata` to `.bak`, then renaming the temp into place;
+a reader holding the file with `FileShare.Read` alone makes that rename fail, while `FileShare.Delete` lets it
+proceed and the reader finishes reading the complete old file (verified experimentally); PanGloss's snapshot
+JSON uses its own camelCase names, not HC XML's, and has no texts section; Motif already shells out to
+`pangloss batch --stats --cache` through `PanGlossAssessor`.
+
+| # | Question | Decision |
+| --- | --- | --- |
+| Q1 | Is the copy a Baseline? | **Yes.** Glossary amended: a Baseline may be captured from a held project, as of FieldWorks' last save |
+| Q2 | Proving FieldWorks did not touch it | **Minimal.** The bar is "not a partial file", not "the most recent". Open with `FileShare.Delete` so FieldWorks' save is never blocked; the rename-on-save guarantees a complete file either way |
+| Q3 | What "stats" means | **All three, (c) especially**: a PanGloss run over chosen words, for speed and correctness diagnosis. Words are chosen before the run |
+| Q4 | Producing the grammar | **PanGloss's JSON snapshot**, not HC XML, for token economy. Its documentation is repurposed into the handoff |
+| Q5 | Producing the texts | **PanGloss format** — which does not yet exist for texts; see round 2 |
+| Q6 | The instructions file | **Moves into Motif.** The FieldWorks files are being removed |
+| Q7 | CLI first | **Yes, always.** TDD integration tests through the verb |
+| Q8 | Catalog refactor | Question was unclear; restated in round 2. No `.fwdata` change and no Proposal in this spike |
+| Q9 | The view | **A statistics view**: choose words, run hc-rust, query the data, Baseline time, refresh |
+| Q10 | Name | **Handoff**, *AI handoff* with the qualifier. Glossary entry added |

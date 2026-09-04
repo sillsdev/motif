@@ -99,7 +99,8 @@ _Avoid_: assessment, preview, plan, simulation
 **Baseline**:
 A saved, minimal, file-backed copy of the project state from which Motif can make many independent
 Dry Run scratches. It contains the LibLCM and writing-system data needed to reproduce engine behaviour,
-but no linked media bytes. A Baseline is replaced explicitly, not merely because time passed.
+but no linked media bytes. A Baseline is replaced explicitly, not merely because time passed. It may be
+captured from a project FieldWorks holds open, in which case it is the state as of FieldWorks' last save.
 _Avoid_: snapshot, backup, session cache, live model
 
 **Trial**:
@@ -235,6 +236,13 @@ _Avoid_: text, article, item, record
 The handoff an outside tool writes when it has fetched text for Motif: a small file describing one Corpus and
 naming its Documents, with each one's origin and licence. It names files; it does not contain them.
 _Avoid_: import, package, archive, manifest
+
+**Handoff**:
+The folder Motif writes for a person to give to a chat model: the grammar and the Texts in PanGloss's JSON,
+the statistics from a parse run, small helper code for reading the JSON, and the instructions for reading all of
+it. Outbound, where a Corpus bundle is inbound. Motif sends nothing anywhere; the person drags the files. Also
+*AI handoff* where the audience needs the qualifier.
+_Avoid_: export, bundle, package, dump, advice folder
 
 **Licence capabilities**:
 What a licence permits — redistribute, derive, use commercially — as distinct from what it is called. Three
