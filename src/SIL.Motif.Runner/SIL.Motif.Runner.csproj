@@ -2,10 +2,8 @@
 
   <PropertyGroup>
     <!--
-      Multi-targeted deliberately. `net10.0` is the product runtime; `netstandard2.0` exists so the
-      Runner loads in-process in FieldWorks while FieldWorks is still `net48`. There is no separate
-      companion process, so the Runner must be loadable by both hosts. See AGENTS.md's
-      Compatibility targets.
+      Single-targeted: a separate FieldWorks reaches Motif only by running the `motif` executable and
+      reading its JSON (ADR 0043), so the Runner never needs to be loadable inside a `net48` host.
     -->
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>

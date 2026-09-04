@@ -23,14 +23,12 @@ namespace SIL.Motif.Generator;
 /// existed nowhere else in this repo. Checked-in <c>.g.cs</c> files under
 /// <c>Operations/Generated/</c>/<c>Snapshotting/Generated/</c> are ordinary text a reviewer reads
 /// exactly like any other file, with a header banner naming the command that produced them.</item>
-/// <item><b>The <c>netstandard2.0</c>/<c>net48</c> constraint (ADR 0020).</b> A build-time source
-/// generator is a Roslyn analyzer component with its own SDK and packaging concerns; an MSBuild
-/// target that shells out to this project during <c>SIL.Motif.Runner</c>'s build would make the
-/// Runner's build depend on the Generator project (net10.0-only, references the <c>SIL.LCModel</c>
-/// NuGet package for <c>MasterLCModel.xml</c>) succeeding first, in the right order, on every
-/// build — including whatever build FieldWorks' own <c>net48</c> solution eventually runs. A
-/// checked-in file has no such coupling: <c>dotnet build</c> on a clean clone compiles plain C#,
-/// exactly as already established for the Generator's own model-loading dependency.</item>
+/// <item><b>Build-order coupling.</b> A build-time source generator is a Roslyn analyzer component
+/// with its own SDK and packaging concerns; an MSBuild target that shells out to this project during
+/// <c>SIL.Motif.Runner</c>'s build would make the Runner's build depend on the Generator project
+/// succeeding first, in the right order, on every build. A checked-in file has no such coupling:
+/// <c>dotnet build</c> on a clean clone compiles plain C#, exactly as already established for the
+/// Generator's own model-loading dependency.</item>
 /// <item><b>Precedent already in this repo.</b> <c>SIL.Motif.Generator</c> is already
 /// a plain console-shaped library invoked by tests/a human, not a source generator — this just adds
 /// its first thing to actually emit. And LibLCM itself generates the majority of its own model

@@ -28,7 +28,6 @@ public static class OperationHandlerRegistry
         if (handler is null)
             throw new ArgumentNullException(nameof(handler));
 
-        // Dictionary.TryAdd is netstandard2.1+; this multi-targets netstandard2.0 for net48 (ADR 0020).
         if (Handlers.ContainsKey(kind))
         {
             throw new InvalidOperationException(
