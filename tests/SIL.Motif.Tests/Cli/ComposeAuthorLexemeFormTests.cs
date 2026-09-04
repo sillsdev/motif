@@ -58,9 +58,9 @@ public sealed class ComposeAuthorLexemeFormTests
     public void ComposeAuthorLexemeForm_AppendsTheResolvedOperations_NotOneTheAgentEnumerated()
     {
         var entryId = CanonicalId.FromGuid(_seed.FirstEntryId).Value;
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
 
-        var result = ProposalCommands.ComposeAuthorLexemeForm(
+        var result = LegacyProposalCommands.ComposeAuthorLexemeForm(
             _fwDataPath, ProductVersion, "d", IntentJson(entryId, includeGloss: true));
 
         Assert.Equal(0, result.ExitCode);
@@ -68,11 +68,11 @@ public sealed class ComposeAuthorLexemeFormTests
         DraftRationale.Author(
             _fwDataPath, "d", "Author a lexeme form", "Create the missing lexeme analysis and its attested gloss.");
 
-        var finalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
+        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
         Assert.Equal(0, finalize.ExitCode);
         var proposalId = ExtractProposalId(finalize.Output);
 
-        var showJson = ProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId);
+        var showJson = LegacyProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId);
         Assert.Equal(0, showJson.ExitCode);
         Assert.Contains(LexEntryLexemeFormOperationKinds.CreateLexemeForm, showJson.Output);
         Assert.Contains(LexicalSenseOperationKinds.SetGloss, showJson.Output);
@@ -82,15 +82,15 @@ public sealed class ComposeAuthorLexemeFormTests
     public void ComposeAuthorLexemeForm_RecordsTheIntentAsNonHashedProvenance_NeverInTheDigest()
     {
         var entryId = CanonicalId.FromGuid(_seed.FirstEntryId).Value;
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
         Assert.Equal(
             0,
-            ProposalCommands.ComposeAuthorLexemeForm(_fwDataPath, ProductVersion, "d", IntentJson(entryId, includeGloss: false))
+            LegacyProposalCommands.ComposeAuthorLexemeForm(_fwDataPath, ProductVersion, "d", IntentJson(entryId, includeGloss: false))
                 .ExitCode);
         DraftRationale.Author(
             _fwDataPath, "d", "Author a lexeme form", "Preserve the composer provenance in the finalized intent.");
 
-        var finalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
+        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
         Assert.Equal(0, finalize.ExitCode);
         var proposalId = ExtractProposalId(finalize.Output);
         var digest = ExtractIntentDigest(finalize.Output);
@@ -110,21 +110,21 @@ public sealed class ComposeAuthorLexemeFormTests
     public void Reopen_CarriesTheComposerProvenanceForward_RatherThanSilentlyDroppingIt()
     {
         var entryId = CanonicalId.FromGuid(_seed.FirstEntryId).Value;
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
         Assert.Equal(
             0,
-            ProposalCommands.ComposeAuthorLexemeForm(_fwDataPath, ProductVersion, "d", IntentJson(entryId, includeGloss: false))
+            LegacyProposalCommands.ComposeAuthorLexemeForm(_fwDataPath, ProductVersion, "d", IntentJson(entryId, includeGloss: false))
                 .ExitCode);
         DraftRationale.Author(
             _fwDataPath, "d", "Author a lexeme form", "Create the lexical analysis before adding the related manual edit.");
-        var firstFinalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
+        var firstFinalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
         var proposalId = ExtractProposalId(firstFinalize.Output);
 
-        Assert.Equal(0, ProposalCommands.Reopen(_fwDataPath, ProductVersion, "amend", proposalId).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.Reopen(_fwDataPath, ProductVersion, "amend", proposalId).ExitCode);
         // Amend with an ordinary hand-authored operation too, so the draft mixes composed and manual content.
         var secondTarget = CanonicalId.FromGuid(_seed.SecondSenseId).Value;
-        Assert.Equal(0, ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "amend", secondTarget, "en", "manually added").ExitCode);
-        var amendFinalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "amend");
+        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "amend", secondTarget, "en", "manually added").ExitCode);
+        var amendFinalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "amend");
         Assert.Equal(0, amendFinalize.ExitCode);
 
         var amendedDigest = ExtractIntentDigest(amendFinalize.Output);

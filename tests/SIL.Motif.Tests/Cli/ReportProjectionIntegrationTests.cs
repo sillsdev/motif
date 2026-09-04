@@ -51,8 +51,8 @@ public sealed class ReportProjectionIntegrationTests
     public void OpenJson_CarriesTheSameFiguresAsTheTextReport()
     {
         var usage = new UsageLog();
-        var text = ProposalCommands.Open(_fwDataPath, usage);
-        var json = ProposalCommands.OpenJson(_fwDataPath, usage);
+        var text = LegacyProposalCommands.Open(_fwDataPath, usage);
+        var json = LegacyProposalCommands.OpenJson(_fwDataPath, usage);
 
         Assert.Equal(0, text.ExitCode);
         Assert.Equal(0, json.ExitCode);
@@ -65,8 +65,8 @@ public sealed class ReportProjectionIntegrationTests
     {
         var usage = new UsageLog();
 
-        var text = ProposalCommands.Analyses(_fwDataPath, usage);
-        var json = ProposalCommands.AnalysesJson(_fwDataPath, usage);
+        var text = LegacyProposalCommands.Analyses(_fwDataPath, usage);
+        var json = LegacyProposalCommands.AnalysesJson(_fwDataPath, usage);
 
         Assert.Equal(0, text.ExitCode);
         Assert.Equal(0, json.ExitCode);
@@ -99,14 +99,14 @@ public sealed class ReportProjectionIntegrationTests
         var assessmentId = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
         var usage = new UsageLog();
 
-        var text = ProposalCommands.Analyses(
+        var text = LegacyProposalCommands.Analyses(
             _fwDataPath,
             ProductVersion,
             assessmentId,
             assessment.Selection.Sha256,
             assessment.Report.GrammarSourceSha256,
             usage);
-        var json = ProposalCommands.AnalysesJson(
+        var json = LegacyProposalCommands.AnalysesJson(
             _fwDataPath,
             ProductVersion,
             assessmentId,
@@ -139,7 +139,7 @@ public sealed class ReportProjectionIntegrationTests
     public void AnalysesReturnsClearErrorWhenNamedAssessmentDoesNotExist()
     {
         // No corpus or proposal verb has touched this scratch project, so its paired database does not exist.
-        var result = ProposalCommands.Analyses(_fwDataPath, ProductVersion, Hash('0'), Hash('1'), Hash('2'));
+        var result = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, Hash('0'), Hash('1'), Hash('2'));
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains(Hash('0'), result.Output);
@@ -156,7 +156,7 @@ public sealed class ReportProjectionIntegrationTests
         string currentSelectionSha256,
         string currentGrammarSha256)
     {
-        var result = ProposalCommands.Analyses(
+        var result = LegacyProposalCommands.Analyses(
             _fwDataPath,
             ProductVersion,
             assessmentId,
@@ -203,7 +203,7 @@ public sealed class ReportProjectionIntegrationTests
                 new[] { "zzAssessmentParsed", "zzAssessmentEmpty" }));
         var assessmentId = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
 
-        var result = ProposalCommands.AnalysesJson(
+        var result = LegacyProposalCommands.AnalysesJson(
             _fwDataPath,
             ProductVersion,
             assessmentId,
@@ -252,22 +252,22 @@ public sealed class ReportProjectionIntegrationTests
 
         var usage = new UsageLog();
 
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, draftName, label).ExitCode);
-        Assert.Equal(0, ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, draftName, label).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss).ExitCode);
         DraftRationale.Author(
             _fwDataPath, draftName, label, "Explain why this lexical gloss should replace the current analysis.");
-        var finalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
+        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
         Assert.Equal(0, finalize.ExitCode);
         var proposalId = ExtractProposalId(finalize.Output);
 
         // list
-        var listText = ProposalCommands.List(_fwDataPath, ProductVersion, usage);
-        var listJson = ProposalCommands.ListJson(_fwDataPath, ProductVersion, usage);
+        var listText = LegacyProposalCommands.List(_fwDataPath, ProductVersion, usage);
+        var listJson = LegacyProposalCommands.ListJson(_fwDataPath, ProductVersion, usage);
         FigureAudit.AssertEveryTextFigureAppearsInJson(listText.Output, listJson.Output);
 
         // show
-        var showText = ProposalCommands.Show(_fwDataPath, ProductVersion, proposalId, usage);
-        var showJson = ProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId, usage);
+        var showText = LegacyProposalCommands.Show(_fwDataPath, ProductVersion, proposalId, usage);
+        var showJson = LegacyProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId, usage);
         FigureAudit.AssertEveryTextFigureAppearsInJson(showText.Output, showJson.Output);
         Assert.Contains(canonicalId.Value, showJson.Output);
 
@@ -282,7 +282,7 @@ public sealed class ReportProjectionIntegrationTests
         FigureAudit.AssertEveryTextFigureAppearsInJson(dryRunText.Output, dryRunJson.Output);
 
         // apply: mutating (one shot), so the JSON report is checked directly against ground truth.
-        var applyJson = ProposalCommands.ApplyJson(_fwDataPath, ProductVersion, proposalId, applier, force: true, usage: usage);
+        var applyJson = LegacyProposalCommands.ApplyJson(_fwDataPath, ProductVersion, proposalId, applier, force: true, usage: usage);
         Assert.Equal(0, applyJson.ExitCode);
         Assert.Contains(originalGloss, applyJson.Output);
         Assert.Contains(newGloss, applyJson.Output);
@@ -290,8 +290,8 @@ public sealed class ReportProjectionIntegrationTests
         Assert.Contains(proposalId, applyJson.Output);
 
         // log
-        var logText = ProposalCommands.Log(_fwDataPath, usage);
-        var logJson = ProposalCommands.LogJson(_fwDataPath, usage);
+        var logText = LegacyProposalCommands.Log(_fwDataPath, usage);
+        var logJson = LegacyProposalCommands.LogJson(_fwDataPath, usage);
         Assert.Equal(0, logText.ExitCode);
         Assert.Equal(0, logJson.ExitCode);
         Assert.Contains(applier, logJson.Output);

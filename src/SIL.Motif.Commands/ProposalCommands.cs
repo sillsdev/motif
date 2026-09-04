@@ -6,8 +6,10 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
@@ -19,7 +21,6 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection;
-using SIL.Motif.Projection.Rendering;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Projection.Usage;
 using SIL.Motif.Runner.Apply;
@@ -32,20 +33,12 @@ using SIL.LCModel;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>The result of one CLI command: an exit code, the text to print, and why it refused.</summary>
-/// <remarks>
-/// <see cref="Reason"/> is null on success and on the few failures raised before a verb is entered.
-/// It is what <c>--json</c> renders as a structured envelope; the text in <see cref="Output"/> is the
-/// same wording either way, because the human interface did not need changing.
-/// </remarks>
-public sealed record CommandResult(int ExitCode, string Output, FailureReason? Reason = null);
-
 /// <summary>
-/// Testable command handlers for every Motif CLI verb, driving the project's paired database (see
-/// <see cref="SIL.Motif.Worker.Store.ProposalRepository"/>) and the real Contract/Runner/Host APIs end
-/// to end. <c>Program.cs</c> is a thin argument dispatcher over these methods: every method here is a
-/// plain function of explicit parameters returning a <see cref="CommandResult"/>, so tests call them
-/// directly rather than shelling out to the built executable.
+/// Testable command handlers for every Proposal and project-reading Motif CLI verb, driving the
+/// project's paired database (see <see cref="SIL.Motif.Worker.Store.ProposalRepository"/>) and the
+/// real Contract/Runner/Host APIs end to end. Each method here is a plain function of an explicit
+/// request record returning a <see cref="CommandOutcome{T}"/>; the CLI alone parses argv, renders
+/// text or JSON, and records invocation usage.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -64,7 +57,7 @@ public sealed record CommandResult(int ExitCode, string Output, FailureReason? R
 /// which command runs first.
 /// </para>
 /// </remarks>
-public static class ProposalCommands
+public static partial class ProposalCommands
 {
     static ProposalCommands()
     {
@@ -87,93 +80,42 @@ public static class ProposalCommands
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public static CommandResult Open(string fwDataPath, UsageLog? usage = null)
+    public static CommandOutcome<ProjectSummaryProjection> Open(OpenRequest request, UsageLog? usage = null)
     {
         usage?.Record("open", new[] { UsageArgumentShape.Text("fwDataPath") });
-        var (reason, projection, error) = BuildProjectSummary(fwDataPath);
-        return projection is not null ? Ok(CommandTextRenderer.Render(projection)) : Refused(reason, error!);
+        return BuildProjectSummary(request.FwDataPath);
     }
 
-    /// <summary>The <c>open</c> report as JSON — the same <see cref="ProjectSummaryProjection"/> <see cref="Open"/> renders as text.</summary>
-    public static CommandResult OpenJson(string fwDataPath, UsageLog? usage = null)
-    {
-        usage?.Record("open", new[] { UsageArgumentShape.Text("fwDataPath") });
-        var (reason, projection, error) = BuildProjectSummary(fwDataPath);
-        return projection is not null ? new CommandResult(0, ProjectionJson.Serialize(projection) + Environment.NewLine)
-            : Refused(reason, error!);
-    }
-
-    private static (FailureReason? Reason, ProjectSummaryProjection? Projection, string? Error) BuildProjectSummary(
-        string fwDataPath)
+    private static CommandOutcome<ProjectSummaryProjection> BuildProjectSummary(string fwDataPath)
     {
         try
         {
             var fullPath = ResolveProjectPath(fwDataPath);
             var loader = new FwDataProjectLoader();
             using var cache = loader.LoadCache(fullPath);
-            return (null, ProjectSummaryReader.Read(cache), null);
+            return CommandOutcome<ProjectSummaryProjection>.Success(ProjectSummaryReader.Read(cache));
         }
         catch (Exception ex)
         {
-            return (ReasonFor(ex), null, FailText(ex.Message));
+            return CommandOutcome<ProjectSummaryProjection>.Refused(ProjectFileRefusal(ex));
         }
     }
 
-    public static CommandResult Analyses(string fwDataPath, UsageLog? usage = null)
+    public static CommandOutcome<AnalysisAggregateProjection> Analyses(
+        ManualAnalysesRequest request, UsageLog? usage = null)
     {
         usage?.Record("analyses", new[] { UsageArgumentShape.Text("fwDataPath") });
-        var (reason, projection, error) = BuildManualAnalysisProjection(fwDataPath);
-        return projection is not null ? Ok(CommandTextRenderer.Render(projection)) : Refused(reason, error!);
+        return BuildManualAnalysisProjection(request.FwDataPath);
     }
 
-    /// <summary>
-    /// The <c>analyses</c> report as JSON, rendered from the same
-    /// <see cref="AnalysisAggregateProjection"/> as <see cref="Analyses"/>.
-    /// </summary>
-    public static CommandResult AnalysesJson(string fwDataPath, UsageLog? usage = null)
-    {
-        usage?.Record("analyses", new[] { UsageArgumentShape.Text("fwDataPath") });
-        var (reason, projection, error) = BuildManualAnalysisProjection(fwDataPath);
-        return projection is not null
-            ? new CommandResult(0, ProjectionJson.Serialize(projection) + Environment.NewLine)
-            : Refused(reason, error!);
-    }
-
-    public static CommandResult Analyses(
-        string fwDataPath,
-        string productVersion,
-        string assessmentId,
-        string currentSelectionSha256,
-        string currentGrammarSourceSha256,
-        UsageLog? usage = null)
+    public static CommandOutcome<AnalysisAggregateProjection> Analyses(
+        AssessmentAnalysesRequest request, UsageLog? usage = null)
     {
         RecordAssessmentAnalysisUsage(usage);
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
-        {
-            var (reason, projection, error) = BuildAssessmentAnalysisProjection(
-                database, project, assessmentId, currentSelectionSha256, currentGrammarSourceSha256);
-            return projection is not null ? Ok(CommandTextRenderer.Render(projection)) : Refused(reason, error!);
-        });
-    }
-
-    /// <summary>The Assessment-backed <c>analyses</c> report as JSON.</summary>
-    public static CommandResult AnalysesJson(
-        string fwDataPath,
-        string productVersion,
-        string assessmentId,
-        string currentSelectionSha256,
-        string currentGrammarSourceSha256,
-        UsageLog? usage = null)
-    {
-        RecordAssessmentAnalysisUsage(usage);
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
-        {
-            var (reason, projection, error) = BuildAssessmentAnalysisProjection(
-                database, project, assessmentId, currentSelectionSha256, currentGrammarSourceSha256);
-            return projection is not null
-                ? new CommandResult(0, ProjectionJson.Serialize(projection) + Environment.NewLine)
-                : Refused(reason, error!);
-        });
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+            BuildAssessmentAnalysisProjection(
+                database, project, request.AssessmentId, request.CurrentSelectionSha256,
+                request.CurrentGrammarSourceSha256));
     }
 
     private static void RecordAssessmentAnalysisUsage(UsageLog? usage) =>
@@ -187,13 +129,12 @@ public static class ProposalCommands
                 UsageArgumentShape.Text("currentGrammarSourceSha256"),
             });
 
-    private static (FailureReason? Reason, AnalysisAggregateProjection? Projection, string? Error)
-        BuildAssessmentAnalysisProjection(
-            MotifDatabase database,
-            ProjectLocator project,
-            string assessmentId,
-            string currentSelectionSha256,
-            string currentGrammarSourceSha256)
+    private static CommandOutcome<AnalysisAggregateProjection> BuildAssessmentAnalysisProjection(
+        MotifDatabase database,
+        ProjectLocator project,
+        string assessmentId,
+        string currentSelectionSha256,
+        string currentGrammarSourceSha256)
     {
         try
         {
@@ -209,49 +150,56 @@ public static class ProposalCommands
             }
             catch (KeyNotFoundException)
             {
-                return (FailureReason.NotFound, null,
-                    FailText($"Assessment '{assessmentId}' was not found in the Motif store."));
+                return CommandOutcome<AnalysisAggregateProjection>.Refused(new Refusal(
+                    "assessment.not-found", FailureReason.NotFound,
+                    $"Assessment '{assessmentId}' was not found in the Motif store.",
+                    Fact(("assessmentId", assessmentId))));
             }
 
             var loader = new FwDataProjectLoader();
             using var cache = loader.LoadScratchCache(project.FullFwDataPath);
-            return (
-                0,
-                AnalysisAggregateProjectionQuery.Read(
-                    cache, record.ToStored(), currentSelectionSha256, currentGrammarSourceSha256),
-                null);
+            return CommandOutcome<AnalysisAggregateProjection>.Success(AnalysisAggregateProjectionQuery.Read(
+                cache, record.ToStored(), currentSelectionSha256, currentGrammarSourceSha256));
+        }
+        catch (ArgumentException ex)
+        {
+            return CommandOutcome<AnalysisAggregateProjection>.Refused(new Refusal(
+                "assessment.invalid-id", FailureReason.InvalidArgument, ex.Message,
+                Fact(("assessmentId", assessmentId))));
         }
         catch (Exception ex)
         {
-            return (ReasonFor(ex), null, FailText(ex.Message));
+            return CommandOutcome<AnalysisAggregateProjection>.Refused(ProjectFileRefusal(ex));
         }
     }
 
-    private static (FailureReason? Reason, AnalysisAggregateProjection? Projection, string? Error)
-        BuildManualAnalysisProjection(string fwDataPath)
+    private static CommandOutcome<AnalysisAggregateProjection> BuildManualAnalysisProjection(string fwDataPath)
     {
         try
         {
             var fullPath = ResolveProjectPath(fwDataPath);
             var loader = new FwDataProjectLoader();
             using var cache = loader.LoadScratchCache(fullPath);
-            return (null, ManualAnalysisProjectionQuery.Read(cache), null);
+            return CommandOutcome<AnalysisAggregateProjection>.Success(ManualAnalysisProjectionQuery.Read(cache));
         }
         catch (Exception ex)
         {
-            return (ReasonFor(ex), null, FailText(ex.Message));
+            return CommandOutcome<AnalysisAggregateProjection>.Refused(ProjectFileRefusal(ex));
         }
     }
 
-    public static CommandResult New(string fwDataPath, string productVersion, string draftName, string? label)
+    public static CommandOutcome<DraftCreatedResponse> New(NewDraftRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             try
             {
                 var repository = new ProposalRepository(database);
-                if (repository.DraftNameExists(draftName))
-                    return Fail(DraftNameCollisionMessage(draftName, "creating a new draft with this name"));
+                if (repository.DraftNameExists(request.DraftName))
+                {
+                    return CommandOutcome<DraftCreatedResponse>.Refused(NameCollision(
+                        request.DraftName, "creating a new draft with this name"));
+                }
 
                 var proposalId = CanonicalId.Mint();
                 var draft = new DraftDocument
@@ -260,47 +208,48 @@ public static class ProposalCommands
                     // Empty: EnsureContractVersion populates this from whatever operations actually get authored.
                     ContractVersions = new Dictionary<string, string>(),
                     Requires = new List<string>(),
-                    Label = label,
+                    Label = request.Label,
                     Comment = null,
                     Operations = new List<DraftOperation>(),
                 };
 
-                repository.CreateDraft(draftName, proposalId, SerializeDraft(draft));
+                repository.CreateDraft(request.DraftName, proposalId, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine($"Created draft '{draftName}'.");
-                sb.AppendLine($"  proposalId: {draft.ProposalId}");
-                if (label is not null)
-                    sb.AppendLine($"  label:       {label}");
-                return Ok(sb);
+                return CommandOutcome<DraftCreatedResponse>.Success(
+                    new DraftCreatedResponse(request.DraftName, draft.ProposalId, request.Label));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<DraftCreatedResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
     }
 
-    public static CommandResult AddSetGloss(
-        string fwDataPath, string productVersion, string draftName, string target, string ws, string text,
-        IReadOnlyList<string>? dependsOn = null)
+    public static CommandOutcome<SetGlossAddedResponse> AddSetGloss(AddSetGlossRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, draftName, out var draft))
-                    return Missing(DraftNotFoundMessage(draftName));
+                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                    return CommandOutcome<SetGlossAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
-                if (!CanonicalId.TryParse(target, out var targetId, out var idError))
-                    return Invalid($"--target '{target}' is not a valid canonical id: {idError}");
+                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                {
+                    return CommandOutcome<SetGlossAddedResponse>.Refused(InvalidTarget(request.Target, idError));
+                }
 
-                if (string.IsNullOrEmpty(ws))
-                    return Invalid("--ws must not be empty.");
+                if (string.IsNullOrEmpty(request.Ws))
+                    return CommandOutcome<SetGlossAddedResponse>.Refused(InvalidWs(request.DraftName));
 
-                if (!TryResolveDependsOn(draft, dependsOn, out var resolvedDependsOn, out var dependsOnError))
-                    return Fail(dependsOnError!);
+                if (!TryResolveDependsOn(draft, request.DependsOn, out var resolvedDependsOn, out var dependsOnError))
+                {
+                    return CommandOutcome<SetGlossAddedResponse>.Refused(new Refusal(
+                        "operation.invalid-dependency", FailureReason.Refused, dependsOnError!,
+                        Fact(("draftName", request.DraftName))));
+                }
 
                 var operationId = CanonicalId.Mint();
 
@@ -312,27 +261,22 @@ public static class ProposalCommands
                     DependsOn = resolvedDependsOn,
                     After = new Dictionary<string, JsonElement>
                     {
-                        ["ws"] = JsonSerializer.SerializeToElement(ws),
-                        ["text"] = JsonSerializer.SerializeToElement(text),
+                        ["ws"] = JsonSerializer.SerializeToElement(request.Ws),
+                        ["text"] = JsonSerializer.SerializeToElement(request.Text),
                     },
                 });
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
 
-                repository.SaveDraft(draftName, SerializeDraft(draft));
+                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine(
-                    $"Added operation '{operationId.Value}' ({LexicalSenseOperationKinds.SetGloss}) to draft '{draftName}'.");
-                sb.AppendLine($"  target: {targetId.Value}");
-                sb.AppendLine($"  after:  ws={ws} text=\"{text}\"");
-                if (resolvedDependsOn.Count > 0)
-                    sb.AppendLine($"  dependsOn: {string.Join(", ", resolvedDependsOn)}");
-                sb.AppendLine($"Draft now has {draft.Operations.Count} operation(s).");
-                return Ok(sb);
+                return CommandOutcome<SetGlossAddedResponse>.Success(new SetGlossAddedResponse(
+                    request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
+                    resolvedDependsOn, draft.Operations.Count));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<SetGlossAddedResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
     }
@@ -344,19 +288,22 @@ public static class ProposalCommands
     /// against, not a synthetic one. Its <c>after</c> payload is the empty object — an entry has at
     /// most one lexeme form, so nothing is left to disambiguate once the target entry is known.
     /// </summary>
-    public static CommandResult AddDeleteLexemeForm(
-        string fwDataPath, string productVersion, string draftName, string target)
+    public static CommandOutcome<DeleteLexemeFormAddedResponse> AddDeleteLexemeForm(
+        AddDeleteLexemeFormRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, draftName, out var draft))
-                    return Missing(DraftNotFoundMessage(draftName));
+                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                    return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
-                if (!CanonicalId.TryParse(target, out var targetId, out var idError))
-                    return Invalid($"--target '{target}' is not a valid canonical id: {idError}");
+                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                {
+                    return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(
+                        InvalidTarget(request.Target, idError));
+                }
 
                 var operationId = CanonicalId.Mint();
 
@@ -369,19 +316,15 @@ public static class ProposalCommands
                 });
                 EnsureContractVersion(draft, LexEntryLexemeFormOperationKinds.DeleteLexemeForm);
 
-                repository.SaveDraft(draftName, SerializeDraft(draft));
+                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine(
-                    $"Added operation '{operationId.Value}' ({LexEntryLexemeFormOperationKinds.DeleteLexemeForm}) " +
-                    $"to draft '{draftName}'.");
-                sb.AppendLine($"  target: {targetId.Value}");
-                sb.AppendLine($"Draft now has {draft.Operations.Count} operation(s).");
-                return Ok(sb);
+                return CommandOutcome<DeleteLexemeFormAddedResponse>.Success(new DeleteLexemeFormAddedResponse(
+                    request.DraftName, operationId.Value, targetId.Value, draft.Operations.Count));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
     }
@@ -393,23 +336,24 @@ public static class ProposalCommands
     /// itself is recorded as non-hashed provenance on the eventual Proposal, never entering its intent
     /// digest.
     /// </summary>
-    /// <param name="intentJson">
+    /// <remarks>
+    /// <see cref="ComposeAuthorLexemeFormRequest.IntentJson"/> is
     /// <c>{ "entry": "...", "morphType": "...", "ws": "...", "text": "...", "isAbstract": false,
     /// "sense": "...", "glossWs": "...", "glossText": "..." }</c> — see
     /// <see cref="AuthorLexemeFormIntentParser"/> for the exact closed schema.
-    /// </param>
-    public static CommandResult ComposeAuthorLexemeForm(
-        string fwDataPath, string productVersion, string draftName, string intentJson)
+    /// </remarks>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorLexemeForm(
+        ComposeAuthorLexemeFormRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, draftName, out var draft))
-                    return Missing(DraftNotFoundMessage(draftName));
+                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                    return CommandOutcome<ComposedOperationsResponse>.Refused(DraftNotFound(request.DraftName));
 
-                using var intentDocument = JsonDocument.Parse(intentJson);
+                using var intentDocument = JsonDocument.Parse(request.IntentJson);
                 var intent = AuthorLexemeFormIntentParser.Parse(intentDocument.RootElement);
 
                 var loader = new FwDataProjectLoader();
@@ -428,19 +372,17 @@ public static class ProposalCommands
                 using var provenanceDocument = JsonDocument.Parse(provenanceJson);
                 draft.ComposerProvenance.Add(provenanceDocument.RootElement.Clone());
 
-                repository.SaveDraft(draftName, SerializeDraft(draft));
+                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine(
-                    $"Composed 'AuthorLexemeForm' against draft '{draftName}': {operations.Count} operation(s) added.");
-                foreach (var operation in operations)
-                    sb.AppendLine($"  {operation.OperationId.Value}  ({operation.Kind})");
-                sb.AppendLine($"Draft now has {draft.Operations.Count} operation(s).");
-                return Ok(sb);
+                return CommandOutcome<ComposedOperationsResponse>.Success(new ComposedOperationsResponse(
+                    request.DraftName, "AuthorLexemeForm",
+                    operations.Select(o => new OperationSummary(o.OperationId.Value, o.Kind)).ToList(),
+                    draft.Operations.Count));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<ComposedOperationsResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
     }
@@ -450,19 +392,22 @@ public static class ProposalCommands
     /// operation it resolves to a draft — Motif's first grammar Layer-1 construct, alongside the
     /// lexical <see cref="ComposeAuthorLexemeForm"/>.
     /// </summary>
-    /// <param name="intentJson"><c>{ "msa": "..." }</c> — see <see cref="AuthorFeatureStructureIntentParser"/>.</param>
-    public static CommandResult ComposeAuthorFeatureStructure(
-        string fwDataPath, string productVersion, string draftName, string intentJson)
+    /// <remarks>
+    /// <see cref="ComposeAuthorFeatureStructureRequest.IntentJson"/> is <c>{ "msa": "..." }</c> — see
+    /// <see cref="AuthorFeatureStructureIntentParser"/>.
+    /// </remarks>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorFeatureStructure(
+        ComposeAuthorFeatureStructureRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, draftName, out var draft))
-                    return Missing(DraftNotFoundMessage(draftName));
+                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                    return CommandOutcome<ComposedOperationsResponse>.Refused(DraftNotFound(request.DraftName));
 
-                using var intentDocument = JsonDocument.Parse(intentJson);
+                using var intentDocument = JsonDocument.Parse(request.IntentJson);
                 var intent = AuthorFeatureStructureIntentParser.Parse(intentDocument.RootElement);
 
                 var loader = new FwDataProjectLoader();
@@ -481,19 +426,17 @@ public static class ProposalCommands
                 using var provenanceDocument = JsonDocument.Parse(provenanceJson);
                 draft.ComposerProvenance.Add(provenanceDocument.RootElement.Clone());
 
-                repository.SaveDraft(draftName, SerializeDraft(draft));
+                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine(
-                    $"Composed 'AuthorFeatureStructure' against draft '{draftName}': {operations.Count} operation(s) added.");
-                foreach (var operation in operations)
-                    sb.AppendLine($"  {operation.OperationId.Value}  ({operation.Kind})");
-                sb.AppendLine($"Draft now has {draft.Operations.Count} operation(s).");
-                return Ok(sb);
+                return CommandOutcome<ComposedOperationsResponse>.Success(new ComposedOperationsResponse(
+                    request.DraftName, "AuthorFeatureStructure",
+                    operations.Select(o => new OperationSummary(o.OperationId.Value, o.Kind)).ToList(),
+                    draft.Operations.Count));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<ComposedOperationsResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
     }
@@ -507,34 +450,44 @@ public static class ProposalCommands
     /// </summary>
     /// <remarks>
     /// The draft and the corpus both live in the project's paired database, opened once through
-    /// <see cref="ProjectStoreCommand.Run"/> from <paramref name="fwDataPath"/> and
-    /// <paramref name="productVersion"/> so the two never disagree about which project a corpus id
-    /// names.
+    /// <see cref="ProjectStoreCommand.Run{T}"/> so the two never disagree about which project a corpus
+    /// id names.
     /// </remarks>
-    public static CommandResult PromoteGloss(
-        string fwDataPath, string productVersion, string draftName, string target, string ws, string text,
-        string corpusId, string? documentId = null)
+    public static CommandOutcome<PromoteGlossAddedResponse> PromoteGloss(PromoteGlossRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, draftName, out var draft))
-                    return Missing(DraftNotFoundMessage(draftName));
+                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                    return CommandOutcome<PromoteGlossAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
-                var corpus = CorpusCommands.StoreFor(database).Load(corpusId);
+                var corpus = CorpusCommands.StoreFor(database).Load(request.CorpusId);
                 if (corpus is null)
-                    return Fail($"Corpus '{corpusId}' not found. Run 'corpora' to see what is there.");
+                {
+                    return CommandOutcome<PromoteGlossAddedResponse>.Refused(new Refusal(
+                        "corpus.not-found", FailureReason.Refused,
+                        $"Corpus '{request.CorpusId}' not found. Run 'corpora' to see what is there.",
+                        Fact(("corpusId", request.CorpusId))));
+                }
 
-                if (documentId is not null && corpus.Documents.All(d => d.DocumentId != documentId))
-                    return Missing($"Corpus '{corpusId}' has no document '{documentId}'.");
+                if (request.DocumentId is not null && corpus.Documents.All(d => d.DocumentId != request.DocumentId))
+                {
+                    return CommandOutcome<PromoteGlossAddedResponse>.Refused(new Refusal(
+                        "corpus.document-not-found", FailureReason.NotFound,
+                        $"Corpus '{request.CorpusId}' has no document '{request.DocumentId}'.",
+                        Fact(("corpusId", request.CorpusId), ("documentId", request.DocumentId))));
+                }
 
-                if (!CanonicalId.TryParse(target, out var targetId, out var idError))
-                    return Invalid($"--target '{target}' is not a valid canonical id: {idError}");
+                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                {
+                    return CommandOutcome<PromoteGlossAddedResponse>.Refused(
+                        InvalidTarget(request.Target, idError));
+                }
 
-                if (string.IsNullOrEmpty(ws))
-                    return Invalid("--ws must not be empty.");
+                if (string.IsNullOrEmpty(request.Ws))
+                    return CommandOutcome<PromoteGlossAddedResponse>.Refused(InvalidWs(request.DraftName));
 
                 var operationId = CanonicalId.Mint();
 
@@ -545,8 +498,8 @@ public static class ProposalCommands
                     Target = targetId.Value,
                     After = new Dictionary<string, JsonElement>
                     {
-                        ["ws"] = JsonSerializer.SerializeToElement(ws),
-                        ["text"] = JsonSerializer.SerializeToElement(text),
+                        ["ws"] = JsonSerializer.SerializeToElement(request.Ws),
+                        ["text"] = JsonSerializer.SerializeToElement(request.Text),
                     },
                 });
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
@@ -555,8 +508,8 @@ public static class ProposalCommands
                 var provenanceJson = JsonSerializer.Serialize(new
                 {
                     operationId = operationId.Value,
-                    corpusId,
-                    documentId,
+                    corpusId = request.CorpusId,
+                    documentId = request.DocumentId,
                     description = origin.Description,
                     licence = origin.Licence,
                     retrievedUtc = origin.RetrievedUtc,
@@ -564,22 +517,16 @@ public static class ProposalCommands
                 using var provenanceDocument = JsonDocument.Parse(provenanceJson);
                 draft.PromotionProvenance.Add(provenanceDocument.RootElement.Clone());
 
-                repository.SaveDraft(draftName, SerializeDraft(draft));
+                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine(
-                    $"Added operation '{operationId.Value}' ({LexicalSenseOperationKinds.SetGloss}) to draft " +
-                    $"'{draftName}', promoted from corpus '{corpusId}'.");
-                sb.AppendLine($"  target: {targetId.Value}");
-                sb.AppendLine($"  after:  ws={ws} text=\"{text}\"");
-                if (origin.Licence is not null)
-                    sb.AppendLine($"  licence: {origin.Licence}");
-                sb.AppendLine($"Draft now has {draft.Operations.Count} operation(s).");
-                return Ok(sb);
+                return CommandOutcome<PromoteGlossAddedResponse>.Success(new PromoteGlossAddedResponse(
+                    request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
+                    request.CorpusId, origin.Licence, draft.Operations.Count));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<PromoteGlossAddedResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
     }
@@ -616,14 +563,17 @@ public static class ProposalCommands
         return true;
     }
 
-    public static CommandResult Label(string fwDataPath, string productVersion, string draftName, string text) =>
-        SetDraftField(fwDataPath, productVersion, draftName, "label", (draft) => draft.Label = text);
+    public static CommandOutcome<DraftFieldChangedResponse> Label(LabelRequest request) =>
+        SetDraftField(request.FwDataPath, request.ProductVersion, request.DraftName, "label", request.Text,
+            (draft) => draft.Label = request.Text);
 
-    public static CommandResult Comment(string fwDataPath, string productVersion, string draftName, string text) =>
-        SetDraftField(fwDataPath, productVersion, draftName, "comment", (draft) => draft.Comment = text);
+    public static CommandOutcome<DraftFieldChangedResponse> Comment(CommentRequest request) =>
+        SetDraftField(request.FwDataPath, request.ProductVersion, request.DraftName, "comment", request.Text,
+            (draft) => draft.Comment = request.Text);
 
-    private static CommandResult SetDraftField(
-        string fwDataPath, string productVersion, string draftName, string fieldName, Action<DraftDocument> setter)
+    private static CommandOutcome<DraftFieldChangedResponse> SetDraftField(
+        string fwDataPath, string productVersion, string draftName, string fieldName, string value,
+        Action<DraftDocument> setter)
     {
         return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
         {
@@ -631,45 +581,48 @@ public static class ProposalCommands
             {
                 var repository = new ProposalRepository(database);
                 if (!TryLoadDraft(repository, draftName, out var draft))
-                    return Missing(DraftNotFoundMessage(draftName));
+                    return CommandOutcome<DraftFieldChangedResponse>.Refused(DraftNotFound(draftName));
 
                 setter(draft);
                 repository.SaveDraft(draftName, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine($"Set {fieldName} on draft '{draftName}'.");
-                return Ok(sb);
+                return CommandOutcome<DraftFieldChangedResponse>.Success(
+                    new DraftFieldChangedResponse(draftName, fieldName, value));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<DraftFieldChangedResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", draftName)));
             }
         });
     }
 
-    public static CommandResult Finalize(string fwDataPath, string productVersion, string draftName)
+    public static CommandOutcome<ProposalFinalizedResponse> Finalize(FinalizeRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, draftName, out var draft))
-                    return Missing(DraftNotFoundMessage(draftName));
+                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftNotFound(request.DraftName));
 
                 if (string.IsNullOrWhiteSpace(draft.Label) || string.IsNullOrWhiteSpace(draft.Comment))
                 {
-                    return Fail(
-                        $"Draft '{draftName}' cannot be finalized without both a short description (label) " +
-                        $"and an extended explanation (comment). Set them with 'label --draft {draftName} <text>' " +
-                        $"and 'comment --draft {draftName} <text>', then finalize again.");
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftInvalid(
+                        $"Draft '{request.DraftName}' cannot be finalized without both a short description " +
+                        $"(label) and an extended explanation (comment). Set them with " +
+                        $"'label --draft {request.DraftName} <text>' and " +
+                        $"'comment --draft {request.DraftName} <text>', then finalize again.",
+                        ("draftName", request.DraftName)));
                 }
 
                 if (draft.Operations.Count == 0)
                 {
-                    return Fail(
-                        $"Draft '{draftName}' has no operations; add at least one (e.g. 'add-set-gloss') " +
-                        "before finalize.");
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftInvalid(
+                        $"Draft '{request.DraftName}' has no operations; add at least one (e.g. " +
+                        "'add-set-gloss') before finalize.",
+                        ("draftName", request.DraftName)));
                 }
 
                 var proposalJson = BuildProposalJson(draft);
@@ -681,31 +634,25 @@ public static class ProposalCommands
                 }
                 catch (ContractParseException ex)
                 {
-                    return Fail($"Draft '{draftName}' failed Proposal validation: {ex.Message}");
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(new Refusal(
+                        "proposal.inconsistent", FailureReason.Refused,
+                        $"Draft '{request.DraftName}' failed Proposal validation: {ex.Message}",
+                        Fact(("draftName", request.DraftName))));
                 }
 
                 var intentDigest = IntentDigest.Compute(envelope);
 
                 // Whether a committed revision already existed under this id decides "Finalized" vs "Amended".
-                var isAmend = repository.Finalize(draftName, intentDigest, proposalJson, draft.Label!, draft.Comment!);
+                var isAmend = repository.Finalize(
+                    request.DraftName, intentDigest, proposalJson, draft.Label!, draft.Comment!);
 
-                var sb = new StringBuilder();
-                if (isAmend)
-                {
-                    sb.AppendLine($"Amended draft '{draftName}' -> Proposal {draft.ProposalId} (status: proposed).");
-                    sb.AppendLine("  (id unchanged; intentDigest moved to a new revision; prior revision retained)");
-                }
-                else
-                {
-                    sb.AppendLine($"Finalized draft '{draftName}' -> Proposal {draft.ProposalId} (status: proposed).");
-                }
-                sb.AppendLine($"  operations:   {envelope.Operations.Count}");
-                sb.AppendLine($"  intentDigest: {intentDigest}");
-                return Ok(sb);
+                return CommandOutcome<ProposalFinalizedResponse>.Success(new ProposalFinalizedResponse(
+                    request.DraftName, draft.ProposalId, intentDigest, envelope.Operations.Count, isAmend));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<ProposalFinalizedResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
     }
@@ -716,44 +663,45 @@ public static class ProposalCommands
     /// <c>DraftName</c>/<c>DraftJson</c> are cleared, in one transaction — leaving the Proposal it was
     /// reopened from exactly at its prior committed revision (<see cref="ProposalRepository.DiscardDraft"/>).
     /// </summary>
-    public static CommandResult DiscardDraft(string fwDataPath, string productVersion, string draftName)
+    public static CommandOutcome<DraftDiscardedResponse> DiscardDraft(DiscardDraftRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             try
             {
                 var repository = new ProposalRepository(database);
-                var wasReopened = repository.DiscardDraft(draftName);
+                var wasReopened = repository.DiscardDraft(request.DraftName);
 
-                var sb = new StringBuilder();
-                sb.AppendLine($"Discarded draft '{draftName}'.");
-                if (wasReopened)
-                    sb.AppendLine("  (it was reopened from a finalized Proposal, which remains at its prior committed revision)");
-                return Ok(sb);
+                return CommandOutcome<DraftDiscardedResponse>.Success(
+                    new DraftDiscardedResponse(request.DraftName, wasReopened));
             }
             catch (KeyNotFoundException)
             {
-                return Missing(DraftNotFoundMessage(draftName));
+                return CommandOutcome<DraftDiscardedResponse>.Refused(DraftNotFound(request.DraftName));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<DraftDiscardedResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
     }
 
-    public static CommandResult Reopen(string fwDataPath, string productVersion, string draftName, string proposalId)
+    public static CommandOutcome<ReopenedResponse> Reopen(ReopenRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
-            var id = proposalId;
+            var id = request.ProposalId;
             try
             {
                 var repository = new ProposalRepository(database);
-                if (repository.DraftNameExists(draftName))
-                    return Fail(DraftNameCollisionMessage(draftName, "reopening a Proposal with this draft name"));
+                if (repository.DraftNameExists(request.DraftName))
+                {
+                    return CommandOutcome<ReopenedResponse>.Refused(NameCollision(
+                        request.DraftName, "reopening a Proposal with this draft name"));
+                }
 
-                id = NormalizeId(proposalId);
+                id = NormalizeId(request.ProposalId);
                 var canonicalId = CanonicalId.Parse(id);
                 var (record, envelope) = repository.GetFinalized(canonicalId);
                 var manifest = ProposalRecordMapping.ToManifest(record);
@@ -771,29 +719,25 @@ public static class ProposalCommands
                     PromotionProvenance = ExtractPromotionProvenance(envelope.Extensions),
                 };
 
-                repository.ReopenAsDraft(canonicalId, draftName, SerializeDraft(draft));
+                repository.ReopenAsDraft(canonicalId, request.DraftName, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine($"Reopened Proposal {id} for editing as draft '{draftName}'.");
-                if (manifest.CurrentIntentDigest is not null)
-                    sb.AppendLine($"  currentIntentDigest: {manifest.CurrentIntentDigest}");
-                sb.AppendLine($"  operations:          {draft.Operations.Count}");
-                sb.AppendLine(
-                    "Finalizing this draft will amend the Proposal: same id, new intentDigest, " +
-                    "status reset to proposed.");
-                return Ok(sb);
+                return CommandOutcome<ReopenedResponse>.Success(new ReopenedResponse(
+                    id, request.DraftName, manifest.CurrentIntentDigest, draft.Operations.Count));
             }
             catch (KeyNotFoundException)
             {
-                return Missing(ProposalNotFoundMessage(id));
+                return CommandOutcome<ReopenedResponse>.Refused(ProposalNotFound(id));
             }
             catch (InvalidDataException ex)
             {
-                return Fail(FailureReason.StoreInconsistent, ex.Message);
+                return CommandOutcome<ReopenedResponse>.Refused(new Refusal(
+                    "proposal.inconsistent", FailureReason.StoreInconsistent, ex.Message,
+                    Fact(("proposalId", id))));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<ReopenedResponse>.Refused(new Refusal(
+                    "proposal.invalid-id", FailureReason.Refused, ex.Message, Fact(("proposalId", id))));
             }
         });
     }
@@ -804,38 +748,44 @@ public static class ProposalCommands
         { ManifestStatus.Proposed, ManifestStatus.Deferred, ManifestStatus.Rejected };
 
     /// <summary>Moves a Proposal to <c>deferred</c>: still wanted, not currently applicable (ADR 0031 decision 4).</summary>
-    public static CommandResult Defer(string fwDataPath, string productVersion, string proposalId) =>
-        TransitionStatus(fwDataPath, productVersion, proposalId, ManifestStatus.Deferred, DeferrableFrom,
+    public static CommandOutcome<ProposalStatusChangedResponse> Defer(DeferRequest request) =>
+        TransitionStatus(
+            request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Deferred,
+            DeferrableFrom, null,
             (repository, id, _) => repository.SetStatus(id, ManifestStatus.Deferred, supersededBy: null));
 
     /// <summary>Moves a Proposal to <c>rejected</c>: not wanted, as opposed to wanted later.</summary>
-    public static CommandResult Reject(string fwDataPath, string productVersion, string proposalId) =>
-        TransitionStatus(fwDataPath, productVersion, proposalId, ManifestStatus.Rejected, RejectableFrom,
+    public static CommandOutcome<ProposalStatusChangedResponse> Reject(RejectRequest request) =>
+        TransitionStatus(
+            request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Rejected,
+            RejectableFrom, null,
             (repository, id, _) => repository.SetStatus(id, ManifestStatus.Rejected, supersededBy: null));
 
     /// <summary>Marks a Proposal <c>superseded</c> by another, naming which one replaced it.</summary>
-    public static CommandResult Supersede(
-        string fwDataPath, string productVersion, string proposalId, string supersededByProposalId)
+    public static CommandOutcome<ProposalStatusChangedResponse> Supersede(SupersedeRequest request)
     {
         string supersededById;
         try
         {
-            supersededById = NormalizeId(supersededByProposalId);
+            supersededById = NormalizeId(request.SupersededByProposalId);
         }
         catch (ArgumentException ex)
         {
-            return Invalid(ex.Message);
+            return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
+                "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
+                Fact(("supersededByProposalId", request.SupersededByProposalId))));
         }
 
-        return TransitionStatus(fwDataPath, productVersion, proposalId, ManifestStatus.Superseded, SupersedableFrom,
-            (repository, id, _) =>
-                repository.SetStatus(id, ManifestStatus.Superseded, supersededById));
+        return TransitionStatus(
+            request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Superseded,
+            SupersedableFrom, supersededById,
+            (repository, id, _) => repository.SetStatus(id, ManifestStatus.Superseded, supersededById));
     }
 
     /// <summary>Moves a Proposal to a new status, refusing if its current status is not an allowed origin.</summary>
-    private static CommandResult TransitionStatus(
+    private static CommandOutcome<ProposalStatusChangedResponse> TransitionStatus(
         string fwDataPath, string productVersion, string proposalId, string newStatus, string[] allowedFrom,
-        Action<ProposalRepository, CanonicalId, ProposalRecord> persist)
+        string? relatedProposalId, Action<ProposalRepository, CanonicalId, ProposalRecord> persist)
     {
         return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
         {
@@ -852,23 +802,27 @@ public static class ProposalCommands
                 }
                 catch (KeyNotFoundException)
                 {
-                    return Missing(ProposalNotFoundMessage(id));
+                    return CommandOutcome<ProposalStatusChangedResponse>.Refused(ProposalNotFound(id));
                 }
 
                 if (Array.IndexOf(allowedFrom, record.Status) < 0)
                 {
-                    return Fail(
+                    return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
+                        "proposal.invalid-status", FailureReason.Refused,
                         $"Proposal {id} is '{record.Status}'; cannot move to '{newStatus}' from there. " +
-                        $"Allowed from: {string.Join(", ", allowedFrom)}.");
+                        $"Allowed from: {string.Join(", ", allowedFrom)}.",
+                        Fact(("proposalId", id), ("status", record.Status), ("requestedStatus", newStatus))));
                 }
 
                 persist(repository, canonicalId, record);
 
-                return Ok($"Proposal {id} is now '{newStatus}'.{Environment.NewLine}");
+                return CommandOutcome<ProposalStatusChangedResponse>.Success(
+                    new ProposalStatusChangedResponse(id, newStatus, relatedProposalId));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
+                    "proposal.inconsistent", FailureReason.Refused, ex.Message, Fact(("proposalId", proposalId))));
             }
         });
     }
@@ -935,22 +889,21 @@ public static class ProposalCommands
     /// minted <c>proposalId</c> — a distinct Proposal, not a revision of the source (contrast
     /// <see cref="Reopen"/>, which keeps the source id and produces an amend).
     /// </summary>
-    public static CommandResult Duplicate(
-        string fwDataPath, string productVersion, string sourceProposalId, string newDraftName)
+    public static CommandOutcome<DuplicatedResponse> Duplicate(DuplicateRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
-            var sourceId = sourceProposalId;
+            var sourceId = request.SourceProposalId;
             try
             {
                 var repository = new ProposalRepository(database);
-                if (repository.DraftNameExists(newDraftName))
+                if (repository.DraftNameExists(request.NewDraftName))
                 {
-                    return Fail(DraftNameCollisionMessage(
-                        newDraftName, "duplicating a Proposal into a draft with this name"));
+                    return CommandOutcome<DuplicatedResponse>.Refused(NameCollision(
+                        request.NewDraftName, "duplicating a Proposal into a draft with this name"));
                 }
 
-                sourceId = NormalizeId(sourceProposalId);
+                sourceId = NormalizeId(request.SourceProposalId);
                 var (record, envelope) = repository.GetFinalized(CanonicalId.Parse(sourceId));
                 var manifest = ProposalRecordMapping.ToManifest(record);
 
@@ -967,26 +920,25 @@ public static class ProposalCommands
                     PromotionProvenance = ExtractPromotionProvenance(envelope.Extensions),
                 };
 
-                repository.CreateDraft(newDraftName, newProposalId, SerializeDraft(draft));
+                repository.CreateDraft(request.NewDraftName, newProposalId, SerializeDraft(draft));
 
-                var sb = new StringBuilder();
-                sb.AppendLine($"Duplicated Proposal {sourceId} into new draft '{newDraftName}'.");
-                sb.AppendLine($"  proposalId: {draft.ProposalId}  (a new Proposal; the source is untouched)");
-                sb.AppendLine($"  operations: {draft.Operations.Count}");
-                sb.AppendLine("Finalizing this draft will commit it as a brand-new Proposal.");
-                return Ok(sb);
+                return CommandOutcome<DuplicatedResponse>.Success(new DuplicatedResponse(
+                    sourceId, request.NewDraftName, draft.ProposalId, draft.Operations.Count));
             }
             catch (KeyNotFoundException)
             {
-                return Missing(ProposalNotFoundMessage(sourceId));
+                return CommandOutcome<DuplicatedResponse>.Refused(ProposalNotFound(sourceId));
             }
             catch (InvalidDataException ex)
             {
-                return Fail(FailureReason.StoreInconsistent, ex.Message);
+                return CommandOutcome<DuplicatedResponse>.Refused(new Refusal(
+                    "proposal.inconsistent", FailureReason.StoreInconsistent, ex.Message,
+                    Fact(("proposalId", sourceId))));
             }
             catch (Exception ex)
             {
-                return Fail(ex.Message);
+                return CommandOutcome<DuplicatedResponse>.Refused(new Refusal(
+                    "proposal.invalid-id", FailureReason.Refused, ex.Message, Fact(("proposalId", sourceId))));
             }
         });
     }
@@ -995,7 +947,7 @@ public static class ProposalCommands
     /// Removes one or more operations from a draft (created by <see cref="New"/> or reopened by
     /// <see cref="Reopen"/>), applying ADR 0021 decision 6: a removal with no dependents
     /// just happens; a removal that would orphan a dependent operation warns and names every
-    /// consequence, then requires <paramref name="force"/>; a removal whose consequences cannot be
+    /// consequence, then requires <c>Force</c>; a removal whose consequences cannot be
     /// honestly enumerated (a cascading <c>delete</c> operation — see
     /// <see cref="OperationDependencyGraph.IsCascadingDelete"/>) is refused outright, never forced.
     /// The caller still runs <c>finalize</c> afterwards (an amend, if this draft came from
@@ -1003,292 +955,302 @@ public static class ProposalCommands
     /// which is also what clears a stale bound-DryRun anchor: <c>Finalize</c>'s amend path already
     /// sets <c>manifest.Anchor = null</c> on any content change, and a removal is exactly that.
     /// </summary>
-    public static CommandResult RemoveOperations(
-        string fwDataPath, string productVersion, string draftName, IReadOnlyList<string> operationIds, bool force)
+    public static CommandOutcome<OperationsRemovedResponse> RemoveOperations(RemoveOperationsRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
-        try
-        {
-            var repository = new ProposalRepository(database);
-            if (!TryLoadDraft(repository, draftName, out var draft))
-                return Missing(DraftNotFoundMessage(draftName));
-
-            if (operationIds.Count == 0)
-                return Invalid("Specify at least one operation id to remove.");
-
-            var requestedIds = new List<string>();
-            foreach (var raw in operationIds)
+            try
             {
-                if (!CanonicalId.TryParse(raw, out var id, out var error))
-                    return Invalid($"'{raw}' is not a valid canonical operation id: {error}");
-                requestedIds.Add(id.Value);
-            }
+                var repository = new ProposalRepository(database);
+                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                    return CommandOutcome<OperationsRemovedResponse>.Refused(DraftNotFound(request.DraftName));
 
-            var byId = draft.Operations.ToDictionary(o => o.OperationId, StringComparer.Ordinal);
-            var missing = requestedIds.Where(id => !byId.ContainsKey(id)).ToList();
-            if (missing.Count > 0)
-            {
-                return Fail(
-                    $"Draft '{draftName}' has no operation(s) {string.Join(", ", missing.Select(m => $"'{m}'"))}. " +
-                    "Run 'show' on the source Proposal, or inspect the draft file, to find valid operation ids.");
-            }
-
-            var requestedOps = requestedIds.Select(id => byId[id]).ToList();
-
-            // Decision 6, point 4: force never means "guess" -- a cascading delete's reach is discovered-only, so refuse.
-            var unenumerable = requestedOps.FirstOrDefault(op => OperationDependencyGraph.IsCascadingDelete(op.Kind));
-            if (unenumerable is not null)
-            {
-                return Fail(
-                    $"Cannot remove operation '{unenumerable.OperationId}' ({unenumerable.Kind}): it is a " +
-                    "cascading delete. LibLCM's ownership cascade reaches objects this Proposal never " +
-                    "names, and that reach is only known by inspecting the live project — this store has " +
-                    "no way to enumerate what removing it would affect. This removal is refused, not " +
-                    "forced; --force cannot help, because there is no enumerated consequence set for it " +
-                    "to accept.");
-            }
-
-            var requestedSet = new HashSet<string>(requestedIds, StringComparer.Ordinal);
-            var consequences = OperationDependencyGraph.TransitiveDependents(draft.Operations, requestedSet);
-
-            if (consequences.Count > 0 && !force)
-            {
-                var sb = new StringBuilder();
-                sb.AppendLine(
-                    $"Removing {DescribeOperationIds(requestedIds)} from draft '{draftName}' would orphan " +
-                    $"{consequences.Count} dependent operation(s):");
-                foreach (var edge in consequences)
-                    sb.AppendLine($"  - {edge.Reason}");
-                sb.AppendLine(
-                    "Re-run with --force to remove the requested operation(s) together with every " +
-                    "enumerated dependent above (force accepts the whole named consequence set, never a " +
-                    "guess).");
-                return new CommandResult(1, sb.ToString());
-            }
-
-            // Force accepts the full enumerated set (requested + every transitive dependent), never a partial guess.
-            var toRemove = new HashSet<string>(requestedSet, StringComparer.Ordinal);
-            foreach (var edge in consequences)
-                toRemove.Add(edge.DependentOperationId);
-
-            draft.Operations = draft.Operations.Where(o => !toRemove.Contains(o.OperationId)).ToList();
-            repository.SaveDraft(draftName, SerializeDraft(draft));
-
-            var outSb = new StringBuilder();
-            outSb.AppendLine($"Removed {DescribeOperationIds(requestedIds)} from draft '{draftName}'.");
-            if (consequences.Count > 0)
-            {
-                outSb.AppendLine(
-                    $"  --force also removed {consequences.Count} dependent operation(s) named above:");
-                foreach (var edge in consequences)
-                    outSb.AppendLine($"  - {edge.DependentOperationId} ({edge.DependentKind})");
-            }
-            outSb.AppendLine($"Draft now has {draft.Operations.Count} operation(s).");
-            outSb.AppendLine(
-                "Run 'finalize' to commit this as a new revision (an amend, clearing any bound-DryRun " +
-                "anchor, if this draft came from 'reopen').");
-            return Ok(outSb);
-        }
-        catch (Exception ex)
-        {
-            return Fail(ex.Message);
-        }
-        });
-    }
-
-    /// <summary>One output group for <see cref="Split"/>: a new draft name and the operation ids
-    /// (from the source Proposal) it receives.</summary>
-    public sealed record SplitGroup(string DraftName, IReadOnlyList<string> OperationIds);
-
-    /// <summary>
-    /// Splits a committed Proposal's current operations into several brand-new drafts, each under
-    /// its own freshly minted <c>proposalId</c>. The unit of splitting is the individual operation,
-    /// subject to <c>requires</c>/<c>dependsOn</c>. <paramref name="groups"/> must
-    /// partition every operation in the source exactly once. If a declared dependency (<c>dependsOn</c>
-    /// or a <c>target</c> naming another operation's <c>entityId</c>) would be severed by landing its
-    /// two ends in different groups, that is named as a consequence and requires
-    /// <paramref name="force"/> — the same warn/enumerate/force rule as <see cref="RemoveOperations"/>
-    /// (decision 6), because nothing here is discovered-only: every edge is declared in the source
-    /// Proposal, so this never hits the "cannot be enumerated" refusal.
-    /// </summary>
-    /// <remarks>
-    /// The source Proposal is left exactly as it was — split does not supersede or discard it. A
-    /// "superseded" status transition is a separate concern this method intentionally does not decide.
-    /// </remarks>
-    public static CommandResult Split(
-        string fwDataPath, string productVersion, string sourceProposalId, IReadOnlyList<SplitGroup> groups,
-        bool force)
-    {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
-        {
-        var sourceId = sourceProposalId;
-        try
-        {
-            if (groups.Count == 0)
-                return Invalid("Specify at least one group to split into.");
-
-            var repository = new ProposalRepository(database);
-            sourceId = NormalizeId(sourceProposalId);
-            var (record, envelope) = repository.GetFinalized(CanonicalId.Parse(sourceId));
-            var manifest = ProposalRecordMapping.ToManifest(record);
-            var sourceOperations = envelope.Operations.Select(ToDraftOperation).ToList();
-            var allIds = sourceOperations.Select(o => o.OperationId).ToList();
-
-            foreach (var draftName in groups.Select(g => g.DraftName))
-            {
-                if (repository.DraftNameExists(draftName))
-                    return Fail(DraftNameCollisionMessage(draftName, "splitting into a draft with this name"));
-            }
-            if (groups.Select(g => g.DraftName).Distinct(StringComparer.Ordinal).Count() != groups.Count)
-                return Invalid("Each split group must target a distinct draft name.");
-
-            // Validate the groups partition every source operation exactly once.
-            var groupOfId = new Dictionary<string, string>(StringComparer.Ordinal);
-            var duplicates = new List<string>();
-            var unknown = new List<string>();
-            foreach (var group in groups)
-            {
-                foreach (var rawId in group.OperationIds)
+                if (request.OperationIds.Count == 0)
                 {
-                    if (!CanonicalId.TryParse(rawId, out var id, out var idError))
-                        return Invalid($"'{rawId}' is not a valid canonical operation id: {idError}");
+                    return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
+                        "operation.invalid-id", FailureReason.InvalidArgument,
+                        "Specify at least one operation id to remove.",
+                        Fact(("draftName", request.DraftName))));
+                }
 
-                    if (!allIds.Contains(id.Value))
+                var requestedIds = new List<string>();
+                foreach (var raw in request.OperationIds)
+                {
+                    if (!CanonicalId.TryParse(raw, out var id, out var error))
                     {
-                        unknown.Add(id.Value);
-                        continue;
+                        return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
+                            "operation.invalid-id", FailureReason.InvalidArgument,
+                            $"'{raw}' is not a valid canonical operation id: {error}",
+                            Fact(("draftName", request.DraftName))));
                     }
-
-                    if (!groupOfId.TryAdd(id.Value, group.DraftName))
-                        duplicates.Add(id.Value);
+                    requestedIds.Add(id.Value);
                 }
-            }
 
-            if (unknown.Count > 0)
-            {
-                return Fail(
-                    $"Proposal {sourceId} has no operation(s) {string.Join(", ", unknown.Select(u => $"'{u}'"))}.");
-            }
-            if (duplicates.Count > 0)
-            {
-                return Fail(
-                    $"Operation(s) {string.Join(", ", duplicates.Select(d => $"'{d}'"))} were assigned to " +
-                    "more than one split group; each operation must go to exactly one.");
-            }
-            var unassigned = allIds.Where(id => !groupOfId.ContainsKey(id)).ToList();
-            if (unassigned.Count > 0)
-            {
-                return Fail(
-                    $"Operation(s) {string.Join(", ", unassigned.Select(u => $"'{u}'"))} from Proposal " +
-                    $"{sourceId} were not assigned to any split group. A split must place every operation " +
-                    "in exactly one resulting Proposal.");
-            }
-
-            var allEdges = OperationDependencyGraph.AllEdges(sourceOperations);
-            var severed = allEdges
-                .Where(e => groupOfId[e.DependentOperationId] != groupOfId[e.RequiredOperationId])
-                .ToList();
-
-            if (severed.Count > 0 && !force)
-            {
-                var sb = new StringBuilder();
-                sb.AppendLine(
-                    $"Splitting Proposal {sourceId} this way would sever {severed.Count} declared " +
-                    "dependency edge(s) across the resulting Proposals:");
-                foreach (var edge in severed)
+                var byId = draft.Operations.ToDictionary(o => o.OperationId, StringComparer.Ordinal);
+                var missing = requestedIds.Where(id => !byId.ContainsKey(id)).ToList();
+                if (missing.Count > 0)
                 {
+                    return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
+                        "operation.invalid-id", FailureReason.Refused,
+                        $"Draft '{request.DraftName}' has no operation(s) " +
+                        $"{string.Join(", ", missing.Select(m => $"'{m}'"))}. Run 'show' on the source " +
+                        "Proposal, or inspect the draft file, to find valid operation ids.",
+                        Fact(("draftName", request.DraftName))));
+                }
+
+                var requestedOps = requestedIds.Select(id => byId[id]).ToList();
+
+                // Decision 6, point 4: force never means "guess" -- a cascading delete's reach is discovered-only, so refuse.
+                var unenumerable =
+                    requestedOps.FirstOrDefault(op => OperationDependencyGraph.IsCascadingDelete(op.Kind));
+                if (unenumerable is not null)
+                {
+                    return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
+                        "operation.cascading-delete", FailureReason.Refused,
+                        $"Cannot remove operation '{unenumerable.OperationId}' ({unenumerable.Kind}): it is a " +
+                        "cascading delete. LibLCM's ownership cascade reaches objects this Proposal never " +
+                        "names, and that reach is only known by inspecting the live project — this store has " +
+                        "no way to enumerate what removing it would affect. This removal is refused, not " +
+                        "forced; --force cannot help, because there is no enumerated consequence set for it " +
+                        "to accept.",
+                        Fact(("draftName", request.DraftName), ("operationId", unenumerable.OperationId))));
+                }
+
+                var requestedSet = new HashSet<string>(requestedIds, StringComparer.Ordinal);
+                var consequences = OperationDependencyGraph.TransitiveDependents(draft.Operations, requestedSet);
+
+                if (consequences.Count > 0 && !request.Force)
+                {
+                    var sb = new StringBuilder();
                     sb.AppendLine(
-                        $"  - {edge.Reason} ('{edge.DependentOperationId}' -> draft " +
-                        $"'{groupOfId[edge.DependentOperationId]}'; '{edge.RequiredOperationId}' -> draft " +
-                        $"'{groupOfId[edge.RequiredOperationId]}').");
+                        $"Removing {DescribeOperationIds(requestedIds)} from draft '{request.DraftName}' would " +
+                        $"orphan {consequences.Count} dependent operation(s):");
+                    foreach (var edge in consequences)
+                        sb.AppendLine($"  - {edge.Reason}");
+                    sb.AppendLine(
+                        "Re-run with --force to remove the requested operation(s) together with every " +
+                        "enumerated dependent above (force accepts the whole named consequence set, never a " +
+                        "guess).");
+                    return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
+                        "operation.invalid-dependency", FailureReason.InvalidArgument,
+                        sb.ToString().TrimEnd('\r', '\n'),
+                        Fact(("draftName", request.DraftName))));
                 }
-                sb.AppendLine(
-                    "Re-run with --force to proceed anyway. The dependency reference is kept exactly as " +
-                    "authored in the receiving Proposal, which will then name an operation id outside its " +
-                    "own operations array.");
-                return new CommandResult(1, sb.ToString());
-            }
 
-            var sb2 = new StringBuilder();
-            sb2.AppendLine($"Split Proposal {sourceId} into {groups.Count} new draft(s).");
-            if (severed.Count > 0)
+                var toRemove = new HashSet<string>(requestedSet, StringComparer.Ordinal);
+                foreach (var edge in consequences)
+                    toRemove.Add(edge.DependentOperationId);
+
+                draft.Operations = draft.Operations.Where(o => !toRemove.Contains(o.OperationId)).ToList();
+                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
+
+                return CommandOutcome<OperationsRemovedResponse>.Success(new OperationsRemovedResponse(
+                    request.DraftName,
+                    requestedIds,
+                    consequences.Select(e => new RemovedDependent(e.DependentOperationId, e.DependentKind)).ToList(),
+                    draft.Operations.Count));
+            }
+            catch (Exception ex)
             {
-                sb2.AppendLine($"  --force accepted {severed.Count} severed dependency edge(s) named above.");
+                return CommandOutcome<OperationsRemovedResponse>.Refused(
+                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
-
-            foreach (var group in groups)
-            {
-                var groupOperations = sourceOperations.Where(o => groupOfId[o.OperationId] == group.DraftName).ToList();
-                var usedGroups = new HashSet<string>(
-                    groupOperations.Select(o => SIL.Motif.Contract.Model.OperationKind.GetGroup(o.Kind)),
-                    StringComparer.Ordinal);
-                var contractVersions = envelope.ContractVersions
-                    .Where(kv => usedGroups.Contains(kv.Key))
-                    .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-                var newProposalId = CanonicalId.Mint();
-                var draft = new DraftDocument
-                {
-                    ProposalId = newProposalId.Value,
-                    ContractVersions = contractVersions,
-                    Requires = envelope.Requires.Select(r => r.Value).ToList(),
-                    Label = manifest.Label is null ? null : $"{manifest.Label} (split: {group.DraftName})",
-                    Comment = manifest.Comment,
-                    Operations = groupOperations,
-                };
-                repository.CreateDraft(group.DraftName, newProposalId, SerializeDraft(draft));
-
-                sb2.AppendLine($"  draft '{group.DraftName}': proposalId={draft.ProposalId} operations={draft.Operations.Count}");
-            }
-
-            sb2.AppendLine($"  (the source Proposal {sourceId} is unchanged)");
-            sb2.AppendLine("Finalize each draft to commit it as a brand-new Proposal.");
-            return Ok(sb2);
-        }
-        catch (KeyNotFoundException)
-        {
-            return Missing(ProposalNotFoundMessage(sourceId));
-        }
-        catch (InvalidDataException ex)
-        {
-            return Fail(FailureReason.StoreInconsistent, ex.Message);
-        }
-        catch (Exception ex)
-        {
-            return Fail(ex.Message);
-        }
         });
     }
 
     private static string DescribeOperationIds(IReadOnlyList<string> ids) =>
         ids.Count == 1 ? $"operation '{ids[0]}'" : $"operations {string.Join(", ", ids.Select(i => $"'{i}'"))}";
 
-    public static CommandResult List(string fwDataPath, string productVersion, UsageLog? usage = null)
+    /// <summary>
+    /// Splits a committed Proposal's current operations into several brand-new drafts, each under
+    /// its own freshly minted <c>proposalId</c>. The unit of splitting is the individual operation,
+    /// subject to <c>requires</c>/<c>dependsOn</c>. <see cref="SplitRequest.Groups"/> must
+    /// partition every operation in the source exactly once. If a declared dependency (<c>dependsOn</c>
+    /// or a <c>target</c> naming another operation's <c>entityId</c>) would be severed by landing its
+    /// two ends in different groups, that is named as a consequence and requires <c>Force</c> — the
+    /// same warn/enumerate/force rule as <see cref="RemoveOperations"/> (decision 6), because nothing
+    /// here is discovered-only: every edge is declared in the source Proposal, so this never hits the
+    /// "cannot be enumerated" refusal.
+    /// </summary>
+    /// <remarks>
+    /// The source Proposal is left exactly as it was — split does not supersede or discard it. A
+    /// "superseded" status transition is a separate concern this method intentionally does not decide.
+    /// </remarks>
+    public static CommandOutcome<ProposalSplitResponse> Split(SplitRequest request)
     {
-        usage?.Record("list", new[] { UsageArgumentShape.Text("fwDataPath") });
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
-            var (reason, projection, error) = BuildProposalList(database);
-            return projection is not null ? Ok(CommandTextRenderer.Render(projection)) : Refused(reason, error!);
+            var sourceId = request.SourceProposalId;
+            try
+            {
+                if (request.Groups.Count == 0)
+                {
+                    return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                        "draft.invalid", FailureReason.InvalidArgument,
+                        "Specify at least one group to split into."));
+                }
+
+                var repository = new ProposalRepository(database);
+                sourceId = NormalizeId(request.SourceProposalId);
+                var (record, envelope) = repository.GetFinalized(CanonicalId.Parse(sourceId));
+                var manifest = ProposalRecordMapping.ToManifest(record);
+                var sourceOperations = envelope.Operations.Select(ToDraftOperation).ToList();
+                var allIds = sourceOperations.Select(o => o.OperationId).ToList();
+
+                foreach (var draftName in request.Groups.Select(g => g.DraftName))
+                {
+                    if (repository.DraftNameExists(draftName))
+                    {
+                        return CommandOutcome<ProposalSplitResponse>.Refused(
+                            NameCollision(draftName, "splitting into a draft with this name"));
+                    }
+                }
+                if (request.Groups.Select(g => g.DraftName).Distinct(StringComparer.Ordinal).Count()
+                    != request.Groups.Count)
+                {
+                    return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                        "draft.invalid", FailureReason.InvalidArgument,
+                        "Each split group must target a distinct draft name."));
+                }
+
+                // Validate the groups partition every source operation exactly once.
+                var groupOfId = new Dictionary<string, string>(StringComparer.Ordinal);
+                var duplicates = new List<string>();
+                var unknown = new List<string>();
+                foreach (var group in request.Groups)
+                {
+                    foreach (var rawId in group.OperationIds)
+                    {
+                        if (!CanonicalId.TryParse(rawId, out var id, out var idError))
+                        {
+                            return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                                "operation.invalid-id", FailureReason.InvalidArgument,
+                                $"'{rawId}' is not a valid canonical operation id: {idError}",
+                                Fact(("sourceProposalId", sourceId))));
+                        }
+
+                        if (!allIds.Contains(id.Value))
+                        {
+                            unknown.Add(id.Value);
+                            continue;
+                        }
+
+                        if (!groupOfId.TryAdd(id.Value, group.DraftName))
+                            duplicates.Add(id.Value);
+                    }
+                }
+
+                if (unknown.Count > 0)
+                {
+                    return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                        "operation.invalid-id", FailureReason.Refused,
+                        $"Proposal {sourceId} has no operation(s) " +
+                        $"{string.Join(", ", unknown.Select(u => $"'{u}'"))}.",
+                        Fact(("sourceProposalId", sourceId))));
+                }
+                if (duplicates.Count > 0)
+                {
+                    return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                        "operation.slot-collision", FailureReason.Refused,
+                        $"Operation(s) {string.Join(", ", duplicates.Select(d => $"'{d}'"))} were assigned to " +
+                        "more than one split group; each operation must go to exactly one.",
+                        Fact(("sourceProposalId", sourceId))));
+                }
+                var unassigned = allIds.Where(id => !groupOfId.ContainsKey(id)).ToList();
+                if (unassigned.Count > 0)
+                {
+                    return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                        "operation.invalid-id", FailureReason.Refused,
+                        $"Operation(s) {string.Join(", ", unassigned.Select(u => $"'{u}'"))} from Proposal " +
+                        $"{sourceId} were not assigned to any split group. A split must place every operation " +
+                        "in exactly one resulting Proposal.",
+                        Fact(("sourceProposalId", sourceId))));
+                }
+
+                var allEdges = OperationDependencyGraph.AllEdges(sourceOperations);
+                var severed = allEdges
+                    .Where(e => groupOfId[e.DependentOperationId] != groupOfId[e.RequiredOperationId])
+                    .ToList();
+
+                if (severed.Count > 0 && !request.Force)
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine(
+                        $"Splitting Proposal {sourceId} this way would sever {severed.Count} declared " +
+                        "dependency edge(s) across the resulting Proposals:");
+                    foreach (var edge in severed)
+                    {
+                        sb.AppendLine(
+                            $"  - {edge.Reason} ('{edge.DependentOperationId}' -> draft " +
+                            $"'{groupOfId[edge.DependentOperationId]}'; '{edge.RequiredOperationId}' -> draft " +
+                            $"'{groupOfId[edge.RequiredOperationId]}').");
+                    }
+                    sb.AppendLine(
+                        "Re-run with --force to proceed anyway. The dependency reference is kept exactly as " +
+                        "authored in the receiving Proposal, which will then name an operation id outside its " +
+                        "own operations array.");
+                    return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                        "operation.invalid-dependency", FailureReason.InvalidArgument,
+                        sb.ToString().TrimEnd('\r', '\n'), Fact(("sourceProposalId", sourceId))));
+                }
+
+                var results = new List<SplitDraftResult>();
+                foreach (var group in request.Groups)
+                {
+                    var groupOperations =
+                        sourceOperations.Where(o => groupOfId[o.OperationId] == group.DraftName).ToList();
+                    var usedGroups = new HashSet<string>(
+                        groupOperations.Select(o => SIL.Motif.Contract.Model.OperationKind.GetGroup(o.Kind)),
+                        StringComparer.Ordinal);
+                    var contractVersions = envelope.ContractVersions
+                        .Where(kv => usedGroups.Contains(kv.Key))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+                    var newProposalId = CanonicalId.Mint();
+                    var draft = new DraftDocument
+                    {
+                        ProposalId = newProposalId.Value,
+                        ContractVersions = contractVersions,
+                        Requires = envelope.Requires.Select(r => r.Value).ToList(),
+                        Label = manifest.Label is null ? null : $"{manifest.Label} (split: {group.DraftName})",
+                        Comment = manifest.Comment,
+                        Operations = groupOperations,
+                    };
+                    repository.CreateDraft(group.DraftName, newProposalId, SerializeDraft(draft));
+
+                    results.Add(new SplitDraftResult(group.DraftName, draft.ProposalId, draft.Operations.Count));
+                }
+
+                return CommandOutcome<ProposalSplitResponse>.Success(
+                    new ProposalSplitResponse(sourceId, results, severed.Count));
+            }
+            catch (KeyNotFoundException)
+            {
+                return CommandOutcome<ProposalSplitResponse>.Refused(ProposalNotFound(sourceId));
+            }
+            catch (InvalidDataException ex)
+            {
+                return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                    "proposal.inconsistent", FailureReason.StoreInconsistent, ex.Message,
+                    Fact(("sourceProposalId", sourceId))));
+            }
+            catch (Exception ex)
+            {
+                return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                    "proposal.invalid-id", FailureReason.Refused, ex.Message,
+                    Fact(("sourceProposalId", sourceId))));
+            }
         });
     }
 
-    /// <summary>The <c>list</c> report as JSON — the same <see cref="ProposalListProjection"/> <see cref="List"/> renders as text.</summary>
-    public static CommandResult ListJson(string fwDataPath, string productVersion, UsageLog? usage = null)
+    public static CommandOutcome<ProposalListProjection> List(ListProposalsRequest request, UsageLog? usage = null)
     {
         usage?.Record("list", new[] { UsageArgumentShape.Text("fwDataPath") });
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
-        {
-            var (reason, projection, error) = BuildProposalList(database);
-            return projection is not null
-                ? new CommandResult(0, ProjectionJson.Serialize(projection) + Environment.NewLine)
-                : Refused(reason, error!);
-        });
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+            BuildProposalList(database));
     }
 
-    private static (FailureReason? Reason, ProposalListProjection? Projection, string? Error) BuildProposalList(
-        MotifDatabase database)
+    private static CommandOutcome<ProposalListProjection> BuildProposalList(MotifDatabase database)
     {
         try
         {
@@ -1296,40 +1258,23 @@ public static class ProposalCommands
             var manifests = repository.List(new ProposalListFilter())
                 .Select(ProposalRecordMapping.ToManifest)
                 .ToList();
-            return (null, ProposalListProjectionBuilder.Build(manifests), null);
+            return CommandOutcome<ProposalListProjection>.Success(ProposalListProjectionBuilder.Build(manifests));
         }
         catch (Exception ex)
         {
-            return (ReasonForProposal(ex), null, FailText(ex.Message));
+            return CommandOutcome<ProposalListProjection>.Refused(ProposalLoadRefusal(ex));
         }
     }
 
-    public static CommandResult Show(
-        string fwDataPath, string productVersion, string proposalId, UsageLog? usage = null)
+    public static CommandOutcome<ProposalDetailProjection> Show(
+        ShowProposalRequest request, UsageLog? usage = null)
     {
         usage?.Record("show", new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("proposalId") });
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
-        {
-            var (reason, projection, error) = BuildProposalDetail(database, proposalId);
-            return projection is not null ? Ok(CommandTextRenderer.Render(projection)) : Refused(reason, error!);
-        });
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+            BuildProposalDetail(database, request.ProposalId));
     }
 
-    /// <summary>The <c>show</c> report as JSON — the same <see cref="ProposalDetailProjection"/> <see cref="Show"/> renders as text.</summary>
-    public static CommandResult ShowJson(
-        string fwDataPath, string productVersion, string proposalId, UsageLog? usage = null)
-    {
-        usage?.Record("show", new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("proposalId") });
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
-        {
-            var (reason, projection, error) = BuildProposalDetail(database, proposalId);
-            return projection is not null
-                ? new CommandResult(0, ProjectionJson.Serialize(projection) + Environment.NewLine)
-                : Refused(reason, error!);
-        });
-    }
-
-    private static (FailureReason? Reason, ProposalDetailProjection? Projection, string? Error) BuildProposalDetail(
+    private static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
         MotifDatabase database, string proposalId)
     {
         try
@@ -1338,11 +1283,12 @@ public static class ProposalCommands
             var id = NormalizeId(proposalId);
             var (record, envelope) = repository.GetFinalized(CanonicalId.Parse(id));
             var manifest = ProposalRecordMapping.ToManifest(record);
-            return (null, ProposalDetailProjectionBuilder.Build(id, manifest, envelope), null);
+            return CommandOutcome<ProposalDetailProjection>.Success(
+                ProposalDetailProjectionBuilder.Build(id, manifest, envelope));
         }
         catch (Exception ex)
         {
-            return (ReasonForProposal(ex), null, FailText(ex.Message));
+            return CommandOutcome<ProposalDetailProjection>.Refused(ProposalLoadRefusal(ex));
         }
     }
 
@@ -1353,31 +1299,11 @@ public static class ProposalCommands
     /// the rule is unconditional (ADR 0016): a caller must discard this <see cref="LcmCache"/> and
     /// reload the project rather than reuse it after a failed apply.
     /// </remarks>
-    public static CommandResult Apply(
-        string fwDataPath, string productVersion, string proposalId, string user, bool force = false,
-        UsageLog? usage = null)
+    public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request, UsageLog? usage = null)
     {
         RecordApplyUsage(usage, "fwDataPath", "proposalId", "user");
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
-        {
-            var (reason, projection, error) = BuildApplyProjection(database, project, proposalId, user, force);
-            return projection is not null ? Ok(CommandTextRenderer.Render(projection)) : Refused(reason, error!);
-        });
-    }
-
-    /// <summary>The <c>apply</c> report as JSON — the same <see cref="ApplyProjection"/> <see cref="Apply(string,string,string,string,string,UsageLog)"/> renders as text.</summary>
-    public static CommandResult ApplyJson(
-        string fwDataPath, string productVersion, string proposalId, string user, bool force = false,
-        UsageLog? usage = null)
-    {
-        RecordApplyUsage(usage, "fwDataPath", "proposalId", "user");
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
-        {
-            var (reason, projection, error) = BuildApplyProjection(database, project, proposalId, user, force);
-            return projection is not null
-                ? new CommandResult(0, ProjectionJson.Serialize(projection) + Environment.NewLine)
-                : Refused(reason, error!);
-        });
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+            BuildApplyProjection(database, project, request.ProposalId, request.User, request.Force));
     }
 
     /// <summary>The latest <c>Correctness</c> Assessment recorded against this exact revision, if any.</summary>
@@ -1392,7 +1318,7 @@ public static class ProposalCommands
         return candidateId is null ? null : assessments.Get(candidateId);
     }
 
-    private static (FailureReason? Reason, ApplyProjection? Projection, string? Error) BuildApplyProjection(
+    private static CommandOutcome<ApplyProjection> BuildApplyProjection(
         MotifDatabase database, ProjectLocator project, string proposalId, string user, bool force = false)
     {
         LcmCache? cache = null;
@@ -1407,9 +1333,11 @@ public static class ProposalCommands
             // ADR 0004 decision 3: a bare apply with no bound DryRun is a hard error, checked before loading the project.
             if (manifest.Anchor is null)
             {
-                return (FailureReason.Refused, null, FailText(
-                    $"Proposal {id} has no bound DryRun recorded. Run " +
-                    $"'dry-run {id} --project <fwdata>' first, then 'apply'."));
+                return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                    "apply.dry-run-missing", FailureReason.Refused,
+                    $"Proposal {id} has no bound DryRun recorded. Run 'dry-run {id} --project <fwdata>' first, " +
+                    "then 'apply'.",
+                    Fact(("proposalId", id))));
             }
 
             var configuration = new ProjectConfigurationReader().Read(project);
@@ -1429,9 +1357,11 @@ public static class ProposalCommands
                 candidate?.BaselineToken ?? "", configuration.GateOnRegression);
             if (notReady.Count > 0 && !force)
             {
-                return (FailureReason.Refused, null, FailText(
+                return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                    "apply.not-ready", FailureReason.Refused,
                     $"Proposal {id} is not ready to apply: {string.Join("; ", notReady)}. Run " +
-                    $"'trial {id} --project <fwdata>' and let it finish, or pass --force to apply anyway."));
+                    $"'trial {id} --project <fwdata>' and let it finish, or pass --force to apply anyway.",
+                    Fact(("proposalId", id))));
             }
 
             var loader = new FwDataProjectLoader();
@@ -1476,7 +1406,7 @@ public static class ProposalCommands
                 if (candidate is not null) assessments.PromoteToCurrent(candidate.AssessmentId);
                 if (configuration.PurgeOnApply) assessments.DeleteByProposal(canonicalId, candidate?.AssessmentId);
 
-                return (null, ApplyProjectionBuilder.Build(id, receipt), null);
+                return CommandOutcome<ApplyProjection>.Success(ApplyProjectionBuilder.Build(id, receipt));
             }
             finally
             {
@@ -1486,44 +1416,38 @@ public static class ProposalCommands
         catch (LcmFileLockedException)
         {
             // A held project is retryable once it is let go, which is what Busy tells a caller.
-            return (FailureReason.Busy, null,
-                FailText(ProjectInUseMessage(project.FullFwDataPath, "apply")));
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                "apply.project-in-use", FailureReason.Busy,
+                ProjectInUseMessage(project.FullFwDataPath, "apply"), Fact(("proposalId", proposalId))));
         }
         catch (NeedsReconciliationException ex)
         {
             // Distinct from the rollback wording below: the mutation may already be durable.
-            return (ReasonFor(ex), null, FailText(ex.Message));
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                "apply.reconciliation-needed", ReasonFor(ex), ex.Message, Fact(("proposalId", proposalId))));
         }
         catch (Exception ex)
         {
             // A failed apply rolled back, not Undo: derived caches may be stale (ADR 0016) -- see the remarks above.
-            return (FailureReason.StoreInconsistent, null, FailText(
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                "apply.drift", FailureReason.StoreInconsistent,
                 ex.Message +
                 " [This LcmCache is no longer trustworthy: a failed apply rolls back, which does not " +
-                "refresh LibLCM's derived caches. Discard it and reload the project.]"));
+                "refresh LibLCM's derived caches. Discard it and reload the project.]",
+                Fact(("proposalId", proposalId))));
         }
     }
 
     private static void RecordApplyUsage(UsageLog? usage, params string[] names) =>
         usage?.Record("apply", names.Select(UsageArgumentShape.Text).ToList());
 
-    public static CommandResult Log(string fwDataPath, UsageLog? usage = null)
+    public static CommandOutcome<AppliedLogProjection> Log(LogRequest request, UsageLog? usage = null)
     {
         usage?.Record("log", new[] { UsageArgumentShape.Text("fwDataPath") });
-        var (reason, projection, error) = BuildAppliedLog(fwDataPath);
-        return projection is not null ? Ok(CommandTextRenderer.Render(projection)) : Refused(reason, error!);
+        return BuildAppliedLog(request.FwDataPath);
     }
 
-    /// <summary>The <c>log</c> report as JSON — the same <see cref="AppliedLogProjection"/> <see cref="Log(string,UsageLog)"/> renders as text.</summary>
-    public static CommandResult LogJson(string fwDataPath, UsageLog? usage = null)
-    {
-        usage?.Record("log", new[] { UsageArgumentShape.Text("fwDataPath") });
-        var (reason, projection, error) = BuildAppliedLog(fwDataPath);
-        return projection is not null ? new CommandResult(0, ProjectionJson.Serialize(projection) + Environment.NewLine)
-            : Refused(reason, error!);
-    }
-
-    private static (FailureReason? Reason, AppliedLogProjection? Projection, string? Error) BuildAppliedLog(string fwDataPath)
+    private static CommandOutcome<AppliedLogProjection> BuildAppliedLog(string fwDataPath)
     {
         try
         {
@@ -1536,11 +1460,12 @@ public static class ProposalCommands
                 cache,
                 (name, error) => diagnostics.Add($"  [unparseable Motif entry] name='{name}' error='{error}'"));
 
-            return (null, AppliedLogProjectionBuilder.Build(fullFwDataPath, entries, diagnostics), null);
+            return CommandOutcome<AppliedLogProjection>.Success(
+                AppliedLogProjectionBuilder.Build(fullFwDataPath, entries, diagnostics));
         }
         catch (Exception ex)
         {
-            return (ReasonFor(ex), null, FailText(ex.Message));
+            return CommandOutcome<AppliedLogProjection>.Refused(ProjectFileRefusal(ex));
         }
     }
 
@@ -1611,6 +1536,29 @@ public static class ProposalCommands
     private static string DraftNameCollisionMessage(string draftName, string trailingClause) =>
         $"Draft '{draftName}' already exists. Finalize it, or use another name, before {trailingClause}.";
 
+    private static Refusal DraftNotFound(string draftName) =>
+        new("draft.not-found", FailureReason.NotFound, DraftNotFoundMessage(draftName),
+            Fact(("draftName", draftName)));
+
+    private static Refusal ProposalNotFound(string proposalId) =>
+        new("proposal.not-found", FailureReason.NotFound, ProposalNotFoundMessage(proposalId),
+            Fact(("proposalId", proposalId)));
+
+    private static Refusal NameCollision(string draftName, string trailingClause) =>
+        new("draft.name-collision", FailureReason.Refused, DraftNameCollisionMessage(draftName, trailingClause),
+            Fact(("draftName", draftName)));
+
+    private static Refusal InvalidTarget(string target, string? error) =>
+        new("operation.invalid-target", FailureReason.InvalidArgument,
+            $"--target '{target}' is not a valid canonical id: {error}", Fact(("target", target)));
+
+    private static Refusal InvalidWs(string draftName) =>
+        new("operation.invalid-writing-system", FailureReason.InvalidArgument, "--ws must not be empty.",
+            Fact(("draftName", draftName)));
+
+    private static Refusal DraftInvalid(string message, params (string Key, string? Value)[] facts) =>
+        new("draft.invalid", FailureReason.Refused, message, Fact(facts));
+
     /// <summary>Loads one Draft's in-progress content by name, or reports it is not there.</summary>
     private static bool TryLoadDraft(ProposalRepository repository, string draftName, out DraftDocument draft)
     {
@@ -1633,13 +1581,41 @@ public static class ProposalCommands
     private static string SerializeDraft(DraftDocument draft) =>
         JsonSerializer.Serialize(draft, DraftJsonOptions);
 
-    private static CommandResult Ok(StringBuilder sb) => new(0, sb.ToString());
+    private static Dictionary<string, string> Fact(params (string Key, string? Value)[] entries)
+    {
+        var facts = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in entries)
+        {
+            if (value is not null) facts[key] = value;
+        }
+        return facts;
+    }
 
-    private static CommandResult Ok(string text) => new(0, text);
+    /// A project file that will not open, keyed by the same exception shape <see cref="ReasonFor"/> reads.
+    private static Refusal ProjectFileRefusal(Exception exception) =>
+        new(ProjectFileRefusalCode(exception), ReasonFor(exception), exception.Message);
 
-    private static CommandResult Refused(FailureReason? reason, string text) =>
-        new(FailureEnvelope.ExitCodeFor(reason ?? FailureReason.Refused), text,
-            reason ?? FailureReason.Refused);
+    private static string ProjectFileRefusalCode(Exception exception) => exception switch
+    {
+        FileNotFoundException or DirectoryNotFoundException => "project.not-found",
+        ArgumentException => "project.invalid",
+        KeyNotFoundException => "project.not-found",
+        InvalidDataException => "store.inconsistent",
+        _ => "project.refused",
+    };
+
+    /// A Proposal load failure, keyed by the same exception shape <see cref="ReasonForProposal"/> reads.
+    private static Refusal ProposalLoadRefusal(Exception exception) =>
+        new(ProposalLoadRefusalCode(exception), ReasonForProposal(exception), exception.Message);
+
+    private static string ProposalLoadRefusalCode(Exception exception) => exception switch
+    {
+        FileNotFoundException or DirectoryNotFoundException => "proposal.not-found",
+        ArgumentException => "proposal.invalid-id",
+        KeyNotFoundException => "proposal.not-found",
+        InvalidDataException => "proposal.inconsistent",
+        _ => "proposal.inconsistent",
+    };
 
     /// In a Proposal-loading helper an absent file names an absent Proposal, which the type alone cannot say.
     private static FailureReason ReasonForProposal(Exception exception) => exception switch
@@ -1647,10 +1623,6 @@ public static class ProposalCommands
         FileNotFoundException or DirectoryNotFoundException => FailureReason.NotFound,
         _ => ReasonFor(exception),
     };
-
-    /// <summary>The refusal a failed <see cref="ProposalRepository.GetFinalized"/> load reports, shared with <see cref="JobCommands"/>.</summary>
-    internal static CommandResult RefuseProposalLoad(Exception exception) =>
-        Refused(ReasonForProposal(exception), FailText(exception.Message));
 
     /// A caught exception knows more than a broad catch does; anything else is refused, which does not retry.
     private static FailureReason ReasonFor(Exception exception) => exception switch
@@ -1661,18 +1633,4 @@ public static class ProposalCommands
         InvalidDataException => FailureReason.StoreInconsistent,
         _ => FailureReason.Refused,
     };
-
-    private static CommandResult Fail(string message) => Fail(FailureReason.Refused, message);
-
-    private static CommandResult Fail(FailureReason reason, string message) =>
-        new(FailureEnvelope.ExitCodeFor(reason), FailText(message), reason);
-
-    /// A malformed flag or value: retrying the same invocation cannot help.
-    private static CommandResult Invalid(string message) => Fail(FailureReason.InvalidArgument, message);
-
-    /// The request named something that is not there.
-    private static CommandResult Missing(string message) => Fail(FailureReason.NotFound, message);
-
-    // Same rendering as Fail, for a Build* helper returning a bare string rather than a CommandResult.
-    private static string FailText(string message) => "error: " + message + Environment.NewLine;
 }

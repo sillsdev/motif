@@ -4,8 +4,11 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -16,9 +19,9 @@ namespace SIL.Motif.Tests.Cli;
 /// <summary>
 /// Pins <see cref="ProposalCommands"/>'s fail-closed refusals across every verb: name collisions, missing
 /// drafts and Proposals, malformed ids, store-consistency guards, and the "another program has this
-/// project open" and "no bound DryRun" hard stops on the apply path. Each refusal test asserts the
-/// specific message a reader must act on and that the store or draft was left byte-for-byte unchanged,
-/// not merely that the exit code was non-zero.
+/// project open" and "no bound DryRun" hard stops on the apply path. Each refusal test asserts the stable
+/// code, the closed reason, the specific message a reader must act on, its branchable facts, and that the
+/// store or draft was left byte-for-byte unchanged, not merely that the outcome was a refusal.
 /// </summary>
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
 public sealed class CommandsRefusalsTests
@@ -41,16 +44,20 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void New_DraftNameAlreadyExists_RefusesAndLeavesTheOriginalDraftUntouched()
     {
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "dup", "original label").ExitCode);
+        Assert.True(New("dup", "original label").Succeeded);
         var before = ReadDraftJson("dup");
 
-        var result = ProposalCommands.New(_fwDataPath, ProductVersion, "dup", "second label");
+        var result = New("dup", "second label");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("already exists", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.name-collision", refusal.Code);
+        Assert.Equal(FailureReason.Refused, refusal.Reason);
+        Assert.Contains("already exists", refusal.Message);
         // Discarding the existing "dup" draft would not free the name for this call either.
-        Assert.Contains("Finalize it, or use another name", result.Output);
-        Assert.DoesNotContain("delete it", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Finalize it, or use another name", refusal.Message);
+        Assert.DoesNotContain("delete it", refusal.Message, StringComparison.Ordinal);
+        Assert.Equal("dup", refusal.Facts["draftName"]);
         Assert.Equal(before, ReadDraftJson("dup"));
     }
 
@@ -59,27 +66,32 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void AddSetGloss_EmptyWritingSystem_RefusesAndAddsNoOperation()
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, "d", null);
+        New("d", null);
         var before = ReadDraftJson("d");
 
-        var result = ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "d", _target, "", "some text");
+        var result = AddSetGloss("d", _target, "", "some text");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("--ws must not be empty.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("operation.invalid-writing-system", refusal.Code);
+        Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
+        Assert.Contains("--ws must not be empty.", refusal.Message);
         Assert.Equal(before, ReadDraftJson("d"));
     }
 
     [Fact]
     public void AddSetGloss_InvalidDependsOnIdFormat_RefusesAndAddsNoOperation()
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, "d", null);
+        New("d", null);
         var before = ReadDraftJson("d");
 
-        var result = ProposalCommands.AddSetGloss(
-            _fwDataPath, ProductVersion, "d", _target, "en", "text", dependsOn: new[] { "not-a-canonical-id" });
+        var result = AddSetGloss("d", _target, "en", "text", dependsOn: new[] { "not-a-canonical-id" });
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("--depends-on 'not-a-canonical-id' is not a valid canonical operation id", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("operation.invalid-dependency", refusal.Code);
+        Assert.Equal(FailureReason.Refused, refusal.Reason);
+        Assert.Contains("--depends-on 'not-a-canonical-id' is not a valid canonical operation id", refusal.Message);
         Assert.Equal(before, ReadDraftJson("d"));
     }
 
@@ -88,23 +100,31 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void AddDeleteLexemeForm_DraftNotFound_Refuses()
     {
-        var result = ProposalCommands.AddDeleteLexemeForm(_fwDataPath, ProductVersion, "no-such-draft", _target);
+        var result = AddDeleteLexemeForm("no-such-draft", _target);
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found in store", result.Output);
-        Assert.Contains("Run 'new --draft no-such-draft' first.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.not-found", refusal.Code);
+        Assert.Equal(FailureReason.NotFound, refusal.Reason);
+        Assert.Contains("not found in store", refusal.Message);
+        Assert.Contains("Run 'new --draft no-such-draft' first.", refusal.Message);
+        Assert.Equal("no-such-draft", refusal.Facts["draftName"]);
     }
 
     [Fact]
     public void AddDeleteLexemeForm_InvalidTargetId_RefusesAndAddsNoOperation()
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, "d", null);
+        New("d", null);
         var before = ReadDraftJson("d");
 
-        var result = ProposalCommands.AddDeleteLexemeForm(_fwDataPath, ProductVersion, "d", "not-a-canonical-id");
+        var result = AddDeleteLexemeForm("d", "not-a-canonical-id");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("--target 'not-a-canonical-id' is not a valid canonical id", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("operation.invalid-target", refusal.Code);
+        Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
+        Assert.Contains("--target 'not-a-canonical-id' is not a valid canonical id", refusal.Message);
+        Assert.Equal("not-a-canonical-id", refusal.Facts["target"]);
         Assert.Equal(before, ReadDraftJson("d"));
     }
 
@@ -113,34 +133,39 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void Label_SetsTheFieldOnTheDraftAndPersistsIt()
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, "d", null);
+        New("d", null);
 
-        var result = ProposalCommands.Label(_fwDataPath, ProductVersion, "d", "a linguist-facing label");
+        var result = ProposalCommands.Label(new LabelRequest(_fwDataPath, ProductVersion, "d", "a linguist-facing label"));
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("Set label on draft 'd'.", result.Output);
+        Assert.True(result.Succeeded);
+        Assert.Equal("label", result.Value!.Field);
+        Assert.Equal("d", result.Value.DraftName);
         Assert.Equal("a linguist-facing label", ReadDraft("d").Label);
     }
 
     [Fact]
     public void Comment_SetsTheFieldOnTheDraftAndPersistsIt()
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, "d", null);
+        New("d", null);
 
-        var result = ProposalCommands.Comment(_fwDataPath, ProductVersion, "d", "a reviewer-facing comment");
+        var result =
+            ProposalCommands.Comment(new CommentRequest(_fwDataPath, ProductVersion, "d", "a reviewer-facing comment"));
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("Set comment on draft 'd'.", result.Output);
+        Assert.True(result.Succeeded);
+        Assert.Equal("comment", result.Value!.Field);
         Assert.Equal("a reviewer-facing comment", ReadDraft("d").Comment);
     }
 
     [Fact]
     public void Label_DraftNotFound_Refuses()
     {
-        var result = ProposalCommands.Label(_fwDataPath, ProductVersion, "no-such-draft", "x");
+        var result = ProposalCommands.Label(new LabelRequest(_fwDataPath, ProductVersion, "no-such-draft", "x"));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found in store", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.not-found", refusal.Code);
+        Assert.Equal(FailureReason.NotFound, refusal.Reason);
+        Assert.Contains("not found in store", refusal.Message);
     }
 
     // --- Finalize ---
@@ -148,10 +173,13 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void Finalize_DraftNotFound_Refuses()
     {
-        var result = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "no-such-draft");
+        var result = Finalize("no-such-draft");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found in store", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.not-found", refusal.Code);
+        Assert.Equal(FailureReason.NotFound, refusal.Reason);
+        Assert.Contains("not found in store", refusal.Message);
     }
 
     [Theory]
@@ -163,23 +191,26 @@ public sealed class CommandsRefusalsTests
         string? label, string? comment)
     {
         const string draftName = "missing-rationale";
-        ProposalCommands.New(_fwDataPath, ProductVersion, draftName, null);
-        ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, _target, "en", "clarified gloss");
+        New(draftName, null);
+        AddSetGloss(draftName, _target, "en", "clarified gloss");
         var draft = ReadDraft(draftName);
         draft.Label = label;
         draft.Comment = comment;
         WriteDraft(draftName, draft);
         var before = ReadDraftJson(draftName);
 
-        var result = ProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
+        var result = Finalize(draftName);
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("short description", result.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("label", result.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("extended explanation", result.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("comment", result.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains($"label --draft {draftName} <text>", result.Output, StringComparison.Ordinal);
-        Assert.Contains($"comment --draft {draftName} <text>", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.invalid", refusal.Code);
+        Assert.Equal(FailureReason.Refused, refusal.Reason);
+        Assert.Contains("short description", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("label", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("extended explanation", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("comment", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"label --draft {draftName} <text>", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains($"comment --draft {draftName} <text>", refusal.Message, StringComparison.Ordinal);
         Assert.Equal(before, ReadDraftJson(draftName));
         Assert.Equal(0, CountCommittedProposals());
     }
@@ -188,8 +219,8 @@ public sealed class CommandsRefusalsTests
     public void Finalize_ArgvDiagnosticNamesCommandsThatRemedyTheRefusal()
     {
         const string draftName = "argv-rationale";
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, draftName, null).ExitCode);
-        Assert.Equal(0, ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, _target, "en", "clarified gloss").ExitCode);
+        Assert.True(New(draftName, null).Succeeded);
+        Assert.True(AddSetGloss(draftName, _target, "en", "clarified gloss").Succeeded);
 
         var refused = RunCli($"finalize --draft {draftName}");
 
@@ -209,15 +240,16 @@ public sealed class CommandsRefusalsTests
         var proposalId = CommitOneOperationProposal("original-rationale");
         var recordBefore = GetRecord(proposalId);
         var revisionCountBefore = CountRevisions(proposalId);
-        Assert.Equal(0, ProposalCommands.Reopen(_fwDataPath, ProductVersion, "amend-rationale", proposalId).ExitCode);
+        Assert.True(Reopen("amend-rationale", proposalId).Succeeded);
         var draft = ReadDraft("amend-rationale");
         draft.Comment = "  ";
         WriteDraft("amend-rationale", draft);
         var draftBefore = ReadDraftJson("amend-rationale");
 
-        var result = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "amend-rationale");
+        var result = Finalize("amend-rationale");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.False(result.Succeeded);
+        Assert.Equal("draft.invalid", result.Refusal!.Code);
         Assert.Equal(draftBefore, ReadDraftJson("amend-rationale"));
         var recordAfter = GetRecord(proposalId);
         Assert.Equal(recordBefore.Status, recordAfter.Status);
@@ -228,8 +260,8 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void Finalize_DraftFailsProposalValidation_RefusesAndCommitsNothing()
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, "d", null);
-        ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "d", _target, "en", "text");
+        New("d", null);
+        AddSetGloss("d", _target, "en", "text");
 
         // Corrupt contractVersions so it no longer covers the 'lexical' group the one operation uses.
         var draft = ReadDraft("d");
@@ -239,10 +271,13 @@ public sealed class CommandsRefusalsTests
         draft.ContractVersions["bogus"] = "1.0";
         WriteDraft("d", draft);
 
-        var result = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
+        var result = Finalize("d");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("failed Proposal validation", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("proposal.inconsistent", refusal.Code);
+        Assert.Equal(FailureReason.Refused, refusal.Reason);
+        Assert.Contains("failed Proposal validation", refusal.Message);
         Assert.True(DraftExists("d")); // never consumed: finalize did not commit
         Assert.Equal(0, CountCommittedProposals());
     }
@@ -253,14 +288,16 @@ public sealed class CommandsRefusalsTests
     public void Reopen_DraftNameAlreadyExists_Refuses()
     {
         var proposalId = CommitOneOperationProposal("src");
-        ProposalCommands.New(_fwDataPath, ProductVersion, "taken", null);
+        New("taken", null);
         var before = ReadDraftJson("taken");
 
-        var result = ProposalCommands.Reopen(_fwDataPath, ProductVersion, "taken", proposalId);
+        var result = Reopen("taken", proposalId);
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("already exists", result.Output);
-        Assert.Contains("before reopening a Proposal with this draft name.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.name-collision", refusal.Code);
+        Assert.Contains("already exists", refusal.Message);
+        Assert.Contains("before reopening a Proposal with this draft name.", refusal.Message);
         Assert.Equal(before, ReadDraftJson("taken"));
     }
 
@@ -271,10 +308,13 @@ public sealed class CommandsRefusalsTests
         var recordBefore = GetStatusRow(proposalId);
         DeleteCommittedRevision(proposalId);
 
-        var result = ProposalCommands.Reopen(_fwDataPath, ProductVersion, "reopened", proposalId);
+        var result = Reopen("reopened", proposalId);
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("store inconsistency", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("proposal.inconsistent", refusal.Code);
+        Assert.Equal(FailureReason.StoreInconsistent, refusal.Reason);
+        Assert.Contains("store inconsistency", refusal.Message);
         Assert.False(DraftExists("reopened"));
         var recordAfter = GetStatusRow(proposalId);
         Assert.Equal(recordBefore.Status, recordAfter.Status);
@@ -287,14 +327,17 @@ public sealed class CommandsRefusalsTests
     public void Duplicate_DraftNameAlreadyExists_Refuses()
     {
         var proposalId = CommitOneOperationProposal("src");
-        ProposalCommands.New(_fwDataPath, ProductVersion, "taken", null);
+        New("taken", null);
         var before = ReadDraftJson("taken");
 
-        var result = ProposalCommands.Duplicate(_fwDataPath, ProductVersion, proposalId, "taken");
+        var result = ProposalCommands.Duplicate(
+            new DuplicateRequest(_fwDataPath, ProductVersion, proposalId, "taken"));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("already exists", result.Output);
-        Assert.Contains("before duplicating a Proposal into a draft with this name.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.name-collision", refusal.Code);
+        Assert.Contains("already exists", refusal.Message);
+        Assert.Contains("before duplicating a Proposal into a draft with this name.", refusal.Message);
         Assert.Equal(before, ReadDraftJson("taken"));
     }
 
@@ -304,10 +347,14 @@ public sealed class CommandsRefusalsTests
         var proposalId = CommitOneOperationProposal("src");
         DeleteCommittedRevision(proposalId);
 
-        var result = ProposalCommands.Duplicate(_fwDataPath, ProductVersion, proposalId, "copy");
+        var result =
+            ProposalCommands.Duplicate(new DuplicateRequest(_fwDataPath, ProductVersion, proposalId, "copy"));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("store inconsistency", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("proposal.inconsistent", refusal.Code);
+        Assert.Equal(FailureReason.StoreInconsistent, refusal.Reason);
+        Assert.Contains("store inconsistency", refusal.Message);
         Assert.False(DraftExists("copy"));
     }
 
@@ -316,33 +363,42 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void RemoveOperations_DraftNotFound_Refuses()
     {
-        var result = ProposalCommands.RemoveOperations(
-            _fwDataPath, ProductVersion, "no-such-draft", new[] { CanonicalId.Mint().Value }, force: false);
+        var result = ProposalCommands.RemoveOperations(new RemoveOperationsRequest(
+            _fwDataPath, ProductVersion, "no-such-draft", new[] { CanonicalId.Mint().Value }, Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found in store", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.not-found", refusal.Code);
+        Assert.Contains("not found in store", refusal.Message);
     }
 
     [Fact]
     public void RemoveOperations_NoOperationIdsSpecified_Refuses()
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, "d", null);
+        New("d", null);
 
-        var result = ProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "d", Array.Empty<string>(), force: false);
+        var result = ProposalCommands.RemoveOperations(
+            new RemoveOperationsRequest(_fwDataPath, ProductVersion, "d", Array.Empty<string>(), Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Specify at least one operation id to remove.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("operation.invalid-id", refusal.Code);
+        Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
+        Assert.Contains("Specify at least one operation id to remove.", refusal.Message);
     }
 
     [Fact]
     public void RemoveOperations_InvalidOperationIdFormat_Refuses()
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, "d", null);
+        New("d", null);
 
-        var result = ProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "d", new[] { "not-a-canonical-id" }, force: false);
+        var result = ProposalCommands.RemoveOperations(new RemoveOperationsRequest(
+            _fwDataPath, ProductVersion, "d", new[] { "not-a-canonical-id" }, Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("'not-a-canonical-id' is not a valid canonical operation id", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("operation.invalid-id", refusal.Code);
+        Assert.Contains("'not-a-canonical-id' is not a valid canonical operation id", refusal.Message);
     }
 
     // --- Split ---
@@ -350,11 +406,14 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void Split_NoGroups_Refuses()
     {
-        var result = ProposalCommands.Split(
-            _fwDataPath, ProductVersion, CanonicalId.Mint().Value, Array.Empty<ProposalCommands.SplitGroup>(), force: false);
+        var result = ProposalCommands.Split(new SplitRequest(
+            _fwDataPath, ProductVersion, CanonicalId.Mint().Value, Array.Empty<SplitGroup>(), Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Specify at least one group to split into.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.invalid", refusal.Code);
+        Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
+        Assert.Contains("Specify at least one group to split into.", refusal.Message);
     }
 
     [Fact]
@@ -362,13 +421,16 @@ public sealed class CommandsRefusalsTests
     {
         var bogusId = CanonicalId.Mint().Value;
 
-        var result = ProposalCommands.Split(
+        var result = ProposalCommands.Split(new SplitRequest(
             _fwDataPath, ProductVersion, bogusId,
-            new[] { new ProposalCommands.SplitGroup("g1", new[] { CanonicalId.Mint().Value }) }, force: false);
+            new[] { new SplitGroup("g1", new[] { CanonicalId.Mint().Value }) }, Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found in store", result.Output);
-        Assert.Contains("Run 'list' to see committed proposals.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("proposal.not-found", refusal.Code);
+        Assert.Equal(FailureReason.NotFound, refusal.Reason);
+        Assert.Contains("not found in store", refusal.Message);
+        Assert.Contains("Run 'list' to see committed proposals.", refusal.Message);
     }
 
     [Fact]
@@ -377,28 +439,32 @@ public sealed class CommandsRefusalsTests
         var proposalId = CommitOneOperationProposal("src");
         DeleteCommittedRevision(proposalId);
 
-        var result = ProposalCommands.Split(
+        var result = ProposalCommands.Split(new SplitRequest(
             _fwDataPath, ProductVersion, proposalId,
-            new[] { new ProposalCommands.SplitGroup("g1", new[] { CanonicalId.Mint().Value }) }, force: false);
+            new[] { new SplitGroup("g1", new[] { CanonicalId.Mint().Value }) }, Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("store inconsistency", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("proposal.inconsistent", refusal.Code);
+        Assert.Contains("store inconsistency", refusal.Message);
     }
 
     [Fact]
     public void Split_DraftNameAlreadyExists_Refuses()
     {
         var proposalId = CommitOneOperationProposal("src");
-        ProposalCommands.New(_fwDataPath, ProductVersion, "taken", null);
+        New("taken", null);
         var before = ReadDraftJson("taken");
 
-        var result = ProposalCommands.Split(
+        var result = ProposalCommands.Split(new SplitRequest(
             _fwDataPath, ProductVersion, proposalId,
-            new[] { new ProposalCommands.SplitGroup("taken", new[] { CanonicalId.Mint().Value }) }, force: false);
+            new[] { new SplitGroup("taken", new[] { CanonicalId.Mint().Value }) }, Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("already exists", result.Output);
-        Assert.Contains("before splitting into a draft with this name.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.name-collision", refusal.Code);
+        Assert.Contains("already exists", refusal.Message);
+        Assert.Contains("before splitting into a draft with this name.", refusal.Message);
         Assert.Equal(before, ReadDraftJson("taken"));
     }
 
@@ -407,17 +473,19 @@ public sealed class CommandsRefusalsTests
     {
         var proposalId = CommitOneOperationProposal("src");
 
-        var result = ProposalCommands.Split(
+        var result = ProposalCommands.Split(new SplitRequest(
             _fwDataPath, ProductVersion, proposalId,
             new[]
             {
-                new ProposalCommands.SplitGroup("same", new[] { CanonicalId.Mint().Value }),
-                new ProposalCommands.SplitGroup("same", Array.Empty<string>()),
+                new SplitGroup("same", new[] { CanonicalId.Mint().Value }),
+                new SplitGroup("same", Array.Empty<string>()),
             },
-            force: false);
+            Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Each split group must target a distinct draft name.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("draft.invalid", refusal.Code);
+        Assert.Contains("Each split group must target a distinct draft name.", refusal.Message);
     }
 
     [Fact]
@@ -425,12 +493,15 @@ public sealed class CommandsRefusalsTests
     {
         var proposalId = CommitOneOperationProposal("src");
 
-        var result = ProposalCommands.Split(
+        var result = ProposalCommands.Split(new SplitRequest(
             _fwDataPath, ProductVersion, proposalId,
-            new[] { new ProposalCommands.SplitGroup("g1", new[] { "not-a-canonical-id" }) }, force: false);
+            new[] { new SplitGroup("g1", new[] { "not-a-canonical-id" }) }, Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("'not-a-canonical-id' is not a valid canonical operation id", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("operation.invalid-id", refusal.Code);
+        Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
+        Assert.Contains("'not-a-canonical-id' is not a valid canonical operation id", refusal.Message);
     }
 
     [Fact]
@@ -439,12 +510,15 @@ public sealed class CommandsRefusalsTests
         var proposalId = CommitOneOperationProposal("src");
         var strangerId = CanonicalId.Mint().Value;
 
-        var result = ProposalCommands.Split(
+        var result = ProposalCommands.Split(new SplitRequest(
             _fwDataPath, ProductVersion, proposalId,
-            new[] { new ProposalCommands.SplitGroup("g1", new[] { strangerId }) }, force: false);
+            new[] { new SplitGroup("g1", new[] { strangerId }) }, Force: false));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains($"has no operation(s) '{strangerId}'", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("operation.invalid-id", refusal.Code);
+        Assert.Equal(FailureReason.Refused, refusal.Reason);
+        Assert.Contains($"has no operation(s) '{strangerId}'", refusal.Message);
     }
 
     // --- List ---
@@ -452,10 +526,10 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void List_EmptyStore_ReturnsAnEmptyListRatherThanAnError()
     {
-        var result = ProposalCommands.List(_fwDataPath, ProductVersion);
+        var result = ProposalCommands.List(new ListProposalsRequest(_fwDataPath, ProductVersion));
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("No proposals in store.", result.Output);
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Value!.Proposals);
     }
 
     // --- Show ---
@@ -466,10 +540,14 @@ public sealed class CommandsRefusalsTests
         var proposalId = CommitOneOperationProposal("src");
         DeleteCommittedRevision(proposalId);
 
-        var result = ProposalCommands.Show(_fwDataPath, ProductVersion, proposalId);
+        var result =
+            ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("store inconsistency", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("proposal.inconsistent", refusal.Code);
+        Assert.Equal(FailureReason.StoreInconsistent, refusal.Reason);
+        Assert.Contains("store inconsistency", refusal.Message);
     }
 
     // --- DryRun / Apply ---
@@ -501,10 +579,10 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void Apply_ProposalNotFound_Refuses()
     {
-        var result = ProposalCommands.Apply(_fwDataPath, ProductVersion, CanonicalId.Mint().Value, "tester");
+        var result = Apply(CanonicalId.Mint().Value, "tester");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found in store", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found in store", result.Refusal!.Message);
     }
 
     [Fact]
@@ -513,10 +591,10 @@ public sealed class CommandsRefusalsTests
         var proposalId = CommitOneOperationProposal("src");
         DeleteCommittedRevision(proposalId);
 
-        var result = ProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
+        var result = Apply(proposalId, "tester");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("store inconsistency", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Contains("store inconsistency", result.Refusal!.Message);
     }
 
     [Fact]
@@ -524,21 +602,27 @@ public sealed class CommandsRefusalsTests
     {
         var proposalId = CommitOneOperationProposal("src");
 
-        var result = ProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
+        var result = Apply(proposalId, "tester");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("has no bound DryRun recorded", result.Output);
-        Assert.Contains($"dry-run {proposalId} --project <fwdata>", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("apply.dry-run-missing", refusal.Code);
+        Assert.Equal(FailureReason.Refused, refusal.Reason);
+        Assert.Contains("has no bound DryRun recorded", refusal.Message);
+        Assert.Contains($"dry-run {proposalId} --project <fwdata>", refusal.Message);
+        Assert.Equal(proposalId, refusal.Facts["proposalId"]);
     }
 
     [Fact]
     public void Apply_InvalidProposalId_WrapsTheMessageWithADiscardCacheHint()
     {
-        var result = ProposalCommands.Apply(_fwDataPath, ProductVersion, "not-a-canonical-id", "tester");
+        var result = Apply("not-a-canonical-id", "tester");
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("is not a valid canonical Proposal id", result.Output);
-        Assert.Contains("Discard it and reload the project.", result.Output);
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("apply.drift", refusal.Code);
+        Assert.Contains("is not a valid canonical Proposal id", refusal.Message);
+        Assert.Contains("Discard it and reload the project.", refusal.Message);
     }
 
     // --- DryRun (store-consistency checks GetFinalized runs before the project is even opened) ---
@@ -575,17 +659,41 @@ public sealed class CommandsRefusalsTests
         Assert.Equal(writeTimeBefore, File.GetLastWriteTimeUtc(_fwDataPath));
     }
 
+    // --- Typed-API call helpers (kept thin so the tests above read like the CLI invocations they pin) ---
+
+    private CommandOutcome<DraftCreatedResponse> New(string draftName, string? label) =>
+        ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, label));
+
+    private CommandOutcome<SetGlossAddedResponse> AddSetGloss(
+        string draftName, string target, string ws, string text, string[]? dependsOn = null) =>
+        ProposalCommands.AddSetGloss(
+            new AddSetGlossRequest(_fwDataPath, ProductVersion, draftName, target, ws, text, dependsOn));
+
+    private CommandOutcome<DeleteLexemeFormAddedResponse> AddDeleteLexemeForm(
+        string draftName, string target) =>
+        ProposalCommands.AddDeleteLexemeForm(
+            new AddDeleteLexemeFormRequest(_fwDataPath, ProductVersion, draftName, target));
+
+    private CommandOutcome<ProposalFinalizedResponse> Finalize(string draftName) =>
+        ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName));
+
+    private CommandOutcome<ReopenedResponse> Reopen(string draftName, string proposalId) =>
+        ProposalCommands.Reopen(new ReopenRequest(_fwDataPath, ProductVersion, draftName, proposalId));
+
+    private CommandOutcome<ApplyProjection> Apply(string proposalId, string user) =>
+        ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, user));
+
     // --- Helpers ---
 
     private string CommitOneOperationProposal(string draftName)
     {
-        ProposalCommands.New(_fwDataPath, ProductVersion, draftName, null);
-        ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, _target, "en", "text for " + draftName);
+        New(draftName, null);
+        AddSetGloss(draftName, _target, "en", "text for " + draftName);
         DraftRationale.Author(
             _fwDataPath, draftName, "Clarify a lexical gloss", "Record the intended lexical analysis for review.");
-        var finalizeResult = ProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
-        Assert.Equal(0, finalizeResult.ExitCode);
-        return ExtractProposalId(finalizeResult.Output);
+        var finalizeResult = Finalize(draftName);
+        Assert.True(finalizeResult.Succeeded);
+        return finalizeResult.Value!.ProposalId;
     }
 
     private (int ExitCode, string Output, string Error) RunCli(string arguments)
@@ -691,16 +799,5 @@ public sealed class CommandsRefusalsTests
         command.CommandText = "SELECT COUNT(*) FROM ProposalRevisions WHERE ProposalId = $id;";
         command.Parameters.AddWithValue("$id", proposalId);
         return Convert.ToInt32(command.ExecuteScalar());
-    }
-
-    private static string ExtractProposalId(string output)
-    {
-        const string marker = "-> Proposal ";
-        var start = output.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {output}");
-        start += marker.Length;
-        var end = output.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from output: {output}");
-        return output.Substring(start, end - start);
     }
 }

@@ -39,13 +39,13 @@ public sealed class ReopenAmendTests
         var canonicalId = CanonicalId.FromGuid(senseGuid);
 
         // --- commit v1 ---
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "v1", "first label").ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", "first label").ExitCode);
         Assert.Equal(
             0,
-            ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", canonicalId.Value, wsTag, originalGloss + " v1").ExitCode);
+            LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", canonicalId.Value, wsTag, originalGloss + " v1").ExitCode);
         DraftRationale.Author(
             _fwDataPath, "v1", "Clarify the first sense gloss", "Replace the ambiguous gloss with the intended analysis.");
-        var firstFinalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "v1");
+        var firstFinalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "v1");
         Assert.Equal(0, firstFinalize.ExitCode);
         Assert.Contains("Finalized draft", firstFinalize.Output);
 
@@ -60,7 +60,7 @@ public sealed class ReopenAmendTests
         Assert.Equal("applied", GetRecord(proposalId).Status);
 
         // --- reopen: loads v1's content into a NEW draft carrying the SAME frozen proposalId ---
-        var reopenResult = ProposalCommands.Reopen(_fwDataPath, ProductVersion, "v2", proposalId);
+        var reopenResult = LegacyProposalCommands.Reopen(_fwDataPath, ProductVersion, "v2", proposalId);
         Assert.Equal(0, reopenResult.ExitCode);
         Assert.Contains(proposalId, reopenResult.Output);
         Assert.True(DraftExists("v2"));
@@ -71,10 +71,10 @@ public sealed class ReopenAmendTests
         // Amend the content: add a second operation so the intent digest necessarily moves.
         Assert.Equal(
             0,
-            ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v2", canonicalId.Value, wsTag, originalGloss + " v2 (amended)").ExitCode);
+            LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v2", canonicalId.Value, wsTag, originalGloss + " v2 (amended)").ExitCode);
 
         // --- finalize the reopened draft: an amend, not a fresh commit ---
-        var amendFinalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "v2");
+        var amendFinalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "v2");
         Assert.Equal(0, amendFinalize.ExitCode);
         Assert.Contains("Amended draft", amendFinalize.Output);
         Assert.False(DraftExists("v2")); // draft consumed, same as a normal finalize
@@ -108,23 +108,23 @@ public sealed class ReopenAmendTests
     public void Show_OlderManifestWithoutRationale_RemainsReadable()
     {
         var target = CanonicalId.FromGuid(_seed.FirstSenseId).Value;
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "legacy", null).ExitCode);
-        Assert.Equal(0, ProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "legacy", target, "en", "a legacy gloss").ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "legacy", null).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "legacy", target, "en", "a legacy gloss").ExitCode);
         DraftRationale.Author(
             _fwDataPath, "legacy", "Clarify a legacy gloss", "Create a manifest that can model an older stored record.");
-        var finalized = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "legacy");
+        var finalized = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "legacy");
         var proposalId = ExtractProposalId(finalized.Output);
         ClearLabelAndComment(proposalId);
 
-        Assert.Equal(0, ProposalCommands.Show(_fwDataPath, ProductVersion, proposalId).ExitCode);
-        Assert.Equal(0, ProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.Show(_fwDataPath, ProductVersion, proposalId).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId).ExitCode);
     }
 
     [Fact]
     public void Reopen_UnknownProposalId_Fails()
     {
         var bogusId = CanonicalId.Mint().Value;
-        var result = ProposalCommands.Reopen(_fwDataPath, ProductVersion, "some-draft", bogusId);
+        var result = LegacyProposalCommands.Reopen(_fwDataPath, ProductVersion, "some-draft", bogusId);
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("not found", result.Output, StringComparison.OrdinalIgnoreCase);
     }

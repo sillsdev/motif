@@ -75,9 +75,9 @@ public sealed class PromoteGlossTests : IDisposable
     {
         SeedCorpus();
         var target = CanonicalId.Mint().Value;
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
 
-        var result = ProposalCommands.PromoteGloss(
+        var result = LegacyProposalCommands.PromoteGloss(
             _fwDataPath, ProductVersion, "d", target, "en", "a promoted gloss", "wiki-testlang");
 
         Assert.Equal(0, result.ExitCode);
@@ -86,7 +86,7 @@ public sealed class PromoteGlossTests : IDisposable
         DraftRationale.Author(
             _fwDataPath, "d", "Promote a reviewed corpus gloss", "Use the attested corpus analysis in the language project.");
 
-        var finalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
+        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
         Assert.Equal(0, finalize.ExitCode);
         var proposalId = ExtractProposalId(finalize.Output);
         var digest = ExtractIntentDigest(finalize.Output);
@@ -110,18 +110,18 @@ public sealed class PromoteGlossTests : IDisposable
     {
         SeedCorpus();
         var target = CanonicalId.Mint().Value;
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
         Assert.Equal(
             0,
-            ProposalCommands.PromoteGloss(_fwDataPath, ProductVersion, "d", target, "en", "a promoted gloss", "wiki-testlang")
+            LegacyProposalCommands.PromoteGloss(_fwDataPath, ProductVersion, "d", target, "en", "a promoted gloss", "wiki-testlang")
                 .ExitCode);
         DraftRationale.Author(
             _fwDataPath, "d", "Promote an attested gloss", "Carry the corpus provenance into the finalized proposal.");
-        var finalize = ProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
+        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
         var proposalId = ExtractProposalId(finalize.Output);
 
-        var showText = ProposalCommands.Show(_fwDataPath, ProductVersion, proposalId);
-        var showJson = ProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId);
+        var showText = LegacyProposalCommands.Show(_fwDataPath, ProductVersion, proposalId);
+        var showJson = LegacyProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId);
 
         Assert.Contains("wiki-testlang", showText.Output);
         Assert.Contains("wiki-testlang", showJson.Output);
@@ -130,10 +130,10 @@ public sealed class PromoteGlossTests : IDisposable
     [Fact]
     public void PromoteGloss_UnknownCorpus_Refuses_AndAddsNoOperation()
     {
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
         var before = ReadDraftJson("d");
 
-        var result = ProposalCommands.PromoteGloss(
+        var result = LegacyProposalCommands.PromoteGloss(
             _fwDataPath, ProductVersion, "d", CanonicalId.Mint().Value, "en", "text", "no-such-corpus");
 
         Assert.NotEqual(0, result.ExitCode);
@@ -146,8 +146,8 @@ public sealed class PromoteGlossTests : IDisposable
     {
         SeedCorpus();
 
-        Assert.Equal(0, ProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
-        var result = ProposalCommands.PromoteGloss(
+        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        var result = LegacyProposalCommands.PromoteGloss(
             _fwDataPath, ProductVersion, "d", CanonicalId.Mint().Value, "en", "text", "wiki-testlang",
             "no-such-document");
 
