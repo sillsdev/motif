@@ -137,48 +137,38 @@ one-sided version while removing the `using` block along with the comment above 
 
 ## Compatibility targets
 
-**One runtime: `net10.0`.** `net8.0` is not a target anywhere in this repository, and since
-[ADR 0040](docs/adr/0040-one-api-the-cli.md) neither is `net48`. No Motif assembly loads in a
-`net48` host to *run* Motif, because the FieldWorks surface runs the `motif` executable and reads its JSON
-rather than hosting Motif in-process. **One assembly still crosses, as shapes only:** `SIL.Motif.Contract`
-keeps `netstandard2.0` so a `net48` FieldWorks — and the non-.NET runners its project file already names —
-can deserialise `motif --json` into typed values and render a diff. The rule is consumption, not
-convention: an assembly targets `netstandard2.0` if and only if something outside Motif references it.
-`SIL.Motif.Runner` no longer qualifies and is being retired from it.
+**One runtime, one target: `net10.0`, everywhere.** Every Motif project — `SIL.Motif.Contract` included —
+targets `net10.0` and nothing else
+([ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md)). `net8.0` is not a target anywhere in this
+repository, and neither is `net48`: no Motif assembly loads in a `net48` host to *run* Motif, because a
+separate FieldWorks reaches Motif by running the `motif` executable and reading its JSON, and a unified
+FieldWorks, should one ever exist, is `net10.0` too — its own Avalonia work is that same move.
 
-**Actual current targets (measured from the `.csproj` files).** The Runner's `netstandard2.0` is awaiting
-retirement, not defended — ADR 0040 withdrew its reason and the target has not been removed yet:
+`SIL.Motif.Contract` still crosses a process boundary **as shapes only**: it has no LibLCM reference, and
+non-.NET runners — the Python and Rust ones its project file already names — read it as the normative,
+RFC 8785-canonicalised description of Motif's field and response shapes. That is a wire description, never a
+binary compatibility promise to `net48`: nothing left needs to *load* Contract in a `net48` process, only to
+read it as a specification, which carries no target-framework requirement at all.
 
-| Project | Target | Why |
-| --- | --- | --- |
-| `SIL.Motif.Contract` | `netstandard2.0` | **Keeps it.** The one assembly that crosses: `net48` FieldWorks and the non-.NET runners deserialise `motif --json` with it |
-| `SIL.Motif.Model` | `netstandard2.0` | Keeps it only if Contract's response records need it; otherwise retires with the Runner |
-| `SIL.Motif.Runner` | `netstandard2.0;net10.0` | Reason withdrawn: its host is always a `net10.0` Motif process — see below |
-| `SIL.Motif.Host` | `net10.0` | Opens/saves projects |
-| `SIL.Motif.Projection` | `net10.0` | |
-| `SIL.Motif.Worker` | `net10.0` | Becomes the job runner; owns no wire |
-| `SIL.Motif.Cli` | `net10.0` | The one API |
-| `SIL.Motif.Tests` | `net10.0` | |
+[ADR 0040](docs/adr/0040-one-api-the-cli.md) decision 3 argued the opposite — that `netstandard2.0` survives
+on any assembly something outside Motif references, which kept it on Contract and, until retirement, on the
+Runner. [ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md) supersedes that decision: the `net48`
+host it was written for is going away, so there is nothing left for a second target framework to buy. ADR
+0040's other decisions — the database as the only coordination boundary between Motif's own processes, one
+shipped artifact at one version, no shared-XML peering — are unaffected and still bind.
 
 All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0150`.
 
-**Why the Runner used to multi-target, and why it no longer needs to.** Assessment and apply both need
-read-back from a live `LcmCache` ([ADR 0006](docs/adr/0006-engine-reality-apply-readback-preflight.md)), so
-the Runner runs in-process with whatever host owns that cache. That requirement is unchanged and still
-binding. What changed is who the host is: under
-[ADR 0040](docs/adr/0040-one-api-the-cli.md) it is always a Motif `net10.0` process, never FieldWorks, so
-`netstandard2.0` is no longer needed to make the Runner loadable by a `net48` host. The compatibility
-shims under `SIL.Motif.Runner/Compatibility/` exist only for that target and go with it.
+**Not yet executed as of this writing.** The `.csproj` files have not moved yet — Contract still declares
+`netstandard2.0` and carries its explicit `System.Text.Json 8.0.5` pin, and the Runner still multi-targets.
+Retargeting Contract, deleting `SIL.Motif.Contract/Compatibility/IsExternalInit.cs`, and replacing the
+Runner's stale multi-targeting comment are the next commit, tracked as their own step so this decision lands
+before the code does. Once done, no product `.csproj` in this repository should mention `netstandard2.0`.
 
-**Package versions are not target frameworks.** `SIL.Motif.Contract` references
-`System.Text.Json 8.0.5` because that is the current `netstandard2.0`-compatible release line, not
-because anything targets `net8.0`. Do not "fix" it to match a TFM.
-
-**Not yet built:** the FieldWorks-side Motif surface. It is a renderer over `motif --json`, not a host for
-the Runner — it references `SIL.Motif.Contract` for shapes and nothing else of Motif's, no SQLite provider,
-and never opens `Project.motif.db` ([ADR 0040](docs/adr/0040-one-api-the-cli.md) decision 1). When
-FieldWorks must hand a live project over, it saves and releases it, runs the verb, and reloads — the
-pattern FLExBridge already uses.
+**Not yet built:** the FieldWorks-side Motif surface. A separate FieldWorks integrates by running exactly one
+CLI call, `motif apply --all-pending`, at a save boundary with the project released, and reloads afterward —
+the FLExBridge pattern. It references nothing of Motif's, not even `SIL.Motif.Contract`, because it reads an
+exit code and a summary rather than deserialising a typed result.
 
 **Also not yet built, and a prerequisite for that surface:** the records `--json` serialises live in
 `SIL.Motif.Projection`, which references LibLCM. They must move to Contract, leaving the

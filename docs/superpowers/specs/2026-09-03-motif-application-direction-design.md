@@ -70,9 +70,10 @@ counted as such in sub-project 2's plan.
 
 ### 4. One target framework
 
-`netstandard2.0` is retired from every project, Contract included. The `Compatibility/` shims under the Runner
-go with it. The `System.Text.Json 8.0.5` pin, which existed only for the `netstandard2.0` line, is lifted to
-the framework's.
+`netstandard2.0` is retired from every project, Contract included
+([ADR 0043](../../adr/0043-one-command-catalog-two-front-ends.md)). The `Compatibility/` shims under the
+Runner go with it. The `System.Text.Json 8.0.5` pin, which existed only for the `netstandard2.0` line, is
+lifted to the framework's.
 
 ### 5. The application never holds a live project model
 
@@ -112,7 +113,7 @@ Each is its own spec and plan. Later ones depend on the seams earlier ones prove
 
 | # | Sub-project | What it delivers | Depends on |
 | --- | --- | --- | --- |
-| 1 | **Direction ADR and plan amendment** | An ADR superseding ADR 0040 decisions 1 to 3, the Delivery tables in Plan A and the README, the *Motif API* and *Motif job runner* glossary entries, this note's decisions on the record | nothing |
+| 1 | **Direction ADR and plan amendment** | [ADR 0043](../../adr/0043-one-command-catalog-two-front-ends.md), superseding ADR 0040 decisions 1 to 3, the Delivery tables in Plan A and the README, and the *Motif API* glossary entry — recorded | nothing |
 | 2 | **Command catalog and the shell** | The command layer extracted from the CLI, typed Refusals, the parity test, one target framework; the Avalonia application with project selection, the Proposal list as expandable cards, and the single-Proposal page: intent, status, Assessments, Reports | 1 |
 | 3 | **Apply queue** | The *pending* state, `apply` that queues when FieldWorks holds the project, `apply --all-pending`, and what the application shows | 2 |
 | 4 | **Before and after** | Dry Run effects as a two-column view: only the entries that change and only the fields that change in them, one FieldWorks link per entry | 2 |

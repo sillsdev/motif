@@ -18,25 +18,32 @@ unit of work.
 >
 > The repository contains a tested CLI-first control path, generated operation families, Proposal workflow,
 > scratch Dry Runs, and stored Assessment reporting. The paired database, durable job system, PanGloss
-> orchestrator, Apply Authorization, and FieldWorks surface are specified but not built. Nothing in the plans
+> orchestrator, Apply Authorization, and Motif application are specified but not built. Nothing in the plans
 > should be read as already shipped. The named-pipe worker protocol described in older documents has been
-> withdrawn ([ADR 0040](docs/adr/0040-one-api-the-cli.md)): there is one API and it is the CLI.
+> withdrawn ([ADR 0040](docs/adr/0040-one-api-the-cli.md)). Verb implementations now live behind one typed
+> command catalog that the CLI and a planned Motif application both call in-process
+> ([ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md)); the CLI remains the complete front end —
+> the door an AI agent, a script, or a separate FieldWorks uses.
 
 **Start with [Plan A](docs/plan-motif.md).** It is the live plan and owns both the milestones and the
 work items.
 
 ## Delivery
 
-**Motif delivers exactly two user-facing things: the `motif` CLI and a FieldWorks integration.** They are
-the same product reached two ways — [there is one API and it is the CLI](docs/cli-api.md).
+**Motif delivers two user-facing things: the `motif` CLI and a Motif-owned Avalonia application.** Both are
+front ends over
+[one typed command catalog](docs/adr/0043-one-command-catalog-two-front-ends.md), so a result or a refusal is
+the same whichever door it came through. A separate FieldWorks is not a third front end — it integrates by
+calling exactly one CLI verb.
 
 | | |
 | --- | --- |
-| `motif` CLI | `net10.0`. Batch, automation, and AI-agent use; owns the live project while it holds the FieldWorks lock |
-| FieldWorks integration | FieldWorks-owned Avalonia surfaces that run `motif --json` and render the result. Only `SIL.Motif.Contract` crosses, as the shapes to deserialise into |
+| `motif` CLI | `net10.0`. Batch, automation, and AI-agent use; the complete front end — every catalogued command has a verb — and owns the live project while it holds the FieldWorks lock |
+| `SIL.Motif.App` | Planned, `net10.0` Avalonia, in this repository. Calls the catalog in-process; never parses `--json` and never holds a live project model |
+| FieldWorks integration | One CLI call, `motif apply --all-pending`, run at a save boundary with the project released. FieldWorks reloads afterward, the FLExBridge pattern |
 
 Everything else is infrastructure or a dependency — a job runner installed with Motif takes work that must
-outlive a command, PanGloss is a subprocess, and `SIL.Motif.Contract` is a published contract that
+outlive a command, PanGloss is a subprocess, and `SIL.Motif.Contract` is a published contract that a separate
 FieldWorks and non-.NET runners consume as the normative description of Motif's field and response shapes.
 There is no Motif web app, network service, or mobile surface.
 
@@ -100,9 +107,10 @@ deterministically rather than merged optimistically.
 | Component | Responsibility |
 | --- | --- |
 | **Motif** | Semantic operations; Proposal, Check Run, Review, Decision, Dry Run, authorization, rebase, and Receipt contracts |
+| **Motif application** | The Avalonia surface a linguist keeps open beside FieldWorks — project selection, Proposal review, the Handoff. Calls the command catalog in-process; never parses `--json` and never holds a live project model |
 | **Motif job runner** | Durable jobs, Baselines, per-project queues, PanGloss limits, cleanup, and reconciliation. Claims work from the paired database; nothing asks it anything |
 | **LibLCM / FieldWorks** | Model invariants, project lifecycle, unit of work, persistence, and compatibility validation. **The only authority on Motif's path** |
-| **FieldWorks surface** | Renders `motif --json`, deserialising with `SIL.Motif.Contract`. To hand over a live project it saves, releases, runs the verb, and reloads — the pattern FLExBridge already uses |
+| **FieldWorks integration** | Calls exactly one verb, `motif apply --all-pending`, at a save boundary with the project released, and reloads afterward — the pattern FLExBridge already uses. Lists, shows, trials, and authors nothing |
 | **Lexbox** | Optional future sharing of Proposal and Receipt records |
 | **PanGloss** | Immutable parser Assessments and parser facts; Motif policy decides what evidence is required |
 
@@ -175,9 +183,11 @@ Milestone ids are stable; the order is `M1 → M2 → M4 → M5 → M6`, then sc
 M1 and M2 are mechanical. **M4 is the product**, and it is AI-facing first — the agent is the first
 author, not the last. M5 is the first thing a linguist would recognise as the point.
 
-Scope 2 is planned now so scope 1 cannot make it more expensive: `netstandard2.0` on
-Contract/Model/Runner, one JSON stack everywhere, a Runner that never owns a cache, and an apply that
-never calls `Save` are build-time invariants throughout, not later concerns.
+Scope 2 is planned now so scope 1 cannot make it more expensive: one JSON stack everywhere, a Runner that
+never owns a cache, and an apply that never calls `Save` are build-time invariants throughout, not later
+concerns. (`netstandard2.0` on Contract/Model/Runner was the same kind of invariant, kept for a `net48`
+FieldWorks host under [ADR 0040](docs/adr/0040-one-api-the-cli.md);
+[ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md) retired it along with that host.)
 
 ## Open decisions
 
@@ -248,16 +258,15 @@ Producing the Assessment is a separate slow operation and is not yet a CLI verb.
 This is a tested control and proving surface for one operation kind, not evidence that the planned
 product is complete.
 
-Current project targets — two runtimes only, `net10.0` and `net48`, with `netstandard2.0` where an
-assembly must load in both:
+**One target, `net10.0`, everywhere**
+([ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md), superseding
+[ADR 0040](docs/adr/0040-one-api-the-cli.md) decision 3). `SIL.Motif.Contract` keeps no LibLCM reference — a
+non-.NET runner still reads `motif --json` against it as a wire description — but that no longer requires
+building it for `netstandard2.0`, because there is no `net48` host left to satisfy it. The retarget of the
+`.csproj` files themselves is the next commit; see [AGENTS.md](AGENTS.md#compatibility-targets) for the full
+rationale.
 
-- `SIL.Motif.Contract` and `SIL.Motif.Model`: `netstandard2.0`, LibLCM-free;
-- `SIL.Motif.Runner`: `netstandard2.0;net10.0`, because it runs in-process in whichever host owns the
-  live `LcmCache` — FieldWorks while FieldWorks is `net48`, the `net10.0` host afterwards;
-- host, CLI, and tests: `net10.0`.
-
-All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0150`. See
-[AGENTS.md](AGENTS.md#compatibility-targets) for the full table and rationale.
+All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0150`.
 
 Run the tests with:
 

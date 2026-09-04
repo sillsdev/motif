@@ -214,8 +214,12 @@ protocol that [ADR 0040](docs/adr/0040-one-api-the-cli.md) withdrew.
 _Avoid_: server, service, daemon, project host, worker
 
 **Motif API**:
-The `motif` executable and its `--json` output. The only interface Motif exposes — to AI agents, scripts,
-tests, and the FieldWorks surface alike. There is no library entry point for a host and no wire protocol.
+The typed command catalog every front end calls, and the `motif` executable's `--json` rendering of it. The
+CLI is how everything outside Motif's own process reaches the catalog — AI agents, scripts, tests, and a
+separate FieldWorks alike — and it stays the complete front end: every catalogued command has a verb. Motif's
+own application calls the same catalog in-process, which is Motif calling Motif, not a foreign host loading
+Motif's internals; a separate FieldWorks still only ever runs a `motif` verb and reads its JSON. There is no
+wire protocol.
 _Avoid_: wire protocol, worker protocol, endpoint, RPC
 
 **Text**:
