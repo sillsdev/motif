@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
@@ -36,95 +37,83 @@ public static class ReportCommands
     });
 
     /// <summary>Every report kind that may be asked for, as <c>report --list-kinds</c> prints it.</summary>
-    public static CommandResult ListKinds(bool asJson)
-    {
-        var response = new ReportKindListResponse(
-            Catalog.All.Select(producer => new ReportKindResponse(producer.Kind, producer.Description)).ToArray());
-        return new CommandResult(0, asJson
-            ? ProjectionJson.Serialize(response) + Environment.NewLine
-            : RenderKindList(response));
-    }
+    public static CommandOutcome<ReportKindListResponse> ListKinds(ListReportKindsRequest request) =>
+        CommandOutcome<ReportKindListResponse>.Success(new ReportKindListResponse(
+            Catalog.All.Select(producer => new ReportKindResponse(producer.Kind, producer.Description)).ToArray()));
 
     /// <summary>
-    /// Computes one report kind over one Assessment, stores the rendering, and prints it. Refuses, naming
+    /// Computes one report kind over one Assessment, stores the rendering, and returns it. Refuses, naming
     /// the reason, when the kind is unregistered (pinned by `AskingForAKindOutsideTheRegistry_Refuses`) or
     /// the Assessment was not collected in a way the kind can report from (pinned by
     /// `ACorrectnessReportOverAParseTimeAssessment_RefusesNamingTheReason`).
     /// </summary>
-    public static CommandResult Produce(string fwDataPath, string productVersion, string assessmentId,
-        string kind, string? word, string? text, bool asJson)
+    public static CommandOutcome<ReportResponse> Produce(ProduceReportRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             AssessmentRecord record;
             try
             {
-                record = new AssessmentRepository(database).Get(assessmentId);
+                record = new AssessmentRepository(database).Get(request.AssessmentId);
             }
             catch (KeyNotFoundException exception)
             {
-                return ProjectStoreCommand.Refuse(FailureReason.NotFound, exception.Message);
+                return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                    "report.assessment-not-found", FailureReason.NotFound, exception.Message,
+                    Fact(("assessmentId", request.AssessmentId))));
             }
 
             IReportProducer producer;
             try
             {
-                producer = Catalog.Resolve(kind);
+                producer = Catalog.Resolve(request.Kind);
             }
             catch (KeyNotFoundException exception)
             {
-                return ProjectStoreCommand.Refuse(FailureReason.InvalidArgument, exception.Message);
+                return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                    "report.invalid-kind", FailureReason.InvalidArgument, exception.Message,
+                    Fact(("kind", request.Kind))));
             }
 
             RenderedReport rendered;
             try
             {
-                rendered = producer.Produce(record.ToReportable(), new ReportQuery(word, text), AssessorCatalog.Empty);
+                rendered = producer.Produce(
+                    record.ToReportable(), new ReportQuery(request.Word, request.Text), AssessorCatalog.Empty);
             }
             catch (ReportRefusalException exception)
             {
-                return ProjectStoreCommand.Refuse(FailureReason.Refused, exception.Message);
+                return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                    "report.refused", FailureReason.Refused, exception.Message,
+                    Fact(("assessmentId", request.AssessmentId), ("kind", request.Kind))));
             }
 
             var reportId = CanonicalId.Mint("report/").Value;
             var reportJson = JsonSerializer.Serialize(
-                new { kind = rendered.Kind, assessmentId, text = rendered.Text }, MotifJson.CreateOptions());
+                new { kind = rendered.Kind, assessmentId = request.AssessmentId, text = rendered.Text },
+                MotifJson.CreateOptions());
             var evidenceJson = JsonSerializer.Serialize(new
             {
-                assessmentId,
+                assessmentId = request.AssessmentId,
                 selectionSha256 = record.Selection.Sha256,
                 grammarSourceSha256 = record.GrammarSourceSha256,
             }, MotifJson.CreateOptions());
             new ReportRepository(database).Save(new ReportRecord(
-                reportId, record.ProposalId, assessmentId, reportJson, evidenceJson, rendered.Kind, rendered.Text));
+                reportId, record.ProposalId, request.AssessmentId, reportJson, evidenceJson, rendered.Kind,
+                rendered.Text));
 
-            var response = new ReportResponse(reportId, assessmentId, rendered.Kind, rendered.Text);
-            return new CommandResult(0, asJson
-                ? ProjectionJson.Serialize(response) + Environment.NewLine
-                : Render(response));
+            return CommandOutcome<ReportResponse>.Success(
+                new ReportResponse(reportId, request.AssessmentId, rendered.Kind, rendered.Text));
         });
     }
 
-    private static string Render(ReportResponse response)
+    private static Dictionary<string, string> Fact(params (string Key, string? Value)[] entries)
     {
-        var text = new StringBuilder();
-        text.AppendLine("Report " + response.ReportId);
-        text.AppendLine("  Assessment: " + response.AssessmentId);
-        text.AppendLine("  Kind:       " + response.Kind);
-        text.AppendLine(response.Text);
-        return text.ToString();
-    }
-
-    private static string RenderKindList(ReportKindListResponse response)
-    {
-        var text = new StringBuilder();
-        if (response.Kinds.Count == 0)
+        var facts = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in entries)
         {
-            text.AppendLine("No report kinds registered.");
-            return text.ToString();
+            if (value is not null) facts[key] = value;
         }
-        foreach (var kind in response.Kinds)
-            text.AppendLine(kind.Kind + "  " + kind.Description);
-        return text.ToString();
+        return facts;
     }
 }

@@ -1,6 +1,6 @@
 using SIL.Motif.Contract.Responses;
 
-namespace SIL.Motif.Commands;
+namespace SIL.Motif.Cli.Rendering;
 
 /// <summary>The result of one CLI command: an exit code, the text to print, and why it refused.</summary>
 /// <remarks>

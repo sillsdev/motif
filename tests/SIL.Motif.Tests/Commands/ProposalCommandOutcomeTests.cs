@@ -31,16 +31,15 @@ public sealed class ProposalCommandOutcomeTests
     }
 
     /// <summary>
-    /// Neither converted file renders its own text any more: rendering, including the <c>error: </c>
-    /// prefix, is the CLI's job alone (ADR 0043 decision 2). <c>ProjectStoreCommand.cs</c> is excluded
-    /// deliberately — its pre-typed <c>Run</c> overload still serves the command groups Task 6 has not
-    /// yet converted, and is deleted only once that overload's last caller is gone.
+    /// No file under <c>SIL.Motif.Commands</c> renders its own text any more: rendering, including the
+    /// <c>error: </c> prefix, is the CLI's job alone (ADR 0043 decision 2).
     /// </summary>
     [Fact]
-    public void ProposalCommandsRendersNothingItself()
+    public void CommandsRendersNothingItself()
     {
-        var path = Path.Combine(RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Commands", "ProposalCommands.cs");
-        var offendingLines = File.ReadLines(path)
+        var commandsRoot = Path.Combine(RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Commands");
+        var offendingLines = Directory.EnumerateFiles(commandsRoot, "*.cs", SearchOption.AllDirectories)
+            .SelectMany(File.ReadLines)
             .Where(line => line.Contains("CommandResult", StringComparison.Ordinal)
                 || line.Contains("error: ", StringComparison.Ordinal))
             .ToList();

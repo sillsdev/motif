@@ -43,7 +43,7 @@ public sealed class PromoteGlossTests : IDisposable
     private void SeedCorpus(string corpusId = "wiki-testlang", string? licence = "CC-BY-SA-4.0") =>
         Assert.Equal(
             0,
-            CorpusCommands.AddCorpus(
+            LegacyCorpusCommands.AddCorpus(
                 _fwDataPath, ProductVersion, corpusId, "Testlang Wikipedia dump",
                 uri: "https://example.invalid/dump", licence: licence, capabilities: LicenceCapabilities.Unknown(),
                 tokeniser: "whitespace-and-punctuation", tokeniserVersion: "1", tokeniserNotes: null).ExitCode);

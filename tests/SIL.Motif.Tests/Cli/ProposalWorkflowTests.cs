@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json.Nodes;
+using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;

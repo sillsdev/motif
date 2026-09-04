@@ -1604,8 +1604,11 @@ public static partial class ProposalCommands
         _ => "project.refused",
     };
 
+    /// <summary>
     /// A Proposal load failure, keyed by the same exception shape <see cref="ReasonForProposal"/> reads.
-    private static Refusal ProposalLoadRefusal(Exception exception) =>
+    /// Internal: shared with <see cref="JobCommands"/>'s enqueue path.
+    /// </summary>
+    internal static Refusal ProposalLoadRefusal(Exception exception) =>
         new(ProposalLoadRefusalCode(exception), ReasonForProposal(exception), exception.Message);
 
     private static string ProposalLoadRefusalCode(Exception exception) => exception switch

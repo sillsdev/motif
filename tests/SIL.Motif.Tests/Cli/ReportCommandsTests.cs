@@ -2,10 +2,12 @@ using System;
 using System.IO;
 using System.Linq;
 using SIL.Motif.Commands;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -40,7 +42,7 @@ public sealed class ReportCommandsTests : IDisposable
     [Fact]
     public void ListKinds_ListsCoverageAndCorrectness()
     {
-        var result = ReportCommands.ListKinds(asJson: false);
+        var result = LegacyReportCommands.ListKinds(asJson: false);
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("coverage", result.Output, StringComparison.Ordinal);
@@ -52,7 +54,8 @@ public sealed class ReportCommandsTests : IDisposable
     {
         var assessmentId = RecordAssessment("ParseTime", ("a", true), ("b", false));
 
-        var result = ReportCommands.Produce(_project, ProductVersion, assessmentId, "nonsense-kind", null, null, false);
+        var result =
+            LegacyReportCommands.Produce(_project, ProductVersion, assessmentId, "nonsense-kind", null, null, false);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("nonsense-kind", result.Output, StringComparison.Ordinal);
@@ -63,7 +66,8 @@ public sealed class ReportCommandsTests : IDisposable
     {
         var assessmentId = RecordAssessment("ParseTime", ("a", true), ("b", false));
 
-        var result = ReportCommands.Produce(_project, ProductVersion, assessmentId, "correctness", null, null, false);
+        var result =
+            LegacyReportCommands.Produce(_project, ProductVersion, assessmentId, "correctness", null, null, false);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("ParseTime", result.Output, StringComparison.Ordinal);
@@ -75,7 +79,7 @@ public sealed class ReportCommandsTests : IDisposable
     {
         var assessmentId = RecordAssessment("ParseTime", ("motifa", true), ("motifb", false));
 
-        var jsonResult = ReportCommands.Produce(_project, ProductVersion, assessmentId, "coverage", null, null, true);
+        var jsonResult = LegacyReportCommands.Produce(_project, ProductVersion, assessmentId, "coverage", null, null, true);
         Assert.Equal(0, jsonResult.ExitCode);
         var response = ProjectionJson.Deserialize<ReportResponse>(jsonResult.Output)!;
         Assert.Equal("coverage", response.Kind);
@@ -100,7 +104,7 @@ public sealed class ReportCommandsTests : IDisposable
                     : Array.Empty<ParsedAnalysis>()))
             .ToArray();
 
-        var result = ProjectStoreCommand.Run(_project, ProductVersion, (database, _) =>
+        var result = ProjectStoreCommand.Run<string>(_project, ProductVersion, (database, _) =>
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
                 AssessmentId: assessmentId,
@@ -121,21 +125,21 @@ public sealed class ReportCommandsTests : IDisposable
                 Pipeline: "pipeline",
                 DiagnosticCount: 0,
                 Words: assessedWords));
-            return new CommandResult(0, string.Empty);
+            return CommandOutcome<string>.Success(string.Empty);
         });
-        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.Succeeded);
         return assessmentId;
     }
 
     private ReportRecord? ReadStoredReport(string reportId)
     {
         ReportRecord? stored = null;
-        var result = ProjectStoreCommand.Run(_project, ProductVersion, (database, _) =>
+        var result = ProjectStoreCommand.Run<string>(_project, ProductVersion, (database, _) =>
         {
             stored = new ReportRepository(database).Get(reportId);
-            return new CommandResult(0, string.Empty);
+            return CommandOutcome<string>.Success(string.Empty);
         });
-        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.Succeeded);
         return stored;
     }
 }

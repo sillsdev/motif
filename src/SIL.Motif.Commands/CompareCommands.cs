@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
@@ -18,13 +20,13 @@ namespace SIL.Motif.Commands;
 /// transient mechanism. This computes the join, records the result through
 /// <see cref="AssessmentRepository"/> exactly like any other Assessment, and renders it through the same
 /// <see cref="DifferenceReportProducer"/> that <c>report --kind difference</c> would use to read it back
-/// later, so the preview printed here and a later reading of the stored row never disagree.
+/// later, so the preview returned here and a later reading of the stored row never disagree.
 /// </summary>
 public static class CompareCommands
 {
     /// <summary>
     /// Loads the two named Assessments, joins them on the word, stores the result as a new Assessment of the
-    /// <c>Difference</c> kind, and prints it.
+    /// <c>Difference</c> kind, and returns it.
     /// </summary>
     /// <remarks>
     /// The stored Difference inherits the Assessor its two inputs share: a difference between two
@@ -33,22 +35,23 @@ public static class CompareCommands
     /// a difference cannot be produced from inputs that disagree, because there would be no single Assessor
     /// left to attribute it to.
     /// </remarks>
-    public static CommandResult Produce(string fwDataPath, string productVersion,
-        string fromAssessmentId, string toAssessmentId, bool asJson)
+    public static CommandOutcome<CompareResponse> Produce(ProduceComparisonRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             var repository = new AssessmentRepository(database);
             AssessmentRecord from;
             AssessmentRecord to;
             try
             {
-                from = repository.Get(fromAssessmentId);
-                to = repository.Get(toAssessmentId);
+                from = repository.Get(request.FromAssessmentId);
+                to = repository.Get(request.ToAssessmentId);
             }
             catch (KeyNotFoundException exception)
             {
-                return ProjectStoreCommand.Refuse(FailureReason.NotFound, exception.Message);
+                return CommandOutcome<CompareResponse>.Refused(new Refusal(
+                    "comparison.assessment-not-found", FailureReason.NotFound, exception.Message,
+                    Fact(("fromAssessmentId", request.FromAssessmentId), ("toAssessmentId", request.ToAssessmentId))));
             }
 
             AssessmentComparison comparison;
@@ -58,12 +61,14 @@ public static class CompareCommands
             }
             catch (ComparisonRefusalException exception)
             {
-                return ProjectStoreCommand.Refuse(FailureReason.Refused, exception.Message);
+                return CommandOutcome<CompareResponse>.Refused(new Refusal(
+                    "comparison.refused", FailureReason.Refused, exception.Message,
+                    Fact(("fromAssessmentId", request.FromAssessmentId), ("toAssessmentId", request.ToAssessmentId))));
             }
 
             var assessmentId = CanonicalId.Mint("assessment/").Value;
             var scopeJson = ScopeCodec.Write(new StoredScope.Difference(
-                fromAssessmentId, toAssessmentId, comparison.FromWordCount, comparison.ToWordCount,
+                request.FromAssessmentId, request.ToAssessmentId, comparison.FromWordCount, comparison.ToWordCount,
                 comparison.SharedWords.Count, from.GrammarSourceSha256, to.GrammarSourceSha256,
                 comparison.TokeniserMismatch, comparison.TokeniserWarning));
             var words = comparison.Changes
@@ -72,7 +77,7 @@ public static class CompareCommands
                     Array.Empty<ParsedAnalysis>()))
                 .ToArray();
             var selection = Selection.Create(
-                $"difference:{fromAssessmentId}..{toAssessmentId}", comparison.SharedWords);
+                $"difference:{request.FromAssessmentId}..{request.ToAssessmentId}", comparison.SharedWords);
             var (tokeniserName, tokeniserVersion) = comparison.TokeniserMismatch
                 ? ("mixed", "mixed")
                 : (from.TokeniserName, from.TokeniserVersion);
@@ -102,26 +107,26 @@ public static class CompareCommands
             var rendered = ReportCommands.Catalog.Resolve(DifferenceReportProducer.KindName)
                 .Produce(stored.ToReportable(), new ReportQuery(), AssessorCatalog.Empty);
 
-            var response = new CompareResponse(assessmentId, fromAssessmentId, toAssessmentId, from.Assessor,
+            return CommandOutcome<CompareResponse>.Success(new CompareResponse(
+                assessmentId, request.FromAssessmentId, request.ToAssessmentId, from.Assessor,
                 comparison.FromWordCount, comparison.ToWordCount, comparison.SharedWords.Count,
-                comparison.TokeniserMismatch, comparison.TokeniserWarning, rendered.Text);
-            return new CommandResult(0, asJson
-                ? ProjectionJson.Serialize(response) + Environment.NewLine
-                : Render(response));
+                comparison.TokeniserMismatch, comparison.TokeniserWarning, rendered.Text));
         });
-    }
-
-    private static string Render(CompareResponse response)
-    {
-        var text = new StringBuilder();
-        text.AppendLine("Comparison " + response.AssessmentId);
-        text.Append(response.Text);
-        return text.ToString();
     }
 
     private static string Digest(string json)
     {
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(json));
         return "sha256:" + Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static Dictionary<string, string> Fact(params (string Key, string? Value)[] entries)
+    {
+        var facts = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in entries)
+        {
+            if (value is not null) facts[key] = value;
+        }
+        return facts;
     }
 }

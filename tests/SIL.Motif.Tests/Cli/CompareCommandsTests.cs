@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using SIL.Motif.Commands;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -44,7 +46,7 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true), ("beta", true));
         var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("beta", true), ("gamma", true));
 
-        var result = CompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
+        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
 
         Assert.Equal(0, result.ExitCode);
         var response = ProjectionJson.Deserialize<CompareResponse>(result.Output)!;
@@ -59,7 +61,7 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "whitespace", "1", ("alpha", true));
         var toId = RecordAssessment("pangloss", "ParseTime", "icu", "74", ("alpha", true));
 
-        var result = CompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
+        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
 
         Assert.Equal(0, result.ExitCode);
         var response = ProjectionJson.Deserialize<CompareResponse>(result.Output)!;
@@ -76,7 +78,7 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true));
         var toId = RecordAssessment("pangloss", "Correctness", "none", "1", ("alpha", true));
 
-        var result = CompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: false);
+        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: false);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("ParseTime", result.Output, StringComparison.Ordinal);
@@ -89,7 +91,7 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true));
         var toId = RecordAssessment("hermit-crab", "ParseTime", "none", "1", ("alpha", true));
 
-        var result = CompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: false);
+        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: false);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("pangloss", result.Output, StringComparison.Ordinal);
@@ -102,17 +104,17 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true), ("beta", true));
         var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", false), ("beta", true));
 
-        var result = CompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
+        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
         Assert.Equal(0, result.ExitCode);
         var response = ProjectionJson.Deserialize<CompareResponse>(result.Output)!;
 
         AssessmentRecord stored = null!;
-        var readResult = ProjectStoreCommand.Run(_project, ProductVersion, (database, _) =>
+        var readResult = ProjectStoreCommand.Run<string>(_project, ProductVersion, (database, _) =>
         {
             stored = new AssessmentRepository(database).Get(response.AssessmentId);
-            return new CommandResult(0, string.Empty);
+            return CommandOutcome<string>.Success(string.Empty);
         });
-        Assert.Equal(0, readResult.ExitCode);
+        Assert.True(readResult.Succeeded);
         Assert.Equal("Difference", stored.Kind);
         Assert.Equal("pangloss", stored.Assessor);
     }
@@ -123,15 +125,15 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true), ("beta", true));
         var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", false), ("beta", true));
 
-        var result = CompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
+        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
         Assert.Equal(0, result.ExitCode);
         var response = ProjectionJson.Deserialize<CompareResponse>(result.Output)!;
 
         AssessmentRecord stored = null!;
-        ProjectStoreCommand.Run(_project, ProductVersion, (database, _) =>
+        ProjectStoreCommand.Run<string>(_project, ProductVersion, (database, _) =>
         {
             stored = new AssessmentRepository(database).Get(response.AssessmentId);
-            return new CommandResult(0, string.Empty);
+            return CommandOutcome<string>.Success(string.Empty);
         });
 
         var changedWords = stored.Words!.Select(w => w.Word).ToArray();
@@ -152,7 +154,7 @@ public sealed class CompareCommandsTests : IDisposable
                     : Array.Empty<ParsedAnalysis>()))
             .ToArray();
 
-        var result = ProjectStoreCommand.Run(_project, ProductVersion, (database, _) =>
+        var result = ProjectStoreCommand.Run<string>(_project, ProductVersion, (database, _) =>
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
                 AssessmentId: assessmentId,
@@ -173,9 +175,9 @@ public sealed class CompareCommandsTests : IDisposable
                 Pipeline: "pipeline",
                 DiagnosticCount: 0,
                 Words: assessedWords));
-            return new CommandResult(0, string.Empty);
+            return CommandOutcome<string>.Success(string.Empty);
         });
-        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.Succeeded);
         return assessmentId;
     }
 }

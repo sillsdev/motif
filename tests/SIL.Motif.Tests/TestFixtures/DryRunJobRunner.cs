@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
@@ -32,7 +33,7 @@ internal static class DryRunJobRunner
     public static CommandResult Run(string fwDataPath, string productVersion, string proposalId,
         bool asJson = false, UsageLog? usage = null)
     {
-        var enqueued = JobCommands.EnqueueDryRun(fwDataPath, productVersion, proposalId, usage);
+        var enqueued = LegacyJobCommands.EnqueueDryRun(fwDataPath, productVersion, proposalId, usage);
         if (enqueued.ExitCode != 0) return enqueued;
         var jobId = enqueued.Output.Trim();
 
@@ -73,6 +74,7 @@ internal static class DryRunJobRunner
             loop.RunUntilIdleAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
 
-        return JobCommands.WaitForDryRun(fwDataPath, productVersion, proposalId, jobId, asJson, TimeSpan.FromSeconds(5));
+        return LegacyJobCommands.WaitForDryRun(
+            fwDataPath, productVersion, proposalId, jobId, asJson, TimeSpan.FromSeconds(5));
     }
 }

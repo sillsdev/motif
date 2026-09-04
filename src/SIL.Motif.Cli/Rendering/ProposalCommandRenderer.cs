@@ -5,8 +5,8 @@ using System.Text;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Projection.Rendering;
 using SIL.Motif.Runner.Operations;
+using ProjectionText = SIL.Motif.Projection.Rendering.CommandTextRenderer;
 
 namespace SIL.Motif.Cli.Rendering;
 
@@ -36,12 +36,12 @@ public static class ProposalCommandRenderer
 
         var text = value switch
         {
-            ProjectSummaryProjection p => CommandTextRenderer.Render(p),
-            AnalysisAggregateProjection p => CommandTextRenderer.Render(p),
-            ProposalListProjection p => CommandTextRenderer.Render(p),
-            ProposalDetailProjection p => CommandTextRenderer.Render(p),
-            ApplyProjection p => CommandTextRenderer.Render(p),
-            AppliedLogProjection p => CommandTextRenderer.Render(p),
+            ProjectSummaryProjection p => ProjectionText.Render(p),
+            AnalysisAggregateProjection p => ProjectionText.Render(p),
+            ProposalListProjection p => ProjectionText.Render(p),
+            ProposalDetailProjection p => ProjectionText.Render(p),
+            ApplyProjection p => ProjectionText.Render(p),
+            AppliedLogProjection p => ProjectionText.Render(p),
             DraftCreatedResponse r => RenderDraftCreated(r),
             SetGlossAddedResponse r => RenderSetGlossAdded(r),
             DeleteLexemeFormAddedResponse r => RenderDeleteLexemeFormAdded(r),

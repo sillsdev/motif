@@ -27,28 +27,6 @@ namespace SIL.Motif.Commands;
 public static class ProjectStoreCommand
 {
     /// <summary>Opens the paired store for a project, runs the verb, and translates any failure.</summary>
-    /// <remarks>
-    /// Delegates to <see cref="Run{T}"/> rather than duplicating the exception-to-<see cref="Refusal"/>
-    /// translation: it runs the verb through that typed path, then renders the outcome back into this
-    /// overload's own <see cref="CommandResult"/> shape.
-    /// </remarks>
-    public static CommandResult Run(string fwDataPath, string productVersion,
-        Func<MotifDatabase, ProjectLocator, CommandResult> act)
-    {
-        ArgumentNullException.ThrowIfNull(act);
-
-        var outcome = Run<RawResult>(fwDataPath, productVersion,
-            (database, project) => CommandOutcome<RawResult>.Success(new RawResult(act(database, project))));
-
-        return outcome.Succeeded
-            ? outcome.Value!.Result
-            : new CommandResult(
-                FailureEnvelope.ExitCodeFor(outcome.Refusal!.Reason),
-                "error: " + outcome.Refusal.Message + Environment.NewLine,
-                outcome.Refusal.Reason);
-    }
-
-    /// <summary>Opens the paired store for a project, runs the verb, and translates any failure.</summary>
     public static CommandOutcome<T> Run<T>(string fwDataPath, string productVersion,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act) where T : class
     {
@@ -91,10 +69,6 @@ public static class ProjectStoreCommand
         }
     }
 
-    /// <summary>Renders one refusal in the shape every verb's failures take.</summary>
-    public static CommandResult Refuse(FailureReason reason, string message) =>
-        new(FailureEnvelope.ExitCodeFor(reason), "error: " + message + Environment.NewLine, reason);
-
     private static Dictionary<string, string> Fact(string fwDataPath) =>
         new(StringComparer.Ordinal) { ["fwDataPath"] = fwDataPath };
 
@@ -110,7 +84,4 @@ public static class ProjectStoreCommand
             throw new FileNotFoundException("Project file not found: '" + full + "'.", full);
         return new ProjectLocator(full, Path.GetFileNameWithoutExtension(full));
     }
-
-    /// Carries a caller's own rendered <see cref="CommandResult"/> through the typed <see cref="Run{T}"/>.
-    private sealed record RawResult(CommandResult Result);
 }

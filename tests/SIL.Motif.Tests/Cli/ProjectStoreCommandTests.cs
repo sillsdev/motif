@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -24,13 +25,14 @@ public sealed class ProjectStoreCommandTests : IDisposable
     {
         var ran = false;
 
-        var result = ProjectStoreCommand.Run(Path.Combine(_root, "absent.fwdata"), "1.0",
-            (_, _) => { ran = true; return new CommandResult(0, string.Empty); });
+        var result = ProjectStoreCommand.Run<string>(Path.Combine(_root, "absent.fwdata"), "1.0",
+            (_, _) => { ran = true; return CommandOutcome<string>.Success(string.Empty); });
 
         Assert.False(ran);
-        Assert.Equal(FailureReason.InvalidArgument, result.Reason);
-        Assert.Equal(1, result.ExitCode);
-        Assert.Contains("Project file not found", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        Assert.Equal(FailureReason.InvalidArgument, result.Refusal!.Reason);
+        Assert.Equal(1, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
+        Assert.Contains("Project file not found", result.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -39,24 +41,28 @@ public sealed class ProjectStoreCommandTests : IDisposable
         var project = Project("garbled");
         File.WriteAllText(Path.ChangeExtension(project, ".motif.db"), "this is not a database");
 
-        var result = ProjectStoreCommand.Run(project, "1.0", (_, _) => new CommandResult(0, string.Empty));
+        var result = ProjectStoreCommand.Run<string>(
+            project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
 
         // Exit 4: nothing the caller did, and nothing a retry fixes.
-        Assert.Equal(FailureReason.StoreInconsistent, result.Reason);
-        Assert.Equal(4, result.ExitCode);
+        Assert.False(result.Succeeded);
+        Assert.Equal(FailureReason.StoreInconsistent, result.Refusal!.Reason);
+        Assert.Equal(4, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
     }
 
     [Fact]
     public void AStoreThisBuildIsTooOldForIsRefusedRatherThanRetried()
     {
         var project = Project("newer");
-        ProjectStoreCommand.Run(project, "99.0", (_, _) => new CommandResult(0, string.Empty));
+        ProjectStoreCommand.Run<string>(project, "99.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
         RequireWorkerVersion(Path.ChangeExtension(project, ".motif.db"), "99.0");
 
-        var result = ProjectStoreCommand.Run(project, "1.0", (_, _) => new CommandResult(0, string.Empty));
+        var result = ProjectStoreCommand.Run<string>(
+            project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
 
-        Assert.Equal(FailureReason.Refused, result.Reason);
-        Assert.Equal(2, result.ExitCode);
+        Assert.False(result.Succeeded);
+        Assert.Equal(FailureReason.Refused, result.Refusal!.Reason);
+        Assert.Equal(2, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
     }
 
     [Fact]
@@ -66,10 +72,12 @@ public sealed class ProjectStoreCommandTests : IDisposable
         // A directory where the database file belongs: the same catch carries the owner-lock case.
         Directory.CreateDirectory(Path.ChangeExtension(project, ".motif.db"));
 
-        var result = ProjectStoreCommand.Run(project, "1.0", (_, _) => new CommandResult(0, string.Empty));
+        var result = ProjectStoreCommand.Run<string>(
+            project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
 
-        Assert.Equal(FailureReason.Busy, result.Reason);
-        Assert.Equal(3, result.ExitCode);
+        Assert.False(result.Succeeded);
+        Assert.Equal(FailureReason.Busy, result.Refusal!.Reason);
+        Assert.Equal(3, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
     }
 
     [Fact]
@@ -77,26 +85,25 @@ public sealed class ProjectStoreCommandTests : IDisposable
     {
         var project = Project("working");
 
-        var result = ProjectStoreCommand.Run(project, "1.0", (database, located) =>
+        var result = ProjectStoreCommand.Run<string>(project, "1.0", (database, located) =>
         {
             Assert.NotNull(database);
             Assert.Equal("working", located.FieldWorksProjectIdentity);
-            return new CommandResult(0, "the verb's own output");
+            return CommandOutcome<string>.Success("the verb's own output");
         });
 
-        Assert.Null(result.Reason);
-        Assert.Equal(0, result.ExitCode);
-        Assert.Equal("the verb's own output", result.Output);
+        Assert.True(result.Succeeded);
+        Assert.Equal("the verb's own output", result.Value);
         Assert.True(File.Exists(Path.ChangeExtension(project, ".motif.db")));
     }
 
     [Fact]
     public void AMalformedProductVersionOpensTheStoreRatherThanRefusingTheVerb()
     {
-        var result = ProjectStoreCommand.Run(Project("loose"), "not-a-version",
-            (_, _) => new CommandResult(0, string.Empty));
+        var result = ProjectStoreCommand.Run<string>(Project("loose"), "not-a-version",
+            (_, _) => CommandOutcome<string>.Success(string.Empty));
 
-        Assert.Null(result.Reason);
+        Assert.True(result.Succeeded);
     }
 
     private string Project(string name)

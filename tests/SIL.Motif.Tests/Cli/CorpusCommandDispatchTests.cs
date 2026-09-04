@@ -7,6 +7,7 @@ using SIL.Motif.Generator;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection.Usage;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
 
@@ -53,7 +54,7 @@ public sealed class CorpusCommandDispatchTests : IDisposable
     {
         const string corpusId = "dispatch-corpus";
         const string description = "Private dispatch corpus";
-        var add = CorpusCommands.AddCorpus(
+        var add = LegacyCorpusCommands.AddCorpus(
             _fwDataPath, "1.0", corpusId, description, "https://private.test/corpus", "private-licence",
             LicenceCapabilities.Unknown(), "test-tokeniser", "1", "private notes");
         Assert.Equal(0, add.ExitCode);
@@ -61,7 +62,7 @@ public sealed class CorpusCommandDispatchTests : IDisposable
         File.WriteAllText(sourcePath, "private document text");
         Assert.Equal(
             0,
-            CorpusCommands.AddDocument(
+            LegacyCorpusCommands.AddDocument(
                 _fwDataPath, "1.0", corpusId, "private-document", sourcePath, "Private document", null, null)
                 .ExitCode);
 

@@ -49,6 +49,12 @@ try
         return ProposalCommandRenderer.Render(outcome, asJson, successAsJson);
     }
 
+    CommandResult RenderCommand<T>(CommandOutcome<T> outcome, bool successAsJson = true) where T : class
+    {
+        alreadyRendered = true;
+        return CommandTextRenderer.Render(outcome, asJson, successAsJson);
+    }
+
     switch (verb)
     {
         case "open":
@@ -324,7 +330,10 @@ try
                 return Usage(
                     "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] [--json]", asJson);
             }
-            result = JobCommands.EnqueueDryRun(dryRunProject, CliProductVersion(), positionals[0], usage);
+            result = RenderCommand(
+                JobCommands.EnqueueDryRun(
+                    new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0]), usage),
+                successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
             if (result.ExitCode == 0) RunnerKick.After();
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
@@ -334,8 +343,8 @@ try
                     int.TryParse(waitTimeoutRaw, out var waitTimeoutMs)
                     ? TimeSpan.FromMilliseconds(waitTimeoutMs)
                     : JobCommands.DefaultWaitTimeout;
-                result = JobCommands.WaitForDryRun(
-                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, asJson, waitTimeout);
+                result = RenderCommand(JobCommands.WaitForDryRun(new WaitForDryRunRequest(
+                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, waitTimeout)));
             }
             break;
 
@@ -345,8 +354,12 @@ try
                 return Usage(
                     "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--wait] [--json]", asJson);
             }
-            result = JobCommands.EnqueueTrial(
-                trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"), usage);
+            result = RenderCommand(
+                JobCommands.EnqueueTrial(
+                    new EnqueueTrialRequest(
+                        trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope")),
+                    usage),
+                successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
             if (result.ExitCode == 0) RunnerKick.After();
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
@@ -356,8 +369,8 @@ try
                     int.TryParse(trialWaitTimeoutRaw, out var trialWaitTimeoutMs)
                     ? TimeSpan.FromMilliseconds(trialWaitTimeoutMs)
                     : JobCommands.DefaultWaitTimeout;
-                result = JobCommands.WaitForJob(
-                    trialProject, trialJobId, CliProductVersion(), asJson, trialWaitTimeout);
+                result = RenderCommand(JobCommands.WaitForJob(
+                    new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout)));
             }
             break;
 
@@ -398,7 +411,7 @@ try
                     "[--licence-basis <text>]", asJson);
             }
 
-            result = CorpusCommands.AddCorpus(
+            result = RenderCommand(CorpusCommands.AddCorpus(new AddCorpusRequest(
                 addCorpusProject,
                 CliProductVersion(),
                 corpusId,
@@ -408,7 +421,8 @@ try
                 CorpusCommands.CapabilitiesFromFlags(flags),
                 corpusTokeniser,
                 corpusTokeniserVersion,
-                flags.GetValueOrDefault("tokeniser-notes"));
+                flags.GetValueOrDefault("tokeniser-notes"))),
+                successAsJson: false);
             break;
 
         case "add-document":
@@ -428,7 +442,7 @@ try
                 ? CorpusCommands.CapabilitiesFromFlags(flags)
                 : null;
 
-            result = CorpusCommands.AddDocument(
+            result = RenderCommand(CorpusCommands.AddDocument(new AddDocumentRequest(
                 addDocumentProject,
                 CliProductVersion(),
                 documentCorpus,
@@ -436,36 +450,40 @@ try
                 documentPathOrUrl,
                 flags.GetValueOrDefault("title"),
                 flags.GetValueOrDefault("licence"),
-                documentCapabilities);
+                documentCapabilities)),
+                successAsJson: false);
             break;
 
         case "add-corpus-bundle":
             if (!flags.TryGetValue("project", out var addBundleProject) ||
                 !flags.TryGetValue("bundle", out var bundlePath))
                 return Usage("Usage: motif add-corpus-bundle --project <fwdata> --bundle <path-to-bundle.json>", asJson);
-            result = CorpusCommands.AddBundle(addBundleProject, CliProductVersion(), bundlePath);
+            result = RenderCommand(
+                CorpusCommands.AddBundle(new AddCorpusBundleRequest(addBundleProject, CliProductVersion(), bundlePath)),
+                successAsJson: false);
             break;
 
         case "corpora":
             if (!flags.TryGetValue("project", out var corporaProject))
                 return Usage("Usage: motif corpora --project <fwdata> [--json]", asJson);
-            result = asJson
-                ? CorpusCommands.ListCorporaJson(corporaProject, CliProductVersion(), usage)
-                : CorpusCommands.ListCorpora(corporaProject, CliProductVersion(), usage);
+            result = RenderCommand(
+                CorpusCommands.ListCorpora(new ListCorporaRequest(corporaProject, CliProductVersion()), usage));
             break;
 
         case "show-corpus":
             if (!flags.TryGetValue("project", out var showCorpusProject) || positionals.Count != 1)
                 return Usage("Usage: motif show-corpus --project <fwdata> <corpusId> [--json]", asJson);
-            result = asJson
-                ? CorpusCommands.ShowCorpusJson(showCorpusProject, CliProductVersion(), positionals[0], usage)
-                : CorpusCommands.ShowCorpus(showCorpusProject, CliProductVersion(), positionals[0], usage);
+            result = RenderCommand(CorpusCommands.ShowCorpus(
+                new ShowCorpusRequest(showCorpusProject, CliProductVersion(), positionals[0]), usage));
             break;
 
         case "baseline-refresh":
             if (!flags.TryGetValue("project", out var refreshProject))
                 return Usage("Usage: motif baseline-refresh --project <fwdata>", asJson);
-            result = JobCommands.EnqueueBaselineRefresh(refreshProject, CliProductVersion());
+            result = RenderCommand(
+                JobCommands.EnqueueBaselineRefresh(
+                    new EnqueueBaselineRefreshRequest(refreshProject, CliProductVersion())),
+                successAsJson: false);
             if (result.ExitCode == 0) RunnerKick.After();
             break;
 
@@ -477,9 +495,8 @@ try
                 case "show":
                     if (positionals.Count != 1 || !flags.TryGetValue("project", out var configProject))
                         return Usage(ConfigUsage(), asJson);
-                    result = asJson
-                        ? ConfigCommands.ShowJson(configProject, CliProductVersion())
-                        : ConfigCommands.Show(configProject, CliProductVersion());
+                    result = RenderCommand(
+                        ConfigCommands.Show(new ShowConfigRequest(configProject, CliProductVersion())));
                     break;
 
                 default:
@@ -490,7 +507,7 @@ try
         case "report":
             if (flags.ContainsKey("list-kinds"))
             {
-                result = ReportCommands.ListKinds(asJson);
+                result = RenderCommand(ReportCommands.ListKinds(new ListReportKindsRequest()));
                 break;
             }
             if (!flags.TryGetValue("project", out var reportProject) ||
@@ -499,8 +516,9 @@ try
             {
                 return Usage(ReportUsage(), asJson);
             }
-            result = ReportCommands.Produce(reportProject, CliProductVersion(), reportAssessment, reportKind,
-                flags.GetValueOrDefault("word"), flags.GetValueOrDefault("text"), asJson);
+            result = RenderCommand(ReportCommands.Produce(new ProduceReportRequest(
+                reportProject, CliProductVersion(), reportAssessment, reportKind,
+                flags.GetValueOrDefault("word"), flags.GetValueOrDefault("text"))));
             break;
 
         case "compare":
@@ -510,7 +528,8 @@ try
             {
                 return Usage(CompareUsage(), asJson);
             }
-            result = CompareCommands.Produce(compareProject, CliProductVersion(), compareFrom, compareTo, asJson);
+            result = RenderCommand(CompareCommands.Produce(
+                new ProduceComparisonRequest(compareProject, CliProductVersion(), compareFrom, compareTo)));
             break;
 
         case "jobs":
@@ -521,31 +540,35 @@ try
                 case "show":
                     if (positionals.Count != 2 || !flags.TryGetValue("project", out var jobsShowProject))
                         return Usage("Usage: motif jobs show <jobId> --project <fwdata> [--json]", asJson);
-                    result = JobCommands.Show(jobsShowProject, positionals[1], CliProductVersion(), asJson);
+                    result = RenderCommand(JobCommands.Show(
+                        new ShowJobRequest(jobsShowProject, positionals[1], CliProductVersion())));
                     break;
 
                 case "assessments":
                     if (positionals.Count != 2 || !flags.TryGetValue("project", out var jobsAssessmentsProject))
                         return Usage("Usage: motif jobs assessments <jobId> --project <fwdata> [--json]", asJson);
-                    result = JobCommands.Assessments(jobsAssessmentsProject, positionals[1], CliProductVersion(), asJson);
+                    result = RenderCommand(JobCommands.Assessments(
+                        new JobAssessmentsRequest(jobsAssessmentsProject, positionals[1], CliProductVersion())));
                     break;
 
                 case "list":
                     if (positionals.Count != 1 || !flags.ContainsKey("all"))
                         return Usage("Usage: motif jobs list --all [--json]", asJson);
-                    result = JobCommands.ListAll(CliProductVersion(), asJson);
+                    result = RenderCommand(JobCommands.ListAll(new ListActiveJobsRequest(CliProductVersion())));
                     break;
 
                 case "cancel":
                     if (positionals.Count != 2 || !flags.TryGetValue("project", out var jobsCancelProject))
                         return Usage("Usage: motif jobs cancel <jobId> --project <fwdata> [--json]", asJson);
-                    result = JobCommands.Cancel(jobsCancelProject, positionals[1], CliProductVersion(), asJson);
+                    result = RenderCommand(JobCommands.Cancel(
+                        new CancelJobRequest(jobsCancelProject, positionals[1], CliProductVersion())));
                     break;
 
                 case "requeue":
                     if (positionals.Count != 2 || !flags.TryGetValue("project", out var jobsRequeueProject))
                         return Usage("Usage: motif jobs requeue <jobId> --project <fwdata> [--json]", asJson);
-                    result = JobCommands.Requeue(jobsRequeueProject, positionals[1], CliProductVersion(), asJson);
+                    result = RenderCommand(JobCommands.Requeue(
+                        new RequeueJobRequest(jobsRequeueProject, positionals[1], CliProductVersion())));
                     if (result.ExitCode == 0) RunnerKick.After();
                     break;
 
@@ -560,8 +583,8 @@ try
                     var jobsMoveTarget = hasBefore ? JobMoveTarget.Before(jobsMoveBefore!)
                         : hasToTop ? JobMoveTarget.ToTop()
                         : JobMoveTarget.ToBottom();
-                    result = JobCommands.Move(jobsMoveProject, positionals[1], CliProductVersion(),
-                        jobsMoveTarget, asJson);
+                    result = RenderCommand(JobCommands.Move(new MoveJobRequest(
+                        jobsMoveProject, positionals[1], CliProductVersion(), jobsMoveTarget)));
                     break;
 
                 default:

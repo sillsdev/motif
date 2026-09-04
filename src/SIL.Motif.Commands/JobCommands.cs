@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
@@ -14,7 +15,6 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Projection;
-using SIL.Motif.Projection.Rendering;
 using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
@@ -48,196 +48,189 @@ public static class JobCommands
 
     private static readonly TimeSpan WaitPollInterval = TimeSpan.FromMilliseconds(200);
 
-    /// <summary>Queues a Baseline refresh for one project and prints the job id that names it.</summary>
-    public static CommandResult EnqueueBaselineRefresh(string fwDataPath, string productVersion)
+    /// <summary>Queues a Baseline refresh for one project and returns the job id that names it.</summary>
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueBaselineRefresh(EnqueueBaselineRefreshRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
-            var created = jobs.Create(jobId, ProjectWorkspaceKey.Compute(project), BaselineRefreshKind,
-                "{}", DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
-            return new CommandResult(0, created.JobId + Environment.NewLine);
+            var workspaceKey = ProjectWorkspaceKey.Compute(project);
+            var created = jobs.Create(jobId, workspaceKey, BaselineRefreshKind,
+                "{}", NowStamp());
+            return CommandOutcome<JobEnqueuedResponse>.Success(
+                new JobEnqueuedResponse(created.JobId, BaselineRefreshKind, workspaceKey));
         });
     }
 
     /// <summary>
     /// Loads and validates the named Proposal through the same <see cref="ProposalRepository.GetFinalized"/>
     /// path <c>show</c> and <c>apply</c> use, refusing before any row is queued when it is absent or
-    /// inconsistent, then queues a Dry Run job and prints the job id that names it.
+    /// inconsistent, then queues a Dry Run job and returns the job id that names it.
     /// </summary>
-    public static CommandResult EnqueueDryRun(string fwDataPath, string productVersion, string proposalId,
-        UsageLog? usage = null)
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueDryRun(
+        EnqueueDryRunRequest request, UsageLog? usage = null)
     {
         usage?.Record(DryRunKind,
             new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("proposalId") });
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
             ProposalRecord record;
             try
             {
-                var id = ProposalCommands.NormalizeId(proposalId);
+                var id = ProposalCommands.NormalizeId(request.ProposalId);
                 (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
             }
             catch (Exception exception)
             {
-                return ProposalCommands.RefuseProposalLoad(exception);
+                return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
 
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
-            var created = jobs.Create(jobId, ProjectWorkspaceKey.Compute(project), DryRunKind,
-                record.ProposalJson!, DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
-            return new CommandResult(0, created.JobId + Environment.NewLine);
+            var workspaceKey = ProjectWorkspaceKey.Compute(project);
+            var created = jobs.Create(jobId, workspaceKey, DryRunKind, record.ProposalJson!, NowStamp());
+            return CommandOutcome<JobEnqueuedResponse>.Success(
+                new JobEnqueuedResponse(created.JobId, DryRunKind, workspaceKey));
         });
     }
 
     /// <summary>
     /// Loads one Proposal — a committed revision or an uncommitted Draft, either resolves — through
     /// <see cref="ProposalRepository.Get"/>, refusing before any row is queued when it is absent, then
-    /// queues a Trial job and prints the job id that names it.
+    /// queues a Trial job and returns the job id that names it.
     /// </summary>
-    public static CommandResult EnqueueTrial(string fwDataPath, string productVersion, string proposalId,
-        string? scope = null, UsageLog? usage = null)
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request, UsageLog? usage = null)
     {
         usage?.Record(TrialKind,
             new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("proposalId") });
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
             ProposalRecord record;
             try
             {
-                var id = ProposalCommands.NormalizeId(proposalId);
+                var id = ProposalCommands.NormalizeId(request.ProposalId);
                 record = repository.Get(CanonicalId.Parse(id));
             }
             catch (Exception exception)
             {
-                return ProposalCommands.RefuseProposalLoad(exception);
+                return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
 
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
+            var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var inputJson = JsonSerializer.Serialize(
-                new TrialJobInput(record.ProposalJson!, scope), MotifJson.CreateOptions());
-            var created = jobs.Create(jobId, ProjectWorkspaceKey.Compute(project), TrialKind,
-                inputJson, DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
-            return new CommandResult(0, created.JobId + Environment.NewLine);
+                new TrialJobInput(record.ProposalJson!, request.Scope), MotifJson.CreateOptions());
+            var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
+            return CommandOutcome<JobEnqueuedResponse>.Success(
+                new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         });
     }
 
     /// <summary>
     /// Polls one Dry Run job until it reaches a terminal state, binds the published anchor onto the
-    /// Proposal exactly as the in-process verb used to (so <c>apply</c> keeps working), and renders it.
-    /// A job still not terminal when <paramref name="timeout"/> elapses is reported as its own distinct
-    /// refusal rather than as though the Dry Run had failed.
+    /// Proposal exactly as the in-process verb used to (so <c>apply</c> keeps working), and returns it.
+    /// A job still not terminal when <see cref="WaitForDryRunRequest.Timeout"/> elapses is reported as its
+    /// own distinct refusal rather than as though the Dry Run had failed.
     /// </summary>
-    public static CommandResult WaitForDryRun(string fwDataPath, string productVersion, string proposalId,
-        string jobId, bool asJson, TimeSpan timeout)
+    public static CommandOutcome<DryRunProjection> WaitForDryRun(WaitForDryRunRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             var jobs = new JobRepository(database);
-            var deadline = DateTimeOffset.UtcNow + timeout;
+            var deadline = DateTimeOffset.UtcNow + request.Timeout;
             JobRecord? job;
             while (true)
             {
-                job = jobs.Get(jobId);
-                if (job is null)
-                    return ProjectStoreCommand.Refuse(FailureReason.NotFound,
-                        "No job '" + jobId + "' is recorded for this project.");
+                job = jobs.Get(request.JobId);
+                if (job is null) return CommandOutcome<DryRunProjection>.Refused(JobNotFound(request.JobId));
                 if (JobStateMachine.IsTerminal(job.Status)) break;
                 if (DateTimeOffset.UtcNow >= deadline)
                 {
-                    return ProjectStoreCommand.Refuse(FailureReason.Busy,
-                        "Timed out after " + timeout + " waiting for Dry Run job '" + jobId +
+                    return CommandOutcome<DryRunProjection>.Refused(new Refusal(
+                        "job.wait-timeout", FailureReason.Busy,
+                        "Timed out after " + request.Timeout + " waiting for Dry Run job '" + request.JobId +
                         "' to finish; it is still " + JobStatusJson.ToWire(job.Status) +
-                        ". Check again with 'jobs show " + jobId + " --project <fwdata>'.");
+                        ". Check again with 'jobs show " + request.JobId + " --project <fwdata>'.",
+                        Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(job.Status)))));
                 }
                 Thread.Sleep(WaitPollInterval);
             }
 
             if (job.Status != JobStatus.CompletedDryRunOnly || job.DryRunJson is null)
             {
-                return ProjectStoreCommand.Refuse(FailureReason.Refused,
-                    "Dry Run job '" + jobId + "' finished as " + JobStatusJson.ToWire(job.Status) +
-                    " rather than completing.");
+                return CommandOutcome<DryRunProjection>.Refused(new Refusal(
+                    "job.dry-run-incomplete", FailureReason.Refused,
+                    "Dry Run job '" + request.JobId + "' finished as " + JobStatusJson.ToWire(job.Status) +
+                    " rather than completing.",
+                    Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(job.Status)))));
             }
 
             var repository = new ProposalRepository(database);
-            var id = ProposalCommands.NormalizeId(proposalId);
+            var id = ProposalCommands.NormalizeId(request.ProposalId);
             var canonicalId = CanonicalId.Parse(id);
             var dryRun = ParsePublishedDryRun(job.DryRunJson);
 
             // Persist the bound-DryRun anchor (docs/adr/0004 decision 3): apply requires it present and unmoved.
             repository.SetAnchor(canonicalId, JsonSerializer.Serialize(dryRun.Anchor));
 
-            var projection = DryRunProjectionBuilder.Build(id, dryRun);
-            return asJson
-                ? new CommandResult(0, ProjectionJson.Serialize(projection) + Environment.NewLine)
-                : new CommandResult(0, CommandTextRenderer.Render(projection));
+            return CommandOutcome<DryRunProjection>.Success(DryRunProjectionBuilder.Build(id, dryRun));
         });
     }
 
     /// <summary>
-    /// Polls one job until it reaches a terminal state, then renders it exactly as <see cref="Show"/>
+    /// Polls one job until it reaches a terminal state, then returns it exactly as <see cref="Show"/>
     /// does — used by verbs, such as <c>trial</c>, whose completion has no Dry-Run-specific anchor to
     /// bind and so needs no projection of its own beyond the job's own terminal status.
     /// </summary>
-    public static CommandResult WaitForJob(string fwDataPath, string jobId, string productVersion, bool asJson,
-        TimeSpan timeout)
+    public static CommandOutcome<JobStatusResponse> WaitForJob(WaitForJobRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var jobs = new JobRepository(database);
-            var deadline = DateTimeOffset.UtcNow + timeout;
+            var deadline = DateTimeOffset.UtcNow + request.Timeout;
             JobRecord? job;
             while (true)
             {
-                job = jobs.Get(jobId);
-                if (job is null)
-                    return ProjectStoreCommand.Refuse(FailureReason.NotFound,
-                        "No job '" + jobId + "' is recorded for this project.");
+                job = jobs.Get(request.JobId);
+                if (job is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
                 if (JobStateMachine.IsTerminal(job.Status)) break;
                 if (DateTimeOffset.UtcNow >= deadline)
                 {
-                    return ProjectStoreCommand.Refuse(FailureReason.Busy,
-                        "Timed out after " + timeout + " waiting for job '" + jobId +
+                    return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                        "job.wait-timeout", FailureReason.Busy,
+                        "Timed out after " + request.Timeout + " waiting for job '" + request.JobId +
                         "' to finish; it is still " + JobStatusJson.ToWire(job.Status) +
-                        ". Check again with 'jobs show " + jobId + " --project <fwdata>'.");
+                        ". Check again with 'jobs show " + request.JobId + " --project <fwdata>'.",
+                        Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(job.Status)))));
                 }
                 Thread.Sleep(WaitPollInterval);
             }
 
-            var response = new JobStatusResponse(job.JobId, job.ProjectKey, true, job.Kind, job.Status,
-                job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory, job.Version);
-            return new CommandResult(0, asJson
-                ? ProjectionJson.Serialize(response) + Environment.NewLine
-                : Render(response));
+            return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(job.JobId, job.ProjectKey, true,
+                job.Kind, job.Status, job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory,
+                job.Version));
         });
     }
 
     /// <summary>Reports what the durable store currently says about one job.</summary>
-    public static CommandResult Show(string fwDataPath, string jobId, string productVersion, bool asJson)
+    public static CommandOutcome<JobStatusResponse> Show(ShowJobRequest request)
     {
-        if (string.IsNullOrWhiteSpace(jobId))
-            return ProjectStoreCommand.Refuse(FailureReason.InvalidArgument, "A job id is required.");
+        if (string.IsNullOrWhiteSpace(request.JobId))
+            return CommandOutcome<JobStatusResponse>.Refused(JobIdRequired());
 
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
-            var entry = new JobRepository(database).GetWithQueueOrder(jobId);
-            if (entry is null)
-                return ProjectStoreCommand.Refuse(FailureReason.NotFound,
-                    "No job '" + jobId + "' is recorded for this project.");
+            var entry = new JobRepository(database).GetWithQueueOrder(request.JobId);
+            if (entry is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
 
             var job = entry.Value.Job;
-            var response = new JobStatusResponse(job.JobId, job.ProjectKey, true, job.Kind, job.Status,
-                job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory, job.Version,
-                entry.Value.QueueOrder);
-            return new CommandResult(0, asJson
-                ? ProjectionJson.Serialize(response) + Environment.NewLine
-                : Render(response));
+            return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(job.JobId, job.ProjectKey, true,
+                job.Kind, job.Status, job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory,
+                job.Version, entry.Value.QueueOrder));
         });
     }
 
@@ -247,26 +240,26 @@ public static class JobCommands
     /// Trial recorded on its own outcome and looks each one up, rather than re-deriving them from the job's
     /// input.
     /// </summary>
-    public static CommandResult Assessments(string fwDataPath, string jobId, string productVersion, bool asJson)
+    public static CommandOutcome<JobAssessmentsResponse> Assessments(JobAssessmentsRequest request)
     {
-        if (string.IsNullOrWhiteSpace(jobId))
-            return ProjectStoreCommand.Refuse(FailureReason.InvalidArgument, "A job id is required.");
+        if (string.IsNullOrWhiteSpace(request.JobId))
+            return CommandOutcome<JobAssessmentsResponse>.Refused(JobIdRequired());
 
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
-            var job = new JobRepository(database).Get(jobId);
-            if (job is null)
-                return ProjectStoreCommand.Refuse(FailureReason.NotFound,
-                    "No job '" + jobId + "' is recorded for this project.");
+            var job = new JobRepository(database).Get(request.JobId);
+            if (job is null) return CommandOutcome<JobAssessmentsResponse>.Refused(JobNotFound(request.JobId));
 
             var assessmentIds = TryReadAssessmentIds(job.ResultJson);
             if (assessmentIds is null)
             {
-                return ProjectStoreCommand.Refuse(FailureReason.Refused,
-                    "Job '" + jobId + "' recorded no Assessments" +
+                return CommandOutcome<JobAssessmentsResponse>.Refused(new Refusal(
+                    "job.no-assessments", FailureReason.Refused,
+                    "Job '" + request.JobId + "' recorded no Assessments" +
                     (JobStateMachine.IsTerminal(job.Status)
                         ? "."
-                        : "; it is still " + JobStatusJson.ToWire(job.Status) + "."));
+                        : "; it is still " + JobStatusJson.ToWire(job.Status) + "."),
+                    Fact(("jobId", request.JobId))));
             }
 
             var repository = new AssessmentRepository(database);
@@ -274,10 +267,8 @@ public static class JobCommands
                 .Select(repository.Get)
                 .Select(record => new JobAssessmentSummary(record.AssessmentId, record.Assessor, record.Kind, record.SavedUtc))
                 .ToArray();
-            var response = new JobAssessmentsResponse(jobId, summaries);
-            return new CommandResult(0, asJson
-                ? ProjectionJson.Serialize(response) + Environment.NewLine
-                : RenderAssessments(response));
+            return CommandOutcome<JobAssessmentsResponse>.Success(
+                new JobAssessmentsResponse(request.JobId, summaries));
         });
     }
 
@@ -299,91 +290,70 @@ public static class JobCommands
         }
     }
 
-    private static string RenderAssessments(JobAssessmentsResponse response)
-    {
-        var text = new StringBuilder();
-        text.AppendLine("Job " + response.JobId);
-        if (response.Assessments.Count == 0)
-        {
-            text.AppendLine("  No Assessments.");
-            return text.ToString();
-        }
-        foreach (var assessment in response.Assessments)
-        {
-            text.AppendLine("  " + assessment.AssessmentId + "  " + assessment.Assessor + "  " +
-                assessment.Kind + "  " + assessment.SavedUtc);
-        }
-        return text.ToString();
-    }
-
     /// <summary>
     /// Cancels one job. A job still queued (or parked waiting for a Baseline or the project host) is
     /// moved straight to <c>cancelled</c> — nothing is running it, so no runner is needed. A running job
     /// only has its cancellation flag set; the runner that holds it reads the flag on its own heartbeat
     /// and cancels the handler's token from there, landing in the same terminal state.
     /// </summary>
-    public static CommandResult Cancel(string fwDataPath, string jobId, string productVersion, bool asJson)
+    public static CommandOutcome<JobStatusResponse> Cancel(CancelJobRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var jobs = new JobRepository(database);
-            var current = jobs.Get(jobId);
-            if (current is null)
-                return ProjectStoreCommand.Refuse(FailureReason.NotFound,
-                    "No job '" + jobId + "' is recorded for this project.");
+            var current = jobs.Get(request.JobId);
+            if (current is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
             if (JobStateMachine.IsTerminal(current.Status))
-                return ProjectStoreCommand.Refuse(FailureReason.Refused,
-                    "Job '" + jobId + "' already finished as " + JobStatusJson.ToWire(current.Status) +
-                    "; there is nothing to cancel.");
+            {
+                return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                    "job.already-finished", FailureReason.Refused,
+                    "Job '" + request.JobId + "' already finished as " + JobStatusJson.ToWire(current.Status) +
+                    "; there is nothing to cancel.",
+                    Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(current.Status)))));
+            }
 
             var changed = current.Status == JobStatus.Running
-                ? jobs.RequestCancellation(jobId, current.Version)
-                : jobs.Transition(jobId, JobStatus.Cancelled, current.Version, JobFailureCategory.Cancellation);
+                ? jobs.RequestCancellation(request.JobId, current.Version)
+                : jobs.Transition(request.JobId, JobStatus.Cancelled, current.Version, JobFailureCategory.Cancellation);
 
-            var response = new JobStatusResponse(changed.JobId, changed.ProjectKey, true, changed.Kind,
-                changed.Status, changed.Attempt, changed.UpdatedUtc, changed.CancellationRequested,
-                changed.FailureCategory, changed.Version);
-            return new CommandResult(0, asJson
-                ? ProjectionJson.Serialize(response) + Environment.NewLine
-                : Render(response));
+            return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(changed.JobId, changed.ProjectKey,
+                true, changed.Kind, changed.Status, changed.Attempt, changed.UpdatedUtc,
+                changed.CancellationRequested, changed.FailureCategory, changed.Version));
         });
     }
 
     /// <summary>Starts a fresh attempt of a terminal job's lineage, claimable exactly like a new job.</summary>
-    public static CommandResult Requeue(string fwDataPath, string jobId, string productVersion, bool asJson)
+    public static CommandOutcome<JobStatusResponse> Requeue(RequeueJobRequest request)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var jobs = new JobRepository(database);
-            var current = jobs.Get(jobId);
-            if (current is null)
-                return ProjectStoreCommand.Refuse(FailureReason.NotFound,
-                    "No job '" + jobId + "' is recorded for this project.");
+            var current = jobs.Get(request.JobId);
+            if (current is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
             if (!JobStateMachine.IsTerminal(current.Status))
-                return ProjectStoreCommand.Refuse(FailureReason.Refused,
-                    "Job '" + jobId + "' is still " + JobStatusJson.ToWire(current.Status) +
-                    "; only a finished job can be requeued.");
+            {
+                return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                    "job.not-finished", FailureReason.Refused,
+                    "Job '" + request.JobId + "' is still " + JobStatusJson.ToWire(current.Status) +
+                    "; only a finished job can be requeued.",
+                    Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(current.Status)))));
+            }
 
-            var retried = jobs.Retry(jobId, current.Version);
-            var response = new JobStatusResponse(retried.JobId, retried.ProjectKey, true, retried.Kind,
-                retried.Status, retried.Attempt, retried.UpdatedUtc, retried.CancellationRequested,
-                retried.FailureCategory, retried.Version);
-            return new CommandResult(0, asJson
-                ? ProjectionJson.Serialize(response) + Environment.NewLine
-                : Render(response));
+            var retried = jobs.Retry(request.JobId, current.Version);
+            return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(retried.JobId, retried.ProjectKey,
+                true, retried.Kind, retried.Status, retried.Attempt, retried.UpdatedUtc,
+                retried.CancellationRequested, retried.FailureCategory, retried.Version));
         });
     }
 
     /// <summary>Every active job across every Known project, in the order <see cref="JobClaims.Claim"/> takes it.</summary>
-    public static CommandResult ListAll(string productVersion, bool asJson)
+    public static CommandOutcome<JobQueueListResponse> ListAll(ListActiveJobsRequest request)
     {
-        var entries = ReadGlobalActiveQueue(productVersion);
-        var response = new JobQueueListResponse(entries.Select(entry => new JobQueueEntryResponse(
-            entry.Job.JobId, entry.Job.ProjectKey, entry.Project.FullFwDataPath, entry.Job.Kind,
-            entry.Job.Status, entry.Job.Attempt, entry.Job.UpdatedUtc, entry.QueueOrder)).ToArray());
-        return new CommandResult(0, asJson
-            ? ProjectionJson.Serialize(response) + Environment.NewLine
-            : RenderQueueList(response));
+        var entries = ReadGlobalActiveQueue(request.ProductVersion);
+        return CommandOutcome<JobQueueListResponse>.Success(new JobQueueListResponse(entries.Select(entry =>
+            new JobQueueEntryResponse(entry.Job.JobId, entry.Job.ProjectKey, entry.Project.FullFwDataPath,
+                entry.Job.Kind, entry.Job.Status, entry.Job.Attempt, entry.Job.UpdatedUtc, entry.QueueOrder))
+            .ToArray()));
     }
 
     /// <summary>
@@ -399,28 +369,34 @@ public static class JobCommands
     /// the target, ahead of the whole tied run, satisfies "before target" without needing to touch the
     /// predecessor's row at all.
     /// </remarks>
-    public static CommandResult Move(string fwDataPath, string jobId, string productVersion,
-        JobMoveTarget target, bool asJson)
+    public static CommandOutcome<JobStatusResponse> Move(MoveJobRequest request)
     {
-        if (target.Kind == JobMoveKind.Before && string.Equals(target.BeforeJobId, jobId, StringComparison.Ordinal))
-            return ProjectStoreCommand.Refuse(FailureReason.InvalidArgument, "A job cannot be moved before itself.");
+        if (request.Target.Kind == JobMoveKind.Before &&
+            string.Equals(request.Target.BeforeJobId, request.JobId, StringComparison.Ordinal))
+        {
+            return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                "job.invalid-move", FailureReason.InvalidArgument, "A job cannot be moved before itself.",
+                Fact(("jobId", request.JobId))));
+        }
 
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var jobs = new JobRepository(database);
-            var mover = jobs.GetWithQueueOrder(jobId);
-            if (mover is null)
-                return ProjectStoreCommand.Refuse(FailureReason.NotFound,
-                    "No job '" + jobId + "' is recorded for this project.");
+            var mover = jobs.GetWithQueueOrder(request.JobId);
+            if (mover is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
             if (JobStateMachine.IsTerminal(mover.Value.Job.Status))
-                return ProjectStoreCommand.Refuse(FailureReason.Refused,
-                    "Job '" + jobId + "' already finished; a terminal job's position cannot be changed.");
+            {
+                return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                    "job.already-finished", FailureReason.Refused,
+                    "Job '" + request.JobId + "' already finished; a terminal job's position cannot be changed.",
+                    Fact(("jobId", request.JobId))));
+            }
 
-            var others = ReadGlobalActiveQueue(productVersion)
-                .Where(entry => !string.Equals(entry.Job.JobId, jobId, StringComparison.Ordinal)).ToArray();
+            var others = ReadGlobalActiveQueue(request.ProductVersion)
+                .Where(entry => !string.Equals(entry.Job.JobId, request.JobId, StringComparison.Ordinal)).ToArray();
 
             double newOrder;
-            switch (target.Kind)
+            switch (request.Target.Kind)
             {
                 case JobMoveKind.ToTop:
                     newOrder = others.Length == 0 ? mover.Value.QueueOrder : others[0].QueueOrder - 1.0;
@@ -430,21 +406,22 @@ public static class JobCommands
                     break;
                 default:
                     var targetIndex = Array.FindIndex(others,
-                        entry => string.Equals(entry.Job.JobId, target.BeforeJobId, StringComparison.Ordinal));
+                        entry => string.Equals(entry.Job.JobId, request.Target.BeforeJobId, StringComparison.Ordinal));
                     if (targetIndex < 0)
-                        return ProjectStoreCommand.Refuse(FailureReason.NotFound,
-                            "No active job '" + target.BeforeJobId + "' is recorded to move before.");
+                    {
+                        return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                            "job.move-target-not-found", FailureReason.NotFound,
+                            "No active job '" + request.Target.BeforeJobId + "' is recorded to move before.",
+                            Fact(("jobId", request.Target.BeforeJobId))));
+                    }
                     newOrder = QueueOrderBefore(others, targetIndex);
                     break;
             }
 
-            var moved = jobs.SetQueueOrder(jobId, newOrder, mover.Value.Job.Version, NowStamp());
-            var response = new JobStatusResponse(moved.JobId, moved.ProjectKey, true, moved.Kind, moved.Status,
-                moved.Attempt, moved.UpdatedUtc, moved.CancellationRequested, moved.FailureCategory,
-                moved.Version, newOrder);
-            return new CommandResult(0, asJson
-                ? ProjectionJson.Serialize(response) + Environment.NewLine
-                : Render(response));
+            var moved = jobs.SetQueueOrder(request.JobId, newOrder, mover.Value.Job.Version, NowStamp());
+            return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(moved.JobId, moved.ProjectKey,
+                true, moved.Kind, moved.Status, moved.Attempt, moved.UpdatedUtc, moved.CancellationRequested,
+                moved.FailureCategory, moved.Version, newOrder));
         });
     }
 
@@ -493,34 +470,21 @@ public static class JobCommands
     private static string NowStamp() =>
         DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
 
-    private static string Render(JobStatusResponse response)
-    {
-        var text = new StringBuilder();
-        text.AppendLine("Job " + response.JobId);
-        text.AppendLine("  Kind:    " + response.Kind);
-        text.AppendLine("  Status:  " + response.Status);
-        text.AppendLine("  Attempt: " + response.Attempt);
-        text.AppendLine("  Updated: " + response.UpdatedUtc);
-        if (response.QueueOrder is { } queueOrder)
-            text.AppendLine("  Queue order: " + queueOrder.ToString("R"));
-        return text.ToString();
-    }
+    private static Refusal JobNotFound(string jobId) =>
+        new("job.not-found", FailureReason.NotFound,
+            "No job '" + jobId + "' is recorded for this project.", Fact(("jobId", jobId)));
 
-    private static string RenderQueueList(JobQueueListResponse response)
+    private static Refusal JobIdRequired() =>
+        new("job.invalid-id", FailureReason.InvalidArgument, "A job id is required.");
+
+    private static Dictionary<string, string> Fact(params (string Key, string? Value)[] entries)
     {
-        var text = new StringBuilder();
-        if (response.Jobs.Count == 0)
+        var facts = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in entries)
         {
-            text.AppendLine("No active jobs.");
-            return text.ToString();
+            if (value is not null) facts[key] = value;
         }
-        for (var index = 0; index < response.Jobs.Count; index++)
-        {
-            var job = response.Jobs[index];
-            text.AppendLine((index + 1) + ". " + job.JobId + "  " + job.Kind + "  " +
-                JobStatusJson.ToWire(job.Status) + "  " + job.ProjectPath);
-        }
-        return text.ToString();
+        return facts;
     }
 
     /// <summary>One active job read while assembling the cross-project queue view.</summary>
