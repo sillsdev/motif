@@ -28,28 +28,40 @@ public enum FailureReason
 }
 
 /// <summary>The single object a failed command emits under <c>--json</c>.</summary>
+/// <remarks>
+/// <see cref="Code"/> is optional, on construction and on the wire, because <see cref="Reason"/> alone is
+/// enough to decide retry policy and exit code: a caller that only needs the closed class never has to
+/// supply or read a code. A consumer that wants to branch more finely than the reason reads
+/// <see cref="Code"/> when present and falls back to <see cref="Reason"/> when it is absent.
+/// </remarks>
 public sealed record FailureEnvelope
 {
     [JsonConstructor]
     public FailureEnvelope(FailureReason reason, string message,
-        IReadOnlyDictionary<string, string>? detail = null)
+        IReadOnlyDictionary<string, string>? detail = null, string? code = null)
     {
         Reason = reason;
         Message = string.IsNullOrWhiteSpace(message)
             ? throw new ArgumentException("A failure message is required.", nameof(message))
             : message;
         Detail = detail;
+        Code = code;
     }
 
     /// <summary>Always false, so a reader that captured both streams can tell them apart.</summary>
     [JsonPropertyOrder(0)] public bool Ok => false;
 
-    [JsonPropertyOrder(1)] public FailureReason Reason { get; }
+    /// <summary>The refusal's stable code, when the command that produced it had one to give.</summary>
+    [JsonPropertyOrder(1)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Code { get; }
+
+    [JsonPropertyOrder(2)] public FailureReason Reason { get; }
 
     /// <summary>The same wording a human sees, unchanged.</summary>
-    [JsonPropertyOrder(2)] public string Message { get; }
+    [JsonPropertyOrder(3)] public string Message { get; }
 
-    [JsonPropertyOrder(3)]
+    [JsonPropertyOrder(4)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyDictionary<string, string>? Detail { get; }
 

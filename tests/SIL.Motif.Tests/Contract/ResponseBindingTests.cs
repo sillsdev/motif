@@ -84,4 +84,28 @@ public sealed class ResponseBindingTests
 
         Assert.Equal("Sena 3", bound!.ProjectName);
     }
+
+    [Fact]
+    public void AFailureEnvelopeBindsAStableCodeWhenTheCommandHadOneToGive()
+    {
+        var rendered = ProjectionJson.Serialize(new FailureEnvelope(
+            FailureReason.NotFound, "Proposal proposal/absent was not found.", code: "proposal.not-found"));
+
+        Assert.Contains("\"code\"", rendered, StringComparison.Ordinal);
+        var bound = ProjectionJson.Deserialize<FailureEnvelope>(rendered);
+
+        Assert.Equal("proposal.not-found", bound!.Code);
+    }
+
+    [Fact]
+    public void AFailureEnvelopeWithNoCodeBindsFromTheShapeThatPredatesTheCommandCatalog()
+    {
+        // A consumer built before Refusal existed only ever emitted this shape; it must keep binding.
+        const string withoutCode = "{\"ok\":false,\"reason\":\"NotFound\",\"message\":\"not found\"}";
+
+        var bound = ProjectionJson.Deserialize<FailureEnvelope>(withoutCode);
+
+        Assert.Null(bound!.Code);
+        Assert.Equal(FailureReason.NotFound, bound.Reason);
+    }
 }
