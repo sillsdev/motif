@@ -262,9 +262,8 @@ product is complete.
 ([ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md), superseding
 [ADR 0040](docs/adr/0040-one-api-the-cli.md) decision 3). `SIL.Motif.Contract` keeps no LibLCM reference — a
 non-.NET runner still reads `motif --json` against it as a wire description — but that no longer requires
-building it for `netstandard2.0`, because there is no `net48` host left to satisfy it. The retarget of the
-`.csproj` files themselves is the next commit; see [AGENTS.md](AGENTS.md#compatibility-targets) for the full
-rationale.
+building it for `netstandard2.0`, because there is no `net48` host left to satisfy it. See
+[AGENTS.md](AGENTS.md#compatibility-targets) for the full rationale.
 
 All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0150`.
 

@@ -159,11 +159,10 @@ shipped artifact at one version, no shared-XML peering — are unaffected and st
 
 All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0150`.
 
-**Not yet executed as of this writing.** The `.csproj` files have not moved yet — Contract still declares
-`netstandard2.0` and carries its explicit `System.Text.Json 8.0.5` pin, and the Runner still multi-targets.
-Retargeting Contract, deleting `SIL.Motif.Contract/Compatibility/IsExternalInit.cs`, and replacing the
-Runner's stale multi-targeting comment are the next commit, tracked as their own step so this decision lands
-before the code does. Once done, no product `.csproj` in this repository should mention `netstandard2.0`.
+No product `.csproj` in this repository mentions `netstandard2.0`, and
+`CompatibilityTargetTests.EveryProductProjectTargetsOnlyNet10` fails the build if one starts to. Contract
+carries no explicit `System.Text.Json` pin either: `net10.0` supplies it, and the old pin tracked the last
+release line that still built for `netstandard2.0`.
 
 **Not yet built:** the FieldWorks-side Motif surface. A separate FieldWorks integrates by running exactly one
 CLI call, `motif apply --all-pending`, at a save boundary with the project released, and reloads afterward —
