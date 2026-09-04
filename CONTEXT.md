@@ -238,9 +238,9 @@ naming its Documents, with each one's origin and licence. It names files; it doe
 _Avoid_: import, package, archive, manifest
 
 **Handoff**:
-The folder Motif writes for a person to give to a chat model: the grammar and the Texts in PanGloss's JSON,
-the statistics from a parse run, small helper code for reading the JSON, and the instructions for reading all of
-it. Outbound, where a Corpus bundle is inbound. Motif sends nothing anywhere; the person drags the files. Also
+The folder Motif writes for a person to give to a chat model: the grammar in PanGloss's JSON, the Texts as a
+JSON mirror of FLExText, the statistics from a parse run over a Selection, one helper script for reading them, and
+the instructions for reading all of it. Outbound, where a Corpus bundle is inbound. Motif sends nothing anywhere; the person drags the files. Also
 *AI handoff* where the audience needs the qualifier.
 _Avoid_: export, bundle, package, dump, advice folder
 

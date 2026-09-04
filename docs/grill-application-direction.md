@@ -62,3 +62,26 @@ JSON uses its own camelCase names, not HC XML's, and has no texts section; Motif
 | Q8 | Catalog refactor | Question was unclear; restated in round 2. No `.fwdata` change and no Proposal in this spike |
 | Q9 | The view | **A statistics view**: choose words, run hc-rust, query the data, Baseline time, refresh |
 | Q10 | Name | **Handoff**, *AI handoff* with the qualifier. Glossary entry added |
+
+## The AI handoff — rounds 2 to 4, answered 2026-09-04
+
+| # | Question | Decision |
+| --- | --- | --- |
+| R2 Q1 | Who owns a texts format? PanGloss has none | **FLExText**, as a JSON mirror with the same names (settled in R4 Q1 after the evidence: JSON costs about 14% fewer tokens than XML with no measured comprehension cost). XML behind a flag |
+| R2 Q2 | Where the documentation lives | **This repository**, public, reached by raw URL from the instructions. The FieldWorks copies are leaving |
+| R2 Q3 | Helper code | **One Python file**, standard library only, importable or copyable; reads grammar, texts, and statistics. No PyPI |
+| R2 Q4 | Running PanGloss | **Synchronous child** of the command; the window is open while it runs |
+| R2 Q5 | Choosing words | **All four sources**: every wordform, the chosen Texts' wordforms, a pasted list, last run's failed or slow words. Saved as the Selection |
+| R2 Q6 | Engines | **hc-rust only** |
+| R2 Q7 | The store | **Yes**: Baseline and Assessment written to `Project.motif.db` through the existing paths |
+| R2 Q8 | Command layer | **Move every verb now**, one clean seam, typed Refusals and the parity test in the same pass |
+| R2 Q9 | Stats query | **Passthrough**: Motif resolves grammar and cache, forwards the rest to `pangloss stats` |
+| R2 Q10 | The window | **As proposed**, "a good 1.0" |
+| R3 Q4 | Verb name | **`assess`**, now |
+| R3 Q5 | Statistics in the folder | **Text summary plus JSONL per group** |
+| R3 Q6 | MVVM | **CommunityToolkit.Mvvm** |
+| R3 Q7 | Folder listing | **Ship it** |
+| R4 Q2 | `assess` beside `trial` | **(a)**: `assess` measures the project as it stands; `trial` stays for a Proposal |
+
+The grill is closed. The design is in
+[the AI handoff spec](superpowers/specs/2026-09-04-ai-handoff-design.md).
