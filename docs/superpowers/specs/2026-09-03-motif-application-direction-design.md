@@ -158,3 +158,17 @@ silence for a decision.
 - **Where the Avalonia work lives.** This repository, matching FieldWorks' conventions, versus a sibling.
 - **The boundary with `linguistic-assistant`.** What Motif owns of the harness, retrieval, and prompt work in
   sub-project 10, and what it consumes.
+
+## 2026-09-04 — the first slice is the AI handoff, not the shell
+
+**In plain terms:** before any of the review views are built, Motif will do the one thing with the highest
+gain and the lowest risk: take a consistent copy of a project while FieldWorks still has it open, and write
+the folder a linguist drags into ChatGPT or Claude — grammar, texts, statistics, and instructions. FieldWorks
+already offers this from inside itself; Motif offers it without FieldWorks having to do anything.
+
+Sub-project 8 moves to the front and grows a prerequisite: **capturing the saved `.fwdata` from a held
+project and proving it did not change while it was being read.** Everything else in decision 8 keeps its
+order behind it. The Proposal framework is still coming; this slice is what Motif does first.
+
+The open questions from the grill on this note, asked and not yet answered, are parked in
+[the grill record](../../grill-application-direction.md).
