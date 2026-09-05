@@ -183,14 +183,14 @@ The rest of ADR 0041 changes this contract further — every remaining verb gain
 `dry-run` becomes a job, and a set of cross-project job verbs joins the set. Those land with the tasks
 that implement them; this note records only what has already been removed.
 
-### 2026-09-05 — `baseline capture`, `assess`, and `stats` measure a project synchronously, no queue
+### 2026-09-05 — `baseline capture`, `assess`, `stats`, and `handoff` measure a project synchronously, no queue
 
-Three verbs let a caller save a project's current state and see how PanGloss parses it, in one call each,
-with nothing queued and nothing to poll. All three take the project path as a plain positional argument,
-not `--project`, and all three route failures through the same project/store refusals every verb behind
-`ProjectStoreCommand` shares: `project.not-found`, `project.invalid`, `project.busy`, `store.unsupported`,
-`store.inconsistent`. Exit codes for every refusal code named below follow the table above via
-`FailureEnvelope.ExitCodeFor`; it is not restated here.
+Four verbs let a caller save a project's current state, see how PanGloss parses it, and package the result
+for a person or an AI agent to read — in one call each, with nothing queued and nothing to poll. All four
+take the project path as a plain positional argument, not `--project`, and all four route failures through
+the same project/store refusals every verb behind `ProjectStoreCommand` shares: `project.not-found`,
+`project.invalid`, `project.busy`, `store.unsupported`, `store.inconsistent`. Exit codes for every refusal
+code named below follow the table above via `FailureEnvelope.ExitCodeFor`; it is not restated here.
 
 **`baseline capture <project> [--json]`** reads a Baseline from the project's saved `.fwdata` file on
 disk — never FieldWorks' in-memory state — copying with delete-sharing so FieldWorks may keep the project
@@ -295,6 +295,81 @@ Refusals of its own: `stats.format-conflict`, `stats.invalid-proposal-id` (a mal
 Baseline or Trial Assessment carrying per-object statistics has been recorded yet — the Baseline-case
 message directs the caller to run `motif assess` first), `stats.no-cache` (the resolved Assessment was
 recorded without a statistics cache), `stats.parser-unavailable`, `stats.cancelled`.
+
+**`handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]`** writes a
+self-explaining folder that an AI agent with no network and no package installer can read on its own: the
+grammar, the chosen Texts, the exact selection that was parsed, and — unless `--no-assess` — PanGloss's own
+statistics, alongside a reader script and reference documents the repository maintains and copies in
+unchanged. It composes `baseline capture`, `assess`, and the six `stats` groups rather than reimplementing
+any of them, and shares the same project/store refusals every verb behind `ProjectStoreCommand` does.
+Both `<project>` and `--out <folder>` are required positional/flag values; omitting either, or passing a
+`--texts` value that does not parse as a comma-separated GUID list, is a usage failure naming the verb
+before any project is even touched — pinned by `OmittingTheProjectIsAUsageFailureNamingTheVerb`,
+`OmittingOutIsAUsageFailure`, and `AnUnparseableTextsGuidListIsAUsageFailure`.
+
+With no `--texts`, every Text in the project is exported and every wordform is selected — the same "select
+everything" a bare `assess --all-wordforms` would ask for. Naming `--texts <guid,guid>` restricts the
+export to those Texts and the Selection to their words; a duplicate Text title is disambiguated by its own
+GUID in the file name, so two Texts sharing a title still produce two distinct files — pinned by
+`DuplicateTextTitlesProduceTwoDistinctFiles`. A named id that does not resolve to a Text in the project is
+skipped rather than refused, so one mistyped id does not stop every other requested Text from being
+written. Naming `--texts` with an id list that resolves to no words at all is refused as `selection.empty`
+before the destination is touched — pinned by `AnEmptySelectionRefusesWithoutTouchingTheDestination`.
+
+**Destination atomicity.** The folder is built in a sibling `.incoming-<guid>` directory next to the
+requested `--out` path, its exact listing is validated as complete, and only then is it moved into place
+with one `Directory.Move` — pinned by `AnEndToEndHandoffWritesTheExactListingAndEveryFileValidates`. A
+refusal returned during populate, or an exception thrown out of it — a cancellation, a PanGloss grammar-import
+failure — deletes the incoming directory and leaves no destination directory at all, pinned by
+`CancellationDuringGrammarImportLeavesNoDestinationDirectory` and
+`APanGlossGrammarImportFailureLeavesNoDestinationDirectory`. An existing destination that is a file, or a
+directory that is not empty, is refused as `handoff.destination-exists` without writing into it or clearing
+it — pinned by `AnExistingNonEmptyDestinationRefusesWithoutTouchingIt` — so a mistyped `--out` that happens
+to name a real folder can never erase it.
+
+**`--no-assess`** omits `statistics.md` and the whole `statistics/` directory, but still writes the grammar,
+the Texts, and `selection.txt` — pinned by `NoAssessOmitsStatisticsButStillWritesGrammarTextsAndSelection`.
+The response's `assessmentIds` is empty in this case, and human text prints `(none; --no-assess)` where the
+Assessment ids would otherwise go.
+
+**`--flextext`** additionally writes a `.flextext.xml` beside each Text's `.flextext.json` mirror, pinned by
+`FlexTextAddsMatchingXmlBesideJson`; without it only the JSON form is written.
+
+The complete listing, with `--no-assess` not given: `instructions.md`, `grammar.json`, `selection.txt`,
+`statistics.md`, `recipes.md`, `read_handoff.py`, `reference/grammar-format.md`,
+`reference/flextext-json-format.md`, `reference/hc-mechanics.md`, one
+`texts/<title>-<guid>.flextext.json` per exported Text (plus a matching `.flextext.xml` under
+`--flextext`), and **six** `statistics/<group>.jsonl` files — one per group `pangloss stats --group`
+accepts: `word`, `object`, `allomorph`, `morpheme`, `group`, and `never-fires`, the only hyphenated one.
+`--no-assess` removes `statistics.md` and the entire `statistics/` directory from that listing and changes
+nothing else.
+
+`instructions.md`, `recipes.md`, `read_handoff.py`, and the three `reference/` documents are static assets
+this repository maintains and embeds in the `motif` binary; every Handoff carries its own unchanged copy,
+which is why the folder needs neither network access nor a package installer to be read. `instructions.md`
+explains what the folder is for, states plainly that it carries real linguistic data (uploading it to a
+chat model sends that data to whoever runs the model), and names the "as of FieldWorks' last save" wording
+that governs everything inside. The three `reference/` documents are maintained in the repository at
+`docs/handoff/grammar-format.md`, `docs/handoff/flextext-json-format.md`, and `docs/handoff/hc-mechanics.md`
+— `instructions.md` points a reader at their raw GitHub URLs for a newer copy, in case a question turns on
+a detail fixed after this particular Handoff was written.
+
+Human text prints the output directory, the Baseline's last-save timestamp with the same "(as of
+FieldWorks' last save)" wording `baseline capture` and `assess` use, the Selection's word count, the total
+file count, and the recorded Assessment ids (or `(none; --no-assess)`). `--json` binds to
+`HandoffCommandResponse`: `outputDirectory`, `baseline` (a full `BaselineCaptureResponse`), `selection` (a
+`SelectionProjection`), `files` (every Handoff-relative path written, forward-slashed, in write order), and
+`assessmentIds`.
+
+Refusals of its own: `handoff.destination-exists`, `handoff.cancelled` (the run was cancelled; no
+destination directory was created), `handoff.parser-unavailable` (the `pangloss` executable could not be
+located while building the grammar importer) — plus `selection.empty`, `selection.text-not-found`, and
+every `baseline capture`/`assess` refusal above, since `handoff` composes both the same way it does `stats`.
+A mistyped project path is refused as `project.not-found` before any parser is built, the same guarantee
+`assess` makes — pinned by `AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt` (also pinned at the argv
+layer by `ANonexistentProjectRefusesTheWayEveryOtherVerbDoes`), and an existing non-empty `--out` is
+likewise refused before the project even matters — pinned by
+`AnExistingNonEmptyOutputDirectoryRefusesBeforeTheProjectEvenMatters`.
 
 ## Related
 

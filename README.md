@@ -227,7 +227,7 @@ fail-closed, derives operation metadata, and emits the implemented families. The
 - detect footprint Drift and refuse an unbound apply;
 - apply in one LibLCM unit of work, read back, persist, and record an applied marker;
 - exercise the whole flow through the `motif` CLI — `open`, `analyses`, `new`, `add-set-gloss`,
-  `finalize`, `list`, `show`, `dry-run`, `apply`, `log`, `baseline capture`, `assess`, `stats`.
+  `finalize`, `list`, `show`, `dry-run`, `apply`, `log`, `baseline capture`, `assess`, `stats`, `handoff`.
 
 The durable architecture above is not implemented yet. Today each argv invocation owns its process, Proposal
 storage is file-based, the CLI opens projects directly, and Apply does not yet use the new authorization and
@@ -278,8 +278,24 @@ Assessment resulted, passing everything written after a standalone `--` through 
 motif stats C:\path\to\project.fwdata -- --group pos
 ```
 
+`motif handoff` composes all three into one self-explaining folder that an AI agent with no network and no
+package installer can read on its own: the grammar, the chosen Texts, the exact selection that was parsed,
+and — unless `--no-assess` — PanGloss's own statistics, alongside a reader script and reference documents
+this repository maintains and copies in unchanged:
+
+```powershell
+motif handoff C:\path\to\project.fwdata --out C:\path\to\folder [--texts <guid,guid>] [--flextext] [--json]
+```
+
+The folder is built beside the requested `--out` path and moved into place only once its listing is
+complete, so a cancelled run or a PanGloss failure leaves no destination directory at all; an existing
+non-empty `--out` is refused rather than written into or cleared, so a mistyped path can never erase a real
+folder. With no `--texts`, every Text is exported and every wordform selected; `--no-assess` skips the
+statistics but still writes the grammar, the Texts, and the selection; `--flextext` additionally writes the
+FLExText XML beside each Text's JSON mirror.
+
 See [docs/cli-api.md](docs/cli-api.md) for the full flag set, JSON shapes, and refusal codes for all
-three.
+four.
 
 This is a tested control and proving surface for one operation kind, not evidence that the planned
 product is complete.
