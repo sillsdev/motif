@@ -152,7 +152,8 @@ public static class StatsCommand
 
     // PanGloss owns --format's meaning; Motif checks only for its presence, to refuse rather than override.
     private static bool ContainsFormatFlag(IReadOnlyList<string> forwardedArguments) =>
-        forwardedArguments.Any(argument => argument == "--format");
+        forwardedArguments.Any(argument =>
+            argument == "--format" || argument.StartsWith("--format=", StringComparison.Ordinal));
 
     private static IReadOnlyList<string> AppendFormatJsonl(IReadOnlyList<string> forwarded) =>
         [.. forwarded, "--format", "jsonl"];

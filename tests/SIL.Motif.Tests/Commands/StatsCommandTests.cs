@@ -140,6 +140,20 @@ public sealed class StatsCommandTests : IDisposable
         Assert.Equal("stats.format-conflict", outcome.Refusal!.Code);
     }
 
+    // The joined spelling is the same flag: missing it would append a second, contradictory --format.
+    [Fact]
+    public void JsonOutputWithAForwardedFormatWrittenWithAnEqualsSignIsAlsoRefused()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        CaptureBaseline(fwDataPath);
+        RecordAssessment(fwDataPath, proposalId: null, cachePath: "cache.sqlite");
+
+        var outcome = Run(fwDataPath, null, StatsOutputKind.JsonRows, ["--format=text"], UnreachableQuery);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("stats.format-conflict", outcome.Refusal!.Code);
+    }
+
     [Fact]
     public void AnInvalidProposalIdIsRefused()
     {
