@@ -24,9 +24,39 @@ internal static class Program
 {
     internal const string BehaviourFileName = "_fake-pangloss.json";
 
+    /// <summary>
+    /// Where the exact argv this invocation received is recorded, beside whatever this command's own
+    /// behaviour file lives beside — the same convention, so a forwarding test can read back precisely
+    /// what reached the process boundary.
+    /// </summary>
+    internal const string ArgvFileName = "_pangloss-argv.json";
+
     private static int Main(string[] args)
     {
-        if (args.Length < 4 || args[0] != "assess" || args[2] != "--report")
+        if (args.Length == 0)
+        {
+            Console.Error.WriteLine("usage: pangloss <assess|import|stats> ...");
+            return 64;
+        }
+
+        return args[0] switch
+        {
+            "assess" => RunAssess(args),
+            "import" => RunImport(args),
+            "stats" => RunStats(args),
+            _ => Unrecognised(args[0]),
+        };
+    }
+
+    private static int Unrecognised(string command)
+    {
+        Console.Error.WriteLine($"usage: pangloss <assess|import|stats> ... (got '{command}')");
+        return 64;
+    }
+
+    private static int RunAssess(string[] args)
+    {
+        if (args.Length < 4 || args[2] != "--report")
         {
             Console.Error.WriteLine("usage: pangloss assess <grammarSource> --report <path>");
             return 64;
@@ -34,7 +64,9 @@ internal static class Program
 
         var grammarSource = args[1];
         var reportPath = args[3];
-        var behaviour = Behaviour.Read(Path.GetDirectoryName(Path.GetFullPath(grammarSource)));
+        var directory = Path.GetDirectoryName(Path.GetFullPath(grammarSource));
+        RecordArgv(directory, args);
+        var behaviour = Behaviour.Read(directory);
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
 
@@ -57,6 +89,101 @@ internal static class Program
                 return behaviour.ExitCode;
         }
     }
+
+    private static int RunImport(string[] args)
+    {
+        if (args.Length != 3)
+        {
+            Console.Error.WriteLine("usage: pangloss import <fwDataPath> <grammarJsonPath>");
+            return 64;
+        }
+
+        var fwDataPath = args[1];
+        var grammarJsonPath = args[2];
+        var directory = Path.GetDirectoryName(Path.GetFullPath(fwDataPath));
+        RecordArgv(directory, args);
+        var behaviour = Behaviour.Read(directory);
+
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+
+        if (behaviour.DelayMilliseconds > 0)
+            Thread.Sleep(behaviour.DelayMilliseconds);
+
+        switch (behaviour.Mode)
+        {
+            case "noReport":
+                // Exits cleanly having written nothing: the caller must not read success from the code alone.
+                return behaviour.ExitCode;
+            case "malformedReport":
+                File.WriteAllText(grammarJsonPath, "{ this is not json");
+                return behaviour.ExitCode;
+            case "fail":
+                Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");
+                return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
+            default:
+                File.WriteAllText(grammarJsonPath, GrammarJson(behaviour));
+                return behaviour.ExitCode;
+        }
+    }
+
+    private static int RunStats(string[] args)
+    {
+        if (args.Length < 4 || args[2] != "--cache")
+        {
+            Console.Error.WriteLine("usage: pangloss stats <grammarPath> --cache <cachePath> [-- <forwarded>...]");
+            return 64;
+        }
+
+        var grammarPath = args[1];
+        var forwarded = args[4..];
+        var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
+        RecordArgv(directory, args);
+        var behaviour = Behaviour.Read(directory);
+
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+
+        if (behaviour.DelayMilliseconds > 0)
+            Thread.Sleep(behaviour.DelayMilliseconds);
+
+        if (behaviour.Mode == "fail")
+        {
+            Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");
+            return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
+        }
+
+        // Only the fake reads its own argv for a format; the Motif seam that built it never does.
+        var formatIndex = Array.IndexOf(forwarded, "--format");
+        var jsonl = formatIndex >= 0 && formatIndex + 1 < forwarded.Length
+            && forwarded[formatIndex + 1] == "jsonl";
+
+        Console.Out.Write(jsonl ? StatsJsonl(behaviour) : StatsText(behaviour));
+        return behaviour.ExitCode;
+    }
+
+    private static void RecordArgv(string? directory, string[] args)
+    {
+        if (directory is null) return;
+        File.WriteAllText(Path.Combine(directory, ArgvFileName), JsonSerializer.Serialize(args));
+    }
+
+    private static string GrammarJson(Behaviour behaviour) =>
+        JsonSerializer.Serialize(new
+        {
+            semanticDigest = behaviour.SemanticDigest,
+            sourceSha256 = behaviour.SourceSha256,
+            modelFingerprint = behaviour.ModelFingerprint,
+            rules = Array.Empty<object>(),
+        }, new JsonSerializerOptions { WriteIndented = true });
+
+    private static string StatsText(Behaviour behaviour) =>
+        "group    key             count" + Environment.NewLine +
+        $"word     {behaviour.Words[0].Word,-15} 3" + Environment.NewLine +
+        "word     beta            1" + Environment.NewLine;
+
+    private static string StatsJsonl(Behaviour behaviour) =>
+        JsonSerializer.Serialize(new { group = "word", key = behaviour.Words[0].Word, count = 3 }) +
+        Environment.NewLine +
+        JsonSerializer.Serialize(new { group = "word", key = "beta", count = 1 }) + Environment.NewLine;
 
     /// Ticks forever so a caller can prove that cancelling it actually stops the process.
     private static int Tick(string heartbeatPath)
