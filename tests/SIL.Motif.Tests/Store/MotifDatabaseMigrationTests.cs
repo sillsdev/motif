@@ -281,7 +281,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
             ["Baselines"] = ["ProjectKey|TEXT|0|1|", "ProjectIdentity|TEXT|1|0|", "SemanticSnapshotDigest|TEXT|1|0|",
                 "ProjectionVersion|TEXT|1|0|", "CapturedUtc|TEXT|1|0|", "BundleDigest|TEXT|1|0|",
                 "CapturedHostSessionId|TEXT|0|0|", "CapturedEditGeneration|INTEGER|0|0|", "RootDirectory|TEXT|1|0|",
-                "FwDataPath|TEXT|1|0|", "PublishedUtc|TEXT|1|0|"]
+                "FwDataPath|TEXT|1|0|", "PublishedUtc|TEXT|1|0|", "SourceLastWriteUtc|TEXT|1|0|"]
         };
         foreach (var pair in expected)
         {

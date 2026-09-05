@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 11;
+    public const int CurrentSchema = 12;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -355,7 +355,8 @@ public static class MotifSchema
             C("SemanticSnapshotDigest", "TEXT", true), C("ProjectionVersion", "TEXT", true),
             C("CapturedUtc", "TEXT", true), C("BundleDigest", "TEXT", true),
             C("CapturedHostSessionId", "TEXT"), C("CapturedEditGeneration", "INTEGER"),
-            C("RootDirectory", "TEXT", true), C("FwDataPath", "TEXT", true), C("PublishedUtc", "TEXT", true)],
+            C("RootDirectory", "TEXT", true), C("FwDataPath", "TEXT", true), C("PublishedUtc", "TEXT", true),
+            C("SourceLastWriteUtc", "TEXT", true)],
         _ => throw new InvalidDataException($"Motif table {table} is not registered.")
     };
 
@@ -586,6 +587,7 @@ public static class MotifSchema
             RootDirectory TEXT NOT NULL,
             FwDataPath TEXT NOT NULL,
             PublishedUtc TEXT NOT NULL,
+            SourceLastWriteUtc TEXT NOT NULL,
             CHECK ((CapturedHostSessionId IS NULL) = (CapturedEditGeneration IS NULL)),
             CHECK (CapturedEditGeneration IS NULL OR CapturedEditGeneration >= 0)
         );

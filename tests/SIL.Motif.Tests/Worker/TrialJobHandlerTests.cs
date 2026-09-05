@@ -94,7 +94,7 @@ public sealed class TrialJobHandlerTests : IDisposable
             "2026-08-29T00:00:00Z", "sha256:" + new string('b', 64));
         _baselines.Record(ProjectWorkspaceKey.Compute(_project),
             new BaselinePublication(_publishedRoot, fwDataPath, _token),
-            DateTimeOffset.Parse("2026-08-29T00:00:00Z"));
+            DateTimeOffset.Parse("2026-08-29T00:00:00Z"), DateTimeOffset.Parse("2026-08-29T00:00:00Z"));
     }
 
     public void Dispose()

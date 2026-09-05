@@ -10,6 +10,7 @@ internal sealed record BaselineRecord(
     BaselineToken Token,
     string RootDirectory,
     string FwDataPath,
+    DateTimeOffset SourceLastWriteUtc,
     DateTimeOffset PublishedUtc);
 
 internal sealed class BaselineRepository
@@ -31,12 +32,15 @@ internal sealed class BaselineRepository
     }
 
     public BaselineRecord Record(
-        string projectKey, BaselinePublication publication, DateTimeOffset publishedUtc)
+        string projectKey, BaselinePublication publication, DateTimeOffset publishedUtc,
+        DateTimeOffset sourceLastWriteUtc)
     {
         RequireProjectKey(projectKey);
         ArgumentNullException.ThrowIfNull(publication);
         if (publishedUtc.Offset != TimeSpan.Zero)
             throw new ArgumentException("The publication time must be UTC.", nameof(publishedUtc));
+        if (sourceLastWriteUtc.Offset != TimeSpan.Zero)
+            throw new ArgumentException("The source last-write time must be UTC.", nameof(sourceLastWriteUtc));
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
@@ -44,10 +48,11 @@ internal sealed class BaselineRepository
         command.CommandText = """
             INSERT INTO Baselines
                 (ProjectKey, ProjectIdentity, SemanticSnapshotDigest, ProjectionVersion, CapturedUtc,
-                 BundleDigest, CapturedHostSessionId, CapturedEditGeneration, RootDirectory, FwDataPath, PublishedUtc)
+                 BundleDigest, CapturedHostSessionId, CapturedEditGeneration, RootDirectory, FwDataPath, PublishedUtc,
+                 SourceLastWriteUtc)
             VALUES
                 ($project, $identity, $semantic, $projection, $captured, $bundle, $hostSession,
-                 $editGeneration, $root, $fwdata, $published)
+                 $editGeneration, $root, $fwdata, $published, $sourceLastWrite)
             ON CONFLICT(ProjectKey) DO UPDATE SET
                 ProjectIdentity = excluded.ProjectIdentity,
                 SemanticSnapshotDigest = excluded.SemanticSnapshotDigest,
@@ -58,10 +63,11 @@ internal sealed class BaselineRepository
                 CapturedEditGeneration = excluded.CapturedEditGeneration,
                 RootDirectory = excluded.RootDirectory,
                 FwDataPath = excluded.FwDataPath,
-                PublishedUtc = excluded.PublishedUtc
+                PublishedUtc = excluded.PublishedUtc,
+                SourceLastWriteUtc = excluded.SourceLastWriteUtc
             WHERE Baselines.BundleDigest <> excluded.BundleDigest;
             """;
-        AddParameters(command, projectKey, publication, publishedUtc);
+        AddParameters(command, projectKey, publication, publishedUtc, sourceLastWriteUtc);
         command.ExecuteNonQuery();
         command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
         using var reader = command.ExecuteReader();
@@ -73,7 +79,7 @@ internal sealed class BaselineRepository
     }
 
     private static void AddParameters(SqliteCommand command, string projectKey,
-        BaselinePublication publication, DateTimeOffset publishedUtc)
+        BaselinePublication publication, DateTimeOffset publishedUtc, DateTimeOffset sourceLastWriteUtc)
     {
         var token = publication.Token;
         command.Parameters.AddWithValue("$project", projectKey);
@@ -87,6 +93,8 @@ internal sealed class BaselineRepository
         command.Parameters.AddWithValue("$root", Path.GetFullPath(publication.RootDirectory));
         command.Parameters.AddWithValue("$fwdata", Path.GetFullPath(publication.FwDataPath));
         command.Parameters.AddWithValue("$published", publishedUtc.ToString("O", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$sourceLastWrite",
+            sourceLastWriteUtc.ToString("O", CultureInfo.InvariantCulture));
     }
 
     private static BaselineRecord Read(SqliteDataReader reader)
@@ -100,8 +108,12 @@ internal sealed class BaselineRepository
                 DateTimeStyles.RoundtripKind);
             if (published.Offset != TimeSpan.Zero)
                 throw new InvalidDataException("The persisted Baseline publication time is not UTC.");
+            var sourceLastWrite = DateTimeOffset.ParseExact(reader.GetString(11), "O", CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind);
+            if (sourceLastWrite.Offset != TimeSpan.Zero)
+                throw new InvalidDataException("The persisted Baseline source last-write time is not UTC.");
             return new BaselineRecord(reader.GetString(0), token, Path.GetFullPath(reader.GetString(8)),
-                Path.GetFullPath(reader.GetString(9)), published);
+                Path.GetFullPath(reader.GetString(9)), sourceLastWrite, published);
         }
         catch (InvalidDataException) { throw; }
         catch (Exception exception) when (exception is ArgumentException or FormatException or InvalidCastException or
@@ -119,5 +131,5 @@ internal sealed class BaselineRepository
 
     private const string SelectSql = "SELECT ProjectKey, ProjectIdentity, SemanticSnapshotDigest, " +
         "ProjectionVersion, CapturedUtc, BundleDigest, CapturedHostSessionId, CapturedEditGeneration, " +
-        "RootDirectory, FwDataPath, PublishedUtc FROM Baselines";
+        "RootDirectory, FwDataPath, PublishedUtc, SourceLastWriteUtc FROM Baselines";
 }

@@ -56,6 +56,32 @@ public sealed class SchemaVersionGateTests : IDisposable
     }
 
     [Fact]
+    public void ABaselinesTableWithoutSourceLastWriteUtcIsRefusedRatherThanBackfilled()
+    {
+        var path = Path.Combine(_root, "no-source-last-write.motif.db");
+        var locator = new ProjectLocator(
+            Path.Combine(_root, "no-source-last-write.fwdata"), "no-source-last-write");
+        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            // The shape this task's column replaces: no migration exists, so this must be refused outright.
+            command.CommandText = "DROP TABLE Baselines; CREATE TABLE Baselines (" +
+                "ProjectKey TEXT PRIMARY KEY, ProjectIdentity TEXT NOT NULL, " +
+                "SemanticSnapshotDigest TEXT NOT NULL, ProjectionVersion TEXT NOT NULL, " +
+                "CapturedUtc TEXT NOT NULL, BundleDigest TEXT NOT NULL, CapturedHostSessionId TEXT NULL, " +
+                "CapturedEditGeneration INTEGER NULL, RootDirectory TEXT NOT NULL, FwDataPath TEXT NOT NULL, " +
+                "PublishedUtc TEXT NOT NULL);";
+            command.ExecuteNonQuery();
+        }
+
+        var refusal = Assert.Throws<InvalidDataException>(() => MotifDatabase.OpenOwned(
+            path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.Contains("Baselines", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AddingTheLeaseGenerationDidNotRaiseTheCompatibilityFloor()
     {
         var path = Path.Combine(_root, "floor.motif.db");

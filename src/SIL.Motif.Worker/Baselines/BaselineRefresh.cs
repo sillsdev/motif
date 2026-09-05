@@ -74,7 +74,9 @@ public sealed class BaselineRefresh
                 new BaselinePublicationTarget(Path.Combine(_root, "baselines"),
                     ProjectIdentityOf(savedCache)),
                 cancellationToken).ConfigureAwait(false);
-            _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, _now());
+            // No saved-file handle exists on this live-cache path, so both timestamps share one instant.
+            var recordedUtc = _now();
+            _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, recordedUtc, recordedUtc);
             return publication.Token;
         }
         finally

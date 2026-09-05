@@ -18,12 +18,13 @@ public sealed class BaselineRepositoryTests : IDisposable
     {
         var project = Project("roundtrip");
         var path = Path.Combine(_root, "roundtrip.motif.db");
+        var sourceLastWriteUtc = DateTimeOffset.Parse("2026-08-23T11:30:00Z");
         using (var database = MotifDatabase.OpenOwned(
                    path, project, MotifSchema.CurrentSchema, new Version(1, 0)))
         {
             var repository = new BaselineRepository(database);
             repository.Record("workspace", Publication("a", "sha256:" + new string('a', 64)),
-                DateTimeOffset.Parse("2026-08-23T12:00:00Z"));
+                DateTimeOffset.Parse("2026-08-23T12:00:00Z"), sourceLastWriteUtc);
         }
 
         using var reopened = MotifDatabase.OpenOwned(
@@ -35,6 +36,11 @@ public sealed class BaselineRepositoryTests : IDisposable
         Assert.Equal("sha256:" + new string('a', 64), record.Token.BundleDigest);
         Assert.Equal(Path.Combine(_root, "a", "project.fwdata"), record.FwDataPath);
         Assert.Equal(DateTimeOffset.Parse("2026-08-23T12:00:00Z"), record.PublishedUtc);
+        Assert.Equal(sourceLastWriteUtc, record.SourceLastWriteUtc);
+        Assert.Equal(TimeSpan.Zero, record.SourceLastWriteUtc.Offset);
+        // The source last-write and capture-digest times measure different events, so pin they diverge.
+        Assert.NotEqual(DateTimeOffset.Parse(record.Token.CapturedUtc), record.SourceLastWriteUtc);
+        Assert.NotEqual(record.PublishedUtc, record.SourceLastWriteUtc);
     }
 
     [Fact]
@@ -45,15 +51,33 @@ public sealed class BaselineRepositoryTests : IDisposable
         var repository = new BaselineRepository(database);
         var first = Publication("first", "sha256:" + new string('a', 64));
         var second = Publication("second", "sha256:" + new string('b', 64));
-        repository.Record("workspace", first, DateTimeOffset.Parse("2026-08-23T12:00:00Z"));
-        repository.Record("workspace", first, DateTimeOffset.Parse("2026-08-23T13:00:00Z"));
+        repository.Record("workspace", first, DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"));
+        repository.Record("workspace", first, DateTimeOffset.Parse("2026-08-23T13:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"));
 
         Assert.Equal(DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
             repository.GetCurrent("workspace")!.PublishedUtc);
 
-        repository.Record("workspace", second, DateTimeOffset.Parse("2026-08-23T14:00:00Z"));
+        repository.Record("workspace", second, DateTimeOffset.Parse("2026-08-23T14:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T13:30:00Z"));
 
-        Assert.Equal(second.Token, repository.GetCurrent("workspace")!.Token);
+        var replaced = repository.GetCurrent("workspace")!;
+        Assert.Equal(second.Token, replaced.Token);
+        Assert.Equal(DateTimeOffset.Parse("2026-08-23T13:30:00Z"), replaced.SourceLastWriteUtc);
+    }
+
+    [Fact]
+    public void Record_RejectsANonUtcSourceLastWriteOffset()
+    {
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "offset.motif.db"), Project("offset"),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new BaselineRepository(database);
+
+        Assert.Throws<ArgumentException>(() => repository.Record("workspace",
+            Publication("offset", "sha256:" + new string('a', 64)),
+            DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            new DateTimeOffset(2026, 8, 23, 11, 0, 0, TimeSpan.FromHours(1))));
     }
 
     public void Dispose()
