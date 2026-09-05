@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
@@ -27,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\SIL.Motif.App\SIL.Motif.App.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Host\SIL.Motif.Host.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />
