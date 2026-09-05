@@ -56,7 +56,7 @@ public sealed class DraftOperation
     /// <c>createLexemeForm</c>). <c>null</c> for operations that do not mint a new entity.
     /// Round-tripped through <c>reopen</c>/<c>finalize</c> so a later operation that <c>target</c>s
     /// this id keeps resolving to "created earlier in this Proposal" — and so the removal
-    /// analysis (<see cref="SIL.Motif.Cli.OperationDependencyGraph"/>) can find it.
+    /// analysis (<see cref="SIL.Motif.Commands.OperationDependencyGraph"/>) can find it.
     /// </summary>
     public string? EntityId { get; set; }
 

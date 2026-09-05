@@ -636,14 +636,11 @@ static int Usage(string message, bool asJson = false, bool withUsageBanner = fal
     return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
 }
 
-static string ConfigUsage() => "Usage: motif config show --project <fwdata> [--json]";
+static string ConfigUsage() => UsageLineFor("config show");
 
-static string ReportUsage() =>
-    "Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] " +
-    "[--text <t>] [--json] OR motif report --list-kinds [--json]";
+static string ReportUsage() => UsageLineFor("report");
 
-static string CompareUsage() =>
-    "Usage: motif compare --project <fwdata> --from <assessmentId> --to <assessmentId> [--json]";
+static string CompareUsage() => UsageLineFor("compare");
 
 static string JobsUsage() =>
     "Usage: motif jobs show <jobId> --project <fwdata> [--json] OR " +
@@ -651,8 +648,18 @@ static string JobsUsage() =>
     "motif jobs cancel <jobId> --project <fwdata> [--json] OR motif jobs requeue <jobId> --project <fwdata> " +
     "[--json] OR " + JobsMoveUsage();
 
-static string JobsMoveUsage() =>
-    "motif jobs move <jobId> --project <fwdata> (--before <jobId> | --to-top | --to-bottom) [--json]";
+static string JobsMoveUsage() => UsageLineFor("jobs move");
+
+/// <summary>The one printed usage line CliVerbCatalog holds for a catalogued command name.</summary>
+static string UsageLineFor(string commandName)
+{
+    foreach (var verb in CliVerbCatalog.All)
+    {
+        if (verb.CommandName == commandName && verb.UsageLines.Count > 0)
+            return verb.UsageLines[0];
+    }
+    throw new InvalidOperationException($"No usage line catalogued for '{commandName}'.");
+}
 
 static string AnalysesUsage() =>
     "Usage: motif analyses --project <fwdata> [--json] OR motif analyses --project <fwdata> " +
@@ -663,80 +670,32 @@ static void PrintUsage(TextWriter writer)
 {
     writer.WriteLine("Usage: motif <command> [options]");
     writer.WriteLine();
-    writer.WriteLine("Commands:");
-    writer.WriteLine("  open <fwdata> [--json]");
-    writer.WriteLine("  analyses --project <fwdata> [--json]");
-    writer.WriteLine(
-        "  analyses --project <fwdata> --assessment <assessmentId> --current-selection-sha256 <sha256> " +
-        "--current-grammar-sha256 <sha256> [--json]");
-    writer.WriteLine("  new --project <fwdata> --draft <name> [--label <text>]");
-    writer.WriteLine(
-        "  add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> --text <text> " +
-        "[--depends-on <opId>[,<opId>...]]");
-    writer.WriteLine("  add-delete-lexeme-form --project <fwdata> --draft <name> --target <canonicalId>");
-    writer.WriteLine(
-        "  compose-author-lexeme-form --draft <name> --project <fwdata> --intent " +
-        "'{\"entry\":...,\"morphType\":...,\"ws\":...,\"text\":...}'");
-    writer.WriteLine(
-        "  compose-author-feature-structure --draft <name> --project <fwdata> --intent '{\"msa\":...}'");
-    writer.WriteLine(
-        "  promote-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> --text <text> " +
-        "--corpus <corpusId> [--document <docId>]");
-    writer.WriteLine("  label --project <fwdata> --draft <name> <text>");
-    writer.WriteLine("  comment --project <fwdata> --draft <name> <text>");
-    writer.WriteLine("  finalize --project <fwdata> --draft <name>");
-    writer.WriteLine("  discard-draft --project <fwdata> --draft <name>");
-    writer.WriteLine("  reopen --project <fwdata> --draft <name> <proposalId>");
-    writer.WriteLine("  duplicate --project <fwdata> --draft <newName> <proposalId>");
-    writer.WriteLine(
-        "  remove-operations --project <fwdata> --draft <name> <operationId> [<operationId>...] [--force]");
-    writer.WriteLine(
-        "  split --project <fwdata> <proposalId> <draftName>=<opId>[,<opId>...] " +
-        "[<draftName>=<opId>[,<opId>...] ...] [--force]");
-    writer.WriteLine("  defer --project <fwdata> <proposalId>");
-    writer.WriteLine("  reject --project <fwdata> <proposalId>");
-    writer.WriteLine("  supersede --project <fwdata> <proposalId> <supersededByProposalId>");
-    writer.WriteLine("  list --project <fwdata> [--json]");
-    writer.WriteLine("  show --project <fwdata> <proposalId> [--json]");
-    writer.WriteLine("  dry-run --project <fwdata> <proposalId> [--wait] [--json]");
-    writer.WriteLine("  trial --project <fwdata> <proposalId> [--scope <name>] [--wait] [--json]");
-    writer.WriteLine("  apply <proposalId> --project <fwdata> --user <name> [--force] [--json]");
-    writer.WriteLine("  log --project <fwdata> [--json]");
-    writer.WriteLine();
-    writer.WriteLine("Configuration (the declared Assessment scopes and policy beside the project):");
-    writer.WriteLine("  " + ConfigUsage());
-    writer.WriteLine();
-    writer.WriteLine("Reports (a presentation of an Assessment's stored evidence; --kind is a registry):");
-    writer.WriteLine("  " + ReportUsage());
-    writer.WriteLine();
-    writer.WriteLine("Comparison (joins two Assessments on the word; stores and prints the difference):");
-    writer.WriteLine("  " + CompareUsage());
-    writer.WriteLine();
-    writer.WriteLine("Corpus (text Motif measures against; never part of the FieldWorks project):");
-    writer.WriteLine(
-        "  add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> " +
-        "--tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] " +
-        "[--may-derive true|false] [--may-redistribute true|false] [--may-use-commercially true|false] " +
-        "[--licence-basis <text>]");
-    writer.WriteLine(
-        "  add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> " +
-        "[--title <text>] [--licence <text>] [--may-derive true|false] [--licence-basis <text>]");
-    writer.WriteLine(
-        "  add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)");
-    writer.WriteLine("  corpora --project <fwdata> [--json]");
-    writer.WriteLine("  show-corpus --project <fwdata> <corpusId> [--json]");
-    writer.WriteLine();
-    writer.WriteLine("Jobs (the durable queue; --project selects which project's queue, except list --all):");
-    writer.WriteLine("  baseline-refresh --project <fwdata>");
-    writer.WriteLine("  jobs show <jobId> --project <fwdata> [--json]");
-    writer.WriteLine("  jobs assessments <jobId> --project <fwdata> [--json]");
-    writer.WriteLine("  jobs list --all [--json]");
-    writer.WriteLine("  jobs cancel <jobId> --project <fwdata> [--json]");
-    writer.WriteLine("  jobs requeue <jobId> --project <fwdata> [--json]");
-    writer.WriteLine("  " + JobsMoveUsage());
-    writer.WriteLine();
+    PrintSection(writer, "Commands", "Commands:");
+    PrintSection(
+        writer, "Configuration",
+        "Configuration (the declared Assessment scopes and policy beside the project):");
+    PrintSection(
+        writer, "Reports", "Reports (a presentation of an Assessment's stored evidence; --kind is a registry):");
+    PrintSection(
+        writer, "Comparison", "Comparison (joins two Assessments on the word; stores and prints the difference):");
+    PrintSection(writer, "Corpus", "Corpus (text Motif measures against; never part of the FieldWorks project):");
+    PrintSection(
+        writer, "Jobs", "Jobs (the durable queue; --project selects which project's queue, except list --all):");
     writer.WriteLine("Global options: --json  (structured output; supported by " +
         "open/analyses/list/show/dry-run/trial/apply/log/config/corpora/show-corpus/jobs/report/compare)");
+}
+
+/// <summary>Prints one usage banner section: its header, then every catalogued verb's usage line(s).</summary>
+static void PrintSection(TextWriter writer, string section, string header)
+{
+    writer.WriteLine(header);
+    foreach (var verb in CliVerbCatalog.All)
+    {
+        if (verb.Section != section) continue;
+        foreach (var line in verb.UsageLines)
+            writer.WriteLine("  " + line);
+    }
+    writer.WriteLine();
 }
 
 /// <summary>Whether the caller said anything at all about what a licence permits.</summary>

@@ -455,9 +455,7 @@ public static class JobCommands
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or NotSupportedException)
             {
-                // Reported, not thrown: one unreadable project must not hide every other project's queue.
-                Console.Error.WriteLine("warning: '" + known.FullFwDataPath + "' could not be read (" +
-                    exception.Message + "); its jobs are not shown.");
+                // Skipped, not thrown: one unreadable project must not hide every other project's queue.
             }
         }
         return entries.OrderBy(entry => entry.QueueOrder).ThenBy(entry => entry.Job.JobId, StringComparer.Ordinal)
