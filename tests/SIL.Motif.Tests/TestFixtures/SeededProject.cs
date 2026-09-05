@@ -1,5 +1,6 @@
 using SIL.LCModel;
 using SIL.LCModel.Core.Cellar;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 
@@ -53,6 +54,18 @@ public sealed record SeededProject(
 
     /// <summary>An <c>Integer</c> custom field, sharing <see cref="CustomFieldOwnerClass"/> with <see cref="NoteFieldName"/>.</summary>
     public const string PriorityFieldName = "MotifSeededPriority";
+
+    /// <summary>The analysis-language title <see cref="SeedText"/> writes onto the seeded Text.</summary>
+    public const string TextTitle = "Seeded Text";
+
+    /// <summary>The vernacular surface form <see cref="SeedText"/> gives its approved analysis.</summary>
+    public const string AnalysedWordForm = "motifanalysed";
+
+    /// <summary>The vernacular surface form <see cref="SeedText"/> leaves without any chosen analysis.</summary>
+    public const string UnanalysedWordForm = "motifunanalysed";
+
+    /// <summary>The punctuation form <see cref="SeedText"/> places after the analysed word.</summary>
+    public const string PunctuationForm = ".";
 
     /// <summary>
     /// Writes the seed into <paramref name="cache"/> and returns the identity of everything it made.
@@ -111,6 +124,101 @@ public sealed record SeededProject(
             PriorityFieldFlid: priorityFlid);
     }
 
+    /// <summary>
+    /// Writes one Text into <paramref name="cache"/>: a title, two paragraphs each holding one segment,
+    /// an approved analysis (two morph bundles, in order, drawn from <paramref name="seed"/>'s two
+    /// entries) followed by a punctuation form in the first segment, and one unanalysed wordform alone
+    /// in the second. Exercises every shape <see cref="SIL.Motif.Host.Texts.InterlinearTextReader"/> must
+    /// tell apart.
+    /// </summary>
+    public static SeededText SeedText(LcmCache cache, SeededProject seed)
+    {
+        var services = cache.ServiceLocator;
+        var vernWs = cache.DefaultVernWs;
+        var analWs = cache.DefaultAnalWs;
+
+        var entryRepository = services.GetInstance<ILexEntryRepository>();
+        var firstEntry = entryRepository.GetObject(seed.FirstEntryId);
+        var secondEntry = entryRepository.GetObject(seed.SecondEntryId);
+        var pos = services.GetInstance<IPartOfSpeechRepository>().GetObject(seed.PartOfSpeechId);
+
+        IText text = null!;
+        IStTxtPara firstParagraph = null!;
+        IStTxtPara secondParagraph = null!;
+        ISegment firstSegment = null!;
+        ISegment secondSegment = null!;
+        IWfiWordform analysedWordform = null!;
+        IWfiWordform unanalysedWordform = null!;
+        IWfiAnalysis analysis = null!;
+
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            text = services.GetInstance<ITextFactory>().Create();
+            text.Name.set_String(analWs, TextTitle);
+            var contents = services.GetInstance<IStTextFactory>().Create();
+            text.ContentsOA = contents;
+
+            firstParagraph = services.GetInstance<IStTxtParaFactory>().Create();
+            contents.ParagraphsOS.Add(firstParagraph);
+            firstParagraph.Contents = TsStringUtils.MakeString($"{AnalysedWordForm}{PunctuationForm}", vernWs);
+            firstSegment = EnsureOneSegment(services, firstParagraph);
+
+            analysedWordform = services.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(AnalysedWordForm, vernWs));
+            analysis = services.GetInstance<IWfiAnalysisFactory>().Create();
+            analysedWordform.AnalysesOC.Add(analysis);
+            analysis.CategoryRA = pos;
+
+            var firstBundle = services.GetInstance<IWfiMorphBundleFactory>().Create();
+            analysis.MorphBundlesOS.Add(firstBundle);
+            firstBundle.MorphRA = firstEntry.LexemeFormOA;
+            firstBundle.MsaRA = firstEntry.MorphoSyntaxAnalysesOC.First();
+            firstBundle.SenseRA = firstEntry.SensesOS[0];
+
+            var secondBundle = services.GetInstance<IWfiMorphBundleFactory>().Create();
+            analysis.MorphBundlesOS.Add(secondBundle);
+            secondBundle.MorphRA = secondEntry.LexemeFormOA;
+            secondBundle.MsaRA = secondEntry.MorphoSyntaxAnalysesOC.First();
+            secondBundle.SenseRA = secondEntry.SensesOS[0];
+
+            cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.approves);
+            firstSegment.AnalysesRS.Add(analysis);
+
+            var punctuation = services.GetInstance<IPunctuationFormFactory>().Create();
+            punctuation.Form = TsStringUtils.MakeString(PunctuationForm, vernWs);
+            firstSegment.AnalysesRS.Add(punctuation);
+
+            secondParagraph = services.GetInstance<IStTxtParaFactory>().Create();
+            contents.ParagraphsOS.Add(secondParagraph);
+            secondParagraph.Contents = TsStringUtils.MakeString(UnanalysedWordForm, vernWs);
+            secondSegment = EnsureOneSegment(services, secondParagraph);
+
+            unanalysedWordform = services.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(UnanalysedWordForm, vernWs));
+            secondSegment.AnalysesRS.Add(unanalysedWordform);
+        });
+
+        return new SeededText(
+            TextId: text.Guid,
+            FirstParagraphId: firstParagraph.Guid,
+            SecondParagraphId: secondParagraph.Guid,
+            FirstSegmentId: firstSegment.Guid,
+            SecondSegmentId: secondSegment.Guid,
+            AnalysedWordformId: analysedWordform.Guid,
+            UnanalysedWordformId: unanalysedWordform.Guid,
+            ApprovedAnalysisId: analysis.Guid);
+    }
+
+    // Setting Contents auto-creates one spanning Segment; reuse it instead of adding a second.
+    private static ISegment EnsureOneSegment(ILcmServiceLocator services, IStTxtPara paragraph)
+    {
+        if (paragraph.SegmentsOS.Count > 0) return paragraph.SegmentsOS[0];
+
+        var segment = services.GetInstance<ISegmentFactory>().Create();
+        paragraph.SegmentsOS.Add(segment);
+        return segment;
+    }
+
     private static ILexEntry MakeEntry(
         LcmCache cache, IMoMorphType stemType, string form, string gloss, IPartOfSpeech pos, int vernWs, int analWs)
     {
@@ -135,3 +243,17 @@ public sealed record SeededProject(
         return entry;
     }
 }
+
+/// <summary>
+/// Identity of everything <see cref="SeededProject.SeedText"/> wrote, for a test to name what it means
+/// instead of rediscovering it by re-reading the project.
+/// </summary>
+public sealed record SeededText(
+    Guid TextId,
+    Guid FirstParagraphId,
+    Guid SecondParagraphId,
+    Guid FirstSegmentId,
+    Guid SecondSegmentId,
+    Guid AnalysedWordformId,
+    Guid UnanalysedWordformId,
+    Guid ApprovedAnalysisId);

@@ -46,6 +46,8 @@
   <ItemGroup>
     <!-- Captured real parser output. Copied so ParserOutputTests reads the same bytes a real run produced. -->
     <None Include="Parser\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Checked-in copy of FieldWorks' own schema; see FlexTextWriterTests for why it lives here. -->
+    <None Include="Texts\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
