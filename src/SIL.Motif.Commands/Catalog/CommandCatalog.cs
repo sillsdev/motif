@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
@@ -8,7 +9,8 @@ namespace SIL.Motif.Commands.Catalog;
 /// <summary>
 /// The sole enumeration of Motif's command handlers (ADR 0043 decision 3): one entry per public
 /// handler in <see cref="ProposalCommands"/>, <see cref="CorpusCommands"/>, <see cref="ConfigCommands"/>,
-/// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, and <see cref="JobCommands"/>.
+/// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, <see cref="BaselineCaptureCommand"/>,
+/// and <see cref="JobCommands"/>.
 /// </summary>
 /// <remarks>
 /// Three names each cover two entries because one CLI verb reaches two distinct handlers under
@@ -72,6 +74,9 @@ public static class CommandCatalog
 
         // CompareCommands
         new CommandDescriptor("compare", typeof(ProduceComparisonRequest), typeof(CompareResponse)),
+
+        // BaselineCaptureCommand
+        new CommandDescriptor("baseline capture", typeof(BaselineCaptureRequest), typeof(BaselineCaptureResponse)),
 
         // JobCommands
         new CommandDescriptor(

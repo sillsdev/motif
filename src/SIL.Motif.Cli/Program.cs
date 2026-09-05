@@ -6,6 +6,7 @@ using System.Threading;
 using SIL.Motif.Cli;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Commands;
@@ -532,6 +533,22 @@ try
                 new ProduceComparisonRequest(compareProject, CliProductVersion(), compareFrom, compareTo)));
             break;
 
+        case "baseline":
+            if (positionals.Count == 0)
+                return Usage(BaselineUsage(), asJson);
+            switch (positionals[0])
+            {
+                case "capture":
+                    if (positionals.Count != 2)
+                        return Usage(BaselineUsage(), asJson);
+                    result = RenderCommand(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(positionals[1])));
+                    break;
+
+                default:
+                    return Usage(BaselineUsage(), asJson);
+            }
+            break;
+
         case "jobs":
             if (positionals.Count == 0)
                 return Usage(JobsUsage(), asJson);
@@ -642,6 +659,8 @@ static string ReportUsage() => UsageLineFor("report");
 
 static string CompareUsage() => UsageLineFor("compare");
 
+static string BaselineUsage() => "Usage: motif " + UsageLineFor("baseline capture");
+
 static string JobsUsage() =>
     "Usage: motif jobs show <jobId> --project <fwdata> [--json] OR " +
     "motif jobs assessments <jobId> --project <fwdata> [--json] OR motif jobs list --all [--json] OR " +
@@ -680,9 +699,13 @@ static void PrintUsage(TextWriter writer)
         writer, "Comparison", "Comparison (joins two Assessments on the word; stores and prints the difference):");
     PrintSection(writer, "Corpus", "Corpus (text Motif measures against; never part of the FieldWorks project):");
     PrintSection(
+        writer, "Baseline",
+        "Baseline (a saved-file capture of a project FieldWorks may hold open, synchronous, no queue):");
+    PrintSection(
         writer, "Jobs", "Jobs (the durable queue; --project selects which project's queue, except list --all):");
     writer.WriteLine("Global options: --json  (structured output; supported by " +
-        "open/analyses/list/show/dry-run/trial/apply/log/config/corpora/show-corpus/jobs/report/compare)");
+        "open/analyses/list/show/dry-run/trial/apply/log/config/corpora/show-corpus/jobs/report/compare/" +
+        "baseline capture)");
 }
 
 /// <summary>Prints one usage banner section: its header, then every catalogued verb's usage line(s).</summary>

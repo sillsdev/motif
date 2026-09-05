@@ -138,6 +138,10 @@ public static class CliVerbCatalog
             new[] { "Usage: motif compare --project <fwdata> --from <assessmentId> --to <assessmentId> [--json]" }),
 
         new CliVerbDescriptor(
+            "Baseline", "baseline", "baseline capture",
+            new[] { "baseline capture <project> [--json]" }),
+
+        new CliVerbDescriptor(
             "Corpus", "add-corpus", "add-corpus",
             new[]
             {

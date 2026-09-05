@@ -48,6 +48,7 @@ public static class CommandTextRenderer
             JobStatusResponse r => RenderJobStatus(r),
             JobQueueListResponse r => RenderJobQueueList(r),
             JobAssessmentsResponse r => RenderJobAssessments(r),
+            BaselineCaptureResponse r => RenderBaselineCaptured(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
@@ -170,6 +171,24 @@ public static class CommandTextRenderer
             text.AppendLine((index + 1) + ". " + job.JobId + "  " + job.Kind + "  " +
                 JobStatusJson.ToWire(job.Status) + "  " + job.ProjectPath);
         }
+        return text.ToString();
+    }
+
+    private static string RenderBaselineCaptured(BaselineCaptureResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("Captured Baseline for " + response.FwDataPath);
+        text.AppendLine("  Project identity: " + response.Token.ProjectIdentity);
+        text.AppendLine("  Bundle digest:    " + response.Token.BundleDigest);
+        text.AppendLine("  Captured:         " + response.Token.CapturedUtc);
+        text.AppendLine("  Last save:        " + response.SourceLastWriteUtc.ToString("O") +
+            "  (as of FieldWorks' last save)");
+        text.AppendLine("  FieldWorks:       " + (response.FieldWorksHeldProject
+            ? "holds the project open"
+            : "does not currently hold the project"));
+        text.AppendLine(response.ReusedExistingBytes
+            ? "  The saved bytes matched the current Baseline; nothing new was written."
+            : "  A new Baseline was captured and published.");
         return text.ToString();
     }
 
