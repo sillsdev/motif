@@ -239,50 +239,19 @@ internal sealed class TrialJobHandler
         // The query is what the scope was told to do; the words are only what it resolved to on this run.
         var scopeJson = ScopeCodec.Write(new StoredScope.Trial(
             scopeConfiguration.Query, scope.Words, scope.Engine, scope.Collect, scope.PerWordLimit));
-        var scopeDigest = Digest(scopeJson);
+        var scopeDigest = AssessmentMaterial.Digest(scopeJson);
         var baselineTokenJson = JsonSerializer.Serialize(baselineToken, MotifJson.CreateOptions());
 
         var ids = new List<string>();
         foreach (var item in produced)
         {
-            var material = MaterialFor(item.Raw);
             var assessmentId = CanonicalId.Mint("assessment/").Value;
-            _assessments.Record(new NewAssessmentRecord(
-                AssessmentId: assessmentId,
-                ProposalId: proposal.ProposalId,
-                ProposalIntentDigest: dryRun.IntentDigest,
-                Assessor: assessorName,
-                Kind: item.Kind.ToStoredKind(),
-                ScopeJson: scopeJson,
-                ScopeDigest: scopeDigest,
-                TokeniserName: "none",
-                TokeniserVersion: "1",
-                BaselineToken: baselineTokenJson,
-                Selection: selection,
-                OutcomeDigest: item.OutcomeDigest,
-                SemanticDigest: item.SemanticDigest,
-                GrammarSourceSha256: item.GrammarSourceSha256,
-                ModelFingerprint: item.ModelFingerprint,
-                Pipeline: item.Pipeline,
-                DiagnosticCount: item.DiagnosticCount,
-                Words: material.Words,
-                CachePath: material.CachePath,
-                CacheDigest: material.CacheDigest));
+            _assessments.Record(AssessmentMaterial.ToRecord(item, assessmentId, proposal.ProposalId,
+                dryRun.IntentDigest, assessorName, scopeJson, scopeDigest, "none", "1", baselineTokenJson, selection));
             ids.Add(assessmentId);
         }
         return ids;
     }
-
-    /// <summary>Reduces one kind's raw shape to word rows, or a cache path and digest.</summary>
-    private static (IReadOnlyList<AssessedWord> Words, string? CachePath, string? CacheDigest) MaterialFor(AssessmentRaw raw) => raw switch
-    {
-        AssessmentRaw.WordMeasurements measurements => (measurements.Words, null, null),
-        AssessmentRaw.Batch batch => (batch.Analysis.Words
-            .Select(word => new AssessedWord(word.Word, word.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>()))
-            .ToArray(), null, null),
-        AssessmentRaw.FileCache fileCache => (Array.Empty<AssessedWord>(), fileCache.Path, fileCache.Digest),
-        _ => throw new ArgumentOutOfRangeException(nameof(raw)),
-    };
 
     private static AssessmentScopeConfiguration ResolveScope(ProjectConfiguration configuration, string? requestedName)
     {
@@ -329,12 +298,6 @@ internal sealed class TrialJobHandler
         try { Directory.Delete(path, recursive: true); }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
-    }
-
-    private static string Digest(string json)
-    {
-        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(json));
-        return "sha256:" + Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     private sealed record TrialCompletion(

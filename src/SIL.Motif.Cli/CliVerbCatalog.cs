@@ -142,6 +142,14 @@ public static class CliVerbCatalog
             new[] { "baseline capture <project> [--json]" }),
 
         new CliVerbDescriptor(
+            "Assess", "assess", "assess",
+            new[]
+            {
+                "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
+                "[--retry-failed] [--retry-slower-than <ms>] [--json]",
+            }),
+
+        new CliVerbDescriptor(
             "Corpus", "add-corpus", "add-corpus",
             new[]
             {

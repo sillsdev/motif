@@ -49,6 +49,7 @@ public static class CommandTextRenderer
             JobQueueListResponse r => RenderJobQueueList(r),
             JobAssessmentsResponse r => RenderJobAssessments(r),
             BaselineCaptureResponse r => RenderBaselineCaptured(r),
+            AssessCommandResponse r => RenderAssessed(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
@@ -189,6 +190,21 @@ public static class CommandTextRenderer
         text.AppendLine(response.ReusedExistingBytes
             ? "  The saved bytes matched the current Baseline; nothing new was written."
             : "  A new Baseline was captured and published.");
+        return text.ToString();
+    }
+
+    private static string RenderAssessed(AssessCommandResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("Assessed " + response.Baseline.FwDataPath);
+        text.AppendLine("  Last save: " + response.Baseline.SourceLastWriteUtc.ToString("O") +
+            "  (as of FieldWorks' last save)");
+        text.AppendLine("  Selection: " + response.Selection.Words.Count + " word(s)");
+        foreach (var entry in response.Selection.Provenance)
+            text.AppendLine("    " + entry.Source + ": " + entry.Count);
+        text.AppendLine("  Assessments: " + string.Join(", ", response.AssessmentIds));
+        text.AppendLine();
+        text.Append(response.SummaryMarkdown);
         return text.ToString();
     }
 

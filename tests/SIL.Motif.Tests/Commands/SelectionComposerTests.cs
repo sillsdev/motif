@@ -1,6 +1,7 @@
 using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
@@ -107,10 +108,10 @@ public sealed class SelectionComposerTests : IDisposable
     {
         var repository = NewRepository();
         RecordParseTimeRun(repository, "run-older", "2020-01-01T00:00:00Z",
-            ("stale-failure", WordOutcome.NoAnalysis));
+            ("stale-failure", WordOutcome.NoAnalysis, 0));
         RecordParseTimeRun(repository, "run-newest", "2020-01-02T00:00:00Z",
-            ("ok", WordOutcome.Analysed), ("bad", WordOutcome.NoAnalysis),
-            ("gone", WordOutcome.Skipped), ("slow", WordOutcome.TimedOut));
+            ("ok", WordOutcome.Analysed, 0), ("bad", WordOutcome.NoAnalysis, 0),
+            ("gone", WordOutcome.Skipped, 0), ("slow", WordOutcome.TimedOut, 5000));
 
         var outcome = SelectionComposer.Compose(_cache, NoSources with { RetryFailed = true }, repository);
 
@@ -121,11 +122,12 @@ public sealed class SelectionComposerTests : IDisposable
     }
 
     [Fact]
-    public void RetrySlowerThanSourceContributesTheNewestRunsTimedOutWords()
+    public void RetrySlowerThanSourceContributesWordsStrictlyAboveTheThreshold()
     {
         var repository = NewRepository();
         RecordParseTimeRun(repository, "run-1", "2020-01-01T00:00:00Z",
-            ("ok", WordOutcome.Analysed), ("bad", WordOutcome.NoAnalysis), ("slow", WordOutcome.TimedOut));
+            ("ok", WordOutcome.Analysed, 50), ("bad", WordOutcome.NoAnalysis, 0),
+            ("slow", WordOutcome.TimedOut, 5000));
 
         var outcome = SelectionComposer.Compose(
             _cache, NoSources with { RetrySlowerThan = TimeSpan.FromMilliseconds(500) }, repository);
@@ -134,6 +136,26 @@ public sealed class SelectionComposerTests : IDisposable
         Assert.Equal(["slow"], outcome.Value!.Selection.Words);
         var entry = Assert.Single(outcome.Value.Projection.Provenance);
         Assert.Equal(new SelectionProvenanceEntry("retry-slower-than", 1), entry);
+    }
+
+    // The point: the number, not just its presence, decides which words come back (see the plan's problem 1).
+    [Fact]
+    public void TwoDifferentThresholdsSelectDifferentWords()
+    {
+        var repository = NewRepository();
+        RecordParseTimeRun(repository, "run-1", "2020-01-01T00:00:00Z",
+            ("fast", WordOutcome.Analysed, 50), ("medium", WordOutcome.Analysed, 600),
+            ("slow", WordOutcome.TimedOut, 5000));
+
+        var lowThreshold = SelectionComposer.Compose(
+            _cache, NoSources with { RetrySlowerThan = TimeSpan.FromMilliseconds(500) }, repository);
+        var highThreshold = SelectionComposer.Compose(
+            _cache, NoSources with { RetrySlowerThan = TimeSpan.FromMilliseconds(1000) }, repository);
+
+        Assert.True(lowThreshold.Succeeded);
+        Assert.True(highThreshold.Succeeded);
+        Assert.Equal(["medium", "slow"], lowThreshold.Value!.Selection.Words);
+        Assert.Equal(["slow"], highThreshold.Value!.Selection.Words);
     }
 
     [Fact]
@@ -161,10 +183,10 @@ public sealed class SelectionComposerTests : IDisposable
 
     private static void RecordParseTimeRun(
         IAssessmentRepository repository, string assessmentId, string savedUtc,
-        params (string Word, WordOutcome Outcome)[] words)
+        params (string Word, WordOutcome Outcome, int ElapsedMs)[] words)
     {
         var assessedWords = words
-            .Select(w => new AssessedWord(w.Word, w.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>()))
+            .Select(w => new AssessedWord(w.Word, w.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>(), w.ElapsedMs))
             .ToList();
 
         repository.Record(new NewAssessmentRecord(

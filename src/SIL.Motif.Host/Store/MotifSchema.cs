@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 12;
+    public const int CurrentSchema = 13;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -314,7 +314,7 @@ public static class MotifSchema
             C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT")],
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
-            C("Word", "TEXT", true), C("Outcome", "TEXT", true)],
+            C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER")],
         "ParsedAnalyses" =>
         [C("AssessedWordId", "INTEGER", true), C("OrdinalIndex", "INTEGER", true), C("CategoryGuid", "TEXT"),
             C("MorphemeGuidsJson", "TEXT", true), C("RootIndex", "INTEGER", true), C("IdentityDigest", "TEXT", true)],
@@ -506,7 +506,8 @@ public static class MotifSchema
             AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
             OrdinalIndex INTEGER NOT NULL,
             Word TEXT NOT NULL,
-            Outcome TEXT NOT NULL
+            Outcome TEXT NOT NULL,
+            ElapsedMs INTEGER NULL
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);
         CREATE INDEX IX_AssessedWords_Word ON AssessedWords(AssessmentId, Word);

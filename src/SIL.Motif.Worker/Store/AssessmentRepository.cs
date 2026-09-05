@@ -377,12 +377,14 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var insertWord = connection.CreateCommand();
         insertWord.Transaction = transaction;
         insertWord.CommandText = """
-            INSERT INTO AssessedWords (AssessmentId, OrdinalIndex, Word, Outcome) VALUES ($id, $ordinal, $word, $outcome);
+            INSERT INTO AssessedWords (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs)
+            VALUES ($id, $ordinal, $word, $outcome, $elapsed);
             """;
         var assessmentIdParam = insertWord.Parameters.Add("$id", SqliteType.Text);
         var wordOrdinalParam = insertWord.Parameters.Add("$ordinal", SqliteType.Integer);
         var wordTextParam = insertWord.Parameters.Add("$word", SqliteType.Text);
         var wordOutcomeParam = insertWord.Parameters.Add("$outcome", SqliteType.Text);
+        var wordElapsedParam = insertWord.Parameters.Add("$elapsed", SqliteType.Integer);
 
         using var lastRowId = connection.CreateCommand();
         lastRowId.Transaction = transaction;
@@ -408,6 +410,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             wordOrdinalParam.Value = wordIndex;
             wordTextParam.Value = word.Word;
             wordOutcomeParam.Value = word.Outcome;
+            wordElapsedParam.Value = (object?)word.ElapsedMs ?? DBNull.Value;
             insertWord.ExecuteNonQuery();
 
             var assessedWordId = (long)lastRowId.ExecuteScalar()!;
@@ -479,7 +482,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT aw.AssessedWordId, aw.Word, aw.Outcome, pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest
+            SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs,
+                   pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -491,6 +495,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         long? currentWordId = null;
         string currentWord = "";
         string currentOutcome = "";
+        int? currentElapsedMs = null;
         List<ParsedAnalysis> currentAnalyses = [];
 
         using var reader = command.ExecuteReader();
@@ -499,24 +504,27 @@ public sealed class AssessmentRepository : IAssessmentRepository
             var wordId = reader.GetInt64(0);
             if (wordId != currentWordId)
             {
-                if (currentWordId is not null) words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses));
+                if (currentWordId is not null)
+                    words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs));
                 currentWordId = wordId;
                 currentWord = reader.GetString(1);
                 currentOutcome = reader.GetString(2);
+                currentElapsedMs = reader.IsDBNull(3) ? null : reader.GetInt32(3);
                 currentAnalyses = [];
             }
 
-            if (!reader.IsDBNull(6)) // NULL here means no analysis row; the column itself is NOT NULL.
+            if (!reader.IsDBNull(7)) // NULL here means no analysis row; the column itself is NOT NULL.
             {
                 currentAnalyses.Add(new ParsedAnalysis(
-                    CategoryGuid: reader.IsDBNull(3) ? null : reader.GetString(3),
-                    MorphemeGuids: JsonSerializer.Deserialize<List<string>>(reader.GetString(4))!,
-                    RootIndex: reader.GetInt32(5),
-                    IdentityDigest: reader.GetString(6)));
+                    CategoryGuid: reader.IsDBNull(4) ? null : reader.GetString(4),
+                    MorphemeGuids: JsonSerializer.Deserialize<List<string>>(reader.GetString(5))!,
+                    RootIndex: reader.GetInt32(6),
+                    IdentityDigest: reader.GetString(7)));
             }
         }
 
-        if (currentWordId is not null) words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses));
+        if (currentWordId is not null)
+            words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs));
         return words;
     }
 }

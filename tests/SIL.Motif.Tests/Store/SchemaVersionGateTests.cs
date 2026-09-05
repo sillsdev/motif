@@ -82,6 +82,29 @@ public sealed class SchemaVersionGateTests : IDisposable
     }
 
     [Fact]
+    public void AnAssessedWordsTableWithoutElapsedMsIsRefusedRatherThanBackfilled()
+    {
+        var path = Path.Combine(_root, "no-elapsed-ms.motif.db");
+        var locator = new ProjectLocator(Path.Combine(_root, "no-elapsed-ms.fwdata"), "no-elapsed-ms");
+        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            // The shape this task's column replaces: no migration exists, so this must be refused outright.
+            command.CommandText = "DROP TABLE AssessedWords; CREATE TABLE AssessedWords (" +
+                "AssessedWordId INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId), " +
+                "OrdinalIndex INTEGER NOT NULL, Word TEXT NOT NULL, Outcome TEXT NOT NULL);";
+            command.ExecuteNonQuery();
+        }
+
+        var refusal = Assert.Throws<InvalidDataException>(() => MotifDatabase.OpenOwned(
+            path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.Contains("AssessedWords", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AddingTheLeaseGenerationDidNotRaiseTheCompatibilityFloor()
     {
         var path = Path.Combine(_root, "floor.motif.db");

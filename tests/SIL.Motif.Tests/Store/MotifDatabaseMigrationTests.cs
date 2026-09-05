@@ -260,7 +260,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "ScopeDigest|TEXT|1|0|", "TokeniserName|TEXT|1|0|", "TokeniserVersion|TEXT|1|0|",
                 "BaselineToken|TEXT|1|0|", "CachePath|TEXT|0|0|", "CacheDigest|TEXT|0|0|"],
             ["AssessedWords"] = ["AssessedWordId|INTEGER|0|1|", "AssessmentId|TEXT|1|0|", "OrdinalIndex|INTEGER|1|0|",
-                "Word|TEXT|1|0|", "Outcome|TEXT|1|0|"],
+                "Word|TEXT|1|0|", "Outcome|TEXT|1|0|", "ElapsedMs|INTEGER|0|0|"],
             ["ParsedAnalyses"] = ["AssessedWordId|INTEGER|1|0|", "OrdinalIndex|INTEGER|1|0|", "CategoryGuid|TEXT|0|0|",
                 "MorphemeGuidsJson|TEXT|1|0|", "RootIndex|INTEGER|1|0|", "IdentityDigest|TEXT|1|0|"],
             ["AssessmentPins"] = ["AssessmentId|TEXT|1|1|", "PinnedBy|TEXT|1|2|", "PinnedUtc|TEXT|1|0|"],
@@ -423,7 +423,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         {
             Execute(connection, "DROP TABLE AssessedWords; CREATE TABLE AssessedWords (" +
                 "AssessedWordId INTEGER PRIMARY KEY, AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId), " +
-                "OrdinalIndex INTEGER NOT NULL, Word TEXT NOT NULL, Outcome TEXT NOT NULL);");
+                "OrdinalIndex INTEGER NOT NULL, Word TEXT NOT NULL, Outcome TEXT NOT NULL, ElapsedMs INTEGER NULL);");
         }
 
         Assert.Throws<InvalidDataException>(() => MotifDatabase.OpenOwned(

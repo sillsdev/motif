@@ -5,7 +5,8 @@ using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Baselines;
 
-internal sealed record BaselineRecord(
+/// <summary>One project's recorded current Baseline: its identity, where its bundle was published, and when.</summary>
+public sealed record BaselineRecord(
     string ProjectKey,
     BaselineToken Token,
     string RootDirectory,
@@ -13,7 +14,8 @@ internal sealed record BaselineRecord(
     DateTimeOffset SourceLastWriteUtc,
     DateTimeOffset PublishedUtc);
 
-internal sealed class BaselineRepository
+/// <summary>Reads and writes the project's single current-Baseline pointer and its recorded metadata.</summary>
+public sealed class BaselineRepository
 {
     private readonly MotifDatabase _database;
 
@@ -31,7 +33,8 @@ internal sealed class BaselineRepository
         return reader.Read() ? Read(reader) : null;
     }
 
-    public BaselineRecord Record(
+    // BaselinePublication is internal: every caller (BaselineCapturePublisher, BaselineRefresh) lives here too.
+    internal BaselineRecord Record(
         string projectKey, BaselinePublication publication, DateTimeOffset publishedUtc,
         DateTimeOffset sourceLastWriteUtc)
     {

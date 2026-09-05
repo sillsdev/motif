@@ -14,7 +14,9 @@ public sealed record ParsedAnalysis(
     string IdentityDigest);
 
 /// <summary>One word and what the parser made of it.</summary>
-public sealed record AssessedWord(string Word, string Outcome, IReadOnlyList<ParsedAnalysis> Analyses);
+/// <param name="ElapsedMs">How long this word took to parse, when the producing run recorded a time.</param>
+public sealed record AssessedWord(
+    string Word, string Outcome, IReadOnlyList<ParsedAnalysis> Analyses, int? ElapsedMs = null);
 
 /// <summary>
 /// A parsed assessment report, with the provenance a grammar coverage figure must carry.

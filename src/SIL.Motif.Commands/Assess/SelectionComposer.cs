@@ -1,6 +1,7 @@
 using System.Text;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
@@ -9,30 +10,6 @@ using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Assess;
-
-/// <summary>
-/// Which of the four agreed sources (design decision 4) a Selection should draw from, and how. Every
-/// source is optional and they combine: a caller wanting the union of two sources sets both.
-/// </summary>
-/// <param name="AllWordforms">Every wordform currently in the project.</param>
-/// <param name="TextIds">The wordforms of these chosen Texts, by their own <c>IText</c> identity.</param>
-/// <param name="Words">
-/// A pasted or typed list, one word per entry. Entries that are empty or all whitespace are dropped
-/// rather than treated as a blank word.
-/// </param>
-/// <param name="RetryFailed">The words the previous Baseline run found no analysis for.</param>
-/// <param name="RetrySlowerThan">
-/// Non-null to also include the words the previous Baseline run timed out on. The value is accepted for
-/// forward compatibility with a per-word elapsed time that is not yet stored anywhere: today, whether a
-/// word timed out under its own run's per-word limit is the only "how slow" signal on record, so presence
-/// of a value is what gates this source, not a comparison against the value itself.
-/// </param>
-public sealed record SelectionRequest(
-    bool AllWordforms,
-    IReadOnlyList<Guid> TextIds,
-    IReadOnlyList<string> Words,
-    bool RetryFailed,
-    TimeSpan? RetrySlowerThan);
 
 /// <summary>A composed Selection together with the Contract-shaped projection <c>selection.txt</c> is written from.</summary>
 public sealed record SelectionComposition(Selection Selection, SelectionProjection Projection);
@@ -105,7 +82,7 @@ public static class SelectionComposer
 
             if (request.RetrySlowerThan is not null)
             {
-                var slow = WordsWithOutcome(previousRun, WordOutcome.TimedOut);
+                var slow = WordsSlowerThan(previousRun, request.RetrySlowerThan.Value);
                 Contribute(provenance, words, "retry-slower-than", slow);
             }
         }
@@ -178,6 +155,18 @@ public static class SelectionComposer
         {
             if (word.Outcome.TryParseStoredOutcome(out var outcome) && outcomes.Contains(outcome))
                 yield return word.Word;
+        }
+    }
+
+    // A stored elapsed time is the real "how slow" signal; a timed-out word still recorded one (its cap).
+    private static IEnumerable<string> WordsSlowerThan(AssessmentRecord? run, TimeSpan threshold)
+    {
+        if (run?.Words is null) yield break;
+
+        var thresholdMs = threshold.TotalMilliseconds;
+        foreach (var word in run.Words)
+        {
+            if (word.ElapsedMs is { } elapsed && elapsed > thresholdMs) yield return word.Word;
         }
     }
 }

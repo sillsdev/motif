@@ -6,12 +6,14 @@ using System.Threading;
 using SIL.Motif.Cli;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
@@ -549,6 +551,33 @@ try
             }
             break;
 
+        case "assess":
+            if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
+            if (!TryParseGuidList(flags.GetValueOrDefault("texts"), out var assessTextIds))
+                return Usage(AssessUsage(), asJson);
+            flags.TryGetValue("words", out var assessWordsFile);
+            if (assessWordsFile is not null && !File.Exists(assessWordsFile))
+                return Usage($"The --words file '{assessWordsFile}' does not exist.", asJson);
+            var assessWords = assessWordsFile is not null
+                ? File.ReadAllLines(assessWordsFile)
+                : Array.Empty<string>();
+            TimeSpan? assessRetrySlowerThan = null;
+            if (flags.TryGetValue("retry-slower-than", out var assessRetrySlowerThanRaw))
+            {
+                if (!long.TryParse(assessRetrySlowerThanRaw, out var assessRetrySlowerThanMs) ||
+                    assessRetrySlowerThanMs < 0)
+                {
+                    return Usage(AssessUsage(), asJson);
+                }
+                assessRetrySlowerThan = TimeSpan.FromMilliseconds(assessRetrySlowerThanMs);
+            }
+            var assessSelection = new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
+                assessWords, flags.ContainsKey("retry-failed"), assessRetrySlowerThan);
+            result = RenderCommand(AssessCommand.Assess(
+                new AssessRequest(positionals[0], assessSelection),
+                asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
+            break;
+
         case "jobs":
             if (positionals.Count == 0)
                 return Usage(JobsUsage(), asJson);
@@ -661,6 +690,22 @@ static string CompareUsage() => UsageLineFor("compare");
 
 static string BaselineUsage() => "Usage: motif " + UsageLineFor("baseline capture");
 
+static string AssessUsage() => "Usage: motif " + UsageLineFor("assess");
+
+/// <summary>Parses a comma-separated GUID list; an absent flag is an empty list, not a failure.</summary>
+static bool TryParseGuidList(string? raw, out List<Guid> guids)
+{
+    guids = new List<Guid>();
+    if (string.IsNullOrEmpty(raw)) return true;
+
+    foreach (var token in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        if (!Guid.TryParse(token, out var guid)) return false;
+        guids.Add(guid);
+    }
+    return true;
+}
+
 static string JobsUsage() =>
     "Usage: motif jobs show <jobId> --project <fwdata> [--json] OR " +
     "motif jobs assessments <jobId> --project <fwdata> [--json] OR motif jobs list --all [--json] OR " +
@@ -702,10 +747,13 @@ static void PrintUsage(TextWriter writer)
         writer, "Baseline",
         "Baseline (a saved-file capture of a project FieldWorks may hold open, synchronous, no queue):");
     PrintSection(
+        writer, "Assess",
+        "Assess (a synchronous PanGloss run over a Selection, stored as Assessments; no queue):");
+    PrintSection(
         writer, "Jobs", "Jobs (the durable queue; --project selects which project's queue, except list --all):");
     writer.WriteLine("Global options: --json  (structured output; supported by " +
         "open/analyses/list/show/dry-run/trial/apply/log/config/corpora/show-corpus/jobs/report/compare/" +
-        "baseline capture)");
+        "baseline capture/assess)");
 }
 
 /// <summary>Prints one usage banner section: its header, then every catalogued verb's usage line(s).</summary>
