@@ -137,8 +137,11 @@ public sealed class AssessArgvTests : IDisposable
         if (panGlossExecutablePath is not null)
             start.Environment[PanGlossExecutable.PathVariable] = panGlossExecutablePath;
         using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
+        // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        var output = outputTask.GetAwaiter().GetResult();
+        var error = errorTask.GetAwaiter().GetResult();
         Assert.True(process.WaitForExit(60000), "The CLI did not exit within its bound.");
         return new CliRun(process.ExitCode, output, error);
     }

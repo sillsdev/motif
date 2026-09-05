@@ -86,8 +86,11 @@ public sealed class RunnerKickRaceTests : IDisposable
         // The runner this kicks is nobody's to wait on, so bound how long it outlives the test.
         start.Environment[RunnerOptions.IdleVariable] = "2";
         using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
+        // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        var output = outputTask.GetAwaiter().GetResult();
+        var error = errorTask.GetAwaiter().GetResult();
         Assert.True(process.WaitForExit(120000), "The CLI did not exit within its bound.");
         return new CliRun(process.ExitCode, output, error);
     }

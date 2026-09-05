@@ -101,8 +101,11 @@ public sealed class CorpusCommandDispatchTests : IDisposable
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;
 
         using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
+        // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        var output = outputTask.GetAwaiter().GetResult();
+        var error = errorTask.GetAwaiter().GetResult();
         process.WaitForExit();
         return (process.ExitCode, output, error);
     }
