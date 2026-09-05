@@ -63,6 +63,7 @@ public sealed class CommandCatalogParityTests
         "corpus.bundle-invalid", "corpus.document-invalid", "corpus.document-not-found", "corpus.invalid",
         "corpus.not-found",
         "draft.invalid", "draft.name-collision", "draft.not-found",
+        "handoff.cancelled", "handoff.destination-exists", "handoff.parser-unavailable",
         "job.already-finished", "job.dry-run-incomplete", "job.invalid-id", "job.invalid-move",
         "job.move-target-not-found", "job.no-assessments", "job.not-finished", "job.not-found",
         "job.wait-timeout",

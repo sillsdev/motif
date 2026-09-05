@@ -8,6 +8,7 @@ using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Commands;
@@ -585,6 +586,19 @@ try
                 positionals[0], flags.GetValueOrDefault("proposal"), statsOutput, forwardedArguments)));
             break;
 
+        case "handoff":
+            if (positionals.Count != 1 || !flags.TryGetValue("out", out var handoffOut))
+                return Usage(HandoffUsage(), asJson);
+            if (!TryParseGuidList(flags.GetValueOrDefault("texts"), out var handoffTextIds))
+                return Usage(HandoffUsage(), asJson);
+            // No --texts means every wordform and every Text; a chosen list means only those Texts' words.
+            var handoffSelection = new SelectionRequest(
+                handoffTextIds.Count == 0, handoffTextIds, Array.Empty<string>(), false, null);
+            result = RenderCommand(HandoffCommand.Handoff(new HandoffRequest(
+                positionals[0], handoffOut, handoffSelection, flags.ContainsKey("flextext"),
+                !flags.ContainsKey("no-assess"))));
+            break;
+
         case "jobs":
             if (positionals.Count == 0)
                 return Usage(JobsUsage(), asJson);
@@ -701,6 +715,8 @@ static string AssessUsage() => "Usage: motif " + UsageLineFor("assess");
 
 static string StatsUsage() => "Usage: motif " + UsageLineFor("stats");
 
+static string HandoffUsage() => "Usage: motif " + UsageLineFor("handoff");
+
 /// <summary>Parses a comma-separated GUID list; an absent flag is an empty list, not a failure.</summary>
 static bool TryParseGuidList(string? raw, out List<Guid> guids)
 {
@@ -759,10 +775,13 @@ static void PrintUsage(TextWriter writer)
         writer, "Assess",
         "Assess (a synchronous PanGloss run over a Selection, stored as Assessments; no queue):");
     PrintSection(
+        writer, "Handoff",
+        "Handoff (the self-explaining AI Handoff folder, written atomically):");
+    PrintSection(
         writer, "Jobs", "Jobs (the durable queue; --project selects which project's queue, except list --all):");
     writer.WriteLine("Global options: --json  (structured output; supported by " +
         "open/analyses/list/show/dry-run/trial/apply/log/config/corpora/show-corpus/jobs/report/compare/" +
-        "baseline capture/assess/stats)");
+        "baseline capture/assess/stats/handoff)");
 }
 
 /// <summary>Prints one usage banner section: its header, then every catalogued verb's usage line(s).</summary>

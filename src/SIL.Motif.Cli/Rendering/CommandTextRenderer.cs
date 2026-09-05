@@ -51,6 +51,7 @@ public static class CommandTextRenderer
             BaselineCaptureResponse r => RenderBaselineCaptured(r),
             AssessCommandResponse r => RenderAssessed(r),
             StatsCommandResponse r => RenderStats(r),
+            HandoffCommandResponse r => RenderHandoff(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
@@ -211,6 +212,20 @@ public static class CommandTextRenderer
 
     // Human-mode dispatch always asks for text output, so response.Text is always populated here.
     private static string RenderStats(StatsCommandResponse response) => response.Text ?? string.Empty;
+
+    private static string RenderHandoff(HandoffCommandResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("Wrote Handoff folder to " + response.OutputDirectory);
+        text.AppendLine("  Last save:   " + response.Baseline.SourceLastWriteUtc.ToString("O") +
+            "  (as of FieldWorks' last save)");
+        text.AppendLine("  Selection:   " + response.Selection.Words.Count + " word(s)");
+        text.AppendLine("  Files:       " + response.Files.Count);
+        text.AppendLine("  Assessments: " + (response.AssessmentIds.Count == 0
+            ? "(none; --no-assess)"
+            : string.Join(", ", response.AssessmentIds)));
+        return text.ToString();
+    }
 
     private static string RenderJobAssessments(JobAssessmentsResponse response)
     {
