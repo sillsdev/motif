@@ -79,6 +79,16 @@ public sealed class CommandCatalogParityTests
         "store.inconsistent", "store.unsupported",
     };
 
+    /// <summary>
+    /// Every refusal code a command declares is registered here, and nothing is registered that no command
+    /// declares.
+    /// </summary>
+    /// <remarks>
+    /// Literals ending in a file extension are skipped, because a filename a command writes is shaped
+    /// exactly like a refusal code. That filter is safe in the direction that matters: a genuine code
+    /// wrongly skipped still fails this test, since <see cref="ExpectedRefusalCodes"/> would then name a
+    /// code the scan no longer finds.
+    /// </remarks>
     [Fact]
     public void RefusalCodesDeclaredInCommandsAreUniqueAndWellFormed()
     {
@@ -89,6 +99,12 @@ public sealed class CommandCatalogParityTests
             codes.Order(StringComparer.Ordinal));
     }
 
+    // A filename is shaped like a refusal code, so the scan below would report "instructions.md" as one.
+    private static readonly HashSet<string> FileExtensions = new(StringComparer.Ordinal)
+    {
+        "bak", "db", "fwdata", "json", "jsonl", "ldml", "lock", "md", "py", "sqlite", "txt", "xml", "zip",
+    };
+
     // Every dotted, lower-case, hyphenated code literal (e.g. "draft.not-found") in a project's source.
     private static HashSet<string> RefusalCodeLiteralsIn(string projectName)
     {
@@ -97,7 +113,10 @@ public sealed class CommandCatalogParityTests
         var codes = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
         foreach (Match match in codePattern.Matches(File.ReadAllText(file)))
-            codes.Add(match.Groups[1].Value);
+        {
+            var literal = match.Groups[1].Value;
+            if (!FileExtensions.Contains(literal[(literal.LastIndexOf('.') + 1)..])) codes.Add(literal);
+        }
         return codes;
     }
 

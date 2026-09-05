@@ -34,16 +34,15 @@ public static class HandoffWriter
     private const string FlexTextFormatResource = "SIL.Motif.Commands.Handoff.Reference.flextext-json-format.md";
     private const string HcMechanicsResource = "SIL.Motif.Commands.Handoff.Reference.hc-mechanics.md";
 
-    // Split across a "+" so no single token here reads as a dotted, lower-case refusal-code-shaped literal.
-    private const string InstructionsFileName = "instructions" + ".md";
-    private const string RecipesFileName = "recipes" + ".md";
+    private const string InstructionsFileName = "instructions.md";
+    private const string RecipesFileName = "recipes.md";
     private const string ReadHandoffPyFileName = "read_handoff.py";
-    internal const string GrammarFileName = "grammar" + ".json";
-    internal const string SelectionFileName = "selection" + ".txt";
-    internal const string StatisticsSummaryFileName = "statistics" + ".md";
+    internal const string GrammarFileName = "grammar.json";
+    internal const string SelectionFileName = "selection.txt";
+    internal const string StatisticsSummaryFileName = "statistics.md";
     internal const string StatisticsDirectoryName = "statistics";
-    private const string FlexTextJsonExtension = "flextext" + ".json";
-    private const string FlexTextXmlExtension = "flextext" + ".xml";
+    private const string FlexTextJsonExtension = "flextext.json";
+    private const string FlexTextXmlExtension = "flextext.xml";
 
     private static readonly string[] AlwaysRequiredTopLevelFiles =
         [InstructionsFileName, GrammarFileName, SelectionFileName, RecipesFileName, ReadHandoffPyFileName];
