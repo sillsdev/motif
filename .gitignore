@@ -30,3 +30,7 @@ docs/*.md.orig
 
 # Agent worktrees: transient checkouts created by background subagents.
 .claude/worktrees/
+
+# Python bytecode from running the Handoff reader in tests
+__pycache__/
+*.pyc
