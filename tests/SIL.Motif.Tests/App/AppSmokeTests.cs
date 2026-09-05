@@ -1,5 +1,4 @@
 using Avalonia;
-using SIL.Motif.App;
 using SIL.Motif.App.Views;
 using Xunit;
 
@@ -12,19 +11,21 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class AppSmokeTests
 {
-    public AppSmokeTests(AvaloniaHeadlessFixture fixture)
-    {
-        _ = fixture;
-    }
+    private readonly AvaloniaHeadlessFixture _avalonia;
+
+    public AppSmokeTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
     public void MainWindowCanBeConstructedHeadlessly()
     {
-        Assert.IsType<SIL.Motif.App.App>(Application.Current);
+        _avalonia.Invoke(() =>
+        {
+            Assert.IsType<SIL.Motif.App.App>(Application.Current);
 
-        var window = new MainWindow();
+            var window = new MainWindow();
 
-        Assert.NotNull(window);
-        Assert.Equal("Motif", window.Title);
+            Assert.NotNull(window);
+            Assert.Equal("Motif", window.Title);
+        });
     }
 }

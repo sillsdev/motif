@@ -11,17 +11,10 @@ namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
 /// Drives the real <c>motif.exe</c> for <c>assess</c>, restricted to the argv-shaped cases that fail
-/// before any subprocess starts: usage, unparseable flags, a missing <c>--words</c> file (Gap 1), and a
+/// before any subprocess starts: usage, unparseable flags, a missing <c>--words</c> file, and a
 /// nonexistent project. A run that actually reaches the Assessor needs a real <c>pangloss</c> executable
 /// resolvable on the machine, which this suite does not assume.
 /// </summary>
-/// <remarks>
-/// <c>AssessCommand.Assess</c> resolves the <c>pangloss</c> executable while constructing its Assessor,
-/// before it ever checks whether the project exists, so even the nonexistent-project case needs a
-/// resolvable executable to reach that check at all. Pointing <see cref="PanGlossExecutable.PathVariable"/>
-/// at the built <see cref="FakeParser"/> satisfies that construction without starting any subprocess: the
-/// refusal fires before <c>ProduceAsync</c> or <c>QueryAsync</c> is ever called.
-/// </remarks>
 public sealed class AssessArgvTests : IDisposable
 {
     private readonly string _workerRoot =
@@ -105,12 +98,13 @@ public sealed class AssessArgvTests : IDisposable
         Assert.Equal(1, result.ExitCode);
     }
 
+    // No parser is pointed at deliberately: the project must be resolved before one is ever built.
     [Fact]
     public void ANonexistentProjectRefusesTheWayEveryOtherVerbDoes()
     {
         var missing = Path.Combine(_workerRoot, "absent.fwdata");
 
-        var result = Run($"assess \"{missing}\" --all-wordforms --json", FakeParser.ExecutablePath);
+        var result = Run($"assess \"{missing}\" --all-wordforms --json");
 
         var envelope = Envelope(result.Error);
         Assert.Equal("project.not-found", envelope.Code);
