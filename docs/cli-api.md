@@ -183,6 +183,119 @@ The rest of ADR 0041 changes this contract further — every remaining verb gain
 `dry-run` becomes a job, and a set of cross-project job verbs joins the set. Those land with the tasks
 that implement them; this note records only what has already been removed.
 
+### 2026-09-05 — `baseline capture`, `assess`, and `stats` measure a project synchronously, no queue
+
+Three verbs let a caller save a project's current state and see how PanGloss parses it, in one call each,
+with nothing queued and nothing to poll. All three take the project path as a plain positional argument,
+not `--project`, and all three route failures through the same project/store refusals every verb behind
+`ProjectStoreCommand` shares: `project.not-found`, `project.invalid`, `project.busy`, `store.unsupported`,
+`store.inconsistent`. Exit codes for every refusal code named below follow the table above via
+`FailureEnvelope.ExitCodeFor`; it is not restated here.
+
+**`baseline capture <project> [--json]`** reads a Baseline from the project's saved `.fwdata` file on
+disk — never FieldWorks' in-memory state — copying with delete-sharing so FieldWorks may keep the project
+open the whole time and never touching its `.fwdata.lock` or `.bak`. One call copies the saved files,
+loads the copy as a scratch cache to compute its semantic digest, zips it into a transport bundle, and
+publishes it before returning; nothing here wakes the durable job runner. Every rendering carries the
+words **"as of FieldWorks' last save"** beside the captured timestamp — pinned by
+`CapturingARealProjectSucceedsAndPrintsHumanTextNamingTheFreshness`.
+
+Human text prints the `.fwdata` path, the project identity, the bundle digest, the captured timestamp, the
+last-save timestamp with that same wording, whether FieldWorks currently holds the project open, and
+whether the published bytes matched an already-stored Baseline (nothing new written) or a new Baseline was
+captured and published. `--json` binds to `BaselineCaptureResponse`: `token` (a `BaselineToken` —
+`projectIdentity`, `semanticSnapshotDigest`, `projectionVersion`, `capturedUtc`, `bundleDigest`, and an
+optional `capturedHostSessionId`/`capturedEditGeneration` pair), `fwDataPath`, `sourceLastWriteUtc`,
+`fieldWorksHeldProject`, `reusedExistingBytes`.
+
+Every `baseline capture` call re-reads the project's current saved file and republishes, even when nothing
+changed; `reusedExistingBytes` reports only whether the publisher recognized the resulting bundle's bytes
+as already stored under this Baseline's identity, not whether the read-and-digest work was skipped. That is
+a different reuse from `assess`'s own, described below.
+
+Refusals of its own: `baseline.source-incomplete` (the copied `.fwdata` failed to validate as a complete
+`languageproject` document — e.g. FieldWorks was still writing it), `baseline.copy-unloadable` (the copy
+could not be loaded as a scratch cache), `baseline.owned-root-violation` (the managed Baseline root failed
+its own invariants), `baseline.busy` (another capture or publish holds the same files).
+
+**`assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] [--retry-failed]
+[--retry-slower-than <ms>] [--json]`** ensures a current Baseline exists for the project, composes a
+Selection from whichever sources were named, sends that Selection through PanGloss under the machine-wide
+admission queue, and records the outcome as Assessments — one per collected kind (parse time and
+per-object timing), so a single run yields two Assessment ids.
+
+Ensuring a Baseline reuses one already recorded for this project's workspace rather than recapturing, and
+only captures a fresh one when no Baseline row exists yet at all — pinned by
+`SecondRunReusesTheExistingBaselineRatherThanRecapturing`. That check is purely "does a row already exist"
+and never re-reads the file to see whether it changed, unlike `baseline capture` itself, which always
+re-reads and republishes.
+
+The four sources combine as a union — naming more than one adds their words together, not choosing between
+them:
+
+- `--all-wordforms` — every wordform currently in the project;
+- `--texts <guid,guid>` — the wordforms of the named Texts, matched only by their own GUID, never by name
+  or title;
+- `--words <file>` — one word per line, pasted or typed; blank lines are dropped;
+- `--retry-failed` — the words the previous Baseline run recorded no analysis for;
+- `--retry-slower-than <ms>` — also the words whose previous Baseline run recorded an elapsed time
+  strictly greater than this many milliseconds.
+
+Every source's words pass through the same trim-and-NFD-normalize pipeline before being combined, so a
+pasted or typed word can never fail to match a project wordform over a normalization difference alone.
+Naming no source, or naming sources that together contribute no words, is refused as `selection.empty`;
+naming a `--texts` GUID absent from the project is refused as `selection.text-not-found`.
+
+**Cancellation records nothing.** A cancelled run refuses as `assessment.cancelled`; no partial Assessment
+is ever left behind, because the command only records an Assessment after the Assessor has already
+returned — pinned by `CancellationWhileTheAssessorIsRunningRecordsNoAssessments`.
+
+In human mode, progress lines ("Ensuring a current Baseline exists...", "Composing the Selection...",
+"Parsing the Selection...", "Reading PanGloss's statistics...", "Assessment complete.") print to stderr as
+the run proceeds; `--json` suppresses them. The final human rendering names the `.fwdata` path, the
+Baseline's last-save timestamp with the same "(as of FieldWorks' last save)" wording, the Selection's word
+count and its per-source provenance counts, the recorded Assessment ids, and PanGloss's own statistics
+summary as a fenced code block. `--json` binds to `AssessCommandResponse`: `baseline` (a full
+`BaselineCaptureResponse`, as above), `selection` (a `SelectionProjection` — `words` and a `provenance`
+array of `{source, count}`), `assessmentIds`, `summaryMarkdown`.
+
+Refusals of its own: `assess.parser-unavailable` (the `pangloss` executable could not be located while
+building the Assessor), `assessment.cancelled`, `selection.empty`, `selection.text-not-found` — plus every
+`baseline capture` refusal above, since `assess` captures a Baseline the same way when it needs to. A
+mistyped project path is refused as `project.not-found` even when the parser is entirely unavailable,
+because the project is resolved before the Assessor is ever built — pinned by
+`AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt`.
+
+**`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
+straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —
+the grammar path and the cache path — and forwards everything written after a standalone `--` to PanGloss
+unchanged: boundaries, order, duplicates, casing, and values that themselves begin with a dash are all
+preserved, pinned by `ForwardingAfterTheDelimiterPreservesBoundariesOrderDuplicatesCasingAndLeadingDashes`.
+Motif never tokenizes, reorders, deduplicates, or otherwise interprets those arguments. Because `--` also
+ends Motif's *own* flag parsing (`ParseArgs`), `--json` only takes effect as Motif's flag when written
+before it; after `--` it is just one more argument forwarded to PanGloss.
+
+The grammar path is always the project's current Baseline's `.fwdata` — never a Trial's own candidate
+copy, even when `--proposal <id>` selects that Proposal's Trial Assessment instead of the Baseline
+Assessment. A Trial's candidate directory is a throwaway scratch copy deleted once its job finishes; only
+the per-object statistics cache it produced is kept, keyed by the grammar digest it measured, and that
+cache path is Motif's other contributed argument.
+
+`--json` asks PanGloss for its own JSONL rows by appending `--format jsonl` to the forwarded arguments,
+then parses each line into a row. **A forwarded `--format`, spelled either `--format jsonl` or
+`--format=jsonl`, is refused rather than silently overridden** — `stats.format-conflict` — because Motif
+checks only for the flag's presence and never second-guesses the caller's own choice.
+
+Human text (no `--json`) is PanGloss's own stdout, unrendered. `--json` binds to `StatsCommandResponse`:
+`assessmentId`, `grammarPath`, `cachePath`, and exactly one of `text` or `rows` populated depending on
+which was requested — the other is always `null`.
+
+Refusals of its own: `stats.format-conflict`, `stats.invalid-proposal-id` (a malformed `--proposal` value),
+`stats.no-baseline` (no Baseline has been captured for this project yet), `stats.no-assessment` (no
+Baseline or Trial Assessment carrying per-object statistics has been recorded yet — the Baseline-case
+message directs the caller to run `motif assess` first), `stats.no-cache` (the resolved Assessment was
+recorded without a statistics cache), `stats.parser-unavailable`, `stats.cancelled`.
+
 ## Related
 
 - [ADR 0041 — The database is the only store](adr/0041-the-database-is-the-only-store.md)

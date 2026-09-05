@@ -227,7 +227,7 @@ fail-closed, derives operation metadata, and emits the implemented families. The
 - detect footprint Drift and refuse an unbound apply;
 - apply in one LibLCM unit of work, read back, persist, and record an applied marker;
 - exercise the whole flow through the `motif` CLI — `open`, `analyses`, `new`, `add-set-gloss`,
-  `finalize`, `list`, `show`, `dry-run`, `apply`, `log`.
+  `finalize`, `list`, `show`, `dry-run`, `apply`, `log`, `baseline capture`, `assess`, `stats`.
 
 The durable architecture above is not implemented yet. Today each argv invocation owns its process, Proposal
 storage is file-based, the CLI opens projects directly, and Apply does not yet use the new authorization and
@@ -253,7 +253,33 @@ motif analyses --project C:\path\to\project.fwdata `
   [--store <dir>] [--json]
 ```
 
-Producing the Assessment is a separate slow operation and is not yet a CLI verb.
+`motif baseline capture` and `motif assess` are that separate operation, now shipped. A Baseline is a
+saved-file capture of a project's semantic state — read from the project's own `.fwdata` on disk, never
+from FieldWorks' in-memory state, so everything derived from it is *as of FieldWorks' last save* and
+FieldWorks may keep the project open the whole time:
+
+```powershell
+motif baseline capture C:\path\to\project.fwdata [--json]
+```
+
+`motif assess` ensures a current Baseline exists (capturing one first if none does), composes a Selection
+from whichever of four sources are named — every wordform, chosen Texts by GUID, a pasted or typed word
+list, and the previous run's failed or slow-to-parse words — sends that Selection through PanGloss, and
+records the outcome as Assessments:
+
+```powershell
+motif assess C:\path\to\project.fwdata --all-wordforms [--json]
+```
+
+`motif stats` then forwards a query straight through to PanGloss's own `stats` command against whichever
+Assessment resulted, passing everything written after a standalone `--` through byte-for-byte:
+
+```powershell
+motif stats C:\path\to\project.fwdata -- --group pos
+```
+
+See [docs/cli-api.md](docs/cli-api.md) for the full flag set, JSON shapes, and refusal codes for all
+three.
 
 This is a tested control and proving surface for one operation kind, not evidence that the planned
 product is complete.
