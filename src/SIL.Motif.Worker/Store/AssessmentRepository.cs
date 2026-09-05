@@ -42,6 +42,16 @@ public interface IAssessmentRepository
     IReadOnlyList<AssessmentRecord> ListByKind(string kind);
 
     /// <summary>
+    /// Lists Baseline Assessments of one kind — rows whose <see cref="AssessmentRecord.ProposalId"/> is
+    /// <c>null</c>, meaning they measured the project itself rather than a candidate Proposal — oldest
+    /// first, so the newest is last. Unlike <see cref="ListByKind"/>, word and analysis detail is already
+    /// populated: this is the stored evidence a Selection composer reads to find what a previous run
+    /// failed or timed out on. It returns that evidence exactly as recorded and derives nothing from it —
+    /// deciding what to retry is the composer's job, never this repository's.
+    /// </summary>
+    IReadOnlyList<AssessmentRecord> ListBaselineAssessments(string kind);
+
+    /// <summary>
     /// Promotes one Assessment to be the project's current Assessment (ADR 0042 decision 2): a pointer
     /// the project holds, not a state the Assessment carries.
     /// </summary>
@@ -218,6 +228,25 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var records = new List<AssessmentRecord>();
         while (reader.Read()) records.Add(ReadHeader(reader));
         return records;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<AssessmentRecord> ListBaselineAssessments(string kind)
+    {
+        if (string.IsNullOrWhiteSpace(kind)) throw new ArgumentException("A kind is required.", nameof(kind));
+        using var connection = _database.OpenConnection();
+
+        var headers = new List<AssessmentRecord>();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText =
+                HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL ORDER BY SavedUtc, AssessmentId;";
+            command.Parameters.AddWithValue("$kind", kind);
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) headers.Add(ReadHeader(reader));
+        }
+
+        return headers.Select(header => header with { Words = ReadWords(connection, header.AssessmentId) }).ToList();
     }
 
     /// <inheritdoc />

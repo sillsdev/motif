@@ -106,6 +106,26 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void ListBaselineAssessmentsReturnsOnlyProposalFreeRowsOfOneKindWithWordsPopulated_NewestLast()
+    {
+        var repository = NewRepository("baseline-runs.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+
+        repository.Record(NewAssessment("baseline-older", null, null, "ParseTime", savedUtc: "2020-01-01T00:00:00Z"));
+        repository.Record(NewAssessment("baseline-newest", null, null, "ParseTime", savedUtc: "2020-01-02T00:00:00Z"));
+        repository.Record(NewAssessment("trial-run", proposal, "sha256:intent", "ParseTime"));
+        repository.Record(NewAssessment("baseline-other-kind", null, null, "engine-size"));
+
+        var runs = repository.ListBaselineAssessments("ParseTime");
+
+        Assert.Equal(["baseline-older", "baseline-newest"], runs.Select(r => r.AssessmentId).ToArray());
+        Assert.All(runs, run => Assert.Null(run.ProposalId));
+        Assert.All(runs, run => Assert.NotNull(run.Words));
+        Assert.Equal("bo", runs[^1].Words![0].Word);
+    }
+
+    [Fact]
     public void PromotionMovesThePointerAndReadingCurrentReturnsWhatWasPromoted()
     {
         var repository = NewRepository("promote.fwdata", out _);
@@ -241,7 +261,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
 
     private static NewAssessmentRecord NewAssessment(
         string assessmentId, CanonicalId? proposalId, string? proposalIntentDigest, string kind,
-        IReadOnlyList<AssessedWord>? words = null)
+        IReadOnlyList<AssessedWord>? words = null, string? savedUtc = null)
     {
         var selection = Selection.Create("selection-1", ["bo", "za"]);
         return new NewAssessmentRecord(
@@ -266,7 +286,8 @@ public sealed class AssessmentRepositoryTests : IDisposable
             [
                 new AssessedWord("bo", "complete", [new ParsedAnalysis("cat-guid", ["guid-root"], 0, "sha256:identity")]),
                 new AssessedWord("za", "incomplete", [])
-            ]);
+            ],
+            SavedUtc: savedUtc);
     }
 
     public void Dispose()
