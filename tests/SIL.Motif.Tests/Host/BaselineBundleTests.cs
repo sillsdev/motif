@@ -96,6 +96,37 @@ public sealed class BaselineBundleTests : IDisposable
     }
 
     [Fact]
+    public async Task PathBasedWriteAsync_StampedFromTheSource_HashesTheSameForTwoCopiesOfOneProject()
+    {
+        var first = await new SavedProjectFileCopier().CopyAsync(
+            _cache.ProjectId.Path, Path.Combine(_root, "determinism-first"), CancellationToken.None);
+        // A second copy is written later, so its own files carry a later mtime than the first copy's.
+        await Task.Delay(TimeSpan.FromSeconds(2.5));
+        var second = await new SavedProjectFileCopier().CopyAsync(
+            _cache.ProjectId.Path, Path.Combine(_root, "determinism-second"), CancellationToken.None);
+
+        using var firstBytes = new MemoryStream();
+        using var secondBytes = new MemoryStream();
+        var firstDigest = await new BaselineBundleWriter().WriteAsync(
+            first.FwDataPath, first.WritingSystemPaths, firstBytes, CancellationToken.None,
+            first.SourceLastWriteUtc);
+        var secondDigest = await new BaselineBundleWriter().WriteAsync(
+            second.FwDataPath, second.WritingSystemPaths, secondBytes, CancellationToken.None,
+            second.SourceLastWriteUtc);
+
+        Assert.Equal(firstDigest, secondDigest);
+
+        using var unstampedFirst = new MemoryStream();
+        using var unstampedSecond = new MemoryStream();
+        var unstampedFirstDigest = await new BaselineBundleWriter().WriteAsync(
+            first.FwDataPath, first.WritingSystemPaths, unstampedFirst, CancellationToken.None);
+        var unstampedSecondDigest = await new BaselineBundleWriter().WriteAsync(
+            second.FwDataPath, second.WritingSystemPaths, unstampedSecond, CancellationToken.None);
+
+        Assert.NotEqual(unstampedFirstDigest, unstampedSecondDigest);
+    }
+
+    [Fact]
     public async Task PathBasedWriteAsync_ZipsACapturedCopyThatReloadsWithEquivalentModelAndWritingSystems()
     {
         var captureDestination = Path.Combine(_root, "captured");

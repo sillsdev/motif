@@ -87,8 +87,10 @@ public static class BaselineCaptureCommand
                     string bundleDigest;
                     using (var destination = File.Create(bundlePath))
                     {
+                        // Stamp from the source's save time; the copy's own is now, rehashing every capture.
                         bundleDigest = new BaselineBundleWriter()
-                            .WriteAsync(copy.FwDataPath, copy.WritingSystemPaths, destination, CancellationToken.None)
+                            .WriteAsync(copy.FwDataPath, copy.WritingSystemPaths, destination,
+                                CancellationToken.None, copy.SourceLastWriteUtc)
                             .GetAwaiter().GetResult();
                     }
                     var declaredToken = new BaselineToken(

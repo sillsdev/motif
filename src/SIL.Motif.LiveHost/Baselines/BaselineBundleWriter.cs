@@ -84,7 +84,8 @@ public sealed class BaselineBundleWriter
         string fwDataPath,
         IReadOnlyList<string> writingSystemPaths,
         Stream destination,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        DateTimeOffset? sourceLastWriteUtc = null)
     {
         if (fwDataPath is null) throw new ArgumentNullException(nameof(fwDataPath));
         if (writingSystemPaths is null) throw new ArgumentNullException(nameof(writingSystemPaths));
@@ -97,14 +98,17 @@ public sealed class BaselineBundleWriter
         using var hashingDestination = new HashingWriteStream(destination);
         using (var archive = new ZipArchive(hashingDestination, ZipArchiveMode.Create, true))
         {
-            await AddFileAsync(archive, fwDataPath, Path.GetFileName(fwDataPath), cancellationToken).ConfigureAwait(false);
+            await AddFileAsync(
+                archive, fwDataPath, Path.GetFileName(fwDataPath), cancellationToken, sourceLastWriteUtc)
+                .ConfigureAwait(false);
             foreach (var ldmlPath in writingSystemPaths.OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal))
             {
                 await AddFileAsync(
                     archive,
                     ldmlPath,
                     WritingSystemStore + "/" + Path.GetFileName(ldmlPath),
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken,
+                    sourceLastWriteUtc).ConfigureAwait(false);
             }
         }
 
@@ -116,12 +120,14 @@ public sealed class BaselineBundleWriter
         ZipArchive archive,
         string sourcePath,
         string entryName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        DateTimeOffset? entryLastWrite = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
         using var source = SavedProjectFileCopier.OpenSavedFile(sourcePath);
-        entry.LastWriteTime = WindowsSavedFileMetadata.GetLastWriteTimeUtc(source.SafeFileHandle);
+        entry.LastWriteTime = entryLastWrite
+            ?? WindowsSavedFileMetadata.GetLastWriteTimeUtc(source.SafeFileHandle);
         using var target = entry.Open();
         var buffer = new byte[CopyBufferSize];
         int read;
