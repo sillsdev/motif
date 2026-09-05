@@ -50,6 +50,7 @@ public static class CommandTextRenderer
             JobAssessmentsResponse r => RenderJobAssessments(r),
             BaselineCaptureResponse r => RenderBaselineCaptured(r),
             AssessCommandResponse r => RenderAssessed(r),
+            StatsCommandResponse r => RenderStats(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
@@ -207,6 +208,9 @@ public static class CommandTextRenderer
         text.Append(response.SummaryMarkdown);
         return text.ToString();
     }
+
+    // Human-mode dispatch always asks for text output, so response.Text is always populated here.
+    private static string RenderStats(StatsCommandResponse response) => response.Text ?? string.Empty;
 
     private static string RenderJobAssessments(JobAssessmentsResponse response)
     {

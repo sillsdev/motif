@@ -11,7 +11,7 @@ namespace SIL.Motif.Commands.Catalog;
 /// The sole enumeration of Motif's command handlers (ADR 0043 decision 3): one entry per public
 /// handler in <see cref="ProposalCommands"/>, <see cref="CorpusCommands"/>, <see cref="ConfigCommands"/>,
 /// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, <see cref="BaselineCaptureCommand"/>,
-/// <see cref="Assess.AssessCommand"/>, and <see cref="JobCommands"/>.
+/// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, and <see cref="JobCommands"/>.
 /// </summary>
 /// <remarks>
 /// Three names each cover two entries because one CLI verb reaches two distinct handlers under
@@ -81,6 +81,9 @@ public static class CommandCatalog
 
         // AssessCommand
         new CommandDescriptor("assess", typeof(AssessRequest), typeof(AssessCommandResponse)),
+
+        // StatsCommand
+        new CommandDescriptor("stats", typeof(StatsRequest), typeof(StatsCommandResponse)),
 
         // JobCommands
         new CommandDescriptor(

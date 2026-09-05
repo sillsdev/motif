@@ -150,6 +150,10 @@ public static class CliVerbCatalog
             }),
 
         new CliVerbDescriptor(
+            "Assess", "stats", "stats",
+            new[] { "stats <project> [--proposal <id>] [--json] [-- <pangloss stats options>]" }),
+
+        new CliVerbDescriptor(
             "Corpus", "add-corpus", "add-corpus",
             new[]
             {

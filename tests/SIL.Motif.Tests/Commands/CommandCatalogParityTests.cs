@@ -73,6 +73,8 @@ public sealed class CommandCatalogParityTests
         "proposal.split-duplicate-operation",
         "report.assessment-not-found", "report.invalid-kind", "report.refused",
         "selection.empty", "selection.text-not-found",
+        "stats.cancelled", "stats.format-conflict", "stats.invalid-proposal-id", "stats.no-assessment",
+        "stats.no-baseline", "stats.no-cache", "stats.parser-unavailable",
         "store.inconsistent", "store.unsupported",
     };
 

@@ -32,7 +32,7 @@ var rest = args[1..];
 
 try
 {
-    var (flags, positionals) = ParseArgs(rest);
+    var (flags, positionals, forwardedArguments) = ParseArgs(rest);
 
     // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
     if (flags.TryGetValue("project", out var projectForRegistry))
@@ -578,6 +578,13 @@ try
                 asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
             break;
 
+        case "stats":
+            if (positionals.Count != 1) return Usage(StatsUsage(), asJson);
+            var statsOutput = asJson ? StatsOutputKind.JsonRows : StatsOutputKind.Text;
+            result = RenderCommand(StatsCommand.Stats(new StatsRequest(
+                positionals[0], flags.GetValueOrDefault("proposal"), statsOutput, forwardedArguments)));
+            break;
+
         case "jobs":
             if (positionals.Count == 0)
                 return Usage(JobsUsage(), asJson);
@@ -692,6 +699,8 @@ static string BaselineUsage() => "Usage: motif " + UsageLineFor("baseline captur
 
 static string AssessUsage() => "Usage: motif " + UsageLineFor("assess");
 
+static string StatsUsage() => "Usage: motif " + UsageLineFor("stats");
+
 /// <summary>Parses a comma-separated GUID list; an absent flag is an empty list, not a failure.</summary>
 static bool TryParseGuidList(string? raw, out List<Guid> guids)
 {
@@ -753,7 +762,7 @@ static void PrintUsage(TextWriter writer)
         writer, "Jobs", "Jobs (the durable queue; --project selects which project's queue, except list --all):");
     writer.WriteLine("Global options: --json  (structured output; supported by " +
         "open/analyses/list/show/dry-run/trial/apply/log/config/corpora/show-corpus/jobs/report/compare/" +
-        "baseline capture/assess)");
+        "baseline capture/assess/stats)");
 }
 
 /// <summary>Prints one usage banner section: its header, then every catalogued verb's usage line(s).</summary>
@@ -777,7 +786,8 @@ static bool HasAnyLicenceFlag(Dictionary<string, string> flags) =>
     || flags.ContainsKey("requires-attribution")
     || flags.ContainsKey("licence-basis");
 
-static (Dictionary<string, string> Flags, List<string> Positionals) ParseArgs(string[] tokens)
+static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyList<string> Forwarded) ParseArgs(
+    string[] tokens)
 {
     var flags = new Dictionary<string, string>(StringComparer.Ordinal);
     var positionals = new List<string>();
@@ -785,6 +795,10 @@ static (Dictionary<string, string> Flags, List<string> Positionals) ParseArgs(st
     for (var i = 0; i < tokens.Length; i++)
     {
         var token = tokens[i];
+        // A standalone "--" ends Motif's own vocabulary; everything after it belongs to a forwarded callee.
+        if (token == "--")
+            return (flags, positionals, tokens[(i + 1)..]);
+
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
@@ -800,7 +814,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals) ParseArgs(st
         }
     }
 
-    return (flags, positionals);
+    return (flags, positionals, Array.Empty<string>());
 }
 
 // The version this CLI negotiates with; the worker decides compatibility from the protocol range, not this.
