@@ -10,10 +10,11 @@ using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.LiveHost.Baselines;
 
-/// <summary>Streams the minimal file-backed Baseline from a live model whose caller has already saved it.</summary>
+/// <summary>Zips the minimal file-backed Baseline, from a live saved model or from an already-copied one.</summary>
 /// <remarks>
-/// This type neither saves nor disposes the supplied model. Project persistence and lifecycle remain the
-/// caller's responsibility.
+/// The <see cref="LcmCache"/> overload neither saves nor disposes the supplied model; project
+/// persistence and lifecycle remain the caller's responsibility. The path-based overload packages
+/// files a caller has already copied and validated and never touches a live project itself.
 /// </remarks>
 public sealed class BaselineBundleWriter
 {
@@ -69,6 +70,48 @@ public sealed class BaselineBundleWriter
             bundleDigest);
     }
 
+    /// <summary>
+    /// Zips an already-copied, already-validated saved project — <paramref name="fwDataPath"/> plus
+    /// <paramref name="writingSystemPaths"/> — and returns the archive's exact-byte digest.
+    /// </summary>
+    /// <remarks>
+    /// Takes paths rather than a live <see cref="LcmCache"/> because the caller has already captured
+    /// the project through <see cref="SavedProjectFileCopier"/>; this method only packages what that
+    /// capture produced. It does not compute a <see cref="BaselineToken"/>, since the semantic digest
+    /// that token needs comes from loading the copy as a scratch model, not from these file paths.
+    /// </remarks>
+    public async Task<string> WriteAsync(
+        string fwDataPath,
+        IReadOnlyList<string> writingSystemPaths,
+        Stream destination,
+        CancellationToken cancellationToken)
+    {
+        if (fwDataPath is null) throw new ArgumentNullException(nameof(fwDataPath));
+        if (writingSystemPaths is null) throw new ArgumentNullException(nameof(writingSystemPaths));
+        if (destination is null) throw new ArgumentNullException(nameof(destination));
+        if (!destination.CanWrite) throw new ArgumentException("The destination must be writable.", nameof(destination));
+        if (!File.Exists(fwDataPath))
+            throw new ArgumentException("The copied .fwdata file does not exist.", nameof(fwDataPath));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var hashingDestination = new HashingWriteStream(destination);
+        using (var archive = new ZipArchive(hashingDestination, ZipArchiveMode.Create, true))
+        {
+            await AddFileAsync(archive, fwDataPath, Path.GetFileName(fwDataPath), cancellationToken).ConfigureAwait(false);
+            foreach (var ldmlPath in writingSystemPaths.OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal))
+            {
+                await AddFileAsync(
+                    archive,
+                    ldmlPath,
+                    WritingSystemStore + "/" + Path.GetFileName(ldmlPath),
+                    cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+        return hashingDestination.Complete();
+    }
+
     private static async Task AddFileAsync(
         ZipArchive archive,
         string sourcePath,
@@ -77,14 +120,13 @@ public sealed class BaselineBundleWriter
     {
         cancellationToken.ThrowIfCancellationRequested();
         var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
-        entry.LastWriteTime = File.GetLastWriteTimeUtc(sourcePath);
-        using var source = new FileStream(
-            sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, CopyBufferSize, FileOptions.SequentialScan);
+        using var source = SavedProjectFileCopier.OpenSavedFile(sourcePath);
+        entry.LastWriteTime = WindowsSavedFileMetadata.GetLastWriteTimeUtc(source.SafeFileHandle);
         using var target = entry.Open();
         var buffer = new byte[CopyBufferSize];
         int read;
-        while ((read = await source.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
-            await target.WriteAsync(buffer, 0, read, cancellationToken).ConfigureAwait(false);
+        while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+            await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
     }
 
     private sealed class HashingWriteStream : Stream

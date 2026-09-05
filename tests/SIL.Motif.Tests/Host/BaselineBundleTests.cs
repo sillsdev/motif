@@ -96,6 +96,30 @@ public sealed class BaselineBundleTests : IDisposable
     }
 
     [Fact]
+    public async Task PathBasedWriteAsync_ZipsACapturedCopyThatReloadsWithEquivalentModelAndWritingSystems()
+    {
+        var captureDestination = Path.Combine(_root, "captured");
+        var copy = await new SavedProjectFileCopier().CopyAsync(
+            _cache.ProjectId.Path, captureDestination, CancellationToken.None);
+
+        using var bytes = new MemoryStream();
+        var bundleDigest = await new BaselineBundleWriter().WriteAsync(
+            copy.FwDataPath, copy.WritingSystemPaths, bytes, CancellationToken.None);
+
+        var archiveBytes = bytes.ToArray();
+        Assert.Equal(Digest(archiveBytes), bundleDigest);
+
+        var extractedRoot = Path.Combine(_root, "extracted-path-based");
+        Directory.CreateDirectory(extractedRoot);
+        using (var archive = new ZipArchive(new MemoryStream(archiveBytes), ZipArchiveMode.Read))
+            archive.ExtractToDirectory(extractedRoot);
+
+        using var scratch = _loader.LoadScratchCache(Path.Combine(extractedRoot, NewLangProjFixture.ProjectName + ".fwdata"));
+        Assert.Equal(BaselineSemanticDigest.Compute(_cache), BaselineSemanticDigest.Compute(scratch));
+        Assert.Equal(ModelIdentitySet(_cache), ModelIdentitySet(scratch));
+    }
+
+    [Fact]
     public async Task WriteAsync_SemanticDigestIsIndependentOfArchiveMetadata()
     {
         using var first = new MemoryStream();
