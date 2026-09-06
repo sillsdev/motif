@@ -85,6 +85,13 @@ public sealed class AssessViewModelTests
             "assessment.cancelled", FailureReason.Refused, "The Assessment run was cancelled.");
         fake.AssessBlocksUntilCancelled(cancelledRefusal);
 
+        // Cancelling is transient: the run can finish before Execute returns, so record rather than sample.
+        var states = new List<AssessRunState>();
+        assess.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(AssessViewModel.State)) states.Add(assess.State);
+        };
+
         var running = assess.RunCommand.ExecuteAsync(null);
         Assert.Equal(AssessRunState.Running, assess.State);
         Assert.True(assess.IsActive);
@@ -92,11 +99,12 @@ public sealed class AssessViewModelTests
         Assert.True(assess.CancelCommand.CanExecute(null));
 
         assess.CancelCommand.Execute(null);
-        Assert.Equal(AssessRunState.Cancelling, assess.State);
         Assert.False(assess.CancelCommand.CanExecute(null));
 
         await running;
 
+        Assert.Equal(
+            new[] { AssessRunState.Running, AssessRunState.Cancelling, AssessRunState.Cancelled }, states);
         Assert.Equal(AssessRunState.Cancelled, assess.State);
         Assert.False(assess.IsActive);
         Assert.Equal("assessment.cancelled", assess.Refusal!.Code);
