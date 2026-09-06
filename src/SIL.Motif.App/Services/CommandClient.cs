@@ -1,6 +1,7 @@
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -22,6 +23,13 @@ public sealed class CommandClient : ICommandClient
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => BaselineCaptureCommand.Capture(request), cancellationToken);
+
+    public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
+        Task.Run(KnownProjectsQuery.List, cancellationToken);
+
+    public Task<CommandOutcome<CurrentBaselineResponse>> GetCurrentBaselineAsync(
+        CurrentBaselineRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => CurrentBaselineQuery.Query(request), cancellationToken);
 
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)

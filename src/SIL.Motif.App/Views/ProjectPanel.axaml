@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             x:Class="SIL.Motif.App.Views.ProjectPanel">
+  <StackPanel Spacing="8" Margin="12">
+
+    <TextBlock Text="Project" FontWeight="Bold" />
+    <DockPanel LastChildFill="True">
+      <Button Content="Browse..."
+              Command="{Binding Project.BrowseCommand}"
+              AutomationProperties.Name="Browse for a FieldWorks project file"
+              DockPanel.Dock="Right" />
+      <ComboBox ItemsSource="{Binding Project.KnownProjects}"
+                SelectedItem="{Binding Project.SelectedKnownProject}"
+                AutomationProperties.Name="Known projects"
+                HorizontalAlignment="Stretch">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding FullFwDataPath}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+    </DockPanel>
+
+    <TextBlock Text="Baseline" FontWeight="Bold" Margin="0,12,0,0" />
+    <TextBlock Text="{Binding Baseline.CapturedTimeText}" />
+    <TextBlock Text="{Binding Baseline.FreshnessText}" IsVisible="{Binding Baseline.HasBaseline}" />
+    <TextBlock Text="{Binding Baseline.HeldStatusText}" />
+    <TextBlock Text="{Binding Baseline.RefusalMessage}"
+               IsVisible="{Binding Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+               Foreground="Red" />
+    <Button Content="Refresh"
+            Command="{Binding Baseline.RefreshCommand}"
+            AutomationProperties.Name="Refresh the Baseline" />
+
+    <Expander Header="Details" IsExpanded="False" Margin="0,12,0,0">
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding Baseline.Token.ProjectIdentity, StringFormat='Project identity: {0}'}" />
+        <TextBlock Text="{Binding Baseline.Token.SemanticSnapshotDigest, StringFormat='Semantic digest: {0}'}" />
+        <TextBlock Text="{Binding Baseline.Token.BundleDigest, StringFormat='Bundle digest: {0}'}" />
+      </StackPanel>
+    </Expander>
+
+  </StackPanel>
+</UserControl>

@@ -1,6 +1,7 @@
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -29,10 +30,17 @@ public sealed class FakeCommandClient : ICommandClient
         Task<CommandOutcome<HandoffCommandResponse>>> _handoff =
         (_, _, _) => throw NotConfigured(nameof(HandoffAsync));
 
+    private Func<CancellationToken, Task<IReadOnlyList<KnownProjectSummary>>> _listKnownProjects =
+        _ => throw NotConfigured(nameof(ListKnownProjectsAsync));
+
+    private Func<CurrentBaselineRequest, CancellationToken, Task<CommandOutcome<CurrentBaselineResponse>>>
+        _currentBaseline = (_, _) => throw NotConfigured(nameof(GetCurrentBaselineAsync));
+
     public List<BaselineCaptureRequest> CaptureBaselineRequests { get; } = [];
     public List<AssessRequest> AssessRequests { get; } = [];
     public List<StatsRequest> StatsRequests { get; } = [];
     public List<HandoffRequest> HandoffRequests { get; } = [];
+    public List<CurrentBaselineRequest> CurrentBaselineRequests { get; } = [];
 
     public void OnCaptureBaseline(
         Func<BaselineCaptureRequest, CancellationToken, Task<CommandOutcome<BaselineCaptureResponse>>> behavior) =>
@@ -100,11 +108,38 @@ public sealed class FakeCommandClient : ICommandClient
             return BlockUntilCancelled<HandoffCommandResponse>(cancellationToken, onCancelled);
         });
 
+    public void OnListKnownProjects(
+        Func<CancellationToken, Task<IReadOnlyList<KnownProjectSummary>>> behavior) =>
+        _listKnownProjects = behavior;
+
+    public void KnownProjectsListIs(IReadOnlyList<KnownProjectSummary> projects) =>
+        OnListKnownProjects(_ => Task.FromResult(projects));
+
+    public void OnGetCurrentBaseline(
+        Func<CurrentBaselineRequest, CancellationToken, Task<CommandOutcome<CurrentBaselineResponse>>> behavior) =>
+        _currentBaseline = behavior;
+
+    public void CurrentBaselineCompletesWith(CurrentBaselineResponse response) =>
+        OnGetCurrentBaseline((_, _) => Completed(response));
+
+    public void CurrentBaselineRefusesWith(Refusal refusal) =>
+        OnGetCurrentBaseline((_, _) => Refused<CurrentBaselineResponse>(refusal));
+
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken)
     {
         CaptureBaselineRequests.Add(request);
         return _captureBaseline(request, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
+        _listKnownProjects(cancellationToken);
+
+    public Task<CommandOutcome<CurrentBaselineResponse>> GetCurrentBaselineAsync(
+        CurrentBaselineRequest request, CancellationToken cancellationToken)
+    {
+        CurrentBaselineRequests.Add(request);
+        return _currentBaseline(request, cancellationToken);
     }
 
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(

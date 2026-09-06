@@ -4,6 +4,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SIL.Motif.App</RootNamespace>
+    <!-- Views bind against plain view models without a per-file x:DataType; AVLN2100 otherwise refuses every binding. -->
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
   <ItemGroup>
