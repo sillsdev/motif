@@ -93,6 +93,25 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     private bool CanLoad() => ProjectPath is not null;
 
+    /// <summary>
+    /// Forgets every fetched row, so nothing of one project's statistics can reappear under another's.
+    /// </summary>
+    /// <remarks>
+    /// Clearing <see cref="Rows"/> alone is not enough: it is only the view, re-derived from the fetched
+    /// set whenever the filter or sort changes. Leaving that set behind means a sort after switching
+    /// projects repopulates the grid with the previous project's words.
+    /// </remarks>
+    public void Reset()
+    {
+        _allRows.Clear();
+        Rows.Clear();
+        SortColumn = null;
+        FilterText = string.Empty;
+        IsStale = false;
+        Refusal = null;
+        SummaryMarkdown = null;
+    }
+
     private async Task LoadAsync()
     {
         if (ProjectPath is null) return;

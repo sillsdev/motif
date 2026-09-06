@@ -146,10 +146,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Assess.Result = null;
         Assess.Refusal = null;
 
-        Statistics.Refusal = null;
-        Statistics.IsStale = false;
-        Statistics.SummaryMarkdown = null;
-        Statistics.Rows.Clear();
+        Statistics.Reset();
 
         Handoff.State = HandoffRunState.Idle;
         Handoff.Progress = null;

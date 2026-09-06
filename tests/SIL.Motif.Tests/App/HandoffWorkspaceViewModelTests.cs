@@ -61,6 +61,24 @@ public sealed class HandoffWorkspaceViewModelTests
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
     }
 
+    // Rows are only a view over the fetched set; clearing the view alone leaves the old project's words.
+    [Fact]
+    public async Task SortingAfterASwitchOfProjectsCannotResurrectTheOldProjectsStatistics()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\one.fwdata", NewToken());
+        fake.StatsCompletesWith(new StatsCommandResponse(
+            "assessment/one", "grammar.json", "cache.sqlite", null,
+            [JsonDocument.Parse("""{"kind":"word","word":"from-project-one"}""").RootElement.Clone()]));
+        await workspace.Statistics.LoadCommand.ExecuteAsync(null);
+        Assert.Single(workspace.Statistics.Rows);
+
+        await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata", NewToken());
+        workspace.Statistics.SortBy("word");
+
+        Assert.Empty(workspace.Statistics.Rows);
+    }
+
     [Fact]
     public async Task ChoosingAProjectLoadsBaselineAndTextStateAndPropagatesTheProjectToEveryChild()
     {
