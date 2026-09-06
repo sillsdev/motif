@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             x:Class="SIL.Motif.App.Views.AssessPanel"
+             x:DataType="views:AssessPanel">
+  <StackPanel Spacing="8" Margin="12">
+
+    <TextBlock Text="Run" FontWeight="Bold" />
+
+    <DockPanel LastChildFill="False">
+      <Button Content="Run"
+              Command="{Binding Assess.RunCommand}"
+              AutomationProperties.Name="Run the Assessment" />
+      <Button Content="Cancel"
+              Command="{Binding Assess.CancelCommand}"
+              IsVisible="{Binding Assess.IsActive}"
+              AutomationProperties.Name="Cancel the running Assessment"
+              Margin="8,0,0,0" />
+    </DockPanel>
+
+    <ProgressBar IsVisible="{Binding Assess.IsActive}"
+                 IsIndeterminate="{Binding Assess.IsIndeterminate}"
+                 Minimum="0"
+                 Maximum="1"
+                 Value="{Binding Assess.ProgressFraction}"
+                 AutomationProperties.Name="Assessment progress" />
+    <TextBlock Text="{Binding Assess.Progress.Message}"
+               IsVisible="{Binding Assess.IsActive}" />
+
+    <TextBlock Text="{Binding Assess.Refusal.Message}"
+               IsVisible="{Binding Assess.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+               Foreground="Red" />
+    <Expander Header="Details"
+              IsExpanded="False"
+              IsVisible="{Binding Assess.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+      <ItemsControl ItemsSource="{Binding Assess.RefusalFacts}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <TextBlock Text="{Binding}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Expander>
+
+  </StackPanel>
+</UserControl>
