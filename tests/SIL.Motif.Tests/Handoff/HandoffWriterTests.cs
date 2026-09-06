@@ -4,6 +4,7 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
@@ -44,6 +45,26 @@ public sealed class HandoffWriterTests : IDisposable
         catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
+    // Complete must arrive once, at the end: the nested Assessment reports its own part way through.
+    [Fact]
+    public void ProgressReachesCompleteOnlyOnceTheFolderIsActuallyWritten()
+    {
+        using var seeded = NewSeededScratch();
+        var destination = Path.Combine(_root, "handoff-progress");
+        var reported = new List<AssessmentProgress>();
+
+        var outcome = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
+            NewManagedRoot(), NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
+            reported.Add, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Contains(AssessmentStage.ImportingGrammar, reported.Select(step => step.Stage));
+        var complete = Assert.Single(reported, step => step.Stage == AssessmentStage.Complete);
+        Assert.Same(reported[^1], complete);
+        Assert.Equal("Handoff complete.", complete.Message);
+    }
+
     [Fact]
     public void AnEndToEndHandoffWritesTheExactListingAndEveryFileValidates()
     {
@@ -54,7 +75,7 @@ public sealed class HandoffWriterTests : IDisposable
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
             managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            CancellationToken.None);
+            onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         var response = outcome.Value!;
@@ -92,7 +113,7 @@ public sealed class HandoffWriterTests : IDisposable
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
             managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            CancellationToken.None);
+            onProgress: null, CancellationToken.None);
         Assert.True(outcome.Succeeded);
 
         var scriptPath = Path.Combine(destination, "read_handoff.py");
@@ -117,7 +138,7 @@ public sealed class HandoffWriterTests : IDisposable
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
             managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            CancellationToken.None);
+            onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.destination-exists", outcome.Refusal!.Code);
@@ -135,7 +156,7 @@ public sealed class HandoffWriterTests : IDisposable
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
             managedRoot, NewAssessor, NewRealStatsQuery,
             () => new ThrowingGrammarImporter(new OperationCanceledException()),
-            NewQueue(), CancellationToken.None);
+            NewQueue(), onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.cancelled", outcome.Refusal!.Code);
@@ -153,7 +174,7 @@ public sealed class HandoffWriterTests : IDisposable
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
             managedRoot, NewAssessor, NewRealStatsQuery,
             () => new ThrowingGrammarImporter(new ParserUnavailableException("boom")),
-            NewQueue(), CancellationToken.None);
+            NewQueue(), onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.parser-unavailable", outcome.Refusal!.Code);
@@ -170,7 +191,7 @@ public sealed class HandoffWriterTests : IDisposable
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
             managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            CancellationToken.None);
+            onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         Assert.Empty(outcome.Value!.AssessmentIds);
@@ -191,7 +212,7 @@ public sealed class HandoffWriterTests : IDisposable
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, true, false),
             managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            CancellationToken.None);
+            onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         var jsonFiles = Directory.GetFiles(Path.Combine(destination, "texts"), "*.flextext.json");
@@ -216,7 +237,7 @@ public sealed class HandoffWriterTests : IDisposable
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
             managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            CancellationToken.None);
+            onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         var textFiles = Directory.GetFiles(Path.Combine(destination, "texts"), "*.flextext.json");
@@ -235,7 +256,7 @@ public sealed class HandoffWriterTests : IDisposable
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, emptySelection, false, false),
             managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            CancellationToken.None);
+            onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("selection.empty", outcome.Refusal!.Code);
@@ -254,7 +275,7 @@ public sealed class HandoffWriterTests : IDisposable
             new HandoffRequest(missingProject, destination, AllWordformsAllTexts, false, false),
             managedRoot, NewAssessor, NewRealStatsQuery,
             () => throw new ParserUnavailableException("no pangloss here"),
-            NewQueue(), CancellationToken.None);
+            NewQueue(), onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("project.not-found", outcome.Refusal!.Code);

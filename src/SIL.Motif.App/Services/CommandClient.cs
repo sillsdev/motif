@@ -38,6 +38,7 @@ public sealed class CommandClient : ICommandClient
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return Task.Run(() => HandoffCommand.Handoff(request, cancellationToken), cancellationToken);
+        return Task.Run(
+            () => HandoffCommand.Handoff(request, progress.Report, cancellationToken), cancellationToken);
     }
 }

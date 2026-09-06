@@ -594,9 +594,11 @@ try
             // No --texts means every wordform and every Text; a chosen list means only those Texts' words.
             var handoffSelection = new SelectionRequest(
                 handoffTextIds.Count == 0, handoffTextIds, Array.Empty<string>(), false, null);
-            result = RenderCommand(HandoffCommand.Handoff(new HandoffRequest(
-                positionals[0], handoffOut, handoffSelection, flags.ContainsKey("flextext"),
-                !flags.ContainsKey("no-assess"))));
+            result = RenderCommand(HandoffCommand.Handoff(
+                new HandoffRequest(
+                    positionals[0], handoffOut, handoffSelection, flags.ContainsKey("flextext"),
+                    !flags.ContainsKey("no-assess")),
+                asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
             break;
 
         case "jobs":

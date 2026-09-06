@@ -45,20 +45,30 @@ public sealed record HandoffRequest(
 /// the project has resolved, so a mistyped path is refused as <c>project.not-found</c> rather than a
 /// missing parser.
 /// </para>
+/// <para>
+/// Progress is reported through the command-owned stages of <see cref="AssessmentStage"/>, which was
+/// written for this run as much as for a bare Assessment. The nested <see cref="AssessCommand"/>'s own
+/// stages are forwarded, minus its <see cref="AssessmentStage.Complete"/>: that is true of the Assessment
+/// and false of the Handoff, which still has the grammar, the texts, and six statistics files to write.
+/// Reporting it would tell a caller the run had finished part way through, so this command swallows it and
+/// reports its own once the folder is actually in place.
+/// </para>
 /// </remarks>
 public static class HandoffCommand
 {
     /// <summary>Writes a Handoff folder, resolving the managed root the real installation uses.</summary>
     public static CommandOutcome<HandoffCommandResponse> Handoff(
-        HandoffRequest request, CancellationToken cancellationToken = default) =>
-        Handoff(request, RunnerOptions.ResolveRoot(), cancellationToken);
+        HandoffRequest request, Action<AssessmentProgress>? onProgress = null,
+        CancellationToken cancellationToken = default) =>
+        Handoff(request, RunnerOptions.ResolveRoot(), onProgress, cancellationToken);
 
     /// <summary>
     /// Writes a Handoff folder under an explicitly supplied managed root. The single-argument overload is
     /// what production code and the CLI call; this one exists so a test can supply its own disposable root.
     /// </summary>
     public static CommandOutcome<HandoffCommandResponse> Handoff(
-        HandoffRequest request, string managedRoot, CancellationToken cancellationToken = default)
+        HandoffRequest request, string managedRoot, Action<AssessmentProgress>? onProgress = null,
+        CancellationToken cancellationToken = default)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var queue = new MachinePanGlossQueue();
@@ -66,7 +76,7 @@ public static class HandoffCommand
             () => new PanGlossAssessor(new StatsCacheStore(ownership)),
             () => new PanGlossStatsQueryProcess(),
             () => new PanGlossGrammarImportProcess(),
-            queue, cancellationToken);
+            queue, onProgress, cancellationToken);
     }
 
     /// <summary>
@@ -78,7 +88,7 @@ public static class HandoffCommand
         HandoffRequest request, string managedRoot,
         Func<IAssessor> assessorFactory, Func<IPanGlossStatsQuery> statsQueryFactory,
         Func<IPanGlossGrammarImporter> grammarImporterFactory, MachinePanGlossQueue queue,
-        CancellationToken cancellationToken)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(assessorFactory);
@@ -111,7 +121,8 @@ public static class HandoffCommand
                 {
                     var assessOutcome = AssessCommand.Run(
                         new AssessRequest(request.ProjectPath, request.Selection), managedRoot,
-                        assessorFactory, statsQueryFactory, queue, onProgress: null, cancellationToken);
+                        assessorFactory, statsQueryFactory, queue, ForwardExceptComplete(onProgress),
+                        cancellationToken);
                     if (!assessOutcome.Succeeded)
                         return CommandOutcome<HandoffCommandResponse>.Refused(assessOutcome.Refusal!);
 
@@ -143,6 +154,7 @@ public static class HandoffCommand
 
                     HandoffWriter.WriteSelectionTxt(incoming, selectionProjection);
 
+                    Report(onProgress, AssessmentStage.ImportingGrammar, "Importing the grammar...");
                     grammarImporter.ImportAsync(
                             baseline.FwDataPath, Path.Combine(incoming, HandoffWriter.GrammarFileName),
                             cancellationToken)
@@ -152,6 +164,7 @@ public static class HandoffCommand
                     {
                         File.WriteAllText(
                             Path.Combine(incoming, HandoffWriter.StatisticsSummaryFileName), statisticsMarkdown);
+                        Report(onProgress, AssessmentStage.ReadingStatistics, "Reading PanGloss's statistics...");
                         var statisticsDir = Directory.CreateDirectory(
                             Path.Combine(incoming, HandoffWriter.StatisticsDirectoryName)).FullName;
 
@@ -176,6 +189,7 @@ public static class HandoffCommand
                 if (writeRefusal is not null)
                     return CommandOutcome<HandoffCommandResponse>.Refused(writeRefusal);
 
+                Report(onProgress, AssessmentStage.Complete, "Handoff complete.");
                 var files = HandoffWriter.ListFiles(request.OutputDirectory);
                 return CommandOutcome<HandoffCommandResponse>.Success(new HandoffCommandResponse(
                     request.OutputDirectory, baseline, selectionProjection, files, assessmentIds));
@@ -192,6 +206,18 @@ public static class HandoffCommand
             }
         });
     }
+
+    private static void Report(Action<AssessmentProgress>? onProgress, AssessmentStage stage, string message) =>
+        onProgress?.Invoke(new AssessmentProgress(stage, 0, null, message));
+
+    /// Passes the nested Assessment's own stages on, except the one that says it finished.
+    private static Action<AssessmentProgress>? ForwardExceptComplete(Action<AssessmentProgress>? onProgress) =>
+        onProgress is null
+            ? null
+            : progress =>
+            {
+                if (progress.Stage != AssessmentStage.Complete) onProgress(progress);
+            };
 
     private static Refusal Cancelled(string projectPath) => new(
         "handoff.cancelled", FailureReason.Refused,
