@@ -31,6 +31,10 @@ public sealed class CommandClient : ICommandClient
         CurrentBaselineRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => CurrentBaselineQuery.Query(request), cancellationToken);
 
+    public Task<CommandOutcome<TextInventoryResponse>> ListTextsAsync(
+        TextInventoryRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => TextInventoryQuery.Query(request), cancellationToken);
+
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {

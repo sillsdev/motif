@@ -36,11 +36,15 @@ public sealed class FakeCommandClient : ICommandClient
     private Func<CurrentBaselineRequest, CancellationToken, Task<CommandOutcome<CurrentBaselineResponse>>>
         _currentBaseline = (_, _) => throw NotConfigured(nameof(GetCurrentBaselineAsync));
 
+    private Func<TextInventoryRequest, CancellationToken, Task<CommandOutcome<TextInventoryResponse>>>
+        _listTexts = (_, _) => throw NotConfigured(nameof(ListTextsAsync));
+
     public List<BaselineCaptureRequest> CaptureBaselineRequests { get; } = [];
     public List<AssessRequest> AssessRequests { get; } = [];
     public List<StatsRequest> StatsRequests { get; } = [];
     public List<HandoffRequest> HandoffRequests { get; } = [];
     public List<CurrentBaselineRequest> CurrentBaselineRequests { get; } = [];
+    public List<TextInventoryRequest> ListTextsRequests { get; } = [];
 
     public void OnCaptureBaseline(
         Func<BaselineCaptureRequest, CancellationToken, Task<CommandOutcome<BaselineCaptureResponse>>> behavior) =>
@@ -125,6 +129,16 @@ public sealed class FakeCommandClient : ICommandClient
     public void CurrentBaselineRefusesWith(Refusal refusal) =>
         OnGetCurrentBaseline((_, _) => Refused<CurrentBaselineResponse>(refusal));
 
+    public void OnListTexts(
+        Func<TextInventoryRequest, CancellationToken, Task<CommandOutcome<TextInventoryResponse>>> behavior) =>
+        _listTexts = behavior;
+
+    public void ListTextsCompletesWith(TextInventoryResponse response) =>
+        OnListTexts((_, _) => Completed(response));
+
+    public void ListTextsRefusesWith(Refusal refusal) =>
+        OnListTexts((_, _) => Refused<TextInventoryResponse>(refusal));
+
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken)
     {
@@ -140,6 +154,13 @@ public sealed class FakeCommandClient : ICommandClient
     {
         CurrentBaselineRequests.Add(request);
         return _currentBaseline(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<TextInventoryResponse>> ListTextsAsync(
+        TextInventoryRequest request, CancellationToken cancellationToken)
+    {
+        ListTextsRequests.Add(request);
+        return _listTexts(request, cancellationToken);
     }
 
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(

@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.SelectionPanel"
+             x:DataType="views:SelectionPanel">
+  <StackPanel Spacing="8" Margin="12">
+
+    <TextBlock Text="Selection" FontWeight="Bold" />
+
+    <TextBox PlaceholderText="Search texts..."
+             Text="{Binding Selection.SearchText}"
+             AutomationProperties.Name="Search texts" />
+    <ListBox ItemsSource="{Binding Selection.Texts}"
+             MaxHeight="180"
+             AutomationProperties.Name="Texts">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:TextChoiceViewModel">
+          <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked}" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <TextBlock Text="Pasted words" FontWeight="Bold" Margin="0,12,0,0" />
+    <TextBox Text="{Binding Selection.PastedWords}"
+             AcceptsReturn="True"
+             TextWrapping="Wrap"
+             Height="80"
+             AutomationProperties.Name="Pasted words" />
+
+    <CheckBox Content="All wordforms" IsChecked="{Binding Selection.AllWordforms}" />
+    <CheckBox Content="Retry failed" IsChecked="{Binding Selection.RetryFailed}" />
+
+    <DockPanel LastChildFill="False">
+      <TextBlock Text="Retry slower than (ms)" VerticalAlignment="Center" Margin="0,0,8,0" />
+      <NumericUpDown Value="{Binding Selection.RetrySlowerThanMilliseconds}"
+                      Minimum="0"
+                      AutomationProperties.Name="Retry slower than, in milliseconds" />
+    </DockPanel>
+    <TextBlock Text="{Binding Selection.ThresholdValidationMessage}"
+               IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+               Foreground="Red" />
+
+    <TextBlock Text="{Binding Selection.SummaryText}" Margin="0,12,0,0" FontWeight="Bold" />
+    <TextBlock Text="{Binding Selection.RefusalMessage}"
+               IsVisible="{Binding Selection.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+               Foreground="Red" />
+
+  </StackPanel>
+</UserControl>
