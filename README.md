@@ -17,11 +17,13 @@ unit of work.
 > **Status: this is the target architecture and delivery plan, not the current implementation.**
 >
 > The repository contains a tested CLI-first control path, generated operation families, Proposal workflow,
-> scratch Dry Runs, and stored Assessment reporting. The paired database, durable job system, PanGloss
-> orchestrator, Apply Authorization, and Motif application are specified but not built. Nothing in the plans
-> should be read as already shipped. The named-pipe worker protocol described in older documents has been
-> withdrawn ([ADR 0040](docs/adr/0040-one-api-the-cli.md)). Verb implementations now live behind one typed
-> command catalog that the CLI and a planned Motif application both call in-process
+> scratch Dry Runs, and stored Assessment reporting, plus a first Motif application window over Baseline,
+> Selection, Assessment, statistics, and Handoff. The paired database, durable job system, PanGloss
+> orchestrator, Apply Authorization, and Proposal review in the application are specified but not built.
+> Nothing in the plans should be read as already shipped beyond what is described here. The named-pipe
+> worker protocol described in older documents has been withdrawn
+> ([ADR 0040](docs/adr/0040-one-api-the-cli.md)). Verb implementations now live behind one typed command
+> catalog that the CLI and the Motif application both call in-process
 > ([ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md)); the CLI remains the complete front end —
 > the door an AI agent, a script, or a separate FieldWorks uses.
 
@@ -39,7 +41,7 @@ calling exactly one CLI verb.
 | | |
 | --- | --- |
 | `motif` CLI | `net10.0`. Batch, automation, and AI-agent use; the complete front end — every catalogued command has a verb — and owns the live project while it holds the FieldWorks lock |
-| `SIL.Motif.App` | Planned, `net10.0` Avalonia, in this repository. Calls the catalog in-process; never parses `--json` and never holds a live project model |
+| `SIL.Motif.App` | `net10.0` Avalonia, in this repository. Ships its first window — Baseline, Selection, Assessment, statistics, Handoff. Calls the catalog in-process; never parses `--json` and never holds a live project model |
 | FieldWorks integration | One CLI call, `motif apply --all-pending`, run at a save boundary with the project released. FieldWorks reloads afterward, the FLExBridge pattern |
 
 Everything else is infrastructure or a dependency — a job runner installed with Motif takes work that must
@@ -314,6 +316,36 @@ Run the tests with:
 ```powershell
 ./test.ps1
 ```
+
+## Running the Motif application
+
+**The first `SIL.Motif.App` window is shipped: pick a project, capture and inspect its Baseline, choose
+words, run PanGloss, browse statistics, and write an AI Handoff folder — all from one Avalonia window,
+without touching the CLI.** It calls the same command catalog the CLI calls, in-process; it never parses
+`--json` and never holds a live FieldWorks project model.
+
+Launch it from the repository root:
+
+```powershell
+dotnet run --project src/SIL.Motif.App
+```
+
+**PanGloss discovery.** The window (like `motif assess`, `stats`, and `handoff`) shells out to the
+`pangloss` executable. Set `MOTIF_PANGLOSS_EXE` to its path, or leave it unset and Motif looks for
+`../PanGloss/rust/target/release/pangloss(.exe)` relative to the repository root — the layout of a sibling
+PanGloss checkout built in release mode. Neither found is an ordinary state of a machine that has not built
+PanGloss yet: Run and Handoff refuse with `assess.parser-unavailable` / `handoff.parser-unavailable` rather
+than crashing, and every other panel keeps working.
+
+**The workflow.** Choose a project from the Known-projects list or Browse to a `.fwdata` file; the Baseline
+panel shows when it was last captured — the freshness sentence is exactly **`as of FieldWorks' last save`**
+— and whether FieldWorks currently holds the project open. Choose words from any of the four agreed
+sources (checked Texts, pasted words, All wordforms, Retry failed/slower-than a threshold), then Run to
+Assess them; Run and Cancel report the command's own progress stages, never an invented per-word count.
+Statistics groups PanGloss's own per-object rows into the same six groups the CLI's `stats --group`
+accepts, with client-side sort and filter. Handoff writes a self-contained folder — the grammar, the
+chosen Texts, the exact Selection, and PanGloss's statistics — with the data-sensitivity notice always
+shown, and its files are real drag sources for dropping straight into a chat model.
 
 ## Vocabulary and design constraints
 

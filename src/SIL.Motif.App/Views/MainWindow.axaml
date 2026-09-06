@@ -1,7 +1,51 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         x:Class="SIL.Motif.App.Views.MainWindow"
+        x:DataType="vm:HandoffWorkspaceViewModel"
         Title="Motif"
         Width="1000"
-        Height="700">
+        Height="700"
+        MinWidth="900"
+        MinHeight="600">
+  <ScrollViewer>
+    <StackPanel Spacing="0">
+
+      <ContentControl x:Name="ProjectHost" IsEnabled="{Binding ProjectAndSelectionEnabled}" />
+      <ContentControl x:Name="SelectionHost" IsEnabled="{Binding ProjectAndSelectionEnabled}" />
+      <ContentControl x:Name="AssessHost" />
+
+      <Border IsVisible="{Binding RerunOffered}"
+              Margin="12,0,12,12"
+              Padding="12"
+              BorderThickness="1"
+              CornerRadius="4">
+        <DockPanel LastChildFill="True">
+          <Button Content="Run again"
+                  Command="{Binding AcceptRerunCommand}"
+                  AutomationProperties.Name="Run the Assessment again"
+                  DockPanel.Dock="Right" />
+          <Button Content="Dismiss"
+                  Command="{Binding DismissRerunCommand}"
+                  AutomationProperties.Name="Dismiss the rerun offer"
+                  DockPanel.Dock="Right"
+                  Margin="0,0,8,0" />
+          <TextBlock Text="A new Baseline was captured; the previous Assessment may be out of date."
+                     VerticalAlignment="Center"
+                     TextWrapping="Wrap" />
+        </DockPanel>
+      </Border>
+
+      <TextBlock Text="Run an Assessment to see statistics here."
+                 IsVisible="{Binding NotYetAssessed}"
+                 Margin="12"
+                 FontStyle="Italic" />
+      <ContentControl x:Name="StatisticsHost"
+                       IsVisible="{Binding HasEverAssessed}"
+                       MinHeight="320" />
+
+      <ContentControl x:Name="HandoffHost" />
+
+    </StackPanel>
+  </ScrollViewer>
 </Window>
