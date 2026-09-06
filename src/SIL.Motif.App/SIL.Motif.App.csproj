@@ -9,7 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
     <PackageReference Include="Semi.Avalonia" Version="12.1.0" />
+    <PackageReference Include="Semi.Avalonia.DataGrid" Version="12.1.0.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="LiveMarkdown.Avalonia" Version="2.4.0" />
   </ItemGroup>

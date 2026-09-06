@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             x:Class="SIL.Motif.App.Views.StatisticsPanel"
+             x:DataType="views:StatisticsPanel">
+  <DockPanel Margin="12">
+
+    <TextBlock Text="Statistics" FontWeight="Bold" DockPanel.Dock="Top" />
+
+    <DockPanel LastChildFill="False" DockPanel.Dock="Top" Margin="0,8,0,8">
+      <TextBlock Text="Group" VerticalAlignment="Center" Margin="0,0,8,0" />
+      <ComboBox ItemsSource="{Binding Statistics.Groups}"
+                SelectedItem="{Binding Statistics.SelectedGroup}"
+                AutomationProperties.Name="Statistics group"
+                Margin="0,0,16,0" />
+      <TextBox Text="{Binding Statistics.FilterText}"
+               PlaceholderText="Filter rows..."
+               Width="200"
+               AutomationProperties.Name="Filter statistics rows"
+               Margin="0,0,16,0" />
+      <Button Content="Refresh"
+              Command="{Binding Statistics.LoadCommand}"
+              AutomationProperties.Name="Refresh statistics" />
+    </DockPanel>
+
+    <TextBlock Text="{Binding Statistics.Refusal.Message}"
+               IsVisible="{Binding Statistics.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+               Foreground="Red"
+               DockPanel.Dock="Top" />
+    <TextBlock Text="Showing the last successful statistics; they may be out of date."
+               IsVisible="{Binding Statistics.IsStale}"
+               FontStyle="Italic"
+               DockPanel.Dock="Top" />
+
+    <Grid ColumnDefinitions="2*,8,1*">
+
+      <DataGrid Grid.Column="0"
+                ItemsSource="{Binding Statistics.Rows}"
+                IsReadOnly="True"
+                CanUserSortColumns="True"
+                ClipboardCopyMode="IncludeHeader"
+                Sorting="OnGridSorting"
+                AutomationProperties.Name="Statistics rows">
+        <DataGrid.Columns>
+          <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
+               DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
+          <DataGridTextColumn Header="Kind" Binding="{ReflectionBinding Kind}" Tag="kind" />
+          <DataGridTextColumn Header="Object" Binding="{ReflectionBinding Object}" Tag="object" />
+          <DataGridTextColumn Header="Word" Binding="{ReflectionBinding Word}" Tag="word" />
+          <DataGridTextColumn Header="Attempts" Binding="{ReflectionBinding Attempts}" Tag="attempts" />
+          <DataGridTextColumn Header="Failures" Binding="{ReflectionBinding Failures}" Tag="failures" />
+          <DataGridTextColumn Header="Elapsed" Binding="{ReflectionBinding Elapsed}" Tag="elapsed" />
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <md:MarkdownRenderer Grid.Column="2"
+                           MarkdownBuilder="{Binding Statistics.SummaryMarkdown,
+                             Converter={x:Static md:ValueConverters.ToObservableStringBuilder}}" />
+
+    </Grid>
+
+  </DockPanel>
+</UserControl>
