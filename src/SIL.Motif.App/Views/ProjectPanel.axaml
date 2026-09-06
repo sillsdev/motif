@@ -1,7 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
-             x:Class="SIL.Motif.App.Views.ProjectPanel">
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:queries="clr-namespace:SIL.Motif.Commands.Queries;assembly=SIL.Motif.Commands"
+             x:Class="SIL.Motif.App.Views.ProjectPanel"
+             x:DataType="views:ProjectPanel">
   <StackPanel Spacing="8" Margin="12">
 
     <TextBlock Text="Project" FontWeight="Bold" />
@@ -15,7 +18,7 @@
                 AutomationProperties.Name="Known projects"
                 HorizontalAlignment="Stretch">
         <ComboBox.ItemTemplate>
-          <DataTemplate>
+          <DataTemplate x:DataType="queries:KnownProjectSummary">
             <TextBlock Text="{Binding FullFwDataPath}" />
           </DataTemplate>
         </ComboBox.ItemTemplate>
