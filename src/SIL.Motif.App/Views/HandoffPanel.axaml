@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.HandoffPanel"
+             x:DataType="views:HandoffPanel">
+  <StackPanel Spacing="8" Margin="12">
+
+    <TextBlock Text="Handoff" FontWeight="Bold" />
+
+    <CheckBox Content="Include FLExText XML"
+              IsChecked="{Binding Handoff.WriteFlexTextXml}"
+              AutomationProperties.Name="Include FLExText XML" />
+
+    <DockPanel LastChildFill="False">
+      <Button Content="Handoff"
+              Command="{Binding Handoff.RunCommand}"
+              AutomationProperties.Name="Write the Handoff folder" />
+      <Button Content="Cancel"
+              Command="{Binding Handoff.CancelCommand}"
+              IsVisible="{Binding Handoff.IsActive}"
+              AutomationProperties.Name="Cancel the running Handoff"
+              Margin="8,0,0,0" />
+    </DockPanel>
+
+    <ProgressBar IsVisible="{Binding Handoff.IsActive}"
+                 IsIndeterminate="{Binding Handoff.IsIndeterminate}"
+                 Minimum="0"
+                 Maximum="1"
+                 Value="{Binding Handoff.ProgressFraction}"
+                 AutomationProperties.Name="Handoff progress" />
+    <TextBlock Text="{Binding Handoff.Progress.Message}"
+               IsVisible="{Binding Handoff.IsActive}" />
+
+    <TextBlock Text="{Binding Handoff.Refusal.Message}"
+               IsVisible="{Binding Handoff.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+               Foreground="Red" />
+    <Expander Header="Details"
+              IsExpanded="False"
+              IsVisible="{Binding Handoff.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+      <ItemsControl ItemsSource="{Binding Handoff.RefusalFacts}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <TextBlock Text="{Binding}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Expander>
+
+    <TextBlock Text="{Binding Handoff.DataSensitivitySentence}"
+               TextWrapping="Wrap"
+               FontStyle="Italic" />
+
+    <TextBlock Text="{Binding Handoff.OutputDirectory, StringFormat='Destination: {0}'}"
+               IsVisible="{Binding Handoff.OutputDirectory, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+    <TextBlock Text="All files"
+               FontWeight="Bold"
+               PointerPressed="OnAllFilesPointerPressed"
+               AutomationProperties.Name="Drag all Handoff files" />
+
+    <ListBox ItemsSource="{Binding Handoff.Files}"
+             MaxHeight="220"
+             AutomationProperties.Name="Handoff files">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:HandoffFileViewModel">
+          <TextBlock Text="{Binding RelativePath}" PointerPressed="OnFileRowPointerPressed" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <Expander Header="Read this first" IsExpanded="False">
+      <md:MarkdownRenderer MarkdownBuilder="{Binding Handoff.InstructionsMarkdown,
+                             Converter={x:Static md:ValueConverters.ToObservableStringBuilder}}" />
+    </Expander>
+
+  </StackPanel>
+</UserControl>
