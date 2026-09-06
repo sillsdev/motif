@@ -119,6 +119,54 @@ public sealed class HandoffAssetsTests
     // A URL scheme like "https:" also matches letter-colon-slash; exclude a colon preceded by a letter.
     private static readonly Regex WindowsAbsolutePath = new(@"(?<![A-Za-z])[A-Za-z]:[\\/]", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Every module <c>read_handoff.py</c> imports ships with Python itself.
+    /// </summary>
+    /// <remarks>
+    /// The Handoff is written for an agent that may have no network and no package installer, so a single
+    /// third-party import makes the reader useless exactly where it is needed most. Merely running the
+    /// script does not catch that: an import would resolve on any machine that happens to have the package.
+    /// This asks Python itself, through <c>sys.stdlib_module_names</c>.
+    /// </remarks>
+    [PythonAvailableFact]
+    public void ReadHandoffPyImportsNothingOutsideTheStandardLibrary()
+    {
+        var scriptPath = Path.Combine(
+            Path.GetTempPath(), "SIL.Motif.HandoffAssetsTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scriptPath);
+        try
+        {
+            var readerPath = Path.Combine(scriptPath, "read_handoff.py");
+            File.WriteAllText(readerPath, ReadEmbeddedText("SIL.Motif.Commands.Handoff.Assets.read_handoff.py"));
+            var checkerPath = Path.Combine(scriptPath, "check_imports.py");
+            File.WriteAllText(checkerPath, StdlibImportChecker);
+
+            var result = RunReadHandoff(checkerPath, readerPath);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal("[]", result.StandardOutput.Trim());
+        }
+        finally
+        {
+            try { Directory.Delete(scriptPath, recursive: true); }
+            catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    // Parses rather than imports, so a non-stdlib name is reported instead of raising ImportError.
+    private const string StdlibImportChecker = """
+        import ast, json, sys
+
+        tree = ast.parse(open(sys.argv[1], encoding="utf-8").read())
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                names.add(node.module.split(".")[0])
+        print(json.dumps(sorted(names - sys.stdlib_module_names - {"__future__"})))
+        """;
+
     [PythonAvailableFact]
     public void ReadHandoffPyValidatesAndSummarizesASyntheticHandoffFolder()
     {
