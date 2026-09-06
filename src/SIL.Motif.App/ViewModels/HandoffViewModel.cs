@@ -48,7 +48,6 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
 {
     private const string CancelledRefusalCode = "handoff.cancelled";
     private const string InstructionsResourceName = "SIL.Motif.Commands.Handoff.Assets.instructions.md";
-    private const string DataSensitivityAnchor = "Uploading it to a chat model";
 
     private readonly ICommandClient _commandClient;
     private readonly SelectionViewModel _selection;
@@ -78,10 +77,17 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
 
     /// <summary>
     /// The instructions' own sentence naming where an uploaded folder's data goes, shown once above the
-    /// file list rather than composed anew here, pinned by
-    /// <c>DataSensitivitySentenceIsTakenVerbatimFromTheInstructionsAsset</c>.
+    /// file list rather than composed anew here.
     /// </summary>
-    public static string DataSensitivitySentence { get; } = ExtractDataSensitivitySentence(InstructionsMarkdown);
+    /// <remarks>
+    /// Held as a literal and pinned against the shipped asset by
+    /// <c>DataSensitivitySentenceIsTakenVerbatimFromTheInstructionsAsset</c>, the same way the Baseline
+    /// freshness wording is pinned wherever it appears. Parsing it out of the prose at run time instead
+    /// would turn a reworded paragraph into a crash while the type initialises.
+    /// </remarks>
+    public static string DataSensitivitySentence { get; } =
+        "Uploading it to a chat model sends that data to whoever runs it " +
+        "(OpenAI, Anthropic, or another provider).";
 
     /// <summary>The project this Handoff publishes, or <c>null</c> before a project has been chosen.</summary>
     [ObservableProperty]
@@ -254,18 +260,4 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
     }
 
     // Extracts one sentence instead of composing a new one, so wording never drifts from instructions.md.
-    private static string ExtractDataSensitivitySentence(string instructionsMarkdown)
-    {
-        var paragraphs = instructionsMarkdown.Replace("\r\n", "\n").Split("\n\n");
-        var paragraph = paragraphs
-            .Select(candidate => candidate.Replace('\n', ' ').Replace("**", ""))
-            .FirstOrDefault(candidate => candidate.Contains(DataSensitivityAnchor, StringComparison.Ordinal))
-            ?? throw new InvalidOperationException(
-                "The Handoff instructions no longer contain a data-sensitivity paragraph.");
-
-        var start = paragraph.IndexOf(DataSensitivityAnchor, StringComparison.Ordinal);
-        var periodIndex = paragraph.IndexOf(". ", start, StringComparison.Ordinal);
-        var end = periodIndex < 0 ? paragraph.Length - 1 : periodIndex;
-        return paragraph[start..(end + 1)];
-    }
 }

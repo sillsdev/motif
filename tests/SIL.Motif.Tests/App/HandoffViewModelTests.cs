@@ -90,13 +90,16 @@ public sealed class HandoffViewModelTests
         Assert.Equal("grammar.json", row.RelativePath);
     }
 
+    // Reading the shipped asset is the point: restating the literal here would pin nothing.
     [Fact]
     public void DataSensitivitySentenceIsTakenVerbatimFromTheInstructionsAsset()
     {
-        const string expected =
-            "Uploading it to a chat model sends that data to whoever runs it (OpenAI, Anthropic, or another provider).";
+        var instructions = HandoffViewModel.InstructionsMarkdown
+            .Replace("\r\n", "\n")
+            .Replace("\n", " ")
+            .Replace("**", "");
 
-        Assert.Equal(expected, HandoffViewModel.DataSensitivitySentence);
+        Assert.Contains(HandoffViewModel.DataSensitivitySentence, instructions, StringComparison.Ordinal);
     }
 
     [Fact]
