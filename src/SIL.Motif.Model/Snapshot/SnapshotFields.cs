@@ -27,6 +27,13 @@ public static partial class SnapshotFields
     public const string MoStemMsaMsFeatures = "grammar/moStemMsa/msFeatures";
 
     /// <summary>
+    /// An <c>FsFeatStruc</c>'s <c>FeatureSpecs</c> owning/col <c>FsFeatureSpecification</c> field --
+    /// hand-written for the same reason as <see cref="MoStemMsaMsFeatures"/>: an owning/col creation
+    /// validity decision is not derivable from the model file alone.
+    /// </summary>
+    public const string FsFeatStrucFeatureSpecs = "grammar/fsFeatStruc/featureSpecs";
+
+    /// <summary>
     /// The Canonical Semantic Snapshot / expected-effect projection shape version, recorded on
     /// <see cref="SIL.Motif.Model.DryRun.BoundDryRunAnchor.ProjectionVersion"/>. Bump this
     /// only when the snapshot/effect shape changes in a way that could alter a digest for otherwise
