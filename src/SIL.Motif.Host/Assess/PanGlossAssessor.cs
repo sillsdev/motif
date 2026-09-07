@@ -77,7 +77,6 @@ public sealed class PanGlossStatsProcess : IPanGlossStatsRunner
             startInfo.ArgumentList.Add(projectFilePath);
             startInfo.ArgumentList.Add(wordsPath);
             startInfo.ArgumentList.Add(outPath);
-            startInfo.ArgumentList.Add("--engine=" + engine.BatchEngine());
             startInfo.ArgumentList.Add("--word-timeout-ms");
             startInfo.ArgumentList.Add(((int)perWordLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
             startInfo.ArgumentList.Add("--stats");

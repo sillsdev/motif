@@ -89,9 +89,10 @@ public class PanGlossParser
         {
             File.WriteAllLines(wordsPath, words);
 
+            // No engine flag is sent; ParserEngine survives only in stored Assessment scopes.
             var args = new List<string>
             {
-                "batch", projectFilePath, wordsPath, outPath, "--engine=" + engine.BatchEngine(),
+                "batch", projectFilePath, wordsPath, outPath,
             };
             if (perWordTimeoutMs is int cap)
                 args.Add($"--word-timeout-ms {cap}");
