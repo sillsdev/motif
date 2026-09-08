@@ -885,3 +885,26 @@ Measured on the same word: a five-second cap completes the run and records `TIME
 lets the process abort. `DefaultPerWordLimit` is one second, so the shipped default is inside the safe
 range — but nothing records *why* it must stay there, and `E`-class risk notes treat aweti as a
 possible curiosity. It is not: it reproduces.
+
+**K-addendum, 2026-09-08 — answers from the parser's repository.** Sent as findings to the PanGloss architecture
+session the same day; recorded here rather than back-edited into the items above.
+
+- *K46*: confirmed. No `assess` subcommand and no replacement report route; the assessment producer was
+  deleted 2026-08-27 (PanGloss `docs/simplification-rip-list.md`, "CLI assessment-producer deletion tranche").
+- *K49*: the `stats` meta row's `grammar_hash` is pg-snapshot's hash over the imported grammar — input identity —
+  and `engine` is a fixed literal per pipeline. Both are stable to cite as **input** provenance. Nothing in
+  the retained CLI emits an outcome digest, a semantic digest, an engine version or a model fingerprint;
+  run identity is a gap on the parser's side, not something to reconstruct from `stats`.
+- *K51a*: confirmed as a defect at `compounding.rs:130`, `segment(ctx.table, "+").expect(...)`. PanGloss
+  will convert it to a typed compile refusal after its current architecture wave and will notify.
+- *K51b*: not the 10 GiB bound — that covers the supervised compile worker; per-word analysis runs
+  in-process under logical budgets. `batch` defaults to one worker per logical core, and PanGloss has
+  measured a fanned-out aweti batch at 30+ GB RSS. The 738 MB failure is most likely the request that
+  landed after ~20 concurrent deep-truncation words had exhausted commit. Standing guidance is
+  `--threads 1` plus `--word-timeout-ms` (`docs/fst-plan/corpus-word-list-hazards.md`). **Motif passes no
+  `--threads` today**; ADR 0044's batch request will. Still open on their side pending the verbatim abort
+  text: `memory allocation of N bytes failed` means exhaustion, `capacity overflow` means a size bug.
+- *K52*: the `TIMEOUT` record is the intended outcome; the 120 s abort is filed as a PanGloss bug.
+- A machine-readable subcommand and flag listing (`pangloss --describe`) is accepted as a follow-on item
+  there, no ETA. The stats card in their review is not landing in the current campaign; the contract Motif
+  depends on — nonzero exit is a refusal, stdout is JSONL rows — is preserved by design.
