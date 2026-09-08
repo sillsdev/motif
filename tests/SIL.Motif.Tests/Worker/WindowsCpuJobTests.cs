@@ -34,6 +34,22 @@ public sealed class WindowsCpuJobTests
     }
 
     [RequiresWindowsFact]
+    public void BoundsCommittedMemoryForTheWholeJobNotJustOneProcess()
+    {
+        using var job = new WindowsCpuJob();
+
+        var limits = job.QueryExtendedLimits();
+
+        Assert.Equal(
+            WindowsCpuJob.JobMemoryLimitBytes, (ulong)limits.JobMemoryLimit);
+        Assert.Equal(
+            NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY,
+            limits.BasicLimitInformation.LimitFlags & NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY);
+        // Charging the job rather than each process is what stops several parsers adding up past the bound.
+        Assert.Equal(UIntPtr.Zero, limits.ProcessMemoryLimit);
+    }
+
+    [RequiresWindowsFact]
     public void AssignProcess_ContainsTheWholeProcessTreeAcrossItsLifetime()
     {
         using var process = StartBoundedProcess("ping -n 2 127.0.0.1 >nul");

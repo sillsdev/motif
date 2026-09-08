@@ -25,6 +25,17 @@ public sealed class WindowsCpuJob : IDisposable
     /// <summary>The CPU hard-cap rate, in basis points of one CPU's worth of total machine time.</summary>
     public const int CpuRateHardCapBasisPoints = 2500;
 
+    /// <summary>
+    /// The committed-memory ceiling for everything in the job, matching the parser's own ratified limit.
+    /// </summary>
+    /// <remarks>
+    /// A single word can drive the parser into an allocation far larger than the machine has any reason to
+    /// grant it, and an unbounded job takes the whole process tree down when that allocation fails rather
+    /// than refusing the word. The job charges every member, so a runaway is stopped by the governor
+    /// instead of by the allocator.
+    /// </remarks>
+    public const ulong JobMemoryLimitBytes = 10UL * 1024 * 1024 * 1024;
+
     private readonly SafeJobObjectHandle _handle;
     private bool _disposed;
 
@@ -107,9 +118,19 @@ public sealed class WindowsCpuJob : IDisposable
             {
                 BasicLimitInformation = new NativeMethods.JOBOBJECT_BASIC_LIMIT_INFORMATION
                 {
-                    LimitFlags = NativeMethods.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                    LimitFlags = NativeMethods.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                        | NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY,
                 },
+                JobMemoryLimit = (UIntPtr)JobMemoryLimitBytes,
             });
+    }
+
+    /// <summary>The job's configured extended limits, so a test can read back what was actually set.</summary>
+    internal NativeMethods.JOBOBJECT_EXTENDED_LIMIT_INFORMATION QueryExtendedLimits()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return Query<NativeMethods.JOBOBJECT_EXTENDED_LIMIT_INFORMATION>(
+            NativeMethods.JobObjectInfoClass.JobObjectExtendedLimitInformation);
     }
 
     private void SetInformation<T>(NativeMethods.JobObjectInfoClass infoClass, T info) where T : struct
@@ -166,6 +187,7 @@ internal static class NativeMethods
     internal const uint JOB_OBJECT_CPU_RATE_CONTROL_ENABLE = 0x1;
     internal const uint JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP = 0x4;
     internal const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
+    internal const uint JOB_OBJECT_LIMIT_JOB_MEMORY = 0x200;
 
     internal enum JobObjectInfoClass
     {
