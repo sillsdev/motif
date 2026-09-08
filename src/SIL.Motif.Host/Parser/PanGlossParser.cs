@@ -73,7 +73,8 @@ public class PanGlossParser
         IReadOnlyList<string> words,
         ParserEngine engine = ParserEngine.FstPrunedByHermitCrab,
         int? perWordTimeoutMs = 5000,
-        TimeSpan? processTimeout = null)
+        TimeSpan? processTimeout = null,
+        IParserProcessGovernor? governor = null)
     {
         if (string.IsNullOrWhiteSpace(projectFilePath)) throw new ArgumentException("Required.", nameof(projectFilePath));
         if (words is null) throw new ArgumentNullException(nameof(words));
@@ -97,7 +98,7 @@ public class PanGlossParser
             if (perWordTimeoutMs is int cap)
                 args.Add($"--word-timeout-ms {cap}");
 
-            var (exitCode, stdErr) = Run(args, processTimeout ?? TimeSpan.FromMinutes(15));
+            var (exitCode, stdErr) = Run(args, processTimeout ?? TimeSpan.FromMinutes(15), governor);
 
             if (exitCode != 0)
             {
@@ -142,7 +143,8 @@ public class PanGlossParser
         string projectFilePath,
         IReadOnlyList<string> words,
         ParserEngine engine = ParserEngine.FstPrunedByHermitCrab,
-        TimeSpan? processTimeout = null)
+        TimeSpan? processTimeout = null,
+        IParserProcessGovernor? governor = null)
     {
         if (string.IsNullOrWhiteSpace(projectFilePath)) throw new ArgumentException("Required.", nameof(projectFilePath));
         if (words is null) throw new ArgumentNullException(nameof(words));
@@ -162,7 +164,7 @@ public class PanGlossParser
             {
                 "assess", projectFilePath, "--words", wordsPath,
                 "--pipeline", engine.AssessPipeline(), "--report", reportPath,
-            }, processTimeout ?? TimeSpan.FromMinutes(15));
+            }, processTimeout ?? TimeSpan.FromMinutes(15), governor);
 
             if (exitCode != 0)
             {
@@ -195,7 +197,8 @@ public class PanGlossParser
                         || l.StartsWith("capability:", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-    private (int ExitCode, string StdErr) Run(IReadOnlyList<string> args, TimeSpan timeout)
+    private (int ExitCode, string StdErr) Run(
+        IReadOnlyList<string> args, TimeSpan timeout, IParserProcessGovernor? governor)
     {
         var startInfo = new ProcessStartInfo(_executable)
         {
@@ -221,6 +224,7 @@ public class PanGlossParser
 
         using var process = Process.Start(startInfo)
             ?? throw new ParserUnavailableException($"Could not start '{_executable}'.");
+        governor?.Contain(process);
 
         // Read both streams before waiting: a full pipe buffer deadlocks a process that is still writing.
         var stdErrTask = process.StandardError.ReadToEndAsync();

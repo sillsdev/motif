@@ -125,6 +125,18 @@ public sealed class FakeParserSeamTests : IDisposable
         Assert.Equal(stoppedAt, File.ReadAllText(heartbeat));
     }
 
+    [Fact]
+    public async Task ASuccessfulAssessment_AssignsTheStartedProcessToTheSuppliedGovernor()
+    {
+        var candidate = Candidate("governor");
+        var governor = new RecordingGovernor();
+
+        await new PanGlossAssessmentProcess(FakeParser.ExecutablePath)
+            .RunAsync(candidate, CancellationToken.None, governor);
+
+        Assert.Single(governor.ContainedProcessIds);
+    }
+
     private static Task<AssessReport> Run(string candidate, CancellationToken cancellationToken = default) =>
         new PanGlossAssessmentProcess(FakeParser.ExecutablePath).RunAsync(candidate, cancellationToken);
 

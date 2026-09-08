@@ -66,6 +66,25 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
+    public void GrammarImportAndStatsQueriesAreThreadedTheAdmittedJobAsAGovernor()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        var destination = Path.Combine(_root, "handoff-governor");
+        var importer = new RecordingGrammarImporter(new PanGlossGrammarImportProcess(FakeParser.ExecutablePath));
+        var statsQuery = new RecordingStatsQuery(new PanGlossStatsQueryProcess(FakeParser.ExecutablePath));
+
+        var outcome = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
+            managedRoot, NewAssessor, () => statsQuery, () => importer, NewQueue(),
+            onProgress: null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.IsType<WindowsCpuJobGovernor>(importer.LastGovernor);
+        Assert.IsType<WindowsCpuJobGovernor>(statsQuery.LastGovernor);
+    }
+
+    [Fact]
     public void AnEndToEndHandoffWritesTheExactListingAndEveryFileValidates()
     {
         using var seeded = NewSeededScratch();
@@ -346,8 +365,36 @@ public sealed class HandoffWriterTests : IDisposable
     // Stands in for a real PanGloss failure without launching a process, to pin cleanup deterministically.
     private sealed class ThrowingGrammarImporter(Exception exception) : IPanGlossGrammarImporter
     {
-        public Task ImportAsync(string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken) =>
+        public Task ImportAsync(string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken,
+            IParserProcessGovernor? governor = null) =>
             throw exception;
+    }
+
+    // Wraps a real importer to record the governor HandoffCommand actually threaded through to it.
+    private sealed class RecordingGrammarImporter(IPanGlossGrammarImporter inner) : IPanGlossGrammarImporter
+    {
+        public IParserProcessGovernor? LastGovernor { get; private set; }
+
+        public Task ImportAsync(string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken,
+            IParserProcessGovernor? governor = null)
+        {
+            LastGovernor = governor;
+            return inner.ImportAsync(fwDataPath, grammarJsonPath, cancellationToken, governor);
+        }
+    }
+
+    // Wraps a real stats query to record the governor HandoffCommand actually threaded through to it.
+    private sealed class RecordingStatsQuery(IPanGlossStatsQuery inner) : IPanGlossStatsQuery
+    {
+        public IParserProcessGovernor? LastGovernor { get; private set; }
+
+        public Task<PanGlossStatsOutput> QueryAsync(string grammarPath, string cachePath,
+            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken,
+            IParserProcessGovernor? governor = null)
+        {
+            LastGovernor = governor;
+            return inner.QueryAsync(grammarPath, cachePath, forwardedArguments, cancellationToken, governor);
+        }
     }
 
     private static (int ExitCode, string StandardOutput) RunPython(string scriptPath, params string[] args)

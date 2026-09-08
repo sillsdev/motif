@@ -129,6 +129,18 @@ public sealed class PanGlossStatsQueryTests : IDisposable
         Assert.Equal(stoppedAt, File.ReadAllText(heartbeat));
     }
 
+    [Fact]
+    public async Task ASuccessfulQuery_AssignsTheStartedProcessToTheSuppliedGovernor()
+    {
+        var (grammarPath, cachePath) = Project("governor");
+        var governor = new RecordingGovernor();
+
+        await new PanGlossStatsQueryProcess(FakeParser.ExecutablePath)
+            .QueryAsync(grammarPath, cachePath, [], CancellationToken.None, governor);
+
+        Assert.Single(governor.ContainedProcessIds);
+    }
+
     private static Task<PanGlossStatsOutput> Run(
         string grammarPath, string cachePath, IReadOnlyList<string> forwardedArguments,
         CancellationToken cancellationToken = default) =>

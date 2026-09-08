@@ -1,4 +1,5 @@
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
@@ -26,9 +27,14 @@ internal sealed class FakeAssessor : IAssessor
 
     public IReadOnlyList<AssessmentKind> SupportedKinds => _declaredKinds;
 
+    /// <summary>The governor <see cref="ProduceAsync"/> was last called with, so a test can assert on it.</summary>
+    public IParserProcessGovernor? LastGovernor { get; private set; }
+
     public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
-        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)
+        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null)
     {
+        LastGovernor = governor;
         var wanted = scope.Collect.Count == 0 ? _declaredKinds : scope.Collect;
         foreach (var kind in wanted)
         {

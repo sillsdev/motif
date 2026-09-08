@@ -70,6 +70,41 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void TheAdmittedJobIsThreadedToTheAssessorAsAGovernor()
+    {
+        using var seeded = NewSeededScratch();
+        using var queue = NewQueue();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds);
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), () => assessor, NewStatsQuery,
+            queue, onProgress: null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.IsType<WindowsCpuJobGovernor>(assessor.LastGovernor);
+    }
+
+    [Fact]
+    public void TheStatisticsQueryIsAlsoThreadedAnAdmittedJobAsAGovernor()
+    {
+        using var seeded = NewSeededScratch();
+        using var queue = NewQueue();
+        var cachePath = Path.Combine(_managedRootsParent, "fake-stats-cache-" + Guid.NewGuid().ToString("N") + ".bin");
+        File.WriteAllText(cachePath, "fake per-object stats cache");
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ObjectTiming
+            ? new AssessmentRaw.FileCache(cachePath, "sha256:" + new string('0', 64))
+            : new AssessmentRaw.WordMeasurements([]));
+        var statsQuery = new FakeStatsQuery();
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), () => assessor,
+            () => statsQuery, queue, onProgress: null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.IsType<WindowsCpuJobGovernor>(statsQuery.LastGovernor);
+    }
+
+    [Fact]
     public void SecondRunReusesTheExistingBaselineRatherThanRecapturing()
     {
         using var seeded = NewSeededScratch();
@@ -239,8 +274,14 @@ public sealed class AssessCommandTests : IDisposable
     // A pure stand-in for PanGloss's `stats` command; no test here asserts on its output's content.
     private sealed class FakeStatsQuery : IPanGlossStatsQuery
     {
+        public IParserProcessGovernor? LastGovernor { get; private set; }
+
         public Task<PanGlossStatsOutput> QueryAsync(string grammarPath, string cachePath,
-            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken) =>
-            Task.FromResult(new PanGlossStatsOutput("fake stats", string.Empty));
+            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken,
+            IParserProcessGovernor? governor = null)
+        {
+            LastGovernor = governor;
+            return Task.FromResult(new PanGlossStatsOutput("fake stats", string.Empty));
+        }
     }
 }

@@ -200,11 +200,17 @@ public interface IAssessor
     /// </summary>
     /// <param name="scope">What this run was told to do.</param>
     /// <param name="exportedCandidate">A directory holding exactly the grammar to measure, already saved and needing no open cache.</param>
+    /// <param name="cancellationToken">Cancels the run.</param>
+    /// <param name="governor">
+    /// Contains every process this call starts, immediately after each one starts. A caller with no governor
+    /// passes null and every process this call starts runs uncontained.
+    /// </param>
     /// <exception cref="AssessorRefusalException">
     /// <paramref name="scope"/> asks for a kind not in <see cref="SupportedKinds"/>, thrown before producing
     /// anything so a caller never receives a partial answer for a request it could not fully satisfy
     /// (pinned by `AskingForAnUndeclaredKind_RefusesNamingTheKindAndTheReason`).
     /// </exception>
     Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
-        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken);
+        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null);
 }

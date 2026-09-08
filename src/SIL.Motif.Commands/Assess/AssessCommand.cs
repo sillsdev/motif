@@ -150,7 +150,8 @@ public static class AssessCommand
             {
                 produced = queue.RunAsync(
                     "assess:" + workspaceKey,
-                    (_, jobToken) => assessor.ProduceAsync(scope, exportedCandidate, jobToken),
+                    (cpuJob, jobToken) => assessor.ProduceAsync(
+                        scope, exportedCandidate, jobToken, new WindowsCpuJobGovernor(cpuJob)),
                     cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
@@ -178,7 +179,13 @@ public static class AssessCommand
 
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
-            var summaryMarkdown = RenderSummary(statsQuery, baseline.FwDataPath, statsCachePath, cancellationToken);
+            var summaryMarkdown = statsCachePath is null
+                ? RenderSummary(statsQuery, baseline.FwDataPath, null, null, cancellationToken)
+                : queue.RunAsync(
+                    "assess:stats:" + workspaceKey,
+                    (cpuJob, jobToken) => Task.FromResult(RenderSummary(
+                        statsQuery, baseline.FwDataPath, statsCachePath, new WindowsCpuJobGovernor(cpuJob), jobToken)),
+                    cancellationToken).GetAwaiter().GetResult();
 
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, "Assessment complete."));
@@ -202,11 +209,12 @@ public static class AssessCommand
 
     // The Assessor's own per-object cache is the only source for anything beyond parse coverage.
     private static string RenderSummary(
-        IPanGlossStatsQuery statsQuery, string grammarPath, string? cachePath, CancellationToken cancellationToken)
+        IPanGlossStatsQuery statsQuery, string grammarPath, string? cachePath,
+        WindowsCpuJobGovernor? governor, CancellationToken cancellationToken)
     {
         if (cachePath is null) return "(no per-object statistics were collected)" + Environment.NewLine;
 
-        var output = statsQuery.QueryAsync(grammarPath, cachePath, Array.Empty<string>(), cancellationToken)
+        var output = statsQuery.QueryAsync(grammarPath, cachePath, Array.Empty<string>(), cancellationToken, governor)
             .GetAwaiter().GetResult();
         return "```" + Environment.NewLine + output.StandardOutput + "```" + Environment.NewLine;
     }

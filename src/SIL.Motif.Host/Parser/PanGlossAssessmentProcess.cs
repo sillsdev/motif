@@ -36,7 +36,8 @@ public sealed class PanGlossAssessmentProcess : IPanGlossAssessor
     /// Assesses the grammar source found in <paramref name="exportedCandidate"/> and returns the report.
     /// </summary>
     /// <inheritdoc />
-    public async Task<AssessReport> RunAsync(string exportedCandidate, CancellationToken cancellationToken)
+    public async Task<AssessReport> RunAsync(
+        string exportedCandidate, CancellationToken cancellationToken, IParserProcessGovernor? governor = null)
     {
         if (string.IsNullOrWhiteSpace(exportedCandidate))
             throw new ArgumentException("Required.", nameof(exportedCandidate));
@@ -54,7 +55,7 @@ public sealed class PanGlossAssessmentProcess : IPanGlossAssessor
 
         try
         {
-            await RunProcessAsync(grammarSource, reportPath, cancellationToken).ConfigureAwait(false);
+            await RunProcessAsync(grammarSource, reportPath, governor, cancellationToken).ConfigureAwait(false);
 
             if (!File.Exists(reportPath))
             {
@@ -91,7 +92,9 @@ public sealed class PanGlossAssessmentProcess : IPanGlossAssessor
         return matches[0];
     }
 
-    private async Task RunProcessAsync(string grammarSource, string reportPath, CancellationToken cancellationToken)
+    private async Task RunProcessAsync(
+        string grammarSource, string reportPath, IParserProcessGovernor? governor,
+        CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo(_executable)
         {
@@ -107,6 +110,7 @@ public sealed class PanGlossAssessmentProcess : IPanGlossAssessor
 
         using var process = Process.Start(startInfo)
             ?? throw new ParserUnavailableException($"Could not start '{_executable}'.");
+        governor?.Contain(process);
 
         // Read both streams before waiting: a full pipe buffer deadlocks a process that is still writing.
         var stdErrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);

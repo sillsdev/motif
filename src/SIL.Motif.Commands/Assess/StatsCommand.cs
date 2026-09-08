@@ -42,9 +42,14 @@ public static class StatsCommand
         StatsRequest request, CancellationToken cancellationToken = default) =>
         Run(request, () => new PanGlossStatsQueryProcess(), cancellationToken);
 
-    /// <summary>Queries statistics against an explicitly supplied collaborator — a fake stands in for PanGloss in tests.</summary>
+    /// <summary>
+    /// Queries statistics against an explicitly supplied collaborator — a fake stands in for PanGloss in
+    /// tests. <paramref name="governor"/> contains the launched process immediately after it starts, when a
+    /// caller has one available; the standalone CLI entry point never does, so it passes null.
+    /// </summary>
     internal static CommandOutcome<StatsCommandResponse> Run(
-        StatsRequest request, Func<IPanGlossStatsQuery> statsQueryFactory, CancellationToken cancellationToken)
+        StatsRequest request, Func<IPanGlossStatsQuery> statsQueryFactory, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(statsQueryFactory);
@@ -131,7 +136,8 @@ public static class StatsCommand
             PanGlossStatsOutput output;
             try
             {
-                output = statsQuery.QueryAsync(baseline.FwDataPath, assessment.CachePath, forwarded, cancellationToken)
+                output = statsQuery.QueryAsync(
+                        baseline.FwDataPath, assessment.CachePath, forwarded, cancellationToken, governor)
                     .GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)

@@ -117,6 +117,18 @@ public sealed class PanGlossGrammarImportTests : IDisposable
         Assert.Equal(stoppedAt, File.ReadAllText(heartbeat));
     }
 
+    [Fact]
+    public async Task ASuccessfulImport_AssignsTheStartedProcessToTheSuppliedGovernor()
+    {
+        var (fwDataPath, grammarJsonPath) = Project("governor");
+        var governor = new RecordingGovernor();
+
+        await new PanGlossGrammarImportProcess(FakeParser.ExecutablePath)
+            .ImportAsync(fwDataPath, grammarJsonPath, CancellationToken.None, governor);
+
+        Assert.Single(governor.ContainedProcessIds);
+    }
+
     private static Task Run(string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken = default) =>
         new PanGlossGrammarImportProcess(FakeParser.ExecutablePath)
             .ImportAsync(fwDataPath, grammarJsonPath, cancellationToken);

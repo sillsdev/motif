@@ -155,10 +155,17 @@ public static class HandoffCommand
                     HandoffWriter.WriteSelectionTxt(incoming, selectionProjection);
 
                     Report(onProgress, AssessmentStage.ImportingGrammar, "Importing the grammar...");
-                    grammarImporter.ImportAsync(
-                            baseline.FwDataPath, Path.Combine(incoming, HandoffWriter.GrammarFileName),
-                            cancellationToken)
-                        .GetAwaiter().GetResult();
+                    queue.RunAsync<object?>(
+                        "handoff:import:" + request.ProjectPath,
+                        async (cpuJob, jobToken) =>
+                        {
+                            await grammarImporter.ImportAsync(
+                                    baseline.FwDataPath, Path.Combine(incoming, HandoffWriter.GrammarFileName),
+                                    jobToken, new WindowsCpuJobGovernor(cpuJob))
+                                .ConfigureAwait(false);
+                            return null;
+                        },
+                        cancellationToken).GetAwaiter().GetResult();
 
                     if (request.Assess)
                     {
@@ -168,18 +175,27 @@ public static class HandoffCommand
                         var statisticsDir = Directory.CreateDirectory(
                             Path.Combine(incoming, HandoffWriter.StatisticsDirectoryName)).FullName;
 
-                        foreach (var group in HandoffWriter.StatisticsGroups)
-                        {
-                            var groupOutcome = StatsCommand.Run(
-                                new StatsRequest(
-                                    request.ProjectPath, null, StatsOutputKind.Text,
-                                    new[] { "--group", group, "--format", "jsonl" }),
-                                statsQueryFactory, cancellationToken);
-                            if (!groupOutcome.Succeeded) return groupOutcome.Refusal;
+                        var groupRefusal = queue.RunAsync<Refusal?>(
+                            "handoff:stats:" + request.ProjectPath,
+                            (cpuJob, jobToken) =>
+                            {
+                                var governor = new WindowsCpuJobGovernor(cpuJob);
+                                foreach (var group in HandoffWriter.StatisticsGroups)
+                                {
+                                    var groupOutcome = StatsCommand.Run(
+                                        new StatsRequest(
+                                            request.ProjectPath, null, StatsOutputKind.Text,
+                                            new[] { "--group", group, "--format", "jsonl" }),
+                                        statsQueryFactory, jobToken, governor);
+                                    if (!groupOutcome.Succeeded) return Task.FromResult(groupOutcome.Refusal);
 
-                            File.WriteAllText(
-                                Path.Combine(statisticsDir, group + ".jsonl"), groupOutcome.Value!.Text);
-                        }
+                                    File.WriteAllText(
+                                        Path.Combine(statisticsDir, group + ".jsonl"), groupOutcome.Value!.Text);
+                                }
+                                return Task.FromResult<Refusal?>(null);
+                            },
+                            cancellationToken).GetAwaiter().GetResult();
+                        if (groupRefusal is not null) return groupRefusal;
                     }
 
                     HandoffWriter.WriteEmbeddedAssets(incoming);

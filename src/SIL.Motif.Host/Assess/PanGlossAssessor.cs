@@ -30,9 +30,14 @@ public interface IAssessorCachePathResolver
 /// </remarks>
 public interface IPanGlossStatsRunner
 {
-    /// <summary>Runs the stats-collecting batch pass, writing PanGloss's cache to <paramref name="cachePath"/>.</summary>
+    /// <summary>
+    /// Runs the stats-collecting batch pass, writing PanGloss's cache to <paramref name="cachePath"/>. When
+    /// <paramref name="governor"/> is supplied, the launched process is contained by it immediately after
+    /// starting; a caller with no governor passes null and the process runs uncontained.
+    /// </summary>
     Task RunBatchAsync(string projectFilePath, IReadOnlyList<string> words, ParserEngine engine,
-        TimeSpan perWordLimit, string cachePath, CancellationToken cancellationToken);
+        TimeSpan perWordLimit, string cachePath, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null);
 }
 
 /// <summary>The real <see cref="IPanGlossStatsRunner"/>: shells out to <c>pangloss batch --stats --cache</c>.</summary>
@@ -52,7 +57,8 @@ public sealed class PanGlossStatsProcess : IPanGlossStatsRunner
 
     /// <inheritdoc />
     public async Task RunBatchAsync(string projectFilePath, IReadOnlyList<string> words, ParserEngine engine,
-        TimeSpan perWordLimit, string cachePath, CancellationToken cancellationToken)
+        TimeSpan perWordLimit, string cachePath, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null)
     {
         if (!File.Exists(projectFilePath))
             throw new FileNotFoundException("The project file the parser must read does not exist.", projectFilePath);
@@ -85,6 +91,7 @@ public sealed class PanGlossStatsProcess : IPanGlossStatsRunner
 
             using var process = Process.Start(startInfo)
                 ?? throw new ParserUnavailableException($"Could not start '{_executable}'.");
+            governor?.Contain(process);
 
             // Read both streams before waiting: a full pipe buffer deadlocks a process that is still writing.
             var stdErrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
@@ -193,7 +200,8 @@ public sealed class PanGlossAssessor : IAssessor
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
-        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)
+        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null)
     {
         ArgumentNullException.ThrowIfNull(scope);
         if (string.IsNullOrWhiteSpace(exportedCandidate))
@@ -215,7 +223,7 @@ public sealed class PanGlossAssessor : IAssessor
         var grammarSourcePath = LocateGrammarSource(exportedCandidate);
 
         // Every produced kind cites this hash, and only the assess pass carries it — never derived here.
-        var report = await _reportRunner.RunAsync(exportedCandidate, cancellationToken).ConfigureAwait(false);
+        var report = await _reportRunner.RunAsync(exportedCandidate, cancellationToken, governor).ConfigureAwait(false);
         var results = new List<ProducedAssessment>();
 
         if (wanted.Contains(AssessmentKind.Correctness))
@@ -227,7 +235,8 @@ public sealed class PanGlossAssessor : IAssessor
         if (wanted.Contains(AssessmentKind.ParseTime))
         {
             var runResult = _parser.AnalyseBatch(
-                grammarSourcePath, scope.Words, engine, (int)scope.PerWordLimit.TotalMilliseconds);
+                grammarSourcePath, scope.Words, engine, (int)scope.PerWordLimit.TotalMilliseconds,
+                governor: governor);
             if (!runResult.Succeeded)
             {
                 throw new InvalidOperationException(
@@ -240,7 +249,7 @@ public sealed class PanGlossAssessor : IAssessor
         {
             var cachePath = _cachePaths.PathFor(report.GrammarSourceSha256, AssessorName, scope.Engine);
             await _statsRunner.RunBatchAsync(
-                grammarSourcePath, scope.Words, engine, scope.PerWordLimit, cachePath, cancellationToken)
+                grammarSourcePath, scope.Words, engine, scope.PerWordLimit, cachePath, cancellationToken, governor)
                 .ConfigureAwait(false);
             results.Add(Produced(report, AssessmentKind.ObjectTiming,
                 new AssessmentRaw.FileCache(cachePath, DigestOfFile(cachePath))));

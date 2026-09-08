@@ -12,6 +12,13 @@ namespace SIL.Motif.Host.Parser;
 /// </remarks>
 public interface IPanGlossGrammarImporter
 {
-    /// <summary>Imports the grammar found in <paramref name="fwDataPath"/> and writes it to <paramref name="grammarJsonPath"/>.</summary>
-    Task ImportAsync(string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken);
+    /// <summary>
+    /// Imports the grammar found in <paramref name="fwDataPath"/> and writes it to
+    /// <paramref name="grammarJsonPath"/>. When <paramref name="governor"/> is supplied, the launched
+    /// process is contained by it immediately after starting; a caller with no governor passes null and the
+    /// process runs uncontained.
+    /// </summary>
+    Task ImportAsync(
+        string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null);
 }

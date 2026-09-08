@@ -1,3 +1,5 @@
+using SIL.Motif.Host.Parser;
+
 namespace SIL.Motif.Host.Assess;
 
 /// <summary>What PanGloss's <c>stats</c> command wrote to each stream, untouched.</summary>
@@ -25,8 +27,10 @@ public interface IPanGlossStatsQuery
     /// <summary>
     /// Queries PanGloss's statistics for <paramref name="grammarPath"/> against <paramref name="cachePath"/>,
     /// appending <paramref name="forwardedArguments"/> after PanGloss's own <c>--cache</c> option, in order
-    /// and unchanged.
+    /// and unchanged. When <paramref name="governor"/> is supplied, the launched process is contained by it
+    /// immediately after starting; a caller with no governor passes null and the process runs uncontained.
     /// </summary>
     Task<PanGlossStatsOutput> QueryAsync(string grammarPath, string cachePath,
-        IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken);
+        IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null);
 }

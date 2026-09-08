@@ -35,7 +35,8 @@ public sealed class PanGlossStatsQueryProcess : IPanGlossStatsQuery
 
     /// <inheritdoc />
     public async Task<PanGlossStatsOutput> QueryAsync(string grammarPath, string cachePath,
-        IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken)
+        IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null)
     {
         if (string.IsNullOrWhiteSpace(grammarPath)) throw new ArgumentException("Required.", nameof(grammarPath));
         if (string.IsNullOrWhiteSpace(cachePath)) throw new ArgumentException("Required.", nameof(cachePath));
@@ -57,6 +58,7 @@ public sealed class PanGlossStatsQueryProcess : IPanGlossStatsQuery
 
         using var process = Process.Start(startInfo)
             ?? throw new ParserUnavailableException($"Could not start '{_executable}'.");
+        governor?.Contain(process);
 
         // Read both streams before waiting: a full pipe buffer deadlocks a process that is still writing.
         var stdErrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);

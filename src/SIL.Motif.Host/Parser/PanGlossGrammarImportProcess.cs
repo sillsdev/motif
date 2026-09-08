@@ -34,7 +34,9 @@ public sealed class PanGlossGrammarImportProcess : IPanGlossGrammarImporter
     }
 
     /// <inheritdoc />
-    public async Task ImportAsync(string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken)
+    public async Task ImportAsync(
+        string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken,
+        IParserProcessGovernor? governor = null)
     {
         if (string.IsNullOrWhiteSpace(fwDataPath)) throw new ArgumentException("Required.", nameof(fwDataPath));
         if (string.IsNullOrWhiteSpace(grammarJsonPath))
@@ -55,6 +57,7 @@ public sealed class PanGlossGrammarImportProcess : IPanGlossGrammarImporter
 
         using var process = Process.Start(startInfo)
             ?? throw new ParserUnavailableException($"Could not start '{_executable}'.");
+        governor?.Contain(process);
 
         // Read both streams before waiting: a full pipe buffer deadlocks a process that is still writing.
         var stdErrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);

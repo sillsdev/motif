@@ -297,7 +297,8 @@ public sealed class StatsCommandTests : IDisposable
         public IReadOnlyList<string>? SeenForwardedArguments { get; private set; }
 
         public Task<PanGlossStatsOutput> QueryAsync(string grammarPath, string cachePath,
-            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken)
+            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken,
+            IParserProcessGovernor? governor = null)
         {
             SeenGrammarPath = grammarPath;
             SeenCachePath = cachePath;
@@ -309,7 +310,8 @@ public sealed class StatsCommandTests : IDisposable
     private sealed class CancellingStatsQuery : IPanGlossStatsQuery
     {
         public Task<PanGlossStatsOutput> QueryAsync(string grammarPath, string cachePath,
-            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken) =>
+            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken,
+            IParserProcessGovernor? governor = null) =>
             throw new OperationCanceledException();
     }
 }
