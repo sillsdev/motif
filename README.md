@@ -324,11 +324,36 @@ words, run PanGloss, browse statistics, and write an AI Handoff folder — all f
 without touching the CLI.** It calls the same command catalog the CLI calls, in-process; it never parses
 `--json` and never holds a live FieldWorks project model.
 
-Launch it from the repository root:
+**What you need.** The .NET 10 SDK (built and tested against 10.0.303) and Windows — the Baseline
+capture and the parser governor both use Windows APIs. PanGloss is optional to launch the window, and
+required to parse anything.
+
+Build and check the solution from the repository root:
+
+```powershell
+./build.ps1          # comment hygiene, then compile
+./test.ps1           # the full suite, about two minutes
+```
+
+Both scripts take the whole solution; use them rather than a bare `dotnet build`, so the hygiene gate
+runs and a green run means one green run.
+
+Launch the window from the repository root:
 
 ```powershell
 dotnet run --project src/SIL.Motif.App
 ```
+
+**Building PanGloss.** Motif shells out to a `pangloss` executable it does not build. In a sibling
+checkout:
+
+```powershell
+cd ../PanGloss/rust
+cargo build --release -p pg-cli
+```
+
+That writes `../PanGloss/rust/target/release/pangloss.exe`, which is exactly where Motif looks when
+`MOTIF_PANGLOSS_EXE` is unset.
 
 **PanGloss discovery.** The window (like `motif assess`, `stats`, and `handoff`) shells out to the
 `pangloss` executable. Set `MOTIF_PANGLOSS_EXE` to its path, or leave it unset and Motif looks for

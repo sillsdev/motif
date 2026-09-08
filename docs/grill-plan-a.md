@@ -821,3 +821,67 @@ a `J43` case, so it warns and forces, or refuses. See
 Portability is nearly free — `ProposalStore` is already content-addressed objects plus manifests. The
 constraint is the `requires` DAG: a split must not sever a prerequisite edge, and splitting a
 multi-operation atomic group breaks all-or-none application.
+
+---
+
+## K — The real parser disagrees with the seam built for it (blocks M5)
+
+Motif's parser seam was written against a PanGloss command surface that the built executable does not
+have. Nothing below is speculation: `cargo build --release -p pg-cli` produced a working `pangloss`,
+and every claim here is what that binary did when Motif ran against it.
+
+**K46. Who produces the assessment report?**
+`PanGlossAssessmentProcess` runs `pangloss assess <grammar> --report <path>` and every produced kind
+depends on the result. That subcommand exists in no build configuration: `pg-cli`'s source contains no
+`"assess"` arm, and its only feature flag (`developer-tools`) is foma-related. PanGloss's own
+`docs/grammar-assessment-handoff-spec.md` §2 says this is deliberate — *"The retained CLI consumes
+caller-owned artifacts; it does not import or compile a grammar, execute a corpus, or produce a
+replacement assessment report route."* `pg-assess` is a library for consuming and comparing reports.
+
+So either Motif builds the report itself from what the parser does expose, or PanGloss grows a route
+its spec says it does not own. This gates M5's parsed leg and `MOT-15`, and it is why two
+`RealParserFact` tests fail rather than skip.
+
+**K47. Are GUID-keyed analyses still available at all?**
+`MOT-15`'s status says GUID-keyed analyses are *built and proven*, and `ParserSeamIntegrationTests`
+calls that seam the one everything about grammar review rests on. Against the real binary: `batch`
+emits TSV with no morpheme identity; `parse --trace-format=json` contains no GUID-shaped string;
+`stats --group object --wide` carries GUIDs only inside a display `label`, which holds a human name
+when the rule has one. If per-morpheme identity is required for the comparison ADR 0027 settles, the
+route to it is currently unknown.
+
+**K48. Does the two-engine model retire?**
+The real `batch` rejects `--engine` outright and reports `engine=default` for every run. Motif sent
+`--engine=foma|default`, so no word could be parsed; the flag is now removed. But `ParserEngine`
+survives in stored Assessment scope JSON, in `fast`/`accurate` scope names reachable from the CLI, and
+in `AssessCommand`'s hardcoded `"accurate"`. R2 Q6 already decided *hc-rust only*. Retiring the model
+touches stored data, so it is a decision rather than a cleanup. The fallback-comparison test is
+skipped, not deleted, pending this.
+
+**K49. Where does Assessment provenance come from?**
+`PanGlossAssessor` takes `GrammarSourceSha256`, `OutcomeDigest`, `SemanticDigest`, `ModelFingerprint`,
+`Pipeline` and `DiagnosticCount` from the assess report for *every* kind, and says why in the code:
+*"Every produced kind cites this hash, and only the assess pass carries it — never derived here."*
+Not deriving it is the point. With no assess route that is unimplementable as written. `stats`'s meta
+line carries a `grammar_hash` and an `engine`, which is a candidate source, but choosing it changes
+what a stored Assessment attests to.
+
+**K50. Motif's own fixture cannot be parsed.**
+`SeededProject` imports as *"2 lex entries, 0 phonemes"* — no phonemes, no boundary markers, no
+compound rules. PanGloss cannot compile it, so no real-parser test can pass against it whatever else
+is fixed. A grammar with real phonology has to come from somewhere, and the pipeline plan forbids a
+build or test reading the sibling checkout.
+
+**K51. Two PanGloss defects, for the other repository.**
+*Panics instead of refusing:* a phoneme-less grammar aborts in `pg-grammar/src/compile/compounding.rs`
+with `'+' always segments (morph boundary): InvalidShape`, through an `.unwrap()`. It parses its own
+`indonesian.fwdata` sample fine, so this is data-shape specific.
+*An allocation failure that should not happen:* one `aweti.fwdata` word attempts 738 MB and fails with
+54 GB free, twice. Under 1 GiB is far below the ratified 10 GiB bound, so the cause is not the
+containment limit and is unexplained.
+
+**K52. The parser's per-word timeout is load-bearing for survival, not latency.**
+Measured on the same word: a five-second cap completes the run and records `TIMEOUT`; a two-minute cap
+lets the process abort. `DefaultPerWordLimit` is one second, so the shipped default is inside the safe
+range — but nothing records *why* it must stay there, and `E`-class risk notes treat aweti as a
+possible curiosity. It is not: it reproduces.

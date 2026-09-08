@@ -18,8 +18,13 @@ public sealed record TextInventoryRequest(string ProjectPath);
 /// </summary>
 public sealed record TextChoiceSummary(Guid Id, string Title);
 
-/// <summary>The current Baseline's Texts, empty when no Baseline has been captured for this project yet.</summary>
-public sealed record TextInventoryResponse(IReadOnlyList<TextChoiceSummary> Texts);
+/// <summary>The current Baseline's Texts, and whether there was a Baseline to read them from.</summary>
+/// <param name="HasBaseline">
+/// False when no Baseline has been captured yet. An empty <paramref name="Texts"/> means two different
+/// things — nothing captured, or a Baseline holding no Texts — and a caller that cannot tell them apart
+/// can only show an empty list with no way for a reader to know what to do about it.
+/// </param>
+public sealed record TextInventoryResponse(IReadOnlyList<TextChoiceSummary> Texts, bool HasBaseline);
 
 /// <summary>
 /// Lists the Texts held in a project's current Baseline scratch copy, for the Selection editor's Text
@@ -40,7 +45,7 @@ public static class TextInventoryQuery
             var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
             if (baseline is null)
                 return CommandOutcome<TextInventoryResponse>.Success(
-                    new TextInventoryResponse(Array.Empty<TextChoiceSummary>()));
+                    new TextInventoryResponse(Array.Empty<TextChoiceSummary>(), HasBaseline: false));
 
             using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
             var repository = cache.ServiceLocator.GetInstance<ITextRepository>();
@@ -48,7 +53,7 @@ public static class TextInventoryQuery
                 .Select(text => new TextChoiceSummary(text.Guid, ReadTitle(text)))
                 .OrderBy(choice => choice.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
-            return CommandOutcome<TextInventoryResponse>.Success(new TextInventoryResponse(texts));
+            return CommandOutcome<TextInventoryResponse>.Success(new TextInventoryResponse(texts, HasBaseline: true));
         });
 
     // Mirrors InterlinearTextReader's own title choice: the first populated writing system, ws id ascending.

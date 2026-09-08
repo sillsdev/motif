@@ -32,6 +32,10 @@ public sealed partial class SelectionViewModel : ObservableObject
     /// <summary>The current Baseline's Texts matching <see cref="SearchText"/>, most-recently-loaded order.</summary>
     public ObservableCollection<TextChoiceViewModel> Texts { get; } = [];
 
+    /// <summary>Why the Text list is empty, or <c>null</c> when it is not.</summary>
+    [ObservableProperty]
+    private string? _textsEmptyMessage;
+
     /// <summary>The chosen Texts' own GUIDs, recomputed whenever a Text is checked or unchecked.</summary>
     public IReadOnlyList<Guid> ChosenTextIds { get; private set; } = [];
 
@@ -97,6 +101,7 @@ public sealed partial class SelectionViewModel : ObservableObject
         RetryFailed = false;
         RetrySlowerThanMilliseconds = null;
         RefusalMessage = null;
+        TextsEmptyMessage = null;
         Recompute();
 
         var outcome = await _commandClient.ListTextsAsync(new TextInventoryRequest(fwDataPath), cancellationToken);
@@ -112,6 +117,10 @@ public sealed partial class SelectionViewModel : ObservableObject
             textChoice.PropertyChanged += OnTextChoicePropertyChanged;
             _allTexts.Add(textChoice);
         }
+
+        TextsEmptyMessage = _allTexts.Count > 0
+            ? null
+            : outcome.Value!.HasBaseline ? "This Baseline has no Texts." : "Capture a Baseline to choose Texts.";
         ApplyFilter();
     }
 

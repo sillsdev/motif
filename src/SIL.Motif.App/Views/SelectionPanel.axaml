@@ -22,6 +22,11 @@
       </ListBox.ItemTemplate>
     </ListBox>
 
+    <TextBlock Text="{Binding Selection.TextsEmptyMessage}"
+               IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+               TextWrapping="Wrap"
+               Foreground="{DynamicResource SemiColorTextSecondary}" />
+
     <TextBlock Text="Pasted words" FontWeight="Bold" Margin="0,12,0,0" />
     <TextBox Text="{Binding Selection.PastedWords}"
              AcceptsReturn="True"

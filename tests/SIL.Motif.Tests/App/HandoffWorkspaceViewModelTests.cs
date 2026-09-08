@@ -56,7 +56,7 @@ public sealed class HandoffWorkspaceViewModelTests
         string projectPath, BaselineToken? token = null)
     {
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, token is null ? null : DateTimeOffset.UtcNow, false));
-        fake.ListTextsCompletesWith(new TextInventoryResponse([]));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
         projectPicker.PathToReturn = projectPath;
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
     }
@@ -84,7 +84,7 @@ public sealed class HandoffWorkspaceViewModelTests
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false));
-        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")]));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
         projectPicker.PathToReturn = ProjectPath;
 
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
@@ -182,7 +182,7 @@ public sealed class HandoffWorkspaceViewModelTests
     {
         var (fake, projectPicker, folderPicker, dragSource, workspace) = NewWorkspace();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false));
-        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")]));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
         projectPicker.PathToReturn = ProjectPath;
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
 

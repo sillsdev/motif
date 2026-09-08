@@ -21,6 +21,50 @@ public sealed class SelectionViewModelTests
     private static readonly Guid AlphaId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid BetaId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
+    // An empty box with no explanation is what stopped a real user choosing Texts at all.
+    [Fact]
+    public async Task WithNoBaselineTheEmptyTextListSaysToCaptureOneRatherThanShowingNothing()
+    {
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+
+        var selection = new SelectionViewModel(fake);
+
+        await selection.SetProjectAsync(ProjectPath);
+
+        Assert.Empty(selection.Texts);
+        Assert.Equal(
+            "Capture a Baseline to choose Texts.", selection.TextsEmptyMessage);
+    }
+
+    [Fact]
+    public async Task WithABaselineThatHasNoTextsTheMessageSaysThatInstead()
+    {
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+
+        var selection = new SelectionViewModel(fake);
+
+        await selection.SetProjectAsync(ProjectPath);
+
+        Assert.Equal("This Baseline has no Texts.", selection.TextsEmptyMessage);
+    }
+
+    [Fact]
+    public async Task WhenTextsLoadThereIsNoEmptyMessageAtAll()
+    {
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(Guid.NewGuid(), "Genesis")], HasBaseline: true));
+
+        var selection = new SelectionViewModel(fake);
+
+        await selection.SetProjectAsync(ProjectPath);
+
+        Assert.Single(selection.Texts);
+        Assert.Null(selection.TextsEmptyMessage);
+    }
+
     [Fact]
     public void BeforeAnyProjectIsSetNothingIsSelectedAndAssessIsDisabled()
     {
@@ -36,7 +80,7 @@ public sealed class SelectionViewModelTests
     {
         var fake = new FakeCommandClient();
         fake.ListTextsCompletesWith(new TextInventoryResponse(
-            [new TextChoiceSummary(AlphaId, "Alpha"), new TextChoiceSummary(BetaId, "Beta")]));
+            [new TextChoiceSummary(AlphaId, "Alpha"), new TextChoiceSummary(BetaId, "Beta")], HasBaseline: true));
         var viewModel = new SelectionViewModel(fake);
 
         await viewModel.SetProjectAsync(ProjectPath);
@@ -67,7 +111,7 @@ public sealed class SelectionViewModelTests
     {
         var fake = new FakeCommandClient();
         fake.ListTextsCompletesWith(new TextInventoryResponse(
-            [new TextChoiceSummary(AlphaId, "Alpha"), new TextChoiceSummary(BetaId, "Beta")]));
+            [new TextChoiceSummary(AlphaId, "Alpha"), new TextChoiceSummary(BetaId, "Beta")], HasBaseline: true));
         var viewModel = new SelectionViewModel(fake);
         await viewModel.SetProjectAsync(ProjectPath);
 
@@ -82,7 +126,7 @@ public sealed class SelectionViewModelTests
     {
         var fake = new FakeCommandClient();
         fake.ListTextsCompletesWith(new TextInventoryResponse(
-            [new TextChoiceSummary(AlphaId, "Alpha"), new TextChoiceSummary(BetaId, "Beta")]));
+            [new TextChoiceSummary(AlphaId, "Alpha"), new TextChoiceSummary(BetaId, "Beta")], HasBaseline: true));
         var viewModel = new SelectionViewModel(fake);
         await viewModel.SetProjectAsync(ProjectPath);
         viewModel.Texts.Single(text => text.Id == BetaId).IsChecked = true;
@@ -180,7 +224,7 @@ public sealed class SelectionViewModelTests
     public async Task ChangingProjectResetsEveryFieldBeforeLoadingTheNewProjectsTexts()
     {
         var fake = new FakeCommandClient();
-        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(AlphaId, "Alpha")]));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(AlphaId, "Alpha")], HasBaseline: true));
         var viewModel = new SelectionViewModel(fake);
         await viewModel.SetProjectAsync(ProjectPath);
         viewModel.Texts[0].IsChecked = true;
@@ -190,7 +234,7 @@ public sealed class SelectionViewModelTests
         viewModel.RetrySlowerThanMilliseconds = 250;
         viewModel.SearchText = "Al";
 
-        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(BetaId, "Beta")]));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(BetaId, "Beta")], HasBaseline: true));
         await viewModel.SetProjectAsync(OtherProjectPath);
 
         Assert.Equal(string.Empty, viewModel.SearchText);

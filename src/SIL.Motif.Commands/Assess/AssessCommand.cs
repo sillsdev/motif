@@ -109,12 +109,7 @@ public static class AssessCommand
             }
             catch (ParserUnavailableException ex)
             {
-                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
-                    "assess.parser-unavailable", FailureReason.Refused, ex.Message,
-                    new Dictionary<string, string>(StringComparer.Ordinal)
-                    {
-                        ["projectPath"] = request.ProjectPath,
-                    }));
+                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
             }
 
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
@@ -157,6 +152,10 @@ public static class AssessCommand
             catch (OperationCanceledException)
             {
                 return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+            }
+            catch (ParserUnavailableException ex)
+            {
+                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
             }
 
             var scopeJson = ScopeCodec.Write(
@@ -218,6 +217,10 @@ public static class AssessCommand
             .GetAwaiter().GetResult();
         return "```" + Environment.NewLine + output.StandardOutput + "```" + Environment.NewLine;
     }
+
+    private static Refusal ParserUnavailable(string projectPath, ParserUnavailableException ex) => new(
+        "assess.parser-unavailable", FailureReason.Refused, ex.Message,
+        new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
     private static Refusal Cancelled(string projectPath) => new(
         "assessment.cancelled", FailureReason.Refused,

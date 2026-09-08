@@ -210,6 +210,25 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(FailureReason.Refused, outcome.Refusal.Reason);
     }
 
+    // The parser existing is not the parser working: a subcommand it lacks must refuse, not kill the app.
+    [Fact]
+    public void AParserThatFailsOnceRunningIsRefusedRatherThanEscapingAsAnException()
+    {
+        using var seeded = NewSeededScratch();
+        using var queue = NewQueue();
+        var failingAssessor = new FakeAssessor(
+            "unavailable-at-run", CollectedKinds,
+            _ => throw new ParserUnavailableException("pangloss assess exited 1"));
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(),
+            () => failingAssessor, NewStatsQuery, queue, onProgress: null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
+        Assert.Contains("pangloss assess exited 1", outcome.Refusal.Message, StringComparison.Ordinal);
+    }
+
     // A mistyped path must report the missing project, not the missing parser the eager build would hit first.
     [Fact]
     public void AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt()
