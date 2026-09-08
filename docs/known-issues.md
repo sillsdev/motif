@@ -9,20 +9,6 @@ currently fail the build or the suite.
 
 ## Tests that pass but should not be trusted
 
-**Two integration tests flake under full-suite load.** Both pass on a retry and both have failed once
-each under a loaded run.
-
-- `RunnerSpineTests.AKilledRunnerLeavesItsJobReclaimableRatherThanStranded` starts a runner holding a
-  one-second lease, kills it, then `Thread.Sleep(1500)` and expects the next runner to reclaim an
-  expired lease. That is a fixed sleep racing a one-second lease on a machine running ~1500 other
-  tests. The observed failure was *"Expected a reclaimed attempt, saw attempt 1"*. Poll for the
-  condition instead of sleeping a fixed interval.
-- `BaselineBundleReceiverTests.PublishVerifiedAsync_ValidatesAnEmptySharedSettingsInAnExistingPublication`
-  builds two zip archives whose DOS timestamps can straddle a two-second boundary.
-
-Two flaky tests is where retrying starts to hide a real failure. Every retry so far has passed, so
-there is no evidence of a product bug — which is exactly the state in which one would go unnoticed.
-
 **`TheFallbackEngineIsReachable_AndAgreesOnWhichWordsParse` is skipped, not deleted.** It compared two
 parser engines; there is one engine now, so it compared a run against itself. Restoring it needs a
 second engine to exist — see `K48`.
@@ -59,3 +45,25 @@ the workflow, then re-capture while a lock file is held — has not been perform
 clipping at 125%, 150% and 200% is not headlessly checkable.
 
 **Drag-and-drop into another application has only been exercised through a fake.**
+
+## Corrections
+
+Earlier entries stay as written; a correction is added here with its date.
+
+### 2026-09-08 — the two flaky tests
+
+Both integration tests that flaked under full-suite load are now deterministic in what they prove.
+Recorded here because the first diagnosis of each was wrong, and the wrong diagnosis is the
+thing a future flake in the same place would reach for.
+
+- `RunnerSpineTests.AKilledRunnerLeavesItsJobReclaimableRatherThanStranded` was thought to be a fixed
+  sleep racing a one-second lease. It was not: the failure text was *"Expected a reclaimed attempt, saw
+  attempt 1"*, which means the killed runner had already finished the sub-second refresh between the
+  poll that saw it running and the kill. The test now checks that the row is still running after the
+  kill and requeues a fresh job when it is not, so a pass proves a dead owner was reclaimed.
+- `BaselineBundleReceiverTests` built two zip archives with identical content and passed the first one's
+  digest as the token for the second. Zip entry stamps have two-second granularity, so a retry that
+  straddled a boundary hashed differently and the receiver correctly rejected it. The helper now stamps
+  every entry with one fixed time. Any test in that class that builds a retry bundle was exposed, not
+  only the one first blamed.
+

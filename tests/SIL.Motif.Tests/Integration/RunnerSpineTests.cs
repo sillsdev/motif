@@ -122,13 +122,8 @@ public sealed class RunnerSpineTests : IDisposable
     public void AKilledRunnerLeavesItsJobReclaimableRatherThanStranded()
     {
         var project = _projects.CopyProjectFile();
-        var jobId = Cli($"baseline-refresh --project \"{project}\"").Output.Trim();
-
-        // Killing before it claims would prove nothing, so wait until the row is genuinely held.
-        var killed = StartRunner(leaseSeconds: 1);
-        Assert.True(WaitUntilRunning(project, jobId),
-            "The runner never claimed the job. Runner said: " + string.Join(" | ", _log));
-        Kill(killed);
+        var jobId = KillARunnerMidJob(project);
+        // The dead runner cannot renew, so its one-second lease has lapsed by the time this returns.
         Thread.Sleep(1500);
 
         RunRunnerToCompletion();
@@ -194,6 +189,24 @@ public sealed class RunnerSpineTests : IDisposable
         start += marker.Length;
         var end = finalizeOutput.IndexOf(' ', start);
         return finalizeOutput.Substring(start, end - start);
+    }
+
+    /// Kills a runner while it holds a refresh; a round the sub-second refresh outran is requeued.
+    private string KillARunnerMidJob(string project)
+    {
+        const int rounds = 5;
+        for (var round = 1; round <= rounds; round++)
+        {
+            var jobId = Cli($"baseline-refresh --project \"{project}\"").Output.Trim();
+            // Killing before it claims would prove nothing, so wait until the row is genuinely held.
+            var runner = StartRunner(leaseSeconds: 1);
+            Assert.True(WaitUntilRunning(project, jobId),
+                "The runner never claimed the job. Runner said: " + string.Join(" | ", _log));
+            Kill(runner);
+            if (StatusOf(project, jobId) == "running") return jobId;
+        }
+        throw new Xunit.Sdk.XunitException(
+            $"The runner finished the refresh before the kill landed, {rounds} rounds in a row.");
     }
 
     private void RunRunnerToCompletion()

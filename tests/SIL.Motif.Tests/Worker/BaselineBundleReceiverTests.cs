@@ -384,6 +384,9 @@ public sealed class BaselineBundleReceiverTests : IDisposable
         catch (UnauthorizedAccessException) { }
     }
 
+    // Zip stamps have two-second granularity, so a retry built moments later must not hash differently.
+    private static readonly DateTimeOffset FixedEntryStamp = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
     private VerifiedBinaryTransfer CreateTransfer(params (string Name, string Content)[] entries)
     {
         var path = Path.Combine(_root, Guid.NewGuid().ToString("N") + ".ready");
@@ -393,6 +396,7 @@ public sealed class BaselineBundleReceiverTests : IDisposable
             foreach (var item in entries)
             {
                 var entry = archive.CreateEntry(item.Name);
+                entry.LastWriteTime = FixedEntryStamp;
                 using var writer = new StreamWriter(entry.Open());
                 writer.Write(item.Content);
             }
