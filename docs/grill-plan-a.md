@@ -908,3 +908,22 @@ session the same day; recorded here rather than back-edited into the items above
 - A machine-readable subcommand and flag listing (`pangloss --describe`) is accepted as a follow-on item
   there, no ETA. The stats card in their review is not landing in the current campaign; the contract Motif
   depends on — nonzero exit is a refusal, stdout is JSONL rows — is preserved by design.
+
+**K-addendum, 2026-09-09 — the aweti abort explained, and a dependency before `--step-cap`.** From the PanGloss
+session that reproduced it on their main (3442e0ca), single-threaded, inside a 2 GiB job object.
+
+- *K51b corrected*: the failing allocation was **743,424 bytes**, not 738 MB — Motif misread the figure. Word 1
+  completes in 47 ms; word 2 (`Ajkululape`) exhausts the whole pool before a 120 s deadline. Thread fan-out was
+  not the cause (one thread reproduces it); it only multiplies. The cause is `pangloss batch` defaulting
+  `--step-cap` to unbounded, with no apply budget tracking bytes, so a deep-truncation word grows until the
+  clock or the OS stops it. `--step-cap 200000 --threads 1` yields a typed, deterministic CAP outcome in 2 s.
+- *Blocking defect on their side*: today a step-capped word is written to the TSV with status **`ok`** and a
+  partial signature (the `CAP` marker and the "hit the step cap" count go to stderr only), so Motif would count
+  a capped word as analysed and its coverage figure would rise for a word that did not finish. PanGloss agrees
+  this contradicts their own contract and will change the row status to a distinct `CAP` token, columns
+  otherwise unchanged; `batch --stats --cache` honours the same cap and writes the same rows.
+- *Motif side, gated on their commit*: a new word outcome for "budget exhausted, incomplete" (neither analysed
+  nor a lower-bound timeout), the TSV parser taught the literal `CAP` token (it deliberately throws on unknown
+  statuses, so the flag must not be sent first), and the batch request gaining `--step-cap 200000` beside
+  `--threads 1`. The per-word wall-clock limit stays as the backstop. Whether a capped word counts against
+  parse coverage is the owner's call and belongs with K52.
