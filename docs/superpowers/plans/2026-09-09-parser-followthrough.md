@@ -83,3 +83,8 @@ Native display preflight found one connected display, DISPLAY5, at 1920x1080 phy
 the current monitor configuration, not application rendering. Requested 125%, 150% and 200% screenshots
 are still outstanding and require actual monitor scaling changes; no display setting was changed.
 The window's 900x600 logical minimum would need 1800x1200 pixels at 200%, taller than this work area.
+
+Native startup and UI Automation were verified at actual 100% scaling; the screenshot and exact limits
+are recorded in [native preflight](../../research/2026-09-09-native-window-preflight.md). This does not
+complete the native workflow acceptance. Product implementation remains pending the owner's decision
+on supported measurements versus an upstream Correctness producer.

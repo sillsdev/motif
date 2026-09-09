@@ -1,0 +1,224 @@
+{
+    "EvidenceRoot":  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-1e38f6def82b4f44803ef877ffecddc5",
+    "Dpi":  96,
+    "Width":  1016,
+    "Height":  739,
+    "Controls":  [
+                     {
+                         "Name":  "WindowChrome",
+                         "Type":  "ControlType.Group",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Project",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Browse for a FieldWorks project file",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Known projects",
+                         "Type":  "ControlType.ComboBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Baseline",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "No Baseline captured yet",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "FieldWorks does not currently hold this project.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Refresh the Baseline",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  false,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Details",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Selection",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Search texts",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Texts",
+                         "Type":  "ControlType.List",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Pasted words",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Pasted words",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "All wordforms",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Retry failed",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Retry slower than (ms)",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Retry slower than, in milliseconds",
+                         "Type":  "ControlType.Spinner",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.PathIcon",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.PathIcon",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Nothing selected yet.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Run",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Run the Assessment",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  false,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Run an Assessment to see statistics here.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Handoff",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Include FLExText XML",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Write the Handoff folder",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  false,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Uploading it to a chat model sends that data to whoever runs it (OpenAI, Anthropic, or another provider).",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "All files",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Handoff files",
+                         "Type":  "ControlType.List",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Read this first",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Page up",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Page down",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     }
+                 ]
+}
