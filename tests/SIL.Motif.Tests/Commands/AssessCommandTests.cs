@@ -70,21 +70,6 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void TheAdmittedJobIsThreadedToTheAssessorAsAGovernor()
-    {
-        using var seeded = NewSeededScratch();
-        using var queue = NewQueue();
-        var assessor = new FakeAssessor("fake-assessor", CollectedKinds);
-
-        var outcome = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), () => assessor, NewStatsQuery,
-            queue, onProgress: null, CancellationToken.None);
-
-        Assert.True(outcome.Succeeded);
-        Assert.IsType<WindowsCpuJobGovernor>(assessor.LastGovernor);
-    }
-
-    [Fact]
     public void TheStatisticsQueryIsAlsoThreadedAnAdmittedJobAsAGovernor()
     {
         using var seeded = NewSeededScratch();

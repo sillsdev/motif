@@ -167,6 +167,21 @@ public sealed class AssessorRefusalException : Exception
 }
 
 /// <summary>
+/// Raised when an Assessor could not measure at all — its parser was absent, would not start, timed out, or
+/// exited refusing — as distinct from a kind it declines to produce.
+/// </summary>
+public sealed class AssessorUnavailableException : Exception
+{
+    public AssessorUnavailableException(string assessor, string reason)
+        : base($"'{assessor}' could not run: {reason}")
+    {
+        Assessor = assessor;
+    }
+
+    public string Assessor { get; }
+}
+
+/// <summary>
 /// Produces Assessments of declared kinds under a scope. PanGloss is the common Assessor; a C# HermitCrab
 /// or an alignment model is another, and the whole point of this seam is that adding one is exactly that —
 /// an addition, never a redesign of a caller that already speaks this interface.
@@ -201,16 +216,11 @@ public interface IAssessor
     /// <param name="scope">What this run was told to do.</param>
     /// <param name="exportedCandidate">A directory holding exactly the grammar to measure, already saved and needing no open cache.</param>
     /// <param name="cancellationToken">Cancels the run.</param>
-    /// <param name="governor">
-    /// Contains every process this call starts, immediately after each one starts. A caller with no governor
-    /// passes null and every process this call starts runs uncontained.
-    /// </param>
     /// <exception cref="AssessorRefusalException">
     /// <paramref name="scope"/> asks for a kind not in <see cref="SupportedKinds"/>, thrown before producing
     /// anything so a caller never receives a partial answer for a request it could not fully satisfy
     /// (pinned by `AskingForAnUndeclaredKind_RefusesNamingTheKindAndTheReason`).
     /// </exception>
     Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
-        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken,
-        IParserProcessGovernor? governor = null);
+        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken);
 }

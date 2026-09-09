@@ -1,6 +1,5 @@
-using System.Diagnostics;
-using System.Globalization;
 using System.Security.Cryptography;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Host.Assess;
@@ -21,143 +20,28 @@ public interface IAssessorCachePathResolver
     string PathFor(string grammarSourceSha256, string assessor, string engine);
 }
 
-/// <summary>Runs PanGloss's stats-collecting batch pass, which populates a cache file PanGloss owns the format of.</summary>
-/// <remarks>
-/// Kept separate from <see cref="PanGlossParser.AnalyseBatch"/>: that call answers "how long, and did it
-/// parse" from its own TSV output, cheaply. Per-object counters need <c>--stats --cache</c>, and reading
-/// them back is <c>pangloss stats --format jsonl</c> — Motif does not parse the cache's SQLite itself
-/// (ADR 0042 decision 8), so this seam only ever writes the cache; interpreting it is a Report's job.
-/// </remarks>
-public interface IPanGlossStatsRunner
-{
-    /// <summary>
-    /// Runs the stats-collecting batch pass, writing PanGloss's cache to <paramref name="cachePath"/>. When
-    /// <paramref name="governor"/> is supplied, the launched process is contained by it immediately after
-    /// starting; a caller with no governor passes null and the process runs uncontained.
-    /// </summary>
-    Task RunBatchAsync(string projectFilePath, IReadOnlyList<string> words, ParserEngine engine,
-        TimeSpan perWordLimit, string cachePath, CancellationToken cancellationToken,
-        IParserProcessGovernor? governor = null);
-}
-
-/// <summary>The real <see cref="IPanGlossStatsRunner"/>: shells out to <c>pangloss batch --stats --cache</c>.</summary>
-public sealed class PanGlossStatsProcess : IPanGlossStatsRunner
-{
-    private readonly string _executable;
-
-    /// <param name="executablePath">The parser's path; discovered via <see cref="PanGlossExecutable"/> when null.</param>
-    public PanGlossStatsProcess(string? executablePath = null)
-    {
-        _executable = executablePath ?? PanGlossExecutable.TryLocate()
-            ?? throw new ParserUnavailableException(
-                $"Could not find the pangloss executable. Build it with " +
-                $"`cargo build --release -p pg-cli` in the PanGloss checkout, or set " +
-                $"{PanGlossExecutable.PathVariable} to its path.");
-    }
-
-    /// <inheritdoc />
-    public async Task RunBatchAsync(string projectFilePath, IReadOnlyList<string> words, ParserEngine engine,
-        TimeSpan perWordLimit, string cachePath, CancellationToken cancellationToken,
-        IParserProcessGovernor? governor = null)
-    {
-        if (!File.Exists(projectFilePath))
-            throw new FileNotFoundException("The project file the parser must read does not exist.", projectFilePath);
-
-        var scratch = Path.Combine(Path.GetTempPath(), "SIL.Motif.StatsCache", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(scratch);
-        var wordsPath = Path.Combine(scratch, "words.txt");
-        var outPath = Path.Combine(scratch, "out.tsv");
-
-        try
-        {
-            await File.WriteAllLinesAsync(wordsPath, words, cancellationToken).ConfigureAwait(false);
-
-            var startInfo = new ProcessStartInfo(_executable)
-            {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            startInfo.ArgumentList.Add("batch");
-            startInfo.ArgumentList.Add(projectFilePath);
-            startInfo.ArgumentList.Add(wordsPath);
-            startInfo.ArgumentList.Add(outPath);
-            startInfo.ArgumentList.Add("--word-timeout-ms");
-            startInfo.ArgumentList.Add(((int)perWordLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
-            startInfo.ArgumentList.Add("--stats");
-            startInfo.ArgumentList.Add("--cache");
-            startInfo.ArgumentList.Add(cachePath);
-
-            using var process = Process.Start(startInfo)
-                ?? throw new ParserUnavailableException($"Could not start '{_executable}'.");
-            governor?.Contain(process);
-
-            // Read both streams before waiting: a full pipe buffer deadlocks a process that is still writing.
-            var stdErrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
-            var stdOutTask = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
-
-            try
-            {
-                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                try { process.Kill(entireProcessTree: true); } catch { /* already gone */ }
-                throw;
-            }
-
-            var stdErr = await stdErrTask.ConfigureAwait(false);
-            _ = await stdOutTask.ConfigureAwait(false);
-
-            if (process.ExitCode != 0)
-            {
-                throw new ParserUnavailableException(
-                    $"pangloss batch --stats exited {process.ExitCode} for '{projectFilePath}':" +
-                    Environment.NewLine + stdErr.Trim());
-            }
-
-            if (!File.Exists(cachePath))
-            {
-                throw new ParserUnavailableException(
-                    $"pangloss batch --stats reported success but wrote no cache to '{cachePath}'.");
-            }
-        }
-        finally
-        {
-            try { Directory.Delete(scratch, recursive: true); }
-            catch { /* best effort: a leaked temp directory must not fail a run that succeeded */ }
-        }
-    }
-}
-
 /// <summary>
 /// PanGloss as an <see cref="IAssessor"/>: the first Assessor, and proof the seam needs no PanGloss-specific
 /// caller.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Composes three existing or narrowly-new seams rather than re-implementing any of them:
-/// <see cref="IPanGlossAssessor"/> for <see cref="AssessmentKind.Correctness"/> (GUID-keyed analyses against
-/// manual analysis), <see cref="PanGlossParser.AnalyseBatch"/> for <see cref="AssessmentKind.ParseTime"/>
-/// (already carries per-word elapsed time), and <see cref="IPanGlossStatsRunner"/> for
-/// <see cref="AssessmentKind.ObjectTiming"/> (the new stats-cache route).
+/// Composes two seams: <see cref="IPanGlossAssessor"/> for <see cref="AssessmentKind.Correctness"/> (GUID-keyed
+/// analyses against manual analysis) and the <see cref="IPanGlossInvoker"/> for both
+/// <see cref="AssessmentKind.ParseTime"/> (a plain batch, read back through <see cref="PanGlossParser"/>) and
+/// <see cref="AssessmentKind.ObjectTiming"/> (the same batch with <c>--stats --cache</c>, whose cache PanGloss
+/// owns the format of and Motif only ever digests).
 /// </para>
 /// <para>
 /// <see cref="AssessmentKind.EngineSize"/> is never declared: PanGloss emits build time and engine size on
-/// stderr, and scraping stderr for them was rejected rather than adopted — that is a PanGloss-side ask, not
-/// a Motif workaround. <see cref="AssessmentKind.Difference"/> and <see cref="AssessmentKind.Completion"/>
-/// are never declared either: both compare two Assessments, which is the comparison mechanism's job, not
-/// one Assessor call's.
+/// stderr, and scraping stderr for them was rejected rather than adopted. <see cref="AssessmentKind.Difference"/>
+/// and <see cref="AssessmentKind.Completion"/> are never declared either: both compare two Assessments, which
+/// is the comparison mechanism's job.
 /// </para>
 /// <para>
-/// <see cref="ProduceAsync"/> always runs the GUID-keyed assess pass first, whatever was asked for: it is
-/// the only route that carries the grammar's own hash (<see cref="AssessReport.GrammarSourceSha256"/>) and
-/// the rest of its header (<see cref="AssessReport.OutcomeDigest"/>, <see cref="AssessReport.SemanticDigest"/>,
-/// <see cref="AssessReport.ModelFingerprint"/>, <see cref="AssessReport.Pipeline"/>,
-/// <see cref="AssessReport.DiagnosticCount"/>), which every produced kind must cite and which this type
-/// never derives on its own. That report's own words double as <see cref="AssessmentKind.Correctness"/>'s
-/// raw material when it was asked for.
+/// <see cref="ProduceAsync"/> always runs the GUID-keyed assess pass first, whatever was asked for: it is the
+/// only route that carries the grammar's own hash and the rest of the report header, which every produced
+/// kind must cite and which this type never derives on its own.
 /// </para>
 /// </remarks>
 public sealed class PanGlossAssessor : IAssessor
@@ -167,29 +51,24 @@ public sealed class PanGlossAssessor : IAssessor
 
     private static readonly IReadOnlyList<AssessmentKind> Supported =
         [AssessmentKind.ParseTime, AssessmentKind.Correctness, AssessmentKind.ObjectTiming];
-
     private static readonly IReadOnlyList<AssessmentKind> DefaultCollected =
         [AssessmentKind.ParseTime, AssessmentKind.Correctness];
 
     private readonly IAssessorCachePathResolver _cachePaths;
+    private readonly IPanGlossInvoker _invoker;
     private readonly PanGlossParser _parser;
     private readonly IPanGlossAssessor _reportRunner;
-    private readonly IPanGlossStatsRunner _statsRunner;
 
     /// <param name="cachePaths">Resolves where this Assessor's stats cache lives for a grammar and engine.</param>
-    /// <param name="parser">Runs the plain batch pass; defaults to a real one.</param>
+    /// <param name="invoker">Runs every parser process this Assessor needs.</param>
     /// <param name="reportRunner">Runs the GUID-keyed assess pass; defaults to a real one.</param>
-    /// <param name="statsRunner">Runs the stats-collecting batch pass; defaults to a real one.</param>
     public PanGlossAssessor(
-        IAssessorCachePathResolver cachePaths,
-        PanGlossParser? parser = null,
-        IPanGlossAssessor? reportRunner = null,
-        IPanGlossStatsRunner? statsRunner = null)
+        IAssessorCachePathResolver cachePaths, IPanGlossInvoker invoker, IPanGlossAssessor? reportRunner = null)
     {
         _cachePaths = cachePaths ?? throw new ArgumentNullException(nameof(cachePaths));
-        _parser = parser ?? new PanGlossParser();
+        _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
+        _parser = new PanGlossParser(invoker);
         _reportRunner = reportRunner ?? new PanGlossAssessmentProcess();
-        _statsRunner = statsRunner ?? new PanGlossStatsProcess();
     }
 
     /// <inheritdoc />
@@ -200,8 +79,7 @@ public sealed class PanGlossAssessor : IAssessor
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
-        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken,
-        IParserProcessGovernor? governor = null)
+        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
         if (string.IsNullOrWhiteSpace(exportedCandidate))
@@ -213,7 +91,6 @@ public sealed class PanGlossAssessor : IAssessor
             if (!Supported.Contains(kind))
                 throw new AssessorRefusalException(AssessorName, kind, ReasonNotProduced(kind));
         }
-
         if (!PanGlossEngineNames.TryParse(scope.Engine, out var engine))
         {
             throw new ArgumentException(
@@ -222,39 +99,51 @@ public sealed class PanGlossAssessor : IAssessor
 
         var grammarSourcePath = LocateGrammarSource(exportedCandidate);
 
-        // Every produced kind cites this hash, and only the assess pass carries it — never derived here.
-        var report = await _reportRunner.RunAsync(exportedCandidate, cancellationToken, governor).ConfigureAwait(false);
-        var results = new List<ProducedAssessment>();
+        AssessReport report;
+        try
+        {
+            // Every produced kind cites this hash, and only the assess pass carries it — never derived here.
+            report = await _reportRunner.RunAsync(exportedCandidate, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ParserUnavailableException exception)
+        {
+            throw new AssessorUnavailableException(AssessorName, exception.Message);
+        }
 
+        var results = new List<ProducedAssessment>();
         if (wanted.Contains(AssessmentKind.Correctness))
         {
             results.Add(Produced(report, AssessmentKind.Correctness,
                 new AssessmentRaw.WordMeasurements(report.Words)));
         }
-
         if (wanted.Contains(AssessmentKind.ParseTime))
         {
-            var runResult = _parser.AnalyseBatch(
-                grammarSourcePath, scope.Words, engine, (int)scope.PerWordLimit.TotalMilliseconds,
-                governor: governor);
+            var runResult = await _parser.AnalyseBatchAsync(
+                grammarSourcePath, scope.Words, engine, scope.PerWordLimit, "assess:parse-time", cancellationToken)
+                .ConfigureAwait(false);
             if (!runResult.Succeeded)
             {
-                throw new InvalidOperationException(
-                    $"{AssessorName} could not measure parse time: {runResult.Refusal!.Detail}");
+                cancellationToken.ThrowIfCancellationRequested();
+                if (runResult.Refusal is { } refusal)
+                    throw new InvalidOperationException($"{AssessorName} could not measure parse time: {refusal.Detail}");
+                throw new AssessorUnavailableException(AssessorName, runResult.Outcome.Message);
             }
             results.Add(Produced(report, AssessmentKind.ParseTime, new AssessmentRaw.Batch(runResult.Analysis!)));
         }
-
         if (wanted.Contains(AssessmentKind.ObjectTiming))
         {
             var cachePath = _cachePaths.PathFor(report.GrammarSourceSha256, AssessorName, scope.Engine);
-            await _statsRunner.RunBatchAsync(
-                grammarSourcePath, scope.Words, engine, scope.PerWordLimit, cachePath, cancellationToken, governor)
-                .ConfigureAwait(false);
+            var outcome = await _invoker.RunAsync(
+                new PanGlossRequest.Batch(grammarSourcePath, scope.Words, scope.PerWordLimit, cachePath),
+                "assess:object-timing", cancellationToken).ConfigureAwait(false);
+            if (outcome is not PanGlossOutcome.Completed)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                throw new AssessorUnavailableException(AssessorName, outcome.Message);
+            }
             results.Add(Produced(report, AssessmentKind.ObjectTiming,
                 new AssessmentRaw.FileCache(cachePath, DigestOfFile(cachePath))));
         }
-
         return results;
     }
 

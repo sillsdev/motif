@@ -73,7 +73,7 @@ public static class AssessCommand
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var queue = new MachinePanGlossQueue();
-        return Run(request, managedRoot, () => new PanGlossAssessor(new StatsCacheStore(ownership)),
+        return Run(request, managedRoot, () => new PanGlossAssessor(new StatsCacheStore(ownership), new PanGlossInvoker()),
             () => new PanGlossStatsQueryProcess(), queue, onProgress, cancellationToken);
     }
 
@@ -111,6 +111,10 @@ public static class AssessCommand
             {
                 return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
             }
+            catch (AssessorUnavailableException ex)
+            {
+                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
+            }
 
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baselines = new BaselineRepository(database);
@@ -145,8 +149,7 @@ public static class AssessCommand
             {
                 produced = queue.RunAsync(
                     "assess:" + workspaceKey,
-                    (cpuJob, jobToken) => assessor.ProduceAsync(
-                        scope, exportedCandidate, jobToken, new WindowsCpuJobGovernor(cpuJob)),
+                    (cpuJob, jobToken) => assessor.ProduceAsync(scope, exportedCandidate, jobToken),
                     cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
@@ -154,6 +157,10 @@ public static class AssessCommand
                 return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
             }
             catch (ParserUnavailableException ex)
+            {
+                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
+            }
+            catch (AssessorUnavailableException ex)
             {
                 return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
             }
@@ -218,7 +225,7 @@ public static class AssessCommand
         return "```" + Environment.NewLine + output.StandardOutput + "```" + Environment.NewLine;
     }
 
-    private static Refusal ParserUnavailable(string projectPath, ParserUnavailableException ex) => new(
+    private static Refusal ParserUnavailable(string projectPath, Exception ex) => new(
         "assess.parser-unavailable", FailureReason.Refused, ex.Message,
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 

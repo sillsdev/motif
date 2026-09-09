@@ -73,7 +73,7 @@ public static class HandoffCommand
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var queue = new MachinePanGlossQueue();
         return Run(request, managedRoot,
-            () => new PanGlossAssessor(new StatsCacheStore(ownership)),
+            () => new PanGlossAssessor(new StatsCacheStore(ownership), new PanGlossInvoker()),
             () => new PanGlossStatsQueryProcess(),
             () => new PanGlossGrammarImportProcess(),
             queue, onProgress, cancellationToken);

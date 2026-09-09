@@ -3,6 +3,7 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -37,7 +38,7 @@ public sealed class GrammarCoverageFigureIntegrationTests : IDisposable
         if (!_cache.IsDisposed) _cache.Dispose();
     }
 
-    [RealParserFact]
+    [RealParserFact(Skip = "The shipped pangloss has no assess subcommand (grill K46); the figure needs its report.")]
     public void ExtractingAnalysingAndComputing_ProducesAFigureThatCitesItsOwnRun()
     {
         // One word matching a seeded stem (should be analysable) and one that matches nothing.
@@ -52,21 +53,22 @@ public sealed class GrammarCoverageFigureIntegrationTests : IDisposable
         Assert.NotEmpty(corpus.Words);
 
         var projectPath = _cache.ProjectId.Path;
-        var parser = new PanGlossParser();
+        using var invoker = new PanGlossInvoker();
+        var parser = new PanGlossParser(invoker);
 
-        var batchResult = parser.AnalyseBatch(projectPath, corpus.Words, ParserEngine.FstPrunedByHermitCrab);
-        Assert.True(batchResult.Succeeded, batchResult.Refusal?.Detail ?? "the parser refused this grammar");
+        var batchResult = parser.AnalyseBatchAsync(projectPath, corpus.Words, ParserEngine.FstPrunedByHermitCrab,
+            TimeSpan.FromSeconds(5), "test:coverage", CancellationToken.None).GetAwaiter().GetResult();
+        Assert.True(batchResult.Succeeded, batchResult.Refusal?.Detail ?? batchResult.Outcome.Message);
 
-        var (report, refusal) = parser.Assess(projectPath, corpus.Words, ParserEngine.FstPrunedByHermitCrab);
-        Assert.Null(refusal);
-        Assert.NotNull(report);
+        var report = new PanGlossAssessmentProcess().RunAsync(Path.GetDirectoryName(projectPath)!, CancellationToken.None)
+            .GetAwaiter().GetResult();
 
-        var figure = GrammarCoverageFigure.Compute(batchResult.Analysis!, corpus, report!);
+        var figure = GrammarCoverageFigure.Compute(batchResult.Analysis!, corpus, report);
 
         // Every field ADR 0032 §4 requires is present and traceable back to what actually ran.
         Assert.Equal(corpus.Name, figure.SelectionName);
         Assert.Equal(corpus.Sha256, figure.SelectionSha256);
-        Assert.Equal(report!.GrammarSourceSha256, figure.GrammarSourceSha256);
+        Assert.Equal(report.GrammarSourceSha256, figure.GrammarSourceSha256);
         Assert.StartsWith("sha256:", figure.GrammarSourceSha256);
         Assert.Equal(ParserEngine.FstPrunedByHermitCrab, figure.Engine);
         Assert.Equal(5000, figure.PerWordTimeoutMs);

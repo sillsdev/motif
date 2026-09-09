@@ -13,6 +13,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.AppliedLog;
@@ -311,13 +312,18 @@ internal static class Program
     private static TrialJobHandler? TryBuildTrialHandler(Projects.ProjectRuntime runtime,
         ProposalRepository proposals, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options)
     {
+        // No executable, no Trial handler: a Trial job would otherwise fail on every attempt.
+        if (PanGlossExecutable.TryLocate() is null) return null;
         IAssessorCatalog catalog;
         try
         {
             var ownership = WorkspaceOwnership.Bootstrap(options.Root);
-            catalog = new AssessorCatalog(new IAssessor[] { new PanGlossAssessor(new StatsCacheStore(ownership)) });
+            catalog = new AssessorCatalog(new IAssessor[]
+            {
+                new PanGlossAssessor(new StatsCacheStore(ownership), new PanGlossInvoker()),
+            });
         }
-        catch (Exception exception) when (exception is ParserUnavailableException or ArgumentException)
+        catch (ArgumentException)
         {
             return null;
         }

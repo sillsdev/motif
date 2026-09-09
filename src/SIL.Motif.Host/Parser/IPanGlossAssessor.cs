@@ -16,11 +16,6 @@ namespace SIL.Motif.Host.Parser;
 /// </remarks>
 public interface IPanGlossAssessor
 {
-    /// <summary>
-    /// Assesses the grammar source found in <paramref name="exportedCandidate"/>. When
-    /// <paramref name="governor"/> is supplied, the launched process is contained by it immediately after
-    /// starting; a caller with no governor passes null and the process runs uncontained.
-    /// </summary>
-    Task<AssessReport> RunAsync(
-        string exportedCandidate, CancellationToken cancellationToken, IParserProcessGovernor? governor = null);
+    /// <summary>Assesses the grammar source found in <paramref name="exportedCandidate"/>.</summary>
+    Task<AssessReport> RunAsync(string exportedCandidate, CancellationToken cancellationToken);
 }

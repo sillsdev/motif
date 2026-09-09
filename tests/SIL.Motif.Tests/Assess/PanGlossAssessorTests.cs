@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Assess;
@@ -10,9 +11,9 @@ namespace SIL.Motif.Tests.Assess;
 
 /// <summary>
 /// PanGloss's own Assessor, composed from existing seams. These tests never touch a real or fake
-/// executable — the process boundary belongs to <see cref="PanGlossParser"/>, <see cref="IPanGlossAssessor"/>
-/// and <see cref="IPanGlossStatsRunner"/> individually; this seam's job is what it declares and what it
-/// records once those run, which is what is under test here.
+/// executable — the process boundary belongs to <see cref="IPanGlossInvoker"/> and <see cref="IPanGlossAssessor"/>
+/// individually; this seam's job is what it declares and what it records once those run, which is what is
+/// under test here.
 /// </summary>
 public sealed class PanGlossAssessorTests : IDisposable
 {
@@ -42,9 +43,8 @@ public sealed class PanGlossAssessorTests : IDisposable
     public async Task TheRecordedAssessmentCarriesTheCachePathAndDigest()
     {
         var cacheBytes = "pretend sqlite bytes"u8.ToArray();
-        var statsRunner = new FakeStatsRunner(cacheBytes);
-        var assessor = new PanGlossAssessor(
-            _cachePaths, new FakeBatchParser(null), new FakeReportRunner(Report()), statsRunner);
+        var invoker = Invoker(cacheBytes: cacheBytes);
+        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
         var scope = Scope(AssessmentKind.ObjectTiming);
 
         var produced = Assert.Single(await assessor.ProduceAsync(scope, _exportedCandidate, CancellationToken.None));
@@ -57,22 +57,22 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal(expectedPath, raw.Path);
         Assert.Equal(ExpectedDigest(cacheBytes), raw.Digest);
         Assert.True(File.Exists(expectedPath));
+        Assert.DoesNotContain(invoker.Requests, r => r.Request is PanGlossRequest.Batch { StatsCachePath: null });
     }
 
     [Fact]
     public async Task DifferentGrammarDigests_RecordDifferentCachePaths()
     {
-        var statsRunner = new FakeStatsRunner("bytes"u8.ToArray());
-        var assessor = new PanGlossAssessor(
-            _cachePaths, new FakeBatchParser(null), new FakeReportRunner(Report()), statsRunner);
+        var invoker = Invoker(cacheBytes: "bytes"u8.ToArray());
+        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
 
         var first = Assert.Single(await assessor.ProduceAsync(
             Scope(AssessmentKind.ObjectTiming), _exportedCandidate, CancellationToken.None));
 
         var otherReportRunner = new FakeReportRunner(Report(grammarSha256:
             "sha256:" + "dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd"));
-        var otherAssessor = new PanGlossAssessor(
-            _cachePaths, new FakeBatchParser(null), otherReportRunner, new FakeStatsRunner("bytes"u8.ToArray()));
+        var otherInvoker = Invoker(cacheBytes: "bytes"u8.ToArray());
+        var otherAssessor = new PanGlossAssessor(_cachePaths, otherInvoker, otherReportRunner);
         var second = Assert.Single(await otherAssessor.ProduceAsync(
             Scope(AssessmentKind.ObjectTiming), _exportedCandidate, CancellationToken.None));
 
@@ -85,8 +85,8 @@ public sealed class PanGlossAssessorTests : IDisposable
     public async Task ProduceAsync_ReturnsWordMeasurementsForCorrectness_WithoutDiscardingTheReport()
     {
         var report = Report();
-        var assessor = new PanGlossAssessor(
-            _cachePaths, new FakeBatchParser(null), new FakeReportRunner(report), new FakeStatsRunner([]));
+        var invoker = Invoker();
+        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(report));
 
         var produced = Assert.Single(await assessor.ProduceAsync(
             Scope(AssessmentKind.Correctness), _exportedCandidate, CancellationToken.None));
@@ -95,20 +95,14 @@ public sealed class PanGlossAssessorTests : IDisposable
         AssertCarriesReportHeader(produced, report);
         var raw = Assert.IsType<AssessmentRaw.WordMeasurements>(produced.Raw);
         Assert.Same(report.Words, raw.Words);
+        Assert.Empty(invoker.Requests);
     }
 
     [Fact]
     public async Task ProduceAsync_ReturnsTheBatchForParseTime_WithoutDiscardingIt()
     {
-        var batch = new BatchAnalysis(
-            Words: [new WordAnalysis(0, "motifa", 12, WordOutcome.Analysed, "sig")],
-            Engine: ParserEngine.FstPrunedByHermitCrab,
-            PerWordTimeoutMs: 1000,
-            ProjectPath: "unused",
-            Warnings: []);
-        var assessor = new PanGlossAssessor(
-            _cachePaths, new FakeBatchParser(new ParserRunResult(batch, null)),
-            new FakeReportRunner(Report()), new FakeStatsRunner([]));
+        var invoker = Invoker(tsvRows: "0\tmotifa\t12\tok\tsig\n");
+        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
 
         var produced = Assert.Single(await assessor.ProduceAsync(
             Scope(AssessmentKind.ParseTime), _exportedCandidate, CancellationToken.None));
@@ -116,21 +110,16 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal(GrammarSha256, produced.GrammarSourceSha256);
         AssertCarriesReportHeader(produced, Report());
         var raw = Assert.IsType<AssessmentRaw.Batch>(produced.Raw);
-        Assert.Same(batch, raw.Analysis);
+        Assert.Single(raw.Analysis.Words);
+        Assert.Equal("motifa", raw.Analysis.Words[0].Word);
+        Assert.Equal(12, raw.Analysis.Words[0].ElapsedMs);
     }
 
     [Fact]
     public async Task ProduceAsync_DefaultsToParseTimeAndCorrectness_WhenTheScopeCollectsNothingSpecific()
     {
-        var batch = new BatchAnalysis(
-            Words: [new WordAnalysis(0, "motifa", 12, WordOutcome.Analysed, "sig")],
-            Engine: ParserEngine.FstPrunedByHermitCrab,
-            PerWordTimeoutMs: 1000,
-            ProjectPath: "unused",
-            Warnings: []);
-        var assessor = new PanGlossAssessor(
-            _cachePaths, new FakeBatchParser(new ParserRunResult(batch, null)),
-            new FakeReportRunner(Report()), new FakeStatsRunner([]));
+        var invoker = Invoker(tsvRows: "0\tmotifa\t12\tok\tsig\n");
+        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
 
         var produced = await assessor.ProduceAsync(Scope(), _exportedCandidate, CancellationToken.None);
 
@@ -170,18 +159,13 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal(AssessmentKind.EngineSize, failure.Kind);
     }
 
-    // A declaration-only assessor: every runner throws if actually invoked, since none of these tests should.
-    private PanGlossAssessor NeverRunningAssessor() => new(
-        _cachePaths,
-        new FakeBatchParser(null),
-        new FakeReportRunner(Report()),
-        new FakeStatsRunner([]));
+    // A declaration-only assessor: nothing here should ever reach the invoker or report runner.
+    private PanGlossAssessor NeverRunningAssessor() => new(_cachePaths, Invoker(), new FakeReportRunner(Report()));
 
     [Fact]
     public async Task AnUnrecognizedEngineName_IsRefused()
     {
-        var assessor = new PanGlossAssessor(
-            _cachePaths, new FakeBatchParser(null), new FakeReportRunner(Report()), new FakeStatsRunner([]));
+        var assessor = new PanGlossAssessor(_cachePaths, Invoker(), new FakeReportRunner(Report()));
         var scope = new AssessmentScope(
             words: ["motifa"], engine: "turbo", collect: [AssessmentKind.Correctness], perWordLimit: TimeSpan.FromSeconds(1));
 
@@ -189,28 +173,16 @@ public sealed class PanGlossAssessorTests : IDisposable
             assessor.ProduceAsync(scope, _exportedCandidate, CancellationToken.None));
     }
 
-    [Fact]
-    public async Task ProduceAsync_ForwardsTheSuppliedGovernorToEveryCollaboratorItRuns()
+    // One invoker answers both batch passes: rows for the plain one, a cache file for the --stats one.
+    private static FakeInvoker Invoker(string tsvRows = "0\tmotifa\t12\tok\tsig\n", byte[]? cacheBytes = null) => new()
     {
-        var batch = new BatchAnalysis(
-            Words: [new WordAnalysis(0, "motifa", 12, WordOutcome.Analysed, "sig")],
-            Engine: ParserEngine.FstPrunedByHermitCrab,
-            PerWordTimeoutMs: 1000,
-            ProjectPath: "unused",
-            Warnings: []);
-        var batchParser = new FakeBatchParser(new ParserRunResult(batch, null));
-        var reportRunner = new FakeReportRunner(Report());
-        var statsRunner = new FakeStatsRunner("bytes"u8.ToArray());
-        var assessor = new PanGlossAssessor(_cachePaths, batchParser, reportRunner, statsRunner);
-        var governor = new RecordingGovernor();
-        var scope = Scope(AssessmentKind.ParseTime, AssessmentKind.Correctness, AssessmentKind.ObjectTiming);
-
-        await assessor.ProduceAsync(scope, _exportedCandidate, CancellationToken.None, governor);
-
-        Assert.Same(governor, batchParser.LastGovernor);
-        Assert.Same(governor, reportRunner.LastGovernor);
-        Assert.Same(governor, statsRunner.LastGovernor);
-    }
+        Respond = request =>
+        {
+            if (request is PanGlossRequest.Batch { StatsCachePath: { } cachePath })
+                File.WriteAllBytes(cachePath, cacheBytes ?? []);
+            return new PanGlossOutcome.Completed(tsvRows, string.Empty, TimeSpan.Zero);
+        },
+    };
 
     private static AssessmentScope Scope(params AssessmentKind[] collect) => new(
         words: ["motifa"], engine: "fast", collect: collect, perWordLimit: TimeSpan.FromSeconds(1));
@@ -242,43 +214,7 @@ public sealed class PanGlossAssessorTests : IDisposable
 
     private sealed class FakeReportRunner(AssessReport report) : IPanGlossAssessor
     {
-        public IParserProcessGovernor? LastGovernor { get; private set; }
-
-        public Task<AssessReport> RunAsync(
-            string exportedCandidate, CancellationToken cancellationToken, IParserProcessGovernor? governor = null)
-        {
-            LastGovernor = governor;
-            return Task.FromResult(report);
-        }
-    }
-
-    private sealed class FakeStatsRunner(byte[] bytesToWrite) : IPanGlossStatsRunner
-    {
-        public IParserProcessGovernor? LastGovernor { get; private set; }
-
-        public Task RunBatchAsync(string projectFilePath, IReadOnlyList<string> words, ParserEngine engine,
-            TimeSpan perWordLimit, string cachePath, CancellationToken cancellationToken,
-            IParserProcessGovernor? governor = null)
-        {
-            LastGovernor = governor;
-            File.WriteAllBytes(cachePath, bytesToWrite);
-            return Task.CompletedTask;
-        }
-    }
-
-    // Throws unless a scope collecting ParseTime actually needs it, per test.
-    private sealed class FakeBatchParser(ParserRunResult? result) : PanGlossParser("unused")
-    {
-        public IParserProcessGovernor? LastGovernor { get; private set; }
-
-        public override ParserRunResult AnalyseBatch(
-            string projectFilePath, IReadOnlyList<string> words,
-            ParserEngine engine = ParserEngine.FstPrunedByHermitCrab,
-            int? perWordTimeoutMs = 5000, TimeSpan? processTimeout = null,
-            IParserProcessGovernor? governor = null)
-        {
-            LastGovernor = governor;
-            return result ?? throw new InvalidOperationException("This test never expected AnalyseBatch to run.");
-        }
+        public Task<AssessReport> RunAsync(string exportedCandidate, CancellationToken cancellationToken) =>
+            Task.FromResult(report);
     }
 }
