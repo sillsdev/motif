@@ -53,8 +53,8 @@ This ADR establishes six invariants:
 4. Every invocation carries a wall-clock cap. The default is ten minutes, the parser's own ratified execution
    limit, overridable per request. On expiry the process tree is killed, exactly as on cancellation. The
    per-word limit stays a batch argument; it bounds a word, not a process.
-5. The module models only subcommands the shipped binary has: `batch`, `stats`, `import`, `parse`. It does
-   not model `assess`. `PanGlossAssessmentProcess` stays outside the module, untouched, until K46 settles who
+5. The module models only subcommands the shipped binary has and Motif uses: `batch`, `stats`, `import`. It
+   does not model `assess`. `PanGlossAssessmentProcess` stays outside the module, untouched, until K46 settles who
    produces the report. `FakePanGloss` models the same surface and no more.
 6. The module is proven through `FakePanGloss`, because the executable seam has two adapters and that is the
    real one. Callers cross the module's interface with an in-process fake. The virtual-method subclassing

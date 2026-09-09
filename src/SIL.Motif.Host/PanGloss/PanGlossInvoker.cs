@@ -65,6 +65,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         }
     }
 
+    /// <summary>Releases the queue; a run still in flight completes or cancels on its own terms.</summary>
     public void Dispose() => _queue.Dispose();
 
     /// <summary>
@@ -76,10 +77,20 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         CancellationToken cancellationToken)
     {
         var scratch = Path.Combine(Path.GetTempPath(), "SIL.Motif.PanGloss", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(scratch);
         try
         {
-            await request.PrepareAsync(scratch, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                Directory.CreateDirectory(scratch);
+                await request.PrepareAsync(scratch, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Staging failed before any process existed: an environment fault, reported like an absent parser.
+                return new PanGlossOutcome.Unavailable(
+                    $"Could not stage the parser's inputs under '{scratch}': {exception.Message}");
+            }
+
 
             var startInfo = new ProcessStartInfo(executable)
             {
@@ -131,8 +142,10 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 var standardOutput = await stdOutTask.ConfigureAwait(false);
                 if (process.ExitCode != 0)
                 {
-                    return new PanGlossOutcome.Refused(process.ExitCode, standardError, standardOutput,
-                        $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine + standardError.Trim());
+                    return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,
+                        StandardOutput: standardOutput,
+                        Detail: $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine +
+                            standardError.Trim());
                 }
                 return request.Finish(scratch, standardOutput, standardError, clock.Elapsed);
             }
