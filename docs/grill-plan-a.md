@@ -940,3 +940,9 @@ session that reproduced it on their main (3442e0ca), single-threaded, inside a 2
   outcome reported beside the counts? The code change itself is small: a `Capped` word outcome, the literal
   `CAP` token in `BatchTsvParser`, `--step-cap 200000` in the batch request, and a `CAP` mode in
   `FakePanGloss` so the row is exercised.
+- *`pangloss --describe` landed on PanGloss main at 2c477db4*: JSON on stdout (`schema_version` 1; `commands[]` with
+  `name`, `summary`, `hidden`, `positionals[]`, `flags[] {name, takes_value, summary}`), generated from the same
+  table the binary dispatches on, so a subcommand cannot exist without appearing. No `assess` row. Follow-on for
+  Motif, no decision needed: a real-parser test that runs `--describe` and checks every subcommand and flag
+  Motif's typed requests send (`batch --word-timeout-ms --threads --stats --cache`, `stats --cache`, `import`)
+  appears there, and that `FakePanGloss` answers no subcommand the listing lacks.
