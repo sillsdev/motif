@@ -11,12 +11,9 @@ namespace SIL.Motif.Tests.Parser;
 /// pass — assigns its launched process to a supplied governor immediately after starting.
 /// </summary>
 /// <remarks>
-/// The fake parser exercised elsewhere in this suite answers <c>assess</c>, <c>import</c> and <c>stats</c>
-/// only (it has no reason to know <c>batch</c>, which none of Motif's own commands send it — <c>batch</c>
-/// reaches only the real parser). So <see cref="PanGlossParser.AnalyseBatch"/> and
-/// <see cref="PanGlossStatsProcess.RunBatchAsync"/> against it exercise the real process boundary through
-/// to a refusal rather than a success. That is enough: containment happens the instant the process starts,
-/// before either side knows whether the run will succeed, so a refused run still proves the assignment.
+/// The fake parser answers <c>batch</c> but not <c>assess</c>, so two of these runs succeed and one is
+/// refused. Containment happens the instant the process starts, before either side knows how the run will
+/// end, so the assertion is the same in both cases.
 /// </remarks>
 public sealed class PanGlossGovernorTests : IDisposable
 {
@@ -33,13 +30,13 @@ public sealed class PanGlossGovernorTests : IDisposable
     }
 
     [Fact]
-    public void AnalyseBatch_AssignsTheStartedProcessToTheSuppliedGovernor_EvenWhenTheRunIsRefused()
+    public void AnalyseBatch_AssignsTheStartedProcessToTheSuppliedGovernor()
     {
         var projectFilePath = Project("analyse-batch");
         var parser = new PanGlossParser(FakeParser.ExecutablePath);
         var governor = new RecordingGovernor();
 
-        Assert.ThrowsAny<Exception>(() => parser.AnalyseBatch(projectFilePath, ["motifa"], governor: governor));
+        parser.AnalyseBatch(projectFilePath, ["motifa"], governor: governor);
 
         Assert.Single(governor.ContainedProcessIds);
     }
@@ -58,16 +55,16 @@ public sealed class PanGlossGovernorTests : IDisposable
     }
 
     [Fact]
-    public async Task StatsProcessRunBatchAsync_AssignsTheStartedProcessToTheSuppliedGovernor_EvenWhenRefused()
+    public async Task StatsProcessRunBatchAsync_AssignsTheStartedProcessToTheSuppliedGovernor()
     {
         var projectFilePath = Project("stats-process");
         var cachePath = Path.Combine(_root, "cache.bin");
         var statsRunner = new PanGlossStatsProcess(FakeParser.ExecutablePath);
         var governor = new RecordingGovernor();
 
-        await Assert.ThrowsAnyAsync<Exception>(() => statsRunner.RunBatchAsync(
+        await statsRunner.RunBatchAsync(
             projectFilePath, ["motifa"], ParserEngine.FstPrunedByHermitCrab, TimeSpan.FromSeconds(5), cachePath,
-            CancellationToken.None, governor));
+            CancellationToken.None, governor);
 
         Assert.Single(governor.ContainedProcessIds);
     }
