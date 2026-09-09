@@ -71,3 +71,15 @@ The completed executable-contract/fixture batch passes the full ./test.ps1 gate 
 of all fake-declared flags against real flags and value arity; the final test includes that comparison.
 An existing worker lifetime test raced its own wall-clock busy deadline under load; it now holds work
 active until after the non-exit assertion, then releases it explicitly.
+
+Independent review corrected the proposed design: comparison compatibility remains AssessorId plus Kind,
+with limits shown as context; the command keeps collecting ParseTime plus ObjectTiming by default;
+Correctness must be refused end to end, including the existing report registration. The spec now names
+shared invocation evidence, input-change checks, separate parser passes under --stats, verified scratch
+copies for statistics queries, and the existing closed config schema rather than a new config version.
+
+Native display preflight found one connected display, DISPLAY5, at 1920x1080 physical pixels with a
+1920x1032 work area. A per-monitor-aware GetDpiForMonitor call returned 96 DPI (100%). This proves only
+the current monitor configuration, not application rendering. Requested 125%, 150% and 200% screenshots
+are still outstanding and require actual monitor scaling changes; no display setting was changed.
+The window's 900x600 logical minimum would need 1800x1200 pixels at 200%, taller than this work area.
