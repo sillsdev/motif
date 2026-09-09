@@ -10,7 +10,6 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Host.PanGloss;
@@ -29,21 +28,15 @@ public sealed record HandoffRequest(
 /// <summary>
 /// Writes the self-explaining AI Handoff folder (design decision 6) by composing the commands that
 /// already exist: <see cref="BaselineCaptureCommand"/> for the project copy, <see cref="AssessCommand"/>
-/// for the optional measurement and its statistics summary, <see cref="StatsCommand"/> for the six
-/// per-group JSONL files, and <see cref="IPanGlossGrammarImporter"/> for the grammar snapshot. None of
-/// their internals are reimplemented here.
+/// for the optional measurement and its statistics summary, and <see cref="StatsCommand"/> for the six
+/// per-group JSONL files, plus the PanGloss invocation for the grammar snapshot. None of their internals
+/// are reimplemented here.
 /// </summary>
 /// <remarks>
 /// <para>
 /// The folder is never visible at its destination until <see cref="HandoffWriter.Publish"/> has
 /// validated the complete listing: everything above is written into a sibling incoming directory first,
 /// so a mid-run cancellation or PanGloss failure leaves no destination directory at all.
-/// </para>
-/// <para>
-/// The grammar importer arrives as a factory, the same seam <see cref="AssessCommand"/> and
-/// <see cref="StatsCommand"/> already use for their own PanGloss collaborators: it is built only after
-/// the project has resolved, so a mistyped path is refused as <c>project.not-found</c> rather than a
-/// missing parser.
 /// </para>
 /// <para>
 /// Progress is reported through the command-owned stages of <see cref="AssessmentStage"/>, which was
@@ -71,30 +64,22 @@ public static class HandoffCommand
         CancellationToken cancellationToken = default)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
-        using var queue = new MachinePanGlossQueue();
-        return Run(request, managedRoot,
-            () => new PanGlossAssessor(new StatsCacheStore(ownership), new PanGlossInvoker()),
-            () => new PanGlossStatsQueryProcess(),
-            () => new PanGlossGrammarImportProcess(),
-            queue, onProgress, cancellationToken);
+        using var invoker = new PanGlossInvoker();
+        var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(new StatsCacheStore(ownership), invoker));
+        return Run(request, managedRoot, assessor, invoker, onProgress, cancellationToken);
     }
 
     /// <summary>
-    /// Writes a Handoff folder against explicitly supplied collaborators — fakes stand in for the real
-    /// PanGloss subprocesses in tests, and a custom-slotted <see cref="MachinePanGlossQueue"/> keeps a
-    /// test's admission race off the machine's real, well-known slots.
+    /// Writes a Handoff folder against explicitly supplied collaborators — a fake Assessor and a fake
+    /// invoker stand in for a real PanGloss in tests. Admission and containment are the invoker's.
     /// </summary>
     internal static CommandOutcome<HandoffCommandResponse> Run(
-        HandoffRequest request, string managedRoot,
-        Func<IAssessor> assessorFactory, Func<IPanGlossStatsQuery> statsQueryFactory,
-        Func<IPanGlossGrammarImporter> grammarImporterFactory, MachinePanGlossQueue queue,
+        HandoffRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(assessorFactory);
-        ArgumentNullException.ThrowIfNull(statsQueryFactory);
-        ArgumentNullException.ThrowIfNull(grammarImporterFactory);
-        ArgumentNullException.ThrowIfNull(queue);
+        ArgumentNullException.ThrowIfNull(assessor);
+        ArgumentNullException.ThrowIfNull(invoker);
 
         if (File.Exists(request.OutputDirectory) ||
             (Directory.Exists(request.OutputDirectory) &&
@@ -110,8 +95,6 @@ public static class HandoffCommand
         {
             try
             {
-                var grammarImporter = grammarImporterFactory();
-
                 BaselineCaptureResponse baseline;
                 SelectionProjection selectionProjection;
                 string? statisticsMarkdown = null;
@@ -121,7 +104,7 @@ public static class HandoffCommand
                 {
                     var assessOutcome = AssessCommand.Run(
                         new AssessRequest(request.ProjectPath, request.Selection), managedRoot,
-                        assessorFactory, statsQueryFactory, queue, ForwardExceptComplete(onProgress),
+                        assessor, invoker, ForwardExceptComplete(onProgress),
                         cancellationToken);
                     if (!assessOutcome.Succeeded)
                         return CommandOutcome<HandoffCommandResponse>.Refused(assessOutcome.Refusal!);
@@ -155,17 +138,16 @@ public static class HandoffCommand
                     HandoffWriter.WriteSelectionTxt(incoming, selectionProjection);
 
                     Report(onProgress, AssessmentStage.ImportingGrammar, "Importing the grammar...");
-                    queue.RunAsync<object?>(
-                        "handoff:import:" + request.ProjectPath,
-                        async (cpuJob, jobToken) =>
-                        {
-                            await grammarImporter.ImportAsync(
-                                    baseline.FwDataPath, Path.Combine(incoming, HandoffWriter.GrammarFileName),
-                                    jobToken, new WindowsCpuJobGovernor(cpuJob))
-                                .ConfigureAwait(false);
-                            return null;
-                        },
-                        cancellationToken).GetAwaiter().GetResult();
+                    var import = invoker.RunAsync(
+                            new PanGlossRequest.Import(baseline.FwDataPath, Path.Combine(incoming, HandoffWriter.GrammarFileName)),
+                            "handoff:import:" + request.ProjectPath, cancellationToken)
+                        .GetAwaiter().GetResult();
+                    if (import is PanGlossOutcome.Cancelled) return Cancelled(request.ProjectPath);
+                    if (import is not PanGlossOutcome.Completed)
+                    {
+                        return new Refusal("handoff.parser-unavailable", FailureReason.Refused, import.Message,
+                            Fact(("projectPath", request.ProjectPath)));
+                    }
 
                     if (request.Assess)
                     {
@@ -175,27 +157,17 @@ public static class HandoffCommand
                         var statisticsDir = Directory.CreateDirectory(
                             Path.Combine(incoming, HandoffWriter.StatisticsDirectoryName)).FullName;
 
-                        var groupRefusal = queue.RunAsync<Refusal?>(
-                            "handoff:stats:" + request.ProjectPath,
-                            (cpuJob, jobToken) =>
-                            {
-                                var governor = new WindowsCpuJobGovernor(cpuJob);
-                                foreach (var group in HandoffWriter.StatisticsGroups)
-                                {
-                                    var groupOutcome = StatsCommand.Run(
-                                        new StatsRequest(
-                                            request.ProjectPath, null, StatsOutputKind.Text,
-                                            new[] { "--group", group, "--format", "jsonl" }),
-                                        statsQueryFactory, jobToken, governor);
-                                    if (!groupOutcome.Succeeded) return Task.FromResult(groupOutcome.Refusal);
+                        foreach (var group in HandoffWriter.StatisticsGroups)
+                        {
+                            var groupOutcome = StatsCommand.Run(
+                                new StatsRequest(request.ProjectPath, null, StatsOutputKind.Text,
+                                    new[] { "--group", group, "--format", "jsonl" }),
+                                invoker, cancellationToken);
+                            if (!groupOutcome.Succeeded) return groupOutcome.Refusal;
 
-                                    File.WriteAllText(
-                                        Path.Combine(statisticsDir, group + ".jsonl"), groupOutcome.Value!.Text);
-                                }
-                                return Task.FromResult<Refusal?>(null);
-                            },
-                            cancellationToken).GetAwaiter().GetResult();
-                        if (groupRefusal is not null) return groupRefusal;
+                            File.WriteAllText(
+                                Path.Combine(statisticsDir, group + ".jsonl"), groupOutcome.Value!.Text);
+                        }
                     }
 
                     HandoffWriter.WriteEmbeddedAssets(incoming);
@@ -213,12 +185,6 @@ public static class HandoffCommand
             catch (OperationCanceledException)
             {
                 return CommandOutcome<HandoffCommandResponse>.Refused(Cancelled(request.ProjectPath));
-            }
-            catch (ParserUnavailableException ex)
-            {
-                return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
-                    "handoff.parser-unavailable", FailureReason.Refused, ex.Message,
-                    Fact(("projectPath", request.ProjectPath))));
             }
         });
     }

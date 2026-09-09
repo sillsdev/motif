@@ -34,6 +34,30 @@ existing Refusal codes.
 `AssessorUnavailableException` (that is ADR 0042's seam, not ADR 0044's), and everything in grill items K46,
 K48 and K49.
 
+## Completion record
+
+The supported parser requests now share one execution path, so statistics queries receive the same
+resource limits and typed failure handling as batch parsing and grammar import.
+
+Tasks 1–4 were committed and reviewed in the resumed session. Task 5's interface and launcher deletions
+were included in `b3ac359`; its interrupted command edits were completed on resumption. The command
+entry points defer Assessor construction until project and Selection validation, preserving typed
+refusals when the legacy report producer cannot locate PanGloss. Tests cover that deferral and the
+statistics-summary outcome mappings in addition to the invocation module's process tests.
+Review found that a failed summary query could leave recorded Assessments behind. Four failing
+regression cases reproduced it; recording now waits until the summary query succeeds.
+
+Task 6 records the statistics admission correction and the ten report-dependent tests that remain
+skipped under K46. README contains no references needing replacement. The historical design and
+measurement documents retain their original parser flags; K48 tracks the current engine decision.
+
+The red-run checkboxes below remain unchecked: the handoff establishes completed implementations and
+green gates but does not preserve enough output to independently verify each historical red run.
+The summary-persistence regression was independently observed red during this completion session.
+They are an evidence limitation, not unfinished implementation. The final full-suite result is recorded
+in the completion commit; the legacy report route and the follow-on CAP/describe work remain outside
+this plan.
+
 ---
 
 ### Task 1: Move admission and containment into Host
@@ -50,7 +74,7 @@ K48 and K49.
 - Modify: `tests/SIL.Motif.Tests/Worker/MachinePanGlossQueueTests.cs`, `tests/SIL.Motif.Tests/Worker/WindowsCpuJobTests.cs`,
   `tests/SIL.Motif.Tests/Commands/AssessCommandTests.cs`, `tests/SIL.Motif.Tests/Handoff/HandoffWriterTests.cs`
 
-- [ ] **Step 1: Move the five files with history.**
+- [x] **Step 1: Move the five files with history.**
 
 ```bash
 mkdir -p src/SIL.Motif.Host/PanGloss
@@ -61,7 +85,7 @@ git mv src/SIL.Motif.Worker/PanGloss/WindowsCpuJobGovernor.cs src/SIL.Motif.Host
 git mv src/SIL.Motif.Worker/WorkerMutexOwner.cs src/SIL.Motif.Host/PanGloss/
 ```
 
-- [ ] **Step 2: Change the namespaces.** In each moved file replace `namespace SIL.Motif.Worker.PanGloss;` (or
+- [x] **Step 2: Change the namespaces.** In each moved file replace `namespace SIL.Motif.Worker.PanGloss;` (or
   `namespace SIL.Motif.Worker;` in `WorkerMutexOwner.cs`) with `namespace SIL.Motif.Host.PanGloss;`. In
   `WorkerMutexOwner.cs` change `internal sealed class WorkerMutexOwner` to `public sealed class WorkerMutexOwner`
   (Worker's `JobRunnerHost` still constructs it). In `WindowsCpuJobGovernor.cs` delete the line
@@ -69,7 +93,7 @@ git mv src/SIL.Motif.Worker/WorkerMutexOwner.cs src/SIL.Motif.Host/PanGloss/
   rewrite its `<remarks>` to one sentence: `/// <remarks>Bridges the job object to the governor seam the launchers still take.</remarks>`
   (the old remarks describe a project layout that no longer holds).
 
-- [ ] **Step 3: Give the queue a test-only observation hook.** In `MachinePanGlossQueue.cs`, after the
+- [x] **Step 3: Give the queue a test-only observation hook.** In `MachinePanGlossQueue.cs`, after the
   `SlotOwnership` property add:
 
 ```csharp
@@ -99,7 +123,7 @@ git mv src/SIL.Motif.Worker/WorkerMutexOwner.cs src/SIL.Motif.Host/PanGloss/
 
   (`RunAdmittedJobAsync` was `static`; it is an instance method now. The call site `_ = RunAdmittedJobAsync(job, lease, linked);` is unchanged.)
 
-- [ ] **Step 4: Repoint every `using`.**
+- [x] **Step 4: Repoint every `using`.**
 
 ```bash
 grep -rl "SIL.Motif.Worker.PanGloss" src tests --include=*.cs | grep -v "/obj/" \
@@ -111,7 +135,7 @@ perl -pi -e 's/^(using SIL\.Motif\.Worker;\r?)$/$1\nusing SIL.Motif.Host.PanGlos
   neighbours (`file` reports only CRLF terminators). If `JobRunnerHost.cs` has no `using SIL.Motif.Worker;`
   line, add `using SIL.Motif.Host.PanGloss;` by hand in its `using` block.
 
-- [ ] **Step 5: Build and run the moved tests.**
+- [x] **Step 5: Build and run the moved tests.**
 
 Run: `pwsh -NoProfile -File ./build.ps1`
 Expected: build succeeds, comment hygiene `TOTAL 0`.
@@ -119,7 +143,7 @@ Expected: build succeeds, comment hygiene `TOTAL 0`.
 Run: `dotnet test tests/SIL.Motif.Tests --no-build --filter "FullyQualifiedName~MachinePanGlossQueueTests|FullyQualifiedName~WindowsCpuJobTests|FullyQualifiedName~AssessCommandTests|FullyQualifiedName~HandoffWriterTests"`
 Expected: all pass.
 
-- [ ] **Step 6: Gate and commit.**
+- [x] **Step 6: Gate and commit.**
 
 Run: `pwsh -NoProfile -File ./test.ps1`
 Expected: `Passed!` with 0 failed.
@@ -147,7 +171,7 @@ EOF
 - Modify: `tests/FakePanGloss/Program.cs`
 - Modify: `tests/SIL.Motif.Tests/Parser/FakeParserSeamTests.cs`
 
-- [ ] **Step 1: Write the failing test for the new `batch` arm.** Create
+- [x] **Step 1: Write the failing test for the new `batch` arm.** Create
   `tests/SIL.Motif.Tests/Parser/FakePanGlossBatchTests.cs`:
 
 ```csharp
@@ -232,7 +256,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
 Run: `pwsh -NoProfile -File ./build.ps1; dotnet test tests/SIL.Motif.Tests --no-build --filter "FullyQualifiedName~FakePanGlossBatchTests"`
 Expected: both tests FAIL (`batch` exits 64 as unrecognised; `assess` exits 0).
 
-- [ ] **Step 3: Rewrite `tests/FakePanGloss/Program.cs`'s dispatch and arms.** Replace the `Main` switch,
+- [x] **Step 3: Rewrite `tests/FakePanGloss/Program.cs`'s dispatch and arms.** Replace the `Main` switch,
   delete `RunAssess` and `Report`, add `RunBatch` and `BatchTsv`, and trim `Behaviour`. The resulting file's
   behaviour section is:
 
@@ -348,19 +372,19 @@ Expected: both tests FAIL (`batch` exits 64 as unrecognised; `assess` exits 0).
   subcommands Motif sends the shipped binary — `batch`, `import`, `stats` — and nothing else". Remove
   `using System.Globalization;` only if `Tick` no longer needs it (it does: keep it).
 
-- [ ] **Step 4: Retire the tests that depended on the fake's `assess`.** In
+- [x] **Step 4: Retire the tests that depended on the fake's `assess`.** In
   `tests/SIL.Motif.Tests/Parser/FakeParserSeamTests.cs`, delete the test
   `ASuccessfulAssessment_AssignsTheStartedProcessToTheSuppliedGovernor` entirely (its subject disappears in
   Task 5), and on the other eight `[Fact]` attributes write
   `[Fact(Skip = "The shipped pangloss has no assess subcommand (grill K46); the fake no longer pretends otherwise.")]`.
   Change the class `<summary>` to say the class is parked until K46 decides who produces the report.
 
-- [ ] **Step 5: Run green.**
+- [x] **Step 5: Run green.**
 
 Run: `pwsh -NoProfile -File ./build.ps1; dotnet test tests/SIL.Motif.Tests --no-build --filter "FullyQualifiedName~FakePanGlossBatchTests|FullyQualifiedName~FakeParserSeamTests|FullyQualifiedName~PanGlossCandidateExportTests|FullyQualifiedName~PanGlossAssessmentProcessTests"`
 Expected: 2 passed, 8 skipped, the export and assessment-process tests still pass (they refuse before launching).
 
-- [ ] **Step 6: Gate and commit.**
+- [x] **Step 6: Gate and commit.**
 
 Run: `pwsh -NoProfile -File ./test.ps1`
 Expected: `Passed!` with 0 failed. Note the skipped count rose by 8.
@@ -392,7 +416,7 @@ EOF
 - Create: `tests/SIL.Motif.Tests/TestFixtures/FakeInvoker.cs`
 - Create: `tests/SIL.Motif.Tests/PanGloss/PanGlossInvokerTests.cs`
 
-- [ ] **Step 1: Write the failing tests.** Create `tests/SIL.Motif.Tests/PanGloss/PanGlossInvokerTests.cs`:
+- [x] **Step 1: Write the failing tests.** Create `tests/SIL.Motif.Tests/PanGloss/PanGlossInvokerTests.cs`:
 
 ```csharp
 using System.Text.Json;
@@ -665,7 +689,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 Run: `pwsh -NoProfile -File ./build.ps1`
 Expected: FAIL to compile — `PanGlossInvoker`, `PanGlossRequest`, `PanGlossOutcome` do not exist.
 
-- [ ] **Step 3: Write the outcome type.** Create `src/SIL.Motif.Host/PanGloss/PanGlossOutcome.cs`:
+- [x] **Step 3: Write the outcome type.** Create `src/SIL.Motif.Host/PanGloss/PanGlossOutcome.cs`:
 
 ```csharp
 namespace SIL.Motif.Host.PanGloss;
@@ -724,7 +748,7 @@ public abstract record PanGlossOutcome
 }
 ```
 
-- [ ] **Step 4: Write the request types.** Create `src/SIL.Motif.Host/PanGloss/PanGlossRequest.cs`:
+- [x] **Step 4: Write the request types.** Create `src/SIL.Motif.Host/PanGloss/PanGlossRequest.cs`:
 
 ```csharp
 using System.Diagnostics;
@@ -867,7 +891,7 @@ public abstract record PanGlossRequest
 }
 ```
 
-- [ ] **Step 5: Write the interface.** Create `src/SIL.Motif.Host/PanGloss/IPanGlossInvoker.cs`:
+- [x] **Step 5: Write the interface.** Create `src/SIL.Motif.Host/PanGloss/IPanGlossInvoker.cs`:
 
 ```csharp
 namespace SIL.Motif.Host.PanGloss;
@@ -888,7 +912,7 @@ public interface IPanGlossInvoker
 }
 ```
 
-- [ ] **Step 6: Write the invoker.** Create `src/SIL.Motif.Host/PanGloss/PanGlossInvoker.cs`:
+- [x] **Step 6: Write the invoker.** Create `src/SIL.Motif.Host/PanGloss/PanGlossInvoker.cs`:
 
 ```csharp
 using System.ComponentModel;
@@ -1045,7 +1069,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 }
 ```
 
-- [ ] **Step 7: Write the in-process fake for callers' tests.** Create `tests/SIL.Motif.Tests/TestFixtures/FakeInvoker.cs`:
+- [x] **Step 7: Write the in-process fake for callers' tests.** Create `tests/SIL.Motif.Tests/TestFixtures/FakeInvoker.cs`:
 
 ```csharp
 using SIL.Motif.Host.PanGloss;
@@ -1074,12 +1098,12 @@ internal sealed class FakeInvoker : IPanGlossInvoker
 }
 ```
 
-- [ ] **Step 8: Run green.**
+- [x] **Step 8: Run green.**
 
 Run: `pwsh -NoProfile -File ./build.ps1; dotnet test tests/SIL.Motif.Tests --no-build --filter "FullyQualifiedName~PanGlossInvokerTests"`
 Expected: 13 passed.
 
-- [ ] **Step 9: Gate and commit.**
+- [x] **Step 9: Gate and commit.**
 
 Run: `pwsh -NoProfile -File ./test.ps1`
 Expected: `Passed!` with 0 failed.
@@ -1115,7 +1139,7 @@ EOF
   `tests/SIL.Motif.Tests/Parser/GrammarCoverageFigureIntegrationTests.cs`, `tests/SIL.Motif.Tests/Parser/ParserSeamIntegrationTests.cs`
 - Delete: `tests/SIL.Motif.Tests/Parser/PanGlossGovernorTests.cs`
 
-- [ ] **Step 1: Write the failing test for the thin parser.** Create `tests/SIL.Motif.Tests/Parser/PanGlossParserTests.cs`:
+- [x] **Step 1: Write the failing test for the thin parser.** Create `tests/SIL.Motif.Tests/Parser/PanGlossParserTests.cs`:
 
 ```csharp
 using SIL.Motif.Host.PanGloss;
@@ -1191,7 +1215,7 @@ public sealed class PanGlossParserTests
 Run: `pwsh -NoProfile -File ./build.ps1`
 Expected: FAIL to compile — `PanGlossParser` has no constructor taking an invoker and no `AnalyseBatchAsync`.
 
-- [ ] **Step 3: Move the exception to its own file.** Create `src/SIL.Motif.Host/Parser/ParserUnavailableException.cs`:
+- [x] **Step 3: Move the exception to its own file.** Create `src/SIL.Motif.Host/Parser/ParserUnavailableException.cs`:
 
 ```csharp
 namespace SIL.Motif.Host.Parser;
@@ -1206,7 +1230,7 @@ public sealed class ParserUnavailableException : Exception
 }
 ```
 
-- [ ] **Step 4: Rewrite `src/SIL.Motif.Host/Parser/PanGlossParser.cs`** in full:
+- [x] **Step 4: Rewrite `src/SIL.Motif.Host/Parser/PanGlossParser.cs`** in full:
 
 ```csharp
 using SIL.Motif.Host.PanGloss;
@@ -1286,7 +1310,7 @@ public sealed class PanGlossParser
 }
 ```
 
-- [ ] **Step 5: The Assessor seam loses its governor and gains a typed unavailability.** In
+- [x] **Step 5: The Assessor seam loses its governor and gains a typed unavailability.** In
   `src/SIL.Motif.Host/Assess/IAssessor.cs`, change `ProduceAsync` to:
 
 ```csharp
@@ -1318,7 +1342,7 @@ public sealed class AssessorUnavailableException : Exception
   `src/SIL.Motif.Host/Parser/PanGlossAssessmentProcess.cs` remove the same parameter from `RunAsync` and from
   `RunProcessAsync`, and delete the line `governor?.Contain(process);`.
 
-- [ ] **Step 6: Rewrite `PanGlossAssessor`.** In `src/SIL.Motif.Host/Assess/PanGlossAssessor.cs` delete
+- [x] **Step 6: Rewrite `PanGlossAssessor`.** In `src/SIL.Motif.Host/Assess/PanGlossAssessor.cs` delete
   `IPanGlossStatsRunner` and `PanGlossStatsProcess` entirely (with their doc comments), keep
   `IAssessorCachePathResolver`, and replace the `PanGlossAssessor` class with:
 
@@ -1455,7 +1479,7 @@ public sealed class PanGlossAssessor : IAssessor
   `using SIL.Motif.Host.PanGloss;` at the top and delete `using System.Diagnostics;` and
   `using System.Globalization;` if nothing else in the file uses them.
 
-- [ ] **Step 7: Minimal compile fixes in the callers.** In `src/SIL.Motif.Commands/Assess/AssessCommand.cs`
+- [x] **Step 7: Minimal compile fixes in the callers.** In `src/SIL.Motif.Commands/Assess/AssessCommand.cs`
   change the `ProduceAsync` call to
   `(cpuJob, jobToken) => assessor.ProduceAsync(scope, exportedCandidate, jobToken),` (the `WindowsCpuJobGovernor`
   for the stats summary remains until Task 5), and add a `catch (AssessorUnavailableException ex)` arm beside the
@@ -1489,7 +1513,7 @@ public sealed class PanGlossAssessor : IAssessor
   (add `using SIL.Motif.Host.PanGloss;`). The invoker lives as long as the runner process; its queue's
   background loop ends with the process.
 
-- [ ] **Step 8: Update the fakes and tests.** In `tests/SIL.Motif.Tests/TestFixtures/FakeAssessor.cs` remove
+- [x] **Step 8: Update the fakes and tests.** In `tests/SIL.Motif.Tests/TestFixtures/FakeAssessor.cs` remove
   `LastGovernor`, the `governor` parameter, the assignment, and `using SIL.Motif.Host.Parser;`.
 
   In `tests/SIL.Motif.Tests/Assess/PanGlossAssessorTests.cs`: delete `FakeStatsRunner` and `FakeBatchParser`;
@@ -1553,12 +1577,12 @@ public sealed class PanGlossAssessor : IAssessor
   `RealParserFactAttribute` does not expose `Skip`, open `tests/SIL.Motif.Tests/TestFixtures/RealParserFactAttribute.cs`
   and confirm it derives from `FactAttribute`; `Skip` is inherited.
 
-- [ ] **Step 9: Run green.**
+- [x] **Step 9: Run green.**
 
 Run: `pwsh -NoProfile -File ./build.ps1; dotnet test tests/SIL.Motif.Tests --no-build --filter "FullyQualifiedName~PanGlossParserTests|FullyQualifiedName~PanGlossAssessorTests|FullyQualifiedName~AssessCommandTests|FullyQualifiedName~HandoffWriterTests|FullyQualifiedName~TrialJobHandlerTests"`
 Expected: all pass.
 
-- [ ] **Step 10: Gate and commit.**
+- [x] **Step 10: Gate and commit.**
 
 Run: `pwsh -NoProfile -File ./test.ps1`
 Expected: `Passed!` with 0 failed.
@@ -1594,7 +1618,7 @@ EOF
 - Modify: `tests/SIL.Motif.Tests/Commands/StatsCommandTests.cs`, `tests/SIL.Motif.Tests/Commands/AssessCommandTests.cs`,
   `tests/SIL.Motif.Tests/Handoff/HandoffWriterTests.cs`
 
-- [ ] **Step 1: Write the failing tests first.** In `tests/SIL.Motif.Tests/Commands/StatsCommandTests.cs` the
+- [x] **Step 1: Write the failing tests first.** In `tests/SIL.Motif.Tests/Commands/StatsCommandTests.cs` the
   class's private `Run(fwDataPath, proposalId, output, forwarded, Func<IPanGlossStatsQuery>)` helper (line 229)
   becomes:
 
@@ -1701,7 +1725,7 @@ EOF
 Run: `pwsh -NoProfile -File ./build.ps1`
 Expected: FAIL to compile — `StatsCommand.Run` does not take an `IPanGlossInvoker`.
 
-- [ ] **Step 3: Rewrite `StatsCommand`'s seam.** Replace the public `Stats` method and the `Run` signature,
+- [x] **Step 3: Rewrite `StatsCommand`'s seam.** Replace the public `Stats` method and the `Run` signature,
   the collaborator construction and the query call with:
 
 ```csharp
@@ -1766,7 +1790,7 @@ Expected: FAIL to compile — `StatsCommand.Run` does not take an `IPanGlossInvo
   Fix the class remarks: the sentence naming `IPanGlossStatsQuery` becomes "hands
   `StatsRequest.ForwardedArguments` to the invocation untouched".
 
-- [ ] **Step 4: Rewrite `AssessCommand`'s seam.** Replace `Assess(request, managedRoot, ...)` and `Run` with:
+- [x] **Step 4: Rewrite `AssessCommand`'s seam.** Replace `Assess(request, managedRoot, ...)` and `Run` with:
 
 ```csharp
     public static CommandOutcome<AssessCommandResponse> Assess(
@@ -1844,7 +1868,7 @@ Expected: FAIL to compile — `StatsCommand.Run` does not take an `IPanGlossInvo
   the class `<summary>` to say the Assessor runs "through the PanGloss invocation, which admits and contains
   every parser process" instead of "under the machine-wide PanGloss admission queue".
 
-- [ ] **Step 5: Rewrite `HandoffCommand`'s seam.** Replace `Handoff(request, managedRoot, ...)` and `Run`'s
+- [x] **Step 5: Rewrite `HandoffCommand`'s seam.** Replace `Handoff(request, managedRoot, ...)` and `Run`'s
   signature with:
 
 ```csharp
@@ -1909,7 +1933,7 @@ Expected: FAIL to compile — `StatsCommand.Run` does not take an `IPanGlossInvo
   Remove the `catch (ParserUnavailableException ex)` arm at the bottom (nothing throws it any more; the
   `OperationCanceledException` arm stays). Fix `using` lines to match.
 
-- [ ] **Step 6: Delete the retired seams.**
+- [x] **Step 6: Delete the retired seams.**
 
 ```bash
 git rm src/SIL.Motif.Host/Assess/IPanGlossStatsQuery.cs src/SIL.Motif.Host/Assess/PanGlossStatsQueryProcess.cs
@@ -1925,7 +1949,7 @@ git rm tests/SIL.Motif.Tests/Assess/PanGlossStatsQueryTests.cs tests/SIL.Motif.T
   and fix each hit; the docs mention in `src/SIL.Motif.Commands/ReportCommands.cs:20` about
   `PanGlossParser` still holds and stays.
 
-- [ ] **Step 7: Update `AssessCommandTests` and `HandoffWriterTests`.** In both, delete `NewQueue()`, every
+- [x] **Step 7: Update `AssessCommandTests` and `HandoffWriterTests`.** In both, delete `NewQueue()`, every
   `using var queue = NewQueue();`, every `WindowsCpuJobGovernor` assertion, and the `FakeStatsQuery`,
   `RecordingStatsQuery`, `RecordingGrammarImporter` and `ThrowingGrammarImporter` classes. Every
   `AssessCommand.Run(request, root, () => assessor, () => statsQuery, queue, progress, token)` becomes
@@ -1949,12 +1973,12 @@ git rm tests/SIL.Motif.Tests/Assess/PanGlossStatsQueryTests.cs tests/SIL.Motif.T
   test at line 77-84 that asserted governors reached the importer and stats query is deleted; its subject is
   pinned by `PanGlossInvokerTests.EveryLaunchRunsInsideTheAdmittedJobObject`.
 
-- [ ] **Step 8: Run green.**
+- [x] **Step 8: Run green.**
 
 Run: `pwsh -NoProfile -File ./build.ps1; dotnet test tests/SIL.Motif.Tests --no-build --filter "FullyQualifiedName~StatsCommandTests|FullyQualifiedName~AssessCommandTests|FullyQualifiedName~HandoffWriterTests|FullyQualifiedName~StatsArgvTests|FullyQualifiedName~AssessArgvTests"`
 Expected: all pass. `StatsArgvTests` drives the real CLI against `FakePanGloss` and must still pass unchanged.
 
-- [ ] **Step 9: Gate and commit.**
+- [x] **Step 9: Gate and commit.**
 
 Run: `pwsh -NoProfile -File ./test.ps1`
 Expected: `Passed!` with 0 failed.
@@ -1984,7 +2008,7 @@ EOF
 - Modify: `docs/grill-plan-a.md`
 - Modify: `README.md` only if it names `--engine`, `IPanGlossStatsQuery` or a deleted type (grep first)
 
-- [ ] **Step 1: Correct the ledger forward.** In `docs/known-issues.md`, leave the "Unfinished by choice" entry
+- [x] **Step 1: Correct the ledger forward.** In `docs/known-issues.md`, leave the "Unfinished by choice" entry
   about `motif stats` as written and append under `## Corrections`:
 
 ```markdown
@@ -1995,7 +2019,7 @@ takes machine-queue admission and runs inside the job object. The standalone `st
 launch unadmitted, because nothing above the invocation can obtain a process.
 ```
 
-- [ ] **Step 2: Record the K46 consequences.** Append to the K addendum at the end of `docs/grill-plan-a.md`:
+- [x] **Step 2: Record the K46 consequences.** Append to the K addendum at the end of `docs/grill-plan-a.md`:
 
 ```markdown
 - *2026-09-08, after ADR 0044:* `PanGlossParser.Assess` is gone; the `assess` route survives only in
@@ -2005,10 +2029,10 @@ launch unadmitted, because nothing above the invocation can obtain a process.
   (`GrammarCoverageFigureIntegrationTests`, `ParserSeamIntegrationTests`). Deciding K46 revives or removes them.
 ```
 
-- [ ] **Step 3: Check the README.** `grep -n "IPanGlossStatsQuery\|PanGlossStatsQueryProcess\|IParserProcessGovernor\|--engine" README.md docs/*.md | grep -v "grill-plan-a\|known-issues\|adr/"`.
+- [x] **Step 3: Check the README.** `grep -n "IPanGlossStatsQuery\|PanGlossStatsQueryProcess\|IParserProcessGovernor\|--engine" README.md docs/*.md | grep -v "grill-plan-a\|known-issues\|adr/"`.
   Fix any hit that describes current behaviour (not historical design documents, which stay as written).
 
-- [ ] **Step 4: Gate and commit.**
+- [x] **Step 4: Gate and commit.**
 
 Run: `pwsh -NoProfile -File ./test.ps1`
 Expected: `Passed!` with 0 failed.
@@ -2022,5 +2046,5 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
 ```
 
-- [ ] **Step 5: Tick every checkbox in this plan** that was completed, and commit the plan file with
+- [x] **Step 5: Tick every checkbox in this plan** that was completed, and commit the plan file with
   `docs: tick the PanGloss invocation plan`.

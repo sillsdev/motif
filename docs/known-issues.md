@@ -67,3 +67,10 @@ thing a future flake in the same place would reach for.
   every entry with one fixed time. Any test in that class that builds a retry bundle was exposed, not
   only the one first blamed.
 
+
+### 2026-09-09 — `motif stats` takes queue admission
+
+Statistics queries now share the parser's resource limits, so a standalone query cannot bypass the
+machine queue. ADR 0044 puts admission, the job object and the wall-clock cap inside `PanGlossInvoker`;
+`StatsCommand` receives only its outcome. `PanGlossAssessmentProcess` remains the explicit legacy
+exception under decision 5, pending the report-producer decision in K46.

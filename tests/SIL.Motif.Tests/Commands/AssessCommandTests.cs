@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Threading;
-using System.Threading.Tasks;
 using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Projects;
@@ -12,7 +11,6 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Host.PanGloss;
@@ -23,7 +21,7 @@ namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
 /// Pins <see cref="AssessCommand"/> over a real, file-backed seeded project, against a fake
-/// <see cref="IAssessor"/> and <see cref="IPanGlossStatsQuery"/>: a first run capturing a Baseline and
+/// <see cref="IAssessor"/> and a <see cref="FakeInvoker"/>: a first run capturing a Baseline and
 /// recording Assessments, a second run reusing that Baseline, cancellation recording nothing, an empty
 /// Selection's refusal, and the reported progress stages.
 /// </summary>
@@ -53,11 +51,11 @@ public sealed class AssessCommandTests : IDisposable
     public void FirstRunCapturesABaselineAndRecordsAnAssessmentPerCollectedKind()
     {
         using var seeded = NewSeededScratch();
-        using var queue = NewQueue();
+        var invoker = NewInvoker();
 
         var outcome = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), NewAssessor, NewStatsQuery,
-            queue, onProgress: null, CancellationToken.None);
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         var response = outcome.Value!;
@@ -70,44 +68,21 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void TheStatisticsQueryIsAlsoThreadedAnAdmittedJobAsAGovernor()
-    {
-        using var seeded = NewSeededScratch();
-        using var queue = NewQueue();
-        var cachePath = Path.Combine(_managedRootsParent, "fake-stats-cache-" + Guid.NewGuid().ToString("N") + ".bin");
-        File.WriteAllText(cachePath, "fake per-object stats cache");
-        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ObjectTiming
-            ? new AssessmentRaw.FileCache(cachePath, "sha256:" + new string('0', 64))
-            : new AssessmentRaw.WordMeasurements([]));
-        var statsQuery = new FakeStatsQuery();
-
-        var outcome = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), () => assessor,
-            () => statsQuery, queue, onProgress: null, CancellationToken.None);
-
-        Assert.True(outcome.Succeeded);
-        Assert.IsType<WindowsCpuJobGovernor>(statsQuery.LastGovernor);
-    }
-
-    [Fact]
     public void SecondRunReusesTheExistingBaselineRatherThanRecapturing()
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        var invoker = NewInvoker();
 
-        using (var firstQueue = NewQueue())
-        {
-            var first = AssessCommand.Run(
-                new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor, NewStatsQuery,
-                firstQueue, onProgress: null, CancellationToken.None);
-            Assert.True(first.Succeeded);
-            Assert.False(first.Value!.Baseline.ReusedExistingBytes);
-        }
+        var first = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+        Assert.True(first.Succeeded);
+        Assert.False(first.Value!.Baseline.ReusedExistingBytes);
 
-        using var secondQueue = NewQueue();
         var second = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor, NewStatsQuery,
-            secondQueue, onProgress: null, CancellationToken.None);
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
 
         Assert.True(second.Succeeded);
         Assert.True(second.Value!.Baseline.ReusedExistingBytes);
@@ -117,13 +92,12 @@ public sealed class AssessCommandTests : IDisposable
     public void CancellationWhileTheAssessorIsRunningRecordsNoAssessments()
     {
         using var seeded = NewSeededScratch();
-        using var queue = NewQueue();
         var cancellingAssessor = new FakeAssessor(
             "cancelling", CollectedKinds, _ => throw new OperationCanceledException());
 
         var outcome = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), () => cancellingAssessor, NewStatsQuery,
-            queue, onProgress: null, CancellationToken.None);
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), cancellingAssessor, NewInvoker(),
+            onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("assessment.cancelled", outcome.Refusal!.Code);
@@ -137,12 +111,11 @@ public sealed class AssessCommandTests : IDisposable
     public void AnEmptySelectionIsRefusedAndRecordsNoAssessments()
     {
         var fwDataPath = _pristine.CopyProjectFile();
-        using var queue = NewQueue();
         var noSources = new SelectionRequest(false, [], [], false, null);
 
         var outcome = AssessCommand.Run(
-            new AssessRequest(fwDataPath, noSources), NewManagedRoot(), NewAssessor, NewStatsQuery,
-            queue, onProgress: null, CancellationToken.None);
+            new AssessRequest(fwDataPath, noSources), NewManagedRoot(), NewAssessor(), NewInvoker(),
+            onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("selection.empty", outcome.Refusal!.Code);
@@ -156,12 +129,11 @@ public sealed class AssessCommandTests : IDisposable
     public void ProgressReportsOnlyTheCommandOwnedStagesWithNoPerWordTick()
     {
         using var seeded = NewSeededScratch();
-        using var queue = NewQueue();
         var stages = new List<AssessmentProgress>();
 
         var outcome = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), NewAssessor, NewStatsQuery,
-            queue, stages.Add, CancellationToken.None);
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), NewAssessor(), NewInvoker(),
+            stages.Add, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         Assert.Equal(
@@ -179,35 +151,18 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(2, parsing.Total);
     }
 
-    [Fact]
-    public void AnUnavailableParserIsRefusedRatherThanEscapingAsAnException()
-    {
-        using var seeded = NewSeededScratch();
-        using var queue = NewQueue();
-
-        var outcome = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(),
-            () => throw new ParserUnavailableException("no pangloss here"), NewStatsQuery,
-            queue, onProgress: null, CancellationToken.None);
-
-        Assert.False(outcome.Succeeded);
-        Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
-        Assert.Equal(FailureReason.Refused, outcome.Refusal.Reason);
-    }
-
     // The parser existing is not the parser working: a subcommand it lacks must refuse, not kill the app.
     [Fact]
     public void AParserThatFailsOnceRunningIsRefusedRatherThanEscapingAsAnException()
     {
         using var seeded = NewSeededScratch();
-        using var queue = NewQueue();
         var failingAssessor = new FakeAssessor(
             "unavailable-at-run", CollectedKinds,
-            _ => throw new ParserUnavailableException("pangloss assess exited 1"));
+            _ => throw new AssessorUnavailableException("unavailable-at-run", "pangloss assess exited 1"));
 
         var outcome = AssessCommand.Run(
             new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(),
-            () => failingAssessor, NewStatsQuery, queue, onProgress: null, CancellationToken.None);
+            failingAssessor, NewInvoker(), onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
@@ -218,13 +173,12 @@ public sealed class AssessCommandTests : IDisposable
     public void AnAssessorThatCouldNotRunItsParser_IsRefusedAsParserUnavailable_AndRecordsNothing()
     {
         using var seeded = NewSeededScratch();
-        using var queue = NewQueue();
         var unavailableAssessor = new FakeAssessor("fake-assessor", CollectedKinds,
             _ => throw new AssessorUnavailableException("fake-assessor", "no pangloss here"));
 
         var outcome = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), () => unavailableAssessor, NewStatsQuery,
-            queue, onProgress: null, CancellationToken.None);
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), unavailableAssessor, NewInvoker(),
+            onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
@@ -235,20 +189,85 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
     }
 
-    // A mistyped path must report the missing project, not the missing parser the eager build would hit first.
+    // A mistyped path must report the missing project, not any collaborator this run would otherwise use.
     [Fact]
     public void AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt()
     {
-        using var queue = NewQueue();
+        var mustNotRun = new LazyPanGlossAssessor(
+            () => throw new InvalidOperationException("A refused request must never build the Assessor."));
+        var unreachableInvoker = new FakeInvoker
+        {
+            Respond = _ => throw new InvalidOperationException("A refused request must never reach the invoker."),
+        };
 
         var outcome = AssessCommand.Run(
             new AssessRequest(Path.Combine(_managedRootsParent, "absent.fwdata"), AllWordforms), NewManagedRoot(),
-            () => throw new ParserUnavailableException("no pangloss here"),
-            () => throw new ParserUnavailableException("no pangloss here"),
-            queue, onProgress: null, CancellationToken.None);
+            mustNotRun, unreachableInvoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("project.not-found", outcome.Refusal!.Code);
+    }
+
+    [Theory]
+    [InlineData("completed", null)]
+    [InlineData("unavailable", "assess.parser-unavailable")]
+    [InlineData("refused", "assess.parser-unavailable")]
+    [InlineData("timed-out", "assess.parser-unavailable")]
+    [InlineData("cancelled", "assessment.cancelled")]
+    public void StatisticsSummaryMapsTheInvocationOutcome(string result, string? refusalCode)
+    {
+        using var seeded = NewSeededScratch();
+        var cachePath = Path.Combine(_managedRootsParent, "statistics.bin");
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ObjectTiming
+                ? new AssessmentRaw.FileCache(cachePath, "sha256:" + new string('0', 64))
+                : new AssessmentRaw.WordMeasurements([]));
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => result switch
+            {
+                "completed" => new PanGlossOutcome.Completed("statistics rows", string.Empty, TimeSpan.Zero),
+                "unavailable" => new PanGlossOutcome.Unavailable("parser absent"),
+                "refused" => new PanGlossOutcome.Refused(2, "cache refused", string.Empty, "cache refused"),
+                "timed-out" => new PanGlossOutcome.TimedOut(TimeSpan.FromMinutes(10), "query timed out"),
+                "cancelled" => new PanGlossOutcome.Cancelled(),
+                _ => throw new ArgumentOutOfRangeException(nameof(result)),
+            },
+        };
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, invoker,
+            onProgress: null, CancellationToken.None);
+
+        var request = Assert.IsType<PanGlossRequest.Stats>(Assert.Single(invoker.Requests).Request);
+        Assert.Equal(cachePath, request.CachePath);
+        Assert.Empty(request.ForwardedArguments);
+        Assert.Equal(refusalCode is null, outcome.Succeeded);
+        if (refusalCode is not null) Assert.Equal(refusalCode, outcome.Refusal!.Code);
+        else Assert.Contains("statistics rows", outcome.Value!.SummaryMarkdown, StringComparison.Ordinal);
+        var repository = OpenRepository(seeded.FwDataPath);
+        foreach (var kind in CollectedKinds)
+        {
+            var records = repository.ListBaselineAssessments(kind.ToStoredKind());
+            if (refusalCode is null) Assert.Single(records);
+            else Assert.Empty(records);
+        }
+    }
+
+    [Fact]
+    public void ParserDiscoveryFailureIsRefusedThroughTheLazyAssessor()
+    {
+        using var seeded = NewSeededScratch();
+        var assessor = new LazyPanGlossAssessor(() =>
+            throw new SIL.Motif.Host.Parser.ParserUnavailableException("parser absent"));
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, NewInvoker(),
+            onProgress: null, CancellationToken.None);
+
+        Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
+        Assert.Contains("parser absent", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.Empty(OpenRepository(seeded.FwDataPath).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
     }
 
     private static readonly IReadOnlyList<AssessmentKind> CollectedKinds =
@@ -256,14 +275,11 @@ public sealed class AssessCommandTests : IDisposable
 
     private static FakeAssessor NewAssessor() => new("fake-assessor", CollectedKinds);
 
-    private static FakeStatsQuery NewStatsQuery() => new();
-
-    private static MachinePanGlossQueue NewQueue() =>
-        new(new[]
-        {
-            "Local\\MotifAssessCommandTests-" + Guid.NewGuid().ToString("N") + "-0",
-            "Local\\MotifAssessCommandTests-" + Guid.NewGuid().ToString("N") + "-1",
-        });
+    // Answers every stats request with fixed rows; no test here asserts on the summary's content.
+    private static FakeInvoker NewInvoker() => new()
+    {
+        Respond = _ => new PanGlossOutcome.Completed("fake stats", string.Empty, TimeSpan.Zero),
+    };
 
     // SeedText's wordforms must be saved to disk for AssessCommand's own scratch load to see them.
     private SeededScratch NewSeededScratch()
@@ -294,19 +310,5 @@ public sealed class AssessCommandTests : IDisposable
         var root = Path.Combine(_managedRootsParent, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         return root;
-    }
-
-    // A pure stand-in for PanGloss's `stats` command; no test here asserts on its output's content.
-    private sealed class FakeStatsQuery : IPanGlossStatsQuery
-    {
-        public IParserProcessGovernor? LastGovernor { get; private set; }
-
-        public Task<PanGlossStatsOutput> QueryAsync(string grammarPath, string cachePath,
-            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken,
-            IParserProcessGovernor? governor = null)
-        {
-            LastGovernor = governor;
-            return Task.FromResult(new PanGlossStatsOutput("fake stats", string.Empty));
-        }
     }
 }

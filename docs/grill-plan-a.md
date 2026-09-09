@@ -946,3 +946,10 @@ session that reproduced it on their main (3442e0ca), single-threaded, inside a 2
   Motif, no decision needed: a real-parser test that runs `--describe` and checks every subcommand and flag
   Motif's typed requests send (`batch --word-timeout-ms --threads --stats --cache`, `stats --cache`, `import`)
   appears there, and that `FakePanGloss` answers no subcommand the listing lacks.
+
+- *2026-09-09, after ADR 0044:* `PanGlossParser.Assess` is gone; the `assess` route survives only in
+  `PanGlossAssessmentProcess`, outside the invocation module and uncontained, as decision 5 prescribes.
+  `FakePanGloss` no longer answers `assess`. Ten tests that drove that route remain skipped with a K46
+  reason: eight in `FakeParserSeamTests`, and the two `RealParserFact` tests that need a report
+  (`GrammarCoverageFigureIntegrationTests`, `ParserSeamIntegrationTests`). Deciding K46 revives or removes
+  them. The supported `batch`, `stats` and `import` requests all use the invocation module.

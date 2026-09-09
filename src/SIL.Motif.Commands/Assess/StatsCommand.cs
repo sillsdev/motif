@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -9,7 +10,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
-using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -24,8 +25,8 @@ namespace SIL.Motif.Commands.Assess;
 /// <para>
 /// <b>Motif never parses, reshapes, or second-guesses PanGloss's stats vocabulary.</b> This command
 /// contributes exactly two arguments of its own — the grammar path and the cache path — and hands
-/// <see cref="StatsRequest.ForwardedArguments"/> to <see cref="IPanGlossStatsQuery"/> untouched. A new
-/// PanGloss filter or grouping is usable through Motif the day it ships, with no change here.
+/// <see cref="StatsRequest.ForwardedArguments"/> to the invocation untouched. A new PanGloss filter or
+/// grouping is usable through Motif the day it ships, with no change here.
 /// </para>
 /// <para>
 /// <b>The grammar path always comes from the project's current Baseline</b> — never from a Trial's own
@@ -37,22 +38,23 @@ namespace SIL.Motif.Commands.Assess;
 /// </remarks>
 public static class StatsCommand
 {
-    /// <summary>Queries statistics, resolving the managed root the real installation uses.</summary>
+    /// <summary>Queries statistics through a real parser invocation.</summary>
     public static CommandOutcome<StatsCommandResponse> Stats(
-        StatsRequest request, CancellationToken cancellationToken = default) =>
-        Run(request, () => new PanGlossStatsQueryProcess(), cancellationToken);
+        StatsRequest request, CancellationToken cancellationToken = default)
+    {
+        using var invoker = new PanGlossInvoker();
+        return Run(request, invoker, cancellationToken);
+    }
 
     /// <summary>
-    /// Queries statistics against an explicitly supplied collaborator — a fake stands in for PanGloss in
-    /// tests. <paramref name="governor"/> contains the launched process immediately after it starts, when a
-    /// caller has one available; the standalone CLI entry point never does, so it passes null.
+    /// Queries statistics through an explicitly supplied invoker — a fake stands in for PanGloss in tests.
+    /// Admission and containment are the invoker's, so this command holds no queue and no governor.
     /// </summary>
     internal static CommandOutcome<StatsCommandResponse> Run(
-        StatsRequest request, Func<IPanGlossStatsQuery> statsQueryFactory, CancellationToken cancellationToken,
-        IParserProcessGovernor? governor = null)
+        StatsRequest request, IPanGlossInvoker invoker, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(statsQueryFactory);
+        ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(request.ForwardedArguments);
 
         if (request.Output == StatsOutputKind.JsonRows && ContainsFormatFlag(request.ForwardedArguments))
@@ -117,42 +119,23 @@ public static class StatsCommand
                     Fact(("assessmentId", assessment.AssessmentId))));
             }
 
-            IPanGlossStatsQuery statsQuery;
-            try
-            {
-                statsQuery = statsQueryFactory();
-            }
-            catch (ParserUnavailableException ex)
-            {
-                return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
-                    "stats.parser-unavailable", FailureReason.Refused, ex.Message,
-                    Fact(("projectPath", request.ProjectPath))));
-            }
-
             var forwarded = request.Output == StatsOutputKind.JsonRows
                 ? AppendFormatJsonl(request.ForwardedArguments)
                 : request.ForwardedArguments;
 
-            PanGlossStatsOutput output;
-            try
-            {
-                output = statsQuery.QueryAsync(
-                        baseline.FwDataPath, assessment.CachePath, forwarded, cancellationToken, governor)
-                    .GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-                return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
-                    "stats.cancelled", FailureReason.Refused, "The statistics query was cancelled.",
-                    Fact(("projectPath", request.ProjectPath))));
-            }
+            var outcome = invoker.RunAsync(
+                    new PanGlossRequest.Stats(baseline.FwDataPath, assessment.CachePath, forwarded),
+                    "stats:" + workspaceKey, cancellationToken)
+                .GetAwaiter().GetResult();
+            if (outcome is not PanGlossOutcome.Completed completed)
+                return CommandOutcome<StatsCommandResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
 
             return CommandOutcome<StatsCommandResponse>.Success(request.Output == StatsOutputKind.Text
                 ? new StatsCommandResponse(
-                    assessment.AssessmentId, baseline.FwDataPath, assessment.CachePath, output.StandardOutput, null)
+                    assessment.AssessmentId, baseline.FwDataPath, assessment.CachePath, completed.Output, null)
                 : new StatsCommandResponse(
                     assessment.AssessmentId, baseline.FwDataPath, assessment.CachePath, null,
-                    ParseJsonRows(output.StandardOutput)));
+                    ParseJsonRows(completed.Output)));
         });
     }
 
@@ -163,6 +146,27 @@ public static class StatsCommand
 
     private static IReadOnlyList<string> AppendFormatJsonl(IReadOnlyList<string> forwarded) =>
         [.. forwarded, "--format", "jsonl"];
+
+    // One place turns the invocation's outcome into this command's refusal vocabulary.
+    private static Refusal ParserRefusal(PanGlossOutcome outcome, string projectPath) => outcome switch
+    {
+        PanGlossOutcome.Cancelled => new Refusal(
+            "stats.cancelled", FailureReason.Refused, "The statistics query was cancelled.",
+            Fact(("projectPath", projectPath))),
+        PanGlossOutcome.Unavailable unavailable => new Refusal(
+            "stats.parser-unavailable", FailureReason.Refused, unavailable.Message,
+            Fact(("projectPath", projectPath))),
+        PanGlossOutcome.TimedOut timedOut => new Refusal(
+            "stats.timed-out", FailureReason.Refused, timedOut.Message,
+            Fact(("projectPath", projectPath),
+                ("capMinutes", timedOut.Cap.TotalMinutes.ToString("0.#", CultureInfo.InvariantCulture)))),
+        PanGlossOutcome.Refused refused => new Refusal(
+            "stats.parser-refused", FailureReason.Refused, refused.Message,
+            Fact(("projectPath", projectPath), ("exitCode", refused.ExitCode.ToString(CultureInfo.InvariantCulture)))),
+        _ => new Refusal(
+            "stats.parser-unavailable", FailureReason.Refused, outcome.Message,
+            Fact(("projectPath", projectPath))),
+    };
 
     // One row per line, cloned so each JsonElement outlives the JsonDocument that produced it.
     private static IReadOnlyList<JsonElement> ParseJsonRows(string jsonl)

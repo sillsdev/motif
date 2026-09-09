@@ -247,8 +247,9 @@ Naming no source, or naming sources that together contribute no words, is refuse
 naming a `--texts` GUID absent from the project is refused as `selection.text-not-found`.
 
 **Cancellation records nothing.** A cancelled run refuses as `assessment.cancelled`; no partial Assessment
-is ever left behind, because the command only records an Assessment after the Assessor has already
-returned — pinned by `CancellationWhileTheAssessorIsRunningRecordsNoAssessments`.
+is ever left behind: recording waits for both Assessment production and the statistics summary to succeed.
+Pinned by `CancellationWhileTheAssessorIsRunningRecordsNoAssessments` and
+`StatisticsSummaryMapsTheInvocationOutcome`.
 
 In human mode, progress lines ("Ensuring a current Baseline exists...", "Composing the Selection...",
 "Parsing the Selection...", "Reading PanGloss's statistics...", "Assessment complete.") print to stderr as
@@ -259,8 +260,9 @@ summary as a fenced code block. `--json` binds to `AssessCommandResponse`: `base
 `BaselineCaptureResponse`, as above), `selection` (a `SelectionProjection` — `words` and a `provenance`
 array of `{source, count}`), `assessmentIds`, `summaryMarkdown`.
 
-Refusals of its own: `assess.parser-unavailable` (the `pangloss` executable could not be located while
-building the Assessor), `assessment.cancelled`, `selection.empty`, `selection.text-not-found` — plus every
+Refusals of its own: `assess.parser-unavailable` (parser discovery, Assessment production, or the
+statistics-summary invocation failed), `assessment.cancelled`, `selection.empty`, `selection.text-not-found`
+— plus every
 `baseline capture` refusal above, since `assess` captures a Baseline the same way when it needs to. A
 mistyped project path is refused as `project.not-found` even when the parser is entirely unavailable,
 because the project is resolved before the Assessor is ever built — pinned by
@@ -294,7 +296,11 @@ Refusals of its own: `stats.format-conflict`, `stats.invalid-proposal-id` (a mal
 `stats.no-baseline` (no Baseline has been captured for this project yet), `stats.no-assessment` (no
 Baseline or Trial Assessment carrying per-object statistics has been recorded yet — the Baseline-case
 message directs the caller to run `motif assess` first), `stats.no-cache` (the resolved Assessment was
-recorded without a statistics cache), `stats.parser-unavailable`, `stats.cancelled`.
+recorded without a statistics cache), `stats.parser-unavailable` (the executable is absent or cannot start),
+`stats.parser-refused` (a nonzero parser exit, with `exitCode` in the refusal facts),
+`stats.timed-out` (the invocation exceeded its wall-clock cap, with `capMinutes` in the facts), and
+`stats.cancelled`. Every statistics invocation takes machine-queue admission and runs inside the
+Windows job object, with a default ten-minute wall-clock cap.
 
 **`handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]`** writes a
 self-explaining folder that an AI agent with no network and no package installer can read on its own: the
@@ -362,8 +368,9 @@ file count, and the recorded Assessment ids (or `(none; --no-assess)`). `--json`
 `assessmentIds`.
 
 Refusals of its own: `handoff.destination-exists`, `handoff.cancelled` (the run was cancelled; no
-destination directory was created), `handoff.parser-unavailable` (the `pangloss` executable could not be
-located while building the grammar importer) — plus `selection.empty`, `selection.text-not-found`, and
+destination directory was created), `handoff.parser-unavailable` (the grammar import invocation could
+not start, was refused, timed out, or produced no grammar file) — plus `selection.empty`,
+`selection.text-not-found`, and
 every `baseline capture`/`assess` refusal above, since `handoff` composes both the same way it does `stats`.
 A mistyped project path is refused as `project.not-found` before any parser is built, the same guarantee
 `assess` makes — pinned by `AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt` (also pinned at the argv

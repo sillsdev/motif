@@ -7,7 +7,6 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Host.PanGloss;
 using Xunit;
@@ -16,10 +15,9 @@ namespace SIL.Motif.Tests.Handoff;
 
 /// <summary>
 /// Drives <see cref="HandoffCommand"/> over a real, file-backed seeded project against a fake
-/// <see cref="IAssessor"/> and the real <see cref="PanGlossGrammarImportProcess"/>/
-/// <see cref="PanGlossStatsQueryProcess"/> pointed at the FakePanGloss executable: the exact folder
-/// listing, atomicity on an existing destination, cancellation and PanGloss-failure cleanup,
-/// <c>--no-assess</c>, <c>--flextext</c>, and duplicate Text titles.
+/// <see cref="IAssessor"/> and the real <see cref="PanGlossInvoker"/> pointed at the FakePanGloss
+/// executable: the exact folder listing, atomicity on an existing destination, cancellation and
+/// PanGloss-failure cleanup, <c>--no-assess</c>, <c>--flextext</c>, and duplicate Text titles.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class HandoffWriterTests : IDisposable
@@ -50,13 +48,13 @@ public sealed class HandoffWriterTests : IDisposable
     public void ProgressReachesCompleteOnlyOnceTheFolderIsActuallyWritten()
     {
         using var seeded = NewSeededScratch();
+        using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-progress");
         var reported = new List<AssessmentProgress>();
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
-            NewManagedRoot(), NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            reported.Add, CancellationToken.None);
+            NewManagedRoot(), NewAssessor(), invoker, reported.Add, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         Assert.Contains(AssessmentStage.ImportingGrammar, reported.Select(step => step.Stage));
@@ -66,35 +64,16 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
-    public void GrammarImportAndStatsQueriesAreThreadedTheAdmittedJobAsAGovernor()
-    {
-        using var seeded = NewSeededScratch();
-        var managedRoot = NewManagedRoot();
-        var destination = Path.Combine(_root, "handoff-governor");
-        var importer = new RecordingGrammarImporter(new PanGlossGrammarImportProcess(FakeParser.ExecutablePath));
-        var statsQuery = new RecordingStatsQuery(new PanGlossStatsQueryProcess(FakeParser.ExecutablePath));
-
-        var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
-            managedRoot, NewAssessor, () => statsQuery, () => importer, NewQueue(),
-            onProgress: null, CancellationToken.None);
-
-        Assert.True(outcome.Succeeded);
-        Assert.IsType<WindowsCpuJobGovernor>(importer.LastGovernor);
-        Assert.IsType<WindowsCpuJobGovernor>(statsQuery.LastGovernor);
-    }
-
-    [Fact]
     public void AnEndToEndHandoffWritesTheExactListingAndEveryFileValidates()
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-full");
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
-            managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         var response = outcome.Value!;
@@ -127,12 +106,12 @@ public sealed class HandoffWriterTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-python");
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
-            managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
         Assert.True(outcome.Succeeded);
 
         var scriptPath = Path.Combine(destination, "read_handoff.py");
@@ -150,14 +129,14 @@ public sealed class HandoffWriterTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-existing");
         Directory.CreateDirectory(destination);
         File.WriteAllText(Path.Combine(destination, "keep.txt"), "do not touch");
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
-            managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.destination-exists", outcome.Refusal!.Code);
@@ -170,12 +149,11 @@ public sealed class HandoffWriterTests : IDisposable
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
         var destination = Path.Combine(_root, "handoff-cancelled");
+        var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Cancelled() };
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
-            managedRoot, NewAssessor, NewRealStatsQuery,
-            () => new ThrowingGrammarImporter(new OperationCanceledException()),
-            NewQueue(), onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.cancelled", outcome.Refusal!.Code);
@@ -188,12 +166,11 @@ public sealed class HandoffWriterTests : IDisposable
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
         var destination = Path.Combine(_root, "handoff-parser-failure");
+        var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Unavailable("boom") };
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
-            managedRoot, NewAssessor, NewRealStatsQuery,
-            () => new ThrowingGrammarImporter(new ParserUnavailableException("boom")),
-            NewQueue(), onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.parser-unavailable", outcome.Refusal!.Code);
@@ -205,12 +182,12 @@ public sealed class HandoffWriterTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-no-assess");
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
-            managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         Assert.Empty(outcome.Value!.AssessmentIds);
@@ -226,12 +203,12 @@ public sealed class HandoffWriterTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-flextext");
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, true, false),
-            managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         var jsonFiles = Directory.GetFiles(Path.Combine(destination, "texts"), "*.flextext.json");
@@ -251,12 +228,12 @@ public sealed class HandoffWriterTests : IDisposable
         new FwDataProjectLoader().Save(seeded.Cache);
 
         var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-duplicate-titles");
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
-            managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         var textFiles = Directory.GetFiles(Path.Combine(destination, "texts"), "*.flextext.json");
@@ -269,32 +246,36 @@ public sealed class HandoffWriterTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-empty-selection");
         var emptySelection = new SelectionRequest(false, [], [], false, null);
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, emptySelection, false, false),
-            managedRoot, NewAssessor, NewRealStatsQuery, NewRealGrammarImporter, NewQueue(),
-            onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("selection.empty", outcome.Refusal!.Code);
         Assert.False(Directory.Exists(destination));
     }
 
-    // A mistyped path must report the missing project, not the missing parser the eager build would hit first.
+    // A mistyped path must report the missing project, not any collaborator this run would otherwise use.
     [Fact]
     public void AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt()
     {
         var managedRoot = NewManagedRoot();
         var missingProject = Path.Combine(_root, "absent.fwdata");
         var destination = Path.Combine(_root, "handoff-missing-project");
+        var mustNotRun = new FakeAssessor("fake-assessor", CollectedKinds,
+            _ => throw new InvalidOperationException("A refused request must never reach the Assessor."));
+        var unreachableInvoker = new FakeInvoker
+        {
+            Respond = _ => throw new InvalidOperationException("A refused request must never reach the invoker."),
+        };
 
         var outcome = HandoffCommand.Run(
             new HandoffRequest(missingProject, destination, AllWordformsAllTexts, false, false),
-            managedRoot, NewAssessor, NewRealStatsQuery,
-            () => throw new ParserUnavailableException("no pangloss here"),
-            NewQueue(), onProgress: null, CancellationToken.None);
+            managedRoot, mustNotRun, unreachableInvoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("project.not-found", outcome.Refusal!.Code);
@@ -312,16 +293,12 @@ public sealed class HandoffWriterTests : IDisposable
             : new AssessmentRaw.WordMeasurements([]));
     }
 
-    private static PanGlossStatsQueryProcess NewRealStatsQuery() => new(FakeParser.ExecutablePath);
-
-    private static PanGlossGrammarImportProcess NewRealGrammarImporter() => new(FakeParser.ExecutablePath);
-
-    private static MachinePanGlossQueue NewQueue() =>
-        new(new[]
-        {
-            "Local\\MotifHandoffWriterTests-" + Guid.NewGuid().ToString("N") + "-0",
-            "Local\\MotifHandoffWriterTests-" + Guid.NewGuid().ToString("N") + "-1",
-        });
+    // The real module against the fake executable: the Handoff's grammar and statistics files come from it.
+    private static PanGlossInvoker NewInvoker() => new(FakeParser.ExecutablePath, new MachinePanGlossQueue(new[]
+    {
+        "Local\\MotifHandoffWriterTests-" + Guid.NewGuid().ToString("N") + "-0",
+        "Local\\MotifHandoffWriterTests-" + Guid.NewGuid().ToString("N") + "-1",
+    }));
 
     // SeedText's wordforms must be saved to disk for HandoffCommand's own scratch loads to see them.
     private SeededScratch NewSeededScratch()
@@ -360,41 +337,6 @@ public sealed class HandoffWriterTests : IDisposable
         public LcmCache Cache => cache;
         public string FwDataPath => cache.ProjectId.Path;
         public void Dispose() => cache.Dispose();
-    }
-
-    // Stands in for a real PanGloss failure without launching a process, to pin cleanup deterministically.
-    private sealed class ThrowingGrammarImporter(Exception exception) : IPanGlossGrammarImporter
-    {
-        public Task ImportAsync(string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken,
-            IParserProcessGovernor? governor = null) =>
-            throw exception;
-    }
-
-    // Wraps a real importer to record the governor HandoffCommand actually threaded through to it.
-    private sealed class RecordingGrammarImporter(IPanGlossGrammarImporter inner) : IPanGlossGrammarImporter
-    {
-        public IParserProcessGovernor? LastGovernor { get; private set; }
-
-        public Task ImportAsync(string fwDataPath, string grammarJsonPath, CancellationToken cancellationToken,
-            IParserProcessGovernor? governor = null)
-        {
-            LastGovernor = governor;
-            return inner.ImportAsync(fwDataPath, grammarJsonPath, cancellationToken, governor);
-        }
-    }
-
-    // Wraps a real stats query to record the governor HandoffCommand actually threaded through to it.
-    private sealed class RecordingStatsQuery(IPanGlossStatsQuery inner) : IPanGlossStatsQuery
-    {
-        public IParserProcessGovernor? LastGovernor { get; private set; }
-
-        public Task<PanGlossStatsOutput> QueryAsync(string grammarPath, string cachePath,
-            IReadOnlyList<string> forwardedArguments, CancellationToken cancellationToken,
-            IParserProcessGovernor? governor = null)
-        {
-            LastGovernor = governor;
-            return inner.QueryAsync(grammarPath, cachePath, forwardedArguments, cancellationToken, governor);
-        }
     }
 
     private static (int ExitCode, string StandardOutput) RunPython(string scriptPath, params string[] args)

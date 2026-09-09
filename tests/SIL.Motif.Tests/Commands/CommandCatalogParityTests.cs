@@ -75,7 +75,8 @@ public sealed class CommandCatalogParityTests
         "report.assessment-not-found", "report.invalid-kind", "report.refused",
         "selection.empty", "selection.text-not-found",
         "stats.cancelled", "stats.format-conflict", "stats.invalid-proposal-id", "stats.no-assessment",
-        "stats.no-baseline", "stats.no-cache", "stats.parser-unavailable",
+        "stats.no-baseline", "stats.no-cache", "stats.parser-refused", "stats.parser-unavailable",
+        "stats.timed-out",
         "store.inconsistent", "store.unsupported",
     };
 

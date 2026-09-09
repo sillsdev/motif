@@ -25,9 +25,9 @@ namespace SIL.Motif.Commands.Assess;
 
 /// <summary>
 /// Measures the current Baseline synchronously (design decision 4): ensures a Baseline exists, composes a
-/// Selection from whichever of the four agreed sources were asked for, runs the Assessor over it under the
-/// machine-wide PanGloss admission queue, records every produced Assessment, and renders PanGloss's default
-/// statistics view as a text summary.
+/// Selection from whichever of the four agreed sources were asked for, runs the Assessor over it through the
+/// PanGloss invocation for batch and statistics requests, records every produced Assessment,
+/// and renders PanGloss's default statistics view as a text summary.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -45,7 +45,6 @@ namespace SIL.Motif.Commands.Assess;
 /// </remarks>
 public static class AssessCommand
 {
-    // Reaches PanGloss's `--engine=default` (hc-rust) rather than the fast default (design decision 4).
     private const string EngineName = "accurate";
 
     // assess has no configured query text; SelectionComposer already resolved the words themselves.
@@ -72,50 +71,26 @@ public static class AssessCommand
         CancellationToken cancellationToken = default)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
-        using var queue = new MachinePanGlossQueue();
-        return Run(request, managedRoot, () => new PanGlossAssessor(new StatsCacheStore(ownership), new PanGlossInvoker()),
-            () => new PanGlossStatsQueryProcess(), queue, onProgress, cancellationToken);
+        using var invoker = new PanGlossInvoker();
+        var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(new StatsCacheStore(ownership), invoker));
+        return Run(request, managedRoot, assessor, invoker, onProgress, cancellationToken);
     }
 
     /// <summary>
-    /// Measures the project against explicitly supplied collaborators — a fake Assessor and statistics
-    /// query stand in for a real PanGloss subprocess in tests, and a custom-slotted <see cref="MachinePanGlossQueue"/>
-    /// keeps a test's admission race off the machine's real, well-known slots.
+    /// Measures the project against explicitly supplied collaborators — a fake Assessor and a fake invoker
+    /// stand in for a real PanGloss in tests. Admission and containment are the invoker's, so this command
+    /// holds no queue and no governor.
     /// </summary>
-    /// <remarks>
-    /// The collaborators arrive as factories rather than instances because building a real one locates the
-    /// <c>pangloss</c> executable and throws when it is absent. Constructed eagerly, that throw would beat
-    /// this command's own project check, so a mistyped path would report a missing parser instead of a
-    /// missing project. They are built inside the store callback, after the project has resolved.
-    /// </remarks>
     internal static CommandOutcome<AssessCommandResponse> Run(
-        AssessRequest request, string managedRoot, Func<IAssessor> assessorFactory,
-        Func<IPanGlossStatsQuery> statsQueryFactory, MachinePanGlossQueue queue,
+        AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(assessorFactory);
-        ArgumentNullException.ThrowIfNull(statsQueryFactory);
-        ArgumentNullException.ThrowIfNull(queue);
+        ArgumentNullException.ThrowIfNull(assessor);
+        ArgumentNullException.ThrowIfNull(invoker);
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
-            IAssessor assessor;
-            IPanGlossStatsQuery statsQuery;
-            try
-            {
-                assessor = assessorFactory();
-                statsQuery = statsQueryFactory();
-            }
-            catch (ParserUnavailableException ex)
-            {
-                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
-            }
-            catch (AssessorUnavailableException ex)
-            {
-                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
-            }
-
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baselines = new BaselineRepository(database);
             var assessments = new AssessmentRepository(database);
@@ -147,22 +122,15 @@ public static class AssessCommand
             IReadOnlyList<ProducedAssessment> produced;
             try
             {
-                produced = queue.RunAsync(
-                    "assess:" + workspaceKey,
-                    (cpuJob, jobToken) => assessor.ProduceAsync(scope, exportedCandidate, jobToken),
-                    cancellationToken).GetAwaiter().GetResult();
+                produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
             {
                 return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
             }
-            catch (ParserUnavailableException ex)
-            {
-                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
-            }
             catch (AssessorUnavailableException ex)
             {
-                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex));
+                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex.Message));
             }
 
             var scopeJson = ScopeCodec.Write(
@@ -171,6 +139,7 @@ public static class AssessCommand
             var baselineTokenJson = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
 
             var assessmentIds = new List<string>();
+            var pendingRecords = new List<NewAssessmentRecord>();
             string? statsCachePath = null;
             foreach (var item in produced)
             {
@@ -178,20 +147,38 @@ public static class AssessCommand
                 var record = AssessmentMaterial.ToRecord(item, assessmentId, proposalId: null,
                     proposalIntentDigest: null, assessor.Name, scopeJson, scopeDigest, TokeniserName,
                     TokeniserVersion, baselineTokenJson, composition.Selection);
-                assessments.Record(record);
+                pendingRecords.Add(record);
                 assessmentIds.Add(assessmentId);
                 if (record.CachePath is not null) statsCachePath = record.CachePath;
             }
 
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
-            var summaryMarkdown = statsCachePath is null
-                ? RenderSummary(statsQuery, baseline.FwDataPath, null, null, cancellationToken)
-                : queue.RunAsync(
-                    "assess:stats:" + workspaceKey,
-                    (cpuJob, jobToken) => Task.FromResult(RenderSummary(
-                        statsQuery, baseline.FwDataPath, statsCachePath, new WindowsCpuJobGovernor(cpuJob), jobToken)),
-                    cancellationToken).GetAwaiter().GetResult();
+            string summaryMarkdown;
+            if (statsCachePath is null)
+            {
+                summaryMarkdown = "(no per-object statistics were collected)" + Environment.NewLine;
+            }
+            else
+            {
+                var summary = invoker.RunAsync(
+                        new PanGlossRequest.Stats(baseline.FwDataPath, statsCachePath, Array.Empty<string>()),
+                        "assess:stats:" + workspaceKey, cancellationToken)
+                    .GetAwaiter().GetResult();
+                switch (summary)
+                {
+                    case PanGlossOutcome.Completed completed:
+                        summaryMarkdown = "```" + Environment.NewLine + completed.Output + "```" + Environment.NewLine;
+                        break;
+                    case PanGlossOutcome.Cancelled:
+                        return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                    default:
+                        return CommandOutcome<AssessCommandResponse>.Refused(
+                            ParserUnavailable(request.ProjectPath, summary.Message));
+                }
+            }
+
+            foreach (var record in pendingRecords) assessments.Record(record);
 
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, "Assessment complete."));
@@ -213,20 +200,8 @@ public static class AssessCommand
             current.Token, current.FwDataPath, current.SourceLastWriteUtc, held, ReusedExistingBytes: true));
     }
 
-    // The Assessor's own per-object cache is the only source for anything beyond parse coverage.
-    private static string RenderSummary(
-        IPanGlossStatsQuery statsQuery, string grammarPath, string? cachePath,
-        WindowsCpuJobGovernor? governor, CancellationToken cancellationToken)
-    {
-        if (cachePath is null) return "(no per-object statistics were collected)" + Environment.NewLine;
-
-        var output = statsQuery.QueryAsync(grammarPath, cachePath, Array.Empty<string>(), cancellationToken, governor)
-            .GetAwaiter().GetResult();
-        return "```" + Environment.NewLine + output.StandardOutput + "```" + Environment.NewLine;
-    }
-
-    private static Refusal ParserUnavailable(string projectPath, Exception ex) => new(
-        "assess.parser-unavailable", FailureReason.Refused, ex.Message,
+    private static Refusal ParserUnavailable(string projectPath, string message) => new(
+        "assess.parser-unavailable", FailureReason.Refused, message,
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
     private static Refusal Cancelled(string projectPath) => new(
@@ -236,4 +211,42 @@ public static class AssessCommand
 
     private static string ResolveProductVersion() =>
         typeof(AssessCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+}
+
+/// <summary>
+/// Defers parser discovery until the command has validated the project and Selection. Callers must read
+/// <see cref="SupportedKinds"/> or call <see cref="ProduceAsync"/> only after that validation. A discovery
+/// failure is surfaced as <see cref="AssessorUnavailableException"/>.
+/// </summary>
+internal sealed class LazyPanGlossAssessor : IAssessor
+{
+    private readonly Func<IAssessor> _factory;
+    private IAssessor? _built;
+
+    public LazyPanGlossAssessor(Func<IAssessor> factory) =>
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+
+    /// <inheritdoc />
+    public string Name => PanGlossAssessor.AssessorName;
+
+    /// <inheritdoc />
+    public IReadOnlyList<AssessmentKind> SupportedKinds => Resolve().SupportedKinds;
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+        AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken) =>
+        Resolve().ProduceAsync(scope, exportedCandidate, cancellationToken);
+
+    // A missing parser is the Assessor's own unavailability, not a fresh failure mode this wrapper invents.
+    private IAssessor Resolve()
+    {
+        try
+        {
+            return _built ??= _factory();
+        }
+        catch (ParserUnavailableException exception)
+        {
+            throw new AssessorUnavailableException(Name, exception.Message);
+        }
+    }
 }

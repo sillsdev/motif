@@ -22,8 +22,8 @@ namespace SIL.Motif.Tests.Cli;
 /// Drives the real <c>motif.exe</c> for <c>stats</c> against the real <c>FakePanGloss</c> executable: the
 /// exact argv it records beside the grammar proves the whole path — <c>ParseArgs</c>'s new standalone
 /// <c>--</c> delimiter, <see cref="SIL.Motif.Commands.Assess.StatsCommand"/>'s Baseline and Trial
-/// resolution, and <see cref="PanGlossStatsQueryProcess"/>'s own forwarding — preserves argument
-/// boundaries, order, duplicates, casing, and values that themselves begin with a dash.
+/// resolution, and <see cref="SIL.Motif.Host.PanGloss.PanGlossInvoker"/>'s own forwarding — preserves
+/// argument boundaries, order, duplicates, casing, and values that themselves begin with a dash.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class StatsArgvTests : IDisposable
