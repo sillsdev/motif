@@ -932,3 +932,11 @@ session that reproduced it on their main (3442e0ca), single-threaded, inside a 2
   `compile <path>: cannot compile compounding: table "<id>" cannot segment the morph boundary "+" ...` with a
   nonzero exit. Motif's seeded zero-phoneme fixture therefore refuses instead of aborting the process; K50 still
   stands — it cannot be parsed, only refused cleanly.
+- *`CAP` landed on PanGloss main at 850d921f*: a step-cap-exhausted word now writes `idx	word	ms	CAP	<partial-signature>`;
+  every other row shape is byte-identical. `batch --stats --cache` already carried `capped` and `timed_out` as
+  separate typed columns and honours `--step-cap`. Both K51 items are closed on their side. **Motif can now
+  adopt `--step-cap`**, and doing so needs one owner decision first (K52): in a grammar coverage figure, is a
+  capped word counted like a timed-out one — unknown, so the figure is a lower bound — or as its own
+  outcome reported beside the counts? The code change itself is small: a `Capped` word outcome, the literal
+  `CAP` token in `BatchTsvParser`, `--step-cap 200000` in the batch request, and a `CAP` mode in
+  `FakePanGloss` so the row is exercised.
