@@ -31,12 +31,12 @@ public class ParserOutputTests
         var words = BatchTsvParser.Parse(Fixture("batch-mixed-outcomes.tsv"));
 
         Assert.Equal(10, words.Count);
-        Assert.Equal(7, words.Count(w => w.Outcome == WordOutcome.Analysed));
+        Assert.Equal(5, words.Count(w => w.Outcome == WordOutcome.Analysed));
         Assert.Equal(1, words.Count(w => w.Outcome == WordOutcome.Skipped));
         Assert.Equal(2, words.Count(w => w.Outcome == WordOutcome.TimedOut));
 
-        // Nothing is a failure here, and in particular the two timeouts are not.
-        Assert.Empty(words.Where(w => w.Outcome == WordOutcome.NoAnalysis));
+        Assert.Equal(new[] { "pibubu", "piratu" },
+            words.Where(w => w.Outcome == WordOutcome.NoAnalysis).Select(w => w.Word));
     }
 
     [Fact]
@@ -68,9 +68,9 @@ public class ParserOutputTests
         Assert.True(analysis.IsLowerBound);
         Assert.Equal(2, analysis.TimedOut);
 
-        // Honest denominator excludes no-verdict words (7, not 10) — row count would show 70% when truth is 100%.
+        // Timeouts and skipped words must not dilute the fraction of adjudicated words with analyses.
         Assert.Equal(7, analysis.Adjudicated);
-        Assert.Equal(7, analysis.Analysed);
+        Assert.Equal(5, analysis.Analysed);
     }
 
     [Fact]

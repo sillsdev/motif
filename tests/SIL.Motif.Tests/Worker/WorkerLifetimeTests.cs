@@ -26,14 +26,15 @@ public sealed class WorkerLifetimeTests
     public async Task StaysAliveWhileWorkIsActiveAndDoesNotExitMidJob()
     {
         using var shutdown = new CancellationTokenSource();
-        var busyUntil = DateTime.UtcNow.AddMilliseconds(400);
+        var busy = 1;
 
         var running = new WorkerLifetime().RunUntilIdleAsync(
-            TimeSpan.FromMilliseconds(100), () => DateTime.UtcNow < busyUntil, shutdown.Token);
+            TimeSpan.FromMilliseconds(100), () => Volatile.Read(ref busy) == 1, shutdown.Token);
 
         // Already past what an idle-only run would have taken to exit; still busy keeps it alive.
         await Task.Delay(250);
         Assert.False(running.IsCompleted);
+        Interlocked.Exchange(ref busy, 0);
 
         await running.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(running.IsCompletedSuccessfully);

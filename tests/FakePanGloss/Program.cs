@@ -9,7 +9,7 @@ namespace SIL.Motif.FakePanGloss;
 /// <remarks>
 /// <para>
 /// The fake answers the three subcommands Motif sends the shipped binary — <c>batch</c>, <c>import</c>,
-/// <c>stats</c> — and nothing else, so a test exercises the real <see cref="System.Diagnostics.Process"/>
+/// <c>stats</c> — plus their <c>describe</c> declaration, exercising the real process
 /// boundary without a Rust build.
 /// </para>
 /// <para>
@@ -30,6 +30,21 @@ internal static class Program
     /// </summary>
     internal const string ArgvFileName = "_pangloss-argv.json";
 
+    private sealed record Flag(string Name, bool TakesValue);
+
+    private sealed record Command(string Name, string[] Positionals, Flag[] Flags, Func<string[], int> Run);
+
+    private static readonly Command[] Dispatch =
+    [
+        new("batch", ["grammar", "words.txt", "out.tsv"],
+            [new("--word-timeout-ms", true), new("--threads", true), new("--stats", false),
+                new("--cache", true)], RunBatch),
+        new("import", ["project.fwdata", "out.json"], [], RunImport),
+        new("describe", [], [], RunDescription),
+        new("stats", ["project-or-grammar"],
+            [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
+    ];
+
     private static int Main(string[] args)
     {
         if (args.Length == 0)
@@ -37,13 +52,32 @@ internal static class Program
             Console.Error.WriteLine("usage: pangloss <batch|import|stats> ...");
             return 64;
         }
-        return args[0] switch
+        var name = args[0] == "--describe" ? "describe" : args[0];
+        var command = Dispatch.FirstOrDefault(command => command.Name == name);
+        return command is null ? Unrecognised(args[0]) : command.Run(args);
+    }
+
+    private static int RunDescription(string[] args)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(new
         {
-            "batch" => RunBatch(args),
-            "import" => RunImport(args),
-            "stats" => RunStats(args),
-            _ => Unrecognised(args[0]),
-        };
+            schema_version = 1,
+            binary = "pangloss",
+            commands = Dispatch.Select(command => new
+            {
+                name = command.Name,
+                summary = "Controlled test implementation of " + command.Name,
+                hidden = false,
+                positionals = command.Positionals,
+                flags = command.Flags.Select(flag => new
+                {
+                    name = flag.Name,
+                    takes_value = flag.TakesValue,
+                    summary = "Test invocation option",
+                }),
+            }),
+        }));
+        return 0;
     }
 
     private static int Unrecognised(string command)
@@ -99,8 +133,8 @@ internal static class Program
         for (var i = 0; i < words.Count; i++)
         {
             var known = behaviour.Words.FirstOrDefault(w => w.Word == words[i]);
-            var status = known is { Outcome: "complete" } ? "ok" : "none";
-            var signature = known is null ? "-" : words[i] + "-sig";
+            var status = "ok";
+            var signature = known is { Outcome: "complete" } ? words[i] + "-sig" : "-";
             builder.Append(i).Append('\t').Append(words[i]).Append('\t').Append(3).Append('\t')
                 .Append(status).Append('\t').Append(signature).Append('\n');
         }

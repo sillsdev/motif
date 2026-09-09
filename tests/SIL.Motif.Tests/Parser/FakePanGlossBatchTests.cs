@@ -40,7 +40,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
         var rows = File.ReadAllText(outPath).Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(2, rows.Length);
         Assert.Equal(["0", "motifa", "3", "ok", "motifa-sig"], rows[0].TrimEnd('\r').Split('\t'));
-        Assert.Equal(["1", "zzz", "3", "none", "-"], rows[1].TrimEnd('\r').Split('\t'));
+        Assert.Equal(["1", "zzz", "3", "ok", "-"], rows[1].TrimEnd('\r').Split('\t'));
         Assert.True(File.Exists(cache));
         var argv = JsonSerializer.Deserialize<string[]>(File.ReadAllText(Path.Combine(_root, "_pangloss-argv.json")));
         Assert.Equal("batch", argv![0]);

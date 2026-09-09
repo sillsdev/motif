@@ -137,7 +137,7 @@ public static class BatchTsvParser
 
     private static WordOutcome ToOutcome(string status, string signature) => status switch
     {
-        "ok" => WordOutcome.Analysed,
+        "ok" => signature == "-" ? WordOutcome.NoAnalysis : WordOutcome.Analysed,
         "TIMEOUT" => WordOutcome.TimedOut,
         "SKIPPED" => WordOutcome.Skipped,
         "none" or "NONE" or "no-analysis" => WordOutcome.NoAnalysis,
