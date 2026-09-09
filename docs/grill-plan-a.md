@@ -927,3 +927,8 @@ session that reproduced it on their main (3442e0ca), single-threaded, inside a 2
   statuses, so the flag must not be sent first), and the batch request gaining `--step-cap 200000` beside
   `--threads 1`. The per-word wall-clock limit stays as the backstop. Whether a capped word counts against
   parse coverage is the owner's call and belongs with K52.
+- *K51a fixed on PanGloss main at 2de759eb*: a character table that cannot segment the morph boundary now
+  returns a typed compile error (`GrammarError::UnsegmentableBoundary`), surfaced on stderr as
+  `compile <path>: cannot compile compounding: table "<id>" cannot segment the morph boundary "+" ...` with a
+  nonzero exit. Motif's seeded zero-phoneme fixture therefore refuses instead of aborting the process; K50 still
+  stands — it cannot be parsed, only refused cleanly.
