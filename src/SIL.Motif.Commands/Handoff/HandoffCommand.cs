@@ -13,7 +13,7 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Assess;
-using SIL.Motif.Worker.PanGloss;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Handoff;

@@ -5,6 +5,7 @@ using System.IO;
 using System.Security.Principal;
 using System.Threading;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;

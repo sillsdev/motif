@@ -2,9 +2,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading;
 
-namespace SIL.Motif.Worker;
+namespace SIL.Motif.Host.PanGloss;
 
-internal sealed class WorkerMutexOwner : IDisposable
+public sealed class WorkerMutexOwner : IDisposable
 {
     private readonly Mutex _mutex;
     private readonly BlockingCollection<Command> _commands = new BlockingCollection<Command>();

@@ -17,7 +17,7 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Baselines;
-using SIL.Motif.Worker.PanGloss;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 

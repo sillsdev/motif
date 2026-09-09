@@ -1,6 +1,6 @@
 using System.Threading;
 
-namespace SIL.Motif.Worker.PanGloss;
+namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
 /// Holds one of the machine's fixed PanGloss capacity slots until disposed.

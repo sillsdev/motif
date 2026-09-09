@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
 
-namespace SIL.Motif.Worker.PanGloss;
+namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
 /// A Windows Job Object that hard-caps every process assigned to it at

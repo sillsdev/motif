@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
-using SIL.Motif.Worker.PanGloss;
+using SIL.Motif.Host.PanGloss;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker;

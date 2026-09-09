@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.Versioning;
 using System.Threading;
-using SIL.Motif.Worker.PanGloss;
+using SIL.Motif.Host.PanGloss;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker;

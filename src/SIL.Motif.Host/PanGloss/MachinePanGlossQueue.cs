@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Runtime.Versioning;
 
-namespace SIL.Motif.Worker.PanGloss;
+namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
 /// Admits one user worker's PanGloss jobs in submission order, while every
@@ -52,6 +52,9 @@ public sealed class MachinePanGlossQueue : IDisposable
 
     /// <summary>The job id currently recorded against each held slot, for diagnosing contention.</summary>
     internal IReadOnlyDictionary<int, string> SlotOwnership => _slotOwnership;
+
+    /// <summary>Observes each job object the moment a job is admitted into it. Set only by tests.</summary>
+    internal Action<WindowsCpuJob>? JobAdmitted { get; set; }
 
     /// <summary>
     /// Queues <paramref name="work"/> under <paramref name="jobId"/> and returns its result once the
@@ -135,12 +138,13 @@ public sealed class MachinePanGlossQueue : IDisposable
         }
     }
 
-    private static async Task RunAdmittedJobAsync(QueuedJob job, MachineSlotLease lease,
+    private async Task RunAdmittedJobAsync(QueuedJob job, MachineSlotLease lease,
         CancellationTokenSource linked)
     {
         try
         {
             using var cpuJob = new WindowsCpuJob();
+            JobAdmitted?.Invoke(cpuJob);
             await job.ExecuteAsync(cpuJob, linked.Token).ConfigureAwait(false);
         }
         finally

@@ -9,7 +9,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
-using SIL.Motif.Worker.PanGloss;
+using SIL.Motif.Host.PanGloss;
 using Xunit;
 
 namespace SIL.Motif.Tests.Handoff;

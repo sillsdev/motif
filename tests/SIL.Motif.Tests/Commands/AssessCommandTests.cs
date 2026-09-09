@@ -15,7 +15,7 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
-using SIL.Motif.Worker.PanGloss;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
