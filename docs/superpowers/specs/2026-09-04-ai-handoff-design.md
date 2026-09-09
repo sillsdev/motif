@@ -176,3 +176,12 @@ and `RealParserFactAttribute` gates the tests that need the real one. Specific t
 - The FST engine as a second column.
 - The job runner, when a run must outlive a command — the Proposal framework's need, not this slice's.
 - PyPI for the helper, if Claude Code users ask; the raw URL already serves them.
+
+## Amendment 2026-09-09 — the HC reference is a digest; the full tree lives in the plugin
+
+The `reference/hc-mechanics.md` this note describes is a digest a chat model reads whole. The full
+`ai-parser-help` tree from FieldWorks lands instead inside the `fieldworks` Claude Code plugin this
+repository now publishes, at `fieldworks/skills/fieldworks-parsing-expert/references/`, and is the source
+the digest is derived from. The repository moved to `sillsdev/motif` the same day, so the raw URLs in
+`instructions.md` should name that owner at the next touch; the old name redirects meanwhile. Research and
+decisions: [the FieldWorks skills note](../../research/2026-09-09-fieldworks-skills-research.md).

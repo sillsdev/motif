@@ -26,3 +26,10 @@ about determinism, refusal, baselines, and Receipts carry over unchanged and are
 The plan consequences are preserved in
 [Plan A](../plan-motif.md) (`MOT-9`) and [ADR 0016](../adr/0016-scratch-cache-copy-not-undo.md).
 Unresolved choices are queued in [the Plan A grill](../grill-plan-a.md).
+
+## 2026-09-09 FieldWorks skills
+
+- [Three FieldWorks skills: research and recommended approach](2026-09-09-fieldworks-skills-research.md)
+  — `fieldworks-expert`, `fieldworks-parsing-expert`, `linguistic-consultant` as one plugin published
+  from this repo; distill-index-fetch corpus strategy; the field-visibility mechanism; boundaries;
+  the open decisions taken to the grill.

@@ -317,3 +317,11 @@ The grammar whose meaning depends on sequence — phonological rule order encodi
 bleeding, and alpha variables using position as identity. The part that cannot ride on a
 last-writer-wins order value.
 _Avoid_: sequences, lists, sorted fields
+
+## The FieldWorks skills
+
+Motif also publishes three Claude Code skills about FieldWorks itself (a FLEx expert, a parsing expert,
+a linguistic consultant) as the `fieldworks` plugin. That is a bounded context of its own with its own
+vocabulary — plugin, marketplace, skill, corpus, index, crosswalk, persona, job map — in
+[fieldworks/CONTEXT.md](fieldworks/CONTEXT.md). Inside that plugin, **corpus** means a
+documentation source, not the text corpus defined above.
