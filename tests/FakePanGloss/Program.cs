@@ -8,10 +8,9 @@ namespace SIL.Motif.FakePanGloss;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Motif's whole dependency on the parser is: hand it an exported candidate, wait, read the report it
-/// wrote. This honours that contract — <c>assess &lt;grammarSource&gt; --report &lt;path&gt;</c> — and
-/// nothing else, so a test can exercise the real <see cref="System.Diagnostics.Process"/> boundary
-/// without a Rust build or a grammar a parser would accept.
+/// The fake answers the three subcommands Motif sends the shipped binary — <c>batch</c>, <c>import</c>,
+/// <c>stats</c> — and nothing else, so a test exercises the real <see cref="System.Diagnostics.Process"/>
+/// boundary without a Rust build.
 /// </para>
 /// <para>
 /// Behaviour is read from <c>_fake-pangloss.json</c> beside the grammar source rather than from the
@@ -35,13 +34,12 @@ internal static class Program
     {
         if (args.Length == 0)
         {
-            Console.Error.WriteLine("usage: pangloss <assess|import|stats> ...");
+            Console.Error.WriteLine("usage: pangloss <batch|import|stats> ...");
             return 64;
         }
-
         return args[0] switch
         {
-            "assess" => RunAssess(args),
+            "batch" => RunBatch(args),
             "import" => RunImport(args),
             "stats" => RunStats(args),
             _ => Unrecognised(args[0]),
@@ -50,44 +48,63 @@ internal static class Program
 
     private static int Unrecognised(string command)
     {
-        Console.Error.WriteLine($"usage: pangloss <assess|import|stats> ... (got '{command}')");
+        Console.Error.WriteLine($"usage: pangloss <batch|import|stats> ... (got '{command}')");
         return 64;
     }
 
-    private static int RunAssess(string[] args)
+    // batch <project> <words.txt> <out.tsv> [--word-timeout-ms N] [--threads N] [--stats] [--cache <path>]
+    private static int RunBatch(string[] args)
     {
-        if (args.Length < 4 || args[2] != "--report")
+        if (args.Length < 4)
         {
-            Console.Error.WriteLine("usage: pangloss assess <grammarSource> --report <path>");
+            Console.Error.WriteLine(
+                "usage: pangloss batch <grammar> <words.txt> <out.tsv> [--word-timeout-ms N] [--threads N] [--stats] [--cache <path>]");
             return 64;
         }
-
-        var grammarSource = args[1];
-        var reportPath = args[3];
-        var directory = Path.GetDirectoryName(Path.GetFullPath(grammarSource));
+        var projectPath = args[1];
+        var wordsPath = args[2];
+        var outPath = args[3];
+        string? cachePath = null;
+        for (var i = 4; i < args.Length; i++)
+        {
+            if (args[i] == "--cache" && i + 1 < args.Length) cachePath = args[++i];
+        }
+        var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
         RecordArgv(directory, args);
         var behaviour = Behaviour.Read(directory);
-
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
-
         if (behaviour.DelayMilliseconds > 0)
             Thread.Sleep(behaviour.DelayMilliseconds);
-
         switch (behaviour.Mode)
         {
             case "noReport":
                 // Exits cleanly having written nothing: the caller must not read success from the code alone.
                 return behaviour.ExitCode;
-            case "malformedReport":
-                File.WriteAllText(reportPath, "{ this is not json");
-                return behaviour.ExitCode;
             case "fail":
                 Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");
                 return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
             default:
-                File.WriteAllText(reportPath, Report(behaviour, grammarSource));
+                var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
+                File.WriteAllText(outPath, BatchTsv(behaviour, words));
+                // Motif digests the cache and never reads it, so any bytes stand in for PanGloss's SQLite.
+                if (cachePath is not null) File.WriteAllText(cachePath, "fake stats cache");
                 return behaviour.ExitCode;
         }
+    }
+
+    // idx\tword\tms\tstatus\tsignature — the row shape Motif's BatchTsvParser reads.
+    private static string BatchTsv(Behaviour behaviour, IReadOnlyList<string> words)
+    {
+        var builder = new System.Text.StringBuilder();
+        for (var i = 0; i < words.Count; i++)
+        {
+            var known = behaviour.Words.FirstOrDefault(w => w.Word == words[i]);
+            var status = known is { Outcome: "complete" } ? "ok" : "none";
+            var signature = known is null ? "-" : words[i] + "-sig";
+            builder.Append(i).Append('\t').Append(words[i]).Append('\t').Append(3).Append('\t')
+                .Append(status).Append('\t').Append(signature).Append('\n');
+        }
+        return builder.ToString();
     }
 
     private static int RunImport(string[] args)
@@ -195,49 +212,7 @@ internal static class Program
         }
     }
 
-    private static string Report(Behaviour behaviour, string grammarSource)
-    {
-        var keys = new List<string>();
-        var cases = new List<object>();
-        foreach (var word in behaviour.Words)
-        {
-            var morphemes = new List<int>();
-            foreach (var morpheme in word.Morphemes)
-            {
-                var index = keys.IndexOf(morpheme);
-                if (index < 0) { keys.Add(morpheme); index = keys.Count - 1; }
-                morphemes.Add(index);
-            }
-            cases.Add(new
-            {
-                input = word.Word,
-                outcome = word.Outcome,
-                analyses = morphemes.Count == 0
-                    ? Array.Empty<object>()
-                    : [new { identity = new { morphemes, rootIndex = 0 }, identityDigest = word.Word + "-digest" }],
-            });
-        }
-
-        return JsonSerializer.Serialize(new
-        {
-            keyTable = keys,
-            cases,
-            outcomeDigest = behaviour.OutcomeDigest,
-            semanticDigest = behaviour.SemanticDigest,
-            provenance = new
-            {
-                sourceSha256 = behaviour.SourceSha256,
-                modelFingerprint = behaviour.ModelFingerprint,
-            },
-            execution = new { pipeline = behaviour.Pipeline },
-            diagnostics = Enumerable.Range(0, behaviour.DiagnosticCount)
-                .Select(i => new { message = "fake diagnostic " + i }).ToArray(),
-            // Recorded so a test can prove the parser was handed the file the exporter actually produced.
-            fakeGrammarSource = Path.GetFileName(grammarSource),
-        }, new JsonSerializerOptions { WriteIndented = true });
-    }
-
-    private sealed record FakeWord(string Word, string Outcome, IReadOnlyList<string> Morphemes);
+    private sealed record FakeWord(string Word, string Outcome);
 
     private sealed record Behaviour
     {
@@ -246,14 +221,10 @@ internal static class Program
         public int DelayMilliseconds { get; init; }
         public string? HeartbeatPath { get; init; }
         public string? StandardError { get; init; }
-        public string Pipeline { get; init; } = "foma-confirm";
-        public string OutcomeDigest { get; init; } = "sha256:" + new string('a', 64);
         public string SemanticDigest { get; init; } = "sha256:" + new string('b', 64);
         public string SourceSha256 { get; init; } = "sha256:" + new string('c', 64);
         public string ModelFingerprint { get; init; } = "fp-1";
-        public int DiagnosticCount { get; init; }
-        public IReadOnlyList<FakeWord> Words { get; init; } =
-            [new FakeWord("motifa", "complete", ["11111111-1111-1111-1111-111111111111"])];
+        public IReadOnlyList<FakeWord> Words { get; init; } = [new FakeWord("motifa", "complete")];
 
         internal static Behaviour Read(string? directory)
         {
