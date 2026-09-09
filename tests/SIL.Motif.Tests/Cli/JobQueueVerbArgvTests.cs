@@ -8,6 +8,7 @@ using SIL.Motif.Generator;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
@@ -346,13 +347,14 @@ public sealed class JobQueueVerbArgvTests : IDisposable
         using var lanes = new ProjectLaneRegistry(
             _ => throw new InvalidOperationException("No Dry Run handler runs in this suite."));
         var options = new RunnerOptions { Root = _root };
+        var invoker = new FakeInvoker();
 
         var claimed = new List<string>();
         var guard = 0;
         while (true)
         {
-            var outcome = SIL.Motif.Worker.Program.SweepOnceAsync(known, runtimes, lanes, options, "test-runner",
-                CancellationToken.None).GetAwaiter().GetResult();
+            var outcome = SIL.Motif.Worker.Program.SweepOnceAsync(known, runtimes, lanes, options, invoker,
+                "test-runner", CancellationToken.None).GetAwaiter().GetResult();
             if (outcome.JobId is not { } next) break;
             claimed.Add(next);
             if (++guard > 50) throw new InvalidOperationException("The sweep did not converge.");

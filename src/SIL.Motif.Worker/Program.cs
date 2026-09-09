@@ -68,10 +68,12 @@ internal static class Program
         host.Start();
 
         using var machine = MachineDatabase.Open(options.Root);
+        // One parser queue for the runner's life: every sweep tick reuses it rather than starting another.
+        using var invoker = new PanGlossInvoker();
         var knownProjects = new KnownProjectRegistry(machine);
         var activity = new SweepActivity();
-        var sweeping = SweepUntilCancelledAsync(knownProjects, runtimes, host.ProjectLanes, options, ownerId,
-            activity, shutdown.Token);
+        var sweeping = SweepUntilCancelledAsync(knownProjects, runtimes, host.ProjectLanes, options, invoker,
+            ownerId, activity, shutdown.Token);
 
         await new WorkerLifetime().RunUntilIdleAsync(options.IdleTimeout, () => activity.HasActiveWork,
             shutdown.Token).ConfigureAwait(false);
@@ -98,15 +100,15 @@ internal static class Program
     /// Ticks the sweep back-to-back while jobs keep being found; idles for <see cref="IdlePollInterval"/> when not.
     private static async Task SweepUntilCancelledAsync(KnownProjectRegistry knownProjects,
         Projects.ProjectRuntimeRegistry runtimes, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options,
-        string ownerId, SweepActivity activity, CancellationToken cancellationToken)
+        IPanGlossInvoker invoker, string ownerId, SweepActivity activity, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             SweepOutcome outcome;
             try
             {
-                outcome = await SweepOnceAsync(knownProjects, runtimes, lanes, options, ownerId, cancellationToken)
-                    .ConfigureAwait(false);
+                outcome = await SweepOnceAsync(knownProjects, runtimes, lanes, options, invoker, ownerId,
+                    cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -140,7 +142,7 @@ internal static class Program
     /// </returns>
     internal static async Task<SweepOutcome> SweepOnceAsync(KnownProjectRegistry knownProjects,
         Projects.ProjectRuntimeRegistry runtimes, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options,
-        string ownerId, CancellationToken cancellationToken)
+        IPanGlossInvoker invoker, string ownerId, CancellationToken cancellationToken)
     {
         var opened = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop)>();
         var hasActiveWork = false;
@@ -180,7 +182,7 @@ internal static class Program
             if (runtime.Jobs.ListActive(runtime.WorkspaceKey).Count != 0) hasActiveWork = true;
             else runtime.Jobs.PurgeArchived(ArchivePolicy.Default);
 
-            opened.Add((runtime, BuildLoop(runtime, project, options, ownerId, lanes)));
+            opened.Add((runtime, BuildLoop(runtime, project, options, invoker, ownerId, lanes)));
         }
 
         if (opened.Count == 0) return new SweepOutcome(null, hasActiveWork);
@@ -277,7 +279,7 @@ internal static class Program
 
     /// <summary>Builds the handlers one project's claimed jobs are dispatched to.</summary>
     private static JobRunnerLoop BuildLoop(Projects.ProjectRuntime runtime, ProjectLocator project,
-        RunnerOptions options, string ownerId, Scheduling.ProjectLaneRegistry lanes)
+        RunnerOptions options, IPanGlossInvoker invoker, string ownerId, Scheduling.ProjectLaneRegistry lanes)
     {
         var publish = new BaselineRefresh(runtime.Baselines, options.Root);
         var refresh = new BaselineRefreshJobHandler(
@@ -301,7 +303,7 @@ internal static class Program
             [DryRunKind] = (job, token) => dryRun.RunAsync(job, project, token),
         };
 
-        if (TryBuildTrialHandler(runtime, proposals, lanes, options) is { } trial)
+        if (TryBuildTrialHandler(runtime, proposals, lanes, options, invoker) is { } trial)
             handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
 
         return new JobRunnerLoop(new JobClaims(runtime.Database), runtime.WorkspaceKey, ownerId: ownerId,
@@ -310,7 +312,8 @@ internal static class Program
 
     /// <summary>Builds a Trial handler, or null when the parser or root is not usable.</summary>
     private static TrialJobHandler? TryBuildTrialHandler(Projects.ProjectRuntime runtime,
-        ProposalRepository proposals, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options)
+        ProposalRepository proposals, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options,
+        IPanGlossInvoker invoker)
     {
         // No executable, no Trial handler: a Trial job would otherwise fail on every attempt.
         if (PanGlossExecutable.TryLocate() is null) return null;
@@ -320,7 +323,7 @@ internal static class Program
             var ownership = WorkspaceOwnership.Bootstrap(options.Root);
             catalog = new AssessorCatalog(new IAssessor[]
             {
-                new PanGlossAssessor(new StatsCacheStore(ownership), new PanGlossInvoker()),
+                new PanGlossAssessor(new StatsCacheStore(ownership), invoker),
             });
         }
         catch (ArgumentException)

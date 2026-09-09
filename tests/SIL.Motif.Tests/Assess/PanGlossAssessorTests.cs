@@ -173,6 +173,47 @@ public sealed class PanGlossAssessorTests : IDisposable
             assessor.ProduceAsync(scope, _exportedCandidate, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task AReportRunnerThatCannotRun_SurfacesAsAssessorUnavailable()
+    {
+        var assessor = new PanGlossAssessor(_cachePaths, Invoker(), new ThrowingReportRunner());
+
+        var failure = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(AssessmentKind.Correctness), _exportedCandidate, CancellationToken.None));
+
+        Assert.Equal(PanGlossAssessor.AssessorName, failure.Assessor);
+        Assert.Contains("no report route", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ARecognisedRefusalOfTheParseTimeBatch_IsAnInvalidOperation_NotUnavailability()
+    {
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Refused(1, "error: foma compile failed for this grammar", string.Empty,
+                "pangloss batch exited 1"),
+        };
+        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            assessor.ProduceAsync(Scope(AssessmentKind.ParseTime), _exportedCandidate, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AParserThatCouldNotRunEitherBatch_SurfacesAsAssessorUnavailable_WithTheOutcomesMessage()
+    {
+        var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Unavailable("no pangloss here") };
+        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
+
+        var parseTime = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(AssessmentKind.ParseTime), _exportedCandidate, CancellationToken.None));
+        var objectTiming = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(AssessmentKind.ObjectTiming), _exportedCandidate, CancellationToken.None));
+
+        Assert.Contains("no pangloss here", parseTime.Message, StringComparison.Ordinal);
+        Assert.Contains("no pangloss here", objectTiming.Message, StringComparison.Ordinal);
+    }
+
     // One invoker answers both batch passes: rows for the plain one, a cache file for the --stats one.
     private static FakeInvoker Invoker(string tsvRows = "0\tmotifa\t12\tok\tsig\n", byte[]? cacheBytes = null) => new()
     {
@@ -216,5 +257,12 @@ public sealed class PanGlossAssessorTests : IDisposable
     {
         public Task<AssessReport> RunAsync(string exportedCandidate, CancellationToken cancellationToken) =>
             Task.FromResult(report);
+    }
+
+    // The assess route the shipped binary lacks, failing the way the real one does today.
+    private sealed class ThrowingReportRunner : IPanGlossAssessor
+    {
+        public Task<AssessReport> RunAsync(string exportedCandidate, CancellationToken cancellationToken) =>
+            throw new ParserUnavailableException("no report route");
     }
 }

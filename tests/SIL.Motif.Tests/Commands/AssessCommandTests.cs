@@ -214,6 +214,27 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Contains("pangloss assess exited 1", outcome.Refusal.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AnAssessorThatCouldNotRunItsParser_IsRefusedAsParserUnavailable_AndRecordsNothing()
+    {
+        using var seeded = NewSeededScratch();
+        using var queue = NewQueue();
+        var unavailableAssessor = new FakeAssessor("fake-assessor", CollectedKinds,
+            _ => throw new AssessorUnavailableException("fake-assessor", "no pangloss here"));
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), () => unavailableAssessor, NewStatsQuery,
+            queue, onProgress: null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
+        Assert.Contains("no pangloss here", outcome.Refusal.Message, StringComparison.Ordinal);
+
+        var repository = OpenRepository(seeded.FwDataPath);
+        Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+        Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
     // A mistyped path must report the missing project, not the missing parser the eager build would hit first.
     [Fact]
     public void AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt()

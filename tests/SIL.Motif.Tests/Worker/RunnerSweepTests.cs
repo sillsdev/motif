@@ -1,5 +1,6 @@
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
@@ -119,12 +120,13 @@ public sealed class RunnerSweepTests : IDisposable
     /// Repeatedly ticks the sweep — exactly what the runner's own loop does — until nothing is claimable.
     private async Task<IReadOnlyList<string>> DrainAsync(KnownProjectRegistry known)
     {
+        var invoker = new FakeInvoker();
         var claimed = new List<string>();
         var guard = 0;
         while (true)
         {
-            var outcome = await SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options, OwnerId,
-                CancellationToken.None);
+            var outcome = await SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+                invoker, OwnerId, CancellationToken.None);
             if (outcome.JobId is not { } next) break;
             claimed.Add(next);
             if (++guard > 50) throw new InvalidOperationException("The sweep did not converge.");
