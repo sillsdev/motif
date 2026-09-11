@@ -3,8 +3,8 @@ using SIL.Motif.Contract.Projects;
 namespace SIL.Motif.Host.Config;
 
 /// <summary>
-/// One declared Assessment scope: which words, which Assessor and engine, what to collect, and the
-/// per-word limit (ADR 0042 decision 3).
+/// One declared Assessment scope: which words, which Assessor, what to collect, and the
+/// per-word time and step limits (ADR 0042 decision 3).
 /// </summary>
 /// <remarks>
 /// <c>Query</c> names which words a scope wants, in words a future query language will interpret; it is
@@ -17,7 +17,7 @@ public sealed record AssessmentScopeConfiguration
     public const string DefaultName = "default";
     public const string DefaultQueryText = "all words carrying a manual analysis";
     public const string DefaultAssessorName = "pangloss";
-    public const string DefaultEngineName = "fast";
+    public const int DefaultPerWordStepLimit = 200000;
 
     public static readonly TimeSpan DefaultPerWordLimit = TimeSpan.FromSeconds(1);
 
@@ -25,19 +25,21 @@ public sealed record AssessmentScopeConfiguration
         string name,
         string query,
         string assessor,
-        string engine,
         IReadOnlyList<string> collect,
-        TimeSpan perWordLimit)
+        TimeSpan perWordLimit,
+        int perWordStepLimit = DefaultPerWordStepLimit)
     {
         Name = RequireNonBlank(name, nameof(name));
         Query = RequireNonBlank(query, nameof(query));
         Assessor = RequireNonBlank(assessor, nameof(assessor));
-        Engine = RequireNonBlank(engine, nameof(engine));
         ArgumentNullException.ThrowIfNull(collect);
         Collect = collect;
         if (perWordLimit <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
         PerWordLimit = perWordLimit;
+        if (perWordStepLimit <= 0)
+            throw new ArgumentOutOfRangeException(nameof(perWordStepLimit), "A per-word step limit must be positive.");
+        PerWordStepLimit = perWordStepLimit;
     }
 
     /// <summary>The scope's name, unique within a project's declarations.</summary>
@@ -49,18 +51,18 @@ public sealed record AssessmentScopeConfiguration
     /// <summary>Which Assessor makes this scope's Assessments.</summary>
     public string Assessor { get; }
 
-    /// <summary>Which engine the Assessor runs under.</summary>
-    public string Engine { get; }
-
     /// <summary>Which kinds to collect; empty means the Assessor's own default.</summary>
     public IReadOnlyList<string> Collect { get; }
 
-    /// <summary>The per-word cap; part of the scope because coverage under one cap is not comparable with another.</summary>
+    /// <summary>The per-word time cap; differences annotate comparisons without blocking them.</summary>
     public TimeSpan PerWordLimit { get; }
+
+    /// <summary>The per-word step cap; zero requests no search steps. Comparison context, never a compatibility gate.</summary>
+    public int PerWordStepLimit { get; }
 
     /// <summary>The scope declared when a project names none of its own.</summary>
     public static AssessmentScopeConfiguration Default() => new(
-        DefaultName, DefaultQueryText, DefaultAssessorName, DefaultEngineName,
+        DefaultName, DefaultQueryText, DefaultAssessorName,
         Array.Empty<string>(), DefaultPerWordLimit);
 
     private static string RequireNonBlank(string value, string parameterName) =>

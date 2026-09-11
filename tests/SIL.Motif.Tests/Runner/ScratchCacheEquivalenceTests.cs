@@ -40,6 +40,9 @@ public class ScratchCacheEquivalenceTests : IDisposable
         var factory = new ScratchCacheFactory();
         using var scratch = factory.CreateInMemoryCopy(_live);
 
+        Assert.Same(scratch.LanguageProject,
+            scratch.ServiceLocator.ObjectRepository.GetObject(scratch.LanguageProject.Hvo));
+        Assert.True(scratch.DefaultAnalWs > 0);
         var report = ScratchComparison.Compare(_live, scratch, "in-memory copy");
         Log(report);
 

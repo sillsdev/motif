@@ -136,6 +136,51 @@ public sealed class ReportProjectionIntegrationTests
     }
 
     [Fact]
+    public void OrderedMorphologyHasAnExplicitAggregateRefusalAndKeepsItsCorrectnessEvidence()
+    {
+        var word = CorrectnessFixture.Word("approved", matched: true);
+        var assessment = new StoredAssessment(
+            new AssessReport([word], "outcome", "semantic", Hash('a'), "model", "pipeline", 0),
+            Selection.Create("corpus-one", [word.Word]));
+        var assessmentId = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
+
+        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, assessmentId,
+            assessment.Selection.Sha256, assessment.Report.GrammarSourceSha256);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("assessment.aggregate-unavailable", result.Output);
+        Assert.Contains("correctness report", result.Output);
+        using var database = MotifDatabase.OpenOwned(AssessmentDatabasePath(),
+            new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath)),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var retained = Assert.Single(new AssessmentRepository(database).Get(assessmentId).Words!);
+        Assert.Equal("covered", retained.Correctness!.Status);
+        Assert.Equal(word.Morphology!.Analyses[0].Morphs[0], retained.Morphology!.Analyses[0].Morphs[0]);
+    }
+
+    [Fact]
+    public void EmptyCorrectnessMeasurementHasAnExplicitAggregateRefusal()
+    {
+        var assessmentId = CanonicalId.Mint("assessment/").Value;
+        var selection = Selection.Create("empty", []);
+        var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
+        using (var database = MotifDatabase.OpenOwned(AssessmentDatabasePath(), project,
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                assessmentId, null, null, "pangloss", "Correctness", "{}", "sha256:scope",
+                "whitespace-and-punctuation", "1", "{}", selection, null, null, Hash('a'), null, null, null, []));
+        }
+
+        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, assessmentId,
+            selection.Sha256, Hash('a'));
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("assessment.aggregate-unavailable", result.Output);
+        Assert.Contains("correctness report", result.Output);
+    }
+
+    [Fact]
     public void AnalysesReturnsClearErrorWhenNamedAssessmentDoesNotExist()
     {
         // No corpus or proposal verb has touched this scratch project, so its paired database does not exist.

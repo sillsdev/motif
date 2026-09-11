@@ -13,6 +13,28 @@ namespace SIL.Motif.Tests.Assess;
 /// </summary>
 public sealed class RegressionCheckerTests
 {
+    [Fact]
+    public void LosingOneMatchedReadingIsARegressionEvenWhenNeitherWordWasFullyCovered()
+    {
+        var original = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("alpha", true);
+        var first = original.Morphology!.Analyses[0];
+        var second = first with { Morphs = [first.Morphs[0] with { Form = "33333333-3333-3333-3333-333333333333" }] };
+        var third = first with { Morphs = [first.Morphs[0] with { Form = "44444444-4444-4444-4444-444444444444" }] };
+        var expected = new[] { first, second, third }.Select(value =>
+            new SIL.Motif.Contract.Responses.ApprovedMorphology(value.Morphs.Select(morph =>
+                new SIL.Motif.Contract.Responses.ApprovedMorph(morph.Form, morph.Msa, morph.InflType, [])).ToArray())).ToArray();
+        var beforeEvidence = original.Morphology with { Analyses = [first, second] };
+        var afterEvidence = original.Morphology with { Analyses = [first] };
+        var before = original with { Morphology = beforeEvidence, Correctness = MorphologyCorrectness.Compare(beforeEvidence, expected) };
+        var after = original with { Morphology = afterEvidence, Correctness = MorphologyCorrectness.Compare(afterEvidence, expected) };
+        var previous = Build("previous", ("alpha", true)) with { Words = [before] };
+        var candidate = previous with { AssessmentId = "candidate", Words = [after] };
+        var finding = RegressionChecker.Check(previous, candidate)!;
+        Assert.False(finding.CoverageDropped);
+        Assert.Single(finding.LostAnalyses);
+        Assert.True(finding.IsRegression);
+    }
+
     private const string GrammarSha = "sha256:" + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     [Fact]
@@ -88,15 +110,11 @@ public sealed class RegressionCheckerTests
     {
         var selection = Selection.Create("test", words.Select(w => w.Word));
         var assessedWords = words
-            .Select(w => new AssessedWord(
-                w.Word, w.Analysed ? "analysed" : "no-analysis",
-                w.Analysed
-                    ? new[] { new ParsedAnalysis(null, System.Array.Empty<string>(), 0, "digest:" + w.Word) }
-                    : System.Array.Empty<ParsedAnalysis>()))
+            .Select(w => SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word(w.Word, w.Analysed))
             .ToArray();
         return new CorrectnessAssessment(
             assessmentId, assessor, "none", "1",
-            new StoredScope.Trial("all", Array.Empty<string>(), "fast", Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1)),
+            new StoredScope.Trial("all", Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1)),
             selection, GrammarSha, assessedWords);
     }
 }

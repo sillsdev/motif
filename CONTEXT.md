@@ -76,7 +76,7 @@ these; there is no other way to start one. What an Assessor uses, not what it is
 _Avoid_: process, subprocess, launch, parser run, shell-out
 
 **Assessment scope**:
-What a run was told to do: which words, which Assessor and engine, what to collect, and what limits to
+What a run was told to do: which words, which Assessor, what to collect, and what limits to
 apply — a per-word limit defaulting to about a second, or an equivalent cap on attempts. Declared per
 project and embedded in each Assessment by content, so editing the declaration cannot reinterpret a
 measurement already taken. A scope is **context, not a gate**: two Assessments compare by joining on the
@@ -90,6 +90,23 @@ or which words now complete. A closed set, because a Report can only say it was 
 needs if there is a fixed list of things it could have been given. Two Assessments compare only when
 they share a kind, alongside sharing an Assessor.
 _Avoid_: type, category, measure, metric
+
+**Parse completion**:
+Whether the parser finished its declared search for a word, independently of how many analyses or
+approved matches it found. An interrupted search remains incomplete even when it found every approved
+analysis, independently of completion for the other words in the same Assessment.
+_Avoid_: first match, success, correctness
+
+**Approved expectation**:
+The set of morphologies represented by all human-approved analyses on a FieldWorks word form.
+Every distinct morphology in that set is expected; finding one reading does not cover the others.
+_Avoid_: the approved analysis, any parse
+
+**Correctness**:
+An Assessment kind measuring whether the parser reproduces the morphology of a word form's approved
+analyses, without claiming agreement about sense or word-level category. Its findings are separate from
+whether the word's search completed.
+_Avoid_: parse success, grammar coverage, first match
 
 **Difference**:
 An Assessment kind: what changed between two other Assessments, joined on the word. Stored and citable

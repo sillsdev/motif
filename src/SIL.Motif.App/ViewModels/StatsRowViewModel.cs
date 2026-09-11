@@ -3,86 +3,78 @@ using System.Text.Json;
 
 namespace SIL.Motif.App.ViewModels;
 
-/// <summary>
-/// One row of a <c>stats</c> JSON-rows query, projecting the known columns (<see cref="Kind"/>,
-/// <see cref="Object"/>, <see cref="Word"/>, <see cref="Attempts"/>, <see cref="Failures"/>,
-/// <see cref="Elapsed"/>) when PanGloss's row carries them, while <see cref="Details"/> retains every
-/// other property verbatim. A PanGloss release that adds a field is never dropped: it simply has no
-/// dedicated grid column yet, and still appears in <see cref="Details"/>.
-/// </summary>
+/// <summary>Statistics columns with explicit units; unprojected parser fields remain available in Details.</summary>
 public sealed class StatsRowViewModel
 {
-    private static readonly HashSet<string> KnownColumns =
-        new(StringComparer.Ordinal) { "kind", "object", "word", "attempts", "failures", "elapsed" };
+    private static readonly HashSet<string> KnownColumns = new(StringComparer.Ordinal)
+    {
+        "kind", "label", "form", "attempts", "passes", "elapsed_ns", "time_ns", "capped", "timed_out",
+    };
 
     private readonly string _rawText;
 
     public StatsRowViewModel(JsonElement row)
     {
-        Kind = ReadText(row, "kind");
-        Object = ReadText(row, "object");
-        Word = ReadText(row, "word");
+        Word = ReadText(row, "form");
+        Kind = ReadText(row, "kind") ?? (Word is null ? null : "word");
+        Object = ReadText(row, "label");
         Attempts = ReadNumber(row, "attempts");
-        Failures = ReadNumber(row, "failures");
-        Elapsed = ReadNumber(row, "elapsed");
+        Passes = ReadNumber(row, "passes");
+        ElapsedMs = ReadNumber(row, Word is null ? "time_ns" : "elapsed_ns") / 1_000_000;
+        var capped = ReadBoolean(row, "capped");
+        var timedOut = ReadBoolean(row, "timed_out");
+        IsIncomplete = capped == true || timedOut == true;
+        CompletionStatus = Word is null ? null : IsIncomplete
+            ? "INCOMPLETE — parsing did not finish (" +
+                (capped == true && timedOut == true ? "step and time limits" : capped == true ? "step limit" : "time limit") + ")"
+            : capped == false && timedOut == false ? "Search completed" : "Completion unavailable";
         Details = row.ValueKind == JsonValueKind.Object
             ? row.EnumerateObject()
                 .Where(property => !KnownColumns.Contains(property.Name))
-                .ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal)
+                .ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal)
             : new Dictionary<string, JsonElement>();
         _rawText = row.GetRawText();
     }
 
     public string? Kind { get; }
-
     public string? Object { get; }
-
     public string? Word { get; }
-
     public double? Attempts { get; }
-
-    public double? Failures { get; }
-
-    public double? Elapsed { get; }
-
-    /// <summary>Every property PanGloss's row carried that none of the known columns name.</summary>
+    public double? Passes { get; }
+    public double? ElapsedMs { get; }
+    public bool IsIncomplete { get; }
+    public string? CompletionStatus { get; }
     public IReadOnlyDictionary<string, JsonElement> Details { get; }
 
-    /// <summary>Whether this row's raw JSON text contains <paramref name="filterText"/>, ordinal case-insensitively.</summary>
     public bool MatchesFilter(string filterText) =>
         _rawText.Contains(filterText, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>The named known numeric column's value, or <c>null</c> when the name is not one of them.</summary>
     public double? NumericValue(string column) => column switch
     {
         "attempts" => Attempts,
-        "failures" => Failures,
-        "elapsed" => Elapsed,
+        "passes" => Passes,
+        "elapsedMs" => ElapsedMs,
         _ => null,
     };
 
-    /// <summary>The named known text column's value, or <c>null</c> when the name is not one of them.</summary>
     public string? TextValue(string column) => column switch
     {
         "kind" => Kind,
         "object" => Object,
         "word" => Word,
+        "completion" => CompletionStatus,
         _ => null,
     };
 
-    private static string? ReadText(JsonElement row, string name)
-    {
-        if (row.ValueKind != JsonValueKind.Object || !row.TryGetProperty(name, out var value)) return null;
-        return value.ValueKind switch
-        {
-            JsonValueKind.String => value.GetString(),
-            JsonValueKind.Null => null,
-            JsonValueKind.Undefined => null,
-            _ => value.GetRawText(),
-        };
-    }
+    private static bool? ReadBoolean(JsonElement row, string name) =>
+        row.ValueKind == JsonValueKind.Object && row.TryGetProperty(name, out var value)
+            ? value.ValueKind switch { JsonValueKind.True => true, JsonValueKind.False => false, _ => null }
+            : null;
 
-    // Parsed as a double either way, so a numeric string never sorts by raw, lexicographic text.
+    private static string? ReadText(JsonElement row, string name) =>
+        row.ValueKind == JsonValueKind.Object && row.TryGetProperty(name, out var value) &&
+        value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
     private static double? ReadNumber(JsonElement row, string name)
     {
         if (row.ValueKind != JsonValueKind.Object || !row.TryGetProperty(name, out var value)) return null;

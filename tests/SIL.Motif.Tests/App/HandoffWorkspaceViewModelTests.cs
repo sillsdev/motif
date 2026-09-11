@@ -31,7 +31,11 @@ public sealed class HandoffWorkspaceViewModelTests
 
     private static AssessCommandResponse NewAssessResponse(string summary) => new(
         new BaselineCaptureResponse(NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false),
-        new SelectionProjection([], []), ["assessment/one"], summary);
+        new SelectionProjection([], []), ["assessment/time", "assessment/one"], summary)
+    {
+        Measurements = [new ProducedAssessmentReference("assessment/time", "ParseTime", "run"),
+            new ProducedAssessmentReference("assessment/one", "ObjectTiming", "run")],
+    };
 
     private static (FakeCommandClient Fake, FakeProjectPicker ProjectPicker, FakeFolderPicker FolderPicker,
         FakeDragSource DragSource, HandoffWorkspaceViewModel Workspace) NewWorkspace()
@@ -69,7 +73,7 @@ public sealed class HandoffWorkspaceViewModelTests
         await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\one.fwdata", NewToken());
         fake.StatsCompletesWith(new StatsCommandResponse(
             "assessment/one", "grammar.json", "cache.sqlite", null,
-            [JsonDocument.Parse("""{"kind":"word","word":"from-project-one"}""").RootElement.Clone()]));
+            [JsonDocument.Parse("""{"kind":"word","form":"from-project-one"}""").RootElement.Clone()]));
         await workspace.Statistics.LoadCommand.ExecuteAsync(null);
         Assert.Single(workspace.Statistics.Rows);
 
@@ -108,6 +112,7 @@ public sealed class HandoffWorkspaceViewModelTests
 
         Assert.True(workspace.Baseline.HasAssessment);
         Assert.Equal("(summary)", workspace.Statistics.SummaryMarkdown);
+        Assert.Equal("assessment/one", workspace.Statistics.AssessmentId);
         Assert.True(workspace.HasEverAssessed);
         Assert.False(workspace.NotYetAssessed);
     }
@@ -171,6 +176,7 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.False(workspace.HasEverAssessed);
         Assert.True(workspace.NotYetAssessed);
         Assert.Null(workspace.Statistics.SummaryMarkdown);
+        Assert.Null(workspace.Statistics.AssessmentId);
         Assert.Empty(workspace.Statistics.Rows);
         Assert.Equal(AssessRunState.Idle, workspace.Assess.State);
         Assert.Null(workspace.Assess.Result);
@@ -203,6 +209,7 @@ public sealed class HandoffWorkspaceViewModelTests
         workspace.Statistics.SortBy("attempts");
         Assert.Single(workspace.Statistics.Rows);
         Assert.Equal(workspace.Statistics.Groups[1], Assert.Single(fake.StatsRequests).ForwardedArguments[1]);
+        Assert.Equal("assessment/one", Assert.Single(fake.StatsRequests).AssessmentId);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));

@@ -1,4 +1,5 @@
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
@@ -26,6 +27,8 @@ internal sealed class FakeAssessor : IAssessor
 
     public IReadOnlyList<AssessmentKind> SupportedKinds => _declaredKinds;
 
+    public Func<AssessmentScope, string, BatchInvocationEvidence>? CaptureEvidence { get; init; }
+
     public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)
     {
@@ -36,10 +39,11 @@ internal sealed class FakeAssessor : IAssessor
                 throw new AssessorRefusalException(Name, kind, "the fake Assessor was not configured to declare this kind.");
         }
 
+        var evidence = CaptureEvidence?.Invoke(scope, exportedCandidate);
         IReadOnlyList<ProducedAssessment> produced = wanted
             .Select(kind => new ProducedAssessment(kind, FakeGrammarSha256, "sha256:" + new string('0', 64),
                 "sha256:" + new string('0', 64), "fake-model", "fake-pipeline", 0,
-                _rawFor?.Invoke(kind) ?? new AssessmentRaw.WordMeasurements([])))
+                _rawFor?.Invoke(kind) ?? new AssessmentRaw.WordMeasurements([])) { Invocation = evidence })
             .ToList();
         return Task.FromResult(produced);
     }

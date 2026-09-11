@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:responses="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              x:Class="SIL.Motif.App.Views.AssessPanel"
              x:DataType="views:AssessPanel">
   <StackPanel Spacing="8" Margin="12">
@@ -31,6 +32,28 @@
     <TextBlock Text="{Binding Assess.Refusal.Message}"
                IsVisible="{Binding Assess.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
                Foreground="Red" />
+    <StackPanel Spacing="8"
+                IsVisible="{Binding Assess.Result, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+      <TextBlock Text="{Binding Assess.Result.CompletionSummary}" FontWeight="Bold" TextWrapping="Wrap"
+                 AutomationProperties.Name="Completed and incomplete searches" />
+      <TextBlock Text="{Binding Assess.Result.CorrectnessStatus}" TextWrapping="Wrap" />
+      <ScrollViewer MaxHeight="240" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Assess.Result.Words}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="responses:AssessmentWordResult">
+              <Border BorderBrush="Gray" BorderThickness="0,0,0,1" Padding="0,8">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="{Binding Word}" FontWeight="Bold" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding CompletionStatus}" FontWeight="Bold" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding RawSignature}" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding CorrectnessStatus}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </StackPanel>
     <Expander Header="Details"
               IsExpanded="False"
               IsVisible="{Binding Assess.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}">

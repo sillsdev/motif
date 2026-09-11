@@ -36,16 +36,19 @@ public sealed class PanGlossParser
     /// <summary>Analyses <paramref name="words"/> against the grammar in <paramref name="projectFilePath"/>.</summary>
     /// <param name="perWordLimit">
     /// The per-word deadline. Words that hit it come back as <see cref="WordOutcome.TimedOut"/> and are never
-    /// counted as analysis failures; see <see cref="BatchAnalysis.IsLowerBound"/>. Required: without one, a
+    /// counted as analysis failures; see <see cref="BatchAnalysis.IsIncomplete"/>. Required: without one, a
     /// single hard word can take the process down.
     /// </param>
     /// <param name="label">Names this run in the machine queue's diagnostics.</param>
+    /// <param name="perWordStepLimit">The per-word search budget, independent of the time limit.</param>
     public async Task<ParserRunResult> AnalyseBatchAsync(
-        string projectFilePath, IReadOnlyList<string> words, ParserEngine engine, TimeSpan perWordLimit,
-        string label, CancellationToken cancellationToken)
+        string projectFilePath, IReadOnlyList<string> words, TimeSpan perWordLimit,
+        string label, CancellationToken cancellationToken,
+        int perWordStepLimit = PanGlossRequest.DefaultPerWordStepLimit)
     {
         var outcome = await _invoker.RunAsync(
-            new PanGlossRequest.Batch(projectFilePath, words, perWordLimit), label, cancellationToken)
+            new PanGlossRequest.Batch(projectFilePath, words, perWordLimit, PerWordStepLimit: perWordStepLimit),
+            label, cancellationToken)
             .ConfigureAwait(false);
 
         switch (outcome)
@@ -53,10 +56,12 @@ public sealed class PanGlossParser
             case PanGlossOutcome.Completed completed:
                 var analysis = new BatchAnalysis(
                     Words: BatchTsvParser.Parse(completed.Output),
-                    Engine: engine,
                     PerWordTimeoutMs: (int)perWordLimit.TotalMilliseconds,
                     ProjectPath: projectFilePath,
-                    Warnings: ExtractWarnings(completed.StandardError));
+                    Warnings: ExtractWarnings(completed.StandardError))
+                {
+                    PerWordStepLimit = perWordStepLimit,
+                };
                 return new ParserRunResult(analysis, null, outcome);
             case PanGlossOutcome.Refused refused when ParserRefusalRecognizer.Recognize(refused.StandardError) is { } refusal:
                 return new ParserRunResult(null, refusal, outcome);

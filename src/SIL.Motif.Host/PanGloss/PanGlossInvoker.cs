@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Text;
 using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -77,12 +78,33 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         CancellationToken cancellationToken)
     {
         var scratch = Path.Combine(Path.GetTempPath(), "SIL.Motif.PanGloss", Guid.NewGuid().ToString("N"));
+        var retained = request is PanGlossRequest.Batch { ArtifactDirectory: not null };
+        var created = false;
+        var published = false;
+        string? sourceDigest = null;
+        string? executableDigest = null;
+        string? wordsDigest = null;
+        if (request is PanGlossRequest.Batch { ArtifactDirectory: { } artifactDirectory })
+            scratch = Path.GetFullPath(artifactDirectory);
         try
         {
             try
             {
+                if (retained && Directory.Exists(scratch))
+                    return new PanGlossOutcome.Unavailable($"The artifact directory already exists: '{scratch}'.");
                 Directory.CreateDirectory(scratch);
+                created = true;
+                if (retained && request is PanGlossRequest.Batch batch)
+                {
+                    var stagedSource = Path.Combine(scratch, "source.fwdata");
+                    File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false);
+                    request = batch with { ProjectFilePath = stagedSource };
+                    sourceDigest = BatchInvocationEvidence.DigestFile(stagedSource);
+                    executableDigest = BatchInvocationEvidence.DigestFile(executable);
+                }
                 await request.PrepareAsync(scratch, cancellationToken).ConfigureAwait(false);
+                if (retained)
+                    wordsDigest = BatchInvocationEvidence.DigestFile(Path.Combine(scratch, "words.txt"));
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
@@ -132,6 +154,17 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     try { process.Kill(entireProcessTree: true); }
                     catch (InvalidOperationException) { }
                     catch (Win32Exception) { }
+                    using var stopped = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    try
+                    {
+                        await process.WaitForExitAsync(stopped.Token).ConfigureAwait(false);
+                        await Task.WhenAll(stdOutTask, stdErrTask).WaitAsync(stopped.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return new PanGlossOutcome.Incomplete(
+                            "Parser termination could not be confirmed after requesting cancellation.", string.Empty);
+                    }
                     return cancellationToken.IsCancellationRequested
                         ? new PanGlossOutcome.Cancelled()
                         : new PanGlossOutcome.TimedOut(cap,
@@ -147,13 +180,59 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                         Detail: $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine +
                             standardError.Trim());
                 }
-                return request.Finish(scratch, standardOutput, standardError, clock.Elapsed);
+                var outcome = request.Finish(scratch, standardOutput, standardError, clock.Elapsed);
+                if (!retained || outcome is not PanGlossOutcome.Completed completed)
+                    return outcome;
+                var capturedBatch = (PanGlossRequest.Batch)request;
+                if (sourceDigest != BatchInvocationEvidence.DigestFile(capturedBatch.ProjectFilePath) ||
+                    executableDigest != BatchInvocationEvidence.DigestFile(executable) ||
+                    wordsDigest != BatchInvocationEvidence.DigestFile(Path.Combine(scratch, "words.txt")))
+                    return new PanGlossOutcome.Incomplete(
+                        "The grammar source, word list, or parser executable changed during the invocation.", standardError);
+                var wordsPath = Path.Combine(scratch, "words.txt");
+                var tsvPath = Path.Combine(scratch, "out.tsv");
+                if (!File.Exists(tsvPath))
+                    return new PanGlossOutcome.Incomplete("The batch wrote no TSV evidence.", standardError);
+                var stderrPath = Path.Combine(scratch, "stderr.txt");
+                var tsvBytes = await File.ReadAllBytesAsync(tsvPath, cancellationToken).ConfigureAwait(false);
+                var tsvDigest = "sha256:" + Convert.ToHexString(
+                    System.Security.Cryptography.SHA256.HashData(tsvBytes)).ToLowerInvariant();
+                var tsvText = Encoding.UTF8.GetString(tsvBytes).TrimStart('\uFEFF');
+                await File.WriteAllTextAsync(stderrPath, standardError, cancellationToken).ConfigureAwait(false);
+                var analysesPath = capturedBatch.CollectAnalyses ? Path.Combine(scratch, "analyses.jsonl") : null;
+                var analysesBytes = analysesPath is null ? null
+                    : await File.ReadAllBytesAsync(analysesPath, cancellationToken).ConfigureAwait(false);
+                var evidence = new BatchInvocationEvidence(
+                    Path.GetFileName(scratch), capturedBatch.ProjectFilePath, sourceDigest!, executableDigest!,
+                    wordsPath, wordsDigest!,
+                    tsvPath, tsvDigest,
+                    stderrPath, BatchInvocationEvidence.DigestFile(stderrPath),
+                    (int)capturedBatch.PerWordLimit.TotalMilliseconds, capturedBatch.PerWordStepLimit,
+                    1, capturedBatch.StatsCachePath is not null)
+                {
+                    AnalysesPath = analysesPath,
+                    AnalysesSha256 = analysesBytes is null ? null : "sha256:" + Convert.ToHexString(
+                        System.Security.Cryptography.SHA256.HashData(analysesBytes)).ToLowerInvariant(),
+                };
+                var morphology = analysesBytes is null ? null : Encoding.UTF8.GetString(analysesBytes).TrimStart('\uFEFF');
+                if (morphology != completed.MorphologyOutput)
+                    return new PanGlossOutcome.Incomplete("Morphology evidence changed while being retained.", standardError);
+                published = true;
+                return completed with
+                {
+                    Output = tsvText, BatchEvidence = evidence, MorphologyOutput = morphology,
+                    ArtifactLease = new Assess.AssessmentArtifactLease(scratch)
+                };
             }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return new PanGlossOutcome.Incomplete($"Could not retain invocation evidence: {exception.Message}", string.Empty);
         }
         finally
         {
             // Best effort: a leaked scratch directory must not turn a completed run into a failure.
-            try { Directory.Delete(scratch, recursive: true); }
+            try { if (created && !published) Directory.Delete(scratch, recursive: true); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }

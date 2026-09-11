@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.LCModel;
 using SIL.Motif.Contract;
@@ -172,11 +172,21 @@ internal sealed class TrialJobHandler
         {
             var produced = await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory, cancellationToken)
                 .ConfigureAwait(false);
-            var assessmentIds = RecordAll(produced, proposal, candidate.DryRun, candidate.Selection, candidate.Scope,
-                scopeConfiguration, assessor.Name, baseline.Token);
-            var completionJson = JsonSerializer.Serialize(
-                new TrialCompletion(baseline.Token, assessmentIds), MotifJson.CreateOptions());
-            return new JobOutcome(JobStatus.Completed, JobFailureCategory.None, completionJson);
+            var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var assessmentIds = RecordAll(produced, proposal, candidate.DryRun, candidate.Selection, candidate.Scope,
+                    scopeConfiguration, assessor.Name, baseline.Token);
+                foreach (var lease in artifactLeases) lease.Retain();
+                var completionJson = JsonSerializer.Serialize(
+                    new TrialCompletion(baseline.Token, assessmentIds), MotifJson.CreateOptions());
+                return new JobOutcome(JobStatus.Completed, JobFailureCategory.None, completionJson);
+            }
+            finally
+            {
+                foreach (var lease in artifactLeases) lease.Dispose();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -217,8 +227,8 @@ internal sealed class TrialJobHandler
                 var words = cache is null
                     ? Array.Empty<string>()
                     : WordQueryResolver.Resolve(scopeConfiguration.Query, cache).ToArray();
-                var scope = new AssessmentScope(words, scopeConfiguration.Engine,
-                    ParseCollect(scopeConfiguration.Collect), scopeConfiguration.PerWordLimit);
+                var scope = new AssessmentScope(words,
+                    ParseCollect(scopeConfiguration.Collect), scopeConfiguration.PerWordLimit, scopeConfiguration.PerWordStepLimit);
                 candidate = new CandidateRun(dryRun, scope, Selection.Create(scopeConfiguration.Name, words),
                     await _prepareForAssessment(cache, laneToken).ConfigureAwait(false));
             }
@@ -238,18 +248,20 @@ internal sealed class TrialJobHandler
     {
         // The query is what the scope was told to do; the words are only what it resolved to on this run.
         var scopeJson = ScopeCodec.Write(new StoredScope.Trial(
-            scopeConfiguration.Query, scope.Words, scope.Engine, scope.Collect, scope.PerWordLimit));
+            scopeConfiguration.Query, scope.Words, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
         var scopeDigest = AssessmentMaterial.Digest(scopeJson);
         var baselineTokenJson = JsonSerializer.Serialize(baselineToken, MotifJson.CreateOptions());
 
         var ids = new List<string>();
+        var records = new List<NewAssessmentRecord>();
         foreach (var item in produced)
         {
             var assessmentId = CanonicalId.Mint("assessment/").Value;
-            _assessments.Record(AssessmentMaterial.ToRecord(item, assessmentId, proposal.ProposalId,
+            records.Add(AssessmentMaterial.ToRecord(item, assessmentId, proposal.ProposalId,
                 dryRun.IntentDigest, assessorName, scopeJson, scopeDigest, "none", "1", baselineTokenJson, selection));
             ids.Add(assessmentId);
         }
+        _assessments.RecordBatch(records);
         return ids;
     }
 

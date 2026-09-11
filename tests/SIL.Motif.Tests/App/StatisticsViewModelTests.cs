@@ -44,7 +44,7 @@ public sealed class StatisticsViewModelTests
     {
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
-            """{"kind":"word","object":"o1","word":"abc","attempts":3,"failures":1,"elapsed":12.5}"""));
+            """{"kind":"word","form":"abc","attempts":3,"passes":1,"elapsed_ns":12500000}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
@@ -56,11 +56,11 @@ public sealed class StatisticsViewModelTests
 
         var row = Assert.Single(statistics.Rows);
         Assert.Equal("word", row.Kind);
-        Assert.Equal("o1", row.Object);
+        Assert.Null(row.Object);
         Assert.Equal("abc", row.Word);
         Assert.Equal(3, row.Attempts);
-        Assert.Equal(1, row.Failures);
-        Assert.Equal(12.5, row.Elapsed);
+        Assert.Equal(1, row.Passes);
+        Assert.Equal(12.5, row.ElapsedMs);
         Assert.False(statistics.IsStale);
         Assert.Null(statistics.Refusal);
     }
@@ -70,7 +70,7 @@ public sealed class StatisticsViewModelTests
     {
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
-            """{"kind":"word","object":"o1","word":"abc","attempts":3,"confidence":0.87,"note":"new-field"}"""));
+            """{"kind":"word","form":"abc","attempts":3,"confidence":0.87,"note":"new-field"}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
@@ -86,8 +86,8 @@ public sealed class StatisticsViewModelTests
     {
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
-            """{"kind":"word","object":"o1","word":"alpha","attempts":9}""",
-            """{"kind":"word","object":"o2","word":"beta","attempts":10}"""));
+            """{"kind":"word","form":"alpha","attempts":9}""",
+            """{"kind":"word","form":"beta","attempts":10}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
         Assert.Single(fake.StatsRequests);
@@ -104,8 +104,8 @@ public sealed class StatisticsViewModelTests
     {
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
-            """{"kind":"word","object":"o1","word":"alpha"}""",
-            """{"kind":"word","object":"o2","word":"beta"}"""));
+            """{"kind":"word","form":"alpha"}""",
+            """{"kind":"word","form":"beta"}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
         statistics.FilterText = "alpha";
@@ -119,8 +119,8 @@ public sealed class StatisticsViewModelTests
     {
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
-            """{"kind":"word","object":"o1","word":"a","attempts":10}""",
-            """{"kind":"word","object":"o2","word":"b","attempts":9}"""));
+            """{"kind":"word","form":"a","attempts":10}""",
+            """{"kind":"word","form":"b","attempts":9}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
         statistics.SortBy("attempts");
@@ -136,8 +136,8 @@ public sealed class StatisticsViewModelTests
     {
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
-            """{"kind":"word","object":"o1","word":"10"}""",
-            """{"kind":"word","object":"o2","word":"9"}"""));
+            """{"kind":"word","form":"10"}""",
+            """{"kind":"word","form":"9"}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
         statistics.SortBy("word");
@@ -150,7 +150,7 @@ public sealed class StatisticsViewModelTests
     public async Task ARefusalLeavesTheLastSuccessfulResultVisibleButMarkedStale()
     {
         var (fake, statistics) = NewViewModel();
-        fake.StatsCompletesWith(RowsResponse("""{"kind":"word","object":"o1","word":"abc"}"""));
+        fake.StatsCompletesWith(RowsResponse("""{"kind":"word","form":"abc"}"""));
         await statistics.LoadCommand.ExecuteAsync(null);
         Assert.False(statistics.IsStale);
 
@@ -168,14 +168,14 @@ public sealed class StatisticsViewModelTests
     public async Task ANewSuccessfulRunClearsStaleResultsAndReplacesTheRows()
     {
         var (fake, statistics) = NewViewModel();
-        fake.StatsCompletesWith(RowsResponse("""{"kind":"word","object":"o1","word":"abc"}"""));
+        fake.StatsCompletesWith(RowsResponse("""{"kind":"word","form":"abc"}"""));
         await statistics.LoadCommand.ExecuteAsync(null);
 
         fake.StatsRefusesWith(new Refusal("stats.no-assessment", FailureReason.NotFound, "Gone for now."));
         await statistics.LoadCommand.ExecuteAsync(null);
         Assert.True(statistics.IsStale);
 
-        fake.StatsCompletesWith(RowsResponse("""{"kind":"word","object":"o2","word":"fresh"}"""));
+        fake.StatsCompletesWith(RowsResponse("""{"kind":"word","form":"fresh"}"""));
         await statistics.LoadCommand.ExecuteAsync(null);
 
         var row = Assert.Single(statistics.Rows);
@@ -194,5 +194,78 @@ public sealed class StatisticsViewModelTests
         statistics.ProjectPath = ProjectPath;
 
         Assert.True(statistics.LoadCommand.CanExecute(null));
+    }
+    [Fact]
+    public async Task CapturedStatisticsRetainMetadataAndProjectRealWordAndObjectColumns()
+    {
+        var (fake, statistics) = NewViewModel();
+        fake.StatsCompletesWith(RowsResponse(
+            """{"engine":"hc","filters":{"by_kind":false,"direction":null,"exclude_censored":false,"kind":null,"object":null,"sort":null,"stratum":null,"top":null,"word":null},"grammar_hash":"acc80fced0c2a72bb26b2a14c02280c96f2eeb0b9a19d2fb13d9a155ca172d37","meta":true,"orientation":"word","totals":{"attempts":0,"rows":3,"time_ns":322800},"unmeasured":{}}""",
+            """{"attempts":0,"capped":false,"elapsed_ns":122200,"form":"motifa","passes":1,"timed_out":false}"""));
+        await statistics.LoadCommand.ExecuteAsync(null);
+        Assert.Equal("word", Assert.Single(statistics.Metadata).GetProperty("orientation").GetString());
+        var word = Assert.Single(statistics.Rows);
+        Assert.Equal("motifa", word.Word);
+        Assert.Equal(0.1222, word.ElapsedMs);
+        Assert.Equal(1, word.Passes);
+        Assert.Equal("Search completed", word.CompletionStatus);
+
+        fake.StatsCompletesWith(RowsResponse(
+            """{"engine":"hc","filters":{"by_kind":false,"direction":null,"exclude_censored":false,"kind":null,"object":null,"sort":null,"stratum":null,"top":null,"word":null},"grammar_hash":"acc80fced0c2a72bb26b2a14c02280c96f2eeb0b9a19d2fb13d9a155ca172d37","meta":true,"orientation":"object","totals":{"attempts_by_kind":{"lex_entry":2,"root_index":9},"attributed_pct":4.368029739776952,"rows":5,"rows_shown":5,"run_elapsed_ns":322800,"time_ns":14100,"uses":2},"unmeasured":{}}""",
+            """{"amp":null,"attempts":1,"identity_quality":"authored","kind":"lex_entry","label":"lex_entry: first seeded gloss","no_root":null,"not_applied":null,"outputs":null,"surface_mismatch":0,"time_ns":7600,"uses":1,"work":null}"""));
+        await statistics.LoadCommand.ExecuteAsync(null);
+        Assert.Equal("object", Assert.Single(statistics.Metadata).GetProperty("orientation").GetString());
+        var item = Assert.Single(statistics.Rows);
+        Assert.Equal("lex_entry: first seeded gloss", item.Object);
+        Assert.Equal("lex_entry", item.Kind);
+        Assert.Equal(0.0076, item.ElapsedMs);
+        Assert.Null(item.Passes);
+        Assert.Null(item.CompletionStatus);
+        Assert.Equal("authored", item.Details["identity_quality"].GetString());
+        Assert.Equal(1, item.Details["uses"].GetInt32());
+    }
+
+    [Theory]
+    [InlineData(true, false, "step limit")]
+    [InlineData(false, true, "time limit")]
+    [InlineData(true, true, "step and time limits")]
+    public async Task PartialFindingsRemainIncompleteAndLaterWordsCanComplete(bool capped, bool timedOut, string reason)
+    {
+        var (fake, statistics) = NewViewModel();
+        fake.StatsCompletesWith(RowsResponse(
+            JsonSerializer.Serialize(new { form = "partial", passes = 1, capped, timed_out = timedOut }),
+            """{"form":"later","passes":0,"capped":false,"timed_out":false}"""));
+        await statistics.LoadCommand.ExecuteAsync(null);
+        Assert.True(statistics.Rows[0].IsIncomplete);
+        Assert.Equal($"INCOMPLETE — parsing did not finish ({reason})", statistics.Rows[0].CompletionStatus);
+        Assert.False(statistics.Rows[1].IsIncomplete);
+        Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
+    }
+
+    [Theory]
+    [InlineData("{\"form\":\"unknown\",\"passes\":1}")]
+    [InlineData("{\"form\":\"unknown\",\"capped\":false}")]
+    [InlineData("{\"form\":\"unknown\",\"timed_out\":false}")]
+    public void MissingCompletionFlagsNeverClaimSearchCompleted(string json)
+    {
+        Assert.Equal("Completion unavailable", new StatsRowViewModel(Row(json)).CompletionStatus);
+    }
+
+    [Fact]
+    public async Task ExactAssessmentIsForwardedUnlessAProposalIsSelected()
+    {
+        var (fake, statistics) = NewViewModel();
+        statistics.AssessmentId = "assessment/displayed";
+        fake.StatsCompletesWith(RowsResponse());
+        await statistics.LoadCommand.ExecuteAsync(null);
+        Assert.Equal("assessment/displayed", Assert.Single(fake.StatsRequests).AssessmentId);
+        statistics.ProposalId = "proposal/selected";
+        await statistics.LoadCommand.ExecuteAsync(null);
+        Assert.Null(fake.StatsRequests[1].AssessmentId);
+        Assert.Equal("proposal/selected", fake.StatsRequests[1].ProposalId);
+        statistics.Reset();
+        Assert.Null(statistics.AssessmentId);
+        Assert.Null(statistics.ProposalId);
+        Assert.Empty(statistics.Metadata);
     }
 }

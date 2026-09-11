@@ -1,4 +1,5 @@
 using SIL.Motif.Host.Parser;
+using System.Text.Json;
 
 namespace SIL.Motif.Host.Assess;
 
@@ -116,6 +117,9 @@ public static class AssessmentComparer
               "looks exactly like a smaller corpus, so treat the word counts below with that in mind."
             : null;
 
+        if (from.Words.DistinctBy(word => word.Word).Count() != from.Words.Count ||
+            to.Words.DistinctBy(word => word.Word).Count() != to.Words.Count)
+            throw new ComparisonRefusalException("A comparison by word requires unambiguous, unique word cases.");
         var fromByWord = from.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
         var toByWord = to.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
         var sharedWords = fromByWord.Keys.Where(toByWord.ContainsKey)
@@ -133,6 +137,24 @@ public static class AssessmentComparer
 
     private static WordChange? Classify(string word, AssessedWord from, AssessedWord to)
     {
+        if (from.Morphology is not null || to.Morphology is not null)
+        {
+            if (from.Morphology is null || to.Morphology is null)
+                throw new ComparisonRefusalException("Both Assessments must retain the shared parse morphology format.");
+            var before = from.Morphology;
+            var after = to.Morphology;
+            if (before.Capped != after.Capped || before.TimedOut != after.TimedOut ||
+                before.InvalidShape != after.InvalidShape || !before.Unavailable.SequenceEqual(after.Unavailable))
+                return new WordChange(word, WordChangeKind.OutcomeChanged, from.Outcome, to.Outcome);
+            var beforeKeys = before.Analyses.Select(value => JsonSerializer.Serialize(value, ParseMorphEvidence.JsonOptions))
+                .ToHashSet(StringComparer.Ordinal);
+            var afterKeys = after.Analyses.Select(value => JsonSerializer.Serialize(value, ParseMorphEvidence.JsonOptions))
+                .ToHashSet(StringComparer.Ordinal);
+            if (beforeKeys.SetEquals(afterKeys)) return null;
+            var kind = beforeKeys.Count == 0 ? WordChangeKind.GainedAnalysis
+                : afterKeys.Count == 0 ? WordChangeKind.LostAnalysis : WordChangeKind.AnalysisChanged;
+            return new WordChange(word, kind, from.Outcome, to.Outcome);
+        }
         var fromAnalysed = string.Equals(from.Outcome, "analysed", StringComparison.Ordinal);
         var toAnalysed = string.Equals(to.Outcome, "analysed", StringComparison.Ordinal);
 

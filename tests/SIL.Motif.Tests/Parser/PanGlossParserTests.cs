@@ -10,8 +10,10 @@ public sealed class PanGlossParserTests
 {
     private static readonly string Project = Path.GetTempFileName();
 
-    [Fact]
-    public async Task ACompletedBatchBecomesAnAnalysis_WithWarningsFromStandardError()
+    [Theory]
+    [InlineData(200000)]
+    [InlineData(123)]
+    public async Task ACompletedBatchBecomesAnAnalysis_WithWarningsAndEffectiveBudgets(int stepLimit)
     {
         var invoker = new FakeInvoker
         {
@@ -20,15 +22,16 @@ public sealed class PanGlossParserTests
         };
         var parser = new PanGlossParser(invoker);
 
-        var result = await parser.AnalyseBatchAsync(Project, ["motifa", "zzz"], ParserEngine.FstPrunedByHermitCrab,
-            TimeSpan.FromMilliseconds(1500), "test", CancellationToken.None);
+        var result = await parser.AnalyseBatchAsync(Project, ["motifa", "zzz"], TimeSpan.FromMilliseconds(1500), "test", CancellationToken.None, perWordStepLimit: stepLimit);
 
         Assert.True(result.Succeeded);
         Assert.Equal(2, result.Analysis!.Words.Count);
         Assert.Equal(1500, result.Analysis.PerWordTimeoutMs);
+        Assert.Equal(stepLimit, result.Analysis.PerWordStepLimit);
         Assert.Equal(["warning: one thing"], result.Analysis.Warnings);
         var request = Assert.IsType<PanGlossRequest.Batch>(Assert.Single(invoker.Requests).Request);
         Assert.Null(request.StatsCachePath);
+        Assert.Equal(stepLimit, request.PerWordStepLimit);
     }
 
     [Fact]
@@ -41,7 +44,7 @@ public sealed class PanGlossParserTests
         };
 
         var result = await new PanGlossParser(invoker).AnalyseBatchAsync(Project, ["x"],
-            ParserEngine.FstPrunedByHermitCrab, TimeSpan.FromSeconds(1), "test", CancellationToken.None);
+            TimeSpan.FromSeconds(1), "test", CancellationToken.None);
 
         Assert.False(result.Succeeded);
         Assert.NotNull(result.Refusal);
@@ -53,7 +56,7 @@ public sealed class PanGlossParserTests
         var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Unavailable("no parser") };
 
         var result = await new PanGlossParser(invoker).AnalyseBatchAsync(Project, ["x"],
-            ParserEngine.FstPrunedByHermitCrab, TimeSpan.FromSeconds(1), "test", CancellationToken.None);
+            TimeSpan.FromSeconds(1), "test", CancellationToken.None);
 
         Assert.False(result.Succeeded);
         Assert.Null(result.Refusal);

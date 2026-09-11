@@ -59,7 +59,7 @@ public sealed class ReportCatalogTests
 /// </summary>
 public sealed class ReportProducerTests
 {
-    private const string ScopeJson = """{"words":[],"engine":"fast","collect":[],"perWordLimitMs":1000}""";
+    private const string ScopeJson = """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":200000}""";
     private const string GrammarSha = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     // "The Assessor may since be gone" simulated: nothing is registered, so a call to it would throw.
@@ -106,7 +106,7 @@ public sealed class ReportProducerTests
     }
 
     [Fact]
-    public void Correctness_ComputesFromWhetherAWordCarriesAStoredAnalysis_WithNoAssessorRegistered()
+    public void Correctness_ComputesAllApprovedMatchesFromStoredMorphology()
     {
         var assessment = Build("Correctness", ("motifa", true), ("motifb", false), ("motifc", false));
         var producer = new CorrectnessReportProducer();
@@ -114,7 +114,22 @@ public sealed class ReportProducerTests
         var rendered = producer.Produce(assessment, new ReportQuery(), NoAssessorRegistered);
 
         Assert.Equal("correctness", rendered.Kind);
-        Assert.Contains("33.3%", rendered.Text, StringComparison.Ordinal);
+        Assert.Contains("1/3 approved readings matched", rendered.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CorrectnessReportNamesBothLimitsEvenWithEveryApprovedReadingMatched()
+    {
+        var assessment = Build("Correctness", ("motifa", true));
+        var word = assessment.Words[0];
+        assessment = assessment with
+        {
+            Words = [word with { Morphology = word.Morphology! with { Capped = true, TimedOut = true } }],
+        };
+        var rendered = new CorrectnessReportProducer().Produce(assessment, new ReportQuery(), NoAssessorRegistered);
+        Assert.Contains("0 searches completed; 1 incomplete", rendered.Text);
+        Assert.Contains("INCOMPLETE — parsing did not finish (step limit and time limit)", rendered.Text);
+        Assert.Contains("1/1 approved readings matched", rendered.Text);
     }
 
     [Fact]
@@ -137,12 +152,7 @@ public sealed class ReportProducerTests
     private static ReportableAssessment Build(string kind, params (string Word, bool Analysed)[] words)
     {
         var assessedWords = words
-            .Select(w => new AssessedWord(
-                w.Word,
-                w.Analysed ? "analysed" : "no-analysis",
-                w.Analysed
-                    ? new[] { new ParsedAnalysis(null, Array.Empty<string>(), 0, "digest") }
-                    : Array.Empty<ParsedAnalysis>()))
+            .Select(w => SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word(w.Word, w.Analysed))
             .ToArray();
         var selection = Selection.Create("test", words.Select(w => w.Word));
         return new ReportableAssessment(

@@ -18,6 +18,13 @@ public abstract record PanGlossOutcome
     /// <param name="Elapsed">Wall-clock time from process start to exit.</param>
     public sealed record Completed(string Output, string StandardError, TimeSpan Elapsed) : PanGlossOutcome
     {
+        /// <summary>Retained batch evidence when the caller requested an artifact directory.</summary>
+        public BatchInvocationEvidence? BatchEvidence { get; init; }
+        public string? MorphologyOutput { get; init; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        internal Assess.AssessmentArtifactLease? ArtifactLease { get; init; }
+
         public override string Message => "The parser completed.";
     }
 

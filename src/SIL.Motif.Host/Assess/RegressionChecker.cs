@@ -44,7 +44,7 @@ public sealed record RegressionFinding(
         }
         if (LostAnalyses.Count > 0)
         {
-            parts.Add($"{LostAnalyses.Count} word(s) that carried an approved analysis no longer produce one: " +
+            parts.Add($"{LostAnalyses.Count} word(s) lost at least one previously matched approved reading: " +
                 string.Join(", ", LostAnalyses.Select(change => change.Word)));
         }
         return parts.Count == 0 ? "no regression detected" : string.Join("; ", parts);
@@ -81,7 +81,10 @@ public static class RegressionChecker
             // Different Assessors: ADR 0042 decision 1 says these were never comparable in the first place.
             return null;
         }
-        var lostAnalyses = comparison.Changes.Where(change => change.Kind == WordChangeKind.LostAnalysis).ToArray();
+        var previousByWord = previous.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
+        var lostAnalyses = candidate.Words.Where(word => previousByWord.TryGetValue(word.Word, out var before) &&
+                LostApprovedReading(before, word))
+            .Select(word => new WordChange(word.Word, WordChangeKind.LostAnalysis, "covered", "unmatched")).ToArray();
 
         var previousCoverage = CorrectnessCoverage.Compute(
             previous.Words, previous.Scope, previous.Selection, previous.GrammarSourceSha256, "regression");
@@ -91,5 +94,13 @@ public static class RegressionChecker
             candidateCoverage.Fraction is { } candidateFraction && candidateFraction < previousFraction;
 
         return new RegressionFinding(coverageDropped, previousCoverage, candidateCoverage, lostAnalyses);
+    }
+
+    private static bool LostApprovedReading(AssessedWord before, AssessedWord after)
+    {
+        var previous = CorrectnessCoverage.Require(before, "regression");
+        CorrectnessCoverage.Require(after, "regression");
+        var matched = previous.Expectations.Where((_, index) => !previous.Unmatched.Contains(index)).ToArray();
+        return MorphologyCorrectness.Compare(after.Morphology!, matched).Status == "unmatched";
     }
 }

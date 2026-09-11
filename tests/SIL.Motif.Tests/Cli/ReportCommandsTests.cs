@@ -40,7 +40,7 @@ public sealed class ReportCommandsTests : IDisposable
     }
 
     [Fact]
-    public void ListKinds_ListsCoverageAndCorrectness()
+    public void ListKinds_ListsCoverageAndApprovedMorphologyCorrectness()
     {
         var result = LegacyReportCommands.ListKinds(asJson: false);
 
@@ -70,8 +70,8 @@ public sealed class ReportCommandsTests : IDisposable
             LegacyReportCommands.Produce(_project, ProductVersion, assessmentId, "correctness", null, null, false);
 
         Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("requires 'Correctness'", result.Output, StringComparison.Ordinal);
         Assert.Contains("ParseTime", result.Output, StringComparison.Ordinal);
-        Assert.Contains("did not collect", result.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public sealed class ReportCommandsTests : IDisposable
                 ProposalIntentDigest: null,
                 Assessor: "pangloss",
                 Kind: kind,
-                ScopeJson: """{"words":[],"engine":"fast","collect":[],"perWordLimitMs":1000}""",
+                ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":200000}""",
                 ScopeDigest: "sha256:" + new string('a', 64),
                 TokeniserName: "none",
                 TokeniserVersion: "1",

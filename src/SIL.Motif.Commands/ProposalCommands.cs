@@ -156,6 +156,15 @@ public static partial class ProposalCommands
                     Fact(("assessmentId", assessmentId))));
             }
 
+            if (record.Words?.Any(word => word.Morphology is not null) == true ||
+                record.OutcomeDigest is null || record.SemanticDigest is null || record.ModelFingerprint is null ||
+                record.Pipeline is null || record.DiagnosticCount is null)
+                return CommandOutcome<AnalysisAggregateProjection>.Refused(new Refusal(
+                    "assessment.aggregate-unavailable", FailureReason.Refused,
+                    "This Assessment has no supported analyses aggregate. " +
+                    "For ordered morphology, use its correctness report.",
+                    Fact(("assessmentId", assessmentId))));
+
             var loader = new FwDataProjectLoader();
             using var cache = loader.LoadScratchCache(project.FullFwDataPath);
             return CommandOutcome<AnalysisAggregateProjection>.Success(AnalysisAggregateProjectionQuery.Read(
@@ -1357,10 +1366,13 @@ public static partial class ProposalCommands
                 candidate?.BaselineToken ?? "", configuration.GateOnRegression);
             if (notReady.Count > 0 && !force)
             {
+                var guidance = candidate is null
+                    ? "Apply requires a Correctness Assessment for this revision. Run a Trial that collects " +
+                      "approved morphology comparisons; timing-only evidence cannot satisfy this requirement."
+                    : "Review the Correctness evidence and resolve the reported readiness reasons before applying.";
                 return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                     "apply.not-ready", FailureReason.Refused,
-                    $"Proposal {id} is not ready to apply: {string.Join("; ", notReady)}. Run " +
-                    $"'trial {id} --project <fwdata>' and let it finish, or pass --force to apply anyway.",
+                    $"Proposal {id} is not ready to apply: {string.Join("; ", notReady)}. {guidance}",
                     Fact(("proposalId", id))));
             }
 

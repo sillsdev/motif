@@ -16,7 +16,6 @@ public class GrammarCoverageFigureTests
     private static BatchAnalysis Batch(params (string Word, WordOutcome Outcome)[] words) =>
         new(
             Words: words.Select((w, i) => new WordAnalysis(i, w.Word, ElapsedMs: 10, w.Outcome, Signature: "-")).ToList(),
-            Engine: ParserEngine.FstPrunedByHermitCrab,
             PerWordTimeoutMs: 5000,
             ProjectPath: "irrelevant.fwdata",
             Warnings: Array.Empty<string>());
@@ -42,25 +41,25 @@ public class GrammarCoverageFigureTests
     }
 
     [Fact]
-    public void Compute_MarksLowerBoundWhenAnyWordTimedOut()
+    public void Compute_MarksIncompleteWhenAnyWordTimedOut()
     {
         var batch = Batch(("mbali", WordOutcome.Analysed), ("ya", WordOutcome.TimedOut));
         var selection = Selection.Create("test-selection", new[] { "mbali", "ya" });
 
         var figure = GrammarCoverageFigure.Compute(batch, selection, "sha256:" + new string('a', 64));
 
-        Assert.True(figure.IsLowerBound);
+        Assert.True(figure.IsIncomplete);
     }
 
     [Fact]
-    public void Compute_NotALowerBoundWhenNoWordTimedOut()
+    public void Compute_CompleteWhenNoWordTimedOut()
     {
         var batch = Batch(("mbali", WordOutcome.Analysed), ("ya", WordOutcome.NoAnalysis));
         var selection = Selection.Create("test-selection", new[] { "mbali", "ya" });
 
         var figure = GrammarCoverageFigure.Compute(batch, selection, "sha256:" + new string('a', 64));
 
-        Assert.False(figure.IsLowerBound);
+        Assert.False(figure.IsIncomplete);
         Assert.Equal(0, figure.TimedOutCount);
     }
 
@@ -75,7 +74,7 @@ public class GrammarCoverageFigureTests
 
         Assert.Equal(0, figure.Adjudicated);
         Assert.Null(figure.Fraction);
-        Assert.True(figure.IsLowerBound);
+        Assert.True(figure.IsIncomplete);
     }
 
     [Fact]
@@ -90,7 +89,6 @@ public class GrammarCoverageFigureTests
         Assert.Equal(selection.Name, figure.SelectionName);
         Assert.Equal(selection.Sha256, figure.SelectionSha256);
         Assert.Equal(grammarHash, figure.GrammarSourceSha256);
-        Assert.Equal(ParserEngine.FstPrunedByHermitCrab, figure.Engine);
         Assert.Equal(5000, figure.PerWordTimeoutMs);
         Assert.Equal(0, figure.TimedOutCount);
     }
@@ -126,13 +124,51 @@ public class GrammarCoverageFigureTests
         Assert.Equal(report.GrammarSourceSha256, figure.GrammarSourceSha256);
     }
 
+    [Fact]
+    public void IncompleteSummaryLeadsWithCountsAndQualifiesTheCompletedSearchPercentage()
+    {
+        var figure = Figure(analysed: 60, adjudicated: 80, timedOut: 20, cap: 1000);
+
+        var text = figure.Describe(figure.SelectionSha256, figure.GrammarSourceSha256);
+
+        Assert.StartsWith("80 searches completed; 20 incomplete", text);
+        Assert.Contains("60 of 80 completed searches", text);
+        Assert.Contains("20 timed out", text);
+        Assert.DoesNotContain("lower bound", text);
+        Assert.DoesNotContain("at least", text);
+    }
+
+    [Fact]
+    public void CappedPartialFindingsRemainOutsideCompletedCountsAndEveryWordIsAccountedFor()
+    {
+        var rows = BatchTsvParser.Parse(
+            "0\tpartial\t3\tCAP\tpartial-sig\n1\tfinished\t4\tok\tfinished-sig\n" +
+            "2\tabsent\t4\tok\t-\n3\tslow\t1000\tTIMEOUT\t-\n4\tskipped\t0\tSKIPPED\t-\n");
+        var batch = new BatchAnalysis(rows, 1000, "test.fwdata", []);
+        var selection = Selection.Create("mixed", rows.Select(row => row.Word).ToArray());
+
+        var figure = GrammarCoverageFigure.Compute(batch, selection, "source-hash");
+
+        Assert.Equal(1, figure.Analysed);
+        Assert.Equal(2, figure.Adjudicated);
+        Assert.Equal(1, figure.CappedCount);
+        Assert.Equal(1, figure.TimedOutCount);
+        Assert.Equal(1, figure.SkippedCount);
+        Assert.Equal(rows.Count, figure.Adjudicated + figure.IncompleteCount + figure.SkippedCount);
+        Assert.True(batch.IsIncomplete);
+        Assert.True(figure.IsIncomplete);
+        Assert.Equal(0.5, figure.Fraction);
+        Assert.StartsWith("2 searches completed; 2 incomplete (1 capped, 1 timed out); 1 skipped.",
+            figure.Describe(selection.Sha256, "source-hash"));
+    }
+
     // ------------------------------------------------------- rendering: tense carries staleness
 
     private static GrammarCoverageFigure Figure(
         string corpusSha = "sha256:aaaaaaaaaaaabbbb", string grammarSha = "sha256:ccccccccccccdddd",
         int analysed = 620, int adjudicated = 1000, int timedOut = 0, int? cap = null) =>
-        new("tst-wikipedia", corpusSha, grammarSha, ParserEngine.FstPrunedByHermitCrab, cap, timedOut,
-            analysed, adjudicated);
+        new("tst-wikipedia", corpusSha, grammarSha, cap, timedOut,
+            analysed, adjudicated, CappedCount: 0, SkippedCount: 0);
 
     /// <summary>
     /// A figure cannot be rendered without saying what the current selection and grammar are.
@@ -182,7 +218,7 @@ public class GrammarCoverageFigureTests
         Assert.DoesNotContain("no longer exists", current);
 
         var grammarMoved = figure.Describe("sha256:aaaaaaaaaaaabbbb", "sha256:8888888888887777");
-        Assert.StartsWith("As of the assessment", grammarMoved);
+        Assert.Contains("As of the assessment", grammarMoved);
         Assert.Contains("coverage was 62.0", grammarMoved);
         Assert.Contains("the grammar has changed", grammarMoved);
         Assert.Contains("888888888888", grammarMoved);          // names what it moved to
@@ -195,20 +231,18 @@ public class GrammarCoverageFigureTests
     }
 
     /// <summary>
-    /// A lower bound says so in either tense, and nothing-adjudicated never renders as a percentage.
+    /// Incomplete searches stay visible in either tense, and no completed searches means no percentage.
     /// </summary>
     /// <remarks>
-    /// These are the two existing refusals this type already enforces (the lower-bound flag and
-    /// the zero-adjudicated rule), and rendering must not be the place they leak. A sentence is what people
-    /// actually read, so a caveat that survives in the record but not in the prose has not survived.
+    /// Counts must survive rendering because they qualify the fraction a reader might otherwise quote alone.
     /// </remarks>
     [Fact]
-    public void RenderingPreservesTheLowerBoundAndTheNoVerdictRefusal()
+    public void RenderingPreservesIncompleteCountsAndTheNoVerdictRefusal()
     {
-        var lowerBound = Figure(analysed: 620, adjudicated: 1000, timedOut: 7, cap: 5000);
-        Assert.Contains("is at least 62.0", lowerBound.Describe("sha256:aaaaaaaaaaaabbbb", "sha256:ccccccccccccdddd"));
-        Assert.Contains("was at least 62.0", lowerBound.Describe("sha256:aaaaaaaaaaaabbbb", "sha256:8888888888887777"));
-        Assert.Contains("lower bound", lowerBound.Describe("sha256:aaaaaaaaaaaabbbb", "sha256:ccccccccccccdddd"));
+        var incomplete = Figure(analysed: 620, adjudicated: 1000, timedOut: 7, cap: 5000);
+        Assert.Contains("coverage is 62.0", incomplete.Describe("sha256:aaaaaaaaaaaabbbb", "sha256:ccccccccccccdddd"));
+        Assert.Contains("coverage was 62.0", incomplete.Describe("sha256:aaaaaaaaaaaabbbb", "sha256:8888888888887777"));
+        Assert.Contains("7 incomplete", incomplete.Describe("sha256:aaaaaaaaaaaabbbb", "sha256:ccccccccccccdddd"));
 
         // Zero adjudicated is not 0% — no verdict was ever reached, so no percentage may appear at all.
         var noVerdict = Figure(analysed: 0, adjudicated: 0, timedOut: 40, cap: 5000);

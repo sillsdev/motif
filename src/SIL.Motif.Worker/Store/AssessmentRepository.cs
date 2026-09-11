@@ -1,11 +1,14 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Store;
@@ -24,6 +27,9 @@ public interface IAssessmentRepository
     /// under an id that already exists is a genuine primary-key collision, not an upsert.
     /// </summary>
     void Record(NewAssessmentRecord assessment);
+
+    /// <summary>Records every kind from one invocation atomically, including its shared evidence.</summary>
+    void RecordBatch(IReadOnlyList<NewAssessmentRecord> assessments);
 
     /// <summary>Gets one Assessment, with its full word and analysis detail, by id.</summary>
     /// <exception cref="KeyNotFoundException">No Assessment is recorded under this id.</exception>
@@ -90,16 +96,19 @@ public sealed record NewAssessmentRecord(
     string TokeniserVersion,
     string BaselineToken,
     Selection Selection,
-    string OutcomeDigest,
-    string SemanticDigest,
+    string? OutcomeDigest,
+    string? SemanticDigest,
     string GrammarSourceSha256,
-    string ModelFingerprint,
-    string Pipeline,
-    int DiagnosticCount,
+    string? ModelFingerprint,
+    string? Pipeline,
+    int? DiagnosticCount,
     IReadOnlyList<AssessedWord> Words,
     string? CachePath = null,
     string? CacheDigest = null,
-    string? SavedUtc = null);
+    string? SavedUtc = null)
+{
+    public BatchInvocationEvidence? Invocation { get; init; }
+}
 
 /// <summary>
 /// One recorded Assessment. <see cref="Words"/> is <c>null</c> on a header returned by
@@ -118,16 +127,19 @@ public sealed record AssessmentRecord(
     string TokeniserVersion,
     string BaselineToken,
     Selection Selection,
-    string OutcomeDigest,
-    string SemanticDigest,
+    string? OutcomeDigest,
+    string? SemanticDigest,
     string GrammarSourceSha256,
-    string ModelFingerprint,
-    string Pipeline,
-    int DiagnosticCount,
+    string? ModelFingerprint,
+    string? Pipeline,
+    int? DiagnosticCount,
     string SavedUtc,
     string? CachePath = null,
     string? CacheDigest = null,
-    IReadOnlyList<AssessedWord>? Words = null);
+    IReadOnlyList<AssessedWord>? Words = null)
+{
+    public BatchInvocationEvidence? Invocation { get; init; }
+}
 
 /// <summary>
 /// Where a caller turns one recorded Assessment into the narrower view it actually needs — a Report's, a
@@ -155,16 +167,28 @@ public static class AssessmentRecordProjections
         record.Selection, record.GrammarSourceSha256, record.Words ?? Array.Empty<AssessedWord>());
 
     /// <summary>The parsed report and Selection <c>motif analyses --assessment</c> reads — see <see cref="StoredAssessment"/>.</summary>
-    public static StoredAssessment ToStored(this AssessmentRecord record) => new(
-        new AssessReport(
+    public static StoredAssessment ToStored(this AssessmentRecord record)
+    {
+        if (record.OutcomeDigest is null || record.SemanticDigest is null || record.ModelFingerprint is null ||
+            record.Pipeline is null || record.DiagnosticCount is null)
+            throw new InvalidOperationException(
+                "This Assessment contains timing or statistics evidence without an authoritative analysis report.");
+        return new StoredAssessment(new AssessReport(
             record.Words ?? Array.Empty<AssessedWord>(), record.OutcomeDigest, record.SemanticDigest,
-            record.GrammarSourceSha256, record.ModelFingerprint, record.Pipeline, record.DiagnosticCount),
-        record.Selection);
+            record.GrammarSourceSha256, record.ModelFingerprint, record.Pipeline, record.DiagnosticCount.Value),
+            record.Selection);
+    }
 }
 
 /// <summary>Reads and writes normalized Assessment tables and the project's current-Assessment pointer.</summary>
 public sealed class AssessmentRepository : IAssessmentRepository
 {
+    private static readonly JsonSerializerOptions InvocationJsonOptions = new()
+    {
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        RespectRequiredConstructorParameters = true
+    };
+
     private readonly MotifDatabase _database;
 
     /// <summary>Creates a repository over an already worker-owned database.</summary>
@@ -172,7 +196,25 @@ public sealed class AssessmentRepository : IAssessmentRepository
         _database = database ?? throw new ArgumentNullException(nameof(database));
 
     /// <inheritdoc />
-    public void Record(NewAssessmentRecord assessment)
+    public void Record(NewAssessmentRecord assessment) => RecordBatch([assessment]);
+
+    /// <inheritdoc />
+    public void RecordBatch(IReadOnlyList<NewAssessmentRecord> assessments)
+    {
+        ArgumentNullException.ThrowIfNull(assessments);
+        foreach (var assessment in assessments) ValidateRecord(assessment);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        foreach (var assessment in assessments)
+        {
+            if (assessment.Invocation is { } invocation) InsertInvocation(connection, transaction, invocation);
+            InsertHeader(connection, transaction, assessment);
+            InsertWordsAndAnalyses(connection, transaction, assessment.AssessmentId, assessment.Words);
+        }
+        transaction.Commit();
+    }
+
+    private static void ValidateRecord(NewAssessmentRecord assessment)
     {
         ArgumentNullException.ThrowIfNull(assessment);
         if (string.IsNullOrWhiteSpace(assessment.AssessmentId) || string.IsNullOrWhiteSpace(assessment.Assessor) ||
@@ -186,12 +228,6 @@ public sealed class AssessmentRepository : IAssessmentRepository
         }
         ArgumentNullException.ThrowIfNull(assessment.Selection);
         ArgumentNullException.ThrowIfNull(assessment.Words);
-
-        using var connection = _database.OpenConnection();
-        using var transaction = connection.BeginTransaction();
-        InsertHeader(connection, transaction, assessment);
-        InsertWordsAndAnalyses(connection, transaction, assessment.AssessmentId, assessment.Words);
-        transaction.Commit();
     }
 
     /// <inheritdoc />
@@ -325,6 +361,29 @@ public sealed class AssessmentRepository : IAssessmentRepository
         transaction.Commit();
     }
 
+    private static void InsertInvocation(
+        SqliteConnection connection, SqliteTransaction transaction, BatchInvocationEvidence invocation)
+    {
+        if (string.IsNullOrWhiteSpace(invocation.InvocationId))
+            throw new ArgumentException("An invocation id is required.", nameof(invocation));
+        using var find = connection.CreateCommand();
+        find.Transaction = transaction;
+        find.CommandText = "SELECT EvidenceJson FROM AssessmentInvocations WHERE InvocationId = $id;";
+        find.Parameters.AddWithValue("$id", invocation.InvocationId);
+        if (find.ExecuteScalar() is string existing)
+        {
+            if (ReadInvocation(existing) != invocation)
+                throw new InvalidOperationException($"Invocation '{invocation.InvocationId}' already records different evidence.");
+            return;
+        }
+        using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText = "INSERT INTO AssessmentInvocations (InvocationId, EvidenceJson) VALUES ($id, $evidence);";
+        insert.Parameters.AddWithValue("$id", invocation.InvocationId);
+        insert.Parameters.AddWithValue("$evidence", JsonSerializer.Serialize(invocation, InvocationJsonOptions));
+        insert.ExecuteNonQuery();
+    }
+
     private static void InsertHeader(
         SqliteConnection connection, SqliteTransaction transaction, NewAssessmentRecord assessment)
     {
@@ -335,12 +394,12 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 (AssessmentId, SelectionName, SelectionWordsJson, SelectionSha256, SelectionProvenanceJson,
                  OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint, Pipeline,
                  DiagnosticCount, SavedUtc, ProposalId, ProposalIntentDigest, Assessor, Kind,
-                 ScopeJson, ScopeDigest, TokeniserName, TokeniserVersion, BaselineToken, CachePath, CacheDigest)
+                 ScopeJson, ScopeDigest, TokeniserName, TokeniserVersion, BaselineToken, CachePath, CacheDigest, InvocationId)
             VALUES
                 ($id, $selectionName, $selectionWords, $selectionSha, $selectionProvenance,
                  $outcomeDigest, $semanticDigest, $grammarSha, $modelFingerprint, $pipeline,
                  $diagnosticCount, $savedUtc, $proposalId, $proposalIntentDigest, $assessor, $kind,
-                 $scopeJson, $scopeDigest, $tokeniserName, $tokeniserVersion, $baselineToken, $cachePath, $cacheDigest);
+                 $scopeJson, $scopeDigest, $tokeniserName, $tokeniserVersion, $baselineToken, $cachePath, $cacheDigest, $invocationId);
             """;
         command.Parameters.AddWithValue("$id", assessment.AssessmentId);
         command.Parameters.AddWithValue("$selectionName", assessment.Selection.Name);
@@ -348,12 +407,12 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.Parameters.AddWithValue("$selectionSha", assessment.Selection.Sha256);
         command.Parameters.AddWithValue("$selectionProvenance",
             assessment.Selection.Provenance is null ? DBNull.Value : JsonSerializer.Serialize(assessment.Selection.Provenance));
-        command.Parameters.AddWithValue("$outcomeDigest", assessment.OutcomeDigest);
-        command.Parameters.AddWithValue("$semanticDigest", assessment.SemanticDigest);
+        command.Parameters.AddWithValue("$outcomeDigest", (object?)assessment.OutcomeDigest ?? DBNull.Value);
+        command.Parameters.AddWithValue("$semanticDigest", (object?)assessment.SemanticDigest ?? DBNull.Value);
         command.Parameters.AddWithValue("$grammarSha", assessment.GrammarSourceSha256);
-        command.Parameters.AddWithValue("$modelFingerprint", assessment.ModelFingerprint);
-        command.Parameters.AddWithValue("$pipeline", assessment.Pipeline);
-        command.Parameters.AddWithValue("$diagnosticCount", assessment.DiagnosticCount);
+        command.Parameters.AddWithValue("$modelFingerprint", (object?)assessment.ModelFingerprint ?? DBNull.Value);
+        command.Parameters.AddWithValue("$pipeline", (object?)assessment.Pipeline ?? DBNull.Value);
+        command.Parameters.AddWithValue("$diagnosticCount", (object?)assessment.DiagnosticCount ?? DBNull.Value);
         command.Parameters.AddWithValue("$savedUtc",
             assessment.SavedUtc ?? DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
         command.Parameters.AddWithValue("$proposalId", (object?)assessment.ProposalId?.Value ?? DBNull.Value);
@@ -367,6 +426,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.Parameters.AddWithValue("$baselineToken", assessment.BaselineToken);
         command.Parameters.AddWithValue("$cachePath", (object?)assessment.CachePath ?? DBNull.Value);
         command.Parameters.AddWithValue("$cacheDigest", (object?)assessment.CacheDigest ?? DBNull.Value);
+        command.Parameters.AddWithValue("$invocationId", (object?)assessment.Invocation?.InvocationId ?? DBNull.Value);
         command.ExecuteNonQuery();
     }
 
@@ -377,14 +437,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var insertWord = connection.CreateCommand();
         insertWord.Transaction = transaction;
         insertWord.CommandText = """
-            INSERT INTO AssessedWords (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs)
-            VALUES ($id, $ordinal, $word, $outcome, $elapsed);
+            INSERT INTO AssessedWords (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, RawSignature, MorphologyJson, CorrectnessJson)
+            VALUES ($id, $ordinal, $word, $outcome, $elapsed, $signature, $morphology, $correctness);
             """;
         var assessmentIdParam = insertWord.Parameters.Add("$id", SqliteType.Text);
         var wordOrdinalParam = insertWord.Parameters.Add("$ordinal", SqliteType.Integer);
         var wordTextParam = insertWord.Parameters.Add("$word", SqliteType.Text);
         var wordOutcomeParam = insertWord.Parameters.Add("$outcome", SqliteType.Text);
         var wordElapsedParam = insertWord.Parameters.Add("$elapsed", SqliteType.Integer);
+        var wordSignatureParam = insertWord.Parameters.Add("$signature", SqliteType.Text);
+        var morphologyParam = insertWord.Parameters.Add("$morphology", SqliteType.Text);
+        var correctnessParam = insertWord.Parameters.Add("$correctness", SqliteType.Text);
 
         using var lastRowId = connection.CreateCommand();
         lastRowId.Transaction = transaction;
@@ -411,6 +474,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
             wordTextParam.Value = word.Word;
             wordOutcomeParam.Value = word.Outcome;
             wordElapsedParam.Value = (object?)word.ElapsedMs ?? DBNull.Value;
+            wordSignatureParam.Value = (object?)word.RawSignature ?? DBNull.Value;
+            morphologyParam.Value = word.Morphology is null ? DBNull.Value
+                : JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions);
+            correctnessParam.Value = word.Correctness is null ? DBNull.Value
+                : JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions);
             insertWord.ExecuteNonQuery();
 
             var assessedWordId = (long)lastRowId.ExecuteScalar()!;
@@ -433,7 +501,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         SELECT AssessmentId, ProposalId, ProposalIntentDigest, Assessor, Kind, ScopeJson, ScopeDigest,
                TokeniserName, TokeniserVersion, BaselineToken, SelectionName, SelectionWordsJson, SelectionSha256,
                SelectionProvenanceJson, OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint,
-               Pipeline, DiagnosticCount, SavedUtc, CachePath, CacheDigest
+               Pipeline, DiagnosticCount, SavedUtc, CachePath, CacheDigest,
+               (SELECT EvidenceJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId)
         FROM Assessments
         """;
 
@@ -466,15 +535,33 @@ public sealed class AssessmentRepository : IAssessmentRepository
             TokeniserVersion: reader.GetString(8),
             BaselineToken: reader.GetString(9),
             Selection: selection,
-            OutcomeDigest: reader.GetString(14),
-            SemanticDigest: reader.GetString(15),
+            OutcomeDigest: reader.IsDBNull(14) ? null : reader.GetString(14),
+            SemanticDigest: reader.IsDBNull(15) ? null : reader.GetString(15),
             GrammarSourceSha256: reader.GetString(16),
-            ModelFingerprint: reader.GetString(17),
-            Pipeline: reader.GetString(18),
-            DiagnosticCount: reader.GetInt32(19),
+            ModelFingerprint: reader.IsDBNull(17) ? null : reader.GetString(17),
+            Pipeline: reader.IsDBNull(18) ? null : reader.GetString(18),
+            DiagnosticCount: reader.IsDBNull(19) ? null : reader.GetInt32(19),
             SavedUtc: reader.GetString(20),
             CachePath: reader.IsDBNull(21) ? null : reader.GetString(21),
-            CacheDigest: reader.IsDBNull(22) ? null : reader.GetString(22));
+            CacheDigest: reader.IsDBNull(22) ? null : reader.GetString(22))
+        {
+            Invocation = reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23))
+        };
+    }
+
+    private static BatchInvocationEvidence ReadInvocation(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<BatchInvocationEvidence>(json, InvocationJsonOptions)
+                ?? throw new JsonException("Missing invocation evidence.");
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException(
+                "The stored invocation evidence is obsolete or invalid; delete the project .motif.db file and recreate the Assessments.",
+                exception);
+        }
     }
 
     // One streaming pass over a word/analysis join, grouped by word — no N+1 querying.
@@ -483,7 +570,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs,
-                   pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest
+                   pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
+                   aw.MorphologyJson, aw.CorrectnessJson
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -496,6 +584,9 @@ public sealed class AssessmentRepository : IAssessmentRepository
         string currentWord = "";
         string currentOutcome = "";
         int? currentElapsedMs = null;
+        string? currentSignature = null;
+        ParseWordEvidence? currentMorphology = null;
+        WordCorrectness? currentCorrectness = null;
         List<ParsedAnalysis> currentAnalyses = [];
 
         using var reader = command.ExecuteReader();
@@ -505,11 +596,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
             if (wordId != currentWordId)
             {
                 if (currentWordId is not null)
-                    words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs));
+                    words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
+                    { Morphology = currentMorphology, Correctness = currentCorrectness });
                 currentWordId = wordId;
                 currentWord = reader.GetString(1);
                 currentOutcome = reader.GetString(2);
                 currentElapsedMs = reader.IsDBNull(3) ? null : reader.GetInt32(3);
+                currentSignature = reader.IsDBNull(8) ? null : reader.GetString(8);
+                currentMorphology = reader.IsDBNull(9) ? null
+                    : JsonSerializer.Deserialize<ParseWordEvidence>(reader.GetString(9), ParseMorphEvidence.JsonOptions);
+                currentCorrectness = reader.IsDBNull(10) ? null
+                    : JsonSerializer.Deserialize<WordCorrectness>(reader.GetString(10), ParseMorphEvidence.JsonOptions);
                 currentAnalyses = [];
             }
 
@@ -524,7 +621,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         }
 
         if (currentWordId is not null)
-            words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs));
+            words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
+            { Morphology = currentMorphology, Correctness = currentCorrectness });
         return words;
     }
 }

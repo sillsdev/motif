@@ -3,24 +3,6 @@ using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Host.Assess;
 
-/// <summary>
-/// Resolves a Trial scope's opaque <see cref="StoredScope.Trial.Engine"/> name into the <see cref="ParserEngine"/>
-/// a <see cref="BatchAnalysis"/> needs — PanGloss's own vocabulary, never <see cref="ScopeCodec"/>'s concern.
-/// </summary>
-internal static class ScopeEngine
-{
-    /// <exception cref="ReportRefusalException">The name is not one PanGloss's Assessor ever writes.</exception>
-    public static ParserEngine Resolve(string engine, string reportKind)
-    {
-        if (string.IsNullOrWhiteSpace(engine) || !PanGlossEngineNames.TryParse(engine, out var parsed))
-        {
-            throw new ReportRefusalException(reportKind,
-                $"the Assessment's recorded scope names an engine ('{engine}') this report cannot interpret.");
-        }
-        return parsed;
-    }
-}
-
 /// <summary>Converts a stored per-word outcome string back to the enum it was written from.</summary>
 internal static class StoredWordOutcome
 {
@@ -60,84 +42,79 @@ public sealed class CoverageReportProducer : IReportProducer
         }
 
         var scope = ScopeCodec.ReadTrial(assessment.ScopeJson, KindName);
-        var engine = ScopeEngine.Resolve(scope.Engine, KindName);
         var words = assessment.Words.Select((word, index) => new WordAnalysis(
             index, word.Word, 0, StoredWordOutcome.Parse(word.Outcome, KindName), string.Empty)).ToList();
         var batch = new BatchAnalysis(
-            words, engine, (int)scope.PerWordLimit.TotalMilliseconds, string.Empty, Array.Empty<string>());
+            words, (int)scope.PerWordLimit.TotalMilliseconds, string.Empty, Array.Empty<string>()) { PerWordStepLimit = scope.PerWordStepLimit };
         var selection = new Selection(assessment.SelectionName, assessment.SelectionWords, assessment.SelectionSha256);
         var figure = GrammarCoverageFigure.Compute(batch, selection, assessment.GrammarSourceSha256);
         return new RenderedReport(KindName, figure.Describe(assessment.SelectionSha256, assessment.GrammarSourceSha256));
     }
 }
 
-/// <summary>
-/// Turns a <c>Correctness</c> Assessment's own stored words and analyses into the
-/// <see cref="GrammarCoverageFigure"/> both <see cref="CorrectnessReportProducer"/> and
-/// <c>RegressionChecker</c> need — a word counts as analysed when it carries at least one stored
-/// <see cref="ParsedAnalysis"/> row, never by comparing digests across PanGloss's and FieldWorks' separate
-/// identity schemes, which <c>AutomaticAnalysis</c>'s own remarks document as not comparable.
-/// </summary>
+/// <summary>Builds a coverage denominator only from completed, comparable approved expectations.</summary>
 internal static class CorrectnessCoverage
 {
-    /// <exception cref="ReportRefusalException">The scope's engine name cannot be read.</exception>
     public static GrammarCoverageFigure Compute(
         IReadOnlyList<AssessedWord> words, StoredScope.Trial scope, Selection selection,
         string grammarSourceSha256, string reportKind)
     {
-        var engine = ScopeEngine.Resolve(scope.Engine, reportKind);
-        var analysed = words.Select((word, index) => new WordAnalysis(
-            index, word.Word, 0,
-            word.Analyses.Count > 0 ? WordOutcome.Analysed : WordOutcome.NoAnalysis,
-            word.Analyses.Count > 0 ? word.Analyses[0].IdentityDigest : string.Empty)).ToList();
-        var batch = new BatchAnalysis(
-            analysed, engine, (int)scope.PerWordLimit.TotalMilliseconds, string.Empty, Array.Empty<string>());
-        return GrammarCoverageFigure.Compute(batch, selection, grammarSourceSha256);
+        var compared = words.Select((word, index) => new WordAnalysis(index, word.Word, 0,
+            Require(word, reportKind).Status switch
+            {
+                "covered" => WordOutcome.Analysed,
+                "unmatched" => WordOutcome.NoAnalysis,
+                "incomplete" => WordOutcome.Capped,
+                _ => WordOutcome.Skipped,
+            }, string.Empty)).ToArray();
+        return GrammarCoverageFigure.Compute(new BatchAnalysis(compared,
+            (int)scope.PerWordLimit.TotalMilliseconds, string.Empty, [])
+            { PerWordStepLimit = scope.PerWordStepLimit }, selection, grammarSourceSha256);
+    }
+
+    internal static SIL.Motif.Contract.Responses.WordCorrectness Require(AssessedWord word, string reportKind)
+    {
+        if (word.Correctness is null || word.Morphology is null)
+            throw new ReportRefusalException(reportKind, "The word has no approved morphology comparison evidence.");
+        return MorphologyCorrectness.Compare(word.Morphology, word.Correctness.Expectations);
     }
 }
 
-/// <summary>
-/// Correctness against manual analysis: of the words this scope declared as carrying a human-decided
-/// analysis, how many the parser still produces at least one analysis for. Rendered from a <c>Correctness</c>
-/// Assessment's own stored words and analyses.
-/// </summary>
-/// <remarks>
-/// Reuses <see cref="GrammarCoverageFigure"/> rather than a second figure type: whether a word still gets an
-/// analysed verdict is exactly what that type already answers, and this kind differs from
-/// <see cref="CoverageReportProducer"/> only in which Assessment kind it insists on and in what "analysed"
-/// is read from.
-/// </remarks>
+/// <summary>Reports every approved reading's match separately from search completion.</summary>
 public sealed class CorrectnessReportProducer : IReportProducer
 {
-    /// <summary>The registry name this kind is asked for under.</summary>
     public const string KindName = "correctness";
-
-    /// <inheritdoc />
     public string Kind => KindName;
+    public string Description => "Approved morphology matches, with incomplete and unavailable searches explicit.";
 
-    /// <inheritdoc />
-    public string Description =>
-        "Correctness against manual analysis: of the words carrying a human-decided analysis, how many the parser still analyses.";
-
-    /// <inheritdoc />
     public RenderedReport Produce(ReportableAssessment assessment, ReportQuery query, IAssessorCatalog assessors)
     {
         ArgumentNullException.ThrowIfNull(assessment);
         if (!assessment.Kind.IsStoredKind(AssessmentKind.Correctness))
-        {
             throw new ReportRefusalException(KindName,
-                $"this Assessment is a '{assessment.Kind}' measurement; a correctness report needs one " +
-                "collected as 'Correctness' (parses checked against manual analysis), which this scope did " +
-                "not collect.");
+                $"This Assessment is '{assessment.Kind}'; a correctness report requires 'Correctness'.");
+        var rows = assessment.Words.Select(word => (word, result: CorrectnessCoverage.Require(word, KindName))).ToArray();
+        var complete = rows.Count(row => !row.word.Morphology!.Capped && !row.word.Morphology.TimedOut && !row.word.Morphology.InvalidShape);
+        var incomplete = rows.Count(row => row.word.Morphology!.Capped || row.word.Morphology.TimedOut);
+        var text = new System.Text.StringBuilder();
+        text.AppendLine($"{complete} searches completed; {incomplete} incomplete.");
+        text.AppendLine($"{rows.Sum(row => row.result.Matched)}/{rows.Sum(row => row.result.Expected)} approved readings matched.");
+        text.AppendLine($"{rows.Count(row => row.result.Status == "covered")} words covered; " +
+            $"{rows.Count(row => row.result.Status == "unmatched")} unmatched; " +
+            $"{rows.Count(row => row.result.Unavailable.Count > 0 || row.word.Morphology!.InvalidShape)} unavailable; " +
+            $"{rows.Count(row => row.result.Expected == 0)} without approved expectations.");
+        foreach (var (word, result) in rows)
+        {
+            var limits = string.Join(" and ", new[]
+                { word.Morphology!.Capped ? "step limit" : null, word.Morphology.TimedOut ? "time limit" : null }
+                .OfType<string>());
+            var completion = word.Morphology!.Capped || word.Morphology.TimedOut
+                ? $"INCOMPLETE — parsing did not finish ({limits})"
+                : word.Morphology.InvalidShape ? "Not attempted" : "Search completed";
+            text.AppendLine($"{word.Word}: {completion}; {result.Matched}/{result.Expected} approved readings matched; {result.Status}");
+            foreach (var reason in result.Unavailable) text.AppendLine($"  Unavailable: {reason}");
         }
-
-        var selection = new Selection(assessment.SelectionName, assessment.SelectionWords, assessment.SelectionSha256);
-        var scope = ScopeCodec.ReadTrial(assessment.ScopeJson, KindName);
-        var figure = CorrectnessCoverage.Compute(
-            assessment.Words, scope, selection, assessment.GrammarSourceSha256, KindName);
-        var text = "Correctness against manual analysis — " +
-            figure.Describe(assessment.SelectionSha256, assessment.GrammarSourceSha256);
-        return new RenderedReport(KindName, text);
+        return new RenderedReport(KindName, text.ToString());
     }
 }
 

@@ -19,47 +19,44 @@ namespace SIL.Motif.Host.Parser;
 /// hashes a grammar itself, because <see cref="AssessReport.GrammarSourceSha256"/> already carries the
 /// parser's own hash of exactly what it read (<see cref="GrammarCoverageFigure"/>'s remarks on <c>Compute</c>).
 /// </param>
-/// <param name="Engine">Which of PanGloss's two Motif-usable modes produced this — see <see cref="ParserEngine"/>.</param>
 /// <param name="PerWordTimeoutMs">
-/// The per-word cap the run enforced. <c>null</c> means the run had no cap, which is only trustworthy as
-/// "not a lower bound" when <see cref="TimedOutCount"/> is also zero — a run can only time out words if it
-/// was capped, so the two fields are consistent by construction, never by convention.
+/// The per-word time limit recorded for the run.
 /// </param>
 /// <param name="TimedOutCount">
-/// How many words hit <see cref="PerWordTimeoutMs"/>. Non-zero forces <see cref="IsLowerBound"/>: a timeout
-/// is a fact about the machine and the cap, never counted as an analysis failure.
+/// How many words reached their time limit without finishing their searches.
 /// </param>
 /// <param name="Analysed">Words the parser produced at least one analysis for — the numerator.</param>
 /// <param name="Adjudicated">
 /// The denominator: analysed plus no-analysis, exactly <see cref="BatchAnalysis.Adjudicated"/>. Timed-out
-/// and skipped words are excluded because they carry no verdict either way, so including them would let a
+/// capped and skipped words are excluded because they carry no completed search, so including them would let a
 /// figure move for reasons that have nothing to do with the grammar.
 /// </param>
+/// <param name="CappedCount">Words whose searches exhausted the step budget.</param>
+/// <param name="SkippedCount">Words the parser did not attempt.</param>
 public sealed record GrammarCoverageFigure(
     string SelectionName,
     string SelectionSha256,
     string GrammarSourceSha256,
-    ParserEngine Engine,
     int? PerWordTimeoutMs,
     int TimedOutCount,
     int Analysed,
-    int Adjudicated)
+    int Adjudicated,
+    int CappedCount,
+    int SkippedCount)
 {
     /// <summary>
     /// The coverage fraction — <see cref="Analysed"/> divided by <see cref="Adjudicated"/>, or <c>null</c>
-    /// when nothing was adjudicated. Zero adjudicated words is not "0% coverage": every word either timed
-    /// out or was skipped, so nothing was ever judged against the grammar, and reporting either 0% or 100%
-    /// would assert a verdict nothing here ever produced.
+    /// when no search completed. A fraction over completed searches does not bound the whole selection's
+    /// grammar coverage; the omitted searches may have either outcome.
     /// </summary>
     public double? Fraction => Adjudicated == 0 ? null : (double)Analysed / Adjudicated;
 
     /// <summary>
-    /// <c>true</c> when this figure is a lower bound and must present itself as one rather than as a
-    /// measurement. Computed from <see cref="TimedOutCount"/> rather than trusted from a caller, for the
-    /// same reason <see cref="BatchAnalysis.IsLowerBound"/> is a property and not a constructor parameter:
-    /// it must be impossible for a figure with timeouts to forget to say so.
+    /// Whether an attempted word's search stopped at a time or step limit.
     /// </summary>
-    public bool IsLowerBound => TimedOutCount > 0;
+    public bool IsIncomplete => IncompleteCount > 0;
+
+    public int IncompleteCount => TimedOutCount + CappedCount;
 
     /// <summary>
     /// Whether this figure still describes the current world.
@@ -96,24 +93,15 @@ public sealed record GrammarCoverageFigure(
         var subject = $"selection '{SelectionName}' ({Short(SelectionSha256)}) under grammar {Short(GrammarSourceSha256)}";
         var current = IsCurrent(currentSelectionSha256, currentGrammarSourceSha256);
 
-        // The tense is chosen once, here, and threaded through — not patched into finished prose afterwards.
-        var verb = current
-            ? (IsLowerBound ? "is at least" : "is")
-            : (IsLowerBound ? "was at least" : "was");
-
-        // Nothing adjudicated is not 0% — every word timed out or was skipped, so no verdict was ever reached.
+        var verb = current ? "is" : "was";
+        var counts = $"{Adjudicated:N0} searches completed; {IncompleteCount:N0} incomplete " +
+                     $"({CappedCount:N0} capped, {TimedOutCount:N0} timed out); {SkippedCount:N0} skipped.";
         var measure = Fraction is null
-            ? "no word reached a verdict, so grammar coverage is not computable"
-            : $"grammar coverage {verb} {Fraction.Value:P1} ({Analysed:N0} of {Adjudicated:N0} adjudicated)";
-
-        if (Fraction is not null && IsLowerBound)
-        {
-            measure += $" — a lower bound, because {TimedOutCount:N0} word(s) hit the " +
-                       $"{PerWordTimeoutMs:N0} ms cap and carry no verdict";
-        }
+            ? "no search completed, so grammar coverage is not computable"
+            : $"grammar coverage {verb} {Fraction.Value:P1} ({Analysed:N0} of {Adjudicated:N0} completed searches)";
 
         // Present tense is licensed only when both hashes still match.
-        if (current) return $"For {subject}, {measure}.";
+        if (current) return $"{counts} For {subject}, {measure}.";
 
         var moved = new List<string>();
         if (!string.Equals(SelectionSha256, currentSelectionSha256, StringComparison.Ordinal))
@@ -121,7 +109,7 @@ public sealed record GrammarCoverageFigure(
         if (!string.Equals(GrammarSourceSha256, currentGrammarSourceSha256, StringComparison.Ordinal))
             moved.Add($"the grammar has changed (now {Short(currentGrammarSourceSha256)})");
 
-        return $"As of the assessment over {subject}, {measure}. Since then, {string.Join(" and ", moved)}, " +
+        return $"{counts} As of the assessment over {subject}, {measure}. Since then, {string.Join(" and ", moved)}, " +
                "so this describes a state that no longer exists. Rerun to measure the current one.";
     }
 
@@ -138,13 +126,8 @@ public sealed record GrammarCoverageFigure(
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Why this takes a <see cref="BatchAnalysis"/> and a grammar hash separately, rather than one
-    /// object.</b> <see cref="PanGlossParser.AnalyseBatch"/> is the call that carries a per-word timeout and
-    /// therefore the only one that can produce <see cref="WordOutcome.TimedOut"/> rows — the raw material a
-    /// lower-bound figure needs. <see cref="PanGlossParser.Assess"/> is the call that resolves identities to
-    /// FieldWorks GUIDs and, as a side effect, carries <see cref="AssessReport.GrammarSourceSha256"/>. A
-    /// coverage figure needs facts that only exist on two different reports of the same grammar; this method
-    /// does not run either call itself; it only assembles what a caller already obtained from both.
+    /// The caller supplies the grammar identity separately from the batch outcomes so that the figure
+    /// describes the measured input without opening a project or invoking a parser while rendering.
     /// </para>
     /// <para>
     /// <b>Throws rather than silently mismeasuring</b> when <paramref name="analysis"/> did not in fact run
@@ -175,11 +158,12 @@ public sealed record GrammarCoverageFigure(
             SelectionName: selection.Name,
             SelectionSha256: selection.Sha256,
             GrammarSourceSha256: grammarSourceSha256,
-            Engine: analysis.Engine,
             PerWordTimeoutMs: analysis.PerWordTimeoutMs,
             TimedOutCount: analysis.TimedOut,
             Analysed: analysis.Analysed,
-            Adjudicated: analysis.Adjudicated);
+            Adjudicated: analysis.Adjudicated,
+            CappedCount: analysis.Capped,
+            SkippedCount: analysis.Skipped);
     }
 
     /// <summary>

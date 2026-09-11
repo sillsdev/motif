@@ -25,6 +25,22 @@ public class ParserOutputTests
     private static string Fixture(string name) =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Parser", "Fixtures", name));
 
+    [Theory]
+    [InlineData("-")]
+    [InlineData("approved-analysis-signature")]
+    public void CappedWordRetainsPartialEvidenceAndDoesNotHideLaterCompletedWords(string signature)
+    {
+        var words = BatchTsvParser.Parse(
+            $"0\tlimited\t3\tCAP\t{signature}\n1\tfinished\t4\tok\tfinished-sig\n");
+
+        Assert.Equal(2, words.Count);
+        Assert.Equal("capped", words[0].Outcome.ToStoredOutcome());
+        Assert.Equal(signature, words[0].Signature);
+        Assert.Equal(WordOutcome.Analysed, words[1].Outcome);
+        Assert.True(StoredWordOutcomeNames.TryParseStoredOutcome("capped", out var restored));
+        Assert.Equal(words[0].Outcome, restored);
+    }
+
     [Fact]
     public void BatchOutput_SeparatesAnalysedFromTimedOutFromSkipped()
     {
@@ -56,16 +72,15 @@ public class ParserOutputTests
     }
 
     [Fact]
-    public void ABatchWithAnyTimeout_IsMarkedALowerBound()
+    public void ABatchWithAnyTimeout_IsIncomplete()
     {
         var analysis = new BatchAnalysis(
             BatchTsvParser.Parse(Fixture("batch-mixed-outcomes.tsv")),
-            ParserEngine.FstPrunedByHermitCrab,
             PerWordTimeoutMs: 5000,
             ProjectPath: "irrelevant.fwdata",
             Warnings: Array.Empty<string>());
 
-        Assert.True(analysis.IsLowerBound);
+        Assert.True(analysis.IsIncomplete);
         Assert.Equal(2, analysis.TimedOut);
 
         // Timeouts and skipped words must not dilute the fraction of adjudicated words with analyses.
@@ -74,16 +89,16 @@ public class ParserOutputTests
     }
 
     [Fact]
-    public void ABatchWithNoTimeouts_IsNotALowerBound()
+    public void ABatchWithNoTimeouts_HasNoIncompleteSearches()
     {
         var clean = BatchTsvParser.Parse(Fixture("batch-mixed-outcomes.tsv"))
             .Where(w => w.Outcome != WordOutcome.TimedOut)
             .ToList();
 
         var analysis = new BatchAnalysis(
-            clean, ParserEngine.FstPrunedByHermitCrab, 5000, "irrelevant.fwdata", Array.Empty<string>());
+            clean, 5000, "irrelevant.fwdata", Array.Empty<string>());
 
-        Assert.False(analysis.IsLowerBound);
+        Assert.False(analysis.IsIncomplete);
     }
 
     [Fact]
@@ -120,13 +135,4 @@ public class ParserOutputTests
         Assert.Null(ParserRefusalRecognizer.Recognize("thread 'main' panicked at src/main.rs:1:1"));
     }
 
-    [Fact]
-    public void EngineFlags_MapBothCommandSpellingsOfTheSameMode()
-    {
-        // batch and assess spell the same propose-then-confirm composite differently; pinned so it need not be redone.
-        Assert.Equal("foma", ParserEngine.FstPrunedByHermitCrab.BatchEngine());
-        Assert.Equal("foma-confirm", ParserEngine.FstPrunedByHermitCrab.AssessPipeline());
-        Assert.Equal("default", ParserEngine.HermitCrabOnly.BatchEngine());
-        Assert.Equal("hermitcrab", ParserEngine.HermitCrabOnly.AssessPipeline());
-    }
 }

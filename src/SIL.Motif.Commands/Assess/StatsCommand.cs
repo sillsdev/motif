@@ -11,7 +11,6 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
-using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
@@ -28,13 +27,7 @@ namespace SIL.Motif.Commands.Assess;
 /// <see cref="StatsRequest.ForwardedArguments"/> to the invocation untouched. A new PanGloss filter or
 /// grouping is usable through Motif the day it ships, with no change here.
 /// </para>
-/// <para>
-/// <b>The grammar path always comes from the project's current Baseline</b> — never from a Trial's own
-/// candidate copy, even when <see cref="StatsRequest.ProposalId"/> selects a Trial's Assessment. A Trial's
-/// candidate is a throwaway scratch directory deleted once its job finishes; only the per-object stats
-/// cache a Trial produced is kept, keyed durably by the grammar digest it measured. The Baseline's own
-/// <c>.fwdata</c> is the one grammar file this project retains on disk for PanGloss to read alongside it.
-/// </para>
+/// Retained invocation evidence supplies the exact source and cache; verified copies protect those artifacts.
 /// </remarks>
 public static class StatsCommand
 {
@@ -56,6 +49,11 @@ public static class StatsCommand
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(request.ForwardedArguments);
+
+        if (request.AssessmentId is not null && request.ProposalId is not null)
+            return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
+                "stats.selector-conflict", FailureReason.InvalidArgument,
+                "Select an exact Assessment or a Proposal, not both."));
 
         if (request.Output == StatsOutputKind.JsonRows && ContainsFormatFlag(request.ForwardedArguments))
         {
@@ -81,28 +79,33 @@ public static class StatsCommand
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
-            if (baseline is null)
-            {
-                return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
-                    "stats.no-baseline", FailureReason.NotFound,
-                    "No Baseline has been captured for this project yet; there is no grammar to query.",
-                    Fact(("projectPath", request.ProjectPath))));
-            }
-
             var assessments = new AssessmentRepository(database);
             var kind = AssessmentKind.ObjectTiming.ToStoredKind();
-            var candidates = proposalId is null
-                ? assessments.ListBaselineAssessments(kind)
-                : assessments.ListByProposal(proposalId.Value)
-                    .Where(record => record.Kind.IsStoredKind(AssessmentKind.ObjectTiming)).ToList();
-
-            var assessment = candidates.Count > 0 ? candidates[^1] : null;
+            AssessmentRecord? assessment;
+            if (request.AssessmentId is not null)
+            {
+                try { assessment = assessments.Get(request.AssessmentId); }
+                catch (KeyNotFoundException) { assessment = null; }
+                if (assessment is not null && !assessment.Kind.IsStoredKind(AssessmentKind.ObjectTiming))
+                    return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
+                        "stats.wrong-kind", FailureReason.InvalidArgument,
+                        "The named Assessment did not collect per-object statistics."));
+            }
+            else
+            {
+                var candidates = proposalId is null
+                    ? assessments.ListBaselineAssessments(kind)
+                    : assessments.ListByProposal(proposalId.Value)
+                        .Where(record => record.Kind.IsStoredKind(AssessmentKind.ObjectTiming)).ToList();
+                assessment = candidates.Count > 0 ? candidates[^1] : null;
+            }
             if (assessment is null)
             {
                 return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
                     "stats.no-assessment", FailureReason.NotFound,
-                    proposalId is null
+                    request.AssessmentId is not null
+                        ? $"Assessment '{request.AssessmentId}' was not found."
+                        : proposalId is null
                         ? "No Baseline Assessment with per-object statistics has been recorded yet; run " +
                           "`motif assess` first."
                         : $"No Trial Assessment with per-object statistics has been recorded for Proposal " +
@@ -110,7 +113,7 @@ public static class StatsCommand
                     Fact(("projectPath", request.ProjectPath))));
             }
 
-            if (assessment.CachePath is null)
+            if (string.IsNullOrWhiteSpace(assessment.CachePath) || string.IsNullOrWhiteSpace(assessment.CacheDigest))
             {
                 return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
                     "stats.no-cache", FailureReason.Refused,
@@ -123,19 +126,34 @@ public static class StatsCommand
                 ? AppendFormatJsonl(request.ForwardedArguments)
                 : request.ForwardedArguments;
 
-            var outcome = invoker.RunAsync(
-                    new PanGlossRequest.Stats(baseline.FwDataPath, assessment.CachePath, forwarded),
-                    "stats:" + workspaceKey, cancellationToken)
-                .GetAwaiter().GetResult();
-            if (outcome is not PanGlossOutcome.Completed completed)
-                return CommandOutcome<StatsCommandResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
+            if (assessment.Invocation is null)
+                return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
+                    "stats.no-evidence", FailureReason.Refused,
+                    "The Assessment has no retained invocation source evidence; run a new Assessment."));
 
-            return CommandOutcome<StatsCommandResponse>.Success(request.Output == StatsOutputKind.Text
-                ? new StatsCommandResponse(
-                    assessment.AssessmentId, baseline.FwDataPath, assessment.CachePath, completed.Output, null)
-                : new StatsCommandResponse(
-                    assessment.AssessmentId, baseline.FwDataPath, assessment.CachePath, null,
-                    ParseJsonRows(completed.Output)));
+            try
+            {
+                using var replay = StatsEvidenceReplay.Create(assessment.Invocation, assessment.CachePath, assessment.CacheDigest);
+                var outcome = invoker.RunAsync(
+                        new PanGlossRequest.Stats(replay.GrammarPath, replay.CachePath, forwarded),
+                        "stats:" + workspaceKey, cancellationToken)
+                    .GetAwaiter().GetResult();
+                if (outcome is not PanGlossOutcome.Completed completed)
+                    return CommandOutcome<StatsCommandResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
+
+                return CommandOutcome<StatsCommandResponse>.Success(request.Output == StatsOutputKind.Text
+                    ? new StatsCommandResponse(
+                        assessment.AssessmentId, assessment.Invocation.SourcePath, assessment.CachePath, completed.Output, null)
+                    : new StatsCommandResponse(
+                        assessment.AssessmentId, assessment.Invocation.SourcePath, assessment.CachePath, null,
+                        ParseJsonRows(completed.Output)));
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+            {
+                return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
+                    "stats.invalid-evidence", FailureReason.Refused, exception.Message,
+                    Fact(("assessmentId", assessment.AssessmentId))));
+            }
         });
     }
 

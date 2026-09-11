@@ -3,7 +3,9 @@ using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -15,6 +17,26 @@ public sealed class AssessmentRepositoryTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-assessments-" + Guid.NewGuid().ToString("N"));
 
     public AssessmentRepositoryTests() => Directory.CreateDirectory(_root);
+
+    [Fact]
+    public void SharedMorphologyAndApprovedExpectationsSurviveReadBackWithBothLimitFlags()
+    {
+        var repository = NewRepository("morphology.fwdata", out var database);
+        using var ownedDatabase = database;
+        var complete = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("same", true);
+        var partial = complete with { Outcome = "timed-out", Morphology = complete.Morphology! with { Capped = true, TimedOut = true } };
+        partial = partial with { Correctness = MorphologyCorrectness.Compare(partial.Morphology!, complete.Correctness!.Expectations) };
+        repository.Record(NewAssessment("morphology", null, null, "Correctness", [partial, complete]));
+        var rows = repository.Get("morphology").Words!;
+        Assert.Equal(2, rows.Count);
+        Assert.True(rows[0].Morphology!.Capped);
+        Assert.True(rows[0].Morphology!.TimedOut);
+        Assert.Equal("incomplete", rows[0].Correctness!.Status);
+        Assert.Equal(1, rows[0].Correctness!.Matched);
+        Assert.Equal(complete.Morphology!.Analyses[0].Morphs[0], rows[0].Morphology!.Analyses[0].Morphs[0]);
+        Assert.Equal("covered", rows[1].Correctness!.Status);
+        Assert.Single(rows[1].Correctness!.Expectations);
+    }
 
     [Fact]
     public void RecordsAnAssessmentWithWordsAndAnalysesAndReadsItBackById()
@@ -72,6 +94,119 @@ public sealed class AssessmentRepositoryTests : IDisposable
         Assert.Equal("d2", stored.Report.Words[0].Analyses[1].IdentityDigest);
         Assert.Equal("nyumba", stored.Report.Words[1].Word);
         Assert.Empty(stored.Report.Words[1].Analyses);
+    }
+
+    [Fact]
+    public void BatchSignaturesSurviveStorageWithoutChangingCompletionOrInventingAnalyses()
+    {
+        var repository = NewRepository("batch-signatures.fwdata", out var database);
+        using var ownedDatabase = database;
+        var batch = new BatchAnalysis(BatchTsvParser.Parse(
+            "0\tpartial\t15\tCAP\troot+noun\n1\tcapped-empty\t16\tCAP\t-\n" +
+            "2\ttimed\t1000\tTIMEOUT\troot+verb\n3\tfinished\t20\tok\troot+noun\n" +
+            "4\tabsent\t21\tok\t-\n"), 1000, "grammar.fwdata", []);
+        var (words, cachePath, cacheDigest) = AssessmentMaterial.From(new AssessmentRaw.Batch(batch));
+        Assert.Null(cachePath);
+        Assert.Null(cacheDigest);
+        repository.Record(NewAssessment("batch-signatures", null, null, "ParseTime", words));
+
+        var stored = repository.Get("batch-signatures").Words!;
+        Assert.Equal(new[] { "partial", "capped-empty", "timed", "finished", "absent" }, stored.Select(word => word.Word));
+        Assert.Equal(new[] { "capped", "capped", "timed-out", "analysed", "no-analysis" }, stored.Select(word => word.Outcome));
+        Assert.Equal(new[] { "root+noun", "-", "root+verb", "root+noun", "-" }, stored.Select(word => word.RawSignature));
+        Assert.Equal(new int?[] { 15, 16, 1000, 20, 21 }, stored.Select(word => word.ElapsedMs));
+        Assert.All(stored, word => Assert.Empty(word.Analyses));
+    }
+
+    [Fact]
+    public void MissingRawSignaturesRemainAbsentAlongsideAuthoritativeAnalyses()
+    {
+        var repository = NewRepository("absent-signature.fwdata", out var database);
+        using var ownedDatabase = database;
+        repository.Record(NewAssessment("absent-signature", null, null, "Correctness"));
+
+        var words = repository.Get("absent-signature").Words!;
+        Assert.All(words, word => Assert.Null(word.RawSignature));
+        Assert.Single(words[0].Analyses);
+    }
+
+    [Fact]
+    public void SharedInvocationEvidenceRoundTripsOnceWithAbsentParserMetadata()
+    {
+        var repository = NewRepository("invocation.fwdata", out var database);
+        using var ownedDatabase = database;
+        var evidence = Invocation("shared-run");
+        var first = NewAssessment("timing", null, null, "ParseTime") with
+        {
+            Invocation = evidence, OutcomeDigest = null, SemanticDigest = null,
+            ModelFingerprint = null, Pipeline = null, DiagnosticCount = null
+        };
+        repository.RecordBatch([first, first with { AssessmentId = "stats", Kind = "ObjectTiming" }]);
+
+        var stored = repository.Get("timing");
+        Assert.Equal(evidence, stored.Invocation);
+        Assert.Equal(evidence, repository.Get("stats").Invocation);
+        Assert.Null(stored.OutcomeDigest);
+        Assert.Null(stored.SemanticDigest);
+        Assert.Null(stored.ModelFingerprint);
+        Assert.Null(stored.Pipeline);
+        Assert.Null(stored.DiagnosticCount);
+        Assert.Throws<InvalidOperationException>(() => stored.ToStored());
+        using var connection = database.OpenConnection();
+        using var count = connection.CreateCommand();
+        count.CommandText = "SELECT COUNT(*) FROM AssessmentInvocations;";
+        Assert.Equal(1L, count.ExecuteScalar());
+    }
+
+    [Fact]
+    public void ACollisionOnTheSecondBatchRowRollsBackTheFirstRowAndInvocation()
+    {
+        var repository = NewRepository("atomic-batch.fwdata", out var database);
+        using var ownedDatabase = database;
+        var first = NewAssessment("duplicate", null, null, "ParseTime") with { Invocation = Invocation("rollback-run") };
+        Assert.Throws<SqliteException>(() => repository.RecordBatch([first, first]));
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("duplicate"));
+        using var connection = database.OpenConnection();
+        using var count = connection.CreateCommand();
+        count.CommandText = "SELECT COUNT(*) FROM AssessmentInvocations;";
+        Assert.Equal(0L, count.ExecuteScalar());
+    }
+
+    [Fact]
+    public void AnInvocationIdCannotBeReusedForDifferentEvidence()
+    {
+        var repository = NewRepository("conflicting-evidence.fwdata", out var database);
+        using var ownedDatabase = database;
+        var first = NewAssessment("original", null, null, "ParseTime") with { Invocation = Invocation("same-run") };
+        repository.Record(first);
+        var conflicting = first with
+        {
+            AssessmentId = "conflicting",
+            Invocation = first.Invocation! with { PerWordStepLimit = 7 }
+        };
+        Assert.Throws<InvalidOperationException>(() => repository.RecordBatch([conflicting]));
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("conflicting"));
+        Assert.Equal(first.Invocation, repository.Get("original").Invocation);
+    }
+
+    private static BatchInvocationEvidence Invocation(string id) => new(
+        id, "source.fwdata", "sha256:source", "sha256:executable", "words.txt", "sha256:words",
+        "rows.tsv", "sha256:rows", "stderr.txt", "sha256:stderr", 1000, 200000, 1, true);
+
+    [Fact]
+    public void MaterialCopiesInvocationEvidenceWithoutFillingMissingParserMetadata()
+    {
+        var evidence = Invocation("material-run");
+        var produced = new ProducedAssessment(AssessmentKind.ParseTime, "sha256:source",
+            null, null, null, null, null, new AssessmentRaw.WordMeasurements([])) { Invocation = evidence };
+        var record = AssessmentMaterial.ToRecord(produced, "material", null, null, "pangloss", "{}",
+            "sha256:scope", "whitespace", "1", "baseline", Selection.Create("selection", []));
+        Assert.Equal(evidence, record.Invocation);
+        Assert.Null(record.OutcomeDigest);
+        Assert.Null(record.SemanticDigest);
+        Assert.Null(record.ModelFingerprint);
+        Assert.Null(record.Pipeline);
+        Assert.Null(record.DiagnosticCount);
     }
 
     [Fact]

@@ -118,7 +118,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(project, argv[1]);
         Assert.EndsWith("words.txt", argv[2], StringComparison.Ordinal);
         Assert.EndsWith("out.tsv", argv[3], StringComparison.Ordinal);
-        Assert.Equal(["--word-timeout-ms", "1500", "--threads", "1", "--stats", "--cache", cache], argv[4..]);
+        Assert.Equal(["--word-timeout-ms", "1500", "--step-cap", "200000", "--threads", "1", "--stats", "--cache", cache], argv[4..]);
         Assert.True(File.Exists(cache));
     }
 
@@ -131,7 +131,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         await invoker.RunAsync(
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), "test:batch", CancellationToken.None);
 
-        Assert.Equal(["--word-timeout-ms", "1000", "--threads", "1"], Argv(project)[4..]);
+        Assert.Equal(["--word-timeout-ms", "1000", "--step-cap", "200000", "--threads", "1"], Argv(project)[4..]);
     }
 
     [Fact]
@@ -146,6 +146,35 @@ public sealed class PanGlossInvokerTests : IDisposable
             "test:batch", CancellationToken.None);
 
         Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
+    }
+
+    [Fact]
+    public async Task Batch_ExplicitStepBudgetIsIndependentOfTheTimeLimit()
+    {
+        var project = Project("batch-budget");
+        using var invoker = Invoker();
+
+        await invoker.RunAsync(
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordStepLimit: 123),
+            "test:batch-budget", CancellationToken.None);
+
+        Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--threads", "1"], Argv(project)[4..]);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(int.MinValue)]
+    public async Task Batch_RejectsNegativeStepBudgetsBeforeInvocation(int stepLimit)
+    {
+        var project = Project("batch-invalid-budget");
+        using var invoker = Invoker();
+
+        var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => invoker.RunAsync(
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1), PerWordStepLimit: stepLimit),
+            "test:batch-invalid-budget", CancellationToken.None));
+
+        Assert.Equal("PerWordStepLimit", exception.ParamName);
+        Assert.False(File.Exists(Path.Combine(_root, "_pangloss-argv.json")));
     }
 
     [Fact]
@@ -197,13 +226,39 @@ public sealed class PanGlossInvokerTests : IDisposable
         var heartbeat = Path.Combine(_root, "heartbeat.txt");
         FakeParser.Behave(_root, new { heartbeatPath = heartbeat });
         using var invoker = Invoker();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(400));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
-        var outcome = await invoker.RunAsync(
+        var run = invoker.RunAsync(
             new PanGlossRequest.Import(project, Path.Combine(_root, "g.json")), "test:cancel", cts.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!File.Exists(heartbeat) && !run.IsCompleted && DateTime.UtcNow < deadline)
+            await Task.Delay(20);
+        await cts.CancelAsync();
+        var outcome = await run;
 
         Assert.IsType<PanGlossOutcome.Cancelled>(outcome);
         await AssertStoppedTicking(heartbeat);
+    }
+
+    [Fact]
+    public async Task CancellingBatchWaitsForArtifactHandlesToCloseBeforeCleanup()
+    {
+        var project = Project("cancel-batch");
+        var heartbeat = Path.Combine(_root, "heartbeat.txt");
+        FakeParser.Behave(_root, new { heartbeatPath = heartbeat });
+        using var invoker = Invoker();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var run = invoker.RunAsync(new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)),
+            "test:cancel-batch", cancellation.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!File.Exists(heartbeat) && !run.IsCompleted && DateTime.UtcNow < deadline)
+            await Task.Delay(20);
+        Assert.True(File.Exists(heartbeat));
+        var wordsPath = Argv(project)[2];
+        Assert.Throws<IOException>(() => File.Open(wordsPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None));
+        await cancellation.CancelAsync();
+        Assert.IsType<PanGlossOutcome.Cancelled>(await run);
+        Assert.False(Directory.Exists(Path.GetDirectoryName(wordsPath)));
     }
 
     [Fact]
@@ -232,6 +287,71 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     private PanGlossInvoker Invoker() => new(FakeParser.ExecutablePath, NewQueue());
+
+    [Theory]
+    [InlineData("source.fwdata")]
+    [InlineData("words.txt")]
+    public async Task CapturedBatchRefusesChangedStagedInputAndRemovesUnpublishedArtifacts(string changedFile)
+    {
+        var source = Project("changed");
+        var artifacts = Path.Combine(_root, Guid.NewGuid().ToString("N"));
+        var outcome = await PanGlossInvoker.LaunchAsync(FakeParser.ExecutablePath,
+            new PanGlossRequest.Batch(source, ["motifa"], TimeSpan.FromSeconds(1), ArtifactDirectory: artifacts),
+            _ => File.WriteAllText(Path.Combine(artifacts, changedFile), "changed while parsing"),
+            TimeSpan.FromSeconds(10), CancellationToken.None);
+
+        var refused = Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
+        Assert.Contains("changed during", refused.Detail, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(artifacts));
+        Assert.Equal("the fake parser never reads this.", File.ReadAllText(source));
+    }
+
+    [Fact]
+    public async Task CapturedBatchRetainsExactInputsAndArtifactsAfterTheInvokerReturns()
+    {
+        var source = Project("captured");
+        var artifacts = Path.Combine(_root, Guid.NewGuid().ToString("N"));
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(
+            source, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordStepLimit: 123,
+            ArtifactDirectory: artifacts), "test:capture", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        var evidence = Assert.IsType<BatchInvocationEvidence>(completed.BatchEvidence);
+        Assert.NotEqual(source, evidence.SourcePath);
+        Assert.Equal(File.ReadAllBytes(source), File.ReadAllBytes(evidence.SourcePath));
+        Assert.Equal(BatchInvocationEvidence.DigestFile(source), evidence.SourceBytesSha256);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(FakeParser.ExecutablePath), evidence.ExecutableBytesSha256);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(evidence.WordsPath), evidence.WordsSha256);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(evidence.TsvPath), evidence.TsvSha256);
+        Assert.Equal(completed.Output, File.ReadAllText(evidence.TsvPath));
+        Assert.Equal(completed.StandardError, File.ReadAllText(evidence.StandardErrorPath));
+        Assert.Equal(700, evidence.PerWordTimeoutMs);
+        Assert.Equal(123, evidence.PerWordStepLimit);
+        Assert.Equal(1, evidence.Threads);
+        Assert.False(evidence.CollectStatistics);
+        File.WriteAllText(source, "changed after invocation");
+        Assert.Equal(evidence.SourceBytesSha256, BatchInvocationEvidence.DigestFile(evidence.SourcePath));
+    }
+
+    [Fact]
+    public async Task CapturedBatchRefusesToOverwriteAnExistingArtifactDirectory()
+    {
+        var source = Project("existing");
+        var artifacts = Path.Combine(_root, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(artifacts);
+        var sentinel = Path.Combine(artifacts, "keep.txt");
+        File.WriteAllText(sentinel, "existing evidence");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(
+            source, ["motifa"], TimeSpan.FromSeconds(1), ArtifactDirectory: artifacts),
+            "test:existing", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Equal("existing evidence", File.ReadAllText(sentinel));
+    }
 
     private static MachinePanGlossQueue NewQueue() => new(new[]
     {

@@ -13,6 +13,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.Parser;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -65,6 +66,63 @@ public sealed class AssessCommandTests : IDisposable
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
+    [RealParserFact]
+    public void SupportedAssessmentRecordsRealTimingAndStatisticsWithOneInvocation()
+    {
+        using var cache = _pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b");
+        var selection = new SelectionRequest(false, [], ["motifa", "motifb", "mofita"], false, null);
+
+        var outcome = AssessCommand.Assess(new AssessRequest(cache.ProjectId.Path, selection), NewManagedRoot());
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var response = outcome.Value!;
+        Assert.Equal(3, response.Words.Count);
+        Assert.All(response.Words, word => Assert.False(word.IsIncomplete));
+        Assert.Equal(2, response.Words.Count(word => word.Outcome == "analysed"));
+        Assert.Equal(1, response.Words.Count(word => word.Outcome == "no-analysis"));
+        Assert.StartsWith("3 searches completed; 0 incomplete", response.SummaryMarkdown);
+        Assert.Contains("0/0 approved readings matched", response.CorrectnessStatus);
+        Assert.Equal(3, response.Measurements.Count);
+        Assert.Single(response.Measurements.Select(item => item.InvocationId).Distinct());
+        var repository = OpenRepository(cache.ProjectId.Path);
+        foreach (var measurement in response.Measurements)
+        {
+            var record = repository.Get(measurement.AssessmentId);
+            Assert.Equal(measurement.InvocationId, record.Invocation!.InvocationId);
+            Assert.Null(record.SemanticDigest);
+        }
+    }
+
+    [Fact]
+    public void PartialFindingsRemainIncompleteInTheResponseAndStoredWord()
+    {
+        using var seeded = NewSeededScratch();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, "motifa", 700, SIL.Motif.Host.Parser.WordOutcome.Capped, "partial-match"),
+                     new(1, "motifb", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
+                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                : new AssessmentRaw.WordMeasurements([]));
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa", "motifb"], false, null)), NewManagedRoot(),
+            assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var response = outcome.Value!;
+        Assert.StartsWith("1 search completed; 1 incomplete", response.CompletionSummary);
+        Assert.True(response.Words[0].IsIncomplete);
+        Assert.StartsWith("INCOMPLETE", response.Words[0].CompletionStatus);
+        Assert.Equal("partial-match", response.Words[0].RawSignature);
+        Assert.False(response.Words[1].IsIncomplete);
+        var timing = response.Measurements.Single(item => item.Kind == "ParseTime");
+        var stored = OpenRepository(seeded.FwDataPath).Get(timing.AssessmentId).Words!;
+        Assert.Equal("capped", stored[0].Outcome);
+        Assert.Equal("partial-match", stored[0].RawSignature);
+        Assert.Empty(stored[0].Analyses);
     }
 
     [Fact]
@@ -218,10 +276,14 @@ public sealed class AssessCommandTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var cachePath = Path.Combine(_managedRootsParent, "statistics.bin");
+        File.WriteAllText(cachePath, "statistics artifact");
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
             kind == AssessmentKind.ObjectTiming
-                ? new AssessmentRaw.FileCache(cachePath, "sha256:" + new string('0', 64))
-                : new AssessmentRaw.WordMeasurements([]));
+                ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
         var invoker = new FakeInvoker
         {
             Respond = _ => result switch
@@ -240,7 +302,8 @@ public sealed class AssessCommandTests : IDisposable
             onProgress: null, CancellationToken.None);
 
         var request = Assert.IsType<PanGlossRequest.Stats>(Assert.Single(invoker.Requests).Request);
-        Assert.Equal(cachePath, request.CachePath);
+        Assert.NotEqual(cachePath, request.CachePath);
+        Assert.False(File.Exists(request.CachePath));
         Assert.Empty(request.ForwardedArguments);
         Assert.Equal(refusalCode is null, outcome.Succeeded);
         if (refusalCode is not null) Assert.Equal(refusalCode, outcome.Refusal!.Code);

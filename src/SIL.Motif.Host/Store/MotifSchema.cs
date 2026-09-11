@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 13;
+    public const int CurrentSchema = 15;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -52,7 +52,7 @@ public static class MotifSchema
     {
         var expectedTables = new HashSet<string>(StringComparer.Ordinal)
         {
-            "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords",
+            "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines"
         };
@@ -279,7 +279,8 @@ public static class MotifSchema
     private static IReadOnlyList<ForeignKeyShape> ForeignKeysFor(string table) => table switch
     {
         "CorpusDocuments" => [new("Corpora", "CorpusId", "CorpusId", "NO ACTION", "NO ACTION", "NONE")],
-        "Assessments" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "Assessments" => [new("AssessmentInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE"),
+            new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -303,18 +304,20 @@ public static class MotifSchema
             C("Title", "TEXT", true), C("Source", "TEXT", true), C("Text", "TEXT", true),
             C("ContentSha256", "TEXT", true), C("IngestedUtc", "TEXT", true), C("Licence", "TEXT"),
             C("CapabilitiesJson", "TEXT"), C("AttributesJson", "TEXT")],
+        "AssessmentInvocations" => [C("InvocationId", "TEXT", false, 1), C("EvidenceJson", "TEXT", true)],
         "Assessments" =>
         [C("AssessmentId", "TEXT", false, 1), C("SelectionName", "TEXT", true), C("SelectionWordsJson", "TEXT", true),
-            C("SelectionSha256", "TEXT", true), C("SelectionProvenanceJson", "TEXT"), C("OutcomeDigest", "TEXT", true),
-            C("SemanticDigest", "TEXT", true), C("GrammarSourceSha256", "TEXT", true),
-            C("ModelFingerprint", "TEXT", true), C("Pipeline", "TEXT", true), C("DiagnosticCount", "INTEGER", true),
+            C("SelectionSha256", "TEXT", true), C("SelectionProvenanceJson", "TEXT"), C("OutcomeDigest", "TEXT"),
+            C("SemanticDigest", "TEXT"), C("GrammarSourceSha256", "TEXT", true),
+            C("ModelFingerprint", "TEXT"), C("Pipeline", "TEXT"), C("DiagnosticCount", "INTEGER"),
             C("SavedUtc", "TEXT", true), C("ProposalId", "TEXT"), C("ProposalIntentDigest", "TEXT"),
             C("Assessor", "TEXT", true), C("Kind", "TEXT", true), C("ScopeJson", "TEXT", true),
             C("ScopeDigest", "TEXT", true), C("TokeniserName", "TEXT", true), C("TokeniserVersion", "TEXT", true),
-            C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT")],
+            C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT")],
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
-            C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER")],
+            C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("RawSignature", "TEXT"),
+            C("MorphologyJson", "TEXT"), C("CorrectnessJson", "TEXT")],
         "ParsedAnalyses" =>
         [C("AssessedWordId", "INTEGER", true), C("OrdinalIndex", "INTEGER", true), C("CategoryGuid", "TEXT"),
             C("MorphemeGuidsJson", "TEXT", true), C("RootIndex", "INTEGER", true), C("IdentityDigest", "TEXT", true)],
@@ -473,18 +476,22 @@ public static class MotifSchema
         """;
 
     private const string AssessmentDdl = """
+        CREATE TABLE AssessmentInvocations (
+            InvocationId TEXT PRIMARY KEY,
+            EvidenceJson TEXT NOT NULL
+        );
         CREATE TABLE Assessments (
             AssessmentId TEXT PRIMARY KEY,
             SelectionName TEXT NOT NULL,
             SelectionWordsJson TEXT NOT NULL,
             SelectionSha256 TEXT NOT NULL,
             SelectionProvenanceJson TEXT NULL,
-            OutcomeDigest TEXT NOT NULL,
-            SemanticDigest TEXT NOT NULL,
+            OutcomeDigest TEXT NULL,
+            SemanticDigest TEXT NULL,
             GrammarSourceSha256 TEXT NOT NULL,
-            ModelFingerprint TEXT NOT NULL,
-            Pipeline TEXT NOT NULL,
-            DiagnosticCount INTEGER NOT NULL,
+            ModelFingerprint TEXT NULL,
+            Pipeline TEXT NULL,
+            DiagnosticCount INTEGER NULL,
             SavedUtc TEXT NOT NULL,
             ProposalId TEXT NULL REFERENCES Proposals(ProposalId),
             ProposalIntentDigest TEXT NULL,
@@ -496,7 +503,8 @@ public static class MotifSchema
             TokeniserVersion TEXT NOT NULL,
             BaselineToken TEXT NOT NULL,
             CachePath TEXT NULL,
-            CacheDigest TEXT NULL
+            CacheDigest TEXT NULL,
+            InvocationId TEXT NULL REFERENCES AssessmentInvocations(InvocationId)
         );
         CREATE INDEX IX_Assessments_Proposal ON Assessments(ProposalId);
         CREATE INDEX IX_Assessments_Kind ON Assessments(Kind);
@@ -507,7 +515,10 @@ public static class MotifSchema
             OrdinalIndex INTEGER NOT NULL,
             Word TEXT NOT NULL,
             Outcome TEXT NOT NULL,
-            ElapsedMs INTEGER NULL
+            ElapsedMs INTEGER NULL,
+            RawSignature TEXT NULL,
+            MorphologyJson TEXT NULL,
+            CorrectnessJson TEXT NULL
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);
         CREATE INDEX IX_AssessedWords_Word ON AssessedWords(AssessmentId, Word);

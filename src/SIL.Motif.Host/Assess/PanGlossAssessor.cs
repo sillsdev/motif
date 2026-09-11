@@ -1,10 +1,11 @@
-using System.Security.Cryptography;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.LcmUtils;
 
 namespace SIL.Motif.Host.Assess;
 
-/// <summary>Resolves the file path an Assessor's own cache should live at.</summary>
+/// <summary>Resolves the owned directory for one invocation's immutable artifacts.</summary>
 /// <remarks>
 /// Declared here, in the Host layer that only knows Assessors, and implemented by
 /// <c>SIL.Motif.Worker.Assess.StatsCacheStore</c>, which is the layer that knows the worker root and its
@@ -13,178 +14,144 @@ namespace SIL.Motif.Host.Assess;
 public interface IAssessorCachePathResolver
 {
     /// <summary>
-    /// The stable path for one Assessor's cache over one grammar and engine. Stable for the same three
-    /// inputs; different when any of them differs, so two engines can never collide on one file — the rule
-    /// PanGloss's own cache already enforces, respected here in the key rather than discovered at run time.
+    /// Returns the same directory for the same invocation id and distinct directories for distinct ids.
+    /// May create its parent, but never creates the final directory: publication owns that creation.
     /// </summary>
-    string PathFor(string grammarSourceSha256, string assessor, string engine);
+    string DirectoryFor(string invocationId);
 }
 
-/// <summary>
-/// PanGloss as an <see cref="IAssessor"/>: the first Assessor, and proof the seam needs no PanGloss-specific
-/// caller.
-/// </summary>
+/// <summary>Produces timing, statistics, and approved morphology comparisons from one batch invocation.</summary>
 /// <remarks>
-/// <para>
-/// Composes two seams: <see cref="IPanGlossAssessor"/> for <see cref="AssessmentKind.Correctness"/> (GUID-keyed
-/// analyses against manual analysis) and the <see cref="IPanGlossInvoker"/> for both
-/// <see cref="AssessmentKind.ParseTime"/> (a plain batch, read back through <see cref="PanGlossParser"/>) and
-/// <see cref="AssessmentKind.ObjectTiming"/> (the same batch with <c>--stats --cache</c>, whose cache PanGloss
-/// owns the format of and Motif only ever digests).
-/// </para>
-/// <para>
-/// <see cref="AssessmentKind.EngineSize"/> is never declared: PanGloss emits build time and engine size on
-/// stderr, and scraping stderr for them was rejected rather than adopted. <see cref="AssessmentKind.Difference"/>
-/// and <see cref="AssessmentKind.Completion"/> are never declared either: both compare two Assessments, which
-/// is the comparison mechanism's job.
-/// </para>
-/// <para>
-/// <see cref="ProduceAsync"/> always runs the GUID-keyed assess pass first, whatever was asked for: it is the
-/// only route that carries the grammar's own hash and the rest of the report header, which every produced
-/// kind must cite and which this type never derives on its own.
-/// </para>
+/// TSV parsing and statistics collection are separate parser passes within that invocation. Their
+/// evidence is shared, but their elapsed times are different measurements.
 /// </remarks>
 public sealed class PanGlossAssessor : IAssessor
 {
-    /// <summary>The name this Assessor is registered and cited under.</summary>
     public const string AssessorName = "pangloss";
-
     private static readonly IReadOnlyList<AssessmentKind> Supported =
-        [AssessmentKind.ParseTime, AssessmentKind.Correctness, AssessmentKind.ObjectTiming];
-    private static readonly IReadOnlyList<AssessmentKind> DefaultCollected =
-        [AssessmentKind.ParseTime, AssessmentKind.Correctness];
-
-    private readonly IAssessorCachePathResolver _cachePaths;
+        [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming, AssessmentKind.Correctness];
+    private readonly IAssessorCachePathResolver _paths;
     private readonly IPanGlossInvoker _invoker;
-    private readonly PanGlossParser _parser;
-    private readonly IPanGlossAssessor _reportRunner;
 
-    /// <param name="cachePaths">Resolves where this Assessor's stats cache lives for a grammar and engine.</param>
-    /// <param name="invoker">Runs every parser process this Assessor needs.</param>
-    /// <param name="reportRunner">Runs the GUID-keyed assess pass; defaults to a real one.</param>
-    public PanGlossAssessor(
-        IAssessorCachePathResolver cachePaths, IPanGlossInvoker invoker, IPanGlossAssessor? reportRunner = null)
+    public PanGlossAssessor(IAssessorCachePathResolver paths, IPanGlossInvoker invoker)
     {
-        _cachePaths = cachePaths ?? throw new ArgumentNullException(nameof(cachePaths));
+        _paths = paths ?? throw new ArgumentNullException(nameof(paths));
         _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
-        _parser = new PanGlossParser(invoker);
-        _reportRunner = reportRunner ?? new PanGlossAssessmentProcess();
     }
 
-    /// <inheritdoc />
     public string Name => AssessorName;
-
-    /// <inheritdoc />
     public IReadOnlyList<AssessmentKind> SupportedKinds => Supported;
 
-    /// <inheritdoc />
     public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
-        if (string.IsNullOrWhiteSpace(exportedCandidate))
-            throw new ArgumentException("Required.", nameof(exportedCandidate));
-
-        var wanted = scope.Collect.Count == 0 ? DefaultCollected : scope.Collect;
+        var wanted = scope.Collect.Count == 0 ? Supported : scope.Collect;
         foreach (var kind in wanted)
         {
             if (!Supported.Contains(kind))
-                throw new AssessorRefusalException(AssessorName, kind, ReasonNotProduced(kind));
+                throw new AssessorRefusalException(AssessorName, kind,
+                    "the supported batch route does not produce this measurement.");
         }
-        if (!PanGlossEngineNames.TryParse(scope.Engine, out var engine))
-        {
-            throw new ArgumentException(
-                $"'{scope.Engine}' does not name an engine {AssessorName} recognizes.", nameof(scope));
-        }
-
-        var grammarSourcePath = LocateGrammarSource(exportedCandidate);
-
-        AssessReport report;
+        cancellationToken.ThrowIfCancellationRequested();
+        var requestedWords = scope.Words.ToArray();
+        var sources = Directory.GetFiles(exportedCandidate, "*.fwdata", SearchOption.AllDirectories);
+        if (sources.Length != 1)
+            throw new AssessorUnavailableException(AssessorName,
+                $"The candidate must contain exactly one .fwdata source; found {sources.Length}.");
+        var invocationId = Guid.NewGuid().ToString("N");
+        var directory = _paths.DirectoryFor(invocationId);
+        var cachePath = wanted.Contains(AssessmentKind.ObjectTiming) ? Path.Combine(directory, "stats.sqlite") : null;
+        AssessmentArtifactLease? artifactLease = null;
         try
         {
-            // Every produced kind cites this hash, and only the assess pass carries it — never derived here.
-            report = await _reportRunner.RunAsync(exportedCandidate, cancellationToken).ConfigureAwait(false);
-        }
-        catch (ParserUnavailableException exception)
-        {
-            throw new AssessorUnavailableException(AssessorName, exception.Message);
-        }
-
-        var results = new List<ProducedAssessment>();
-        if (wanted.Contains(AssessmentKind.Correctness))
-        {
-            results.Add(Produced(report, AssessmentKind.Correctness,
-                new AssessmentRaw.WordMeasurements(report.Words)));
-        }
-        if (wanted.Contains(AssessmentKind.ParseTime))
-        {
-            var runResult = await _parser.AnalyseBatchAsync(
-                grammarSourcePath, scope.Words, engine, scope.PerWordLimit, "assess:parse-time", cancellationToken)
-                .ConfigureAwait(false);
-            if (!runResult.Succeeded)
+            var outcome = await _invoker.RunAsync(new PanGlossRequest.Batch(
+                sources[0], requestedWords, scope.PerWordLimit, cachePath, scope.PerWordStepLimit, directory)
+                { CollectAnalyses = true },
+                "assess:batch", cancellationToken).ConfigureAwait(false);
+            artifactLease = (outcome as PanGlossOutcome.Completed)?.ArtifactLease;
+            if (outcome is PanGlossOutcome.Cancelled)
+                throw new OperationCanceledException(cancellationToken);
+            if (outcome is not PanGlossOutcome.Completed { BatchEvidence: { } evidence } completed)
+                throw new AssessorUnavailableException(AssessorName,
+                    outcome is PanGlossOutcome.Completed ? "The invocation returned no retained evidence." : outcome.Message);
+            var matchingArtifacts = evidence.InvocationId == invocationId &&
+                Path.GetFullPath(evidence.SourcePath) == Path.Combine(Path.GetFullPath(directory), "source.fwdata");
+            if (!matchingArtifacts || evidence.PerWordStepLimit != scope.PerWordStepLimit ||
+                evidence.PerWordTimeoutMs != (int)scope.PerWordLimit.TotalMilliseconds ||
+                evidence.Threads != 1 || evidence.CollectStatistics != (cachePath is not null))
+                throw new AssessorUnavailableException(AssessorName, "The invocation evidence does not match the requested scope.");
+            IReadOnlyList<WordAnalysis> rows;
+            try { rows = BatchTsvParser.Parse(completed.Output); }
+            catch (InvalidOperationException exception)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (runResult.Refusal is { } refusal)
-                    throw new InvalidOperationException($"{AssessorName} could not measure parse time: {refusal.Detail}");
-                throw new AssessorUnavailableException(AssessorName, runResult.Outcome.Message);
+                throw new AssessorUnavailableException(AssessorName, exception.Message);
             }
-            results.Add(Produced(report, AssessmentKind.ParseTime, new AssessmentRaw.Batch(runResult.Analysis!)));
-        }
-        if (wanted.Contains(AssessmentKind.ObjectTiming))
-        {
-            var cachePath = _cachePaths.PathFor(report.GrammarSourceSha256, AssessorName, scope.Engine);
-            var outcome = await _invoker.RunAsync(
-                new PanGlossRequest.Batch(grammarSourcePath, scope.Words, scope.PerWordLimit, cachePath),
-                "assess:object-timing", cancellationToken).ConfigureAwait(false);
-            if (outcome is not PanGlossOutcome.Completed)
+            if (rows.Count != requestedWords.Length || rows.Where((row, index) =>
+                row.Index != index || !string.Equals(row.Word, requestedWords[index], StringComparison.Ordinal)).Any())
+                throw new AssessorUnavailableException(AssessorName,
+                    "The batch did not return exactly one ordered result for every requested word.");
+            if (completed.MorphologyOutput is null || evidence.AnalysesPath is null || evidence.AnalysesSha256 is null)
+                throw new AssessorUnavailableException(AssessorName, "The invocation returned no retained morphology evidence.");
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                throw new AssessorUnavailableException(AssessorName, outcome.Message);
+                if (BatchInvocationEvidence.DigestFile(evidence.AnalysesPath) != evidence.AnalysesSha256 ||
+                    File.ReadAllText(evidence.AnalysesPath) != completed.MorphologyOutput)
+                    throw new InvalidDataException("The retained morphology artifact changed.");
+                var morphology = ParseMorphEvidence.Read(completed.MorphologyOutput, requestedWords);
+                rows = rows.Select((row, index) =>
+                {
+                    var item = morphology[index];
+                    var expectedOutcome = item.InvalidShape ? WordOutcome.Skipped : item.TimedOut ? WordOutcome.TimedOut
+                        : item.Capped ? WordOutcome.Capped : item.Analyses.Count + item.Unavailable.Count > 0
+                            ? WordOutcome.Analysed : WordOutcome.NoAnalysis;
+                    if (row.ElapsedMs != item.ElapsedMs || row.Outcome != expectedOutcome)
+                        throw new InvalidDataException("TSV and morphology evidence describe different search outcomes.");
+                    return row with { Morphology = item };
+                }).ToArray();
+                if (wanted.Contains(AssessmentKind.Correctness))
+                {
+                    using var cache = new FwDataProjectLoader().LoadScratchCache(evidence.SourcePath);
+                    var expected = ApprovedMorphologyReader.Read(cache);
+                    rows = rows.Select(row => row with
+                    {
+                        Correctness = MorphologyCorrectness.Compare(row.Morphology!,
+                            expected.TryGetValue(row.Word, out var approved) ? approved : []),
+                    }).ToArray();
+                    if (BatchInvocationEvidence.DigestFile(evidence.SourcePath) != evidence.SourceBytesSha256)
+                        throw new InvalidDataException("The source changed while reading approved expectations.");
+                }
             }
-            results.Add(Produced(report, AssessmentKind.ObjectTiming,
-                new AssessmentRaw.FileCache(cachePath, DigestOfFile(cachePath))));
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                throw new AssessorUnavailableException(AssessorName, exception.Message);
+            }
+            var warnings = completed.StandardError.Split('\n').Select(line => line.Trim())
+                .Where(line => line.StartsWith("warning:", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("capability:", StringComparison.OrdinalIgnoreCase)).ToArray();
+            var analysis = new BatchAnalysis(rows, evidence.PerWordTimeoutMs, evidence.SourcePath, warnings)
+            {
+                PerWordStepLimit = evidence.PerWordStepLimit,
+            };
+            var results = new List<ProducedAssessment>();
+            if (wanted.Contains(AssessmentKind.ParseTime))
+                results.Add(Produced(AssessmentKind.ParseTime, new AssessmentRaw.Batch(analysis), evidence));
+            if (cachePath is not null)
+                results.Add(Produced(AssessmentKind.ObjectTiming,
+                    new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath)), evidence));
+            if (wanted.Contains(AssessmentKind.Correctness))
+                results.Add(Produced(AssessmentKind.Correctness, new AssessmentRaw.Batch(analysis), evidence));
+            cancellationToken.ThrowIfCancellationRequested();
+            return results.Select(result => result with { ArtifactLease = artifactLease }).ToArray();
         }
-        return results;
-    }
-
-    // Every produced kind shares one report's header; this is the one place that pairs them.
-    private static ProducedAssessment Produced(AssessReport report, AssessmentKind kind, AssessmentRaw raw) =>
-        new(kind, report.GrammarSourceSha256, report.OutcomeDigest, report.SemanticDigest,
-            report.ModelFingerprint, report.Pipeline, report.DiagnosticCount, raw);
-
-    private static string ReasonNotProduced(AssessmentKind kind) => kind switch
-    {
-        AssessmentKind.EngineSize =>
-            "the compiled engine's size is emitted on stderr at build time, not through this route.",
-        AssessmentKind.Difference =>
-            "a difference compares two Assessments; it is not one Assessor call's job to produce alone.",
-        AssessmentKind.Completion =>
-            "which words newly complete compares two Assessments; it is not one Assessor call's job to produce alone.",
-        _ => $"'{AssessorName}' does not produce {kind} from this scope's collection.",
-    };
-
-    // Mirrors PanGlossAssessmentProcess's own dispatch: exactly one .fwdata by extension, no assumed layout.
-    private static string LocateGrammarSource(string exportedCandidate)
-    {
-        var matches = Directory.GetFiles(exportedCandidate, "*.fwdata", SearchOption.AllDirectories);
-        if (matches.Length == 0)
+        catch
         {
-            throw new FileNotFoundException(
-                "The exported candidate contains no .fwdata grammar source.", exportedCandidate);
+            artifactLease?.Dispose();
+            throw;
         }
-        if (matches.Length > 1)
-        {
-            throw new InvalidOperationException(
-                $"The exported candidate contains {matches.Length} .fwdata files; exactly one is required.");
-        }
-        return matches[0];
     }
 
-    // Hashes what actually landed on disk rather than trusting the stats runner's exit code alone.
-    private static string DigestOfFile(string path)
-    {
-        using var stream = File.OpenRead(path);
-        using var sha = SHA256.Create();
-        return "sha256:" + Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
-    }
+    private static ProducedAssessment Produced(
+        AssessmentKind kind, AssessmentRaw raw, BatchInvocationEvidence evidence) =>
+        new(kind, evidence.SourceBytesSha256, null, null, null, null, null, raw) { Invocation = evidence };
 }

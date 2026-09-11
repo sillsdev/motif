@@ -21,8 +21,8 @@ using Xunit;
 namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
-/// Pins <see cref="StatsCommand"/> over a real, file-backed project store: resolving the current Baseline
-/// Assessment by default and a Trial Assessment under <c>--proposal</c>, refusing an absent grammar, cache,
+/// Pins <see cref="StatsCommand"/> over a real, file-backed project store: resolving the latest Baseline
+/// Assessment by default and a Trial Assessment under <c>--proposal</c>, refusing absent source evidence, cache,
 /// or Assessment with a distinct <c>stats.*</c> code each, the <c>--format</c>/<c>--json</c> conflict, that
 /// forwarding to the invocation module preserves argument order exactly and appends <c>--format jsonl</c>
 /// only for JSON rows, and that every non-completed outcome the invoker returns becomes its own refusal.
@@ -47,7 +47,7 @@ public sealed class StatsCommandTests : IDisposable
     }
 
     [Fact]
-    public void NoBaselineIsRefused()
+    public void NoAssessmentIsRefusedWithoutRequiringABaseline()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         var fake = new FakeInvoker();
@@ -55,7 +55,7 @@ public sealed class StatsCommandTests : IDisposable
         var outcome = Run(fwDataPath, null, StatsOutputKind.Text, [], fake);
 
         Assert.False(outcome.Succeeded);
-        Assert.Equal("stats.no-baseline", outcome.Refusal!.Code);
+        Assert.Equal("stats.no-assessment", outcome.Refusal!.Code);
         Assert.Empty(fake.Requests);
     }
 
@@ -102,13 +102,15 @@ public sealed class StatsCommandTests : IDisposable
         Assert.True(outcome.Succeeded);
         var response = outcome.Value!;
         Assert.Equal(assessmentId, response.AssessmentId);
-        Assert.Equal(baseline.FwDataPath, response.GrammarPath);
-        Assert.Equal("cache.sqlite", response.CachePath);
+        Assert.Equal(RetainedSource(fwDataPath, assessmentId), response.GrammarPath);
+        Assert.Equal(Path.Combine(Path.GetDirectoryName(response.GrammarPath)!, "cache.sqlite"), response.CachePath);
         Assert.Equal("group    key    count" + Environment.NewLine, response.Text);
         Assert.Null(response.Rows);
         var seen = SeenStats(fake);
-        Assert.Equal(baseline.FwDataPath, seen.GrammarPath);
-        Assert.Equal("cache.sqlite", seen.CachePath);
+        Assert.NotEqual(response.GrammarPath, seen.GrammarPath);
+        Assert.NotEqual(response.CachePath, seen.CachePath);
+        Assert.False(File.Exists(seen.GrammarPath));
+        Assert.False(File.Exists(seen.CachePath));
         Assert.Equal(forwarded, seen.ForwardedArguments);
     }
 
@@ -210,8 +212,8 @@ public sealed class StatsCommandTests : IDisposable
 
         Assert.True(outcome.Succeeded);
         Assert.Equal(trialAssessmentId, outcome.Value!.AssessmentId);
-        Assert.Equal("trial-cache.sqlite", outcome.Value.CachePath);
-        Assert.Equal("trial-cache.sqlite", SeenStats(fake).CachePath);
+        Assert.Equal("trial-cache.sqlite", Path.GetFileName(outcome.Value.CachePath));
+        Assert.NotEqual(outcome.Value.CachePath, SeenStats(fake).CachePath);
     }
 
     [Fact]
@@ -280,6 +282,117 @@ public sealed class StatsCommandTests : IDisposable
         Assert.Equal("10", outcome.Refusal.Facts["capMinutes"]);
     }
 
+    [Fact]
+    public void AnExactAssessmentRemainsSelectedAfterANewerAssessmentAndBaseline()
+    {
+        var project = _pristine.CopyProjectFile();
+        var original = RecordAssessment(project, null, "original.sqlite", "2026-01-01T00:00:00Z");
+        RecordAssessment(project, null, "newer.sqlite", "2026-01-02T00:00:00Z");
+        CaptureBaseline(project);
+        var fake = Completing("original stats");
+        var result = StatsCommand.Run(new StatsRequest(project, null, StatsOutputKind.Text, [])
+            { AssessmentId = original }, fake, CancellationToken.None);
+        Assert.True(result.Succeeded);
+        Assert.Equal(original, result.Value!.AssessmentId);
+        Assert.Equal(RetainedSource(project, original), result.Value.GrammarPath);
+    }
+
+    [Fact]
+    public void RetainedEvidenceWorksWithoutAnyCurrentBaselineAndIsProtectedFromParserWrites()
+    {
+        var project = _pristine.CopyProjectFile();
+        var id = RecordAssessment(project, null, "original.sqlite");
+        var source = RetainedSource(project, id);
+        var expected = File.ReadAllText(source);
+        var fake = new FakeInvoker { Respond = request =>
+        {
+            var stats = Assert.IsType<PanGlossRequest.Stats>(request);
+            Assert.Equal(expected, File.ReadAllText(stats.GrammarPath));
+            File.WriteAllText(stats.GrammarPath, "parser changed source");
+            File.WriteAllText(stats.CachePath, "parser changed cache");
+            return new PanGlossOutcome.Completed("stats", string.Empty, TimeSpan.Zero);
+        }};
+        var result = Run(project, null, StatsOutputKind.Text, [], fake);
+        Assert.True(result.Succeeded);
+        Assert.Equal(expected, File.ReadAllText(source));
+        Assert.Equal("retained cache " + id, File.ReadAllText(result.Value!.CachePath));
+        Assert.False(Directory.Exists(Path.GetDirectoryName(SeenStats(fake).CachePath)));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TamperedSourceOrCacheRefusesBeforeInvokingTheParser(bool source)
+    {
+        var project = _pristine.CopyProjectFile();
+        var id = RecordAssessment(project, null, "cache.sqlite");
+        using var database = OpenDatabase(project);
+        var record = new AssessmentRepository(database).Get(id);
+        File.WriteAllText(source ? record.Invocation!.SourcePath : record.CachePath!, "tampered");
+        var fake = Completing("must not run");
+        var result = Run(project, null, StatsOutputKind.Text, [], fake);
+        Assert.False(result.Succeeded);
+        Assert.Equal("stats.invalid-evidence", result.Refusal!.Code);
+        Assert.Empty(fake.Requests);
+    }
+
+    [Fact]
+    public void ReplayCleanupToleratesATemporaryFileLock()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var project = _pristine.CopyProjectFile();
+        var id = RecordAssessment(project, null, "cache.sqlite");
+        using var database = OpenDatabase(project);
+        var record = new AssessmentRepository(database).Get(id);
+        var replay = StatsEvidenceReplay.Create(record.Invocation!, record.CachePath!, record.CacheDigest!);
+        try
+        {
+            using var held = new FileStream(replay.CachePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            replay.Dispose();
+            Assert.True(File.Exists(replay.CachePath));
+        }
+        finally
+        {
+            replay.Dispose();
+        }
+        Assert.False(Directory.Exists(Path.GetDirectoryName(replay.CachePath)));
+    }
+
+    [Fact]
+    public void MissingInvocationEvidenceRefusesBeforeInvokingTheParser()
+    {
+        var project = _pristine.CopyProjectFile();
+        RecordAssessment(project, null, "cache.sqlite", includeEvidence: false);
+        var fake = Completing("must not run");
+        var result = Run(project, null, StatsOutputKind.Text, [], fake);
+        Assert.Equal("stats.no-evidence", result.Refusal!.Code);
+        Assert.Empty(fake.Requests);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExactAssessmentRefusesUnknownIdsAndWrongKinds(bool wrongKind)
+    {
+        var project = _pristine.CopyProjectFile();
+        var id = wrongKind ? RecordAssessment(project, null, "cache.sqlite", kind: AssessmentKind.ParseTime) : "missing";
+        var fake = Completing("must not run");
+        var result = StatsCommand.Run(new StatsRequest(project, null, StatsOutputKind.Text, [])
+            { AssessmentId = id }, fake, CancellationToken.None);
+        Assert.Equal(wrongKind ? "stats.wrong-kind" : "stats.no-assessment", result.Refusal!.Code);
+        Assert.Empty(fake.Requests);
+    }
+
+    [Fact]
+    public void ExactAssessmentAndProposalSelectorsCannotBeCombined()
+    {
+        var fake = Completing("must not run");
+        var result = StatsCommand.Run(new StatsRequest(_pristine.CopyProjectFile(), CanonicalId.Mint("proposal/").Value,
+            StatsOutputKind.Text, []) { AssessmentId = "exact" }, fake, CancellationToken.None);
+        Assert.Equal("stats.selector-conflict", result.Refusal!.Code);
+        Assert.Empty(fake.Requests);
+    }
+
     private static CommandOutcome<StatsCommandResponse> Run(string fwDataPath, string? proposalId,
         StatsOutputKind output, IReadOnlyList<string> forwarded, IPanGlossInvoker invoker,
         CancellationToken cancellationToken = default) =>
@@ -313,16 +426,29 @@ public sealed class StatsCommandTests : IDisposable
         new ProposalRepository(OpenDatabase(fwDataPath)).SaveRevision(new ProposalRevisionRecord(
             proposalId, "sha256:" + new string('2', 64), "{}", "proposed", null, null, null));
 
-    private static string RecordAssessment(string fwDataPath, CanonicalId? proposalId, string? cachePath)
+    private static string RecordAssessment(string fwDataPath, CanonicalId? proposalId, string? cachePath,
+        string? savedUtc = null, AssessmentKind kind = AssessmentKind.ObjectTiming, bool includeEvidence = true)
     {
         var repository = new AssessmentRepository(OpenDatabase(fwDataPath));
         var assessmentId = CanonicalId.Mint("assessment/").Value;
+        var run = Path.Combine(Path.GetDirectoryName(fwDataPath)!, "evidence", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(run);
+        var source = Path.Combine(run, "source.fwdata");
+        File.WriteAllText(source, "retained grammar " + assessmentId);
+        if (cachePath is not null)
+        {
+            cachePath = Path.Combine(run, cachePath);
+            File.WriteAllText(cachePath, "retained cache " + assessmentId);
+        }
+        var evidence = new BatchInvocationEvidence(Guid.NewGuid().ToString("N"), source,
+            BatchInvocationEvidence.DigestFile(source), "sha256:executable", "words.txt", "sha256:words",
+            "rows.tsv", "sha256:rows", "stderr.txt", "sha256:stderr", 1000, 200000, 1, true);
         repository.Record(new NewAssessmentRecord(
             AssessmentId: assessmentId,
             ProposalId: proposalId,
             ProposalIntentDigest: null,
             Assessor: "fake-assessor",
-            Kind: AssessmentKind.ObjectTiming.ToStoredKind(),
+            Kind: kind.ToStoredKind(),
             ScopeJson: "{}",
             ScopeDigest: "sha256:" + new string('0', 64),
             TokeniserName: "none",
@@ -337,8 +463,17 @@ public sealed class StatsCommandTests : IDisposable
             DiagnosticCount: 0,
             Words: Array.Empty<AssessedWord>(),
             CachePath: cachePath,
-            CacheDigest: cachePath is null ? null : "sha256:" + new string('1', 64)));
+            CacheDigest: cachePath is null ? null : BatchInvocationEvidence.DigestFile(cachePath), SavedUtc: savedUtc)
+        {
+            Invocation = includeEvidence ? evidence : null
+        });
         return assessmentId;
+    }
+
+    private static string RetainedSource(string fwDataPath, string assessmentId)
+    {
+        using var database = OpenDatabase(fwDataPath);
+        return new AssessmentRepository(database).Get(assessmentId).Invocation!.SourcePath;
     }
 
     private static MotifDatabase OpenDatabase(string fwDataPath)

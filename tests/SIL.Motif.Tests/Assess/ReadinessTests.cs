@@ -16,6 +16,29 @@ public sealed class ReadinessTests
     private const string GrammarSha = "sha256:" + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     [Fact]
+    public void AllApprovedMatchesDoNotMakeAnInterruptedWordReady()
+    {
+        var candidate = Build("candidate", ("alpha", true));
+        var word = candidate.Words[0];
+        candidate = candidate with { Words = [word with { Morphology = word.Morphology! with { Capped = true } }] };
+        var reasons = Readiness.Assess(candidate, null, "old", "new", false);
+        Assert.Contains(reasons, reason => reason.Contains("incomplete or unavailable"));
+        Assert.Contains(reasons, reason => reason.Contains("different project state"));
+    }
+
+    [Fact]
+    public void AnUnprojectableExtraReadingDoesNotNegateEveryApprovedMatch()
+    {
+        var candidate = Build("candidate", ("alpha", true));
+        var word = candidate.Words[0];
+        candidate = candidate with
+        {
+            Words = [word with { Morphology = word.Morphology! with { Unavailable = ["runtime root identity missing"] } }],
+        };
+        Assert.Empty(Readiness.Assess(candidate, null, null, "same", false));
+    }
+
+    [Fact]
     public void NoCandidate_GivesTheSingleReasonAndStops()
     {
         var reasons = Readiness.Assess(
@@ -82,15 +105,11 @@ public sealed class ReadinessTests
     {
         var selection = Selection.Create("test", words.Select(w => w.Word));
         var assessedWords = words
-            .Select(w => new AssessedWord(
-                w.Word, w.Analysed ? "analysed" : "no-analysis",
-                w.Analysed
-                    ? new[] { new ParsedAnalysis(null, System.Array.Empty<string>(), 0, "digest:" + w.Word) }
-                    : System.Array.Empty<ParsedAnalysis>()))
+            .Select(w => SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word(w.Word, w.Analysed))
             .ToArray();
         return new CorrectnessAssessment(
             assessmentId, "pangloss", "none", "1",
-            new StoredScope.Trial("all", Array.Empty<string>(), "fast", Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1)),
+            new StoredScope.Trial("all", Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1)),
             selection, GrammarSha, assessedWords);
     }
 }

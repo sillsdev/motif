@@ -38,7 +38,8 @@ public sealed class ConfigCommandArgvTests : IDisposable
         var scope = scopes[0];
         Assert.Equal("default", scope.GetProperty("name").GetString());
         Assert.Equal("pangloss", scope.GetProperty("assessor").GetString());
-        Assert.Equal("fast", scope.GetProperty("engine").GetString());
+        Assert.False(scope.TryGetProperty("engine", out _));
+        Assert.Equal(200000, scope.GetProperty("perWordStepLimit").GetInt32());
         Assert.Equal(1000, scope.GetProperty("perWordLimitMs").GetInt64());
     }
 

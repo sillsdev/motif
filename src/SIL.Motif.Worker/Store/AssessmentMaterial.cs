@@ -19,7 +19,11 @@ public static class AssessmentMaterial
         AssessmentRaw.WordMeasurements measurements => (measurements.Words, null, null),
         AssessmentRaw.Batch batch => (batch.Analysis.Words
             .Select(word => new AssessedWord(
-                word.Word, word.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>(), word.ElapsedMs))
+                word.Word, word.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>(), word.ElapsedMs, word.Signature)
+            {
+                Morphology = word.Morphology,
+                Correctness = word.Correctness,
+            })
             .ToArray(), null, null),
         AssessmentRaw.FileCache fileCache => (Array.Empty<AssessedWord>(), fileCache.Path, fileCache.Digest),
         _ => throw new ArgumentOutOfRangeException(nameof(raw)),
@@ -52,7 +56,10 @@ public static class AssessmentMaterial
             DiagnosticCount: produced.DiagnosticCount,
             Words: words,
             CachePath: cachePath,
-            CacheDigest: cacheDigest);
+            CacheDigest: cacheDigest)
+        {
+            Invocation = produced.Invocation
+        };
     }
 
     /// <summary>Hashes a recorded scope's wire JSON the same way for every recorder.</summary>

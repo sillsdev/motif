@@ -63,6 +63,77 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Equal("Handoff complete.", complete.Message);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AssessedHandoffImportsItsRetainedSourceAndRefusesTamperedEvidence(bool tamperRetained)
+    {
+        using var seeded = NewSeededScratch();
+        using var realInvoker = NewInvoker();
+        var destination = Path.Combine(_root, "handoff-source");
+        var cachePath = Path.Combine(_root, "retained-statistics.sqlite");
+        File.WriteAllText(cachePath, "statistics");
+        BatchInvocationEvidence? evidence = null;
+        string? baselinePath = null;
+        string? importedDigest = null;
+        string? importedPath = null;
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ObjectTiming
+                ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) =>
+            {
+                baselinePath = Directory.GetFiles(candidate, "*.fwdata", SearchOption.AllDirectories).Single();
+                return evidence = FakeAssessmentEvidence.Capture(_root, scope, candidate);
+            }
+        };
+        var changed = false;
+        var invoker = new InspectingInvoker(realInvoker, request =>
+        {
+            if (request is PanGlossRequest.Stats && !changed)
+            {
+                File.WriteAllText(tamperRetained ? evidence!.SourcePath : baselinePath!, "unreadable changed project bytes");
+                changed = true;
+            }
+            if (request is PanGlossRequest.Import import)
+            {
+                importedPath = import.FwDataPath;
+                importedDigest = BatchInvocationEvidence.DigestFile(import.FwDataPath);
+            }
+        });
+
+        var outcome = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
+            NewManagedRoot(), assessor, invoker, null, CancellationToken.None);
+
+        Assert.Equal(!tamperRetained, outcome.Succeeded);
+        if (tamperRetained)
+        {
+            Assert.Equal("handoff.statistics-unavailable", outcome.Refusal!.Code);
+            Assert.Null(importedPath);
+            Assert.False(Directory.Exists(destination));
+        }
+        else
+        {
+            Assert.Equal(evidence!.SourceBytesSha256, importedDigest);
+            Assert.NotEqual(baselinePath, importedPath);
+            Assert.NotEqual(evidence.SourcePath, importedPath);
+            Assert.False(File.Exists(importedPath));
+            Assert.True(File.Exists(evidence.SourcePath));
+        }
+    }
+
+    private sealed class InspectingInvoker(IPanGlossInvoker inner, Action<PanGlossRequest> inspect) : IPanGlossInvoker
+    {
+        public Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
+            CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
+        {
+            inspect(request);
+            return inner.RunAsync(request, label, cancellationToken, wallClockCap);
+        }
+    }
+
     [Fact]
     public void AnEndToEndHandoffWritesTheExactListingAndEveryFileValidates()
     {
@@ -289,8 +360,11 @@ public sealed class HandoffWriterTests : IDisposable
         var cachePath = Path.Combine(_root, "fake-stats-cache-" + Guid.NewGuid().ToString("N") + ".bin");
         File.WriteAllText(cachePath, "fake per-object stats cache");
         return new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ObjectTiming
-            ? new AssessmentRaw.FileCache(cachePath, "sha256:" + new string('0', 64))
-            : new AssessmentRaw.WordMeasurements([]));
+            ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
+            : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_root, scope, candidate),
+        };
     }
 
     // The real module against the fake executable: the Handoff's grammar and statistics files come from it.

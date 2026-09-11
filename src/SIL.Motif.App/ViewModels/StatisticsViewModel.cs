@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
@@ -38,13 +39,16 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// <summary>The six groups PanGloss's own <c>stats</c> vocabulary accepts.</summary>
     public IReadOnlyList<string> Groups => HandoffWriter.StatisticsGroups;
 
-    /// <summary>The project whose Baseline supplies statistics, or <c>null</c> before one is chosen.</summary>
+    /// <summary>The project containing the retained Assessment, or <c>null</c> before one is chosen.</summary>
     [ObservableProperty]
     private string? _projectPath;
 
-    /// <summary><c>null</c> queries the current Baseline; a Proposal id queries its Trial instead.</summary>
+    /// <summary>A Proposal selector takes precedence over the displayed Assessment selector.</summary>
     [ObservableProperty]
     private string? _proposalId;
+
+    [ObservableProperty]
+    private string? _assessmentId;
 
     [ObservableProperty]
     private string _selectedGroup;
@@ -72,6 +76,8 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     /// <summary>The rows currently on display: <see cref="_allRows"/> filtered by <see cref="FilterText"/> and sorted.</summary>
     public ObservableCollection<StatsRowViewModel> Rows { get; } = [];
+
+    public ObservableCollection<JsonElement> Metadata { get; } = [];
 
     public IAsyncRelayCommand LoadCommand { get; }
 
@@ -110,19 +116,33 @@ public sealed partial class StatisticsViewModel : ObservableObject
         IsStale = false;
         Refusal = null;
         SummaryMarkdown = null;
+        AssessmentId = null;
+        ProposalId = null;
+        Metadata.Clear();
     }
 
     private async Task LoadAsync()
     {
         if (ProjectPath is null) return;
 
-        var request = new StatsRequest(ProjectPath, ProposalId, StatsOutputKind.JsonRows, ["--group", SelectedGroup]);
+        var request = new StatsRequest(ProjectPath, ProposalId, StatsOutputKind.JsonRows, ["--group", SelectedGroup])
+        {
+            AssessmentId = ProposalId is null ? AssessmentId : null,
+        };
         var outcome = await _commandClient.StatsAsync(request, CancellationToken.None);
 
         if (outcome.Succeeded)
         {
             _allRows.Clear();
-            _allRows.AddRange(outcome.Value!.Rows!.Select(row => new StatsRowViewModel(row)));
+            Metadata.Clear();
+            foreach (var row in outcome.Value!.Rows!)
+            {
+                if (row.ValueKind == JsonValueKind.Object && row.TryGetProperty("meta", out var meta) &&
+                    meta.ValueKind == JsonValueKind.True)
+                    Metadata.Add(row.Clone());
+                else
+                    _allRows.Add(new StatsRowViewModel(row));
+            }
             IsStale = false;
             Refusal = null;
             ApplyView();
@@ -157,5 +177,5 @@ public sealed partial class StatisticsViewModel : ObservableObject
         IEnumerable<StatsRowViewModel> view, Func<StatsRowViewModel, TKey> selector, IComparer<TKey> comparer) =>
         SortDescending ? view.OrderByDescending(selector, comparer) : view.OrderBy(selector, comparer);
 
-    private static bool IsNumericColumn(string column) => column is "attempts" or "failures" or "elapsed";
+    private static bool IsNumericColumn(string column) => column is "attempts" or "passes" or "elapsedMs";
 }

@@ -33,7 +33,7 @@ public static class ProjectConfigurationFile
     private static readonly HashSet<string> ApplyKeys = new(StringComparer.Ordinal) { "purge-on-apply" };
 
     private static readonly HashSet<string> ScopeKeys = new(StringComparer.Ordinal)
-        { "name", "query", "assessor", "engine", "collect", "per-word-limit-ms" };
+        { "name", "query", "assessor", "collect", "per-word-limit-ms", "per-word-step-limit" };
 
     /// <summary>
     /// Resolves TOML text into a fully-defaulted configuration. Malformed input, an unrecognised table, or
@@ -102,6 +102,9 @@ public static class ProjectConfigurationFile
                     purge = ParseBool(path, lineNumber, key, rawValue);
                     break;
                 case ScopeTable:
+                    if (key == "engine")
+                        throw Malformed(path, lineNumber,
+                            "obsolete key 'engine'; remove it from this configuration or delete the file to recreate defaults");
                     if (!ScopeKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[[scope]]");
                     current.Set(key, rawValue, path, lineNumber);
                     break;
@@ -136,9 +139,9 @@ public static class ProjectConfigurationFile
             sb.AppendLine($"name = {Quote(scope.Name)}");
             sb.AppendLine($"query = {Quote(scope.Query)}");
             sb.AppendLine($"assessor = {Quote(scope.Assessor)}");
-            sb.AppendLine($"engine = {Quote(scope.Engine)}");
             sb.AppendLine($"collect = [{string.Join(", ", scope.Collect.Select(Quote))}]");
             sb.AppendLine($"per-word-limit-ms = {(long)scope.PerWordLimit.TotalMilliseconds}");
+            sb.AppendLine($"per-word-step-limit = {scope.PerWordStepLimit}");
         }
         return sb.ToString();
     }
@@ -235,6 +238,13 @@ public static class ProjectConfigurationFile
 
     private static string Bool(bool value) => value ? "true" : "false";
 
+    private static int ParseStepLimit(string path, int lineNumber, string key, string rawValue)
+    {
+        if (!int.TryParse(rawValue, out var value) || value <= 0)
+            throw Malformed(path, lineNumber, $"'{key}' must be a positive whole number, found '{rawValue}'");
+        return value;
+    }
+
     private static string Quote(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
     private static ProjectConfigurationException Malformed(string path, int lineNumber, string reason) =>
@@ -249,9 +259,9 @@ public static class ProjectConfigurationFile
         private string? _name;
         private string? _query;
         private string? _assessor;
-        private string? _engine;
         private List<string>? _collect;
         private int? _perWordLimitMs;
+        private int? _perWordStepLimit;
 
         public void Set(string key, string rawValue, string path, int lineNumber)
         {
@@ -260,9 +270,9 @@ public static class ProjectConfigurationFile
                 case "name": _name = ParseString(path, lineNumber, key, rawValue); break;
                 case "query": _query = ParseString(path, lineNumber, key, rawValue); break;
                 case "assessor": _assessor = ParseString(path, lineNumber, key, rawValue); break;
-                case "engine": _engine = ParseString(path, lineNumber, key, rawValue); break;
                 case "collect": _collect = ParseStringArray(path, lineNumber, key, rawValue); break;
                 case "per-word-limit-ms": _perWordLimitMs = ParsePositiveMilliseconds(path, lineNumber, key, rawValue); break;
+                case "per-word-step-limit": _perWordStepLimit = ParseStepLimit(path, lineNumber, key, rawValue); break;
             }
         }
 
@@ -274,11 +284,11 @@ public static class ProjectConfigurationFile
                 _name,
                 _query ?? AssessmentScopeConfiguration.DefaultQueryText,
                 _assessor ?? AssessmentScopeConfiguration.DefaultAssessorName,
-                _engine ?? AssessmentScopeConfiguration.DefaultEngineName,
                 (IReadOnlyList<string>?)_collect ?? Array.Empty<string>(),
                 _perWordLimitMs is { } ms
                     ? TimeSpan.FromMilliseconds(ms)
-                    : AssessmentScopeConfiguration.DefaultPerWordLimit);
+                    : AssessmentScopeConfiguration.DefaultPerWordLimit,
+                _perWordStepLimit ?? AssessmentScopeConfiguration.DefaultPerWordStepLimit);
         }
     }
 }

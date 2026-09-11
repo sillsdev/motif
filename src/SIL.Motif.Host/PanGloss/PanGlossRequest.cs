@@ -10,6 +10,8 @@ namespace SIL.Motif.Host.PanGloss;
 /// </summary>
 public abstract record PanGlossRequest
 {
+    public const int DefaultPerWordStepLimit = 200000;
+
     private PanGlossRequest() { }
 
     /// <summary>The subcommand this request runs, as the binary spells it.</summary>
@@ -33,9 +35,12 @@ public abstract record PanGlossRequest
     /// on deep-truncation grammars, and the queue already serialises parsers machine-wide.
     /// </summary>
     public sealed record Batch(
-        string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan PerWordLimit, string? StatsCachePath = null)
+        string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan PerWordLimit, string? StatsCachePath = null,
+        int PerWordStepLimit = DefaultPerWordStepLimit, string? ArtifactDirectory = null)
         : PanGlossRequest
     {
+        public bool CollectAnalyses { get; init; }
+
         public override string Subcommand => "batch";
 
         internal override void Validate()
@@ -44,6 +49,8 @@ public abstract record PanGlossRequest
             ArgumentNullException.ThrowIfNull(Words);
             if (PerWordLimit <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(PerWordLimit), "A per-word limit must be positive.");
+            if (PerWordStepLimit <= 0)
+                throw new ArgumentOutOfRangeException(nameof(PerWordStepLimit), "A per-word step limit must be positive.");
             if (!File.Exists(ProjectFilePath))
                 throw new FileNotFoundException("The project file the parser must read does not exist.", ProjectFilePath);
         }
@@ -59,8 +66,15 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(Path.Combine(scratch, "out.tsv"));
             startInfo.ArgumentList.Add("--word-timeout-ms");
             startInfo.ArgumentList.Add(((int)PerWordLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
+            startInfo.ArgumentList.Add("--step-cap");
+            startInfo.ArgumentList.Add(PerWordStepLimit.ToString(CultureInfo.InvariantCulture));
             startInfo.ArgumentList.Add("--threads");
             startInfo.ArgumentList.Add("1");
+            if (CollectAnalyses)
+            {
+                startInfo.ArgumentList.Add("--analyses");
+                startInfo.ArgumentList.Add(Path.Combine(scratch, "analyses.jsonl"));
+            }
             if (StatsCachePath is null) return;
             startInfo.ArgumentList.Add("--stats");
             startInfo.ArgumentList.Add("--cache");
@@ -76,7 +90,13 @@ public abstract record PanGlossRequest
             }
             var outPath = Path.Combine(scratch, "out.tsv");
             var tsv = File.Exists(outPath) ? File.ReadAllText(outPath) : string.Empty;
-            return new PanGlossOutcome.Completed(tsv, standardError, elapsed);
+            var analysesPath = Path.Combine(scratch, "analyses.jsonl");
+            if (CollectAnalyses && !File.Exists(analysesPath))
+                return new PanGlossOutcome.Incomplete("The batch wrote no requested morphology evidence.", standardError);
+            return new PanGlossOutcome.Completed(tsv, standardError, elapsed)
+            {
+                MorphologyOutput = CollectAnalyses ? File.ReadAllText(analysesPath) : null,
+            };
         }
     }
 

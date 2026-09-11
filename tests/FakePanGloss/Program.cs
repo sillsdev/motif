@@ -37,8 +37,8 @@ internal static class Program
     private static readonly Command[] Dispatch =
     [
         new("batch", ["grammar", "words.txt", "out.tsv"],
-            [new("--word-timeout-ms", true), new("--threads", true), new("--stats", false),
-                new("--cache", true)], RunBatch),
+            [new("--word-timeout-ms", true), new("--step-cap", true), new("--threads", true), new("--stats", false),
+                new("--cache", true), new("--analyses", true)], RunBatch),
         new("import", ["project.fwdata", "out.json"], [], RunImport),
         new("describe", [], [], RunDescription),
         new("stats", ["project-or-grammar"],
@@ -99,14 +99,20 @@ internal static class Program
         var wordsPath = args[2];
         var outPath = args[3];
         string? cachePath = null;
+        string? analysesPath = null;
         for (var i = 4; i < args.Length; i++)
         {
             if (args[i] == "--cache" && i + 1 < args.Length) cachePath = args[++i];
+            else if (args[i] == "--analyses" && i + 1 < args.Length) analysesPath = args[++i];
         }
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
         RecordArgv(directory, args);
         var behaviour = Behaviour.Read(directory);
-        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+        if (behaviour.HeartbeatPath is { } heartbeat)
+        {
+            using var wordsHandle = File.Open(wordsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return Tick(heartbeat);
+        }
         if (behaviour.DelayMilliseconds > 0)
             Thread.Sleep(behaviour.DelayMilliseconds);
         switch (behaviour.Mode)
@@ -120,6 +126,7 @@ internal static class Program
             default:
                 var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
                 File.WriteAllText(outPath, BatchTsv(behaviour, words));
+                if (analysesPath is not null) File.WriteAllText(analysesPath, BatchMorphology(behaviour, words));
                 // Motif digests the cache and never reads it, so any bytes stand in for PanGloss's SQLite.
                 if (cachePath is not null) File.WriteAllText(cachePath, "fake stats cache");
                 return behaviour.ExitCode;
@@ -133,8 +140,13 @@ internal static class Program
         for (var i = 0; i < words.Count; i++)
         {
             var known = behaviour.Words.FirstOrDefault(w => w.Word == words[i]);
-            var status = "ok";
-            var signature = known is { Outcome: "complete" } ? words[i] + "-sig" : "-";
+            var status = known?.Outcome switch
+            {
+                "capped" => "CAP",
+                "timed-out" => "TIMEOUT",
+                _ => "ok",
+            };
+            var signature = known?.Signature ?? (known is { Outcome: "complete" } ? words[i] + "-sig" : "-");
             builder.Append(i).Append('\t').Append(words[i]).Append('\t').Append(3).Append('\t')
                 .Append(status).Append('\t').Append(signature).Append('\n');
         }
@@ -213,6 +225,8 @@ internal static class Program
 
     private static void RecordArgv(string? directory, string[] args)
     {
+        if (Environment.GetEnvironmentVariable("FAKE_PANGLOSS_ARGV_PATH") is { Length: > 0 } destination)
+            File.WriteAllText(destination, JsonSerializer.Serialize(args));
         if (directory is null) return;
         File.WriteAllText(Path.Combine(directory, ArgvFileName), JsonSerializer.Serialize(args));
     }
@@ -246,7 +260,23 @@ internal static class Program
         }
     }
 
-    private sealed record FakeWord(string Word, string Outcome);
+    private static string BatchMorphology(Behaviour behaviour, IReadOnlyList<string> words) =>
+        string.Join("\n", words.Select((word, index) =>
+        {
+            var known = behaviour.Words.FirstOrDefault(item => item.Word == word);
+            var hasFindings = known?.Signature is { } signature ? signature != "-" : known?.Outcome == "complete";
+            return JsonSerializer.Serialize(new
+            {
+                schema = "fieldworks-parse-analysis/v1", index, word, elapsedMs = 3,
+                capped = known?.Outcome == "capped", timedOut = known?.Outcome == "timed-out", invalidShape = false,
+                analyses = known?.Analyses ?? [],
+                unavailable = hasFindings && known?.Analyses is not { Count: > 0 }
+                    ? new[] { "Fake result has no authored source identity." } : Array.Empty<string>(),
+            });
+        }));
+
+    private sealed record FakeWord(string Word, string Outcome, string? Signature = null,
+        IReadOnlyList<JsonElement>? Analyses = null);
 
     private sealed record Behaviour
     {
@@ -263,7 +293,8 @@ internal static class Program
         internal static Behaviour Read(string? directory)
         {
             if (directory is null) return new Behaviour();
-            var path = Path.Combine(directory, BehaviourFileName);
+            var path = Environment.GetEnvironmentVariable("FAKE_PANGLOSS_BEHAVIOUR_PATH")
+                ?? Path.Combine(directory, BehaviourFileName);
             if (!File.Exists(path)) return new Behaviour();
             return JsonSerializer.Deserialize<Behaviour>(File.ReadAllText(path),
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();

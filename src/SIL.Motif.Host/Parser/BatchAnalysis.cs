@@ -6,18 +6,19 @@ namespace SIL.Motif.Host.Parser;
 /// figure about the grammar.</summary>
 public enum WordOutcome
 {
-    /// <summary>The parser produced at least one analysis.</summary>
+    /// <summary>The search completed with at least one analysis.</summary>
     Analysed,
 
     /// <summary>The parser found no analysis. **This is the real signal** — a genuine gap in the grammar.</summary>
     NoAnalysis,
 
     /// <summary>
-    /// The per-word deadline expired. **Not a failure**, and never to be counted as one: it is a fact about
-    /// the machine, the thread count and the cap, not about the grammar. A figure containing any of these
-    /// is a lower bound.
+    /// The per-word deadline expired. Partial findings do not establish that the search completed.
     /// </summary>
     TimedOut,
+
+    /// <summary>The per-word step budget was exhausted; any findings remain partial evidence.</summary>
+    Capped,
 
     /// <summary>The parser declined to attempt the word — not an analysis result at all.</summary>
     Skipped,
@@ -38,6 +39,7 @@ public static class StoredWordOutcomeNames
         WordOutcome.Analysed => "analysed",
         WordOutcome.NoAnalysis => "no-analysis",
         WordOutcome.TimedOut => "timed-out",
+        WordOutcome.Capped => "capped",
         WordOutcome.Skipped => "skipped",
         _ => throw new ArgumentOutOfRangeException(nameof(outcome)),
     };
@@ -50,6 +52,7 @@ public static class StoredWordOutcomeNames
             case "analysed": outcome = WordOutcome.Analysed; return true;
             case "no-analysis": outcome = WordOutcome.NoAnalysis; return true;
             case "timed-out": outcome = WordOutcome.TimedOut; return true;
+            case "capped": outcome = WordOutcome.Capped; return true;
             case "skipped": outcome = WordOutcome.Skipped; return true;
             default: outcome = default; return false;
         }
@@ -57,40 +60,43 @@ public static class StoredWordOutcomeNames
 }
 
 /// <summary>One row of a batch run.</summary>
-public sealed record WordAnalysis(int Index, string Word, int ElapsedMs, WordOutcome Outcome, string Signature);
+public sealed record WordAnalysis(int Index, string Word, int ElapsedMs, WordOutcome Outcome, string Signature)
+{
+    public SIL.Motif.Contract.Responses.ParseWordEvidence? Morphology { get; init; }
+    public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }
+}
 
 /// <summary>
 /// A completed batch run, with the provenance a grammar coverage figure is required to carry
 /// (ADR 0032 §4).
 /// </summary>
-/// <remarks>
-/// <see cref="TimedOut"/> is surfaced beside the counts on purpose: a caller computing grammar coverage must be able
-/// to see that its number is a lower bound without inspecting every row, and a caller that ignores it produces
-/// a figure that moves when the machine is busy.
-/// </remarks>
+/// <remarks>Batch termination does not establish completion of every word's search.</remarks>
 public sealed record BatchAnalysis(
     IReadOnlyList<WordAnalysis> Words,
-    ParserEngine Engine,
     int? PerWordTimeoutMs,
     string ProjectPath,
     IReadOnlyList<string> Warnings)
 {
+    /// <summary>The recorded per-word step budget, or null when the supplied evidence does not name one.</summary>
+    public int? PerWordStepLimit { get; init; }
+
     public int Analysed => Words.Count(w => w.Outcome == WordOutcome.Analysed);
     public int NoAnalysis => Words.Count(w => w.Outcome == WordOutcome.NoAnalysis);
     public int TimedOut => Words.Count(w => w.Outcome == WordOutcome.TimedOut);
+    public int Capped => Words.Count(w => w.Outcome == WordOutcome.Capped);
     public int Skipped => Words.Count(w => w.Outcome == WordOutcome.Skipped);
+    public int Incomplete => TimedOut + Capped;
 
     /// <summary>
     /// Words the parser actually reached a verdict on — the only honest denominator for grammar coverage, since a
-    /// timed-out or skipped word has no verdict either way.
+    /// capped, timed-out or skipped words do not have completed searches.
     /// </summary>
     public int Adjudicated => Analysed + NoAnalysis;
 
     /// <summary>
-    /// <c>true</c> when any word timed out, so any grammar coverage figure derived from this run is a **lower bound**
-    /// and must say so rather than presenting itself as a measurement.
+    /// Whether any attempted word's search stopped at a time or step limit.
     /// </summary>
-    public bool IsLowerBound => TimedOut > 0;
+    public bool IsIncomplete => Incomplete > 0;
 }
 
 /// <summary>
@@ -139,6 +145,7 @@ public static class BatchTsvParser
     {
         "ok" => signature == "-" ? WordOutcome.NoAnalysis : WordOutcome.Analysed,
         "TIMEOUT" => WordOutcome.TimedOut,
+        "CAP" => WordOutcome.Capped,
         "SKIPPED" => WordOutcome.Skipped,
         "none" or "NONE" or "no-analysis" => WordOutcome.NoAnalysis,
         _ => throw new InvalidOperationException(

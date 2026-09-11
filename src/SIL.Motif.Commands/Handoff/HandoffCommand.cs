@@ -98,6 +98,7 @@ public static class HandoffCommand
                 BaselineCaptureResponse baseline;
                 SelectionProjection selectionProjection;
                 string? statisticsMarkdown = null;
+                string? statisticsAssessmentId = null;
                 var assessmentIds = new List<string>();
 
                 if (request.Assess)
@@ -113,6 +114,12 @@ public static class HandoffCommand
                     selectionProjection = assessOutcome.Value!.Selection;
                     statisticsMarkdown = assessOutcome.Value!.SummaryMarkdown;
                     assessmentIds.AddRange(assessOutcome.Value!.AssessmentIds);
+                    statisticsAssessmentId = assessOutcome.Value.Measurements
+                        .SingleOrDefault(item => item.Kind == AssessmentKind.ObjectTiming.ToStoredKind())?.AssessmentId;
+                    if (statisticsAssessmentId is null)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.statistics-unavailable", FailureReason.Refused,
+                            "The Assessment returned no identified ObjectTiming measurement for this Handoff."));
                 }
                 else
                 {
@@ -130,16 +137,38 @@ public static class HandoffCommand
                     selectionProjection = composed.Value!.Projection;
                 }
 
+                StatsEvidenceReplay? replay = null;
+                if (statisticsAssessmentId is not null)
+                {
+                    try
+                    {
+                        var recorded = new AssessmentRepository(database).Get(statisticsAssessmentId);
+                        if (!recorded.Kind.IsStoredKind(AssessmentKind.ObjectTiming) || recorded.Invocation is null ||
+                            recorded.CachePath is null || recorded.CacheDigest is null)
+                            throw new InvalidDataException("The Handoff's ObjectTiming Assessment has no complete retained evidence.");
+                        replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest);
+                    }
+                    catch (Exception exception) when (exception is IOException or InvalidDataException or
+                        UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
+                    {
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.statistics-unavailable", FailureReason.Refused, exception.Message,
+                            Fact(("assessmentId", statisticsAssessmentId))));
+                    }
+                }
+                using var replayLease = replay;
+                var grammarPath = request.Assess ? replay!.GrammarPath : baseline.FwDataPath;
+
                 var writeRefusal = HandoffWriter.Publish(request.OutputDirectory, request.Assess, incoming =>
                 {
-                    using (var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath))
+                    using (var cache = new FwDataProjectLoader().LoadScratchCache(grammarPath))
                         HandoffWriter.WriteTexts(cache, request.Selection.TextIds, incoming, request.WriteFlexTextXml);
 
                     HandoffWriter.WriteSelectionTxt(incoming, selectionProjection);
 
                     Report(onProgress, AssessmentStage.ImportingGrammar, "Importing the grammar...");
                     var import = invoker.RunAsync(
-                            new PanGlossRequest.Import(baseline.FwDataPath, Path.Combine(incoming, HandoffWriter.GrammarFileName)),
+                            new PanGlossRequest.Import(grammarPath, Path.Combine(incoming, HandoffWriter.GrammarFileName)),
                             "handoff:import:" + request.ProjectPath, cancellationToken)
                         .GetAwaiter().GetResult();
                     if (import is PanGlossOutcome.Cancelled) return Cancelled(request.ProjectPath);
@@ -161,7 +190,8 @@ public static class HandoffCommand
                         {
                             var groupOutcome = StatsCommand.Run(
                                 new StatsRequest(request.ProjectPath, null, StatsOutputKind.Text,
-                                    new[] { "--group", group, "--format", "jsonl" }),
+                                    new[] { "--group", group, "--format", "jsonl" })
+                                    { AssessmentId = statisticsAssessmentId },
                                 invoker, cancellationToken);
                             if (!groupOutcome.Succeeded) return groupOutcome.Refusal;
 

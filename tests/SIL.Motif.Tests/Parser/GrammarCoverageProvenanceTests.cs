@@ -23,7 +23,7 @@ public sealed class GrammarCoverageProvenanceTests
         var batch = new BatchAnalysis(
             [new WordAnalysis(0, "motifa", 3, WordOutcome.Analysed, "sig-1"),
              new WordAnalysis(1, "zzznotaword", 2, WordOutcome.NoAnalysis, "sig-2")],
-            ParserEngine.FstPrunedByHermitCrab, 5000, @"C:\projects\sample.fwdata", []);
+            5000, @"C:\projects\sample.fwdata", []);
 
         var figure = GrammarCoverageFigure.Compute(batch, selection, report);
 
@@ -31,7 +31,6 @@ public sealed class GrammarCoverageProvenanceTests
         Assert.Equal(selection.Sha256, figure.SelectionSha256);
         // The grammar identity comes from the parser's own hash rather than anything Motif computed.
         Assert.Equal(report.GrammarSourceSha256, figure.GrammarSourceSha256);
-        Assert.Equal(ParserEngine.FstPrunedByHermitCrab, figure.Engine);
         Assert.Equal(5000, figure.PerWordTimeoutMs);
     }
 
@@ -43,14 +42,13 @@ public sealed class GrammarCoverageProvenanceTests
             [new WordAnalysis(0, "a", 1, WordOutcome.Analysed, "s"),
              new WordAnalysis(1, "b", 1, WordOutcome.NoAnalysis, "s"),
              new WordAnalysis(2, "c", 1, WordOutcome.TimedOut, "s")],
-            ParserEngine.FstPrunedByHermitCrab, 5000, @"C:\projects\sample.fwdata", []);
+            5000, @"C:\projects\sample.fwdata", []);
 
         var figure = GrammarCoverageFigure.Compute(batch, selection, AssessReportParser.Parse(ReportJson));
 
-        Assert.Equal(selection.Words.Count, batch.Analysed + batch.NoAnalysis + batch.TimedOut + batch.Skipped);
+        Assert.Equal(selection.Words.Count, batch.Analysed + batch.NoAnalysis + batch.TimedOut + batch.Capped + batch.Skipped);
         Assert.True(figure.Adjudicated <= selection.Words.Count);
-        // A timed-out word means the figure can only be a floor, and must say so.
-        Assert.True(figure.IsLowerBound);
+        Assert.True(figure.IsIncomplete);
         Assert.InRange(figure.Fraction!.Value, 0.0, 1.0);
     }
 

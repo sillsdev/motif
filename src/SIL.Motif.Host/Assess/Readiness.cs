@@ -30,6 +30,12 @@ public static class Readiness
             return new[] { "no Assessment covers its current content, so nothing has measured what it would do" };
 
         var reasons = new List<string>();
+        var unavailable = candidate.Words.Any(word => word.Correctness is null || word.Morphology is null ||
+                CorrectnessCoverage.Require(word, "readiness").Status is "incomplete" or "unavailable");
+        if (unavailable)
+        {
+            reasons.Add("its per-word correctness evidence is incomplete or unavailable");
+        }
 
         // Two Assessments only mean anything against each other when they measured the same project state.
         if (currentBaselineToken is not null &&
@@ -40,7 +46,7 @@ public static class Readiness
                 "not been re-run since the project moved");
         }
 
-        if (gateOnRegression && current is not null)
+        if (!unavailable && gateOnRegression && current is not null)
         {
             var finding = RegressionChecker.Check(current, candidate);
             if (finding is { IsRegression: true }) reasons.Add($"it would be a regression: {finding.Describe()}");

@@ -47,10 +47,9 @@ public class ScratchCacheFactory
     /// <remarks>
     /// <para>
     /// Retained as the comparison point that settled ADR 0016, and because it is the only way to capture the
-    /// source's <i>uncommitted</i> edits. It is fast — 78–200 ms from a cold source at ~152k objects, against
-    /// ~600 ms for <see cref="CreateFromFileCopy"/> — and cost is O(objects), each either a byte-array
-    /// reference copy (source surrogate never reconstituted) or a full <c>ToXmlString()</c> (source object
-    /// already fluffed), so a hot source costs ~4.2 s.
+    /// source's <i>uncommitted</i> edits. It materializes every source object before copying because the
+    /// mixed lazy/materialized copy path can reuse source-cache HVOs and collide with target-cache HVOs.
+    /// Consequently it incurs the memory and serialization cost of the entire source project.
     /// </para>
     /// <para>
     /// <b>But every <c>kMemoryOnly</c> cache loses its writing-system definitions.</b> Measured on a
@@ -78,6 +77,8 @@ public class ScratchCacheFactory
         var dirs = new LcmDirectories(templates, templates);
 
         var progress = new LcmThreadedProgress();
+        // Lazy surrogate copies can retain foreign HVOs; materialized objects receive target-cache identities.
+        _ = source.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances().ToArray();
         return LcmCache.CreateCacheCopy(
             projectId,
             userWsIcuLocale: "en",

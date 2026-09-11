@@ -109,7 +109,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == AssessRunState.Completed)
         {
             Baseline.HasAssessment = true;
+            Statistics.Reset();
             Statistics.SummaryMarkdown = Assess.Result?.SummaryMarkdown;
+            Statistics.AssessmentId = Assess.Result?.Measurements
+                .SingleOrDefault(measurement => measurement.Kind == "ObjectTiming")?.AssessmentId;
             HasEverAssessed = true;
         }
     }

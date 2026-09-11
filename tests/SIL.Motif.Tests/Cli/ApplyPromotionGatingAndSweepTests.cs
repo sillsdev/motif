@@ -108,6 +108,25 @@ public sealed class ApplyPromotionGatingAndSweepTests
     }
 
     [Fact]
+    public void TimingOnlyAssessmentsKeepApplyGatedAndExplainRequiredCorrectness()
+    {
+        var proposalId = FinalizeAndTrial("timing-only", "timing only gloss");
+        var intentDigest = GetRecord(proposalId).IntentDigest!;
+        RecordAssessment(proposalId, intentDigest, "ParseTime", ("alpha", true));
+        RecordAssessment(proposalId, intentDigest, "ObjectTiming", ("alpha", true));
+
+        var result = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Apply requires a Correctness Assessment", result.Output, StringComparison.Ordinal);
+        Assert.Contains("approved morphology comparisons", result.Output, StringComparison.Ordinal);
+        Assert.Contains("timing-only evidence cannot satisfy", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain($"trial {proposalId}", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("--force", result.Output, StringComparison.Ordinal);
+        Assert.Equal("proposed", GetRecord(proposalId).Status);
+    }
+
+    [Fact]
     public void ApplyIsRefusedWhenTheAssessmentMeasuredADifferentProjectStateThanTheCurrentOne()
     {
         var proposalId = FinalizeAndTrial("stale", "stale gloss");
@@ -211,11 +230,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var selection = Selection.Create("test", words.Select(w => w.Word));
         var assessmentId = CanonicalId.Mint("assessment/").Value;
         var assessedWords = words
-            .Select(w => new AssessedWord(
-                w.Word, w.Analysed ? "analysed" : "no-analysis",
-                w.Analysed
-                    ? new[] { new ParsedAnalysis(null, Array.Empty<string>(), 0, "digest:" + w.Word) }
-                    : Array.Empty<ParsedAnalysis>()))
+            .Select(w => CorrectnessFixture.Word(w.Word, w.Analysed))
             .ToArray();
 
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
@@ -225,7 +240,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
             ProposalIntentDigest: intentDigest,
             Assessor: "pangloss",
             Kind: kind,
-            ScopeJson: """{"engine":"fast","perWordLimitMs":1000}""",
+            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":200000}""",
             ScopeDigest: "sha256:" + new string('a', 64),
             TokeniserName: "none",
             TokeniserVersion: "1",

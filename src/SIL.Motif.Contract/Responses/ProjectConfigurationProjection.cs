@@ -13,6 +13,6 @@ public sealed record AssessmentScopeProjection(
     string Name,
     string Query,
     string Assessor,
-    string Engine,
     IReadOnlyList<string> Collect,
-    long PerWordLimitMs);
+    long PerWordLimitMs,
+    int PerWordStepLimit);

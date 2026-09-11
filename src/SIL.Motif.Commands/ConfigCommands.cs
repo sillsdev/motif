@@ -36,7 +36,7 @@ public static class ConfigCommands
         configuration.PurgeOnApply,
         configuration.Scopes
             .Select(scope => new AssessmentScopeProjection(
-                scope.Name, scope.Query, scope.Assessor, scope.Engine, scope.Collect,
-                (long)scope.PerWordLimit.TotalMilliseconds))
+                scope.Name, scope.Query, scope.Assessor, scope.Collect,
+                (long)scope.PerWordLimit.TotalMilliseconds, scope.PerWordStepLimit))
             .ToArray());
 }

@@ -34,7 +34,7 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.Equal(AssessmentScopeConfiguration.DefaultName, scope.Name);
         Assert.Equal(AssessmentScopeConfiguration.DefaultQueryText, scope.Query);
         Assert.Equal(AssessmentScopeConfiguration.DefaultAssessorName, scope.Assessor);
-        Assert.Equal(AssessmentScopeConfiguration.DefaultEngineName, scope.Engine);
+        Assert.Equal(200000, scope.PerWordStepLimit);
         Assert.Empty(scope.Collect);
         Assert.Equal(TimeSpan.FromSeconds(1), scope.PerWordLimit);
     }
@@ -118,9 +118,8 @@ public sealed class ProjectConfigurationTests : IDisposable
                     name: "tight-loop",
                     query: "all words in text #7",
                     assessor: "pangloss",
-                    engine: "fast",
                     collect: new[] { "coverage", "timing" },
-                    perWordLimit: TimeSpan.FromMilliseconds(2500)),
+                    perWordLimit: TimeSpan.FromMilliseconds(2500), perWordStepLimit: 12345),
             },
             gateOnRegression: true,
             purgeOnApply: false);
@@ -135,7 +134,7 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.Equal(originalScope.Name, reparsedScope.Name);
         Assert.Equal(originalScope.Query, reparsedScope.Query);
         Assert.Equal(originalScope.Assessor, reparsedScope.Assessor);
-        Assert.Equal(originalScope.Engine, reparsedScope.Engine);
+        Assert.Equal(originalScope.PerWordStepLimit, reparsedScope.PerWordStepLimit);
         Assert.Equal(originalScope.Collect, reparsedScope.Collect);
         Assert.Equal(originalScope.PerWordLimit, reparsedScope.PerWordLimit);
     }
@@ -152,6 +151,42 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.False(configuration.PurgeOnApply);
         var scope = Assert.Single(configuration.Scopes);
         Assert.Equal(AssessmentScopeConfiguration.DefaultName, scope.Name);
+    }
+
+    [Fact]
+    public void AnObsoleteEngineKeyRefusesWithActionableGuidance()
+    {
+        var exception = Assert.Throws<ProjectConfigurationException>(() =>
+            ProjectConfigurationFile.Parse("[[scope]]\nname = \"default\"\nengine = \"fast\"\n", "Project.motif.toml"));
+        Assert.Contains("engine", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Project.motif.toml", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("remove", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(12345)]
+    public void DeclaredStepLimitsRoundTripIndependentlyOfTime(int steps)
+    {
+        var parsed = ProjectConfigurationFile.Parse(
+            $"[[scope]]\nname = \"limited\"\nper-word-step-limit = {steps}\nper-word-limit-ms = 750\n", "Project.motif.toml");
+        var scope = Assert.Single(ProjectConfigurationFile.Parse(
+            ProjectConfigurationFile.Render(parsed), "Project.motif.toml").Scopes);
+        Assert.Equal(steps, scope.PerWordStepLimit);
+        Assert.Equal(TimeSpan.FromMilliseconds(750), scope.PerWordLimit);
+        Assert.DoesNotContain("engine", ProjectConfigurationFile.Render(parsed), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("0")]
+    [InlineData("1.5")]
+    [InlineData("many")]
+    public void InvalidStepLimitsRefuse(string steps)
+    {
+        var exception = Assert.Throws<ProjectConfigurationException>(() => ProjectConfigurationFile.Parse(
+            $"[[scope]]\nname = \"limited\"\nper-word-step-limit = {steps}\n", "Project.motif.toml"));
+        Assert.Contains("positive whole number", exception.Message, StringComparison.Ordinal);
     }
 
     public void Dispose()

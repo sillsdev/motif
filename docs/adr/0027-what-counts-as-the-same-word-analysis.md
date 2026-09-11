@@ -1,5 +1,8 @@
 # ADR 0027 — A passing test means the parser agrees about the morphology, not about the meaning
 
+An approved reading passes when the parser reproduces its ordered morphology. This says nothing about the
+meaning a person chose, and finding a match does not establish that the parser finished searching.
+
 **Status:** accepted, 2026-08-05. Defines the comparison [ADR 0025](0025-parser-first-build-order.md)'s
 acceptance test depends on. Resolves `I35a` and `I35b`.
 Evidence: [what is a proper word analysis](../research/2026-08-05-what-is-a-proper-word-analysis.md).
@@ -86,10 +89,13 @@ is exactly what this ADR exists to pin down.
 
 ## Consequences
 
-- **`I35a` and `I35b` are resolved.** The "false agreement" worry — that PanGloss's coarser identity would call
-  two different analyses the same — is real but correctly scoped: it can only cause false agreement about
-  *sense*, which is not under test and is reported separately. It cannot cause false agreement about
-  morphology, which is what the gate checks.
+- **The comparison decision is resolved; the old wire identity was insufficient.** The original claim that
+  PanGloss's coarser identity could falsely agree only about sense was incorrect: it also omitted the selected
+  allomorph and per-bundle inflection type. Two different morphologies could therefore appear identical.
+  Correctness requires ordered source Form/MSA/InflType references and conditional guessed text, carried by
+  `fieldworks-parse-analysis/v1`. The [shared morphology plan](../superpowers/plans/2026-09-10-shared-parse-morph.md)
+  records its producer, consumer, and verification evidence. Missing authoritative identity is unavailable
+  evidence; it never becomes agreement through matching labels or owner IDs.
 - **A limitation is declared rather than discovered.** Sense-sensitive testing is unavailable until PanGloss's
   analysis identity carries a sense. That is a possible future ask on PanGloss, not a defect in this design,
   and it belongs in `plan-cross-repo.md` if it is ever wanted.

@@ -12,6 +12,18 @@ namespace SIL.Motif.Tests.Assess;
 public sealed class AssessmentComparerTests
 {
     [Fact]
+    public void SourceFormChangeIsVisibleWithoutLegacyDigests()
+    {
+        var before = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("alpha", true);
+        var evidence = before.Morphology!;
+        var morph = evidence.Analyses[0].Morphs[0] with { Form = "33333333-3333-3333-3333-333333333333" };
+        var after = before with { Morphology = evidence with { Analyses = [new([morph])] } };
+        var baseline = new ComparableAssessment("from", "pangloss", "Correctness", "none", "1", [before]);
+        var candidate = baseline with { AssessmentId = "to", Words = [after] };
+        Assert.Equal(WordChangeKind.AnalysisChanged, Assert.Single(AssessmentComparer.Compare(baseline, candidate).Changes).Kind);
+    }
+
+    [Fact]
     public void DifferentWordSets_CompareOnTheIntersection_AndReportEachSidesCount()
     {
         var from = Build("assessment/from", "pangloss", "ParseTime", "none", "1",

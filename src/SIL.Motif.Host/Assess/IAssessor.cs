@@ -1,4 +1,5 @@
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Host.Assess;
 
@@ -63,30 +64,24 @@ public static class AssessmentKindNames
 public sealed record AssessmentScope
 {
     public AssessmentScope(
-        IReadOnlyList<string> words, string engine, IReadOnlyList<AssessmentKind> collect, TimeSpan perWordLimit)
+        IReadOnlyList<string> words, IReadOnlyList<AssessmentKind> collect, TimeSpan perWordLimit,
+        int perWordStepLimit = 200000)
     {
         ArgumentNullException.ThrowIfNull(words);
-        if (string.IsNullOrWhiteSpace(engine))
-            throw new ArgumentException("A non-blank engine name is required.", nameof(engine));
         ArgumentNullException.ThrowIfNull(collect);
         if (perWordLimit <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
 
         Words = words;
-        Engine = engine;
         Collect = collect;
         PerWordLimit = perWordLimit;
+        if (perWordStepLimit <= 0)
+            throw new ArgumentOutOfRangeException(nameof(perWordStepLimit), "A per-word step limit must be positive.");
+        PerWordStepLimit = perWordStepLimit;
     }
 
     /// <summary>The resolved word list this run was told to try — not a query, the words themselves.</summary>
     public IReadOnlyList<string> Words { get; }
-
-    /// <summary>
-    /// Which of the Assessor's own engines to run under, named in the Assessor's own vocabulary (for example
-    /// PanGloss's <c>"fast"</c> and <c>"accurate"</c>). Opaque here on purpose: a scope must stay meaningful
-    /// for an Assessor that is not PanGloss and may have different engines or none at all.
-    /// </summary>
-    public string Engine { get; }
 
     /// <summary>
     /// Which kinds this run wants. Empty means the Assessor's own default for its kind, because no default
@@ -94,8 +89,11 @@ public sealed record AssessmentScope
     /// </summary>
     public IReadOnlyList<AssessmentKind> Collect { get; }
 
-    /// <summary>The per-word cap. Coverage measured under one cap is not comparable with another.</summary>
+    /// <summary>The per-word time cap; differences annotate comparisons without blocking them.</summary>
     public TimeSpan PerWordLimit { get; }
+
+    /// <summary>The per-word step cap; zero requests no search steps. Comparison context, never a compatibility gate.</summary>
+    public int PerWordStepLimit { get; }
 }
 
 /// <summary>
@@ -129,9 +127,7 @@ public abstract record AssessmentRaw
 /// </summary>
 /// <param name="Kind">Which kind this is.</param>
 /// <param name="GrammarSourceSha256">
-/// The grammar's identity, taken from the Assessor's own report rather than hashed independently — the same
-/// discipline <see cref="GrammarCoverageFigure"/> already follows, and what Task 2's <c>Assessments</c> table
-/// needs recorded against every row.
+/// The measured source identity. Batch evidence identifies staged file bytes; an authoritative report names its own source.
 /// </param>
 /// <param name="OutcomeDigest">The Assessor's own digest of what it produced, taken from its report and never derived here.</param>
 /// <param name="SemanticDigest">The Assessor's own digest of the produced meaning, taken from its report and never derived here.</param>
@@ -142,12 +138,20 @@ public abstract record AssessmentRaw
 public sealed record ProducedAssessment(
     AssessmentKind Kind,
     string GrammarSourceSha256,
-    string OutcomeDigest,
-    string SemanticDigest,
-    string ModelFingerprint,
-    string Pipeline,
-    int DiagnosticCount,
-    AssessmentRaw Raw);
+    string? OutcomeDigest,
+    string? SemanticDigest,
+    string? ModelFingerprint,
+    string? Pipeline,
+    int? DiagnosticCount,
+    AssessmentRaw Raw)
+{
+    /// <summary>Observed invocation evidence; absent for an Assessor that supplied another evidence shape.</summary>
+    public BatchInvocationEvidence? Invocation { get; init; }
+
+    /// <summary>Ephemeral ownership of unpublished artifacts, shared by the kinds from one invocation.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public AssessmentArtifactLease? ArtifactLease { get; init; }
+}
 
 /// <summary>
 /// Raised when an Assessor will not produce a requested kind. Carries the kind and, in

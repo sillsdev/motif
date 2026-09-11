@@ -1,7 +1,5 @@
-using System.Security.Cryptography;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
-using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Store;
@@ -9,260 +7,224 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Assess;
 
-/// <summary>
-/// PanGloss's own Assessor, composed from existing seams. These tests never touch a real or fake
-/// executable — the process boundary belongs to <see cref="IPanGlossInvoker"/> and <see cref="IPanGlossAssessor"/>
-/// individually; this seam's job is what it declares and what it records once those run, which is what is
-/// under test here.
-/// </summary>
 public sealed class PanGlossAssessorTests : IDisposable
 {
-    private const string GrammarSha256 = "sha256:" + "cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc";
-
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-pangloss-assessor-" + Guid.NewGuid().ToString("N"));
-    private readonly string _exportedCandidate;
-    private readonly StatsCacheStore _cachePaths;
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-assessor-" + Guid.NewGuid().ToString("N"));
+    private readonly string _candidate;
+    private readonly StatsCacheStore _paths;
 
     public PanGlossAssessorTests()
     {
-        Directory.CreateDirectory(_root);
-        _exportedCandidate = Path.Combine(_root, "candidate");
-        Directory.CreateDirectory(_exportedCandidate);
-        File.WriteAllText(Path.Combine(_exportedCandidate, "candidate.fwdata"), "the fake runners never read this.");
-        _cachePaths = new StatsCacheStore(WorkspaceOwnership.Bootstrap(Path.Combine(_root, "worker")));
+        _candidate = Path.Combine(_root, "candidate");
+        Directory.CreateDirectory(_candidate);
+        File.WriteAllText(Path.Combine(_candidate, "project.fwdata"), "fake grammar bytes");
+        _paths = new StatsCacheStore(WorkspaceOwnership.Bootstrap(Path.Combine(_root, "worker")));
     }
+
+    [Fact]
+    public async Task DefaultCollectionSharesOneCapturedBatchWithoutInventedReportMetadata()
+    {
+        using var invoker = RealFakeInvoker();
+        var assessor = new PanGlossAssessor(_paths, invoker);
+        var produced = await assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None);
+
+        Assert.Equal(new[] { AssessmentKind.ParseTime, AssessmentKind.ObjectTiming }, produced.Select(p => p.Kind));
+        var timing = produced[0];
+        var statistics = produced[1];
+        var evidence = Assert.IsType<BatchInvocationEvidence>(timing.Invocation);
+        Assert.Equal(evidence, statistics.Invocation);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(evidence.SourcePath), timing.GrammarSourceSha256);
+        Assert.Equal(123, evidence.PerWordStepLimit);
+        Assert.Equal(700, evidence.PerWordTimeoutMs);
+        Assert.True(evidence.CollectStatistics);
+        Assert.All(produced, item =>
+        {
+            Assert.Null(item.OutcomeDigest);
+            Assert.Null(item.SemanticDigest);
+            Assert.Null(item.ModelFingerprint);
+            Assert.Null(item.Pipeline);
+            Assert.Null(item.DiagnosticCount);
+        });
+        var raw = Assert.IsType<AssessmentRaw.Batch>(timing.Raw);
+        Assert.Equal("motifa", Assert.Single(raw.Analysis.Words).Word);
+        var cache = Assert.IsType<AssessmentRaw.FileCache>(statistics.Raw);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(cache.Path), cache.Digest);
+        Assert.Equal(Path.GetDirectoryName(evidence.SourcePath), Path.GetDirectoryName(cache.Path));
+    }
+
+    [Fact]
+    public async Task RepeatedRunsKeepEarlierArtifactsUnchanged()
+    {
+        using var invoker = RealFakeInvoker();
+        var assessor = new PanGlossAssessor(_paths, invoker);
+        var first = await assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None);
+        var firstCache = Assert.IsType<AssessmentRaw.FileCache>(first[1].Raw);
+        var firstBytes = File.ReadAllBytes(firstCache.Path);
+        var second = await assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None);
+
+        Assert.NotEqual(first[0].Invocation!.InvocationId, second[0].Invocation!.InvocationId);
+        Assert.NotEqual(firstCache.Path, Assert.IsType<AssessmentRaw.FileCache>(second[1].Raw).Path);
+        Assert.Equal(firstBytes, File.ReadAllBytes(firstCache.Path));
+        Assert.Equal(firstCache.Digest, BatchInvocationEvidence.DigestFile(firstCache.Path));
+    }
+
+    [Fact]
+    public async Task CorrectnessRequiresRetainedInvocationEvidence()
+    {
+        var invoker = new FakeInvoker();
+        var assessor = new PanGlossAssessor(_paths, invoker);
+        Assert.Contains(AssessmentKind.Correctness, assessor.SupportedKinds);
+        var refusal = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(AssessmentKind.Correctness), _candidate, CancellationToken.None));
+        Assert.Contains("evidence", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(invoker.Requests);
+    }
+
+    [Fact]
+    public async Task MalformedMorphologyIsARefusalAndUnpublishedArtifactsAreRemoved()
+    {
+        using var real = RealFakeInvoker();
+        var invoker = new CorruptingInvoker(real);
+        var assessor = new PanGlossAssessor(_paths, invoker);
+        var refusal = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(AssessmentKind.ParseTime), _candidate, CancellationToken.None));
+        Assert.Contains("morphology", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(Directory.Exists(invoker.ArtifactDirectory));
+    }
+
+    private sealed class CorruptingInvoker(IPanGlossInvoker inner) : IPanGlossInvoker
+    {
+        public string? ArtifactDirectory { get; private set; }
+        public async Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
+            CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
+        {
+            var result = Assert.IsType<PanGlossOutcome.Completed>(await inner.RunAsync(request, label, cancellationToken, wallClockCap));
+            ArtifactDirectory = Path.GetDirectoryName(result.BatchEvidence!.AnalysesPath);
+            const string malformed = "{\"schema\":\"obsolete\"}";
+            File.WriteAllText(result.BatchEvidence.AnalysesPath!, malformed);
+            return result with
+            {
+                MorphologyOutput = malformed,
+                BatchEvidence = result.BatchEvidence with
+                { AnalysesSha256 = BatchInvocationEvidence.DigestFile(result.BatchEvidence.AnalysesPath!) },
+            };
+        }
+    }
+
+    [Fact]
+    public async Task ACompletedBatchWithoutInvocationEvidenceIsRefused()
+    {
+        var assessor = new PanGlossAssessor(_paths, new FakeInvoker());
+        var refusal = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(AssessmentKind.ParseTime), _candidate, CancellationToken.None));
+        Assert.Contains("evidence", refusal.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CancellationAndUnavailabilityNeverReturnProducedRows()
+    {
+        var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Cancelled() };
+        var assessor = new PanGlossAssessor(_paths, invoker);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None));
+        invoker.Respond = _ => new PanGlossOutcome.Unavailable("no parser");
+        var refusal = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None));
+        Assert.Contains("no parser", refusal.Message, StringComparison.Ordinal);
+    }
+
+    private static AssessmentScope Scope(params AssessmentKind[] collect) =>
+        new(["motifa"], collect.Length == 0 ? [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming] : collect,
+            TimeSpan.FromMilliseconds(700), 123);
+
+    [Fact]
+    public async Task OneBatchRetainsPartialCapAndLaterCompletedWordWithoutAFalseCompletedVerdict()
+    {
+        using var real = RealFakeInvoker();
+        var invoker = new RewritingInvoker(real);
+        var assessor = new PanGlossAssessor(_paths, invoker);
+        var produced = await assessor.ProduceAsync(
+            new(["motifa", "motifb"], [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming],
+                TimeSpan.FromMilliseconds(700), 123), _candidate, CancellationToken.None);
+
+        Assert.Equal(1, invoker.Calls);
+        Assert.Equal(produced[0].Invocation, produced[1].Invocation);
+        var batch = Assert.IsType<AssessmentRaw.Batch>(produced[0].Raw).Analysis;
+        Assert.Equal(1, batch.Incomplete);
+        Assert.Equal(1, batch.Adjudicated);
+        Assert.Equal(SIL.Motif.Host.Parser.WordOutcome.Capped, batch.Words[0].Outcome);
+        Assert.Equal("partial-match", batch.Words[0].Signature);
+        Assert.Equal(SIL.Motif.Host.Parser.WordOutcome.Analysed, batch.Words[1].Outcome);
+        Assert.Contains("warning: retained diagnostic", batch.Warnings);
+        Assert.Null(produced[0].DiagnosticCount);
+    }
+
+    private sealed class RewritingInvoker(IPanGlossInvoker inner) : IPanGlossInvoker
+    {
+        public int Calls { get; private set; }
+
+        public async Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
+            CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
+        {
+            Calls++;
+            var completed = Assert.IsType<PanGlossOutcome.Completed>(
+                await inner.RunAsync(request, label, cancellationToken, wallClockCap));
+            var evidence = completed.BatchEvidence!;
+            const string rows = "0\tmotifa\t700\tCAP\tpartial-match\n1\tmotifb\t12\tok\tcomplete-match\n";
+            const string warnings = "warning: retained diagnostic";
+            File.WriteAllText(evidence.TsvPath, rows);
+            File.WriteAllText(evidence.StandardErrorPath, warnings);
+            var morphology = SIL.Motif.Host.Parser.ParseMorphEvidence.Read(completed.MorphologyOutput!, ["motifa", "motifb"])
+                .Select((row, index) => row with
+                {
+                    ElapsedMs = index == 0 ? 700 : 12, Capped = index == 0,
+                    Unavailable = ["Fixture partial identity unavailable"],
+                });
+            var jsonl = string.Join("\n", morphology.Select(row => System.Text.Json.JsonSerializer.Serialize(
+                row, SIL.Motif.Host.Parser.ParseMorphEvidence.JsonOptions)));
+            File.WriteAllText(evidence.AnalysesPath!, jsonl);
+            return completed with
+            {
+                Output = rows,
+                StandardError = warnings,
+                MorphologyOutput = jsonl,
+                BatchEvidence = evidence with
+                {
+                    AnalysesSha256 = BatchInvocationEvidence.DigestFile(evidence.AnalysesPath!),
+                    TsvSha256 = BatchInvocationEvidence.DigestFile(evidence.TsvPath),
+                    StandardErrorSha256 = BatchInvocationEvidence.DigestFile(evidence.StandardErrorPath),
+                },
+            };
+        }
+    }
+
+    [Fact]
+    public async Task RefusedPreExistingArtifactDirectoryIsNeverDeletedByTheAssessor()
+    {
+        var existing = Directory.CreateDirectory(Path.Combine(_root, "existing")).FullName;
+        var sentinel = Path.Combine(existing, "keep.txt");
+        File.WriteAllText(sentinel, "saved evidence");
+        using var invoker = RealFakeInvoker();
+        var assessor = new PanGlossAssessor(new FixedDirectory(existing), invoker);
+
+        await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None));
+
+        Assert.Equal("saved evidence", File.ReadAllText(sentinel));
+    }
+
+    private sealed class FixedDirectory(string directory) : IAssessorCachePathResolver
+    {
+        public string DirectoryFor(string invocationId) => directory;
+    }
+
+    private static PanGlossInvoker RealFakeInvoker() => new(FakeParser.ExecutablePath,
+        new MachinePanGlossQueue(["Local\\MotifAssessorTests-" + Guid.NewGuid().ToString("N")]));
 
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }
         catch (DirectoryNotFoundException) { }
         catch (IOException) { }
-    }
-
-    [Fact]
-    public async Task TheRecordedAssessmentCarriesTheCachePathAndDigest()
-    {
-        var cacheBytes = "pretend sqlite bytes"u8.ToArray();
-        var invoker = Invoker(cacheBytes: cacheBytes);
-        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
-        var scope = Scope(AssessmentKind.ObjectTiming);
-
-        var produced = Assert.Single(await assessor.ProduceAsync(scope, _exportedCandidate, CancellationToken.None));
-
-        var expectedPath = _cachePaths.PathFor(GrammarSha256, PanGlossAssessor.AssessorName, "fast");
-        Assert.Equal(AssessmentKind.ObjectTiming, produced.Kind);
-        Assert.Equal(GrammarSha256, produced.GrammarSourceSha256);
-        AssertCarriesReportHeader(produced, Report());
-        var raw = Assert.IsType<AssessmentRaw.FileCache>(produced.Raw);
-        Assert.Equal(expectedPath, raw.Path);
-        Assert.Equal(ExpectedDigest(cacheBytes), raw.Digest);
-        Assert.True(File.Exists(expectedPath));
-        Assert.DoesNotContain(invoker.Requests, r => r.Request is PanGlossRequest.Batch { StatsCachePath: null });
-    }
-
-    [Fact]
-    public async Task DifferentGrammarDigests_RecordDifferentCachePaths()
-    {
-        var invoker = Invoker(cacheBytes: "bytes"u8.ToArray());
-        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
-
-        var first = Assert.Single(await assessor.ProduceAsync(
-            Scope(AssessmentKind.ObjectTiming), _exportedCandidate, CancellationToken.None));
-
-        var otherReportRunner = new FakeReportRunner(Report(grammarSha256:
-            "sha256:" + "dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd"));
-        var otherInvoker = Invoker(cacheBytes: "bytes"u8.ToArray());
-        var otherAssessor = new PanGlossAssessor(_cachePaths, otherInvoker, otherReportRunner);
-        var second = Assert.Single(await otherAssessor.ProduceAsync(
-            Scope(AssessmentKind.ObjectTiming), _exportedCandidate, CancellationToken.None));
-
-        Assert.NotEqual(
-            ((AssessmentRaw.FileCache)first.Raw).Path,
-            ((AssessmentRaw.FileCache)second.Raw).Path);
-    }
-
-    [Fact]
-    public async Task ProduceAsync_ReturnsWordMeasurementsForCorrectness_WithoutDiscardingTheReport()
-    {
-        var report = Report();
-        var invoker = Invoker();
-        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(report));
-
-        var produced = Assert.Single(await assessor.ProduceAsync(
-            Scope(AssessmentKind.Correctness), _exportedCandidate, CancellationToken.None));
-
-        Assert.Equal(GrammarSha256, produced.GrammarSourceSha256);
-        AssertCarriesReportHeader(produced, report);
-        var raw = Assert.IsType<AssessmentRaw.WordMeasurements>(produced.Raw);
-        Assert.Same(report.Words, raw.Words);
-        Assert.Empty(invoker.Requests);
-    }
-
-    [Fact]
-    public async Task ProduceAsync_ReturnsTheBatchForParseTime_WithoutDiscardingIt()
-    {
-        var invoker = Invoker(tsvRows: "0\tmotifa\t12\tok\tsig\n");
-        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
-
-        var produced = Assert.Single(await assessor.ProduceAsync(
-            Scope(AssessmentKind.ParseTime), _exportedCandidate, CancellationToken.None));
-
-        Assert.Equal(GrammarSha256, produced.GrammarSourceSha256);
-        AssertCarriesReportHeader(produced, Report());
-        var raw = Assert.IsType<AssessmentRaw.Batch>(produced.Raw);
-        Assert.Single(raw.Analysis.Words);
-        Assert.Equal("motifa", raw.Analysis.Words[0].Word);
-        Assert.Equal(12, raw.Analysis.Words[0].ElapsedMs);
-    }
-
-    [Fact]
-    public async Task ProduceAsync_DefaultsToParseTimeAndCorrectness_WhenTheScopeCollectsNothingSpecific()
-    {
-        var invoker = Invoker(tsvRows: "0\tmotifa\t12\tok\tsig\n");
-        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
-
-        var produced = await assessor.ProduceAsync(Scope(), _exportedCandidate, CancellationToken.None);
-
-        Assert.Equal(
-            new HashSet<AssessmentKind> { AssessmentKind.ParseTime, AssessmentKind.Correctness },
-            produced.Select(p => p.Kind).ToHashSet());
-    }
-
-    [Fact]
-    public void SupportedKinds_IsExactlyParseTimeCorrectnessAndObjectTiming()
-    {
-        var assessor = NeverRunningAssessor();
-
-        Assert.Equal(
-            new[] { AssessmentKind.ParseTime, AssessmentKind.Correctness, AssessmentKind.ObjectTiming },
-            assessor.SupportedKinds);
-    }
-
-    [Fact]
-    public void SupportedKinds_NeverContainsEngineSizeDifferenceOrCompletion()
-    {
-        var assessor = NeverRunningAssessor();
-
-        Assert.DoesNotContain(AssessmentKind.EngineSize, assessor.SupportedKinds);
-        Assert.DoesNotContain(AssessmentKind.Difference, assessor.SupportedKinds);
-        Assert.DoesNotContain(AssessmentKind.Completion, assessor.SupportedKinds);
-    }
-
-    [Fact]
-    public async Task AskingForEngineSize_RefusesNamingTheKind()
-    {
-        var assessor = NeverRunningAssessor();
-
-        var failure = await Assert.ThrowsAsync<AssessorRefusalException>(() => assessor.ProduceAsync(
-            Scope(AssessmentKind.EngineSize), _exportedCandidate, CancellationToken.None));
-
-        Assert.Equal(AssessmentKind.EngineSize, failure.Kind);
-    }
-
-    // A declaration-only assessor: nothing here should ever reach the invoker or report runner.
-    private PanGlossAssessor NeverRunningAssessor() => new(_cachePaths, Invoker(), new FakeReportRunner(Report()));
-
-    [Fact]
-    public async Task AnUnrecognizedEngineName_IsRefused()
-    {
-        var assessor = new PanGlossAssessor(_cachePaths, Invoker(), new FakeReportRunner(Report()));
-        var scope = new AssessmentScope(
-            words: ["motifa"], engine: "turbo", collect: [AssessmentKind.Correctness], perWordLimit: TimeSpan.FromSeconds(1));
-
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            assessor.ProduceAsync(scope, _exportedCandidate, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task AReportRunnerThatCannotRun_SurfacesAsAssessorUnavailable()
-    {
-        var assessor = new PanGlossAssessor(_cachePaths, Invoker(), new ThrowingReportRunner());
-
-        var failure = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
-            assessor.ProduceAsync(Scope(AssessmentKind.Correctness), _exportedCandidate, CancellationToken.None));
-
-        Assert.Equal(PanGlossAssessor.AssessorName, failure.Assessor);
-        Assert.Contains("no report route", failure.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task ARecognisedRefusalOfTheParseTimeBatch_IsAnInvalidOperation_NotUnavailability()
-    {
-        var invoker = new FakeInvoker
-        {
-            Respond = _ => new PanGlossOutcome.Refused(1, "error: foma compile failed for this grammar", string.Empty,
-                "pangloss batch exited 1"),
-        };
-        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            assessor.ProduceAsync(Scope(AssessmentKind.ParseTime), _exportedCandidate, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task AParserThatCouldNotRunEitherBatch_SurfacesAsAssessorUnavailable_WithTheOutcomesMessage()
-    {
-        var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Unavailable("no pangloss here") };
-        var assessor = new PanGlossAssessor(_cachePaths, invoker, new FakeReportRunner(Report()));
-
-        var parseTime = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
-            assessor.ProduceAsync(Scope(AssessmentKind.ParseTime), _exportedCandidate, CancellationToken.None));
-        var objectTiming = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
-            assessor.ProduceAsync(Scope(AssessmentKind.ObjectTiming), _exportedCandidate, CancellationToken.None));
-
-        Assert.Contains("no pangloss here", parseTime.Message, StringComparison.Ordinal);
-        Assert.Contains("no pangloss here", objectTiming.Message, StringComparison.Ordinal);
-    }
-
-    // One invoker answers both batch passes: rows for the plain one, a cache file for the --stats one.
-    private static FakeInvoker Invoker(string tsvRows = "0\tmotifa\t12\tok\tsig\n", byte[]? cacheBytes = null) => new()
-    {
-        Respond = request =>
-        {
-            if (request is PanGlossRequest.Batch { StatsCachePath: { } cachePath })
-                File.WriteAllBytes(cachePath, cacheBytes ?? []);
-            return new PanGlossOutcome.Completed(tsvRows, string.Empty, TimeSpan.Zero);
-        },
-    };
-
-    private static AssessmentScope Scope(params AssessmentKind[] collect) => new(
-        words: ["motifa"], engine: "fast", collect: collect, perWordLimit: TimeSpan.FromSeconds(1));
-
-    private static AssessReport Report(string? grammarSha256 = null) => new(
-        Words: [],
-        OutcomeDigest: "sha256:" + new string('a', 64),
-        SemanticDigest: "sha256:" + new string('b', 64),
-        GrammarSourceSha256: grammarSha256 ?? GrammarSha256,
-        ModelFingerprint: "fp-1",
-        Pipeline: "foma-confirm",
-        DiagnosticCount: 0);
-
-    // Pinned by these three call sites: the report's header must survive onto every kind, not just Correctness.
-    private static void AssertCarriesReportHeader(ProducedAssessment produced, AssessReport report)
-    {
-        Assert.Equal(report.OutcomeDigest, produced.OutcomeDigest);
-        Assert.Equal(report.SemanticDigest, produced.SemanticDigest);
-        Assert.Equal(report.ModelFingerprint, produced.ModelFingerprint);
-        Assert.Equal(report.Pipeline, produced.Pipeline);
-        Assert.Equal(report.DiagnosticCount, produced.DiagnosticCount);
-    }
-
-    private static string ExpectedDigest(byte[] bytes)
-    {
-        using var sha = SHA256.Create();
-        return "sha256:" + Convert.ToHexString(sha.ComputeHash(bytes)).ToLowerInvariant();
-    }
-
-    private sealed class FakeReportRunner(AssessReport report) : IPanGlossAssessor
-    {
-        public Task<AssessReport> RunAsync(string exportedCandidate, CancellationToken cancellationToken) =>
-            Task.FromResult(report);
-    }
-
-    // The assess route the shipped binary lacks, failing the way the real one does today.
-    private sealed class ThrowingReportRunner : IPanGlossAssessor
-    {
-        public Task<AssessReport> RunAsync(string exportedCandidate, CancellationToken cancellationToken) =>
-            throw new ParserUnavailableException("no report route");
     }
 }

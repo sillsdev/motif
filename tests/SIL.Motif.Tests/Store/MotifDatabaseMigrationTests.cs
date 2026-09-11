@@ -172,6 +172,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     [InlineData("MotifMetadata")]
     [InlineData("Corpora")]
     [InlineData("CorpusDocuments")]
+    [InlineData("AssessmentInvocations")]
     [InlineData("Assessments")]
     [InlineData("AssessedWords")]
     [InlineData("ParsedAnalyses")]
@@ -252,15 +253,17 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
             ["CorpusDocuments"] = ["CorpusId|TEXT|1|1|", "DocumentId|TEXT|1|2|", "OrdinalIndex|INTEGER|1|0|",
                 "Title|TEXT|1|0|", "Source|TEXT|1|0|", "Text|TEXT|1|0|", "ContentSha256|TEXT|1|0|",
                 "IngestedUtc|TEXT|1|0|", "Licence|TEXT|0|0|", "CapabilitiesJson|TEXT|0|0|", "AttributesJson|TEXT|0|0|"],
+            ["AssessmentInvocations"] = ["InvocationId|TEXT|0|1|", "EvidenceJson|TEXT|1|0|"],
             ["Assessments"] = ["AssessmentId|TEXT|0|1|", "SelectionName|TEXT|1|0|", "SelectionWordsJson|TEXT|1|0|",
-                "SelectionSha256|TEXT|1|0|", "SelectionProvenanceJson|TEXT|0|0|", "OutcomeDigest|TEXT|1|0|",
-                "SemanticDigest|TEXT|1|0|", "GrammarSourceSha256|TEXT|1|0|", "ModelFingerprint|TEXT|1|0|",
-                "Pipeline|TEXT|1|0|", "DiagnosticCount|INTEGER|1|0|", "SavedUtc|TEXT|1|0|", "ProposalId|TEXT|0|0|",
+                "SelectionSha256|TEXT|1|0|", "SelectionProvenanceJson|TEXT|0|0|", "OutcomeDigest|TEXT|0|0|",
+                "SemanticDigest|TEXT|0|0|", "GrammarSourceSha256|TEXT|1|0|", "ModelFingerprint|TEXT|0|0|",
+                "Pipeline|TEXT|0|0|", "DiagnosticCount|INTEGER|0|0|", "SavedUtc|TEXT|1|0|", "ProposalId|TEXT|0|0|",
                 "ProposalIntentDigest|TEXT|0|0|", "Assessor|TEXT|1|0|", "Kind|TEXT|1|0|", "ScopeJson|TEXT|1|0|",
                 "ScopeDigest|TEXT|1|0|", "TokeniserName|TEXT|1|0|", "TokeniserVersion|TEXT|1|0|",
-                "BaselineToken|TEXT|1|0|", "CachePath|TEXT|0|0|", "CacheDigest|TEXT|0|0|"],
+                "BaselineToken|TEXT|1|0|", "CachePath|TEXT|0|0|", "CacheDigest|TEXT|0|0|", "InvocationId|TEXT|0|0|"],
             ["AssessedWords"] = ["AssessedWordId|INTEGER|0|1|", "AssessmentId|TEXT|1|0|", "OrdinalIndex|INTEGER|1|0|",
-                "Word|TEXT|1|0|", "Outcome|TEXT|1|0|", "ElapsedMs|INTEGER|0|0|"],
+                "Word|TEXT|1|0|", "Outcome|TEXT|1|0|", "ElapsedMs|INTEGER|0|0|", "RawSignature|TEXT|0|0|",
+                "MorphologyJson|TEXT|0|0|", "CorrectnessJson|TEXT|0|0|"],
             ["ParsedAnalyses"] = ["AssessedWordId|INTEGER|1|0|", "OrdinalIndex|INTEGER|1|0|", "CategoryGuid|TEXT|0|0|",
                 "MorphemeGuidsJson|TEXT|1|0|", "RootIndex|INTEGER|1|0|", "IdentityDigest|TEXT|1|0|"],
             ["AssessmentPins"] = ["AssessmentId|TEXT|1|1|", "PinnedBy|TEXT|1|2|", "PinnedUtc|TEXT|1|0|"],
@@ -297,7 +300,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         var foreignKeys = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["CorpusDocuments"] = ["Corpora|CorpusId|CorpusId|NO ACTION|NO ACTION|NONE"],
-            ["Assessments"] = ["Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],
+            ["Assessments"] = ["AssessmentInvocations|InvocationId|InvocationId|NO ACTION|NO ACTION|NONE", "Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],
             ["AssessedWords"] = ["Assessments|AssessmentId|AssessmentId|NO ACTION|NO ACTION|NONE"],
             ["ParsedAnalyses"] = ["AssessedWords|AssessedWordId|AssessedWordId|NO ACTION|NO ACTION|NONE"],
             ["AssessmentPins"] = ["Assessments|AssessmentId|AssessmentId|NO ACTION|NO ACTION|NONE"],
@@ -423,7 +426,8 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         {
             Execute(connection, "DROP TABLE AssessedWords; CREATE TABLE AssessedWords (" +
                 "AssessedWordId INTEGER PRIMARY KEY, AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId), " +
-                "OrdinalIndex INTEGER NOT NULL, Word TEXT NOT NULL, Outcome TEXT NOT NULL, ElapsedMs INTEGER NULL);");
+                "OrdinalIndex INTEGER NOT NULL, Word TEXT NOT NULL, Outcome TEXT NOT NULL, " +
+                "ElapsedMs INTEGER NULL, RawSignature TEXT NULL);");
         }
 
         Assert.Throws<InvalidDataException>(() => MotifDatabase.OpenOwned(

@@ -17,14 +17,14 @@ public abstract record StoredScope
     /// <summary>
     /// What a Trial told an Assessor to do, for any of the kinds a Trial run collects (<c>ParseTime</c>,
     /// <c>Correctness</c>, <c>ObjectTiming</c>, <c>EngineSize</c>): the declared query, the words it resolved
-    /// to, the engine, which kinds were collected, and the per-word cap.
+    /// to, which kinds were collected, and the per-word time and step caps.
     /// </summary>
     public sealed record Trial(
         string Query,
         IReadOnlyList<string> Words,
-        string Engine,
         IReadOnlyList<AssessmentKind> Collect,
-        TimeSpan PerWordLimit) : StoredScope;
+        TimeSpan PerWordLimit,
+        int PerWordStepLimit = 200000) : StoredScope;
 
     /// <summary>
     /// What <c>compare</c> joined for a <c>Difference</c> Assessment: the two input Assessments' ids, word
@@ -56,9 +56,9 @@ public static class ScopeCodec
     public static string Write(StoredScope scope) => scope switch
     {
         StoredScope.Trial trial => JsonSerializer.Serialize(new TrialWire(
-            trial.Query, trial.Words, trial.Engine,
+            trial.Query, trial.Words,
             trial.Collect.Select(kind => kind.ToString()).ToArray(),
-            (long)trial.PerWordLimit.TotalMilliseconds), WireOptions),
+            (long)trial.PerWordLimit.TotalMilliseconds, trial.PerWordStepLimit), WireOptions),
         StoredScope.Difference difference => JsonSerializer.Serialize(new DifferenceWire(
             difference.FromAssessmentId, difference.ToAssessmentId, difference.FromWordCount,
             difference.ToWordCount, difference.SharedWordCount, difference.FromGrammarSourceSha256,
@@ -91,16 +91,30 @@ public static class ScopeCodec
             throw Unreadable(reportKind);
         }
 
-        return root.TryGetProperty("fromAssessmentId", out _) ? ParseDifference(root, reportKind) : ParseTrial(root, reportKind);
+        if (root.ValueKind != JsonValueKind.Object) throw Unreadable(reportKind);
+        try
+        {
+            return root.TryGetProperty("fromAssessmentId", out _) ? ParseDifference(root, reportKind) : ParseTrial(root, reportKind);
+        }
+        catch (JsonException)
+        {
+            throw Unreadable(reportKind);
+        }
     }
 
     private static StoredScope.Trial ParseTrial(JsonElement root, string reportKind)
     {
+        if (root.EnumerateObject().Any(property => property.Name is not
+                ("query" or "words" or "collect" or "perWordLimitMs" or "perWordStepLimit")))
+            throw Unreadable(reportKind);
         var wire = root.Deserialize<TrialWire>(WireOptions);
-        if (wire is null || string.IsNullOrWhiteSpace(wire.Engine)) throw Unreadable(reportKind);
+        if (wire is null || wire.PerWordStepLimit is null or <= 0 || wire.PerWordLimitMs <= 0
+            || wire.PerWordLimitMs > TimeSpan.MaxValue.Ticks / TimeSpan.TicksPerMillisecond)
+            throw Unreadable(reportKind);
         return new StoredScope.Trial(
-            wire.Query ?? string.Empty, wire.Words ?? Array.Empty<string>(), wire.Engine,
-            ParseCollect(wire.Collect, reportKind), TimeSpan.FromMilliseconds(wire.PerWordLimitMs));
+            wire.Query ?? string.Empty, wire.Words ?? Array.Empty<string>(),
+            ParseCollect(wire.Collect, reportKind), TimeSpan.FromTicks(wire.PerWordLimitMs * TimeSpan.TicksPerMillisecond),
+            wire.PerWordStepLimit.Value);
     }
 
     private static StoredScope.Difference ParseDifference(JsonElement root, string reportKind)
@@ -119,21 +133,22 @@ public static class ScopeCodec
         var kinds = new List<AssessmentKind>(collect.Count);
         foreach (var name in collect)
         {
-            if (!Enum.TryParse<AssessmentKind>(name, ignoreCase: true, out var kind)) throw Unreadable(reportKind);
+            if (!Enum.TryParse<AssessmentKind>(name, ignoreCase: true, out var kind) || !Enum.IsDefined(kind))
+                throw Unreadable(reportKind);
             kinds.Add(kind);
         }
         return kinds;
     }
 
     private static ReportRefusalException Unreadable(string reportKind) =>
-        new(reportKind, "the Assessment's recorded scope could not be read.");
+        new(reportKind, "the Assessment's recorded scope is obsolete or invalid; delete the project .motif.db file and recreate the Assessments.");
 
     private sealed record TrialWire(
         [property: JsonPropertyName("query")] string? Query,
         [property: JsonPropertyName("words")] IReadOnlyList<string>? Words,
-        [property: JsonPropertyName("engine")] string? Engine,
         [property: JsonPropertyName("collect")] IReadOnlyList<string>? Collect,
-        [property: JsonPropertyName("perWordLimitMs")] long PerWordLimitMs);
+        [property: JsonPropertyName("perWordLimitMs")] long PerWordLimitMs,
+        [property: JsonPropertyName("perWordStepLimit")] int? PerWordStepLimit);
 
     private sealed record DifferenceWire(
         [property: JsonPropertyName("fromAssessmentId")] string FromAssessmentId,

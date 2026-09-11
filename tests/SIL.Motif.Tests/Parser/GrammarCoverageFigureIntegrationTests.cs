@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.Parser;
 /// <remarks>
 /// Runs against <see cref="PristineProjectFixture"/>'s two seeded stems, not a realistic corpus, so it
 /// cannot claim anything about coverage <i>quality</i> — only that the wiring produces a figure and that
-/// the figure's own invariants (denominator bound, lower-bound flag, fraction range) hold for whatever the
+/// the figure's own invariants (denominator bound, incomplete flag, fraction range) hold for whatever the
 /// parser actually returned.
 /// </remarks>
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
@@ -56,8 +56,7 @@ public sealed class GrammarCoverageFigureIntegrationTests : IDisposable
         using var invoker = new PanGlossInvoker();
         var parser = new PanGlossParser(invoker);
 
-        var batchResult = parser.AnalyseBatchAsync(projectPath, corpus.Words, ParserEngine.FstPrunedByHermitCrab,
-            TimeSpan.FromSeconds(5), "test:coverage", CancellationToken.None).GetAwaiter().GetResult();
+        var batchResult = parser.AnalyseBatchAsync(projectPath, corpus.Words, TimeSpan.FromSeconds(5), "test:coverage", CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(batchResult.Succeeded, batchResult.Refusal?.Detail ?? batchResult.Outcome.Message);
 
         var report = new PanGlossAssessmentProcess().RunAsync(Path.GetDirectoryName(projectPath)!, CancellationToken.None)
@@ -70,14 +69,13 @@ public sealed class GrammarCoverageFigureIntegrationTests : IDisposable
         Assert.Equal(corpus.Sha256, figure.SelectionSha256);
         Assert.Equal(report.GrammarSourceSha256, figure.GrammarSourceSha256);
         Assert.StartsWith("sha256:", figure.GrammarSourceSha256);
-        Assert.Equal(ParserEngine.FstPrunedByHermitCrab, figure.Engine);
         Assert.Equal(5000, figure.PerWordTimeoutMs);
 
         // The denominator can never exceed corpus size; every word is analysed, no-analysis, timed out, or skipped.
         var batch = batchResult.Analysis!;
-        Assert.Equal(corpus.Words.Count, batch.Analysed + batch.NoAnalysis + batch.TimedOut + batch.Skipped);
+        Assert.Equal(corpus.Words.Count, batch.Analysed + batch.NoAnalysis + batch.TimedOut + batch.Capped + batch.Skipped);
         Assert.True(figure.Adjudicated <= corpus.Words.Count);
-        Assert.Equal(batch.IsLowerBound, figure.IsLowerBound);
+        Assert.Equal(batch.IsIncomplete, figure.IsIncomplete);
 
         if (figure.Adjudicated == 0)
             Assert.Null(figure.Fraction);

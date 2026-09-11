@@ -233,10 +233,10 @@ public static class CommandTextRenderer
             sb.AppendLine($"  {scope.Name}");
             sb.AppendLine($"    query:          {scope.Query}");
             sb.AppendLine($"    assessor:       {scope.Assessor}");
-            sb.AppendLine($"    engine:         {scope.Engine}");
             sb.AppendLine(
                 $"    collect:        {(scope.Collect.Count == 0 ? "(assessor default)" : string.Join(", ", scope.Collect))}");
             sb.AppendLine($"    per-word limit: {scope.PerWordLimitMs} ms");
+            sb.AppendLine($"    per-word steps: {scope.PerWordStepLimit}");
         }
         return sb.ToString();
     }

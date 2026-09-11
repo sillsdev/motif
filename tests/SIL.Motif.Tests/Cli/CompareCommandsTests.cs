@@ -162,7 +162,7 @@ public sealed class CompareCommandsTests : IDisposable
                 ProposalIntentDigest: null,
                 Assessor: assessor,
                 Kind: kind,
-                ScopeJson: """{"words":[],"engine":"fast","collect":[],"perWordLimitMs":1000}""",
+                ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":200000}""",
                 ScopeDigest: "sha256:" + new string('a', 64),
                 TokeniserName: tokeniserName,
                 TokeniserVersion: tokeniserVersion,

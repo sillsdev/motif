@@ -3,7 +3,7 @@
 People should be able to measure parsing time and inspect grammar statistics with the installed parser.
 A run must say when it could not finish, and must never claim to have checked analyses it did not receive.
 
-## Decision proposed for review
+## Approved interim delivery
 
 Produce ParseTime and ObjectTiming through one supported PanGloss batch invocation. Refuse Correctness
 explicitly until PanGloss exposes authoritative ordered analysis identities. Keep Correctness in the
@@ -11,8 +11,10 @@ Assessor vocabulary, since other Assessors may supply it; stop advertising it as
 The default collection is ParseTime plus ObjectTiming, preserving the command's current collection and
 enabling its statistics panel. ObjectTiming retains the parser's statistics artifact.
 
-This changes the available measurement, so the implementation of this decision awaits owner review.
-The executable contract test and runtime fixture repair are independent and already authorized.
+The owner approved making timing and statistics usable while PanGloss gains the required Correctness
+producer. Correctness remains in the overall scope; its interim unavailability does not complete that
+requirement. The per-word budget, completion, continuation, and counts-first presentation below are
+also approved. Implementation can proceed on this basis.
 
 Remove the existing Correctness report registration as well: counting any nonempty automatic analysis as
 correct does not measure agreement with manual analysis. Map explicit unsupported requests to a normal
@@ -43,13 +45,15 @@ identifies. It does not fill absent parser metadata with empty strings or guesse
 - If retained as opaque SQLite, statistics remain queried through the supported `stats` request.
   A public stats schema can supply PanGloss grammar hash/build information in a later explicit adapter;
   these are not the source-file hash or a model fingerprint.
-- Remove the nonexistent report producer and its mandatory OutcomeDigest, SemanticDigest,
-  ModelFingerprint, Pipeline and DiagnosticCount fields from the PanGloss production path and storage.
-  Replace them with the explicit invocation/artifact provenance above, consistently through rendering.
+- Remove the nonexistent report producer and the requirement for OutcomeDigest, SemanticDigest,
+  ModelFingerprint, Pipeline and DiagnosticCount on PanGloss measurements. These nullable storage fields
+  remain available to other Assessors with real report evidence; PanGloss writes null and uses the
+  explicit invocation/artifact provenance above, consistently through rendering.
 
-The retained CLI exposes no ordered analysis chain for Correctness. TSV signatures render labels;
-statistics object keys identify counter attribution. Neither establishes a parse's category, ordered
-morphemes and root position against FieldWorks manual analyses.
+The inspected CLI exposes no ordered analysis chain sufficient for Correctness. TSV signatures render
+labels; statistics object keys identify counter attribution. Neither establishes the ordered allomorph,
+MSA, and inflection-type identities required by ADR 0027. The required upstream work is recorded in
+[the PanGloss handoff](../../research/2026-09-09-pangloss-correctness-handoff.md).
 
 One batch invocation with --stats performs two parser passes: TSV parsing and statistics collection.
 They share invocation provenance, not a timing sample; their timings need not agree.
@@ -73,14 +77,29 @@ mutable path from substituting new evidence after verification.
 ## Incomplete words and one parser
 
 A budget-limited word remains visibly incomplete, even when the parser has found partial analyses.
-The proposed policy is a separate Capped count, distinct from TimedOut, Skipped and NoAnalysis.
+The approved policy is a separate Capped count, distinct from TimedOut, Skipped and NoAnalysis.
 
-Pass `--step-cap 200000` alongside the existing per-word wall-clock limit. Store both in the scope as
+The owner approved a default of 200000 steps per word alongside the existing per-word wall-clock
+limit. Pass `--step-cap 200000` for that default. Store both limits in the scope as
 comparison context and surface mismatches. Compatibility remains AssessorId plus Kind only; differing
-budgets do not block comparisons. Preserve CAP's partial signature for inspection, but exclude it
-from completed analysis counts and correctness. Mark coverage incomplete when capped or timed-out words
-exist; do not describe the adjudicated-word ratio itself as a mathematical lower bound on whole-selection
-coverage. Display the counts and the denominator used.
+budgets do not block comparisons.
+
+The owner requires a prominent per-word `INCOMPLETE — parsing did not finish` status whenever that
+word's search is cut short. Continue parsing the remaining words when a word reaches its step or time
+limit; completed words retain their own results. Finding one analysis, or even every approved analysis,
+neither ends the search early nor marks it complete. Completion requires the parser to finish its
+declared search normally. Preserve
+found analyses as partial evidence beneath that status; a match must not replace the incomplete
+headline with a green pass or a completed result. Missing expected analyses remain unknown when the
+search was incomplete. Carry completion separately from findings in structured output as well as prose.
+
+The owner approved leading with explicit counts, for example `80 searches completed; 20 incomplete`.
+Any parse-coverage percentage is secondary and states its denominator. Incomplete words are excluded
+from completed-word counts; a ratio over completed words must never appear as an unqualified
+whole-selection result or a mathematical lower bound. For example, 60 analysed words among 80 completed
+searches is `75% of 80 completed searches`, beneath the counts that also expose 20 incomplete words.
+Completion belongs to each word: finishing the batch does not imply that every word's search completed,
+and one incomplete word does not relabel the others. Preserve distinct capped and timed-out reasons.
 
 Remove selectable fast/accurate engines, old aliases and the nonexistent fallback behavior from requests,
 configuration, persistence, CLI and window. The parser executable selects its implementation. A reported
@@ -96,6 +115,10 @@ obsolete configuration with recreation guidance. Add no migration, alias or inve
 Tests must cover supported-kind declarations and refusals, exact batch arguments, distinct budgets,
 CAP with and without partial signatures, immutable artifacts across repeated runs, cancellation leaving
 no records, digest tampering, obsolete-shape refusal, and scope comparison. The runtime fixture must
+also prove that finding one analysis does not stop a search early, and that reaching a limit after
+finding every approved analysis still produces an incomplete word and an accurate summary count. A capped
+or timed-out word must not prevent subsequent words from being parsed; verify a mixed batch preserves
+each word's completion and findings independently. The fixture must
 prove two seeded lexical forms parse and a segmentable absent form does not. The final gate is
 `./test.ps1` with the real parser explicitly selected.
 

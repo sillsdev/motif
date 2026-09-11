@@ -15,8 +15,14 @@ public sealed record ParsedAnalysis(
 
 /// <summary>One word and what the parser made of it.</summary>
 /// <param name="ElapsedMs">How long this word took to parse, when the producing run recorded a time.</param>
+/// <param name="RawSignature">Opaque parser text, independent of completion and never an authoritative analysis identity.</param>
 public sealed record AssessedWord(
-    string Word, string Outcome, IReadOnlyList<ParsedAnalysis> Analyses, int? ElapsedMs = null);
+    string Word, string Outcome, IReadOnlyList<ParsedAnalysis> Analyses, int? ElapsedMs = null,
+    string? RawSignature = null)
+{
+    public SIL.Motif.Contract.Responses.ParseWordEvidence? Morphology { get; init; }
+    public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }
+}
 
 /// <summary>
 /// A parsed assessment report, with the provenance a grammar coverage figure must carry.

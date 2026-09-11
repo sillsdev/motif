@@ -16,7 +16,7 @@ public enum StatsOutputKind
 /// Which project to query, which Assessment to query it against, and what the caller's remaining
 /// arguments after <c>--</c> asked PanGloss's own <c>stats</c> vocabulary for (design decision 5).
 /// </summary>
-/// <param name="ProjectPath">The project whose current Baseline (or named Proposal) supplies the grammar.</param>
+/// <param name="ProjectPath">The project whose recorded Assessment supplies the retained grammar and statistics.</param>
 /// <param name="ProposalId">
 /// <c>null</c> to query the current Baseline Assessment; a Proposal id to query its Trial Assessment instead.
 /// </param>
@@ -29,4 +29,8 @@ public sealed record StatsRequest(
     string ProjectPath,
     string? ProposalId,
     StatsOutputKind Output,
-    IReadOnlyList<string> ForwardedArguments);
+    IReadOnlyList<string> ForwardedArguments)
+{
+    /// <summary>An exact ObjectTiming Assessment id; mutually exclusive with <see cref="ProposalId"/>.</summary>
+    public string? AssessmentId { get; init; }
+}

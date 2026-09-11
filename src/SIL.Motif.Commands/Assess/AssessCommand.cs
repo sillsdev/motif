@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Commands.Baselines;
@@ -45,8 +46,6 @@ namespace SIL.Motif.Commands.Assess;
 /// </remarks>
 public static class AssessCommand
 {
-    private const string EngineName = "accurate";
-
     // assess has no configured query text; SelectionComposer already resolved the words themselves.
     private const string ScopeQuery = "assess";
 
@@ -113,8 +112,7 @@ public static class AssessCommand
                 composition = composed.Value!;
             }
 
-            var scope = new AssessmentScope(composition.Selection.Words, EngineName, CollectedKinds,
-                AssessmentScopeConfiguration.DefaultPerWordLimit);
+            AssessmentScope scope;
             var exportedCandidate = Path.GetDirectoryName(baseline.FwDataPath)!;
 
             onProgress?.Invoke(new AssessmentProgress(
@@ -122,6 +120,10 @@ public static class AssessCommand
             IReadOnlyList<ProducedAssessment> produced;
             try
             {
+                var collected = assessor.SupportedKinds.Contains(AssessmentKind.Correctness)
+                    ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
+                scope = new AssessmentScope(composition.Selection.Words, collected,
+                    AssessmentScopeConfiguration.DefaultPerWordLimit);
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
@@ -132,58 +134,133 @@ public static class AssessCommand
             {
                 return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex.Message));
             }
-
-            var scopeJson = ScopeCodec.Write(
-                new StoredScope.Trial(ScopeQuery, scope.Words, scope.Engine, scope.Collect, scope.PerWordLimit));
-            var scopeDigest = AssessmentMaterial.Digest(scopeJson);
-            var baselineTokenJson = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
-
-            var assessmentIds = new List<string>();
-            var pendingRecords = new List<NewAssessmentRecord>();
-            string? statsCachePath = null;
-            foreach (var item in produced)
+            catch (AssessorRefusalException ex)
             {
-                var assessmentId = CanonicalId.Mint("assessment/").Value;
-                var record = AssessmentMaterial.ToRecord(item, assessmentId, proposalId: null,
-                    proposalIntentDigest: null, assessor.Name, scopeJson, scopeDigest, TokeniserName,
-                    TokeniserVersion, baselineTokenJson, composition.Selection);
-                pendingRecords.Add(record);
-                assessmentIds.Add(assessmentId);
-                if (record.CachePath is not null) statsCachePath = record.CachePath;
+                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                    "assess.unsupported-kind", FailureReason.Refused, ex.Message,
+                    new Dictionary<string, string> { ["kind"] = ex.Kind.ToString() }));
             }
 
-            onProgress?.Invoke(new AssessmentProgress(
-                AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
-            string summaryMarkdown;
-            if (statsCachePath is null)
+            var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
+            try
             {
-                summaryMarkdown = "(no per-object statistics were collected)" + Environment.NewLine;
-            }
-            else
-            {
-                var summary = invoker.RunAsync(
-                        new PanGlossRequest.Stats(baseline.FwDataPath, statsCachePath, Array.Empty<string>()),
-                        "assess:stats:" + workspaceKey, cancellationToken)
-                    .GetAwaiter().GetResult();
-                switch (summary)
+                if (cancellationToken.IsCancellationRequested)
+                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                var scopeJson = ScopeCodec.Write(
+                    new StoredScope.Trial(ScopeQuery, scope.Words, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
+                var scopeDigest = AssessmentMaterial.Digest(scopeJson);
+                var baselineTokenJson = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
+
+                var assessmentIds = new List<string>();
+                var pendingRecords = new List<NewAssessmentRecord>();
+                string? statsCachePath = null;
+                NewAssessmentRecord? statisticsRecord = null;
+                foreach (var item in produced)
                 {
-                    case PanGlossOutcome.Completed completed:
-                        summaryMarkdown = "```" + Environment.NewLine + completed.Output + "```" + Environment.NewLine;
-                        break;
-                    case PanGlossOutcome.Cancelled:
-                        return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                    default:
-                        return CommandOutcome<AssessCommandResponse>.Refused(
-                            ParserUnavailable(request.ProjectPath, summary.Message));
+                    var assessmentId = CanonicalId.Mint("assessment/").Value;
+                    var record = AssessmentMaterial.ToRecord(item, assessmentId, proposalId: null,
+                        proposalIntentDigest: null, assessor.Name, scopeJson, scopeDigest, TokeniserName,
+                        TokeniserVersion, baselineTokenJson, composition.Selection);
+                    pendingRecords.Add(record);
+                    assessmentIds.Add(assessmentId);
+                    if (record.CachePath is not null)
+                    {
+                        statsCachePath = record.CachePath;
+                        statisticsRecord = record;
+                    }
                 }
+
+                onProgress?.Invoke(new AssessmentProgress(
+                    AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
+                string summaryMarkdown;
+                if (statsCachePath is null)
+                {
+                    summaryMarkdown = "(no per-object statistics were collected)" + Environment.NewLine;
+                }
+                else
+                {
+                    if (statisticsRecord?.Invocation is null || statisticsRecord.CacheDigest is null)
+                        return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(
+                            request.ProjectPath, "The statistics measurement has no retained invocation evidence."));
+                    StatsEvidenceReplay replay;
+                    try
+                    {
+                        replay = StatsEvidenceReplay.Create(
+                            statisticsRecord.Invocation, statsCachePath, statisticsRecord.CacheDigest);
+                    }
+                    catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+                    {
+                        return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, exception.Message));
+                    }
+                    using var replayLease = replay;
+                    var summary = invoker.RunAsync(
+                            new PanGlossRequest.Stats(replay.GrammarPath, replay.CachePath, Array.Empty<string>()),
+                            "assess:stats:" + workspaceKey, cancellationToken)
+                        .GetAwaiter().GetResult();
+                    switch (summary)
+                    {
+                        case PanGlossOutcome.Completed completed:
+                            summaryMarkdown = "```" + Environment.NewLine + completed.Output + "```" + Environment.NewLine;
+                            break;
+                        case PanGlossOutcome.Cancelled:
+                            return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                        default:
+                            return CommandOutcome<AssessCommandResponse>.Refused(
+                                ParserUnavailable(request.ProjectPath, summary.Message));
+                    }
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                assessments.RecordBatch(pendingRecords);
+                foreach (var lease in artifactLeases) lease.Retain();
+
+                var timing = produced.FirstOrDefault(item => item.Kind == AssessmentKind.ParseTime);
+                var words = timing?.Raw is AssessmentRaw.Batch batch
+                    ? batch.Analysis.Words.Select(word => new AssessmentWordResult(
+                        word.Word, word.Outcome.ToStoredOutcome(),
+                        word.Outcome is WordOutcome.Capped or WordOutcome.TimedOut,
+                        word.Outcome switch
+                        {
+                            _ when word.Morphology is { Capped: true, TimedOut: true } =>
+                                "INCOMPLETE — parsing did not finish (step and time limits)",
+                            WordOutcome.Capped => "INCOMPLETE — parsing did not finish (step limit)",
+                            WordOutcome.TimedOut => "INCOMPLETE — parsing did not finish (time limit)",
+                            WordOutcome.Skipped => "Not attempted",
+                            _ => "Search completed",
+                        }, word.ElapsedMs, word.Signature)
+                    { Morphology = word.Morphology, Correctness = word.Correctness }).ToArray()
+                    : Array.Empty<AssessmentWordResult>();
+                var completedCount = words.Count(word => !word.IsIncomplete && word.Outcome != "skipped");
+                var searchNoun = completedCount == 1 ? "search" : "searches";
+                var completionSummary = $"{completedCount} {searchNoun} completed; " +
+                    $"{words.Count(word => word.IsIncomplete)} incomplete; {words.Count(word => word.Outcome == "skipped")} skipped.";
+                summaryMarkdown = completionSummary + Environment.NewLine + Environment.NewLine + summaryMarkdown;
+
+                onProgress?.Invoke(new AssessmentProgress(
+                    AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, completionSummary));
+                return CommandOutcome<AssessCommandResponse>.Success(
+                    new AssessCommandResponse(baseline, composition.Projection, assessmentIds, summaryMarkdown)
+                    {
+                        Words = words,
+                        CompletionSummary = completionSummary,
+                        CorrectnessStatus = words.Any(word => word.Correctness is not null)
+                            ? $"{words.Sum(word => word.Correctness?.Matched ?? 0)}/" +
+                              $"{words.Sum(word => word.Correctness?.Expected ?? 0)} approved readings matched; " +
+                              $"{words.Count(word => word.Correctness?.Status == "covered")} words covered; " +
+                              $"{words.Count(word => word.Correctness?.Status == "unmatched")} unmatched; " +
+                                $"{words.Count(word => word.Correctness?.Unavailable.Count > 0 || word.Morphology?.InvalidShape == true)} with unavailable evidence; " +
+                                $"{words.Count(word => word.Correctness?.Expected == 0)} without approved expectations. " +
+                              "Search completion is reported separately for each word."
+                            : "Correctness unavailable: this Assessment did not collect approved morphology comparisons.",
+                        Measurements = pendingRecords.Select(record => new ProducedAssessmentReference(
+                            record.AssessmentId, record.Kind, record.Invocation?.InvocationId)).ToArray(),
+                    });
             }
-
-            foreach (var record in pendingRecords) assessments.Record(record);
-
-            onProgress?.Invoke(new AssessmentProgress(
-                AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, "Assessment complete."));
-            return CommandOutcome<AssessCommandResponse>.Success(
-                new AssessCommandResponse(baseline, composition.Projection, assessmentIds, summaryMarkdown));
+            finally
+            {
+                foreach (var lease in artifactLeases) lease.Dispose();
+            }
         });
     }
 
