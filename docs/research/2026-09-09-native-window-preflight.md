@@ -3,6 +3,11 @@
 The built Motif application opens a real Windows window, and Windows UI Automation can reach its
 controls. This is startup evidence only; it does not establish the completed Assessment or Handoff workflow.
 
+**Subsequent evidence:** the [native workflow verification](2026-09-09-native-window-workflow.md)
+records the implemented workflow, actual 125%/150% runs, controlled incomplete words, cancellation,
+held-lock refresh, keyboard traversal and file drops. The remaining-check descriptions below belong
+to this earlier startup probe. Actual 200% and authoritative Correctness remain incomplete.
+
 ## Observed startup
 
 The window was launched against a fresh empty MOTIF_WORKER_ROOT. It was closed after inspection and

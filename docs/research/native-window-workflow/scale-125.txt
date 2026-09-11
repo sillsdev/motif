@@ -1,0 +1,2 @@
+SelectedScale=125%
+SelectedScale=100% (Recommended)

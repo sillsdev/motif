@@ -1,0 +1,464 @@
+{
+    "EvidenceRoot":  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-204b4d474b6a46ddaac4ae3b1d9ebb14",
+    "Dpi":  96,
+    "Width":  1016,
+    "Height":  739,
+    "Controls":  [
+                     {
+                         "Name":  "WindowChrome",
+                         "Type":  "ControlType.Group",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Project",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Browse for a FieldWorks project file",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Known projects",
+                         "Type":  "ControlType.ComboBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Baseline",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Wednesday, September 9, 2026 10:13 PM",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "as of FieldWorks\u0027 last save",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "FieldWorks does not currently hold this project.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Refresh the Baseline",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Details",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Selection",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Search texts",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Texts",
+                         "Type":  "ControlType.List",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Seeded Text",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  true
+                     },
+                     {
+                         "Name":  "Seeded Text",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Pasted words",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Pasted words",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "All wordforms",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Retry failed",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Retry slower than (ms)",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Retry slower than, in milliseconds",
+                         "Type":  "ControlType.Spinner",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.PathIcon",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.PathIcon",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "3 pasted words",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Run",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Run the Assessment",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "1 search completed; 2 incomplete; 0 skipped.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Correctness unavailable: authoritative analysis identities are not supplied.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "mofita",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Search completed",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "-",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "motifa",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "INCOMPLETE — parsing did not finish (step limit)",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "partial-motifa-analysis",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "motifb",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "INCOMPLETE — parsing did not finish (time limit)",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "partial-motifb-analysis",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Page up",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Page down",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Statistics",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Group",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Statistics group",
+                         "Type":  "ControlType.ComboBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "word",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Filter statistics rows",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Refresh statistics",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Statistics rows",
+                         "Type":  "ControlType.DataGrid",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Kind",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Kind",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Object",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Object",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Word",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Word",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Completion",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Completion",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Attempts",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Attempts",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Passes",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Passes",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Elapsed (ms)",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Elapsed (ms)",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "1 search completed; 2 incomplete; 0 skipped.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Viewbox",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Viewbox",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Handoff",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Include FLExText XML",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Write the Handoff folder",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Uploading it to a chat model sends that data to whoever runs it (OpenAI, Anthropic, or another provider).",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "All files",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Handoff files",
+                         "Type":  "ControlType.List",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Read this first",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Page up",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Page down",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false
+                     }
+                 ]
+}

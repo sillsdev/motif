@@ -1,0 +1,8 @@
+SelectedScale=100% (Recommended)
+Expected exactly one scale choice for 200; found 0.
+At C:\Users\johnm\AppData\Local\Temp\motif-native-set-scale.ps1:15 char:29
++ ... nt -ne 1) { throw "Expected exactly one scale choice for $percent; fo ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (Expected exactl...r 200; found 0.:String) [], RuntimeException
+    + FullyQualifiedErrorId : Expected exactly one scale choice for 200; found 0.
+ 

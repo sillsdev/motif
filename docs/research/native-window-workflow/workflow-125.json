@@ -1,0 +1,990 @@
+{
+    "EvidenceRoot":  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-db14ccb779f64dd396da710901f6f096",
+    "AppDllSha256":  "C23B76170B472298E53E68E3B5CD2283FCD6BAEF9B3B09EEBCAC2ABF980F0753",
+    "ParserSha256":  "748118F6A0CF0218A74EE1C54C1209E0C5B8175F99AD09B6889AAC245FCF6CEB",
+    "WorkArea":  "{X=0,Y=0,Width=1920,Height=1020}",
+    "WindowRect":  {
+                       "Left":  104,
+                       "Top":  104,
+                       "Right":  1372,
+                       "Bottom":  1026
+                   },
+    "Dpi":  120,
+    "Width":  1268,
+    "Height":  922,
+    "Controls":  [
+                     {
+                         "Name":  "WindowChrome",
+                         "Type":  "ControlType.Group",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "Empty"
+                     },
+                     {
+                         "Name":  "Project",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1477,1220,24"
+                     },
+                     {
+                         "Name":  "Browse for a FieldWorks project file",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1235,-1443,113,40"
+                     },
+                     {
+                         "Name":  "Known projects",
+                         "Type":  "ControlType.ComboBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1443,1107,40"
+                     },
+                     {
+                         "Name":  "Baseline",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1378,1220,24"
+                     },
+                     {
+                         "Name":  "Wednesday, September 9, 2026 9:24 PM",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1344,1220,24"
+                     },
+                     {
+                         "Name":  "as of FieldWorks\u0027 last save",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1310,1220,24"
+                     },
+                     {
+                         "Name":  "FieldWorks does not currently hold this project.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1276,1220,24"
+                     },
+                     {
+                         "Name":  "Refresh the Baseline",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "688,-1242,99,40"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "138,-1172,1200,44"
+                     },
+                     {
+                         "Name":  "Details",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "148,-1162,1150,24"
+                     },
+                     {
+                         "Name":  "Selection",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1090,1220,24"
+                     },
+                     {
+                         "Name":  "Search texts",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1056,1220,40"
+                     },
+                     {
+                         "Name":  "Texts",
+                         "Type":  "ControlType.List",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-1006,1220,44"
+                     },
+                     {
+                         "Name":  "Seeded Text",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "128,-1006,1220,44"
+                     },
+                     {
+                         "Name":  "Seeded Text",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "143,-996,131,24"
+                     },
+                     {
+                         "Name":  "Pasted words",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-937,1220,24"
+                     },
+                     {
+                         "Name":  "Pasted words",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-903,1220,100"
+                     },
+                     {
+                         "Name":  "All wordforms",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-793,148,24"
+                     },
+                     {
+                         "Name":  "Retry failed",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-759,126,25"
+                     },
+                     {
+                         "Name":  "Retry slower than (ms)",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-717,188,24"
+                     },
+                     {
+                         "Name":  "Retry slower than, in milliseconds",
+                         "Type":  "ControlType.Spinner",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "326,-725,57,40"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.PathIcon",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "364,-723,17,18"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.PathIcon",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "364,-705,17,19"
+                     },
+                     {
+                         "Name":  "3 pasted words",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-660,1220,24"
+                     },
+                     {
+                         "Name":  "Run",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-606,1220,24"
+                     },
+                     {
+                         "Name":  "Run the Assessment",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-572,68,40"
+                     },
+                     {
+                         "Name":  "3 searches completed; 0 incomplete; 0 skipped.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-522,1220,24"
+                     },
+                     {
+                         "Name":  "Correctness unavailable: authoritative analysis identities are not supplied.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-488,1220,24"
+                     },
+                     {
+                         "Name":  "mofita",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-444,1220,24"
+                     },
+                     {
+                         "Name":  "Search completed",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-415,1220,24"
+                     },
+                     {
+                         "Name":  "-",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-386,1220,24"
+                     },
+                     {
+                         "Name":  "motifa",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-341,1220,24"
+                     },
+                     {
+                         "Name":  "Search completed",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-312,1220,24"
+                     },
+                     {
+                         "Name":  "|motifa",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-283,1220,24"
+                     },
+                     {
+                         "Name":  "motifb",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-238,1220,24"
+                     },
+                     {
+                         "Name":  "Search completed",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-208,1220,24"
+                     },
+                     {
+                         "Name":  "|motifb",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-180,1220,24"
+                     },
+                     {
+                         "Name":  "Page up",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "Empty"
+                     },
+                     {
+                         "Name":  "Page down",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1338,-162,10,8"
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1345,-454,3,292"
+                     },
+                     {
+                         "Name":  "Statistics",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-123,1220,24"
+                     },
+                     {
+                         "Name":  "Group",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-82,53,24"
+                     },
+                     {
+                         "Name":  "Statistics group",
+                         "Type":  "ControlType.ComboBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "191,-89,98,40"
+                     },
+                     {
+                         "Name":  "word",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "206,-82,43,24"
+                     },
+                     {
+                         "Name":  "Filter statistics rows",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "309,-89,250,40"
+                     },
+                     {
+                         "Name":  "Refresh statistics",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "579,-89,99,40"
+                     },
+                     {
+                         "Name":  "Statistics rows",
+                         "Type":  "ControlType.DataGrid",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,-39,807,449"
+                     },
+                     {
+                         "Name":  "Kind",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "129,-38,83,44"
+                     },
+                     {
+                         "Name":  "Kind",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "149,-28,41,24"
+                     },
+                     {
+                         "Name":  "Object",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "212,-38,100,44"
+                     },
+                     {
+                         "Name":  "Object",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "232,-28,58,24"
+                     },
+                     {
+                         "Name":  "Word",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "312,-38,97,44"
+                     },
+                     {
+                         "Name":  "Word",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "332,-28,55,24"
+                     },
+                     {
+                         "Name":  "Completion",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "409,-38,191,44"
+                     },
+                     {
+                         "Name":  "Completion",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "429,-28,149,24"
+                     },
+                     {
+                         "Name":  "Attempts",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "600,-38,125,44"
+                     },
+                     {
+                         "Name":  "Attempts",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "620,-28,83,24"
+                     },
+                     {
+                         "Name":  "Passes",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "725,-38,100,44"
+                     },
+                     {
+                         "Name":  "Passes",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "745,-28,58,24"
+                     },
+                     {
+                         "Name":  "Elapsed (ms)",
+                         "Type":  "ControlType.HeaderItem",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "824,-38,155,44"
+                     },
+                     {
+                         "Name":  "Elapsed (ms)",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "844,-28,115,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "129,6,83,40"
+                     },
+                     {
+                         "Name":  "word",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "149,13,43,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "212,6,100,40"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "312,6,97,40"
+                     },
+                     {
+                         "Name":  "motifa",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "332,13,57,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "409,6,191,40"
+                     },
+                     {
+                         "Name":  "Search completed",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "429,13,151,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "600,6,125,40"
+                     },
+                     {
+                         "Name":  "0",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "620,13,85,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "725,6,100,40"
+                     },
+                     {
+                         "Name":  "1",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "745,13,60,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "824,6,155,40"
+                     },
+                     {
+                         "Name":  "0.0623",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "844,13,115,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "129,47,83,40"
+                     },
+                     {
+                         "Name":  "word",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "149,56,43,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "212,47,100,40"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "312,47,97,40"
+                     },
+                     {
+                         "Name":  "mofita",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "332,56,57,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "409,47,191,40"
+                     },
+                     {
+                         "Name":  "Search completed",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "429,56,151,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "600,47,125,40"
+                     },
+                     {
+                         "Name":  "0",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "620,56,85,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "725,47,100,40"
+                     },
+                     {
+                         "Name":  "0",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "745,56,60,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "824,47,155,40"
+                     },
+                     {
+                         "Name":  "0.0469",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "844,56,115,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "129,90,83,40"
+                     },
+                     {
+                         "Name":  "word",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "149,97,43,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "212,90,100,40"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "312,90,97,40"
+                     },
+                     {
+                         "Name":  "motifb",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "332,97,57,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "409,90,191,40"
+                     },
+                     {
+                         "Name":  "Search completed",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "429,97,151,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "600,90,125,40"
+                     },
+                     {
+                         "Name":  "0",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "620,97,85,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "725,90,100,40"
+                     },
+                     {
+                         "Name":  "1",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "745,97,60,24"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.TextBlock",
+                         "Type":  "ControlType.Custom",
+                         "Enabled":  true,
+                         "Offscreen":  true,
+                         "Bounds":  "824,90,155,40"
+                     },
+                     {
+                         "Name":  "0.0457",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "844,97,115,24"
+                     },
+                     {
+                         "Name":  "Page left",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "Empty"
+                     },
+                     {
+                         "Name":  "Page right",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "890,399,44,10"
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "129,406,761,3"
+                     },
+                     {
+                         "Name":  "3 searches completed; 0 incomplete; 0 skipped.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "945,-39,403,21"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Viewbox",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1288,-9,25,40"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Viewbox",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1318,-9,25,40"
+                     },
+                     {
+                         "Name":  "Page up",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "Empty"
+                     },
+                     {
+                         "Name":  "Page down",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1338,153,10,257"
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1345,-39,3,192"
+                     },
+                     {
+                         "Name":  "Handoff",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,439,1220,24"
+                     },
+                     {
+                         "Name":  "Include FLExText XML",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,473,210,24"
+                     },
+                     {
+                         "Name":  "Write the Handoff folder",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,507,106,40"
+                     },
+                     {
+                         "Name":  "Uploading it to a chat model sends that data to whoever runs it (OpenAI, Anthropic, or another provider).",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,557,1220,24"
+                     },
+                     {
+                         "Name":  "Destination: C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-db14ccb779f64dd396da710901f6f096\\handoff-output",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,591,1220,24"
+                     },
+                     {
+                         "Name":  "All files",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,625,1220,24"
+                     },
+                     {
+                         "Name":  "Handoff files",
+                         "Type":  "ControlType.List",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,659,1220,275"
+                     },
+                     {
+                         "Name":  "grammar.json",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,659,1220,44"
+                     },
+                     {
+                         "Name":  "grammar.json",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "143,669,1190,24"
+                     },
+                     {
+                         "Name":  "instructions.md",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,703,1220,44"
+                     },
+                     {
+                         "Name":  "instructions.md",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "143,713,1190,24"
+                     },
+                     {
+                         "Name":  "read_handoff.py",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,748,1220,44"
+                     },
+                     {
+                         "Name":  "read_handoff.py",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "143,758,1190,23"
+                     },
+                     {
+                         "Name":  "recipes.md",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,791,1220,44"
+                     },
+                     {
+                         "Name":  "recipes.md",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "143,801,1190,24"
+                     },
+                     {
+                         "Name":  "reference/flextext-json-format.md",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,835,1220,44"
+                     },
+                     {
+                         "Name":  "reference/flextext-json-format.md",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "143,845,1190,24"
+                     },
+                     {
+                         "Name":  "reference/grammar-format.md",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,879,1220,44"
+                     },
+                     {
+                         "Name":  "reference/grammar-format.md",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "143,889,1190,24"
+                     },
+                     {
+                         "Name":  "reference/hc-mechanics.md",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "128,923,1220,45"
+                     },
+                     {
+                         "Name":  "reference/hc-mechanics.md",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "143,933,1190,25"
+                     },
+                     {
+                         "Name":  "Page up",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "Empty"
+                     },
+                     {
+                         "Name":  "Page down",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1338,767,10,167"
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1345,659,3,108"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "138,949,1200,44"
+                     },
+                     {
+                         "Name":  "Read this first",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "148,959,1150,24"
+                     },
+                     {
+                         "Name":  "Page up",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1353,142,10,569"
+                     },
+                     {
+                         "Name":  "Page down",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "Empty"
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1360,711,3,306"
+                     }
+                 ]
+}

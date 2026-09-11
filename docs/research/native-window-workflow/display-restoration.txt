@@ -1,0 +1,6 @@
+FinalScale=100% (Recommended)
+100% (Recommended)
+125%
+150%
+175%
+OwnedSettingsWindowClosed=True

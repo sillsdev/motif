@@ -1,0 +1,5 @@
+  Skipped SIL.Motif.Tests.Parser.ParserSeamIntegrationTests.EveryMorphemeTheParserNames_IsAnObjectTheProjectContains [1 ms]
+
+Passed!  - Failed:     0, Passed:  1633, Skipped:    19, Total:  1652, Duration: 2 m 34 s - SIL.Motif.Tests.dll (net10.0)
+
+Tests OK: full suite.

@@ -1,0 +1,311 @@
+{
+    "EvidenceRoot":  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-0bf1aefb7ed34be9b63cdf7fe055e9b0",
+    "AppDllSha256":  "984EFA420AA92052C8216879859F94B20B31FE234F28FDE8EE607A405A3B15E9",
+    "ParserSha256":  "D24253EAAEC6648D8074FE78FE92191CB695CD68969E80E4272C47BCBC86068C",
+    "WorkArea":  "{X=0,Y=0,Width=1920,Height=1032}",
+    "WindowRect":  {
+                       "Left":  104,
+                       "Top":  104,
+                       "Right":  1120,
+                       "Bottom":  843
+                   },
+    "Dpi":  96,
+    "Width":  1016,
+    "Height":  739,
+    "Controls":  [
+                     {
+                         "Name":  "WindowChrome",
+                         "Type":  "ControlType.Group",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "Empty"
+                     },
+                     {
+                         "Name":  "Project",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,-118,976,19"
+                     },
+                     {
+                         "Name":  "Browse for a FieldWorks project file",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1010,-91,90,32"
+                     },
+                     {
+                         "Name":  "Known projects",
+                         "Type":  "ControlType.ComboBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,-91,886,32"
+                     },
+                     {
+                         "Name":  "Baseline",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,-39,976,19"
+                     },
+                     {
+                         "Name":  "Wednesday, September 9, 2026 9:24 PM",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,-12,976,19"
+                     },
+                     {
+                         "Name":  "as of FieldWorks\u0027 last save",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,15,976,19"
+                     },
+                     {
+                         "Name":  "FieldWorks does not currently hold this project.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,42,976,19"
+                     },
+                     {
+                         "Name":  "Refresh the Baseline",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "572,69,80,32"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "132,125,960,35"
+                     },
+                     {
+                         "Name":  "Details",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "140,133,920,19"
+                     },
+                     {
+                         "Name":  "Selection",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,190,976,19"
+                     },
+                     {
+                         "Name":  "Search texts",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,217,976,32"
+                     },
+                     {
+                         "Name":  "Texts",
+                         "Type":  "ControlType.List",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,257,976,35"
+                     },
+                     {
+                         "Name":  "Seeded Text",
+                         "Type":  "ControlType.ListItem",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,257,976,35"
+                     },
+                     {
+                         "Name":  "Seeded Text",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "136,265,105,19"
+                     },
+                     {
+                         "Name":  "Pasted words",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,312,976,19"
+                     },
+                     {
+                         "Name":  "Pasted words",
+                         "Type":  "ControlType.Edit",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,339,976,80"
+                     },
+                     {
+                         "Name":  "All wordforms",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,427,119,19"
+                     },
+                     {
+                         "Name":  "Retry failed",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,454,101,19"
+                     },
+                     {
+                         "Name":  "Retry slower than (ms)",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,487,151,19"
+                     },
+                     {
+                         "Name":  "Retry slower than, in milliseconds",
+                         "Type":  "ControlType.Spinner",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "283,481,46,32"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.PathIcon",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "314,482,14,15"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.PathIcon",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "314,497,14,15"
+                     },
+                     {
+                         "Name":  "3 pasted words",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,533,976,19"
+                     },
+                     {
+                         "Name":  "Run",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,576,976,19"
+                     },
+                     {
+                         "Name":  "Run the Assessment",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,603,54,32"
+                     },
+                     {
+                         "Name":  "The Assessment run was cancelled; no Assessments were recorded.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,643,976,19"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "132,674,960,35"
+                     },
+                     {
+                         "Name":  "Details",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "140,682,920,19"
+                     },
+                     {
+                         "Name":  "Run an Assessment to see statistics here.",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,739,976,19"
+                     },
+                     {
+                         "Name":  "Handoff",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,782,976,19"
+                     },
+                     {
+                         "Name":  "Include FLExText XML",
+                         "Type":  "ControlType.CheckBox",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,809,168,19"
+                     },
+                     {
+                         "Name":  "Write the Handoff folder",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,836,85,32"
+                     },
+                     {
+                         "Name":  "Uploading it to a chat model sends that data to whoever runs it (OpenAI, Anthropic, or another provider).",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,876,976,19"
+                     },
+                     {
+                         "Name":  "All files",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "124,903,976,19"
+                     },
+                     {
+                         "Name":  "Handoff files",
+                         "Type":  "ControlType.List",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "Empty"
+                     },
+                     {
+                         "Name":  "Avalonia.Controls.Grid",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "132,942,960,35"
+                     },
+                     {
+                         "Name":  "Read this first",
+                         "Type":  "ControlType.Text",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "140,950,920,19"
+                     },
+                     {
+                         "Name":  "Page up",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1104,135,8,164"
+                     },
+                     {
+                         "Name":  "Page down",
+                         "Type":  "ControlType.Button",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1104,735,8,100"
+                     },
+                     {
+                         "Name":  "Position",
+                         "Type":  "ControlType.Thumb",
+                         "Enabled":  true,
+                         "Offscreen":  false,
+                         "Bounds":  "1110,299,2,436"
+                     }
+                 ]
+}

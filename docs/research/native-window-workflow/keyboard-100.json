@@ -1,0 +1,317 @@
+[
+    {
+        "Index":  0,
+        "Name":  "Known projects",
+        "Type":  "ControlType.ComboBox",
+        "Bounds":  "124,174,886,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  1,
+        "Name":  "Refresh the Baseline",
+        "Type":  "ControlType.Button",
+        "Bounds":  "572,334,80,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  2,
+        "Name":  "Avalonia.Controls.Grid",
+        "Type":  "ControlType.Button",
+        "Bounds":  "132,390,960,35",
+        "Offscreen":  false
+    },
+    {
+        "Index":  3,
+        "Name":  "Search texts",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "124,482,976,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  4,
+        "Name":  "Seeded Text",
+        "Type":  "ControlType.ListItem",
+        "Bounds":  "124,522,976,35",
+        "Offscreen":  false
+    },
+    {
+        "Index":  5,
+        "Name":  "Pasted words",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "124,604,976,80",
+        "Offscreen":  false
+    },
+    {
+        "Index":  6,
+        "Name":  "All wordforms",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,692,119,19",
+        "Offscreen":  false
+    },
+    {
+        "Index":  7,
+        "Name":  "Retry failed",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,719,101,19",
+        "Offscreen":  false
+    },
+    {
+        "Index":  8,
+        "Name":  "",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "283,746,26,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  9,
+        "Name":  "Avalonia.Controls.PathIcon",
+        "Type":  "ControlType.Button",
+        "Bounds":  "314,747,14,15",
+        "Offscreen":  false
+    },
+    {
+        "Index":  10,
+        "Name":  "Avalonia.Controls.PathIcon",
+        "Type":  "ControlType.Button",
+        "Bounds":  "314,762,14,15",
+        "Offscreen":  false
+    },
+    {
+        "Index":  11,
+        "Name":  "Run the Assessment",
+        "Type":  "ControlType.Button",
+        "Bounds":  "124,803,54,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  12,
+        "Name":  "Include FLExText XML",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,816,168,19",
+        "Offscreen":  false
+    },
+    {
+        "Index":  13,
+        "Name":  "Write the Handoff folder",
+        "Type":  "ControlType.Button",
+        "Bounds":  "124,803,85,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  14,
+        "Name":  "Avalonia.Controls.Grid",
+        "Type":  "ControlType.Button",
+        "Bounds":  "132,800,960,35",
+        "Offscreen":  false
+    },
+    {
+        "Index":  15,
+        "Name":  "Browse for a FieldWorks project file",
+        "Type":  "ControlType.Button",
+        "Bounds":  "1010,135,90,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  16,
+        "Name":  "Known projects",
+        "Type":  "ControlType.ComboBox",
+        "Bounds":  "124,135,886,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  17,
+        "Name":  "Refresh the Baseline",
+        "Type":  "ControlType.Button",
+        "Bounds":  "572,295,80,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  18,
+        "Name":  "Avalonia.Controls.Grid",
+        "Type":  "ControlType.Button",
+        "Bounds":  "132,351,960,35",
+        "Offscreen":  false
+    },
+    {
+        "Index":  19,
+        "Name":  "Search texts",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "124,443,976,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  20,
+        "Name":  "Seeded Text",
+        "Type":  "ControlType.ListItem",
+        "Bounds":  "124,483,976,35",
+        "Offscreen":  false
+    },
+    {
+        "Index":  21,
+        "Name":  "Pasted words",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "124,565,976,80",
+        "Offscreen":  false
+    },
+    {
+        "Index":  22,
+        "Name":  "All wordforms",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,653,119,19",
+        "Offscreen":  false
+    },
+    {
+        "Index":  23,
+        "Name":  "Retry failed",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,680,101,19",
+        "Offscreen":  false
+    },
+    {
+        "Index":  24,
+        "Name":  "",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "283,707,26,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  25,
+        "Name":  "Avalonia.Controls.PathIcon",
+        "Type":  "ControlType.Button",
+        "Bounds":  "314,708,14,15",
+        "Offscreen":  false
+    },
+    {
+        "Index":  26,
+        "Name":  "Avalonia.Controls.PathIcon",
+        "Type":  "ControlType.Button",
+        "Bounds":  "314,723,14,15",
+        "Offscreen":  false
+    },
+    {
+        "Index":  27,
+        "Name":  "Run the Assessment",
+        "Type":  "ControlType.Button",
+        "Bounds":  "124,803,54,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  28,
+        "Name":  "Include FLExText XML",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,816,168,19",
+        "Offscreen":  false
+    },
+    {
+        "Index":  29,
+        "Name":  "Write the Handoff folder",
+        "Type":  "ControlType.Button",
+        "Bounds":  "124,803,85,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  30,
+        "Name":  "Avalonia.Controls.Grid",
+        "Type":  "ControlType.Button",
+        "Bounds":  "132,800,960,35",
+        "Offscreen":  false
+    },
+    {
+        "Index":  31,
+        "Name":  "Browse for a FieldWorks project file",
+        "Type":  "ControlType.Button",
+        "Bounds":  "1010,135,90,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  32,
+        "Name":  "Known projects",
+        "Type":  "ControlType.ComboBox",
+        "Bounds":  "124,135,886,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  33,
+        "Name":  "Refresh the Baseline",
+        "Type":  "ControlType.Button",
+        "Bounds":  "572,295,80,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  34,
+        "Name":  "Avalonia.Controls.Grid",
+        "Type":  "ControlType.Button",
+        "Bounds":  "132,351,960,35",
+        "Offscreen":  false
+    },
+    {
+        "Index":  35,
+        "Name":  "Search texts",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "124,443,976,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  36,
+        "Name":  "Seeded Text",
+        "Type":  "ControlType.ListItem",
+        "Bounds":  "124,483,976,35",
+        "Offscreen":  false
+    },
+    {
+        "Index":  37,
+        "Name":  "Pasted words",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "124,565,976,80",
+        "Offscreen":  false
+    },
+    {
+        "Index":  38,
+        "Name":  "All wordforms",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,653,119,19",
+        "Offscreen":  false
+    },
+    {
+        "Index":  39,
+        "Name":  "Retry failed",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,680,101,19",
+        "Offscreen":  false
+    },
+    {
+        "Index":  40,
+        "Name":  "",
+        "Type":  "ControlType.Edit",
+        "Bounds":  "283,707,26,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  41,
+        "Name":  "Avalonia.Controls.PathIcon",
+        "Type":  "ControlType.Button",
+        "Bounds":  "314,708,14,15",
+        "Offscreen":  false
+    },
+    {
+        "Index":  42,
+        "Name":  "Avalonia.Controls.PathIcon",
+        "Type":  "ControlType.Button",
+        "Bounds":  "314,723,14,15",
+        "Offscreen":  false
+    },
+    {
+        "Index":  43,
+        "Name":  "Run the Assessment",
+        "Type":  "ControlType.Button",
+        "Bounds":  "124,803,54,32",
+        "Offscreen":  false
+    },
+    {
+        "Index":  44,
+        "Name":  "Include FLExText XML",
+        "Type":  "ControlType.CheckBox",
+        "Bounds":  "124,816,168,19",
+        "Offscreen":  false
+    }
+]

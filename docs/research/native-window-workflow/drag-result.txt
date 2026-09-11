@@ -1,0 +1,6 @@
+CompletionControlFound=True
+HandoffFileCount=16
+DragSource=124,523,976,19;Target=1400,180,420,550
+NativeFileDropVerified=All files; Count=16
+DragSource=124,550,976,35;Target=1400,180,420,550
+NativeFileDropVerified=grammar.json; Count=1

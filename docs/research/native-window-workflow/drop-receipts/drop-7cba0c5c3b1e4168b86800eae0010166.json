@@ -1,0 +1,20 @@
+{
+    "Paths":  [
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\grammar.json",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\instructions.md",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\read_handoff.py",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\recipes.md",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\reference\\flextext-json-format.md",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\reference\\grammar-format.md",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\reference\\hc-mechanics.md",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\selection.txt",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\statistics.md",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\statistics\\allomorph.jsonl",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\statistics\\group.jsonl",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\statistics\\morpheme.jsonl",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\statistics\\never-fires.jsonl",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\statistics\\object.jsonl",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\statistics\\word.jsonl",
+                  "C:\\Users\\johnm\\AppData\\Local\\Temp\\motif-native-preflight-65ddad5ea7534bf3a197c653fe52069f\\handoff-output\\texts\\Seeded_Text-8190b9fb29404c9d8d9fc3eaa7ba8750.flextext.json"
+              ]
+}
