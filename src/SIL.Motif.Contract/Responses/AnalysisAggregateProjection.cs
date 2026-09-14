@@ -54,6 +54,9 @@ public sealed record AnalysisAggregateProjection(
     /// <summary>Ordered recorded cases; null means this projection has no structured Assessment case block.</summary>
     public IReadOnlyList<AssessmentAnalysisCase>? AssessmentCases { get; init; }
 
+    /// <summary>What the parser reported about the grammar these cases were produced against.</summary>
+    public IReadOnlyList<string>? GrammarWarnings { get; init; }
+
     /// <summary>How many word forms have at least one manually approved analysis.</summary>
     public int WordFormCount => WordForms.Count;
 }

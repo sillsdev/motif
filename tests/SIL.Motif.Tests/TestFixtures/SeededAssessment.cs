@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 
@@ -14,7 +15,9 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// </summary>
 internal static class SeededAssessment
 {
-    public static string Record(string fwDataPath, StoredAssessment assessment, string assessmentId)
+    public static string Record(
+        string fwDataPath, StoredAssessment assessment, string assessmentId,
+        BatchInvocationEvidence? invocation = null)
     {
         ArgumentNullException.ThrowIfNull(assessment);
         var project = new ProjectLocator(fwDataPath, Path.GetFileNameWithoutExtension(fwDataPath));
@@ -39,7 +42,10 @@ internal static class SeededAssessment
             ModelFingerprint: assessment.Report.ModelFingerprint,
             Pipeline: assessment.Report.Pipeline,
             DiagnosticCount: assessment.Report.DiagnosticCount,
-            Words: assessment.Report.Words));
+            Words: assessment.Report.Words)
+        {
+            Invocation = invocation,
+        });
 
         return assessmentId;
     }

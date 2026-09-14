@@ -5,6 +5,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
@@ -245,6 +246,62 @@ public sealed class ReportProjectionIntegrationTests
         Assert.DoesNotContain("Expected readings below were frozen", text.Output);
         Assert.Contains($"Elapsed: {word.Morphology!.ElapsedMs} ms", text.Output);
         Assert.DoesNotContain("0/0", text.Output);
+    }
+
+    [Fact]
+    public void AnEmptyResultCarriesTheGrammarFindingsThatMayExplainIt()
+    {
+        var word = CorrectnessFixture.Word("dkat", matched: false);
+        var assessment = new StoredAssessment(
+            new AssessReport([word], "outcome", "semantic", Hash('a'), "model", "pipeline", 0),
+            Selection.Create("findings", [word.Word]));
+        var invocation = new BatchInvocationEvidence(
+            "findings-run", "source.fwdata", "sha256:source", "sha256:executable", "words.txt", "sha256:words",
+            "rows.tsv", "sha256:rows", "stderr.txt", "sha256:stderr", 1000, 200000, 1, false)
+        {
+            GrammarWarnings = string.Join('\n',
+                "warning: no boundary marker representation '+' found",
+                "warning: circumfix allomorph \"a3547f67\": cannot segment \"d+\"; skipped"),
+        };
+        var id = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value, invocation);
+
+        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id,
+            assessment.Selection.Sha256, Hash('a'));
+        var text = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, id,
+            assessment.Selection.Sha256, Hash('a'));
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(0, text.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        var findings = json.RootElement.GetProperty("grammarWarnings");
+        Assert.Equal(2, findings.GetArrayLength());
+        Assert.Contains("cannot segment", findings[1].GetString());
+        Assert.Contains("Parser readings: 0", text.Output);
+        Assert.Contains("the parser reported 2 finding(s) against this grammar", text.Output);
+        Assert.Contains("Grammar findings reported by the parser: 2", text.Output);
+        Assert.Contains("circumfix allomorph", text.Output);
+    }
+
+    [Fact]
+    public void AQuietGrammarAddsNoFindingsBlockAndExplainsNothingAway()
+    {
+        var word = CorrectnessFixture.Word("quiet", matched: false);
+        var assessment = new StoredAssessment(
+            new AssessReport([word], "outcome", "semantic", Hash('a'), "model", "pipeline", 0),
+            Selection.Create("quiet", [word.Word]));
+        var id = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
+
+        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id,
+            assessment.Selection.Sha256, Hash('a'));
+        var text = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, id,
+            assessment.Selection.Sha256, Hash('a'));
+
+        Assert.Equal(0, result.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.False(json.RootElement.TryGetProperty("grammarWarnings", out _));
+        Assert.Contains("Parser readings: 0", text.Output);
+        Assert.DoesNotContain("finding(s) against this grammar", text.Output);
+        Assert.DoesNotContain("Grammar findings reported by the parser", text.Output);
     }
 
     [Theory]

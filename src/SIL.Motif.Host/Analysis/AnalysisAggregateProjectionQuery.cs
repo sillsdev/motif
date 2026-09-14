@@ -17,7 +17,8 @@ public static class AnalysisAggregateProjectionQuery
     /// <summary>Combines current manual navigation with validated, immutable Assessment cases.</summary>
     public static AnalysisAggregateProjection ReadMorphology(
         LcmCache cache, IReadOnlyList<AssessedWord> words, AnalysisAssessmentProvenance provenance,
-        string currentSelectionSha256, string currentGrammarSourceSha256, bool requireExpectations)
+        string currentSelectionSha256, string currentGrammarSourceSha256, bool requireExpectations,
+        IReadOnlyList<string>? grammarWarnings = null)
     {
         Sha256Value.RequireCanonical(currentSelectionSha256, nameof(currentSelectionSha256));
         Sha256Value.RequireCanonical(currentGrammarSourceSha256, nameof(currentGrammarSourceSha256));
@@ -36,6 +37,7 @@ public static class AnalysisAggregateProjectionQuery
             AssessmentState = AnalysisAggregateResponse.DescribeAssessmentState(provenance,
                 currentSelectionSha256, currentGrammarSourceSha256, "recorded cases below"),
             AssessmentCases = cases,
+            GrammarWarnings = grammarWarnings is { Count: > 0 } ? grammarWarnings : null,
         };
     }
 

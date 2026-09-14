@@ -133,14 +133,19 @@ public sealed class PanGlossAssessor : IAssessor
             {
                 PerWordStepLimit = evidence.PerWordStepLimit,
             };
+            // Retained on the evidence, not just the run, so a later reader can still say why a word found nothing.
+            var recorded = evidence with
+            {
+                GrammarWarnings = warnings.Length == 0 ? null : string.Join("\n", warnings),
+            };
             var results = new List<ProducedAssessment>();
             if (wanted.Contains(AssessmentKind.ParseTime))
-                results.Add(Produced(AssessmentKind.ParseTime, new AssessmentRaw.Batch(analysis), evidence));
+                results.Add(Produced(AssessmentKind.ParseTime, new AssessmentRaw.Batch(analysis), recorded));
             if (cachePath is not null)
                 results.Add(Produced(AssessmentKind.ObjectTiming,
-                    new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath)), evidence));
+                    new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath)), recorded));
             if (wanted.Contains(AssessmentKind.Correctness))
-                results.Add(Produced(AssessmentKind.Correctness, new AssessmentRaw.Batch(analysis), evidence));
+                results.Add(Produced(AssessmentKind.Correctness, new AssessmentRaw.Batch(analysis), recorded));
             cancellationToken.ThrowIfCancellationRequested();
             return results.Select(result => result with { ArtifactLease = artifactLease }).ToArray();
         }

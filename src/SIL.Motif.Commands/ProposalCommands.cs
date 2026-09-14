@@ -177,7 +177,8 @@ public static partial class ProposalCommands
                     return CommandOutcome<AnalysisAggregateProjection>.Success(AnalysisAggregateProjectionQuery.ReadMorphology(
                         manualCache, record.Words ?? throw new InvalidDataException("Assessment word detail was not loaded."),
                         new AnalysisAssessmentProvenance(record.Selection.Name, record.Selection.Sha256, record.GrammarSourceSha256),
-                        currentSelectionSha256, currentGrammarSourceSha256, record.Kind.IsStoredKind(AssessmentKind.Correctness)));
+                        currentSelectionSha256, currentGrammarSourceSha256, record.Kind.IsStoredKind(AssessmentKind.Correctness),
+                        record.Invocation?.GrammarWarningLines));
                 }
                 catch (InvalidDataException ex)
                 {

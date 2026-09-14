@@ -47,3 +47,22 @@ Luna source inspection confirmed `pg-grammar/src/compile/affixes.rs` routes ever
 The agreed profile is available through the batch sidecar; other output shapes must not be mistaken for it. Adopting the profile requires both a consumer and an authoritative source of object identities.
 
 The source inventory found FFI JSON/binary and WASM outputs currently expose older ordinal/property shapes; WASM's loader is XML-only. Generation takes morpheme ordinals and does not select a source allomorph. FST candidate traversal is not itself an identity-loss boundary because confirmation reconstructs full `WordAnalysis`. Machine's existing oracle and diff consume HC XML and TSV; they have no current source-GUID JSONL reader or live FieldWorks oracle exporter. The authoritative richer source is FieldWorks `HCParser.ParseWord` and `ParseResult.ParseMorph` objects. These external consumer and input-path gaps remain open; ordinary XML fixtures cannot establish their source identity by themselves.
+
+## Diagnostics for a grammar the parser could only partly load
+
+A grammar PanGloss cannot fully compile still parses. It drops what it could not read, reports `batch complete` with a zero exit, and returns an ordinary empty analysis for every word that needed the dropped part. Nothing in the result distinguishes that from a grammar that genuinely does not describe the word, so an authoring fault in the project reads as a linguistic finding.
+
+PanGloss already reports the cause on stderr (`pg-cli` `print_grammar_warnings`), and Motif already captured it into `BatchAnalysis.Warnings` — a field no code in `src/` ever read. The reasons existed the whole time and had no consumer.
+
+- [x] Retain the findings on `BatchInvocationEvidence` so they outlive the run, joined rather than listed to keep the record's value equality intact for the one invocation shared by every kind of a run. No schema change: they travel in the existing `AssessmentInvocations.EvidenceJson`.
+- [x] Surface them on `AnalysisAggregateProjection.GrammarWarnings` and render them under the recorded cases.
+- [x] Say so on a case that completed its search with no readings while findings exist, without claiming which finding cost that word its analysis — grammar findings name allomorphs, not words, and per-word attribution would be invented.
+- [ ] Adopt Machine's `GrammarHealthChecker` (sillsdev/machine#475) to detect undeclared segments, duplicate feature bundles, and partial morphemes *before* a run rather than explaining an empty one afterwards. Blocked: the PR is still open, and Motif takes no `SIL.Machine` package reference today.
+
+Its undeclared-segment finding is exactly the failure that cost this ledger a day: a segment absent from the character definition table makes the parser "refuse every word containing it — total, and silent-looking".
+
+## Landing the XAMPLE parity work in PanGloss
+
+`pg-xample-oracle` does not exist on PanGloss `main`. The work sits on four research branches (`research/xample-phonology`, `-task3`, `-task6`, `-task7`), each roughly 105-111 commits ahead of `main` and 131 behind it. `31a3bf8b` implements the empty-phoneme-inventory red flag, on `research/xample-phonology` only.
+
+- [ ] Assess the four branches' relationship, integrate onto `main`, and prove the empty-phoneme-inventory flag works. Delegated; lands on a local `integration/xample` branch for review, not pushed.

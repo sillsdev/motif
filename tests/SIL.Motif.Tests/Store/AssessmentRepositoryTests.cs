@@ -203,6 +203,50 @@ public sealed class AssessmentRepositoryTests : IDisposable
         Assert.Equal(first.Invocation, repository.Get("original").Invocation);
     }
 
+    [Fact]
+    public void GrammarFindingsSurviveTheInvocationSharedByEveryKindOfOneRun()
+    {
+        var repository = NewRepository("findings.fwdata", out var database);
+        using var ownedDatabase = database;
+        var evidence = Invocation("findings-run") with
+        {
+            GrammarWarnings = string.Join('\n',
+                "warning: no boundary marker representation '+' found",
+                "warning: allomorph \"a3547f67\": cannot segment \"d+\"; skipped"),
+        };
+        var first = NewAssessment("timing", null, null, "ParseTime") with
+        {
+            Invocation = evidence, OutcomeDigest = null, SemanticDigest = null,
+            ModelFingerprint = null, Pipeline = null, DiagnosticCount = null
+        };
+
+        repository.RecordBatch([first, first with { AssessmentId = "stats", Kind = "ObjectTiming" }]);
+
+        var stored = repository.Get("timing").Invocation!;
+        Assert.Equal(evidence, stored);
+        Assert.Equal(evidence, repository.Get("stats").Invocation);
+        Assert.Equal(2, stored.GrammarWarningLines.Count);
+        Assert.Equal("warning: no boundary marker representation '+' found", stored.GrammarWarningLines[0]);
+        Assert.Contains("cannot segment", stored.GrammarWarningLines[1]);
+    }
+
+    [Fact]
+    public void AnInvocationThatReportedNothingReadsBackAsNoFindingsRatherThanOneBlankOne()
+    {
+        var repository = NewRepository("quiet.fwdata", out var database);
+        using var ownedDatabase = database;
+        repository.Record(NewAssessment("quiet", null, null, "ParseTime") with
+        {
+            Invocation = Invocation("quiet-run"), OutcomeDigest = null, SemanticDigest = null,
+            ModelFingerprint = null, Pipeline = null, DiagnosticCount = null
+        });
+
+        var stored = repository.Get("quiet").Invocation!;
+
+        Assert.Null(stored.GrammarWarnings);
+        Assert.Empty(stored.GrammarWarningLines);
+    }
+
     private static BatchInvocationEvidence Invocation(string id) => new(
         id, "source.fwdata", "sha256:source", "sha256:executable", "words.txt", "sha256:words",
         "rows.tsv", "sha256:rows", "stderr.txt", "sha256:stderr", 1000, 200000, 1, true);

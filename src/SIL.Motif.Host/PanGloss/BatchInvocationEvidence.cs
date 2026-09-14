@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -21,6 +22,24 @@ public sealed record BatchInvocationEvidence(
 {
     public string? AnalysesPath { get; init; }
     public string? AnalysesSha256 { get; init; }
+
+    /// <summary>
+    /// What the parser reported about the grammar it loaded, newline-joined, or null when it reported nothing.
+    /// </summary>
+    /// <remarks>
+    /// A grammar the parser could only partly compile still parses: it silently drops what it could not read and
+    /// returns an ordinary empty analysis for every word that needed it. The count of findings cannot distinguish
+    /// that from a grammar that genuinely does not describe the word, so the reasons travel with the evidence.
+    /// Joined rather than listed because a record's value equality is what lets one invocation be recorded once per
+    /// kind and compared for agreement; a collection member would compare by reference and refuse the second write.
+    /// </remarks>
+    public string? GrammarWarnings { get; init; }
+
+    /// <summary>The recorded grammar findings in order, empty when none were retained.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> GrammarWarningLines => string.IsNullOrEmpty(GrammarWarnings)
+        ? []
+        : GrammarWarnings.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>Hashes a file's bytes, independently of parser semantic identities.</summary>
     public static string DigestFile(string path)
