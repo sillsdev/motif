@@ -58,6 +58,14 @@ internal static class RealParserProject
                 phoneme.CodesOS.Add(code);
                 code.Representation.set_String(cache.DefaultVernWs, letter);
             }
+
+            // Affix forms carry morpheme boundaries ("+i+", "d+"), unsegmentable until "+" is defined.
+            var boundary = services.GetInstance<IPhBdryMarkerFactory>().Create();
+            phonemeSet.BoundaryMarkersOC.Add(boundary);
+            boundary.Name.set_String(cache.DefaultVernWs, "+");
+            var boundaryCode = services.GetInstance<IPhCodeFactory>().Create();
+            boundary.CodesOS.Add(boundaryCode);
+            boundaryCode.Representation.set_String(cache.DefaultVernWs, "+");
         });
 
         new FwDataProjectLoader().Save(cache);
