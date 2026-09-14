@@ -55,7 +55,7 @@ public sealed class CommandCatalogParityTests
         "apply.drift", "apply.dry-run-missing", "apply.not-ready", "apply.project-in-use",
         "apply.reconciliation-needed",
         "assess.parser-unavailable", "assess.unsupported-kind",
-        "assessment.aggregate-unavailable", "assessment.cancelled", "assessment.invalid-id", "assessment.not-found",
+        "assessment.aggregate-unavailable", "assessment.cancelled", "assessment.invalid-evidence", "assessment.invalid-id", "assessment.not-found",
         "baseline.busy", "baseline.copy-unloadable", "baseline.owned-root-violation",
         "baseline.source-incomplete",
         "comparison.assessment-not-found", "comparison.refused",

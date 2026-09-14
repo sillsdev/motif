@@ -4,12 +4,41 @@ using System.Linq;
 using SIL.LCModel;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Projection;
+using SIL.Motif.Host.Parser;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 
 namespace SIL.Motif.Host.Analysis;
 
 /// <summary>Reads and shapes the project analysis aggregate without invoking PanGloss.</summary>
 public static class AnalysisAggregateProjectionQuery
 {
+    /// <summary>Combines current manual navigation with validated, immutable Assessment cases.</summary>
+    public static AnalysisAggregateProjection ReadMorphology(
+        LcmCache cache, IReadOnlyList<AssessedWord> words, AnalysisAssessmentProvenance provenance,
+        string currentSelectionSha256, string currentGrammarSourceSha256, bool requireExpectations)
+    {
+        Sha256Value.RequireCanonical(currentSelectionSha256, nameof(currentSelectionSha256));
+        Sha256Value.RequireCanonical(currentGrammarSourceSha256, nameof(currentGrammarSourceSha256));
+        Sha256Value.RequireCanonical(provenance.SelectionSha256, nameof(provenance.SelectionSha256));
+        Sha256Value.RequireCanonical(provenance.GrammarSourceSha256, nameof(provenance.GrammarSourceSha256));
+        if (words.Any(word => word.Morphology is null || (requireExpectations && word.Correctness is null)))
+            throw new InvalidDataException("The Assessment lacks required recorded morphology or frozen expectations.");
+        ParseMorphEvidence.Read(string.Join("\n", words.Select(word =>
+            JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions))), words.Select(word => word.Word).ToArray());
+        var cases = words.Select(word => new AssessmentAnalysisCase(word.Morphology!,
+            word.Correctness is null ? null : MorphologyCorrectness.Compare(word.Morphology!, word.Correctness.Expectations)))
+            .ToArray();
+        var manual = ManualAnalysisProjectionQuery.Read(cache);
+        return manual with
+        {
+            AssessmentState = AnalysisAggregateResponse.DescribeAssessmentState(provenance,
+                currentSelectionSha256, currentGrammarSourceSha256, "recorded cases below"),
+            AssessmentCases = cases,
+        };
+    }
+
     public static AnalysisAggregateProjection Read(
         LcmCache cache,
         StoredAssessment assessment,

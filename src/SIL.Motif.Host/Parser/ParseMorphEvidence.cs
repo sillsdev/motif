@@ -56,6 +56,31 @@ public static class ParseMorphEvidence
         }
     }
 
+    /// <summary>Validates canonical source GUIDs and literal forms in frozen approved readings.</summary>
+    public static void ValidateExpectations(IReadOnlyList<ApprovedMorphology> expectations)
+    {
+        try
+        {
+            foreach (var expected in expectations)
+            {
+                if (expected is null || expected.Morphs is null) throw new JsonException("Null approved reading.");
+                CheckGuid(expected.SourceWordformGuid);
+                foreach (var morph in expected.Morphs)
+                {
+                    if (morph is null || morph.Forms is null || morph.Forms.Any(value => value is null))
+                        throw new JsonException("Null approved morph or literal form.");
+                    CheckGuid(morph.Form);
+                    CheckGuid(morph.Msa);
+                    CheckGuid(morph.InflType);
+                }
+            }
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("Invalid frozen morphology expectations: " + exception.Message, exception);
+        }
+    }
+
     private static void CheckGuid(string? value)
     {
         if (value is not null && (!Guid.TryParseExact(value, "D", out var guid) || guid == Guid.Empty || guid.ToString("D") != value))
@@ -68,6 +93,7 @@ public static class MorphologyCorrectness
 {
     public static WordCorrectness Compare(ParseWordEvidence result, IReadOnlyList<ApprovedMorphology> expectations)
     {
+        ParseMorphEvidence.ValidateExpectations(expectations);
         var distinct = expectations.DistinctBy(item => JsonSerializer.Serialize(item, ParseMorphEvidence.JsonOptions)).ToArray();
         var unavailable = result.Unavailable.ToList();
         if (distinct.Any(item => item.Morphs.Count == 0 || item.Morphs.Any(morph => morph.Form is null || morph.Msa is null)))

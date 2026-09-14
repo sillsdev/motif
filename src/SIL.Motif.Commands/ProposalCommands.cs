@@ -155,15 +155,35 @@ public static partial class ProposalCommands
                     $"Assessment '{assessmentId}' was not found in the Motif store.",
                     Fact(("assessmentId", assessmentId))));
             }
+            catch (Exception ex) when (ex is InvalidDataException or JsonException)
+            {
+                return InvalidAssessmentEvidence(assessmentId, ex);
+            }
 
-            if (record.Words?.Any(word => word.Morphology is not null) == true ||
-                record.OutcomeDigest is null || record.SemanticDigest is null || record.ModelFingerprint is null ||
-                record.Pipeline is null || record.DiagnosticCount is null)
+            if (!record.Kind.IsStoredKind(AssessmentKind.Correctness) && !record.Kind.IsStoredKind(AssessmentKind.ParseTime))
                 return CommandOutcome<AnalysisAggregateProjection>.Refused(new Refusal(
                     "assessment.aggregate-unavailable", FailureReason.Refused,
-                    "This Assessment has no supported analyses aggregate. " +
-                    "For ordered morphology, use its correctness report.",
+                    "An analyses aggregate requires a per-word ParseTime or Correctness Assessment.",
                     Fact(("assessmentId", assessmentId))));
+
+            if (record.Kind.IsStoredKind(AssessmentKind.Correctness) ||
+                record.Words?.Any(word => word.Morphology is not null) == true ||
+                record.OutcomeDigest is null || record.SemanticDigest is null || record.ModelFingerprint is null ||
+                record.Pipeline is null || record.DiagnosticCount is null)
+            {
+                using var manualCache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+                try
+                {
+                    return CommandOutcome<AnalysisAggregateProjection>.Success(AnalysisAggregateProjectionQuery.ReadMorphology(
+                        manualCache, record.Words ?? throw new InvalidDataException("Assessment word detail was not loaded."),
+                        new AnalysisAssessmentProvenance(record.Selection.Name, record.Selection.Sha256, record.GrammarSourceSha256),
+                        currentSelectionSha256, currentGrammarSourceSha256, record.Kind.IsStoredKind(AssessmentKind.Correctness)));
+                }
+                catch (InvalidDataException ex)
+                {
+                    return InvalidAssessmentEvidence(assessmentId, ex);
+                }
+            }
 
             var loader = new FwDataProjectLoader();
             using var cache = loader.LoadScratchCache(project.FullFwDataPath);
@@ -181,6 +201,10 @@ public static partial class ProposalCommands
             return CommandOutcome<AnalysisAggregateProjection>.Refused(ProjectFileRefusal(ex));
         }
     }
+
+    private static CommandOutcome<AnalysisAggregateProjection> InvalidAssessmentEvidence(string assessmentId, Exception exception) =>
+        CommandOutcome<AnalysisAggregateProjection>.Refused(new Refusal(
+            "assessment.invalid-evidence", FailureReason.Refused, exception.Message, Fact(("assessmentId", assessmentId))));
 
     private static CommandOutcome<AnalysisAggregateProjection> BuildManualAnalysisProjection(string fwDataPath)
     {

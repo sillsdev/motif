@@ -124,6 +124,8 @@ public static class CommandTextRenderer
         var sb = new StringBuilder();
         sb.AppendLine("Analysis aggregate");
         sb.AppendLine($"Word forms: {projection.WordFormCount}");
+        if (projection.AssessmentCases is not null)
+            sb.AppendLine("Current project manually approved analyses and navigation:");
 
         foreach (var wordForm in projection.WordForms)
         {
@@ -138,6 +140,10 @@ public static class CommandTextRenderer
                     sb.AppendLine($"          {occurrence.SegmentGuid}[{occurrence.AnalysisIndex}]");
             }
 
+            if (projection.AssessmentCases is not null)
+            {
+                continue;
+            }
             if (wordForm.AutomaticAnalyses is null)
             {
                 sb.AppendLine("    automatic analyses: not covered");
@@ -155,6 +161,33 @@ public static class CommandTextRenderer
 
         sb.AppendLine();
         sb.AppendLine(projection.AssessmentState);
+        if (projection.AssessmentCases is { } cases)
+        {
+            sb.AppendLine($"Recorded Assessment cases: {cases.Count}");
+            if (cases.Any(item => item.Correctness is not null))
+                sb.AppendLine("Approved matches use expectations frozen when the Assessment was produced.");
+            foreach (var item in cases)
+            {
+                var evidence = item.Morphology;
+                var limits = string.Join(" and ", new[]
+                    { evidence.Capped ? "step limit" : null, evidence.TimedOut ? "time limit" : null }.OfType<string>());
+                var completion = evidence.Capped || evidence.TimedOut
+                    ? $"INCOMPLETE — parsing did not finish ({limits})"
+                    : evidence.InvalidShape ? "Not attempted: invalid shape" : "Search completed";
+                sb.AppendLine($"  Case {evidence.Index}: {evidence.Word}: {completion}");
+                sb.AppendLine($"    Elapsed: {evidence.ElapsedMs} ms");
+                if (item.Correctness is { } correctness)
+                    sb.AppendLine($"    {correctness.Matched}/{correctness.Expected} approved readings matched; {correctness.Status}");
+                else
+                    sb.AppendLine("    Approved expectations were not collected.");
+                sb.AppendLine($"    Parser readings: {evidence.Analyses.Count}");
+                foreach (var analysis in evidence.Analyses)
+                    sb.AppendLine("      " + string.Join(" -> ", analysis.Morphs.Select(morph =>
+                        $"Form={morph.Form}; MSA={morph.Msa}; InflType={morph.InflType ?? "absent"}; guessed={morph.GuessedString ?? "absent"}")));
+                foreach (var reason in item.Correctness?.Unavailable ?? evidence.Unavailable)
+                    sb.AppendLine($"    Unavailable: {reason}");
+            }
+        }
         if (projection.UnanalysedReach is { } reach)
         {
             sb.AppendLine();

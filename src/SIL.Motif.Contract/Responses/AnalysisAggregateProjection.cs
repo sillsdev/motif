@@ -22,6 +22,9 @@ public sealed record ApprovedAnalysisView(
 /// <summary>One automatic analysis recorded by an Assessment.</summary>
 public sealed record AutomaticAnalysisView(string ContentDigest, string MorphBreakdown);
 
+/// <summary>A recorded batch case and its frozen comparison, absent when expectations were not collected.</summary>
+public sealed record AssessmentAnalysisCase(ParseWordEvidence Morphology, WordCorrectness? Correctness);
+
 /// <summary>The aggregate reach figure for correctly-spelled word forms without manual analyses.</summary>
 public sealed record UnanalysedReachView(int UnanalysedCount, int ParsedCount, string Statement);
 
@@ -48,6 +51,9 @@ public sealed record AnalysisAggregateProjection(
     IReadOnlyList<WordFormAnalysisView> WordForms,
     UnanalysedReachView? UnanalysedReach = null)
 {
+    /// <summary>Ordered recorded cases; null means this projection has no structured Assessment case block.</summary>
+    public IReadOnlyList<AssessmentAnalysisCase>? AssessmentCases { get; init; }
+
     /// <summary>How many word forms have at least one manually approved analysis.</summary>
     public int WordFormCount => WordForms.Count;
 }

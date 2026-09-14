@@ -571,7 +571,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.CommandText = """
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
-                   aw.MorphologyJson, aw.CorrectnessJson
+                   aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -598,6 +598,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 if (currentWordId is not null)
                     words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
                     { Morphology = currentMorphology, Correctness = currentCorrectness });
+                if (reader.GetInt32(11) != words.Count)
+                    throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
                 currentWordId = wordId;
                 currentWord = reader.GetString(1);
                 currentOutcome = reader.GetString(2);

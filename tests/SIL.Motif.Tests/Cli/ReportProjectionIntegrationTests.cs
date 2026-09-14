@@ -136,7 +136,7 @@ public sealed class ReportProjectionIntegrationTests
     }
 
     [Fact]
-    public void OrderedMorphologyHasAnExplicitAggregateRefusalAndKeepsItsCorrectnessEvidence()
+    public void OrderedMorphologyAggregateReturnsRetainedCasesAndFrozenExpectations()
     {
         var word = CorrectnessFixture.Word("approved", matched: true);
         var assessment = new StoredAssessment(
@@ -147,9 +147,14 @@ public sealed class ReportProjectionIntegrationTests
         var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, assessmentId,
             assessment.Selection.Sha256, assessment.Report.GrammarSourceSha256);
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("assessment.aggregate-unavailable", result.Output);
-        Assert.Contains("correctness report", result.Output);
+        Assert.Equal(0, result.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        var cases = json.RootElement.GetProperty("assessmentCases");
+        Assert.Equal(1, cases.GetArrayLength());
+        Assert.Equal("approved", cases[0].GetProperty("morphology").GetProperty("word").GetString());
+        Assert.Equal("covered", cases[0].GetProperty("correctness").GetProperty("status").GetString());
+        Assert.Equal(word.Morphology!.Analyses[0].Morphs[0].Form, cases[0].GetProperty("morphology")
+            .GetProperty("analyses")[0].GetProperty("morphs")[0].GetProperty("form").GetString());
         using var database = MotifDatabase.OpenOwned(AssessmentDatabasePath(),
             new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath)),
             MotifSchema.CurrentSchema, new Version(1, 0));
@@ -159,7 +164,7 @@ public sealed class ReportProjectionIntegrationTests
     }
 
     [Fact]
-    public void EmptyCorrectnessMeasurementHasAnExplicitAggregateRefusal()
+    public void EmptyCorrectnessMeasurementReturnsAnEmptyRecordedCaseList()
     {
         var assessmentId = CanonicalId.Mint("assessment/").Value;
         var selection = Selection.Create("empty", []);
@@ -175,9 +180,126 @@ public sealed class ReportProjectionIntegrationTests
         var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, assessmentId,
             selection.Sha256, Hash('a'));
 
+        Assert.Equal(0, result.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal(0, json.RootElement.GetProperty("assessmentCases").GetArrayLength());
+        Assert.Contains("still describes the current project", result.Output);
+    }
+
+    [Fact]
+    public void AggregatePreservesRepeatedCasesAndRecomputesIncompleteMatchesFromFrozenEvidence()
+    {
+        var first = CorrectnessFixture.Word("same", matched: true);
+        first = first with
+        {
+            Morphology = first.Morphology! with { Capped = true, TimedOut = true, Unavailable = ["unresolved extra reading"] },
+            Correctness = first.Correctness! with { Status = "covered", Matched = 99 },
+        };
+        var second = CorrectnessFixture.Word("same", matched: false);
+        second = second with { Morphology = second.Morphology! with { Index = 1 } };
+        var assessment = new StoredAssessment(
+            new AssessReport([first, second], "outcome", "semantic", Hash('a'), "model", "pipeline", 0),
+            Selection.Create("repeated", ["same", "same"]));
+        var id = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
+
+        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id, Hash('b'), Hash('c'));
+        var text = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, id, Hash('b'), Hash('c'));
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(0, text.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        var cases = json.RootElement.GetProperty("assessmentCases");
+        Assert.Equal(2, cases.GetArrayLength());
+        Assert.Equal(0, cases[0].GetProperty("morphology").GetProperty("index").GetInt32());
+        Assert.Equal(1, cases[1].GetProperty("morphology").GetProperty("index").GetInt32());
+        Assert.Equal("incomplete", cases[0].GetProperty("correctness").GetProperty("status").GetString());
+        Assert.Equal(1, cases[0].GetProperty("correctness").GetProperty("matched").GetInt32());
+        Assert.Equal("unmatched", cases[1].GetProperty("correctness").GetProperty("status").GetString());
+        Assert.Contains("INCOMPLETE — parsing did not finish (step limit and time limit)", text.Output);
+        Assert.Contains("1/1 approved readings matched", text.Output);
+        Assert.Contains("unresolved extra reading", text.Output);
+        Assert.Contains(first.Morphology!.Analyses[0].Morphs[0].Form!, text.Output);
+        Assert.Contains("selection has changed", result.Output);
+        Assert.Contains("grammar has changed", result.Output);
+        Assert.False(json.RootElement.TryGetProperty("unanalysedReach", out _));
+    }
+
+    [Fact]
+    public void TimingOnlyAggregateDoesNotInventApprovedExpectations()
+    {
+        var word = CorrectnessFixture.Word("timed", matched: true) with { Correctness = null };
+        var assessment = new StoredAssessment(
+            new AssessReport([word], "outcome", "semantic", Hash('a'), "model", "pipeline", 0),
+            Selection.Create("timed", [word.Word]));
+        var id = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
+
+        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id,
+            assessment.Selection.Sha256, Hash('a'));
+        var text = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, id,
+            assessment.Selection.Sha256, Hash('a'));
+
+        Assert.Equal(0, result.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.False(json.RootElement.GetProperty("assessmentCases")[0].TryGetProperty("correctness", out _));
+        Assert.Contains("Approved expectations were not collected", text.Output);
+        Assert.DoesNotContain("Expected readings below were frozen", text.Output);
+        Assert.Contains($"Elapsed: {word.Morphology!.ElapsedMs} ms", text.Output);
+        Assert.DoesNotContain("0/0", text.Output);
+    }
+
+    [Theory]
+    [InlineData("index")]
+    [InlineData("word")]
+    [InlineData("morphology")]
+    [InlineData("expectations")]
+    [InlineData("expected-guid")]
+    public void AggregateRefusesMalformedRecordedCasesWithoutRepairingThem(string defect)
+    {
+        var word = CorrectnessFixture.Word("recorded", matched: true);
+        word = defect switch
+        {
+            "index" => word with { Morphology = word.Morphology! with { Index = 1 } },
+            "word" => word with { Morphology = word.Morphology! with { Word = "different" } },
+            "morphology" => word with { Morphology = null },
+            "expected-guid" => word with { Correctness = word.Correctness! with
+                { Expectations = [new([new("malformed", word.Morphology!.Analyses[0].Morphs[0].Msa, null, [])])] } },
+            _ => word with { Correctness = null },
+        };
+        var id = CanonicalId.Mint("assessment/").Value;
+        var selection = Selection.Create("recorded", [word.Word]);
+        var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
+        using (var database = MotifDatabase.OpenOwned(AssessmentDatabasePath(), project,
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                id, null, null, "pangloss", "Correctness", "{}", "sha256:scope",
+                "whitespace-and-punctuation", "1", "{}", selection, null, null, Hash('a'), null, null, null, [word]));
+        }
+
+        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id, selection.Sha256, Hash('a'));
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("assessment.invalid-evidence", result.Output);
+    }
+
+    [Fact]
+    public void AggregateRefusesNonWordMeasurementsEvenWithCompleteLegacyMetadata()
+    {
+        var id = CanonicalId.Mint("assessment/").Value;
+        var selection = Selection.Create("objects", []);
+        var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
+        using (var database = MotifDatabase.OpenOwned(AssessmentDatabasePath(), project,
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                id, null, null, "pangloss", "ObjectTiming", "{}", "sha256:scope",
+                "whitespace-and-punctuation", "1", "{}", selection, "outcome", "semantic", Hash('a'), "model", "pipeline", 0, []));
+        }
+
+        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id, selection.Sha256, Hash('a'));
+
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("assessment.aggregate-unavailable", result.Output);
-        Assert.Contains("correctness report", result.Output);
     }
 
     [Fact]

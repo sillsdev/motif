@@ -95,19 +95,27 @@ public sealed record AnalysisAggregateResponse
                    "step, not part of reading this aggregate.";
         }
 
-        var subject = $"selection '{Assessment.SelectionName}' ({Short(Assessment.SelectionSha256)}) " +
-                      $"under grammar {Short(Assessment.GrammarSourceSha256)}";
+        return DescribeAssessmentState(Assessment, currentSelectionSha256, currentGrammarSourceSha256);
+    }
 
-        if (IsCurrent(currentSelectionSha256, currentGrammarSourceSha256))
+    /// <summary>Describes recorded evidence against explicitly supplied current Selection and grammar hashes.</summary>
+    public static string DescribeAssessmentState(
+        AnalysisAssessmentProvenance assessment, string currentSelectionSha256, string currentGrammarSourceSha256,
+        string evidenceDescription = "automatic analyses above")
+    {
+        var subject = $"selection '{assessment.SelectionName}' ({Short(assessment.SelectionSha256)}) " +
+                      $"under grammar {Short(assessment.GrammarSourceSha256)}";
+
+        if (assessment.SelectionSha256 == currentSelectionSha256 && assessment.GrammarSourceSha256 == currentGrammarSourceSha256)
         {
-            return $"The automatic analyses above are from the assessment over {subject}, which still " +
+            return $"The {evidenceDescription} are from the assessment over {subject}, which still " +
                    "describes the current project.";
         }
 
         var moved = new List<string>();
-        if (!string.Equals(Assessment.SelectionSha256, currentSelectionSha256, StringComparison.Ordinal))
+        if (!string.Equals(assessment.SelectionSha256, currentSelectionSha256, StringComparison.Ordinal))
             moved.Add($"the selection has changed (now {Short(currentSelectionSha256)})");
-        if (!string.Equals(Assessment.GrammarSourceSha256, currentGrammarSourceSha256, StringComparison.Ordinal))
+        if (!string.Equals(assessment.GrammarSourceSha256, currentGrammarSourceSha256, StringComparison.Ordinal))
             moved.Add($"the grammar has changed (now {Short(currentGrammarSourceSha256)})");
 
         return $"As of the assessment over {subject}, that is what the parser said. Since then, " +

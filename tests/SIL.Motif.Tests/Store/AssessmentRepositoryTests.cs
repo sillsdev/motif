@@ -39,6 +39,20 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void ReadBackRejectsNoncontiguousStoredCaseOrdinals()
+    {
+        var repository = NewRepository("ordinals.fwdata", out var database);
+        using var owned = database;
+        repository.Record(NewAssessment("ordinal-test", null, null, "Correctness"));
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE AssessedWords SET OrdinalIndex = OrdinalIndex + 5 WHERE AssessmentId = 'ordinal-test'";
+        command.ExecuteNonQuery();
+
+        Assert.Throws<InvalidDataException>(() => repository.Get("ordinal-test"));
+    }
+
+    [Fact]
     public void RecordsAnAssessmentWithWordsAndAnalysesAndReadsItBackById()
     {
         var repository = NewRepository("record.fwdata", out _);
