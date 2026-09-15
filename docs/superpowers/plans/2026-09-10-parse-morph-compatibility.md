@@ -65,6 +65,28 @@ Measured against the fixture that prompted this section: `grammar-health` report
 
 `pg-xample-oracle` does not exist on PanGloss `main`. The work sits on four research branches (`research/xample-phonology`, `-task3`, `-task6`, `-task7`), each roughly 105-111 commits ahead of `main` and 131 behind it. `31a3bf8b` implements the empty-phoneme-inventory red flag, on `research/xample-phonology` only.
 
-- [ ] Assess the four branches' relationship, integrate onto `main`, and prove the empty-phoneme-inventory flag works. `integration/xample` now exists (110 ahead of `main`, 4 behind, tip `65c27404`, `pg-xample-oracle` present) but carries no gate evidence yet; it was produced by a delegated run that never reported one. Not pushed.
+- [x] Assess the four branches' relationship and integrate onto a branch. `integration/xample` exists at `65c27404`, carrying `pg-xample-oracle`. Not pushed, not merged.
+- [x] Gate it against `main`, measured with `rust/tools/pg.ps1 -Mode test` (bare `cargo test` is refused by design: `pg-conformance-fixtures` panics rather than guess a fixture scope).
 
-Its shared-crate surface is the part needing review, not the new crate: ~11k insertions reaching `pg-grammar/src/compile/rules.rs`, `templates.rs`, `lib.rs` and `segment.rs`, and `pg-snapshot/src/lib.rs` and `conversion.rs`. Those are compile semantics for every caller, not added tooling, so a `main`-versus-branch gate comparison has to come before any merge decision.
+| | tests | passed | failed | skipped |
+|---|---|---|---|---|
+| `main` @ `93e1dcb4` | 2368 | 2360 | 8 | 174 |
+| `integration/xample` @ `65c27404` | 2592 | 2586 | 6 | 175 |
+
+Two are real regressions -- they pass on `main` and fail on the branch:
+
+- `pg-cli tests::analyses_sidecar_projects_source_guids_from_fwdata`, now refused by a fatal `fwdata.dangling-reference` (class `InvalidSource`): an allomorph naming a `PhEnvironment` that does not resolve. The branch promotes a tolerated source defect to a hard refusal, and this is the sidecar Motif's own evidence path reads.
+- `pg-grammar compile::tests::unreachable_affix_before_live_rule_preserves_live_source_row`.
+
+Three more are the branch's own new gates failing: `unmarked_fixtures_do_not_grow` (fixture-marking bookkeeping), `sena3_compiles_through_compile_project_with`, and `xample_migration_differential_gate` -- the last only because `tools/xample-projector/bin/Debug/XampleProjector.exe` is unbuilt, so the branch's headline differential has never actually run here. `sena3_imports_with_expected_counts` fails on both and is pre-existing.
+
+`main`'s other seven failures are **not** fixed by the branch; they are absent from it. `149f88df` and `a6f15d8a` stage fixtures and gates on `main` ahead of the code satisfying them, and the branch predates both, so it passes by not having them. A rebase would inherit those failures.
+
+- [ ] Resolve the two regressions, build `XampleProjector.exe` and run the differential gate, then rebase onto `main` and re-measure.
+- [ ] Prove the empty-phoneme-inventory flag works. Not yet demonstrated: `31a3bf8b`'s substrate report is reached through the differential gate that cannot run unbuilt.
+
+Its shared-crate surface is the part needing review, not the new crate: ~11k insertions reaching `pg-grammar/src/compile/rules.rs`, `templates.rs`, `lib.rs` and `segment.rs`, and `pg-snapshot/src/lib.rs` and `conversion.rs`. Those are compile semantics for every caller, and the two regressions below are exactly that risk arriving.
+
+Worth having anyway, for reasons that outlast the oracle. The branch replaces free-text stderr warnings with structured `ConversionIssue` records -- a stable `code`, a `class` (`UnrepresentableForHc`, `InvalidSource`, `MigrationDifference`, `SubstrateUnresolvable`), a `fatal` flag, and a typed `SourceRef { kind, id }` naming the allomorph or environment at fault. It also adds `SubstratePolicy` (`Auto` | `Strict` | `CompleteFromUsage`), which infers undeclared segments from usage for an XAmple-configured project or one that authored `AcceptUnspecifiedGraphemes`, and reports what it could not resolve as `SubstrateReport.unresolved_uses`.
+
+That is the durable form of the diagnostic this ledger's section above builds by hand. When it lands, the warning-scraping should be replaced by reading `ConversionIssue`: typed codes and source GUIDs let an empty result name the allomorph that cost it, which parsed prose cannot.
