@@ -44,6 +44,16 @@ revert: `git checkout SilVersions.props` and unset `LOCAL_NUGET_REPO`.
 Read `CONTEXT.md` first — it is the canonical glossary, and its terms are binding in code, comments,
 CLI verbs, and prose. Then `README.md` and the documents in `docs/`.
 
+## Development workflow guidance
+
+For PR review, PR copy, review-comment responses, or Jira bug work, read
+[`docs/development-workflow.md`](docs/development-workflow.md) and then the matching skill:
+[`pr-preflight`](.claude/skills/pr-preflight/SKILL.md),
+[`pr-pitch`](.claude/skills/pr-pitch/SKILL.md),
+[`respond-to-review-comments`](.claude/skills/respond-to-review-comments/SKILL.md), or
+[`jira-bugfix`](.claude/skills/jira-bugfix/SKILL.md). These are software-development workflows;
+they do not replace Motif's Proposal, Dry Run, or Assessment contracts.
+
 **The vocabulary changed on 2026-07-31** ([ADR 0015](docs/adr/0015-proposal-assessment-dry-run-vocabulary.md)).
 `Proposal` replaces *change set*; `Dry Run` is the LibLCM-side evaluation; `Assessment` means a PanGloss
 run and nothing else. Documents written before that date use the old words — they are historical

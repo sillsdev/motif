@@ -31,6 +31,9 @@ docs/*.md.orig
 # Agent worktrees: transient checkouts created by background subagents.
 .claude/worktrees/
 
+# PR preflight working summary; durable evidence belongs in the PR or docs.
+.review/
+
 # Python bytecode from running the Handoff reader in tests
 __pycache__/
 *.pyc
