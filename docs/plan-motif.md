@@ -1,5 +1,10 @@
 # Plan A — Motif
 
+**Release 1.0:** A user captures a saved Baseline, assesses it, and hands the matching Baseline and
+Assessment files to ChatGPT. The [1.0 release work map](superpowers/plans/2026-09-15-release-1-0.md)
+governs this release: Windows x64 with bundled PanGloss, with no Proposals or project mutation.
+The broader delivery and operation milestones below remain longer-term work, not 1.0 prerequisites.
+
 *The live plan. Adopted 2026-08-01 from
 [harmony-adoption-report.md](harmony-adoption-report.md) proposal 2. This file owns both the
 milestones and the `MOT-*` items; nothing else defines milestones.*
