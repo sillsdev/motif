@@ -7,8 +7,10 @@ using Avalonia.Styling;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Parser;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -89,6 +91,85 @@ public sealed class MainWindowSmokeTests
             });
 
             Assert.Null(exception);
+        });
+    }
+
+    [Fact]
+    public void AssessmentPanelShowsGlobalWarningsAndExpandableCopyableReadings()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window) = NewComposedWindow();
+            try
+            {
+                workspace.Assess.Result = new AssessCommandResponse(
+                    new BaselineCaptureResponse(
+                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
+                    new SelectionProjection([], []), [], "4 searches completed; 1 incomplete")
+                {
+                    GrammarWarnings = ["warning: grammar-wide finding"],
+                    Words =
+                    [
+                        new AssessmentWordResult("motifa", "analysed", false, "Search completed", 1, null)
+                        {
+                            Morphology = new ParseWordEvidence(
+                                ParseMorphEvidence.Schema, 0, "motifa", 1, false, false, false,
+                                [new ParseAnalysis([
+                                    new("11111111-1111-1111-1111-111111111111",
+                                        "22222222-2222-2222-2222-222222222222", null, "guessed")])], [])
+                        },
+                        new AssessmentWordResult("motifb", "capped", true,
+                            "INCOMPLETE — parsing did not finish (step limit)", 700, "partial")
+                        {
+                            Morphology = new ParseWordEvidence(
+                                ParseMorphEvidence.Schema, 1, "motifb", 700, true, false, false,
+                                [new ParseAnalysis([
+                                    new("33333333-3333-3333-3333-333333333333",
+                                        "44444444-4444-4444-4444-444444444444", null, null)])], [])
+                        },
+                        new AssessmentWordResult("motifc", "no-analysis", false, "Search completed", 5, null),
+                        new AssessmentWordResult("motifd", "skipped", false, "Not attempted", 0, null)
+                        {
+                            Morphology = new ParseWordEvidence(
+                                ParseMorphEvidence.Schema, 3, "motifd", 0, false, false, true, [], [])
+                        },
+                    ],
+                };
+
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>());
+                var readingExpanders = panel.GetLogicalDescendants().OfType<Expander>()
+                    .Where(expander => Equals(expander.Header, "Parser readings")).ToList();
+                Assert.Equal(4, readingExpanders.Count);
+                foreach (var expander in readingExpanders)
+                {
+                    expander.IsExpanded = true;
+                    expander.ApplyTemplate();
+                }
+                window.UpdateLayout();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                Assert.Contains(panel.GetLogicalDescendants().OfType<SelectableTextBlock>(),
+                    text => text.Text == "11111111-1111-1111-1111-111111111111");
+                Assert.Contains(panel.GetLogicalDescendants().OfType<SelectableTextBlock>(),
+                    text => text.Text == "warning: grammar-wide finding");
+                Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(),
+                    text => text.Text == "INCOMPLETE — parsing did not finish (step limit)");
+                Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(),
+                    text => text.Text == "Morphology evidence unavailable.");
+                Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(),
+                    text => text.Text == "Morphology evidence unavailable: invalid shape.");
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 

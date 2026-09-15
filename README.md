@@ -341,19 +341,24 @@ runs and a green run means one green run.
 Launch the window from the repository root:
 
 ```powershell
-dotnet run --project src/SIL.Motif.App
+./src/SIL.Motif.App/bin/Debug/net10.0/SIL.Motif.App.exe
 ```
 
 **Building PanGloss.** Motif shells out to a `pangloss` executable it does not build. In a sibling
 checkout:
 
 ```powershell
-cd ../PanGloss/rust
-cargo build --release -p pg-cli
+cd ../PanGloss
+./rust/tools/pg.ps1 -Mode build -Package pg-cli
 ```
 
-That writes `../PanGloss/rust/target/release/pangloss.exe`, which is exactly where Motif looks when
-`MOTIF_PANGLOSS_EXE` is unset.
+Use the executable path reported by the managed build; its cache may be outside the checkout.
+Back in the Motif worktree, select that executable before starting the app or running the tests:
+
+```powershell
+$env:MOTIF_PANGLOSS_EXE = 'C:\path\reported\by\the\build\pangloss.exe'
+./src/SIL.Motif.App/bin/Debug/net10.0/SIL.Motif.App.exe
+```
 
 **PanGloss discovery.** The window (like `motif assess`, `stats`, and `handoff`) shells out to the
 `pangloss` executable. Set `MOTIF_PANGLOSS_EXE` to its path, or leave it unset and Motif looks for
@@ -367,6 +372,7 @@ panel shows when it was last captured — the freshness sentence is exactly **`a
 — and whether FieldWorks currently holds the project open. Choose words from any of the four agreed
 sources (checked Texts, pasted words, All wordforms, Retry failed/slower-than a threshold), then Run to
 Assess them; Run and Cancel report the command's own progress stages, never an invented per-word count.
+Expand **Parser readings** beneath a word to inspect its ordered morphology and copy source references or guessed text. Partial and unavailable evidence remain labeled separately from completed searches. Grammar warnings appear above the words and concern the grammar as a whole.
 Statistics groups PanGloss's own per-object rows into the same six groups the CLI's `stats --group`
 accepts, with client-side sort and filter. Handoff writes a self-contained folder — the grammar, the
 chosen Texts, the exact Selection, and PanGloss's statistics — with the data-sensitivity notice always

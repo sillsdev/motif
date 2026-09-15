@@ -62,6 +62,7 @@ public sealed class AssessCommandTests : IDisposable
         var response = outcome.Value!;
         Assert.False(response.Baseline.ReusedExistingBytes);
         Assert.Equal(2, response.AssessmentIds.Count);
+        Assert.Null(response.GrammarWarnings);
 
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
@@ -123,6 +124,85 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal("capped", stored[0].Outcome);
         Assert.Equal("partial-match", stored[0].RawSignature);
         Assert.Empty(stored[0].Analyses);
+    }
+
+    [Fact]
+    public void ResponseRetainsOrderedReadingsPartialEvidenceAndSharedGrammarWarnings()
+    {
+        using var seeded = NewSeededScratch();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, "motifa", 15, SIL.Motif.Host.Parser.WordOutcome.Analysed, "reading")
+                    {
+                        Morphology = new ParseWordEvidence(
+                            SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0, "motifa", 15, false, false, false,
+                            [
+                                new ParseAnalysis([
+                                    new("11111111-1111-1111-1111-111111111111",
+                                        "22222222-2222-2222-2222-222222222222", null, "guess-a"),
+                                    new("33333333-3333-3333-3333-333333333333",
+                                        "44444444-4444-4444-4444-444444444444",
+                                        "55555555-5555-5555-5555-555555555555", null)]),
+                                new ParseAnalysis([
+                                    new("66666666-6666-6666-6666-666666666666",
+                                        "77777777-7777-7777-7777-777777777777", null, null),
+                                ]),
+                            ], [])
+                    },
+                    new(1, "motifb", 700, SIL.Motif.Host.Parser.WordOutcome.Capped, "partial")
+                    {
+                        Morphology = new ParseWordEvidence(
+                            SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 1, "motifb", 700, true, false, false,
+                            [new ParseAnalysis([
+                                new("88888888-8888-8888-8888-888888888888",
+                                    "99999999-9999-9999-9999-999999999999", null, null),
+                            ])], [])
+                    },
+                    new(2, "motifc", 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "unavailable")
+                    {
+                        Morphology = new ParseWordEvidence(
+                            SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 2, "motifc", 5, false, false, false, [],
+                            ["source identity unavailable"])
+                    },
+                    new(3, "motifd", 5, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "-") ,
+                    new(4, "motife", 0, SIL.Motif.Host.Parser.WordOutcome.Skipped, "invalid")
+                    {
+                        Morphology = new ParseWordEvidence(
+                            SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 4, "motife", 0,
+                            false, false, true, [], [])
+                    }], 1000, seeded.FwDataPath, [])
+                    { PerWordStepLimit = 200000 })
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate) with
+            {
+                GrammarWarnings = "warning: dropped allomorph\ncapability: missing boundary marker",
+            },
+        };
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa", "motifb", "motifc", "motifd", "motife"], false, null)),
+            NewManagedRoot(), assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var response = outcome.Value!;
+        Assert.Equal(["warning: dropped allomorph", "capability: missing boundary marker"], response.GrammarWarnings);
+        Assert.Equal(2, response.Words[0].Morphology!.Analyses.Count);
+        Assert.Equal(2, response.Words[0].Morphology.Analyses[0].Morphs.Count);
+        Assert.Equal(
+            ["11111111-1111-1111-1111-111111111111", "33333333-3333-3333-3333-333333333333",
+                "66666666-6666-6666-6666-666666666666"],
+            response.Words[0].Morphology.Analyses.SelectMany(analysis => analysis.Morphs)
+                .Select(morph => morph.Form));
+        Assert.Equal("guess-a", response.Words[0].Morphology.Analyses[0].Morphs[0].GuessedString);
+        Assert.True(response.Words[1].IsIncomplete);
+        Assert.Single(response.Words[1].Morphology!.Analyses);
+        Assert.Equal("source identity unavailable", response.Words[2].Morphology!.Unavailable.Single());
+        Assert.Equal("analysed", response.Words[2].Outcome);
+        Assert.Equal("Morphology evidence unavailable.", response.Words[3].EvidenceStatus);
+        Assert.Equal("Morphology evidence unavailable: invalid shape.", response.Words[4].EvidenceStatus);
     }
 
     [Fact]

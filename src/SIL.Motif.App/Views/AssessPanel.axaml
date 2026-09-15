@@ -37,6 +37,19 @@
       <TextBlock Text="{Binding Assess.Result.CompletionSummary}" FontWeight="Bold" TextWrapping="Wrap"
                  AutomationProperties.Name="Completed and incomplete searches" />
       <TextBlock Text="{Binding Assess.Result.CorrectnessStatus}" TextWrapping="Wrap" />
+      <StackPanel Spacing="4"
+                  IsVisible="{Binding Assess.Result.GrammarWarnings, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+        <TextBlock Text="Grammar warnings" FontWeight="Bold" TextWrapping="Wrap" />
+        <TextBlock Text="These findings concern the grammar as a whole and are not attributed to individual words."
+                   TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding Assess.Result.GrammarWarnings}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <SelectableTextBlock Text="{Binding}" TextWrapping="Wrap" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
       <ScrollViewer MaxHeight="240" HorizontalScrollBarVisibility="Disabled">
         <ItemsControl ItemsSource="{Binding Assess.Result.Words}">
           <ItemsControl.ItemTemplate>
@@ -45,8 +58,50 @@
                 <StackPanel Spacing="4">
                   <TextBlock Text="{Binding Word}" FontWeight="Bold" TextWrapping="Wrap" />
                   <TextBlock Text="{Binding CompletionStatus}" FontWeight="Bold" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding RawSignature}" TextWrapping="Wrap" />
+                  <SelectableTextBlock Text="{Binding RawSignature, TargetNullValue=(absent)}" TextWrapping="Wrap" />
                   <TextBlock Text="{Binding CorrectnessStatus}" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding EvidenceStatus}" TextWrapping="Wrap" />
+                  <Expander Header="Parser readings" IsExpanded="False">
+                    <StackPanel Spacing="6">
+                      <ItemsControl ItemsSource="{Binding Morphology.Analyses}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="responses:ParseAnalysis">
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="6">
+                              <ItemsControl ItemsSource="{Binding Morphs}">
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="responses:ParseMorph">
+                                    <StackPanel Spacing="2">
+                                      <TextBlock Text="Form source reference:" />
+                                      <SelectableTextBlock Text="{Binding Form, TargetNullValue=(unavailable)}"
+                                                            TextWrapping="Wrap" />
+                                      <TextBlock Text="MSA source reference (grammatical analysis):" />
+                                      <SelectableTextBlock Text="{Binding Msa, TargetNullValue=(unavailable)}"
+                                                            TextWrapping="Wrap" />
+                                      <TextBlock Text="Inflection type source reference:" />
+                                      <SelectableTextBlock Text="{Binding InflType, TargetNullValue=(absent)}"
+                                                            TextWrapping="Wrap" />
+                                      <TextBlock Text="Guessed text:" />
+                                      <SelectableTextBlock Text="{Binding GuessedString, TargetNullValue=(absent)}"
+                                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="Unavailable evidence:" FontWeight="Bold"
+                                 IsVisible="{Binding HasUnavailableEvidence}" />
+                      <ItemsControl ItemsSource="{Binding Morphology.Unavailable}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="x:String">
+                            <SelectableTextBlock Text="{Binding}" TextWrapping="Wrap" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Expander>
                 </StackPanel>
               </Border>
             </DataTemplate>

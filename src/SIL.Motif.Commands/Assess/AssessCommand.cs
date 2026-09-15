@@ -236,6 +236,10 @@ public static class AssessCommand
                 var completionSummary = $"{completedCount} {searchNoun} completed; " +
                     $"{words.Count(word => word.IsIncomplete)} incomplete; {words.Count(word => word.Outcome == "skipped")} skipped.";
                 summaryMarkdown = completionSummary + Environment.NewLine + Environment.NewLine + summaryMarkdown;
+                var invocation = produced.Select(item => item.Invocation)
+                    .OfType<BatchInvocationEvidence>().FirstOrDefault();
+                var grammarWarnings = invocation?.GrammarWarningLines is { Count: > 0 } warningLines
+                    ? warningLines : null;
 
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, completionSummary));
@@ -244,6 +248,7 @@ public static class AssessCommand
                     {
                         Words = words,
                         CompletionSummary = completionSummary,
+                        GrammarWarnings = grammarWarnings,
                         CorrectnessStatus = words.Any(word => word.Correctness is not null)
                             ? $"{words.Sum(word => word.Correctness?.Matched ?? 0)}/" +
                               $"{words.Sum(word => word.Correctness?.Expected ?? 0)} approved readings matched; " +
