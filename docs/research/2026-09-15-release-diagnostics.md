@@ -27,3 +27,10 @@ output failures arrive through the same exception type.
 
 Unexpected non-I/O exceptions still escape this command boundary for the CLI's outer failure handling.
 The CLI's JSON rendering of those failures is a separate surface concern.
+
+## Verification
+
+The managed `./test.ps1` gate passed with the real PanGloss artifact: 1,671 passed, 19 skipped, zero
+failures. This includes the actual ownership-lock contention test and action permission/disk failure
+cases. Comment hygiene and compilation passed as part of that gate. The primary review retained the
+existing exclusive-open protocol and added the real contention regression case.

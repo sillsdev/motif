@@ -82,6 +82,29 @@ public sealed class ProjectStoreCommandTests : IDisposable
     }
 
     [Fact]
+    public void AContendedCreationLockIsBusyAndTheActionDoesNotRun()
+    {
+        var project = Project("contended");
+        var storePath = Path.ChangeExtension(project, ".motif.db");
+        using var owner = new FileStream(storePath + ".owner.lock",
+            FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+        var ran = false;
+
+        var result = ProjectStoreCommand.Run<string>(project, "1.0", (_, _) =>
+        {
+            ran = true;
+            return CommandOutcome<string>.Success(string.Empty);
+        });
+
+        Assert.False(ran);
+        Assert.False(result.Succeeded);
+        Assert.Equal("project.busy", result.Refusal!.Code);
+        Assert.Equal(FailureReason.Busy, result.Refusal.Reason);
+        Assert.Equal(3, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
+        Assert.False(File.Exists(storePath));
+    }
+
+    [Fact]
     public void AnActionOutputIoFailureIsAStableRefusalRatherThanProjectBusy()
     {
         var project = Project("output-failure");

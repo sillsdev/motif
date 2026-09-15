@@ -111,7 +111,7 @@ public static class ProjectStoreCommand
 
     private static string MessageFor(Exception exception) =>
         string.IsNullOrWhiteSpace(exception.Message)
-            ? "The project operation could not complete because storage access failed."
+            ? "The project could not access required storage."
             : exception.Message;
 
     /// A malformed product version must not stop a verb; the compatibility floor it feeds is a lower bound.
