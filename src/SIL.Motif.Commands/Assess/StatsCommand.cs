@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Contract.Commands;
-using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
@@ -50,11 +49,6 @@ public static class StatsCommand
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(request.ForwardedArguments);
 
-        if (request.AssessmentId is not null && request.ProposalId is not null)
-            return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
-                "stats.selector-conflict", FailureReason.InvalidArgument,
-                "Select an exact Assessment or a Proposal, not both."));
-
         if (request.Output == StatsOutputKind.JsonRows && ContainsFormatFlag(request.ForwardedArguments))
         {
             return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
@@ -62,18 +56,6 @@ public static class StatsCommand
                 "The forwarded arguments already name --format; --json requests PanGloss's JSONL rows " +
                 "itself and cannot override the caller's own choice.",
                 Fact(("projectPath", request.ProjectPath))));
-        }
-
-        CanonicalId? proposalId = null;
-        if (request.ProposalId is not null)
-        {
-            if (!CanonicalId.TryParse(request.ProposalId, out var parsed, out var idError))
-            {
-                return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
-                    "stats.invalid-proposal-id", FailureReason.InvalidArgument, idError!,
-                    Fact(("proposalId", request.ProposalId))));
-            }
-            proposalId = parsed;
         }
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
@@ -93,10 +75,7 @@ public static class StatsCommand
             }
             else
             {
-                var candidates = proposalId is null
-                    ? assessments.ListBaselineAssessments(kind)
-                    : assessments.ListByProposal(proposalId.Value)
-                        .Where(record => record.Kind.IsStoredKind(AssessmentKind.ObjectTiming)).ToList();
+                var candidates = assessments.ListBaselineAssessments(kind);
                 assessment = candidates.Count > 0 ? candidates[^1] : null;
             }
             if (assessment is null)
@@ -105,11 +84,8 @@ public static class StatsCommand
                     "stats.no-assessment", FailureReason.NotFound,
                     request.AssessmentId is not null
                         ? $"Assessment '{request.AssessmentId}' was not found."
-                        : proposalId is null
-                        ? "No Baseline Assessment with per-object statistics has been recorded yet; run " +
-                          "`motif assess` first."
-                        : $"No Trial Assessment with per-object statistics has been recorded for Proposal " +
-                          $"'{request.ProposalId}'.",
+                        : "No Baseline Assessment with per-object statistics has been recorded yet; run " +
+                          "`motif assess` first.",
                     Fact(("projectPath", request.ProjectPath))));
             }
 

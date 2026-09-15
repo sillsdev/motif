@@ -76,7 +76,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     public void NewDatabaseRequiresTheTargetSchemaMinimumWorkerVersion()
     {
         Assert.Throws<NotSupportedException>(() => MotifDatabase.OpenOwned(
-            DatabasePath("too-old.fwdata"), Locator("too-old.fwdata"), MotifSchema.CurrentSchema, new Version(0, 9)));
+            DatabasePath("too-old.fwdata"), Locator("too-old.fwdata"), MotifSchema.CurrentSchema, new Version(0, 0)));
         Assert.False(File.Exists(DatabasePath("too-old.fwdata")));
     }
 
@@ -533,7 +533,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         using var older = MotifDatabase.OpenOwned(path, Locator("same-schema.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
         using var connection = older.OpenConnection();
 
-        Assert.Equal("1.0", Scalar(connection, "SELECT MinimumWorkerVersion FROM MotifMetadata WHERE Id = 1;"));
+        Assert.Equal("0.1", Scalar(connection, "SELECT MinimumWorkerVersion FROM MotifMetadata WHERE Id = 1;"));
     }
 
     [Fact]

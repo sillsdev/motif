@@ -50,7 +50,7 @@ public sealed class StatisticsViewModelTests
 
         var request = Assert.Single(fake.StatsRequests);
         Assert.Equal(ProjectPath, request.ProjectPath);
-        Assert.Null(request.ProposalId);
+        Assert.Null(request.AssessmentId);
         Assert.Equal(StatsOutputKind.JsonRows, request.Output);
         Assert.Equal(["--group", "word"], request.ForwardedArguments);
 
@@ -252,20 +252,18 @@ public sealed class StatisticsViewModelTests
     }
 
     [Fact]
-    public async Task ExactAssessmentIsForwardedUnlessAProposalIsSelected()
+    public async Task TheSelectedAssessmentIsForwardedAndThereIsNoProposalSelector()
     {
         var (fake, statistics) = NewViewModel();
         statistics.AssessmentId = "assessment/displayed";
         fake.StatsCompletesWith(RowsResponse());
         await statistics.LoadCommand.ExecuteAsync(null);
         Assert.Equal("assessment/displayed", Assert.Single(fake.StatsRequests).AssessmentId);
-        statistics.ProposalId = "proposal/selected";
+        statistics.AssessmentId = "assessment/selected";
         await statistics.LoadCommand.ExecuteAsync(null);
-        Assert.Null(fake.StatsRequests[1].AssessmentId);
-        Assert.Equal("proposal/selected", fake.StatsRequests[1].ProposalId);
+        Assert.Equal("assessment/selected", fake.StatsRequests[1].AssessmentId);
         statistics.Reset();
         Assert.Null(statistics.AssessmentId);
-        Assert.Null(statistics.ProposalId);
         Assert.Empty(statistics.Metadata);
     }
 }

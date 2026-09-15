@@ -128,21 +128,19 @@ public sealed class StatsArgvTests : IDisposable
     }
 
     [Fact]
-    public void AProposalSelectsTheTrialAssessmentsCacheRatherThanTheBaselines()
+    public void AnAssessmentSelectorSelectsTheRequestedRetainedAssessment()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         CaptureBaselineAndSeedAssessment(fwDataPath, proposalId: null, "baseline-cache.sqlite");
-        var proposalId = CanonicalId.Mint("proposal/");
-        SeedProposal(fwDataPath, proposalId);
-        var assessmentId = SeedAssessment(fwDataPath, proposalId, "trial-cache.sqlite");
+        var assessmentId = SeedAssessment(fwDataPath, proposalId: null, "selected-cache.sqlite");
 
-        var result = Run($"stats \"{fwDataPath}\" --proposal {proposalId.Value}");
+        var result = Run($"stats \"{fwDataPath}\" --assessment {assessmentId}");
 
         Assert.Equal(0, result.ExitCode);
         var argv = ReadArgv();
         AssertVerifiedReplayPaths(fwDataPath, assessmentId, argv);
         Assert.Equal(["stats", argv[1], "--cache", argv[3]], argv);
-        Assert.Equal("trial-cache.sqlite", Path.GetFileName(ReadAssessment(fwDataPath, assessmentId).CachePath));
+        Assert.Equal("selected-cache.sqlite", Path.GetFileName(ReadAssessment(fwDataPath, assessmentId).CachePath));
     }
 
     private (BaselineCaptureResponse Baseline, string AssessmentId) CaptureBaselineAndSeedAssessment(

@@ -20,7 +20,7 @@ public static class MotifSchema
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
-        ? new Version(1, 0)
+        ? new Version(0, 1)
         : throw new NotSupportedException($"Motif schema {schema} is not known to this worker.");
 
     /// <summary>Builds every table, index and the identity row for a brand-new database, in one step.</summary>

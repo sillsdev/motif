@@ -45,6 +45,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
+$env:MOTIF_DEVELOPER_COMMANDS = '1'
 
 function Write-Step {
     param([string] $Text)

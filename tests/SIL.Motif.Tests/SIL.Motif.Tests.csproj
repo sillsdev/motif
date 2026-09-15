@@ -52,4 +52,11 @@
     <None Include="Texts\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <Target Name="RemoveFakePanGlossFromTestOutput" BeforeTargets="VSTest">
+    <ItemGroup>
+      <FakePanGlossOutput Include="$(TargetDir)pangloss.*" />
+    </ItemGroup>
+    <Delete Files="@(FakePanGlossOutput)" />
+  </Target>
+
 </Project>

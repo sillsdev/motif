@@ -8,6 +8,7 @@ using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Canonicalization;
@@ -20,13 +21,19 @@ using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
 
-// Thin dispatcher: verbs call straight into Commands, so tests exercise the same handlers without shelling out.
+var commandPolicy = CommandSurfacePolicy.FromEnvironment(
+    Environment.GetEnvironmentVariable(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
 
 if (args.Length == 0)
 {
-    PrintUsage(Console.Error);
+    PrintUsage(Console.Error, commandPolicy);
     return 1;
 }
+
+var commandName = ResolveCommandName(args);
+var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
+if (command is not null && !commandPolicy.IsAvailable(command))
+    return RefuseUnavailableCommand(commandName, args.Contains("--json", StringComparer.Ordinal));
 
 var verb = args[0];
 var rest = args[1..];
@@ -590,8 +597,9 @@ try
         case "stats":
             if (positionals.Count != 1) return Usage(StatsUsage(), asJson);
             var statsOutput = asJson ? StatsOutputKind.JsonRows : StatsOutputKind.Text;
+            if (flags.ContainsKey("proposal")) return Usage(StatsUsage(), asJson);
             result = RenderCommand(StatsCommand.Stats(new StatsRequest(
-                positionals[0], flags.GetValueOrDefault("proposal"), statsOutput, forwardedArguments)));
+                positionals[0], flags.GetValueOrDefault("assessment"), statsOutput, forwardedArguments)));
             break;
 
         case "handoff":
@@ -700,7 +708,7 @@ catch (Exception ex)
     return FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent);
 }
 
-static int Usage(string message, bool asJson = false, bool withUsageBanner = false)
+int Usage(string message, bool asJson = false, bool withUsageBanner = false)
 {
     if (asJson)
     {
@@ -709,7 +717,7 @@ static int Usage(string message, bool asJson = false, bool withUsageBanner = fal
         return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
     }
     Console.Error.WriteLine(message);
-    if (withUsageBanner) PrintUsage(Console.Error);
+    if (withUsageBanner) PrintUsage(Console.Error, commandPolicy);
     return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
 }
 
@@ -765,42 +773,86 @@ static string AnalysesUsage() =>
     "--assessment <assessmentId> --current-selection-sha256 <sha256> " +
     "--current-grammar-sha256 <sha256> [--json]";
 
-static void PrintUsage(TextWriter writer)
+static string ResolveCommandName(string[] invocation)
+{
+    if (invocation.Length == 0) return string.Empty;
+
+    var first = invocation[0];
+    if (first is "config" or "baseline" or "jobs")
+    {
+        if (invocation.Length > 1)
+            return first + " " + invocation[1];
+        return first;
+    }
+
+    if (first is "report" && invocation.Contains("--list-kinds", StringComparer.Ordinal))
+        return "report --list-kinds";
+    if (first is "dry-run" or "trial" && invocation.Contains("--wait", StringComparer.Ordinal))
+        return first + " --wait";
+    return first;
+}
+
+static int RefuseUnavailableCommand(string commandName, bool asJson)
+{
+    const string code = "command.not-in-release";
+    var message = $"Command '{commandName}' is not part of Motif 0.1.0.";
+    if (asJson)
+    {
+        Console.Error.WriteLine(ProjectionJson.Serialize(
+            new FailureEnvelope(FailureReason.Refused, message, code: code)));
+    }
+    else
+    {
+        Console.Error.WriteLine("error: " + message);
+    }
+    return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
+}
+
+static void PrintUsage(TextWriter writer, CommandSurfacePolicy policy)
 {
     writer.WriteLine("Usage: motif <command> [options]");
     writer.WriteLine();
-    PrintSection(writer, "Commands", "Commands:");
+    PrintSection(writer, "Commands", "Commands:", policy);
     PrintSection(
         writer, "Configuration",
-        "Configuration (the declared Assessment scopes and policy beside the project):");
+        "Configuration (the declared Assessment scopes and policy beside the project):", policy);
     PrintSection(
-        writer, "Reports", "Reports (a presentation of an Assessment's stored evidence; --kind is a registry):");
+        writer, "Reports", "Reports (a presentation of an Assessment's stored evidence; --kind is a registry):", policy);
     PrintSection(
-        writer, "Comparison", "Comparison (joins two Assessments on the word; stores and prints the difference):");
-    PrintSection(writer, "Corpus", "Corpus (text Motif measures against; never part of the FieldWorks project):");
+        writer, "Comparison", "Comparison (joins two Assessments on the word; stores and prints the difference):", policy);
+    PrintSection(writer, "Corpus", "Corpus (text Motif measures against; never part of the FieldWorks project):", policy);
     PrintSection(
         writer, "Baseline",
-        "Baseline (a saved-file capture of a project FieldWorks may hold open, synchronous, no queue):");
+        "Baseline (a saved-file capture of a project FieldWorks may hold open, synchronous, no queue):", policy);
     PrintSection(
         writer, "Assess",
-        "Assess (a synchronous PanGloss run over a Selection, stored as Assessments; no queue):");
+        "Assess (a synchronous PanGloss run over a Selection, stored as Assessments; no queue):", policy);
     PrintSection(
         writer, "Handoff",
-        "Handoff (the self-explaining AI Handoff folder, written atomically):");
+        "Handoff (the self-explaining AI Handoff folder, written atomically):", policy);
     PrintSection(
-        writer, "Jobs", "Jobs (the durable queue; --project selects which project's queue, except list --all):");
+        writer, "Jobs", "Jobs (the durable queue; --project selects which project's queue, except list --all):", policy);
+    var jsonVerbs = CliVerbCatalog.All
+        .Where(verb => verb.UsageLines.Any(line => line.Contains("[--json]", StringComparison.Ordinal)))
+        .Where(verb => policy.IsAvailable(CommandCatalog.All.Single(command => command.Name == verb.CommandName)))
+        .Select(verb => verb.Verb)
+        .Distinct(StringComparer.Ordinal);
     writer.WriteLine("Global options: --json  (structured output; supported by " +
-        "open/analyses/list/show/dry-run/trial/apply/log/config/corpora/show-corpus/jobs/report/compare/" +
-        "baseline capture/assess/stats/handoff)");
+        string.Join('/', jsonVerbs) + ")");
 }
 
 /// <summary>Prints one usage banner section: its header, then every catalogued verb's usage line(s).</summary>
-static void PrintSection(TextWriter writer, string section, string header)
+static void PrintSection(TextWriter writer, string section, string header, CommandSurfacePolicy policy)
 {
+    var verbs = CliVerbCatalog.All
+        .Where(verb => verb.Section == section)
+        .Where(verb => policy.IsAvailable(CommandCatalog.All.Single(command => command.Name == verb.CommandName)))
+        .ToList();
+    if (verbs.Count == 0) return;
+
     writer.WriteLine(header);
-    foreach (var verb in CliVerbCatalog.All)
+    foreach (var verb in verbs)
     {
-        if (verb.Section != section) continue;
         foreach (var line in verb.UsageLines)
             writer.WriteLine("  " + line);
     }

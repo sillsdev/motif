@@ -151,7 +151,7 @@ public static class CliVerbCatalog
 
         new CliVerbDescriptor(
             "Assess", "stats", "stats",
-            new[] { "stats <project> [--proposal <id>] [--json] [-- <pangloss stats options>]" }),
+            new[] { "stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]" }),
 
         new CliVerbDescriptor(
             "Handoff", "handoff", "handoff",
