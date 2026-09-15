@@ -66,18 +66,49 @@ public sealed class ProjectStoreCommandTests : IDisposable
     }
 
     [Fact]
-    public void AnUnopenableDatabaseIsBusySoTheCallerMayTryAgain()
+    public void AnUnavailableStoreIsAStableRefusalRatherThanBusy()
     {
         var project = Project("blocked");
-        // A directory where the database file belongs: the same catch carries the owner-lock case.
+        // A directory at the database path makes SQLite report a store I/O failure.
         Directory.CreateDirectory(Path.ChangeExtension(project, ".motif.db"));
 
         var result = ProjectStoreCommand.Run<string>(
             project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
 
         Assert.False(result.Succeeded);
-        Assert.Equal(FailureReason.Busy, result.Refusal!.Reason);
-        Assert.Equal(3, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
+        Assert.Equal("project.store-io", result.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
+        Assert.Equal(2, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
+    }
+
+    [Fact]
+    public void AnActionOutputIoFailureIsAStableRefusalRatherThanProjectBusy()
+    {
+        var project = Project("output-failure");
+
+        var result = ProjectStoreCommand.Run<string>(project, "1.0",
+            (_, _) => throw new UnauthorizedAccessException("The output directory is read-only."));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("project.operation-io", result.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
+        Assert.Equal("The output directory is read-only.", result.Refusal.Message);
+        Assert.Equal(project, result.Refusal.Facts["fwDataPath"]);
+        Assert.Equal(2, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
+    }
+
+    [Fact]
+    public void AnActionDiskFailurePreservesItsRecoveryMessage()
+    {
+        var project = Project("disk-failure");
+
+        var result = ProjectStoreCommand.Run<string>(project, "1.0",
+            (_, _) => throw new IOException("The output volume is full."));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("project.operation-io", result.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
+        Assert.Equal("The output volume is full.", result.Refusal.Message);
     }
 
     [Fact]

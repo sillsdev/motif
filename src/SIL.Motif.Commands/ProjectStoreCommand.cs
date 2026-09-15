@@ -45,16 +45,25 @@ public static class ProjectStoreCommand
         }
 
         var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, ParseVersion(productVersion));
+        MotifDatabase database;
         try
         {
-            using var database = catalog.OpenOwned(project);
-            return act(database, project);
+            database = catalog.OpenOwned(project);
+        }
+        catch (MotifStoreLockException exception)
+        {
+            return CommandOutcome<T>.Refused(
+                new Refusal("project.busy", FailureReason.Busy, exception.Message, Fact(fwDataPath)));
         }
         catch (IOException exception)
         {
-            // Someone else has the store; the caller may try again once they let go.
             return CommandOutcome<T>.Refused(
-                new Refusal("project.busy", FailureReason.Busy, exception.Message, Fact(fwDataPath)));
+                new Refusal("project.store-io", FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)));
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return CommandOutcome<T>.Refused(
+                new Refusal("project.store-io", FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)));
         }
         catch (NotSupportedException exception)
         {
@@ -67,10 +76,43 @@ public static class ProjectStoreCommand
             return CommandOutcome<T>.Refused(new Refusal(
                 "store.inconsistent", FailureReason.StoreInconsistent, exception.Message, Fact(fwDataPath)));
         }
+
+        using (database)
+        {
+            try
+            {
+                return act(database, project);
+            }
+            catch (IOException exception)
+            {
+                return CommandOutcome<T>.Refused(new Refusal(
+                    "project.operation-io", FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)));
+            }
+            catch (UnauthorizedAccessException exception)
+            {
+                return CommandOutcome<T>.Refused(new Refusal(
+                    "project.operation-io", FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)));
+            }
+            catch (NotSupportedException exception)
+            {
+                return CommandOutcome<T>.Refused(
+                    new Refusal("store.unsupported", FailureReason.Refused, exception.Message, Fact(fwDataPath)));
+            }
+            catch (InvalidDataException exception)
+            {
+                return CommandOutcome<T>.Refused(new Refusal(
+                    "store.inconsistent", FailureReason.StoreInconsistent, exception.Message, Fact(fwDataPath)));
+            }
+        }
     }
 
     private static Dictionary<string, string> Fact(string fwDataPath) =>
         new(StringComparer.Ordinal) { ["fwDataPath"] = fwDataPath };
+
+    private static string MessageFor(Exception exception) =>
+        string.IsNullOrWhiteSpace(exception.Message)
+            ? "The project operation could not complete because storage access failed."
+            : exception.Message;
 
     /// A malformed product version must not stop a verb; the compatibility floor it feeds is a lower bound.
     private static Version ParseVersion(string productVersion) =>
