@@ -19,6 +19,8 @@ Keep `AnalysisAggregateProjection.WordForms` for the current manual aggregate. A
 
 Implementation files: `src/SIL.Motif.Contract/Responses/AnalysisAggregateProjection.cs`, `src/SIL.Motif.Host/Analysis/AnalysisAggregateProjectionQuery.cs`, the Assessment provenance owner, `src/SIL.Motif.Commands/ProposalCommands.cs`, and `src/SIL.Motif.Projection/Rendering/CommandTextRenderer.cs`. Tests belong in the existing aggregate projection and CLI integration fixtures.
 
+Verification on 2026-09-15 at `a4cf5f8`: `./test.ps1` passed the comment gate, build, and suite (1,658 passed, 27 skipped, zero failures). Reusing that build with `MOTIF_PANGLOSS_EXE=C:\Users\johnm\Documents\repos\PanGloss\rust\target\release\pangloss.exe` and `./test.ps1 -SkipBuild` exercised eight additional parser tests (1,666 passed, 19 skipped, zero failures), including both real infix and circumfix source-identity tests. This verifies the installed executable; it does not verify the rebased XAMPLE integration source.
+
 ## Producer and conformance inventory
 
 Full compatibility needs evidence for every source-bearing output path, including paths beyond the initial batch consumer. Repository research must distinguish recoverable missing metadata from inputs that have no authoritative FieldWorks identities.
@@ -63,6 +65,12 @@ Measured against the fixture that prompted this section: `grammar-health` report
 
 ## Landing the XAMPLE parity work in PanGloss
 
+The parser comparison needs a real FieldWorks project and measurements from both engines before it can establish what changed. The integration must also preserve ordinary parsing behavior while bringing that comparison onto the current code.
+
+### Initial comparison
+
+The first measurement found two regressions and showed that the live comparison had not run. The following records the branch state at that measurement.
+
 `pg-xample-oracle` does not exist on PanGloss `main`. The work sits on four research branches (`research/xample-phonology`, `-task3`, `-task6`, `-task7`), each roughly 105-111 commits ahead of `main` and 131 behind it. `31a3bf8b` implements the empty-phoneme-inventory red flag, on `research/xample-phonology` only.
 
 - [x] Assess the four branches' relationship and integrate onto a branch. `integration/xample` exists at `65c27404`, carrying `pg-xample-oracle`. Not pushed, not merged.
@@ -82,11 +90,43 @@ Three more are the branch's own new gates failing: `unmarked_fixtures_do_not_gro
 
 `main`'s other seven failures are **not** fixed by the branch; they are absent from it. `149f88df` and `a6f15d8a` stage fixtures and gates on `main` ahead of the code satisfying them, and the branch predates both, so it passes by not having them. A rebase would inherit those failures.
 
-- [ ] Resolve the two regressions, build `XampleProjector.exe` and run the differential gate, then rebase onto `main` and re-measure.
-- [ ] Prove the empty-phoneme-inventory flag works. Not yet demonstrated: `31a3bf8b`'s substrate report is reached through the differential gate that cannot run unbuilt.
+- [x] Resolve the two regressions, build `XampleProjector.exe` and run the differential gate, then rebase onto `main` and re-measure. Fresh evidence follows under Resumed integration.
+- [x] Prove the empty-phoneme-inventory flag works. The strict live gate now compares both engines before and after deletion, checks inferred segments, and requires all six comparisons.
 
 Its shared-crate surface is the part needing review, not the new crate: ~11k insertions reaching `pg-grammar/src/compile/rules.rs`, `templates.rs`, `lib.rs` and `segment.rs`, and `pg-snapshot/src/lib.rs` and `conversion.rs`. Those are compile semantics for every caller, and the two regressions below are exactly that risk arriving.
 
 Worth having anyway, for reasons that outlast the oracle. The branch replaces free-text stderr warnings with structured `ConversionIssue` records -- a stable `code`, a `class` (`UnrepresentableForHc`, `InvalidSource`, `MigrationDifference`, `SubstrateUnresolvable`), a `fatal` flag, and a typed `SourceRef { kind, id }` naming the allomorph or environment at fault. It also adds `SubstratePolicy` (`Auto` | `Strict` | `CompleteFromUsage`), which infers undeclared segments from usage for an XAmple-configured project or one that authored `AcceptUnspecifiedGraphemes`, and reports what it could not resolve as `SubstrateReport.unresolved_uses`.
 
 That is the durable form of the diagnostic this ledger's section above builds by hand. When it lands, the warning-scraping should be replaced by reading `ConversionIssue`: typed codes and source GUIDs let an empty result name the allomorph that cost it, which parsed prose cannot.
+
+### Resumed integration
+
+The interrupted integration now includes the current parser code, and the live comparison succeeds even after every authored phoneme is removed. Broader checks separately track local fixture drift and conformance bookkeeping.
+
+- [x] Finish the interrupted 110-commit rebase, then rebase onto current `main` (`0006b938`). The resulting integration is `9f7398b5`; `backup/integration-xample-before-resume` preserves the original `8d1afc81`.
+- [x] Type-check the rebased CLI with `rust/tools/pg.ps1 -Mode check -Package pg-cli`.
+- [x] Type-check every affected package's test targets. Commit `77e44465` restores the exhaustive `allomorph_sources` comparison in `pg-grammar/src/compile/test_support.rs`; the expanded managed check passes.
+- [x] Run the affected-package tests against the same scope on the integration, adding the new oracle package. At `77e44465`, 652 tests across 69 binaries ran: 649 passed, three failed, and 66 skipped. Both original source-identity regressions passed. The failures were the absent worktree `samples/data` directory and the two Sena tests described below.
+- [x] Generate and verify the real FieldWorks witness, then execute the differential with explicit baseline and mutation comparison counts. `23db04ca` adds the generator; `f3213f57` closes the gate's former clone-compilation and partial-comparison loopholes.
+
+The projector's managed helper suite passed. A separate fresh invocation of `Generate-PilotWitness.ps1` authored a real project, projected it, and verified analysis counts of 1, 924, and 1 with four writing-system files. Each generation derives its own source hash and phoneme GUID; the script refuses existing output and invalid project names.
+
+At `f3213f57`, `rust/tools/pg.ps1 -Mode test -Package pg-parse -TestTarget xample_migration_differential_gate -ExtraArgs @('--no-capture')` passed all six tests with no skips. The live test printed `compared_baseline=3`, `compared_mutation=3`, and `compared_total=6`; XAMPLE-only and HC-only counts were zero in both phases. Assertions verified the clone reopened, inferred segments matched `[x, k]`, clone HC analyses exactly matched baseline, repeated projection was deterministic, and the source witness hash stayed unchanged. Comment hygiene and the focused managed type-check also passed.
+
+The run used `PANGLOSS_MACHINE_DIR` pointing to the generated witness root under the preserved `baseline-xample-check/.tmp/witness-script-machine` worktree and `PANGLOSS_XAMPLE_PROJECTOR_EXE` pointing to that worktree's built helper. No witness was inserted into the Machine submodule. Independent Sol source review accepted the rebase and both follow-up commits.
+
+The local Sena project contains 1,464 lexical entries instead of the pinned 1,462. Its added `mynoun1` and `mynoun2` entries also raise ambiguous uses from nine to eleven. The import failure is present on current `main`; the integration's additional compile test detects the same external fixture drift. Neither the project nor the test expectations were changed. The missing sample directory was subsequently populated from the main checkout and all ten copied files were hash-verified.
+
+Adding `pg-conformance-fixtures` to the affected-package run at `f3213f57` produced 687 tests across 74 binaries: 684 passed, three failed, and 66 skipped. The documentation-path test passed after corpus provisioning; the remaining failures were the two Sena tests and `unmarked_fixtures_do_not_grow` (38 unclassified fixtures against a limit of 33).
+
+A controlled rerun extracted `Sena 3.fwdata` and its writing systems from the preserved `Sena 3 2018-09-11 1145.fwbackup` into a separate test directory, leaving the current project untouched. Its SHA-256 is `c4a6f7013a1d2a5faff674f01e2b3930b24f64d0302f127bea2fc7a2186dfd0b`. With `PANGLOSS_FW_PROJECTS_DIR` pointing there, the managed `real_projects` and `compile_real_projects_gate` targets ran seven tests: six passed, one failed, none skipped. Sena compiled with exactly nine ambiguous uses and zero unresolved uses, confirming the local additions caused the compile-gate failure. The import gate still failed because the backup has 37 parts of speech while the test now expects 40. Neither available external project matches all the import test's mixed expectations.
+
+Commit `431339e8` repairs conformance classification without changing grammar or expected analyses. It marks the two omitted staging fixtures and pins Machine `3beb8bba`, a clean replay of existing metadata commit `43af40e4` on `100d7bef`, excluding the neighboring memoization commit. The replay includes all 36 upstream classifications, strict loader/schema support, documentation, generated hashes, and ledger tests. The allowed unclassified count falls from 33 to zero. Independent Sol review verified the classifications and complete metadata dependency; Machine's four ledger tests passed with a clean build.
+
+The exact-pin C# oracle read the new metadata successfully: all 35 attempted upstream fixtures and all nine filter fixtures passed; one upstream pathological fixture was excluded by default. Both newly marked staging fixtures passed. The local set had 29 passes and two failures, with one pathological fixture excluded: `head-ambiguous-compounding` is an existing tolerated rule-attribution mismatch, while `chained-output-feature-override-loss` fails the oracle gate on `zudiua`. That latter fixture's grammar and expected words are unchanged from `main` at `0006b938`; no expected result or known-divergence allowance was changed to hide it.
+
+The Machine metadata commit and PanGloss integration remain local. A published integration must make the submodule commit available before other checkouts can fetch its new pin. The original integration backup and verification worktrees are retained.
+
+Final affected-package run at `431339e8`, with the same six packages as the 687-test measurement and the controlled external projects: **686 passed, one failed, 66 skipped** across 74 binaries. The only failure was `sena3_imports_with_expected_counts` (37 versus 40 parts of speech). Comment hygiene, both original source-identity regressions, Sena compilation, all fixture classifications, and the strict live differential passed. These are affected-package results, not a claim that the earlier whole-workspace failures are fixed. The integration is not merged or pushed; the independent oracle's unchanged staged failure and the external import baseline remain visible.
+
+Fresh baseline on `main` at `0006b938`: `rust/tools/pg.ps1 -Mode test -Package pg-cli -ExtraArgs @('-p', 'pg-grammar', '-p', 'pg-fwdata', '-p', 'pg-parse')` ran 456 tests across 59 binaries: 455 passed, one failed (`pg-fwdata::real_projects::sena3_imports_with_expected_counts`), and 65 skipped. This narrower scope is not comparable to the earlier whole-workspace totals. After nextest reported the failure, the managed wrapper's reaper terminated its idle process governor and reported exit 27; the outer command exited 1.
