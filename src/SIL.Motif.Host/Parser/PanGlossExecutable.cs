@@ -5,19 +5,6 @@ namespace SIL.Motif.Host.Parser;
 /// <summary>
 /// Locates the <c>pangloss</c> executable.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Motif shells out to the parser, and that is a deliberate first step rather than the end state.</b> The
-/// only route that yields GUID-keyed analyses — the ones Motif can tie back to the entry or rule a Proposal
-/// touched — goes through a project file, and the C ABI has no entry point that takes one: <c>hc_grammar_load</c>
-/// accepts HermitCrab XML only, whose identities are synthetic and uncorrelatable.
-/// </para>
-/// <para>
-/// So a process boundary is the price of correct identities today. It is contained to this file and
-/// <see cref="PanGlossParser"/> so that a future in-process FFI entry point — which FieldWorks hosting on
-/// <c>net48</c> will require — can replace it without touching any caller.
-/// </para>
-/// </remarks>
 public static class PanGlossExecutable
 {
     /// <summary>Overrides discovery. Set this when the parser lives somewhere unusual, or in CI.</summary>
@@ -27,30 +14,40 @@ public static class PanGlossExecutable
         RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "pangloss.exe" : "pangloss";
 
     /// <summary>
-    /// Returns the executable's path, or <c>null</c> when it cannot be found.
+    /// Returns the executable's path, or <c>null</c> when it cannot be found. A configured override is
+    /// authoritative: when it is set but missing, discovery stops instead of silently selecting another
+    /// parser. Otherwise the bundled executable beside the application is preferred to the development
+    /// checkout fallback.
     /// </summary>
-    /// <remarks>
-    /// Returns null rather than throwing because "the parser is not built here" is an ordinary state of a
-    /// developer's machine, and a missing parser must be distinguishable from a grammar the parser refused —
-    /// conflating them is how a build-environment problem gets recorded as a linguistic finding.
-    /// </remarks>
     public static string? TryLocate()
     {
-        var configured = Environment.GetEnvironmentVariable(PathVariable);
-        if (!string.IsNullOrWhiteSpace(configured))
-            return File.Exists(configured) ? configured : null;
-
-        // Relative to the repo root, not the working directory — a test runner sets that wherever it likes.
-        var root = TryFindRepositoryRoot();
-        if (root is null) return null;
-
-        var candidate = Path.Combine(
-            root, "..", "PanGloss", "rust", "target", "release", FileName);
-
-        return File.Exists(candidate) ? Path.GetFullPath(candidate) : null;
+        return TryLocate(
+            Environment.GetEnvironmentVariable(PathVariable),
+            AppContext.BaseDirectory,
+            FileName,
+            TryFindRepositoryRoot());
     }
 
-    /// <summary>Walks up looking for the marker files that identify this repository's root.</summary>
+    /// <summary>Resolves a parser from explicit configuration, an application directory, or a repository.</summary>
+    internal static string? TryLocate(
+        string? configuredPath, string applicationDirectory, string fileName, string? repositoryRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredPath))
+            return ExistingFile(configuredPath);
+
+        var bundled = ExistingFile(Path.Combine(applicationDirectory, fileName));
+        if (bundled is not null) return bundled;
+
+        if (repositoryRoot is null) return null;
+
+        return ExistingFile(Path.Combine(
+            repositoryRoot, "..", "PanGloss", "rust", "target", "release", fileName));
+    }
+
+    private static string? ExistingFile(string path) =>
+        File.Exists(path) ? Path.GetFullPath(path) : null;
+
+    // The marker pair avoids treating an arbitrary parent directory as the repository root.
     private static string? TryFindRepositoryRoot()
     {
         var dir = AppContext.BaseDirectory;

@@ -1,0 +1,15 @@
+<Project>
+  <Target Name="RemoveWorkerExecutableSupportFromPortablePublish"
+          AfterTargets="ComputeFilesToPublish"
+          BeforeTargets="_HandleFileConflictsForPublish;CopyFilesToPublishDirectory"
+          Condition="'$(MotifPortablePackage)' == 'true' and
+                     ('$(MSBuildProjectName)' == 'SIL.Motif.App' or
+                      '$(MSBuildProjectName)' == 'SIL.Motif.Cli')">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                             Condition="'%(ResolvedFileToPublish.RelativePath)' == 'SIL.Motif.Worker.exe' or
+                                        '%(ResolvedFileToPublish.RelativePath)' == 'SIL.Motif.Worker.deps.json' or
+                                        '%(ResolvedFileToPublish.RelativePath)' == 'SIL.Motif.Worker.runtimeconfig.json'" />
+    </ItemGroup>
+  </Target>
+</Project>
