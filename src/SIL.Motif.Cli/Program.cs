@@ -554,6 +554,13 @@ try
 
         case "assess":
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
+            var assessRetryFailed = flags.ContainsKey("retry-failed");
+            var hasAssessRetrySlowerThan = flags.ContainsKey("retry-slower-than");
+            var hasAssessRetrySource = flags.TryGetValue("retry-source-assessment", out var assessRetrySource);
+            if (hasAssessRetrySource != (assessRetryFailed || hasAssessRetrySlowerThan))
+                return Usage(AssessUsage(), asJson);
+            if (hasAssessRetrySource && !CanonicalId.TryParse(assessRetrySource, out _))
+                return Usage(AssessUsage(), asJson);
             if (!TryParseGuidList(flags.GetValueOrDefault("texts"), out var assessTextIds))
                 return Usage(AssessUsage(), asJson);
             flags.TryGetValue("words", out var assessWordsFile);
@@ -563,8 +570,9 @@ try
                 ? File.ReadAllLines(assessWordsFile)
                 : Array.Empty<string>();
             TimeSpan? assessRetrySlowerThan = null;
-            if (flags.TryGetValue("retry-slower-than", out var assessRetrySlowerThanRaw))
+            if (hasAssessRetrySlowerThan)
             {
+                var assessRetrySlowerThanRaw = flags["retry-slower-than"];
                 if (!long.TryParse(assessRetrySlowerThanRaw, out var assessRetrySlowerThanMs) ||
                     assessRetrySlowerThanMs < 0)
                 {
@@ -573,7 +581,7 @@ try
                 assessRetrySlowerThan = TimeSpan.FromMilliseconds(assessRetrySlowerThanMs);
             }
             var assessSelection = new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
-                assessWords, flags.ContainsKey("retry-failed"), assessRetrySlowerThan);
+                assessWords, assessRetryFailed, assessRetrySlowerThan, assessRetrySource);
             result = RenderCommand(AssessCommand.Assess(
                 new AssessRequest(positionals[0], assessSelection),
                 asJson ? null : progress => Console.Error.WriteLine(progress.Message)));

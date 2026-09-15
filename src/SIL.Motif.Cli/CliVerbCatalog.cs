@@ -146,7 +146,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
-                "[--retry-failed] [--retry-slower-than <ms>] [--json]",
+                "[--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--json]",
             }),
 
         new CliVerbDescriptor(

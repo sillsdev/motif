@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
 using SIL.Motif.Host.Parser;
@@ -71,6 +72,56 @@ public sealed class AssessArgvTests : IDisposable
 
         Assert.Equal(1, result.ExitCode);
         Assert.Contains("Usage: motif assess <project>", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RetryFailedRequiresASourceAssessmentBeforeProjectAccess()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+
+        var result = Run($"assess \"{missing}\" --retry-failed");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: motif assess <project>", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RetrySourceAssessmentWithoutRetryIsAUsageFailureBeforeProjectAccess()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+
+        var result = Run(
+            $"assess \"{missing}\" --retry-source-assessment {CanonicalId.Mint("assessment/").Value}");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: motif assess <project>", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MalformedRetrySourceAssessmentIsAUsageFailureBeforeProjectAccess()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+
+        var result = Run($"assess \"{missing}\" --retry-failed --retry-source-assessment malformed");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: motif assess <project>", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidRetrySourceAssessmentReachesProjectValidation()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+        var assessmentId = CanonicalId.Mint("assessment/").Value;
+
+        var result = Run(
+            $"assess \"{missing}\" --retry-failed --retry-slower-than 10 " +
+            $"--retry-source-assessment {assessmentId} --json");
+
+        var envelope = Envelope(result.Error);
+        Assert.Equal("project.not-found", envelope.Code);
+        Assert.Equal(FailureReason.InvalidArgument, envelope.Reason);
+        Assert.Equal(1, result.ExitCode);
     }
 
     [Fact]

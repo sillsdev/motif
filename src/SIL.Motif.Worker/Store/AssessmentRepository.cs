@@ -15,9 +15,7 @@ namespace SIL.Motif.Worker.Store;
 
 /// <summary>
 /// Durable Assessment storage: one immutable measurement per row, plus the project's single pointer to
-/// its current Assessment. Every later task (Trial, Reports, comparison, promotion) reaches Assessments
-/// only through this seam, so it does not need to know <c>Assessments</c>, <c>AssessedWords</c>, or
-/// <c>ParsedAnalyses</c> exist as separate tables.
+/// its current Assessment. Callers use this seam without depending on the normalized detail tables.
 /// </summary>
 public interface IAssessmentRepository
 {
@@ -205,13 +203,26 @@ public sealed class AssessmentRepository : IAssessmentRepository
         foreach (var assessment in assessments) ValidateRecord(assessment);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        InsertRecords(connection, transaction, assessments);
+        transaction.Commit();
+    }
+
+    internal static void ValidateRecords(IReadOnlyList<NewAssessmentRecord> assessments)
+    {
+        ArgumentNullException.ThrowIfNull(assessments);
+        foreach (var assessment in assessments) ValidateRecord(assessment);
+    }
+
+    internal static void InsertRecords(
+        SqliteConnection connection, SqliteTransaction transaction,
+        IReadOnlyList<NewAssessmentRecord> assessments)
+    {
         foreach (var assessment in assessments)
         {
             if (assessment.Invocation is { } invocation) InsertInvocation(connection, transaction, invocation);
             InsertHeader(connection, transaction, assessment);
             InsertWordsAndAnalyses(connection, transaction, assessment.AssessmentId, assessment.Words);
         }
-        transaction.Commit();
     }
 
     private static void ValidateRecord(NewAssessmentRecord assessment)
@@ -234,9 +245,15 @@ public sealed class AssessmentRepository : IAssessmentRepository
     public AssessmentRecord Get(string assessmentId)
     {
         using var connection = _database.OpenConnection();
-        var header = ReadHeader(connection, null, assessmentId) ??
+        var header = GetHeader(connection, assessmentId) ??
             throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
         return header with { Words = ReadWords(connection, assessmentId) };
+    }
+
+    internal AssessmentRecord? GetHeader(string assessmentId)
+    {
+        using var connection = _database.OpenConnection();
+        return GetHeader(connection, assessmentId);
     }
 
     /// <inheritdoc />
@@ -515,6 +532,9 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var reader = command.ExecuteReader();
         return reader.Read() ? ReadHeader(reader) : null;
     }
+
+    private static AssessmentRecord? GetHeader(SqliteConnection connection, string assessmentId) =>
+        ReadHeader(connection, null, assessmentId);
 
     private static AssessmentRecord ReadHeader(SqliteDataReader reader)
     {
