@@ -152,4 +152,6 @@ The owner also asked for the next feature: after an Assessment, show new and cha
 
 **Handoffs run in Herdr panes from L5 on.** The interactive Codex sandbox cannot write the shared `.git` metadata of a worktree, so a lane agent stages nothing and the primary commits after verifying. A headless handoff earlier discarded an uncommitted docs edit made under it; briefs now say that unnamed dirty files belong to someone else.
 
-Gate on the branch: pending.
+**Gate on the branch at `bc1d4ce`** (both walkthrough and Handoff-UI branches fast-forwarded to it): with `MOTIF_PANGLOSS_EXE` set, 1,743 passed, 20 skipped, zero failures in 4 m 31 s; without it, 1,727 passed, 36 skipped, zero failures. The base was 1,709 passed and 20 skipped with the parser, so the branch adds 34 tests and the same 20 skips. The 16 extra skips without the parser are the parser-gated tests, eight of them these walkthroughs.
+
+**One more lesson from the gate.** The conformance fixture's `.fwdata` and `.ldml` files were silently dropped by the ignore rules that keep real language data out of the repository, so the conformance tests passed only in the worktree that still had the files on disk and failed in the first full gate. The owner ruled that those rules are about real project data, not synthetic fixtures; `.gitignore` now carries a scoped, commented exception for `tests/SIL.Motif.Tests/TestFixtures/Conformance/`.
