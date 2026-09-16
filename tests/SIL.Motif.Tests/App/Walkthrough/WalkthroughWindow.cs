@@ -97,6 +97,9 @@ public sealed class WalkthroughWindow : IDisposable
             $"baseline refusal='{Workspace.Baseline.RefusalMessage}', " +
             $"selection empty='{Workspace.Selection.TextsEmptyMessage}', " +
             $"selection refusal='{Workspace.Selection.RefusalMessage}', " +
+            $"Assess.State='{Workspace.Assess.State}', " +
+            $"Assess.Refusal?.Message='{Workspace.Assess.Refusal?.Message}', " +
+            $"Assess.Progress='{Workspace.Assess.Progress}', " +
             $"project='{Workspace.Project.KnownProjects.Count}' known projects");
     }
 
