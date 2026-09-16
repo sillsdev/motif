@@ -136,15 +136,20 @@ The real last mile is a person dropping files into a chat product, and R6 needs 
 
 ### Not in this plan
 
-The owner also asked for the next feature: after an Assessment, show new and changed analyses word by word in the window and save them back to the `.fwdata` at Text granularity. That reopens the 0.1.0 boundary — the release plan puts project mutation outside it and ADR 0038 has Motif read FieldWorks' approved analyses rather than write them — and Motif has no Layer-0 primitive for creating a `WfiAnalysis`. It needs its own ADR and plan after the owner settles scope; it is recorded here only so the connection is not lost.
+The owner also asked for the next feature: after an Assessment, show new and changed analyses word by word in the window and save them back to the `.fwdata` at Text granularity. That reopens the 0.1.0 boundary — the release plan puts project mutation outside it and ADR 0038 has Motif read FieldWorks' approved analyses rather than write them — and Motif has no Layer-0 primitive for creating a `WfiAnalysis`. **The owner's decision, 2026-09-16: "push an analysis" is the 0.2.0 feature, not part of 0.1.0.** It needs its own ADR and plan, which must settle three things the owner has not yet ruled on: whether Motif writes parser analyses as unapproved candidates or only analyses the linguist approved in Motif's viewer; what happens when a word already carries a disagreeing approved analysis; and whether the write goes through the Proposal and apply machinery or is a direct Text-granular save. It is recorded here only so the connection is not lost.
 
 ## 7. Execution ledger
 
-| Lane | Status | Commit | Filtered run | Notes |
+| Lane | Status | Commit | Filtered run (real parser) | Notes |
 | --- | --- | --- | --- | --- |
-| L1 | pending | | | |
-| L2 | pending | | | |
-| L3 | pending | | | |
-| L4 | pending | | | |
+| L1 | done | `a4876c0`, fix `a3bcaf7` | W1 green after the fix | W1 went red exactly at the owner's stuck step: the Text list loaded only on project choice and never after the first Baseline capture. Fixed in the workspace and Selection view models with two fake-backed tests. Raising `Button.ClickEvent` does not run a bound command headlessly; the harness activates controls through the keyboard instead. |
+| L2 | done | `ca8e4da` | 3 passed in 9 s | W1's first steps became a shared helper. |
+| L3 | done | `fd98e91` | 4 passed in 15 s | The drag is driven by a synthesised `PointerPressed` on the control. The Handoff wrote 17 files. |
+| L4 | done | `5c22fdf`, fix `db11df9` | 5 passed | W4 went red at the Known-projects list: only the CLI registered a project in the machine store, so a Baseline captured through the window never appeared there. The capture command now records the project under its managed root. A stale-load guard was added to the Selection view model because a Refresh can overtake an in-flight Text load. |
+| L5 | done | see below | 7 passed in 26 s; conformance walkthrough 27 s, Assessment 10.7 s | LibLCM opens Machine's fixture (13 entries). Capture, including its four writing systems, succeeded. `k` and `xxxxxxxxxxxxk` each returned one analysis; `xxxxxxk` returned exactly 924, complete. The exported grammar lists the 13 entries under `$.lexicon.entries`. |
+| L6 | pending | | | |
+| L7 | pending | | | |
+
+**Handoffs run in Herdr panes from L5 on.** The interactive Codex sandbox cannot write the shared `.git` metadata of a worktree, so a lane agent stages nothing and the primary commits after verifying. A headless handoff earlier discarded an uncommitted docs edit made under it; briefs now say that unnamed dirty files belong to someone else.
 
 Gate on the branch: pending.
