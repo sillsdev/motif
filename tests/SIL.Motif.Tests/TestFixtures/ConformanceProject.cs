@@ -42,6 +42,8 @@ public sealed class ConformanceProject : IDisposable
 
     public const string NineHundredTwentyFour = "xxxxxxk";
 
+    public static readonly IReadOnlyList<string> SlowWords = ["xxxxk", "xxxxxk", "xxxxxxk", "xxxxxxxk", "xxxxxxxxk"];
+
     public string FwDataPath { get; }
 
     public string ManagedRoot { get; }
