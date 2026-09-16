@@ -105,7 +105,40 @@ W1 through step 4, then:
 
 One Luna at a time, `Workspace` scope, effort `high`, working directory `.claude/worktrees/release-walkthrough`. Each lane: edit only the files it names plus the new test files; run `dotnet test tests/SIL.Motif.Tests --filter "FullyQualifiedName~Walkthrough"` with and (for L2/L3) without `MOTIF_PANGLOSS_EXE`; run `./build.ps1` for the comment gate; commit with a conventional subject. The primary re-runs the filtered tests, reads the diff, and only then starts the next lane. After L4, the primary runs the full `./test.ps1` twice — once with `MOTIF_PANGLOSS_EXE=C:\Users\johnm\Documents\repos\PanGloss\rust\target\release\pangloss.exe`, once without — and records both counts below with the skip lists diffed against the base.
 
-## 6. Execution ledger
+## 6. Second wave: the owner's direction of 2026-09-16
+
+After the first two walkthroughs landed, the owner ruled on the four gaps the survey named. Running the packaged binary is **deferred**. The other three become lanes below, in the order the dependencies force: the realistic grammar first, because the cancellation tests need a run slow enough to interrupt, and the upload simulation last, because it is the one that adds product code.
+
+### L5 — A realistic grammar from Machine's conformance suite (W5)
+
+Machine's `conformance/correctness-fixtures` branch (checked at `f150e2a0`) holds 32 edge-case grammars. Exactly one carries a FieldWorks project: `conformance/edge-cases/deep-optional-affix-nesting/fieldworks/` — a 70 KB `project.fwdata`, four LDML files under `WritingSystemStore/`, and a `phonology-mutations.yaml`. Its `words.yaml` is an oracle: 12 independent all-optional prefix slots each inserting `x`, so `k` and `xxxxxxxxxxxxk` each have exactly one analysis and `xxxxxxk` has exactly C(12,6) = 924, oracle-confirmed, with a 15-second budget that marks it pathological. Machine's protocol says Machine itself never opens the `.fwdata`; Motif would be its first consumer, which is worth something to both repositories. The project is synthetic — a grammar backed out into LibLCM, 13 entries, no wordforms, no Texts — so the no-real-data rule is satisfied.
+
+- Copy `project.fwdata` and the four LDML files into `tests/SIL.Motif.Tests/TestFixtures/Conformance/deep-optional-affix-nesting/` with a `SOURCE.md` naming the Machine branch, commit, path and the `base_sha256` from `phonology-mutations.yaml`; the suite must not depend on a sibling checkout. Set the files to copy to output. Add a `ConformanceProject` fixture that copies the folder to a temp directory under the LibLCM folder/file naming rule and exposes the same members as `WalkthroughProject`.
+- **W5**: choose the project, Refresh (this exercises writing-system capture on a project not built by `NewLangProjFixture`), paste `k`, `xxxxxxxxxxxxk` and `xxxxxxk`, Run with the real parser. Assert the two boundary words complete with exactly one reading each and that the midpoint either renders 924 readings or is labelled incomplete with its limit reason — never a completed empty result. Write the Handoff and assert the grammar file names 13 entries. Record the measured wall time in the ledger; it sizes L6.
+- If capture refuses this project, that is an R3 finding: leave the test red at that step and record the refusal verbatim.
+
+### L6 — Cancelling and changing course mid-run (W6a–d)
+
+Release package R8 owns these behaviours; these tests drive them through the window. Every test needs a run long enough to interrupt: use the conformance project with a pasted list of the k=5, 6, 7 words (792, 924, 792 analyses) and, if that completes in under five seconds on the development machine, widen the list until it does not. Record the choice.
+
+- **W6a**: Run, observe `Running` and the disabled hosts, click `Cancel the running Assessment`. Assert `Cancelled`, refusal code `assessment.cancelled`, hosts enabled, no retained invocation for the project, and no `pangloss` process left alive (the invoker kills the tree; verify from outside with a process listing before and after). Then click `Refresh the Baseline`, assert a new token, Run the seeded fast words, assert `Completed` and exactly one retained invocation bound to the new token.
+- **W6b**: Run, then Browse to a second project mid-run. Assert the first run ends `Cancelled`, the window shows the second project with no Assessment state, and the second project's capture and run complete.
+- **W6c**: after a completed Assessment, click Handoff and cancel while `Running`. Assert `Cancelled`, the destination folder does not exist or is empty (publication is atomic), the completed Assessment is still on screen, and a retry writes the folder.
+- **W6d**: two windows over two projects and one shared managed root, both Run at once. Assert both complete, each with its own invocation on its own Baseline, and that neither refused for lack of a slot. This is the "basic queue works" check the owner asked for; the two machine-global slots in `MachinePanGlossQueue` are the mechanism.
+
+### L7 — Simulate the upload: drag-and-drop and copy-and-paste into a fake chat receiver (W7)
+
+The real last mile is a person dropping files into a chat product, and R6 needs a starter prompt they can paste. Both halves can be simulated faithfully enough to catch the failures that matter: an uploader takes files, not folders; it keeps basenames; it caps count and size; and a fresh chat sees only what was dropped plus what was pasted. Motif does no automatic upload, so the receiver is in-process, not an HTTP server.
+
+- **Product**: `HandoffPanel` gains a `Copy the starter prompt` button, enabled once a Handoff has completed, that puts a starter prompt on the clipboard through Avalonia's `TopLevel.Clipboard`. The prompt is an embedded asset beside `instructions.md`, names the Handoff's files, says to read `instructions.md` first, and states that the folder is as of FieldWorks' last save. Pin the prompt's file list against `HandoffWriter`'s actual output the way `DataSensitivitySentence` is pinned.
+- **Test double**: `FakeChatReceiver` in the Walkthrough folder. `Drop(paths)` models the uploader: refuses a directory path, records each file by basename with size and bytes, refuses a basename collision, and enforces configurable count and per-file size caps with defaults taken from the OpenAI upload FAQ cited in the release plan. `Paste(text)` records the clipboard text. `Validate()` then answers as a fresh chat could: every file the prompt names was received; `grammar.json` parses; every word in `selection.txt` has a row in the `word` statistics file; and it reports which files `instructions.md` refers to by a nested path that a flat upload would break. Headless Avalonia's clipboard must be verified to hold text in this environment before the copy step is relied on; if it does not, the button's command may be driven and the prompt read from the view model, with the gap recorded.
+- **W7**: after W3's Handoff completes, click `Drag all Handoff files` with the recording drag source feeding the receiver, click `Copy the starter prompt`, paste the clipboard into the receiver, and assert `Validate()` passes. Any nested-path finding is recorded in `docs/issues.md`, not hidden.
+
+### Not in this plan
+
+The owner also asked for the next feature: after an Assessment, show new and changed analyses word by word in the window and save them back to the `.fwdata` at Text granularity. That reopens the 0.1.0 boundary — the release plan puts project mutation outside it and ADR 0038 has Motif read FieldWorks' approved analyses rather than write them — and Motif has no Layer-0 primitive for creating a `WfiAnalysis`. It needs its own ADR and plan after the owner settles scope; it is recorded here only so the connection is not lost.
+
+## 7. Execution ledger
 
 | Lane | Status | Commit | Filtered run | Notes |
 | --- | --- | --- | --- | --- |
