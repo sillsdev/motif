@@ -14,6 +14,8 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
+    private string? _projectPath;
+
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection,
         AssessViewModel assess, StatisticsViewModel statistics, HandoffViewModel handoff)
@@ -33,6 +35,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Handoff = handoff;
 
         Project.ProjectChosen += OnProjectChosen;
+        Baseline.Refreshed += OnBaselineRefreshed;
         Baseline.OfferRerun += OnOfferRerun;
         Assess.PropertyChanged += OnAssessPropertyChanged;
 
@@ -87,6 +90,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         await CancelActiveWorkAsync().ConfigureAwait(true);
         ClearProjectBoundState();
+        _projectPath = fwDataPath;
 
         await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
@@ -98,6 +102,12 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private async void OnProjectChosen(object? sender, string fwDataPath) =>
         await SetProjectAsync(fwDataPath).ConfigureAwait(true);
+
+    // The Text list belongs to the Baseline just captured, not to the one (or none) shown before Refresh.
+    private async void OnBaselineRefreshed(object? sender, EventArgs e)
+    {
+        if (_projectPath is { } path) await Selection.LoadTextsAsync(path).ConfigureAwait(true);
+    }
 
     private void OnOfferRerun(object? sender, EventArgs e) => RerunOffered = true;
 

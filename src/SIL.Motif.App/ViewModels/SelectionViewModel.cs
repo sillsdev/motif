@@ -104,6 +104,19 @@ public sealed partial class SelectionViewModel : ObservableObject
         TextsEmptyMessage = null;
         Recompute();
 
+        await LoadTextsAsync(fwDataPath, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reloads the Text list from the project's current Baseline, keeping every other Selection source and
+    /// the checked state of any Text the new Baseline still holds. For after a Refresh: the project chosen a
+    /// moment ago had no Baseline, so its list was empty, and the person should not have to choose it again.
+    /// </summary>
+    public async Task LoadTextsAsync(string fwDataPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
+
+        var previouslyChecked = _allTexts.Where(text => text.IsChecked).Select(text => text.Id).ToHashSet();
         var outcome = await _commandClient.ListTextsAsync(new TextInventoryRequest(fwDataPath), cancellationToken);
         if (!outcome.Succeeded)
         {
@@ -111,17 +124,21 @@ public sealed partial class SelectionViewModel : ObservableObject
             return;
         }
 
+        foreach (var text in _allTexts) text.PropertyChanged -= OnTextChoicePropertyChanged;
+        _allTexts.Clear();
         foreach (var choice in outcome.Value!.Texts)
         {
-            var textChoice = new TextChoiceViewModel(choice.Id, choice.Title);
+            var textChoice = new TextChoiceViewModel(choice.Id, choice.Title) { IsChecked = previouslyChecked.Contains(choice.Id) };
             textChoice.PropertyChanged += OnTextChoicePropertyChanged;
             _allTexts.Add(textChoice);
         }
 
+        RefusalMessage = null;
         TextsEmptyMessage = _allTexts.Count > 0
             ? null
             : outcome.Value!.HasBaseline ? "This Baseline has no Texts." : "Capture a Baseline to choose Texts.";
         ApplyFilter();
+        Recompute();
     }
 
     private void OnTextChoicePropertyChanged(object? sender, PropertyChangedEventArgs e)

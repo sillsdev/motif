@@ -100,6 +100,52 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.Equal(ProjectPath, workspace.Handoff.ProjectPath);
     }
 
+    // The owner's first run: a project chosen before any capture showed no Texts even after Refresh succeeded.
+    [Fact]
+    public async Task RefreshingAProjectThatHadNoBaselineLoadsItsTextsWithoutChoosingItAgain()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+        projectPicker.PathToReturn = ProjectPath;
+        await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        Assert.Equal("Capture a Baseline to choose Texts.", workspace.Selection.TextsEmptyMessage);
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal("Alpha", Assert.Single(workspace.Selection.Texts).Title);
+        Assert.Null(workspace.Selection.TextsEmptyMessage);
+        Assert.Equal(ProjectPath, Assert.Single(fake.ListTextsRequests.Skip(1)).ProjectPath);
+        Assert.False(workspace.RerunOffered);
+    }
+
+    [Fact]
+    public async Task RefreshingKeepsACheckedTextTheNewBaselineStillHoldsAndTheOtherSources()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        var goneId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(TextId, "Alpha"), new TextChoiceSummary(goneId, "Gone")], HasBaseline: true));
+        projectPicker.PathToReturn = ProjectPath;
+        await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        workspace.Selection.Texts.Single(text => text.Id == TextId).IsChecked = true;
+        workspace.Selection.Texts.Single(text => text.Id == goneId).IsChecked = true;
+        workspace.Selection.PastedWords = "kept";
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal([TextId], workspace.Selection.ChosenTextIds);
+        Assert.Equal("kept", workspace.Selection.PastedWords);
+        Assert.Equal("1 text, 1 pasted word", workspace.Selection.SummaryText);
+    }
+
     [Fact]
     public async Task ACompletedAssessmentFeedsBaselineHasAssessmentAndTheStatisticsSummary()
     {
