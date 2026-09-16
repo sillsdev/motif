@@ -102,6 +102,37 @@ public sealed class HandoffViewModelTests
         Assert.Contains(HandoffViewModel.DataSensitivitySentence, instructions, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("grammar.json", HandoffFileKind.Json)]
+    [InlineData("statistics/word.jsonl", HandoffFileKind.Jsonl)]
+    [InlineData("instructions.md", HandoffFileKind.Markdown)]
+    [InlineData("read_handoff.py", HandoffFileKind.Python)]
+    [InlineData("selection.txt", HandoffFileKind.Text)]
+    [InlineData("texts/example.flextext.xml", HandoffFileKind.Xml)]
+    [InlineData("reference/README", HandoffFileKind.Unknown)]
+    public void HandoffFileKindIsDerivedFromTheRelativePathExtension(
+        string relativePath, HandoffFileKind expectedKind)
+    {
+        Assert.Equal(expectedKind, HandoffFileViewModel.KindFromRelativePath(relativePath));
+    }
+
+    [Fact]
+    public void HandoffIntroductionNamesTheUploadStepsAndReferenceLocations()
+    {
+        var introduction = HandoffViewModel.IntroductionText;
+
+        Assert.Contains("instructions.md", introduction, StringComparison.Ordinal);
+        Assert.Contains("Claude", introduction, StringComparison.Ordinal);
+        Assert.Contains("ChatGPT", introduction, StringComparison.Ordinal);
+        Assert.Contains("Gemini", introduction, StringComparison.Ordinal);
+        Assert.Contains("docs/handoff/grammar-format.md", introduction, StringComparison.Ordinal);
+        Assert.Contains("docs/handoff/flextext-json-format.md", introduction, StringComparison.Ordinal);
+        Assert.Contains("docs/handoff/hc-mechanics.md", introduction, StringComparison.Ordinal);
+        Assert.Contains("src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py", introduction,
+            StringComparison.Ordinal);
+        Assert.Contains(HandoffViewModel.RepositoryUrlBase, introduction, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task WriteFlexTextXmlIsForwardedToTheHandoffRequest()
     {

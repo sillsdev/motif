@@ -71,10 +71,10 @@ public sealed class HandoffAssetsTests
 
     private static readonly string[] ExpectedRawGitHubUrls =
     [
-        "https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/grammar-format.md",
-        "https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/flextext-json-format.md",
-        "https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/hc-mechanics.md",
-        "https://raw.githubusercontent.com/johnml1135/motif/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py",
+        "https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/grammar-format.md",
+        "https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/flextext-json-format.md",
+        "https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/hc-mechanics.md",
+        "https://raw.githubusercontent.com/sillsdev/motif/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py",
     ];
 
     private static readonly string[] AllTextAssetResources =

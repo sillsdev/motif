@@ -38,7 +38,7 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var (workspace, window) = NewComposedWindow();
+            var (workspace, window, _) = NewComposedWindow();
 
             Assert.Same(workspace, window.DataContext);
             Assert.Same(workspace.Project, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).Project);
@@ -56,10 +56,10 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var (_, window) = NewComposedWindow();
+            var (_, window, _) = NewComposedWindow();
 
             var controls = window.GetLogicalDescendants().OfType<Control>()
-                .Where(control => control is Button or CheckBox or ComboBox or TextBox or NumericUpDown or DataGrid)
+                .Where(control => control is Button or HyperlinkButton or CheckBox or ComboBox or TextBox or NumericUpDown or DataGrid)
                 .ToList();
 
             Assert.NotEmpty(controls);
@@ -75,7 +75,7 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var (workspace, _) = NewComposedWindow();
+            var (workspace, _, _) = NewComposedWindow();
             ((IProgress<AssessmentProgress>)workspace.Assess).Report(
                 new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing the Selection..."));
             workspace.Assess.Refusal = new Refusal(
@@ -99,7 +99,7 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var (workspace, window) = NewComposedWindow();
+            var (workspace, window, _) = NewComposedWindow();
             try
             {
                 workspace.Assess.Result = new AssessCommandResponse(
@@ -173,6 +173,67 @@ public sealed class MainWindowSmokeTests
         });
     }
 
+    [Fact]
+    public void CompletedHandoffShowsAccessibleFileTilesAndReferenceLinks()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, dragSource) = NewComposedWindow();
+            try
+            {
+                var files = new[]
+                {
+                    new HandoffFileViewModel("instructions.md", @"C:\handoff\instructions.md"),
+                    new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"),
+                    new HandoffFileViewModel("statistics/word.jsonl", @"C:\handoff\statistics\word.jsonl"),
+                };
+                foreach (var file in files) workspace.Handoff.Files.Add(file);
+                workspace.Handoff.State = HandoffRunState.Completed;
+
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>());
+                var tiles = panel.GetLogicalDescendants().OfType<Border>()
+                    .Where(tile => AutomationProperties.GetName(tile)?.StartsWith("Drag ", StringComparison.Ordinal)
+                        == true)
+                    .ToList();
+                Assert.Equal(files.Length, tiles.Count);
+                foreach (var file in files)
+                    Assert.Contains(tiles, tile => AutomationProperties.GetName(tile) == file.DragAccessibleName);
+
+                Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                    AutomationProperties.GetName(text) == "Drag all Handoff files");
+
+                var text = string.Join(" ", panel.GetLogicalDescendants().OfType<TextBlock>()
+                    .Select(block => block.Text));
+                Assert.Contains(HandoffViewModel.RepositoryUrlBase, text, StringComparison.Ordinal);
+                Assert.Contains("instructions.md", text, StringComparison.Ordinal);
+
+                var links = panel.GetLogicalDescendants().OfType<HyperlinkButton>().ToList();
+                Assert.Equal(4, links.Count);
+                Assert.Contains(links, link => link.NavigateUri == new Uri(workspace.Handoff.GrammarReferenceUrl));
+                Assert.All(links, link => Assert.False(
+                    string.IsNullOrWhiteSpace(AutomationProperties.GetName(link))));
+
+                var tile = tiles.Single(item =>
+                    AutomationProperties.GetName(item) == "Drag statistics/word.jsonl");
+                using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
+                var args = new PointerPressedEventArgs(
+                    tile, pointer, window, new Point(), 0, PointerPointProperties.None, KeyModifiers.None);
+                tile.RaiseEvent(args);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.Equal([files[2].FullPath], dragSource.LastPaths);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     // The explicit AutomationProperties.Name, or the plain-text Content a Button/CheckBox falls back to.
     private static string? EffectiveAccessibleName(Control control)
     {
@@ -181,21 +242,23 @@ public sealed class MainWindowSmokeTests
         return control is ContentControl { Content: string text } ? text : null;
     }
 
-    private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow()
+    private static (HandoffWorkspaceViewModel Workspace, MainWindow Window, FakeDragSource DragSource)
+        NewComposedWindow()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
+        var dragSource = new FakeDragSource();
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new FakeProjectPicker()),
             new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),
             new StatisticsViewModel(fake),
-            new HandoffViewModel(fake, selection, new FakeFolderPicker(), new FakeDragSource()));
+            new HandoffViewModel(fake, selection, new FakeFolderPicker(), dragSource));
 
         var window = new MainWindow();
         window.Compose(workspace);
-        return (workspace, window);
+        return (workspace, window, dragSource);
     }
 
     private sealed class FakeProjectPicker : IProjectPicker
@@ -212,8 +275,13 @@ public sealed class MainWindowSmokeTests
 
     private sealed class FakeDragSource : IFileDragSource
     {
+        public IReadOnlyList<string>? LastPaths { get; private set; }
+
         public Task<DragDropEffects> StartDragAsync(
-            PointerPressedEventArgs trigger, IReadOnlyList<string> filePaths, DragDropEffects allowedEffects) =>
-            Task.FromResult(allowedEffects);
+            PointerPressedEventArgs trigger, IReadOnlyList<string> filePaths, DragDropEffects allowedEffects)
+        {
+            LastPaths = filePaths;
+            return Task.FromResult(allowedEffects);
+        }
     }
 }

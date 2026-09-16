@@ -49,6 +49,18 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
     private const string CancelledRefusalCode = "handoff.cancelled";
     private const string InstructionsResourceName = "SIL.Motif.Commands.Handoff.Assets.instructions.md";
 
+    public const string RepositoryUrlBase = "https://github.com/sillsdev/motif";
+    private const string GrammarReferenceDocumentPath = "docs/handoff/grammar-format.md";
+    private const string FlexTextReferenceDocumentPath = "docs/handoff/flextext-json-format.md";
+    private const string HcMechanicsReferenceDocumentPath = "docs/handoff/hc-mechanics.md";
+    private const string ReaderReferenceDocumentPath = "src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py";
+    public const string IntroductionText =
+        "Drag these files into your chat (Claude, ChatGPT or Gemini). Start with instructions.md. " +
+        "This folder is as of FieldWorks' last save. Reference documents in Motif's repository are " +
+        "docs/handoff/grammar-format.md, docs/handoff/flextext-json-format.md, " +
+        "docs/handoff/hc-mechanics.md, and src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py " +
+        "at https://github.com/sillsdev/motif on main.";
+
     private readonly ICommandClient _commandClient;
     private readonly SelectionViewModel _selection;
     private readonly IHandoffFolderPicker _folderPicker;
@@ -89,6 +101,24 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
         "Uploading it to a chat model sends that data to whoever runs it " +
         "(OpenAI, Anthropic, or another provider).";
 
+    public string Introduction => IntroductionText;
+
+    public string GrammarReferencePath => GrammarReferenceDocumentPath;
+
+    public string FlexTextReferencePath => FlexTextReferenceDocumentPath;
+
+    public string HcMechanicsReferencePath => HcMechanicsReferenceDocumentPath;
+
+    public string ReaderReferencePath => ReaderReferenceDocumentPath;
+
+    public string GrammarReferenceUrl => ReferenceUrl(GrammarReferenceDocumentPath);
+
+    public string FlexTextReferenceUrl => ReferenceUrl(FlexTextReferenceDocumentPath);
+
+    public string HcMechanicsReferenceUrl => ReferenceUrl(HcMechanicsReferenceDocumentPath);
+
+    public string ReaderReferenceUrl => ReferenceUrl(ReaderReferenceDocumentPath);
+
     /// <summary>The project this Handoff publishes, or <c>null</c> before a project has been chosen.</summary>
     [ObservableProperty]
     private string? _projectPath;
@@ -124,6 +154,9 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
     /// <summary>The completed run's own files, each already verified to sit inside <see cref="OutputDirectory"/>.</summary>
     public ObservableCollection<HandoffFileViewModel> Files { get; } = [];
 
+    /// <summary>Whether the completed Handoff has files that can be dragged or copied.</summary>
+    public bool HasCompletedFiles => State == HandoffRunState.Completed && Files.Count > 0;
+
     /// <summary>Whether project and Selection controls should show disabled while a run is in flight.</summary>
     public bool IsActive => State is HandoffRunState.Running or HandoffRunState.Cancelling;
 
@@ -147,6 +180,7 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
     {
         RunCommand.NotifyCanExecuteChanged();
         CancelCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(HasCompletedFiles));
     }
 
     void IProgress<AssessmentProgress>.Report(AssessmentProgress value) => Progress = value;
@@ -258,6 +292,8 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
+
+    private static string ReferenceUrl(string relativePath) => $"{RepositoryUrlBase}/blob/main/{relativePath}";
 
     // Extracts one sentence instead of composing a new one, so wording never drifts from instructions.md.
 }

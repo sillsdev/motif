@@ -51,10 +51,10 @@ public repository and copied into every Handoff folder at the moment it is writt
 question turns on a detail that seems to have changed since, the current version is always at:
 
 ```
-https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/grammar-format.md
-https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/flextext-json-format.md
-https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/hc-mechanics.md
-https://raw.githubusercontent.com/johnml1135/motif/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py
+https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/grammar-format.md
+https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/flextext-json-format.md
+https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/hc-mechanics.md
+https://raw.githubusercontent.com/sillsdev/motif/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py
 ```
 
 Use the raw URL, not the ordinary GitHub page — it returns plain text with no site chrome, which
