@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Headless;
+using Avalonia.Threading;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -29,64 +31,109 @@ public sealed class AvaloniaHeadlessCollection : ICollectionFixture<AvaloniaHead
 /// </para>
 /// <para>
 /// So the platform gets a thread of its own here, and <see cref="Invoke"/> is the only way onto it. This
-/// is deliberately a plain work queue rather than a dispatcher loop: the smoke test's contract is that a
-/// window can be constructed without ever starting one.
+/// remains a plain work queue rather than a dispatcher loop for the smoke tests; asynchronous callers use
+/// <see cref="RunUntilComplete"/> when they need dispatcher jobs pumped between awaits.
+/// <see cref="RunUntilComplete"/> uses <see cref="Dispatcher.UIThread.RunJobs"/>; the permanent continuation
+/// check <see cref="Walkthrough.AvaloniaHeadlessPlatformTests.TaskRunContinuationResumesOnAvaloniaThreadWhenPumped"/>
+/// pins that pump as sufficient, so no dispatcher main loop is needed.
 /// </para>
 /// </remarks>
 public sealed class AvaloniaHeadlessFixture : IDisposable
 {
-    private readonly BlockingCollection<(Action Work, TaskCompletionSource Completion)> _queue = new();
-    private readonly Thread _thread;
-
-    public AvaloniaHeadlessFixture()
-    {
-        var ready = new TaskCompletionSource();
-        _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = "Avalonia headless" };
-        _thread.SetApartmentState(ApartmentState.STA);
-        _thread.Start();
-        ready.Task.GetAwaiter().GetResult();
-    }
-
     /// <summary>Runs <paramref name="work"/> on the Avalonia thread and rethrows whatever it threw.</summary>
     public void Invoke(Action work)
-    {
-        var completion = new TaskCompletionSource();
-        _queue.Add((work, completion));
-        completion.Task.GetAwaiter().GetResult();
-    }
+        => AvaloniaHeadlessPlatform.Invoke(work);
 
-    public void Dispose()
-    {
-        _queue.CompleteAdding();
-        _thread.Join(TimeSpan.FromSeconds(30));
-        _queue.Dispose();
-    }
+    /// <summary>
+    /// Runs work on the Avalonia thread and pumps the dispatcher until it completes or the deadline passes.
+    /// </summary>
+    public static void RunUntilComplete(Func<Task> work, TimeSpan timeout) =>
+        AvaloniaHeadlessPlatform.RunUntilComplete(work, timeout);
 
-    private void Run(TaskCompletionSource ready)
+    public void Dispose() { }
+}
+
+internal static class AvaloniaHeadlessPlatform
+{
+    private static readonly Lazy<PlatformThread> Shared = new(
+        static () => new PlatformThread(), LazyThreadSafetyMode.ExecutionAndPublication);
+
+    public static void Invoke(Action work) => Shared.Value.Invoke(work);
+
+    public static void RunUntilComplete(Func<Task> work, TimeSpan timeout) =>
+        Shared.Value.RunUntilComplete(work, timeout);
+
+    private sealed class PlatformThread
     {
-        try
+        private readonly BlockingCollection<(Action Work, TaskCompletionSource Completion)> _queue = new();
+        private readonly Thread _thread;
+
+        public PlatformThread()
         {
-            AppBuilder.Configure<SIL.Motif.App.App>()
-                .UseHeadless(new AvaloniaHeadlessPlatformOptions())
-                .SetupWithoutStarting();
-            ready.SetResult();
-        }
-        catch (Exception exception)
-        {
-            ready.SetException(exception);
-            return;
+            var ready = new TaskCompletionSource();
+            _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = "Avalonia headless" };
+            _thread.SetApartmentState(ApartmentState.STA);
+            _thread.Start();
+            ready.Task.GetAwaiter().GetResult();
         }
 
-        foreach (var (work, completion) in _queue.GetConsumingEnumerable())
+        public void Invoke(Action work)
+        {
+            ArgumentNullException.ThrowIfNull(work);
+            var completion = new TaskCompletionSource();
+            _queue.Add((work, completion));
+            completion.Task.GetAwaiter().GetResult();
+        }
+
+        public void RunUntilComplete(Func<Task> work, TimeSpan timeout)
+        {
+            ArgumentNullException.ThrowIfNull(work);
+            if (timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+            Invoke(() =>
+            {
+                var task = work();
+                var deadline = Stopwatch.GetTimestamp() +
+                    (long)(timeout.TotalSeconds * Stopwatch.Frequency);
+                while (!task.IsCompleted && Stopwatch.GetTimestamp() < deadline)
+                {
+                    Dispatcher.UIThread.RunJobs();
+                    Thread.Yield();
+                }
+
+                Dispatcher.UIThread.RunJobs();
+                if (!task.IsCompleted)
+                    throw new TimeoutException($"Avalonia work did not complete within {timeout}.");
+                task.GetAwaiter().GetResult();
+            });
+        }
+
+        private void Run(TaskCompletionSource ready)
         {
             try
             {
-                work();
-                completion.SetResult();
+                AppBuilder.Configure<SIL.Motif.App.App>()
+                    .UseHeadless(new AvaloniaHeadlessPlatformOptions())
+                    .SetupWithoutStarting();
+                ready.SetResult();
             }
             catch (Exception exception)
             {
-                completion.SetException(exception);
+                ready.SetException(exception);
+                return;
+            }
+
+            foreach (var (work, completion) in _queue.GetConsumingEnumerable())
+            {
+                try
+                {
+                    work();
+                    completion.SetResult();
+                }
+                catch (Exception exception)
+                {
+                    completion.SetException(exception);
+                }
             }
         }
     }

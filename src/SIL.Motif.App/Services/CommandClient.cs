@@ -20,12 +20,22 @@ namespace SIL.Motif.App.Services;
 /// </remarks>
 public sealed class CommandClient : ICommandClient
 {
+    private readonly string _managedRoot;
+
+    public CommandClient() : this(SIL.Motif.Worker.RunnerOptions.ResolveRoot()) { }
+
+    public CommandClient(string managedRoot)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(managedRoot);
+        _managedRoot = managedRoot;
+    }
+
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => BaselineCaptureCommand.Capture(request), cancellationToken);
+        Task.Run(() => BaselineCaptureCommand.Capture(request, _managedRoot), cancellationToken);
 
     public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
-        Task.Run(KnownProjectsQuery.List, cancellationToken);
+        Task.Run(() => KnownProjectsQuery.List(_managedRoot), cancellationToken);
 
     public Task<CommandOutcome<CurrentBaselineResponse>> GetCurrentBaselineAsync(
         CurrentBaselineRequest request, CancellationToken cancellationToken) =>
@@ -39,7 +49,8 @@ public sealed class CommandClient : ICommandClient
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return Task.Run(() => AssessCommand.Assess(request, progress.Report, cancellationToken), cancellationToken);
+        return Task.Run(
+            () => AssessCommand.Assess(request, _managedRoot, progress.Report, cancellationToken), cancellationToken);
     }
 
     public Task<CommandOutcome<StatsCommandResponse>> StatsAsync(
@@ -51,6 +62,6 @@ public sealed class CommandClient : ICommandClient
     {
         ArgumentNullException.ThrowIfNull(progress);
         return Task.Run(
-            () => HandoffCommand.Handoff(request, progress.Report, cancellationToken), cancellationToken);
+            () => HandoffCommand.Handoff(request, _managedRoot, progress.Report, cancellationToken), cancellationToken);
     }
 }
