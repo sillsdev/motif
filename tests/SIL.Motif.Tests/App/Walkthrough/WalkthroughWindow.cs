@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
@@ -80,6 +81,16 @@ public sealed class WalkthroughWindow : IDisposable
         Pump();
     }
 
+    public void DragAllFiles()
+    {
+        var allFiles = Find<TextBlock>("Drag all Handoff files");
+        using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
+        var args = new PointerPressedEventArgs(
+            allFiles, pointer, Window, new Point(), 0, PointerPointProperties.None, KeyModifiers.None);
+        allFiles.RaiseEvent(args);
+        Pump();
+    }
+
     public void WaitUntil(Func<bool> predicate, TimeSpan timeout, string why)
     {
         ArgumentNullException.ThrowIfNull(predicate);
@@ -100,6 +111,9 @@ public sealed class WalkthroughWindow : IDisposable
             $"Assess.State='{Workspace.Assess.State}', " +
             $"Assess.Refusal?.Message='{Workspace.Assess.Refusal?.Message}', " +
             $"Assess.Progress='{Workspace.Assess.Progress}', " +
+            $"Handoff.State='{Workspace.Handoff.State}', " +
+            $"Handoff.Refusal?.Message='{Workspace.Handoff.Refusal?.Message}', " +
+            $"Handoff.Progress='{Workspace.Handoff.Progress}', " +
             $"project='{Workspace.Project.KnownProjects.Count}' known projects");
     }
 

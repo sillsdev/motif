@@ -30,18 +30,8 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             var baselineDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, baselineDeadline);
 
-            walkthrough.Type("Pasted words", "motifa\nmotifb\nmofita");
-            Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
-
-            walkthrough.Click("Run the Assessment");
-            Assert.False(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
-            Assert.False(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
-            Assert.True(walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled);
-
             var assessmentDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Assess.State == AssessRunState.Completed,
-                WalkthroughSteps.Remaining(assessmentDeadline), "the Assessment did not complete");
+            WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, assessmentDeadline);
 
             var result = walkthrough.Workspace.Assess.Result;
             Assert.NotNull(result);

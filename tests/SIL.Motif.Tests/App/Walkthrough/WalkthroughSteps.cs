@@ -50,4 +50,19 @@ internal static class WalkthroughSteps
         var ticks = deadline - Stopwatch.GetTimestamp();
         return ticks > 0 ? TimeSpan.FromSeconds((double)ticks / Stopwatch.Frequency) : TimeSpan.Zero;
     }
+
+    internal static void RunAssessmentOverPastedWords(WalkthroughWindow walkthrough, long deadline)
+    {
+        walkthrough.Type("Pasted words", "motifa\nmotifb\nmofita");
+        Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+
+        walkthrough.Click("Run the Assessment");
+        Assert.False(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
+        Assert.False(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
+        Assert.True(walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled);
+
+        walkthrough.WaitUntil(
+            () => walkthrough.Workspace.Assess.State == AssessRunState.Completed,
+            Remaining(deadline), "the Assessment did not complete");
+    }
 }
