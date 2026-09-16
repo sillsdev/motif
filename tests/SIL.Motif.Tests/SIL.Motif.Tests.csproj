@@ -53,6 +53,7 @@
     <None Include="Parser\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
     <!-- Checked-in copy of FieldWorks' own schema; see FlexTextWriterTests for why it lives here. -->
     <None Include="Texts\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestFixtures\Conformance\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
