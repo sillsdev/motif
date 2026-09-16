@@ -143,6 +143,20 @@ public sealed class ReleaseSurfaceTests : IDisposable
         Assert.Null(typeof(SIL.Motif.App.ViewModels.StatisticsViewModel).GetProperty("ProposalId"));
     }
 
+    [Fact]
+    public void EveryReleasedCommandStillDispatchesOnTheReleasedSurface()
+    {
+        // Invoked bare: reaching its own usage complaint is enough to show the boundary let the verb past.
+        foreach (var name in ReleasedNames)
+        {
+            var result = Run(name + " --json", developerCommands: false);
+
+            Assert.DoesNotContain("command.not-in-release", result.Error, StringComparison.Ordinal);
+            Assert.DoesNotContain("not part of Motif 0.1.0", result.Error, StringComparison.Ordinal);
+            Assert.NotEqual(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+        }
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }

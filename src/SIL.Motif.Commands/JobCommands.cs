@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -463,7 +464,7 @@ public static class JobCommands
     }
 
     private static Version ParseProductVersion(string productVersion) =>
-        Version.TryParse(productVersion, out var parsed) ? parsed : new Version(1, 0);
+        Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
 
     private static string NowStamp() =>
         DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");

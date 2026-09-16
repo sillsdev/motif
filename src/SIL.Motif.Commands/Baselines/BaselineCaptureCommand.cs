@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -139,8 +140,7 @@ public static class BaselineCaptureCommand
         catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
-    private static string ResolveProductVersion() =>
-        typeof(BaselineCaptureCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 
     private static Dictionary<string, string> Fact(params (string Key, string? Value)[] entries)
     {

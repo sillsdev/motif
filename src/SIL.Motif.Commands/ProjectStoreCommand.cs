@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -116,7 +117,7 @@ public static class ProjectStoreCommand
 
     /// A malformed product version must not stop a verb; the compatibility floor it feeds is a lower bound.
     private static Version ParseVersion(string productVersion) =>
-        Version.TryParse(productVersion, out var parsed) ? parsed : new Version(1, 0);
+        Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
 
     /// The file must exist: an unresolvable path would key a second, empty workspace instead of the real one.
     private static ProjectLocator Locate(string fwDataPath)

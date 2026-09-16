@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -344,8 +345,7 @@ public static class AssessCommand
         "The Assessment run was cancelled; no Assessments were recorded.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
-    private static string ResolveProductVersion() =>
-        typeof(AssessCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 }
 
 /// <summary>

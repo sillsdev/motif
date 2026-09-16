@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -236,8 +237,7 @@ public static class HandoffCommand
         "The Handoff run was cancelled; no destination directory was created.",
         Fact(("projectPath", projectPath)));
 
-    private static string ResolveProductVersion() =>
-        typeof(HandoffCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 
     private static Dictionary<string, string> Fact(params (string Key, string Value)[] facts)
     {

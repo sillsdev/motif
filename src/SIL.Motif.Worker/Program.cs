@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -48,7 +49,7 @@ internal static class Program
         var ownership = WorkspaceOwnership.Bootstrap(options.Root);
         host.ConfigureWorkspaces(ownership);
         var ownerId = "runner-" + Environment.ProcessId.ToString();
-        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0));
+        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current);
         var runtimes = host.CreateRuntimeRegistry(catalog,
             (jobs, key) => new WorkerRecoveryCoordinator(
                 new WorkerRecovery(jobs, ownerId: ownerId), new WorkspaceCleaner(ownership)));

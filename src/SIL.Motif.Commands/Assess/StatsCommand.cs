@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -184,6 +185,5 @@ public static class StatsCommand
         return dictionary;
     }
 
-    private static string ResolveProductVersion() =>
-        typeof(StatsCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 }

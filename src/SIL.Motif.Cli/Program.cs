@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -899,8 +900,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
 }
 
 // The version this CLI negotiates with; the worker decides compatibility from the protocol range, not this.
-static string CliProductVersion() =>
-    typeof(RunnerKick).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+static string CliProductVersion() => MotifProductVersion.CurrentText;
 
 static bool IsTruthyFlag(string value) => !string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);
 
