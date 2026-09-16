@@ -109,7 +109,13 @@ public static class HandoffCommand
                         assessor, invoker, ForwardExceptComplete(onProgress),
                         cancellationToken);
                     if (!assessOutcome.Succeeded)
-                        return CommandOutcome<HandoffCommandResponse>.Refused(assessOutcome.Refusal!);
+                    {
+                        // The person cancelled a Handoff, not an Assessment; the nested code must not leak out.
+                        var cancelled = cancellationToken.IsCancellationRequested
+                            || assessOutcome.Refusal!.Code == AssessCommand.CancelledRefusalCode;
+                        return CommandOutcome<HandoffCommandResponse>.Refused(
+                            cancelled ? Cancelled(request.ProjectPath) : assessOutcome.Refusal!);
+                    }
 
                     baseline = assessOutcome.Value!.Baseline;
                     selectionProjection = assessOutcome.Value!.Selection;

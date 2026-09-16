@@ -43,6 +43,25 @@ public sealed class HandoffWriterTests : IDisposable
         catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
+    // The person cancelled a Handoff; the window must hear that, not the nested Assessment's own code.
+    [Fact]
+    public void CancellationDuringTheNestedAssessmentIsReportedAsAHandoffCancellation()
+    {
+        using var seeded = NewSeededScratch();
+        using var invoker = NewInvoker();
+        var destination = Path.Combine(_root, "handoff-cancelled");
+        var cancellingAssessor = new FakeAssessor(
+            "cancelling", CollectedKinds, _ => throw new OperationCanceledException());
+
+        var outcome = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
+            NewManagedRoot(), cancellingAssessor, invoker, onProgress: null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("handoff.cancelled", outcome.Refusal!.Code);
+        Assert.False(Directory.Exists(destination));
+    }
+
     // Complete must arrive once, at the end: the nested Assessment reports its own part way through.
     [Fact]
     public void ProgressReachesCompleteOnlyOnceTheFolderIsActuallyWritten()

@@ -340,8 +340,11 @@ public static class AssessCommand
         "assess.parser-unavailable", FailureReason.Refused, message,
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
+    /// <summary>The refusal code a cancelled run returns, so a command nesting this one can recognise it.</summary>
+    internal const string CancelledRefusalCode = "assessment.cancelled";
+
     private static Refusal Cancelled(string projectPath) => new(
-        "assessment.cancelled", FailureReason.Refused,
+        CancelledRefusalCode, FailureReason.Refused,
         "The Assessment run was cancelled; no Assessments were recorded.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
