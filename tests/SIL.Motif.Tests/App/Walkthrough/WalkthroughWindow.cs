@@ -43,12 +43,25 @@ public sealed class WalkthroughWindow : IDisposable
 
     public IReadOnlyList<string> DraggedPaths => _dragSource.Paths;
 
+    public string ProjectPath
+    {
+        get => _projectPicker.Path;
+        set => _projectPicker.Path = value;
+    }
+
     public void Show()
     {
         Window.Show();
         Window.ApplyTemplate();
         Window.UpdateLayout();
         Pump();
+    }
+
+    public void LoadKnownProjects()
+    {
+        var loading = Workspace.Project.LoadKnownProjectsAsync();
+        WaitUntil(() => loading.IsCompleted, TimeSpan.FromSeconds(30), "Known projects did not load");
+        loading.GetAwaiter().GetResult();
     }
 
     public T Find<T>(string accessibleName) where T : Control =>
@@ -78,6 +91,15 @@ public sealed class WalkthroughWindow : IDisposable
         var textBox = Find<TextBox>(accessibleName);
         Assert.True(textBox.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
         textBox.Text = text;
+        Pump();
+    }
+
+    public void SelectKnownProject(string projectPath)
+    {
+        var comboBox = Find<ComboBox>("Known projects");
+        var project = Workspace.Project.KnownProjects.Single(known =>
+            string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
+        comboBox.SelectedItem = project;
         Pump();
     }
 
@@ -127,8 +149,10 @@ public sealed class WalkthroughWindow : IDisposable
 
     private sealed class ScriptedProjectPicker(string path) : IProjectPicker
     {
+        public string Path { get; set; } = path;
+
         public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<string?>(path);
+            Task.FromResult<string?>(Path);
     }
 
     private sealed class ScriptedFolderPicker(string? path) : IHandoffFolderPicker
