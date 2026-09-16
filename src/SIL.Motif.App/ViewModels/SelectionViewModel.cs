@@ -21,6 +21,7 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     private readonly ICommandClient _commandClient;
     private readonly List<TextChoiceViewModel> _allTexts = [];
+    private int _textLoadGeneration;
 
     public SelectionViewModel(ICommandClient commandClient)
     {
@@ -117,7 +118,10 @@ public sealed partial class SelectionViewModel : ObservableObject
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
 
         var previouslyChecked = _allTexts.Where(text => text.IsChecked).Select(text => text.Id).ToHashSet();
+        var generation = ++_textLoadGeneration;
         var outcome = await _commandClient.ListTextsAsync(new TextInventoryRequest(fwDataPath), cancellationToken);
+        // A Refresh or project switch mid-load starts a newer load; the older answer must not overwrite it.
+        if (generation != _textLoadGeneration) return;
         if (!outcome.Succeeded)
         {
             RefusalMessage = outcome.Refusal!.Message;

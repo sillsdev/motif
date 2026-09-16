@@ -4,6 +4,7 @@ using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
@@ -49,6 +50,20 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         Assert.True(File.Exists(response.FwDataPath));
         Assert.NotEqual(fwDataPath, response.FwDataPath);
         Assert.Equal(File.GetLastWriteTimeUtc(fwDataPath), response.SourceLastWriteUtc.UtcDateTime);
+    }
+
+    // The window lists Known projects from the same store the CLI fills, so capture itself must fill it.
+    [Fact]
+    public void ASuccessfulCaptureRecordsTheProjectAsKnownUnderTheManagedRoot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var managedRoot = NewManagedRoot();
+        Assert.Empty(KnownProjectsQuery.List(managedRoot));
+
+        var outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Equal(Path.GetFullPath(fwDataPath), Assert.Single(KnownProjectsQuery.List(managedRoot)).FullFwDataPath);
     }
 
     [Fact]

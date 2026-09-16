@@ -21,6 +21,30 @@ public sealed class SelectionViewModelTests
     private static readonly Guid AlphaId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid BetaId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
+    // A project switch or Refresh while a load is in flight must not let the older answer land last.
+    [Fact]
+    public async Task AnOlderTextLoadCompletingAfterANewerOneIsDiscarded()
+    {
+        var fake = new FakeCommandClient();
+        var older = new TaskCompletionSource<CommandOutcome<TextInventoryResponse>>();
+        var newer = new TaskCompletionSource<CommandOutcome<TextInventoryResponse>>();
+        var calls = 0;
+        fake.OnListTexts((_, _) => ++calls == 1 ? older.Task : newer.Task);
+        var selection = new SelectionViewModel(fake);
+
+        var first = selection.SetProjectAsync(ProjectPath);
+        var second = selection.LoadTextsAsync(ProjectPath);
+        newer.SetResult(CommandOutcome<TextInventoryResponse>.Success(
+            new TextInventoryResponse([new TextChoiceSummary(AlphaId, "Alpha")], HasBaseline: true)));
+        await second;
+        older.SetResult(CommandOutcome<TextInventoryResponse>.Success(
+            new TextInventoryResponse([], HasBaseline: false)));
+        await first;
+
+        Assert.Equal("Alpha", Assert.Single(selection.Texts).Title);
+        Assert.Null(selection.TextsEmptyMessage);
+    }
+
     // An empty box with no explanation is what stopped a real user choosing Texts at all.
     [Fact]
     public async Task WithNoBaselineTheEmptyTextListSaysToCaptureOneRatherThanShowingNothing()

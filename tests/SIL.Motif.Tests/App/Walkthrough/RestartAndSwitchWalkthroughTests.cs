@@ -52,10 +52,10 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
             restartedWalkthrough.ProjectPath = secondProject.FwDataPath;
             restartedWalkthrough.Click("Browse for a FieldWorks project file");
             restartedWalkthrough.WaitUntil(
-                () => restartedWalkthrough.Workspace.Baseline.CapturedTimeText ==
-                        "No Baseline captured yet",
+                () => restartedWalkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
+                    restartedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
                 WalkthroughSteps.Remaining(deadline),
-                "switching to the second project did not clear the Baseline");
+                "switching to the second project did not clear the Baseline and its Texts");
             Assert.Empty(restartedWalkthrough.Workspace.Selection.Texts);
             Assert.Equal(
                 "Capture a Baseline to choose Texts.",
@@ -70,7 +70,8 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
             ChooseProject(restartedWalkthrough, secondProject.FwDataPath);
             restartedWalkthrough.WaitUntil(
                 () => restartedWalkthrough.Workspace.Baseline.HeldStatusText ==
-                    "FieldWorks holds this project open right now.",
+                        "FieldWorks holds this project open right now." &&
+                    restartedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
                 WalkthroughSteps.Remaining(deadline),
                 "choosing the held second project did not observe its lock file");
             restartedWalkthrough.Click("Refresh the Baseline");
