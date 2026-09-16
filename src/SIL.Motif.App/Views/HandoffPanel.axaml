@@ -63,7 +63,14 @@
             Padding="14"
             Background="#F3F6F8">
       <StackPanel Spacing="12">
-        <TextBlock Text="{Binding Handoff.Introduction}" TextWrapping="Wrap" />
+        <DockPanel LastChildFill="False">
+          <TextBlock Text="{Binding Handoff.Introduction}" TextWrapping="Wrap" />
+          <Button Content="Copy starter prompt"
+                  Click="OnCopyStarterPromptClick"
+                  IsEnabled="{Binding Handoff.HasCompletedFiles}"
+                  AutomationProperties.Name="Copy the starter prompt"
+                  Margin="10,0,0,0" />
+        </DockPanel>
 
         <TextBlock Text="Reference documents" FontWeight="Bold" />
         <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="4">

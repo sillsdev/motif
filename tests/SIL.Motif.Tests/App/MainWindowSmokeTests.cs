@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Styling;
 using SIL.Motif.App.Services;
@@ -232,6 +234,39 @@ public sealed class MainWindowSmokeTests
                 window.Close();
             }
         });
+    }
+
+    [Fact]
+    public void CompletedHandoffShowsStarterPromptCopyButton()
+    {
+        string? clipboardText = null;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.Handoff.Files.Add(new HandoffFileViewModel("instructions.md", @"C:\handoff\instructions.md"));
+                workspace.Handoff.State = HandoffRunState.Completed;
+
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var button = window.GetLogicalDescendants().OfType<Button>().Single(control =>
+                    AutomationProperties.GetName(control) == "Copy the starter prompt");
+                Assert.True(button.IsEffectivelyEnabled);
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                IClipboard clipboard = window.Clipboard
+                    ?? throw new InvalidOperationException("The headless window has no clipboard.");
+                clipboardText = await clipboard.TryGetTextAsync();
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(5));
+
+        Assert.Equal(HandoffViewModel.StarterPromptMarkdown, clipboardText);
     }
 
     // The explicit AutomationProperties.Name, or the plain-text Content a Button/CheckBox falls back to.

@@ -37,4 +37,11 @@ public sealed partial class HandoffPanel : UserControl
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel?.Clipboard is { } clipboard) await clipboard.SetTextAsync(file.FullPath);
     }
+
+    private async void OnCopyStarterPromptClick(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.Clipboard is { } clipboard)
+            await clipboard.SetTextAsync(HandoffViewModel.StarterPromptMarkdown);
+    }
 }

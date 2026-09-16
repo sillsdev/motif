@@ -48,6 +48,7 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
 {
     private const string CancelledRefusalCode = "handoff.cancelled";
     private const string InstructionsResourceName = "SIL.Motif.Commands.Handoff.Assets.instructions.md";
+    private const string StarterPromptResourceName = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
 
     public const string RepositoryUrlBase = "https://github.com/sillsdev/motif";
     private const string GrammarReferenceDocumentPath = "docs/handoff/grammar-format.md";
@@ -86,6 +87,9 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
 
     /// <summary>The Handoff's own read-this-first prose, rendered in full in an expandable preview.</summary>
     public static string InstructionsMarkdown { get; } = ReadEmbeddedInstructions();
+
+    /// <summary>The short first message a user can paste alongside the completed Handoff files.</summary>
+    public static string StarterPromptMarkdown { get; } = ReadEmbeddedAsset(StarterPromptResourceName);
 
     /// <summary>
     /// The instructions' own sentence naming where an uploaded folder's data goes, shown once above the
@@ -287,8 +291,13 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
 
     private static string ReadEmbeddedInstructions()
     {
-        using var stream = typeof(HandoffCommand).Assembly.GetManifestResourceStream(InstructionsResourceName)
-            ?? throw new InvalidOperationException("The Handoff instructions asset was not found.");
+        return ReadEmbeddedAsset(InstructionsResourceName);
+    }
+
+    private static string ReadEmbeddedAsset(string resourceName)
+    {
+        using var stream = typeof(HandoffCommand).Assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"The Handoff asset '{resourceName}' was not found.");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }

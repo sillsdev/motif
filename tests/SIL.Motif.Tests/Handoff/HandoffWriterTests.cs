@@ -172,6 +172,7 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.True(response.Selection.Words.Count > 0);
 
         AssertFile(destination, "instructions.md");
+        AssertFile(destination, "starter-prompt.md");
         AssertFile(destination, "grammar.json");
         AssertFile(destination, "selection.txt");
         AssertFile(destination, "statistics.md");
@@ -189,6 +190,7 @@ public sealed class HandoffWriterTests : IDisposable
 
         Assert.Contains("grammar.json", response.Files);
         Assert.Contains("selection.txt", response.Files);
+        Assert.Contains("starter-prompt.md", response.Files);
     }
 
     [PythonAvailableFact]

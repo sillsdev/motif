@@ -134,6 +134,24 @@ public sealed class HandoffViewModelTests
     }
 
     [Fact]
+    public void StarterPromptIsEmbeddedAndNamesTheHandoffContents()
+    {
+        var prompt = HandoffViewModel.StarterPromptMarkdown;
+
+        Assert.Contains("Read `instructions.md` first", prompt, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks' last save", prompt, StringComparison.Ordinal);
+        Assert.Contains("`grammar.json`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`selection.txt`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`statistics/*.jsonl`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`texts/*.flextext.json`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`reference/*.md`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`recipes.md`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`read_handoff.py`", prompt, StringComparison.Ordinal);
+        Assert.Contains("file and record", prompt, StringComparison.Ordinal);
+        Assert.Contains("flag guesses", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task WriteFlexTextXmlIsForwardedToTheHandoffRequest()
     {
         var (fake, _, handoff) = NewViewModel();
