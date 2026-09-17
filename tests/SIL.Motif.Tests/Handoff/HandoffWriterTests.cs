@@ -1,16 +1,21 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Handoff;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.App.Walkthrough;
@@ -149,7 +154,7 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
-    public void RetainedInvocationFromAnotherProjectRefusesBeforeTouchingTheDestination()
+    public void AnInvocationFromAnotherProjectDatabaseIsNotFound()
     {
         using var selectedProject = NewSeededScratch();
         using var otherProject = NewSeededScratch();
@@ -165,6 +170,33 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.invocation-not-found", outcome.Refusal!.Code);
         Assert.Equal(FailureReason.NotFound, outcome.Refusal.Reason);
+        Assert.False(Directory.Exists(destination));
+    }
+
+    [Fact]
+    public void AForeignRetainedInvocationInTheSelectedDatabaseIsRefusedAsAMismatch()
+    {
+        using var selectedProject = NewSeededScratch();
+        var locator = new ProjectLocator(
+            Path.GetFullPath(selectedProject.FwDataPath),
+            Path.GetFileNameWithoutExtension(selectedProject.FwDataPath));
+        using (var database = MotifDatabase.OpenOwned(
+            ProjectDatabaseCatalog.DatabasePathFor(locator), locator,
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            new RetainedInvocationRepository(database).Record(
+                ForeignRetained("foreign-invocation"),
+                [ForeignAssessment("foreign-assessment", "foreign-invocation")]);
+        }
+
+        var destination = Path.Combine(_root, "handoff-mismatched-invocation");
+        var outcome = HandoffCommand.Run(
+            AssessedRequest(selectedProject, destination, "foreign-invocation"),
+            NewManagedRoot(), NewAssessor(), new FakeInvoker(), null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("handoff.invocation-mismatch", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, outcome.Refusal.Reason);
         Assert.False(Directory.Exists(destination));
     }
 
@@ -541,6 +573,41 @@ public sealed class HandoffWriterTests : IDisposable
         SeededScratch seeded, string destination, string invocationId) =>
         new(seeded.FwDataPath, destination, new SelectionRequest(false, [], [], false, null),
             false, true, invocationId);
+
+    private static RetainedInvocationRecord ForeignRetained(string invocationId) => new(
+        invocationId, "foreign-project", ForeignBaseline(), "C:/managed/foreign",
+        "C:/managed/foreign/project.fwdata", ForeignUtc("2020-01-01T00:00:00Z"),
+        ForeignUtc("2020-01-01T00:01:00Z"), ForeignUtc("2020-01-01T00:02:00Z"),
+        ForeignSelection(), "pangloss", "{\"words\":\"all\"}", "sha256:scope", invocationId,
+        [new RetainedInvocationMember("ParseTime", "foreign-assessment")]);
+
+    private static NewAssessmentRecord ForeignAssessment(string id, string invocationId) =>
+        new(id, null, null, "pangloss", "ParseTime", "{\"words\":\"all\"}", "sha256:scope",
+            "none", "1", JsonSerializer.Serialize(ForeignBaseline()),
+            Selection.Create("project", ["word"]), "sha256:outcome", "sha256:semantic",
+            "sha256:source", "fingerprint", "pipeline", 0,
+            [new AssessedWord("word", "complete", [])])
+        {
+            Invocation = new BatchInvocationEvidence(
+                invocationId, "source.fwdata", "sha256:source", "sha256:executable", "words.txt",
+                "sha256:words", "rows.tsv", "sha256:rows", "stderr.txt", "sha256:stderr",
+                1000, 200000, 1, true)
+        };
+
+    private static SelectionDescriptor ForeignSelection()
+    {
+        var selection = new SelectionDescriptor(
+            [], ["word"], false, false, null, null, ["word"],
+            Selection.Create("project", ["word"]).Sha256, [new("pasted-words", 1)]);
+        return selection with { DescriptorSha256 = SelectionDescriptorDigest.Compute(selection) };
+    }
+
+    private static BaselineToken ForeignBaseline() => new(
+        "project", "sha256:" + new string('a', 64), "projection-1", "2020-01-01T00:00:00Z",
+        "sha256:" + new string('b', 64));
+
+    private static DateTimeOffset ForeignUtc(string value) => DateTimeOffset.ParseExact(
+        value, "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
 
     // SeedText's wordforms must be saved to disk for HandoffCommand's own scratch loads to see them.
     private SeededScratch NewSeededScratch()

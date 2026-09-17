@@ -38,11 +38,22 @@ internal static class FakeParser
 
     internal static string CopyWithWrongDescription(string candidateDirectory)
     {
+        return CopyWithSentinel(candidateDirectory, WrongDescriptionFileName);
+    }
+
+    internal static string CopyWithSentinel(string candidateDirectory, string sentinel)
+    {
+        var executable = Copy(candidateDirectory);
+        File.WriteAllText(Path.Combine(candidateDirectory, sentinel), string.Empty);
+        return executable;
+    }
+
+    internal static string Copy(string candidateDirectory)
+    {
         Directory.CreateDirectory(candidateDirectory);
         var sourceDirectory = Path.GetDirectoryName(ExecutablePath)!;
         foreach (var source in Directory.EnumerateFiles(sourceDirectory, "pangloss.*"))
             File.Copy(source, Path.Combine(candidateDirectory, Path.GetFileName(source)), overwrite: true);
-        File.WriteAllText(Path.Combine(candidateDirectory, WrongDescriptionFileName), string.Empty);
         return Path.Combine(candidateDirectory, OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss");
     }
 }

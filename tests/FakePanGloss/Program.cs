@@ -66,6 +66,23 @@ internal static class Program
             Console.WriteLine(JsonSerializer.Serialize(new { schema_version = 999, binary = "not-pangloss" }));
             return 0;
         }
+        // These named sentinels isolate --describe failure modes from the default valid surface.
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-describe-malformed")))
+        {
+            Console.WriteLine("not-json");
+            return 0;
+        }
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-describe-fail")))
+        {
+            Console.Error.WriteLine("the fake --describe command was told to fail");
+            return 17;
+        }
+        // This sentinel makes --describe exceed the caller's timeout without affecting normal commands.
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-describe-hang")))
+        {
+            Thread.Sleep(Timeout.Infinite);
+            return 0;
+        }
 
         Console.WriteLine(JsonSerializer.Serialize(new
         {

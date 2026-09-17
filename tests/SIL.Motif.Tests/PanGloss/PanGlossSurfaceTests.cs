@@ -10,7 +10,104 @@ namespace SIL.Motif.Tests.PanGloss;
 
 /// <summary>Checks emitted requests against the executable's declared surface without opening a project.</summary>
 public sealed class PanGlossSurfaceTests
+    : IDisposable
 {
+    private readonly string _root = Path.Combine(
+        Path.GetTempPath(), "motif-pangloss-surface-" + Guid.NewGuid().ToString("N"));
+
+    public PanGlossSurfaceTests() => Directory.CreateDirectory(_root);
+
+    [Fact]
+    public async Task MissingExecutableIsInvalidThroughTheSurfaceCheck()
+    {
+        var result = await PanGlossSurface.CheckAsync(
+            Path.Combine(_root, "missing", "pangloss.exe"), _ => { }, CancellationToken.None);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("could not start --describe", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task APathThatCannotStartIsInvalidThroughTheSurfaceCheck()
+    {
+        var directory = Path.Combine(_root, "not-an-executable");
+        Directory.CreateDirectory(directory);
+
+        var result = await PanGlossSurface.CheckAsync(directory, _ => { }, CancellationToken.None);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("could not start --describe", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ADescribeTimeoutIsInvalidAndTheChildIsContained()
+    {
+        var executable = FakeParser.CopyWithSentinel(
+            Path.Combine(_root, "describe-hang"), "_fake-pangloss-describe-hang");
+
+        var result = await PanGlossSurface.CheckAsync(executable, _ => { }, CancellationToken.None);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("did not finish within 15 seconds", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ANonZeroDescribeExitIsInvalidThroughTheSurfaceCheck()
+    {
+        var executable = FakeParser.CopyWithSentinel(
+            Path.Combine(_root, "describe-fail"), "_fake-pangloss-describe-fail");
+
+        var result = await PanGlossSurface.CheckAsync(executable, _ => { }, CancellationToken.None);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("--describe exited 17", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UnparseableDescribeOutputIsInvalidThroughTheSurfaceCheck()
+    {
+        var executable = FakeParser.CopyWithSentinel(
+            Path.Combine(_root, "describe-malformed"), "_fake-pangloss-describe-malformed");
+
+        var result = await PanGlossSurface.CheckAsync(executable, _ => { }, CancellationToken.None);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("returned invalid JSON", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AWrongDescriptionIsInvalidThroughTheSurfaceCheck()
+    {
+        var executable = FakeParser.CopyWithWrongDescription(Path.Combine(_root, "wrong-description"));
+
+        var result = await PanGlossSurface.CheckAsync(executable, _ => { }, CancellationToken.None);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("schema version 1", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AValidDescriptionIsValidThroughTheSurfaceCheck()
+    {
+        var executable = FakeParser.Copy(Path.Combine(_root, "valid"));
+
+        var result = await PanGlossSurface.CheckAsync(executable, _ => { }, CancellationToken.None);
+
+        Assert.True(result.IsValid, result.Message);
+        Assert.Equal(string.Empty, result.Message);
+    }
+
+    [Fact]
+    public async Task APreCancelledTokenIsPropagatedThroughTheSurfaceCheck()
+    {
+        var executable = FakeParser.Copy(Path.Combine(_root, "cancelled"));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            PanGlossSurface.CheckAsync(executable, _ => { }, cancellation.Token));
+    }
+
     [Fact]
     public async Task FakeDescriptionNamesExactlyItsDispatchCommands()
     {
@@ -112,5 +209,12 @@ public sealed class PanGlossSurfaceTests
         }
         Assert.True(process.ExitCode == 0, $"--describe exited {process.ExitCode}: {await error}");
         return JsonDocument.Parse(await output);
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_root, recursive: true); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }

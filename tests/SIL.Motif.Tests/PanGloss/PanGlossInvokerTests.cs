@@ -58,6 +58,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         }
         finally
         {
+            // The real process variable is the boundary this test is proving.
             Environment.SetEnvironmentVariable(sentinel, previous);
         }
     }

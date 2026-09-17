@@ -74,6 +74,18 @@ public sealed class HandoffArgvTests : IDisposable
         Assert.Contains("Usage: motif handoff <project>", result.Error, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void InvocationOrNoAssessIsRequiredBeforeTheProjectIsAccessed()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+        var outDir = Path.Combine(_workerRoot, "out");
+
+        var result = Run($"handoff \"{missing}\" --out \"{outDir}\"");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: motif handoff <project>", result.Error, StringComparison.Ordinal);
+    }
+
     // No parser is pointed at deliberately: the project must be resolved before one is ever built.
     [Fact]
     public void ANonexistentProjectRefusesTheWayEveryOtherVerbDoes()
