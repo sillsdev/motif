@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
@@ -52,6 +53,41 @@ public sealed class ReleaseSurfaceTests : IDisposable
             names.Where(item => item.Surface == "Released").Select(item => item.Name).Order(StringComparer.Ordinal));
         Assert.Equal(DeveloperNames.Order(StringComparer.Ordinal),
             names.Where(item => item.Surface == "Developer").Select(item => item.Name).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void EveryCataloguedCommandIsResolvedFromItsDocumentedUsage()
+    {
+        foreach (var descriptor in CliVerbCatalog.All)
+        {
+            var usage = descriptor.UsageLines.FirstOrDefault();
+            var line = usage is null ? descriptor.CommandName : usage;
+            var marker = line.IndexOf(" OR motif ", StringComparison.Ordinal);
+            if (marker >= 0) line = line[..marker];
+            if (line.StartsWith("Usage: motif ", StringComparison.Ordinal))
+                line = line["Usage: motif ".Length..];
+            else if (line.StartsWith("motif ", StringComparison.Ordinal))
+                line = line["motif ".Length..];
+            var invocation = line.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Take(2).ToArray();
+
+            var command = CommandCatalog.All.Single(item => item.Name == descriptor.CommandName);
+            var surface = typeof(CommandDescriptor).GetProperty("Surface")!
+                .GetValue(command)?.ToString();
+            var result = Run(string.Join(' ', invocation), developerCommands: surface == "Developer");
+            Assert.DoesNotContain("Unknown command", result.Error, StringComparison.Ordinal);
+            Assert.DoesNotContain("command.not-in-release", result.Error, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void AnUnknownCompoundVerbIsResolvedToTheUsageFailurePath()
+    {
+        var result = Run("jobs future", developerCommands: false);
+
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), result.ExitCode);
+        Assert.Contains("Usage: motif jobs", result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("__unresolved_command__", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]

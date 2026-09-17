@@ -69,6 +69,12 @@ public static class StatsCommand
             {
                 try { assessment = assessments.Get(request.AssessmentId); }
                 catch (KeyNotFoundException) { assessment = null; }
+                catch (ArgumentException exception)
+                {
+                    return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
+                        "stats.no-assessment", FailureReason.InvalidArgument, exception.Message,
+                        Fact(("assessmentId", request.AssessmentId))));
+                }
                 if (assessment is not null && !assessment.Kind.IsStoredKind(AssessmentKind.ObjectTiming))
                     return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
                         "stats.wrong-kind", FailureReason.InvalidArgument,

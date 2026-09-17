@@ -53,6 +53,19 @@ public sealed class RetainedInvocationRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void MissingIdentityNamesTheRetainedField()
+    {
+        using var database = OpenDatabase("missing-identity.fwdata");
+        var repository = new RetainedInvocationRepository(database);
+
+        var exception = Assert.Throws<InvalidDataException>(() => repository.Record(
+            NewRetained("missing-identity") with { ProjectKey = "" },
+            [NewAssessment("missing-identity-assessment", "ParseTime", "missing-identity")]));
+
+        Assert.Contains(nameof(RetainedInvocationRecord.ProjectKey), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MemberInsertFailureRollsBackEarlierMembersAndAggregate()
     {
         using var database = OpenDatabase("atomic-insert.fwdata");

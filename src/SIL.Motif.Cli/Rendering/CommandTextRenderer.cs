@@ -192,6 +192,8 @@ public static class CommandTextRenderer
         text.AppendLine(response.ReusedExistingBytes
             ? "  The saved bytes matched the current Baseline; nothing new was written."
             : "  A new Baseline was captured and published.");
+        if (response.RegistrationFailure is not null)
+            text.AppendLine("  Warning: " + response.RegistrationFailure.Message);
         return text.ToString();
     }
 

@@ -92,7 +92,7 @@ public sealed class CommandCatalogParityTests
         "handoff.invocation-required", "handoff.parser-unavailable", "handoff.source-unavailable",
         "handoff.statistics-unavailable", "handoff.text-not-found",
         "job.already-finished", "job.dry-run-incomplete", "job.invalid-id", "job.invalid-move",
-        "job.move-target-not-found", "job.no-assessments", "job.not-finished", "job.not-found",
+        "job.assessments-inconsistent", "job.move-target-not-found", "job.no-assessments", "job.not-finished", "job.not-found",
         "job.wait-timeout",
         "operation.cascading-delete", "operation.invalid-dependency", "operation.invalid-id",
         "operation.invalid-target", "operation.invalid-writing-system",

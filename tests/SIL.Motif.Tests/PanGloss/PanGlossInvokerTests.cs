@@ -40,6 +40,46 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task ChildEnvironmentDoesNotReceiveAnUnrelatedParentVariable()
+    {
+        var grammar = Project("minimal-environment");
+        var sentinel = "MOTIF_TEST_SENTINEL_" + Guid.NewGuid().ToString("N");
+        var previous = Environment.GetEnvironmentVariable(sentinel);
+        Environment.SetEnvironmentVariable(sentinel, "must-not-cross-process-boundary");
+        try
+        {
+            using var invoker = Invoker();
+            var outcome = await invoker.RunAsync(
+                new PanGlossRequest.Stats(grammar, Path.Combine(_root, "cache"), []),
+                "test:minimal-environment", CancellationToken.None);
+
+            Assert.IsType<PanGlossOutcome.Completed>(outcome);
+            Assert.DoesNotContain(sentinel, EnvironmentNames(grammar));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(sentinel, previous);
+        }
+    }
+
+    [Fact]
+    public async Task AWrongDescriptionRefusesBeforeTheFirstBatch()
+    {
+        var project = Project("wrong-description");
+        var executable = FakeParser.CopyWithWrongDescription(Path.Combine(_root, "wrong-parser"));
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)),
+            "test:wrong-description", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Contains(executable, unavailable.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(project)!, "_pangloss-argv.json")));
+    }
+
+    [Fact]
     public async Task Stats_ANonZeroExitIsRefusedWithItsStandardError()
     {
         var grammar = Project("stats-fail");
@@ -369,6 +409,10 @@ public sealed class PanGlossInvokerTests : IDisposable
     private static string[] Argv(string besidePath) =>
         JsonSerializer.Deserialize<string[]>(
             File.ReadAllText(Path.Combine(Path.GetDirectoryName(besidePath)!, "_pangloss-argv.json")))!;
+
+    private static string[] EnvironmentNames(string besidePath) =>
+        JsonSerializer.Deserialize<string[]>(
+            File.ReadAllText(Path.Combine(Path.GetDirectoryName(besidePath)!, "_pangloss-environment.json")))!;
 
     private static async Task AssertStoppedTicking(string heartbeat)
     {

@@ -62,6 +62,12 @@ public static class ReportCommands
                     "report.assessment-not-found", FailureReason.NotFound, exception.Message,
                     Fact(("assessmentId", request.AssessmentId))));
             }
+            catch (ArgumentException exception)
+            {
+                return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                    "report.assessment-not-found", FailureReason.InvalidArgument, exception.Message,
+                    Fact(("assessmentId", request.AssessmentId))));
+            }
 
             IReportProducer producer;
             try

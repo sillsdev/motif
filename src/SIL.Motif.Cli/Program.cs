@@ -18,6 +18,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Store;
 using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
@@ -787,8 +788,8 @@ static string ResolveCommandName(string[] invocation)
     var first = invocation[0];
     if (first is "config" or "baseline" or "jobs")
     {
-        if (invocation.Length > 1)
-            return first + " " + invocation[1];
+        var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;
+        if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;
         return first;
     }
 
@@ -919,12 +920,12 @@ static void RecordKnownProject(string fwDataPath)
         if (!File.Exists(fullPath)) return;
 
         var project = new ProjectLocator(fullPath, Path.GetFileNameWithoutExtension(fullPath));
-        using var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot());
-        new KnownProjectRegistry(machine).Record(
-            ProjectWorkspaceKey.Compute(project), project.FullFwDataPath, DateTimeOffset.UtcNow);
+        var failure = KnownProjectRecorder.TryRecord(RunnerOptions.ResolveRoot(), project);
+        if (failure is not null)
+            Console.Error.WriteLine("warning: this project could not be recorded for background work (" +
+                failure.Message + "). Queued jobs will not run until it is.");
     }
-    catch (Exception exception) when (
-        exception is ArgumentException or IOException or InvalidDataException or NotSupportedException)
+    catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
     {
         // Reported, not thrown: an unregistered project is never swept, so silence would hide lost work.
         Console.Error.WriteLine("warning: this project could not be recorded for background work (" +

@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Store;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Baselines;
@@ -118,12 +119,12 @@ public static class BaselineCaptureCommand
                         Fact(("projectPath", request.ProjectPath))));
                 }
 
-                RecordKnownProject(managedRoot, project);
+                var registrationFailure = RecordKnownProject(managedRoot, project);
 
                 var held = File.Exists(project.FullFwDataPath + ".lock");
                 return CommandOutcome<BaselineCaptureResponse>.Success(new BaselineCaptureResponse(
                     publication.Token, publication.FwDataPath, copy.SourceLastWriteUtc, held,
-                    publication.ReusedExistingBytes));
+                    publication.ReusedExistingBytes, registrationFailure));
             }
             finally
             {
@@ -134,11 +135,14 @@ public static class BaselineCaptureCommand
     }
 
     // A captured project is one the machine knows about, whichever front end captured it (ADR 0043).
-    private static void RecordKnownProject(string managedRoot, ProjectLocator project)
+    private static KnownProjectRegistrationFailure? RecordKnownProject(string managedRoot, ProjectLocator project)
     {
-        using var machine = MachineDatabase.Open(managedRoot);
-        new KnownProjectRegistry(machine).Record(
-            ProjectWorkspaceKey.Compute(project), project.FullFwDataPath, DateTimeOffset.UtcNow);
+        var failure = KnownProjectRecorder.TryRecord(managedRoot, project);
+        return failure is null
+            ? null
+            : new KnownProjectRegistrationFailure(
+                "The capture succeeded and was published, but machine-store registration failed for '" +
+                Path.Combine(Path.GetFullPath(managedRoot), "motif.db") + "': " + failure.Message);
     }
 
     private static void DeleteDirectory(string path)

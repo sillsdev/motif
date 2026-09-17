@@ -29,6 +29,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 
     private readonly string? _executable;
     private readonly MachinePanGlossQueue _queue;
+    private readonly SemaphoreSlim _surfaceGate = new(1, 1);
+    private readonly Dictionary<string, PanGlossSurfaceCheck> _surfaceChecks = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Locates the executable and competes for the machine's real parser slots.</summary>
     public PanGlossInvoker() : this(PanGlossExecutable.TryLocate(), new MachinePanGlossQueue())
@@ -57,7 +59,17 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         try
         {
             return await _queue.RunAsync(label,
-                (cpuJob, token) => LaunchAsync(_executable, request, cpuJob.AssignProcess, cap, token),
+                async (cpuJob, token) =>
+                {
+                    if (request is PanGlossRequest.Batch or PanGlossRequest.Stats)
+                    {
+                        var surface = await VerifySurfaceAsync(_executable, cpuJob.AssignProcess, token)
+                            .ConfigureAwait(false);
+                        if (!surface.IsValid) return new PanGlossOutcome.Unavailable(surface.Message);
+                    }
+                    return await LaunchAsync(_executable, request, cpuJob.AssignProcess, cap, token)
+                        .ConfigureAwait(false);
+                },
                 cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -67,7 +79,28 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     }
 
     /// <summary>Releases the queue; a run still in flight completes or cancels on its own terms.</summary>
-    public void Dispose() => _queue.Dispose();
+    public void Dispose()
+    {
+        _queue.Dispose();
+    }
+
+    private async Task<PanGlossSurfaceCheck> VerifySurfaceAsync(
+        string executable, Action<Process> contain, CancellationToken cancellationToken)
+    {
+        var path = Path.GetFullPath(executable);
+        await _surfaceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_surfaceChecks.TryGetValue(path, out var cached)) return cached;
+            var check = await PanGlossSurface.CheckAsync(path, contain, cancellationToken).ConfigureAwait(false);
+            _surfaceChecks[path] = check;
+            return check;
+        }
+        finally
+        {
+            _surfaceGate.Release();
+        }
+    }
 
     /// <summary>
     /// The launch itself, after admission: <paramref name="contain"/> receives the process the instant it
@@ -121,6 +154,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
+            PanGlossProcessEnvironment.Configure(startInfo);
             request.AddArguments(startInfo, scratch);
 
             Process? process;

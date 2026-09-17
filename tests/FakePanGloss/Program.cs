@@ -30,6 +30,8 @@ internal static class Program
     /// </summary>
     internal const string ArgvFileName = "_pangloss-argv.json";
 
+    internal const string EnvironmentFileName = "_pangloss-environment.json";
+
     private sealed record Flag(string Name, bool TakesValue);
 
     private sealed record Command(string Name, string[] Positionals, Flag[] Flags, Func<string[], int> Run);
@@ -59,6 +61,12 @@ internal static class Program
 
     private static int RunDescription(string[] args)
     {
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-wrong-description")))
+        {
+            Console.WriteLine(JsonSerializer.Serialize(new { schema_version = 999, binary = "not-pangloss" }));
+            return 0;
+        }
+
         Console.WriteLine(JsonSerializer.Serialize(new
         {
             schema_version = 1,
@@ -225,10 +233,13 @@ internal static class Program
 
     private static void RecordArgv(string? directory, string[] args)
     {
-        if (Environment.GetEnvironmentVariable("FAKE_PANGLOSS_ARGV_PATH") is { Length: > 0 } destination)
-            File.WriteAllText(destination, JsonSerializer.Serialize(args));
+        var serialized = JsonSerializer.Serialize(args);
         if (directory is null) return;
-        File.WriteAllText(Path.Combine(directory, ArgvFileName), JsonSerializer.Serialize(args));
+        File.WriteAllText(Path.Combine(directory, ArgvFileName), serialized);
+        File.WriteAllText(Path.Combine(directory, EnvironmentFileName), JsonSerializer.Serialize(
+            Environment.GetEnvironmentVariables().Keys.Cast<string>().OrderBy(name => name)));
+        if (Path.GetFileName(directory).StartsWith("motif-stats-replay-", StringComparison.Ordinal))
+            File.WriteAllText(Path.Combine(Path.GetTempPath(), ArgvFileName), serialized);
     }
 
     private static string GrammarJson(Behaviour behaviour) =>

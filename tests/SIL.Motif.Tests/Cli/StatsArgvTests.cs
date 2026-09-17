@@ -241,7 +241,8 @@ public sealed class StatsArgvTests : IDisposable
             CreateNoWindow = true,
         };
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;
-        start.Environment["FAKE_PANGLOSS_ARGV_PATH"] = Path.Combine(_workerRoot, ArgvFileName);
+        start.Environment["TEMP"] = _workerRoot;
+        start.Environment["TMP"] = _workerRoot;
         start.Environment[PanGlossExecutable.PathVariable] = FakeParser.ExecutablePath;
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.

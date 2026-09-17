@@ -101,12 +101,7 @@ public sealed class RetainedInvocationRepository
 
     private void ValidateAggregate(RetainedInvocationRecord retained, IReadOnlyList<NewAssessmentRecord> assessments)
     {
-        if (string.IsNullOrWhiteSpace(retained.InvocationId) || string.IsNullOrWhiteSpace(retained.ProjectKey) ||
-            string.IsNullOrWhiteSpace(retained.BaselineRootDirectory) ||
-            string.IsNullOrWhiteSpace(retained.BaselineFwDataPath) || string.IsNullOrWhiteSpace(retained.Assessor) ||
-            string.IsNullOrWhiteSpace(retained.ScopeJson) || string.IsNullOrWhiteSpace(retained.ScopeDigest) ||
-            string.IsNullOrWhiteSpace(retained.ArtifactInvocationId))
-            throw new InvalidDataException("A retained invocation is missing required identity or provenance.");
+        ValidateIdentity(retained, "is missing required identity or provenance");
         ArgumentNullException.ThrowIfNull(retained.BaselineToken);
         ArgumentNullException.ThrowIfNull(retained.Selection);
         ArgumentNullException.ThrowIfNull(retained.Members);
@@ -141,12 +136,8 @@ public sealed class RetainedInvocationRepository
     private void ValidateStoredAggregate(
         RetainedInvocationRecord retained, IReadOnlyList<string> expectedKinds)
     {
-        if (string.IsNullOrWhiteSpace(retained.InvocationId) || string.IsNullOrWhiteSpace(retained.ProjectKey) ||
-            string.IsNullOrWhiteSpace(retained.BaselineRootDirectory) ||
-            string.IsNullOrWhiteSpace(retained.BaselineFwDataPath) || string.IsNullOrWhiteSpace(retained.Assessor) ||
-            string.IsNullOrWhiteSpace(retained.ScopeJson) || string.IsNullOrWhiteSpace(retained.ScopeDigest) ||
-            string.IsNullOrWhiteSpace(retained.ArtifactInvocationId) ||
-            retained.ArtifactInvocationId != retained.InvocationId)
+        ValidateIdentity(retained, "has invalid identity or provenance");
+        if (retained.ArtifactInvocationId != retained.InvocationId)
             throw new InvalidDataException("A retained invocation has invalid identity or provenance.");
         if (!expectedKinds.SequenceEqual(
                 retained.Members.Select(member => member.Kind), StringComparer.Ordinal) ||
@@ -168,6 +159,26 @@ public sealed class RetainedInvocationRepository
                 throw new InvalidDataException("A retained invocation's members disagree about shared evidence.");
         }
         ValidateRetrySource(retained.Selection, baselineJson);
+    }
+
+    private static void ValidateIdentity(RetainedInvocationRecord retained, string failure)
+    {
+        var fields = new (string Name, string? Value)[]
+        {
+            (nameof(RetainedInvocationRecord.InvocationId), retained.InvocationId),
+            (nameof(RetainedInvocationRecord.ProjectKey), retained.ProjectKey),
+            (nameof(RetainedInvocationRecord.BaselineRootDirectory), retained.BaselineRootDirectory),
+            (nameof(RetainedInvocationRecord.BaselineFwDataPath), retained.BaselineFwDataPath),
+            (nameof(RetainedInvocationRecord.Assessor), retained.Assessor),
+            (nameof(RetainedInvocationRecord.ScopeJson), retained.ScopeJson),
+            (nameof(RetainedInvocationRecord.ScopeDigest), retained.ScopeDigest),
+            (nameof(RetainedInvocationRecord.ArtifactInvocationId), retained.ArtifactInvocationId),
+        };
+        foreach (var (name, value) in fields)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new InvalidDataException($"A retained invocation field '{name}' {failure}.");
+        }
     }
 
     private static void ValidateMember(

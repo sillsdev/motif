@@ -8,4 +8,8 @@ public sealed record BaselineCaptureResponse(
     string FwDataPath,
     DateTimeOffset SourceLastWriteUtc,
     bool FieldWorksHeldProject,
-    bool ReusedExistingBytes);
+    bool ReusedExistingBytes,
+    KnownProjectRegistrationFailure? RegistrationFailure = null);
+
+/// <summary>Explains why a published Baseline could not be added to the machine's known-project registry.</summary>
+public sealed record KnownProjectRegistrationFailure(string Message);

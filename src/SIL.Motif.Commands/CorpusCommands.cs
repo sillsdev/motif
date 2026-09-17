@@ -148,7 +148,7 @@ public static class CorpusCommands
             return projection is not null
                 ? CommandOutcome<CorpusDetailProjection>.Success(projection)
                 : CommandOutcome<CorpusDetailProjection>.Refused(new Refusal(
-                    "corpus.not-found", FailureReason.InvalidArgument,
+                    "corpus.not-found", FailureReason.NotFound,
                     $"No corpus '{request.CorpusId}' in store.", Fact(("corpusId", request.CorpusId))));
         });
     }

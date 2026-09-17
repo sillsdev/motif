@@ -130,6 +130,25 @@ public sealed class BaselineCaptureCommandTests : IDisposable
     }
 
     [Fact]
+    public void PublishedCaptureSucceedsWhenMachineRegistrationCannotOpen()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var managedRoot = NewManagedRoot();
+        using var machineDb = new FileStream(
+            Path.Combine(managedRoot, "motif.db"), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+
+        var outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
+
+        Assert.True(outcome.Succeeded);
+        Assert.NotNull(outcome.Value!.Token);
+        Assert.NotNull(outcome.Value.RegistrationFailure);
+        Assert.Contains("capture succeeded", outcome.Value.RegistrationFailure!.Message, StringComparison.Ordinal);
+        Assert.Contains("motif.db", outcome.Value.RegistrationFailure!.Message, StringComparison.Ordinal);
+        var rendered = CommandTextRenderer.Render(outcome, asJson: false);
+        Assert.Contains("Warning:", rendered.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HumanRenderingNamesTheFreshnessAsOfFieldWorksLastSave()
     {
         var fwDataPath = _pristine.CopyProjectFile();
