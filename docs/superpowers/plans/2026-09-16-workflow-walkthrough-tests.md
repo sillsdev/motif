@@ -166,6 +166,19 @@ After the seven lanes, the owner asked for a two-axis code review, an architectu
 | `51189f6` | The test project's analyzer warnings retired without weakening a test. | Quality review; about a hundred warnings, six of them blocking-call patterns. |
 | `7f8173f` | A parser process that already exited is no longer a containment failure. | The new `--describe` check exits in milliseconds and could finish before its CPU-job assignment; the integrated gate caught it once, with the message added the day before saying `exited=True`. |
 
+### Test-coverage review, 2026-09-17
+
+A two-axis review of the tests themselves followed. Standards found four hard problems (two tolerant branches that let a test pass without observing what it names, a machine-wide process scan presented as a test-local fact, a false doc claim) and six judgement calls; Spec found four behaviours with no test (the parser gate's own refusal paths, the retained-export mismatch, the CLI's required-flag rule, the unclassified skips) and two tests that under-proved their line. Two Luna lanes fixed all of it:
+
+| Commit | What |
+| --- | --- |
+| `44dab85` | A holding decorator over the command client lets a walkthrough observe a run in flight and cancel it on purpose; no `if (State == Running)` remains. The parser-process check is scoped to this test's parser and window and says what it cannot tell apart. Deadlines two minutes, not ten; shared hash and cleanup helpers; the false cap claim removed; one three-in-one test is three. |
+| `c5e0324` | **A defect the deterministic test found on its first run**: the command client handed the cancellation token to `Task.Run`, so a cancellation landing before the command started surfaced as an exception rather than the typed cancelled refusal — R8's "cancellation while queued". The token now goes only to the command, pinned by `CommandClientCancellationTests`. |
+| `c0ea156` | The parser gate tested through its own interface for every refusal it can make, each in its own copy of the fake parser; `handoff.invocation-mismatch` produced by a test for the first time; the CLI's "one of `--invocation` or `--no-assess`" rule pinned. |
+| `a9f73c4` | The twenty skips classified in the release plan's R11. |
+
+**Gate at `c0ea156`:** with the real parser, 1,780 passed, 20 skipped, zero failures in 4 m 59 s; without it, 1,764 passed, 36 skipped, zero failures in 3 m 12 s.
+
 **Gate on the integrated tip `7f8173f`:** with the real parser, 1,766 passed, 20 skipped, zero failures in 6 m 0 s; without it, 1,750 passed, 36 skipped, zero failures in 3 m 24 s. Both spawned-CLI capture tests that had failed once with a Busy exit under load now report the CLI's own output when they fail, so the next occurrence names its refusal.
 
 **What the parallel Luna implementers could and could not do.** Four ran at once in Herdr panes, one per worktree, at xhigh effort. None could run `./build.ps1` or restore packages inside the Codex sandbox, so every lane's "green" was the primary's run, not the agent's; the store lane's first handback had a compile error (a helper placed in an assembly that cannot see its dependency) and nine test failures the agent had never seen, fixed on a second pass from the exact messages. The lesson stands from the first wave: a lane's self-report is a claim to verify, and the verification is the primary's.
