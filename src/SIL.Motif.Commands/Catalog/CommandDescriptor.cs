@@ -5,10 +5,10 @@ namespace SIL.Motif.Commands.Catalog;
 /// <summary>Whether a command belongs to the public release or the developer-only surface.</summary>
 public enum CommandSurface
 {
-    /// <summary>The command is available in the Motif 0.1.0 release.</summary>
+    /// <summary>Shown by released help and dispatched by every front end without developer opt-in.</summary>
     Released,
 
-    /// <summary>The command is available only when developer commands are explicitly enabled.</summary>
+    /// <summary>Shown and dispatched only when developer commands are explicitly enabled.</summary>
     Developer,
 }
 

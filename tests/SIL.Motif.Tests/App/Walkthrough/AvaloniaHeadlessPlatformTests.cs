@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Automation;
 using Avalonia.Input.Platform;
+using CommunityToolkit.Mvvm.Input;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -51,5 +53,31 @@ public sealed class AvaloniaHeadlessPlatformTests
 
         Assert.Null(failure);
         Assert.Equal("clipboard smoke text", copied);
+    }
+
+    [Fact]
+    public void WalkthroughClickInvokesAButtonCommandThroughHeadlessInput()
+    {
+        var count = 0;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            using var walkthrough = new WalkthroughWindow(Path.GetTempPath(), "unused.fwdata");
+            var scrollViewer = Assert.IsType<ScrollViewer>(walkthrough.Window.Content);
+            var root = Assert.IsType<StackPanel>(scrollViewer.Content);
+            var probe = new Button
+            {
+                Content = "Count probe",
+                Command = new RelayCommand(() => count++),
+            };
+            AutomationProperties.SetName(probe, "Count probe");
+            root.Children.Insert(0, probe);
+
+            walkthrough.Show();
+            walkthrough.Click("Count probe");
+
+            Assert.Equal(1, count);
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(5));
     }
 }

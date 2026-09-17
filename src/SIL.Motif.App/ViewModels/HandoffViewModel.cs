@@ -32,6 +32,9 @@ public enum HandoffRunState
     Refused,
 }
 
+/// <summary>One repository document linked from the completed Handoff.</summary>
+public sealed record ReferenceDocument(string DisplayPath, Uri Url, string AccessibleName);
+
 /// <summary>
 /// Writes an AI Handoff folder for the current Selection, following the same run-state-machine shape as
 /// <see cref="AssessViewModel"/>: one <see cref="RunCommand"/> owns one <see cref="CancellationTokenSource"/>,
@@ -51,10 +54,6 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
     private const string StarterPromptResourceName = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
 
     public const string RepositoryUrlBase = "https://github.com/sillsdev/motif";
-    private const string GrammarReferenceDocumentPath = "docs/handoff/grammar-format.md";
-    private const string FlexTextReferenceDocumentPath = "docs/handoff/flextext-json-format.md";
-    private const string HcMechanicsReferenceDocumentPath = "docs/handoff/hc-mechanics.md";
-    private const string ReaderReferenceDocumentPath = "src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py";
     public const string IntroductionText =
         "Drag these files into your chat (Claude, ChatGPT or Gemini). Start with instructions.md. " +
         "This folder is as of FieldWorks' last save. Reference documents in Motif's repository are " +
@@ -67,6 +66,23 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
     private readonly IHandoffFolderPicker _folderPicker;
     private readonly IFileDragSource _dragSource;
     private CancellationTokenSource? _cts;
+
+    /// <summary>Repository documents that explain the files in a completed Handoff.</summary>
+    public IReadOnlyList<ReferenceDocument> ReferenceDocuments { get; } =
+    [
+        new("docs/handoff/grammar-format.md",
+            new Uri($"{RepositoryUrlBase}/blob/main/docs/handoff/grammar-format.md"),
+            "Open grammar format reference"),
+        new("docs/handoff/flextext-json-format.md",
+            new Uri($"{RepositoryUrlBase}/blob/main/docs/handoff/flextext-json-format.md"),
+            "Open FlexText JSON format reference"),
+        new("docs/handoff/hc-mechanics.md",
+            new Uri($"{RepositoryUrlBase}/blob/main/docs/handoff/hc-mechanics.md"),
+            "Open HC mechanics reference"),
+        new("src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py",
+            new Uri($"{RepositoryUrlBase}/blob/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py"),
+            "Open read_handoff.py reference"),
+    ];
 
     public HandoffViewModel(
         ICommandClient commandClient, SelectionViewModel selection,
@@ -106,22 +122,6 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
         "(OpenAI, Anthropic, or another provider).";
 
     public string Introduction => IntroductionText;
-
-    public string GrammarReferencePath => GrammarReferenceDocumentPath;
-
-    public string FlexTextReferencePath => FlexTextReferenceDocumentPath;
-
-    public string HcMechanicsReferencePath => HcMechanicsReferenceDocumentPath;
-
-    public string ReaderReferencePath => ReaderReferenceDocumentPath;
-
-    public string GrammarReferenceUrl => ReferenceUrl(GrammarReferenceDocumentPath);
-
-    public string FlexTextReferenceUrl => ReferenceUrl(FlexTextReferenceDocumentPath);
-
-    public string HcMechanicsReferenceUrl => ReferenceUrl(HcMechanicsReferenceDocumentPath);
-
-    public string ReaderReferenceUrl => ReferenceUrl(ReaderReferenceDocumentPath);
 
     /// <summary>The project this Handoff publishes, or <c>null</c> before a project has been chosen.</summary>
     [ObservableProperty]
@@ -301,8 +301,6 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
-
-    private static string ReferenceUrl(string relativePath) => $"{RepositoryUrlBase}/blob/main/{relativePath}";
 
     // Extracts one sentence instead of composing a new one, so wording never drifts from instructions.md.
 }

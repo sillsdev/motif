@@ -58,24 +58,19 @@ public static class ProjectStoreCommand
         }
         catch (IOException exception)
         {
-            return CommandOutcome<T>.Refused(
-                new Refusal("project.store-io", FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)));
+            return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.store-io", fwDataPath));
         }
         catch (UnauthorizedAccessException exception)
         {
-            return CommandOutcome<T>.Refused(
-                new Refusal("project.store-io", FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)));
+            return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.store-io", fwDataPath));
         }
         catch (NotSupportedException exception)
         {
-            // A schema this build cannot open. Retrying will not help; updating Motif will.
-            return CommandOutcome<T>.Refused(
-                new Refusal("store.unsupported", FailureReason.Refused, exception.Message, Fact(fwDataPath)));
+            return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.store-io", fwDataPath));
         }
         catch (InvalidDataException exception)
         {
-            return CommandOutcome<T>.Refused(new Refusal(
-                "store.inconsistent", FailureReason.StoreInconsistent, exception.Message, Fact(fwDataPath)));
+            return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.store-io", fwDataPath));
         }
 
         using (database)
@@ -86,23 +81,19 @@ public static class ProjectStoreCommand
             }
             catch (IOException exception)
             {
-                return CommandOutcome<T>.Refused(new Refusal(
-                    "project.operation-io", FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)));
+                return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
             }
             catch (UnauthorizedAccessException exception)
             {
-                return CommandOutcome<T>.Refused(new Refusal(
-                    "project.operation-io", FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)));
+                return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
             }
             catch (NotSupportedException exception)
             {
-                return CommandOutcome<T>.Refused(
-                    new Refusal("store.unsupported", FailureReason.Refused, exception.Message, Fact(fwDataPath)));
+                return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
             }
             catch (InvalidDataException exception)
             {
-                return CommandOutcome<T>.Refused(new Refusal(
-                    "store.inconsistent", FailureReason.StoreInconsistent, exception.Message, Fact(fwDataPath)));
+                return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
             }
         }
     }
@@ -114,6 +105,18 @@ public static class ProjectStoreCommand
         string.IsNullOrWhiteSpace(exception.Message)
             ? "The project could not access required storage."
             : exception.Message;
+
+    private static Refusal StoreRefusal(Exception exception, string ioCode, string fwDataPath) => exception switch
+    {
+        IOException or UnauthorizedAccessException => new Refusal(
+            ioCode, FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)),
+        NotSupportedException => new Refusal(
+            "store.unsupported", FailureReason.Refused, exception.Message, Fact(fwDataPath)),
+        InvalidDataException => new Refusal(
+            "store.inconsistent", FailureReason.StoreInconsistent, exception.Message, Fact(fwDataPath)),
+        _ => throw new ArgumentOutOfRangeException(nameof(exception), exception.GetType(),
+            "The exception is not a recognized project-store failure."),
+    };
 
     /// A malformed product version must not stop a verb; the compatibility floor it feeds is a lower bound.
     private static Version ParseVersion(string productVersion) =>

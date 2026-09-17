@@ -214,8 +214,8 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("instructions.md", text, StringComparison.Ordinal);
 
                 var links = panel.GetLogicalDescendants().OfType<HyperlinkButton>().ToList();
-                Assert.Equal(4, links.Count);
-                Assert.Contains(links, link => link.NavigateUri == new Uri(workspace.Handoff.GrammarReferenceUrl));
+                Assert.Equal(workspace.Handoff.ReferenceDocuments.Count, links.Count);
+                Assert.Contains(links, link => link.NavigateUri == workspace.Handoff.ReferenceDocuments[0].Url);
                 Assert.All(links, link => Assert.False(
                     string.IsNullOrWhiteSpace(AutomationProperties.GetName(link))));
 

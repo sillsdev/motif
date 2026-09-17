@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
@@ -72,26 +73,27 @@ public sealed class WalkthroughWindow : IDisposable
     public void Click(string accessibleName)
     {
         var button = Find<Button>(accessibleName);
-        Assert.True(button.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
-        button.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Return });
-        Pump();
+        ClickControl(button, accessibleName);
     }
 
     public void Check(string content)
     {
         var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
             Equals(control.Content, content));
-        Assert.True(checkBox.IsEffectivelyEnabled, $"'{content}' is not effectively enabled.");
-        checkBox.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Return });
-        Pump();
+        var before = checkBox.IsChecked;
+        ClickControl(checkBox, content);
+        Assert.NotEqual(before, checkBox.IsChecked);
     }
 
     public void Type(string accessibleName, string text)
     {
         var textBox = Find<TextBox>(accessibleName);
-        Assert.True(textBox.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
-        textBox.Text = text;
+        ClickControl(textBox, accessibleName);
+        Assert.True(textBox.IsFocused, $"'{accessibleName}' did not receive focus from the click.");
+        Window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.None, null);
+        Window.KeyTextInput(text);
         Pump();
+        Assert.Equal(text, textBox.Text);
     }
 
     public void SelectKnownProject(string projectPath)
@@ -99,7 +101,17 @@ public sealed class WalkthroughWindow : IDisposable
         var comboBox = Find<ComboBox>("Known projects");
         var project = Workspace.Project.KnownProjects.Single(known =>
             string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
-        comboBox.SelectedItem = project;
+        ClickControl(comboBox, "Known projects");
+        Assert.True(comboBox.IsDropDownOpen, "The Known projects picker did not open from a mouse click.");
+        for (var attempts = 0; attempts <= comboBox.ItemCount; attempts++)
+        {
+            if (Equals(comboBox.SelectedItem, project)) break;
+            Window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
+            Pump();
+        }
+
+        Assert.Equal(project, comboBox.SelectedItem);
+        Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
         Pump();
     }
 
@@ -146,6 +158,21 @@ public sealed class WalkthroughWindow : IDisposable
     }
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();
+
+    private void ClickControl(Control control, string accessibleName)
+    {
+        Assert.True(control.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
+        control.BringIntoView();
+        Pump();
+        Window.UpdateLayout();
+        var bounds = control.Bounds;
+        var point = control.TranslatePoint(new Point(bounds.Width / 2, bounds.Height / 2), Window)
+            ?? throw new InvalidOperationException($"'{accessibleName}' is not positioned in the walkthrough window.");
+        Window.MouseMove(point);
+        Window.MouseDown(point, MouseButton.Left);
+        Window.MouseUp(point, MouseButton.Left);
+        Pump();
+    }
 
     private sealed class ScriptedProjectPicker(string path) : IProjectPicker
     {

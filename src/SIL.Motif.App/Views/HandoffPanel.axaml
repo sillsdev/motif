@@ -73,20 +73,20 @@
         </DockPanel>
 
         <TextBlock Text="Reference documents" FontWeight="Bold" />
-        <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="4">
-          <HyperlinkButton Content="{Binding Handoff.GrammarReferencePath}"
-                           NavigateUri="{Binding Handoff.GrammarReferenceUrl}"
-                           AutomationProperties.Name="Open grammar format reference" />
-          <HyperlinkButton Content="{Binding Handoff.FlexTextReferencePath}"
-                           NavigateUri="{Binding Handoff.FlexTextReferenceUrl}"
-                           AutomationProperties.Name="Open FlexText JSON format reference" />
-          <HyperlinkButton Content="{Binding Handoff.HcMechanicsReferencePath}"
-                           NavigateUri="{Binding Handoff.HcMechanicsReferenceUrl}"
-                           AutomationProperties.Name="Open HC mechanics reference" />
-          <HyperlinkButton Content="{Binding Handoff.ReaderReferencePath}"
-                           NavigateUri="{Binding Handoff.ReaderReferenceUrl}"
-                           AutomationProperties.Name="Open read_handoff.py reference" />
-        </WrapPanel>
+        <ItemsControl ItemsSource="{Binding Handoff.ReferenceDocuments}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="4" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ReferenceDocument">
+              <HyperlinkButton Content="{Binding DisplayPath}"
+                               NavigateUri="{Binding Url}"
+                               AutomationProperties.Name="{Binding AccessibleName}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
         <Border BorderBrush="#82909E"
                 BorderThickness="1"

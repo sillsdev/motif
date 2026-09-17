@@ -36,7 +36,7 @@ namespace SIL.Motif.Commands.Assess;
 /// <para>
 /// This command never wakes the durable job runner — it captures, measures, and returns within one call,
 /// the same synchronous shape <see cref="BaselineCaptureCommand"/> already established. A cancelled run
-/// records nothing: <see cref="Run"/> only calls a repository recording seam after the Assessor has already
+/// records nothing: <see cref="RetainedInvocationRepository.Record"/> is called only after the Assessor has already
 /// returned, so a cancellation raised while it is still running never leaves a partial Assessment behind.
 /// </para>
 /// <para>
