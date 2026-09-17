@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
 using Avalonia.Controls;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Tests.TestFixtures;
@@ -88,8 +87,8 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                 SeededProject.TextTitle,
                 Assert.Single(restartedWalkthrough.Workspace.Selection.Texts).Title);
 
-            Assert.Equal(firstProject.SourceSha256, Sha256(firstProject.FwDataPath));
-            Assert.Equal(secondProject.SourceSha256, Sha256(secondProject.FwDataPath));
+            Assert.Equal(firstProject.SourceSha256, WalkthroughStoreAssertions.Sha256(firstProject.FwDataPath));
+            Assert.Equal(secondProject.SourceSha256, WalkthroughStoreAssertions.Sha256(secondProject.FwDataPath));
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
@@ -107,5 +106,4 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
         walkthrough.Click("Browse for a FieldWorks project file");
     }
 
-    private static string Sha256(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 }

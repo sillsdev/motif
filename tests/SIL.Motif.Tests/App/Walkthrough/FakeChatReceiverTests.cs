@@ -40,14 +40,31 @@ public sealed class FakeChatReceiverTests
     }
 
     [Fact]
-    public void DropRefusesDirectoriesBasenameCollisionsAndConfiguredCaps()
+    public void DropRefusesDirectories()
+    {
+        using var files = new TemporaryFiles();
+        var receiver = new FakeChatReceiver();
+
+        Assert.Throws<InvalidOperationException>(() => receiver.Drop([files.DirectoryPath]));
+    }
+
+    [Fact]
+    public void DropRefusesBasenameCollisions()
+    {
+        using var files = new TemporaryFiles();
+        var receiver = new FakeChatReceiver();
+
+        receiver.Drop([files.Write("same.txt", "one")]);
+        Assert.Throws<InvalidOperationException>(() => receiver.Drop([files.Write("same.txt", "two")]));
+    }
+
+    [Fact]
+    public void DropRefusesConfiguredCaps()
     {
         using var files = new TemporaryFiles();
         var receiver = new FakeChatReceiver(maxFileCount: 1, maxFileSizeBytes: 3);
 
-        Assert.Throws<InvalidOperationException>(() => receiver.Drop([files.DirectoryPath]));
         receiver.Drop([files.Write("same.txt", "one")]);
-        Assert.Throws<InvalidOperationException>(() => receiver.Drop([files.Write("same.txt", "two")]));
         Assert.Throws<InvalidOperationException>(() => receiver.Drop([files.Write("other.txt", "two")]));
         var sizeLimitedReceiver = new FakeChatReceiver(maxFileSizeBytes: 3);
         Assert.Throws<InvalidOperationException>(() => sizeLimitedReceiver.Drop([files.Write("large.txt", "four")]));
@@ -66,6 +83,6 @@ public sealed class FakeChatReceiverTests
             return path;
         }
 
-        public void Dispose() => Directory.Delete(_root, recursive: true);
+        public void Dispose() => WalkthroughTestFiles.DeleteDirectory(_root);
     }
 }

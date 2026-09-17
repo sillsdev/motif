@@ -6,7 +6,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 /// <summary>
 /// Models a fresh chat receiving flat file uploads and one pasted prompt, with the current OpenAI
-/// FAQ allowances of 80 files per three hours and 512 MiB per file; it also documents a two-million-token text cap.
+/// FAQ allowances of 80 files per three hours and 512 MiB per file.
 /// </summary>
 public sealed class FakeChatReceiver
 {
@@ -33,7 +33,7 @@ public sealed class FakeChatReceiver
     public string? PastedText { get; private set; }
 
     /// <summary>Refuses a directory because a file uploader receives files, not a folder tree, pinned by
-    /// `DropRefusesDirectoriesBasenameCollisionsAndConfiguredCaps`.</summary>
+    /// `DropRefusesDirectories`.</summary>
     public void Drop(IReadOnlyList<string> paths)
     {
         ArgumentNullException.ThrowIfNull(paths);

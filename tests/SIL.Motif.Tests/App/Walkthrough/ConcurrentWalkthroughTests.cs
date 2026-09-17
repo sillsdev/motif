@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
@@ -18,7 +19,7 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
         var managedRoot = Path.Combine(
             Path.GetTempPath(), "SIL.Motif.Conformance.Concurrent.Managed", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(managedRoot);
-        var deadline = Stopwatch.GetTimestamp() + 600 * Stopwatch.Frequency;
+        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
 
         try
         {
@@ -26,8 +27,10 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
             {
                 using var firstWalkthrough = new WalkthroughWindow(
                     managedRoot, firstProject.FwDataPath);
+                var secondClient = new HoldingCommandClient(
+                    new CommandClient(managedRoot), holdAssess: true);
                 using var secondWalkthrough = new WalkthroughWindow(
-                    managedRoot, secondProject.FwDataPath);
+                    managedRoot, secondProject.FwDataPath, commandClient: secondClient);
                 WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(firstWalkthrough, deadline);
                 WalkthroughSteps.ChooseProjectAndCaptureBaseline(secondWalkthrough, deadline);
                 secondWalkthrough.Check(SeededProject.TextTitle);
@@ -39,7 +42,7 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
 
                 var slowStarted = Stopwatch.GetTimestamp();
                 WalkthroughSteps.StartSlowAssessment(firstWalkthrough, deadline);
-                WalkthroughSteps.StartAssessmentOverPastedWords(secondWalkthrough, deadline);
+                WalkthroughSteps.StartAssessmentOverPastedWords(secondWalkthrough, deadline, secondClient);
                 firstWalkthrough.WaitUntil(
                     () => firstWalkthrough.Workspace.Assess.State == RunState.Completed,
                     WalkthroughSteps.Remaining(deadline), "the conformance Assessment did not complete beside the second");
@@ -59,9 +62,7 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
         }
         finally
         {
-            try { if (Directory.Exists(managedRoot)) Directory.Delete(managedRoot, recursive: true); }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
+            WalkthroughTestFiles.DeleteDirectory(managedRoot);
         }
     }
 }

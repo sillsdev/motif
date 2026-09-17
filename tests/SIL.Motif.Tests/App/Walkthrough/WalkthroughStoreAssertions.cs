@@ -4,6 +4,7 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
+using System.Security.Cryptography;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -24,6 +25,8 @@ internal static class WalkthroughStoreAssertions
         var invocation = Assert.Single(ListInvocations(fwDataPath));
         Assert.Equal(token, invocation.BaselineToken);
     }
+
+    internal static string Sha256(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 
     private static ProjectLocator Locator(string fwDataPath) => new(
         Path.GetFullPath(fwDataPath), Path.GetFileNameWithoutExtension(fwDataPath));

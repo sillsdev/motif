@@ -16,7 +16,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
     {
         using var firstProject = new ConformanceProject();
         using var secondProject = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 600 * Stopwatch.Frequency;
+        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

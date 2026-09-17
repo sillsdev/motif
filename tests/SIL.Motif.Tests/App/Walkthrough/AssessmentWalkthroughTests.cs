@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
@@ -76,11 +75,10 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
                 ProjectWorkspaceKey.Compute(projectLocator));
             Assert.Single(invocations);
             Assert.Equal(result.InvocationId, walkthrough.Workspace.Handoff.InvocationId);
-            Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
+            Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
 
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
 
-    private static string Sha256(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 }

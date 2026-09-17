@@ -18,13 +18,14 @@ public sealed class WalkthroughWindow : IDisposable
     private readonly ScriptedFolderPicker _folderPicker;
     private readonly RecordingDragSource _dragSource;
 
-    public WalkthroughWindow(string managedRoot, string projectPath, string? folderPath = null)
+    public WalkthroughWindow(
+        string managedRoot, string projectPath, string? folderPath = null, ICommandClient? commandClient = null)
     {
         _projectPicker = new ScriptedProjectPicker(projectPath);
         _folderPicker = new ScriptedFolderPicker(folderPath);
         _dragSource = new RecordingDragSource();
 
-        var commandClient = new CommandClient(managedRoot);
+        commandClient ??= new CommandClient(managedRoot);
         var selection = new SelectionViewModel(commandClient);
         Workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(commandClient, _projectPicker),
@@ -133,7 +134,7 @@ public sealed class WalkthroughWindow : IDisposable
         while (!predicate() && Stopwatch.GetTimestamp() < deadline)
         {
             Pump();
-            Thread.Yield();
+            Thread.Sleep(15);
         }
 
         Pump();

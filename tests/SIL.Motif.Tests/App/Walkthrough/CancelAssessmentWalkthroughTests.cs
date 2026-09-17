@@ -14,7 +14,7 @@ public sealed class CancelAssessmentWalkthroughTests
     public void CancellingAssessmentLeavesNoInvocationAndAllowsARerun()
     {
         using var project = new ConformanceProject();
-        var deadline = Stopwatch.GetTimestamp() + 600 * Stopwatch.Frequency;
+        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

@@ -97,22 +97,23 @@ internal static class WalkthroughSteps
             Remaining(deadline), "the slow Assessment did not reach its cancellable Running state");
     }
 
-    internal static void StartAssessmentOverPastedWords(WalkthroughWindow walkthrough, long deadline)
+    internal static void StartAssessmentOverPastedWords(
+        WalkthroughWindow walkthrough, long deadline, HoldingCommandClient? holdingClient = null)
     {
         walkthrough.Type("Pasted words", "motifa\nmotifb\nmofita");
         Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
         walkthrough.Click("Run the Assessment");
 
-        // Three seeded words can finish inside the click's own pump; only a run still going shows the disabled hosts.
-        if (walkthrough.Workspace.Assess.State == RunState.Running)
+        if (holdingClient is not null)
         {
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Running,
+                Remaining(deadline), "the held Assessment did not reach Running");
             Assert.False(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
             Assert.False(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
             Assert.True(walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled);
-            return;
+            holdingClient.ReleaseAssess();
         }
-
-        Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
     }
 }

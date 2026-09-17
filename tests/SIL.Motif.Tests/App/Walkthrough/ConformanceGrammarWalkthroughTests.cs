@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
 using System.Text.Json;
 using Avalonia.Controls;
 using SIL.Motif.App.ViewModels;
@@ -112,16 +111,14 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 Assert.Equal(retainedBeforeHandoff.Count,
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 output.WriteLine("grammar.json lexical entry count JSON path: $.lexicon.entries.");
-                Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
+                Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
 
                 return Task.CompletedTask;
             }, WalkthroughSteps.Remaining(deadline));
         }
         finally
         {
-            try { if (Directory.Exists(handoffParent)) Directory.Delete(handoffParent, recursive: true); }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
+            WalkthroughTestFiles.DeleteDirectory(handoffParent);
         }
     }
 
@@ -145,5 +142,4 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
         Assert.Single(assessment.Morphology!.Analyses);
     }
 
-    private static string Sha256(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 }

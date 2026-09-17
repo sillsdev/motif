@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
 using Avalonia.Controls;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -25,7 +24,7 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
             Assert.False(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
             Assert.Equal("1 text", walkthrough.Workspace.Selection.SummaryText);
 
-            Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
+            Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
             var databasePath = Path.Combine(
                 Path.GetDirectoryName(project.FwDataPath)!,
                 Path.GetFileNameWithoutExtension(project.FwDataPath) + ".motif.db");
@@ -37,5 +36,4 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
         }, WalkthroughSteps.Remaining(deadline));
     }
 
-    private static string Sha256(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 }

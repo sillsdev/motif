@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
 using Avalonia.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Tests.Parser;
@@ -63,16 +62,15 @@ public sealed class HandoffWalkthroughTests(PristineProjectFixture pristine)
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 walkthrough.DragAllFiles();
                 Assert.All(handoff.Files, file => Assert.Contains(file.FullPath, walkthrough.DraggedPaths));
-                Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
+                Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
 
                 return Task.CompletedTask;
             }, WalkthroughSteps.Remaining(deadline));
         }
         finally
         {
-            if (Directory.Exists(handoffParent)) Directory.Delete(handoffParent, recursive: true);
+            WalkthroughTestFiles.DeleteDirectory(handoffParent);
         }
     }
 
-    private static string Sha256(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 }

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
 using Xunit;
 using Xunit.Abstractions;
 using Avalonia.Input.Platform;
@@ -55,14 +54,13 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 Assert.Equal(assessmentInvocationId, walkthrough.Workspace.Handoff.Result!.InvocationId);
                 Assert.Equal(retainedBeforeHandoff.Count,
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
-                Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
+                Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
             }, WalkthroughSteps.Remaining(deadline));
         }
         finally
         {
-            if (Directory.Exists(handoffParent)) Directory.Delete(handoffParent, recursive: true);
+            WalkthroughTestFiles.DeleteDirectory(handoffParent);
         }
     }
 
-    private static string Sha256(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 }
