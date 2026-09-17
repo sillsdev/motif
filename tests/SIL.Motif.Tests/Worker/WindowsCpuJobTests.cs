@@ -47,6 +47,22 @@ public sealed class WindowsCpuJobTests
         Assert.Equal(UIntPtr.Zero, limits.ProcessMemoryLimit);
     }
 
+    // A short parser call such as --describe can finish before it is assigned; that is not a failure.
+    [RequiresWindowsFact]
+    public void AssignProcess_IgnoresAProcessThatAlreadyExited()
+    {
+        using var job = new WindowsCpuJob();
+        using var process = Process.Start(new ProcessStartInfo("cmd.exe", "/c exit 0")
+        {
+            UseShellExecute = false, CreateNoWindow = true,
+        })!;
+        process.WaitForExit();
+
+        var exception = Record.Exception(() => job.AssignProcess(process));
+
+        Assert.Null(exception);
+    }
+
     [RequiresWindowsFact]
     public void AssignProcess_ContainsTheWholeProcessTreeAcrossItsLifetime()
     {

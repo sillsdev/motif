@@ -38,7 +38,7 @@ public sealed class BaselineCaptureArgvTests : IDisposable
 
         var result = Run($"baseline capture \"{fwDataPath}\"");
 
-        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.ExitCode == 0, $"exit {result.ExitCode}: {result.Error}{result.Output}");
         Assert.Equal(string.Empty, result.Error);
         Assert.Contains("as of FieldWorks' last save", result.Output, StringComparison.Ordinal);
     }
@@ -50,7 +50,7 @@ public sealed class BaselineCaptureArgvTests : IDisposable
 
         var result = Run($"baseline capture \"{fwDataPath}\" --json");
 
-        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.ExitCode == 0, $"exit {result.ExitCode}: {result.Error}{result.Output}");
         var response = ProjectionJson.Deserialize<BaselineCaptureResponse>(result.Output);
         Assert.NotNull(response);
         Assert.False(response!.ReusedExistingBytes);
