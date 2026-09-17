@@ -18,10 +18,12 @@ rejected there too — and anything they let through is not a CI surprise.
 **`./test.ps1` needs no project or checkout from outside this repo.** Every LibLCM project the suite
 exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture` and seeded by
 `SeededProject` (`tests/SIL.Motif.Tests/TestFixtures/`) — no vendored sample project, no sibling
-FieldWorks checkout. The one external dependency that remains is the `pangloss` executable, a separate
-Rust build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails —
-when it is not built, since "the parser is not built here" is an ordinary state of a developer's
-machine.
+FieldWorks checkout. The conformance fixture under `tests/SIL.Motif.Tests/TestFixtures/Conformance/**`
+is a synthetic FieldWorks project copied from Machine's conformance suite; the `SOURCE.md` beside it
+records its provenance. The `.gitignore` carves that fixture out of the project-data rules by the
+owner's ruling. The one external dependency that remains is the `pangloss` executable, a separate Rust
+build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails — when
+it is not built, since "the parser is not built here" is an ordinary state of a developer's machine.
 
 ## Building against a local libpalaso (opt-in, off by default)
 

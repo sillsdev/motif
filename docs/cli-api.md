@@ -19,20 +19,86 @@ lives in `Project.motif.db` beside the project, and a resident job runner picks 
 motif <verb> [--project <path.fwdata>] [--store <dir>] [flags] [--json]
 ```
 
-Thirty-six verbs exist today, in six groups:
+The command catalog contains 47 descriptors. The table below is regenerated from
+`CommandCatalog.All` and `CliVerbCatalog.All`; the usage cells preserve the catalogued strings used by
+`UsageLineFor(...)` and the CLI dispatch. `dry-run --wait`, `trial --wait`, and `report --list-kinds`
+are selector descriptors with no independent usage line, so they repeat the parent invocation line
+that dispatches them.
 
-| Group | Verbs |
-| --- | --- |
-| Project and evidence | `open`, `analyses`, `log` |
-| Proposal authoring | `new`, `add-set-gloss`, `add-delete-lexeme-form`, `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `remove-operations`, `split`, `duplicate` |
-| Proposal lifecycle | `label`, `comment`, `finalize`, `discard-draft`, `reopen`, `defer`, `approve`, `reject`, `supersede` |
-| Inspection | `list`, `show`, `dry-run`, `apply` |
-| Corpus | `add-corpus`, `add-document`, `add-corpus-bundle`, `corpora`, `show-corpus` |
-| Jobs | `baseline-refresh`, `jobs show`, `jobs list --all`, `jobs cancel`, `jobs requeue`, `jobs move` |
+| Catalog descriptor | Surface | Usage line |
+| --- | --- | --- |
+| `open` | Released | `open <fwdata> [--json]` |
+| `analyses` | Released | `analyses --project <fwdata> [--json]`<br>`analyses --project <fwdata> --assessment <assessmentId> --current-selection-sha256 <sha256> --current-grammar-sha256 <sha256> [--json]` |
+| `new` | Developer | `new --project <fwdata> --draft <name> [--label <text>]` |
+| `add-set-gloss` | Developer | `add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> --text <text> [--depends-on <opId>[,<opId>...]]` |
+| `add-delete-lexeme-form` | Developer | `add-delete-lexeme-form --project <fwdata> --draft <name> --target <canonicalId>` |
+| `compose-author-lexeme-form` | Developer | `compose-author-lexeme-form --draft <name> --project <fwdata> --intent '{"entry":...,"morphType":...,"ws":...,"text":...}'` |
+| `compose-author-feature-structure` | Developer | `compose-author-feature-structure --draft <name> --project <fwdata> --intent '{"msa":...}'` |
+| `promote-gloss` | Developer | `promote-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> --text <text> --corpus <corpusId> [--document <docId>]` |
+| `label` | Developer | `label --project <fwdata> --draft <name> <text>` |
+| `comment` | Developer | `comment --project <fwdata> --draft <name> <text>` |
+| `finalize` | Developer | `finalize --project <fwdata> --draft <name>` |
+| `discard-draft` | Developer | `discard-draft --project <fwdata> --draft <name>` |
+| `reopen` | Developer | `reopen --project <fwdata> --draft <name> <proposalId>` |
+| `duplicate` | Developer | `duplicate --project <fwdata> --draft <newName> <proposalId>` |
+| `remove-operations` | Developer | `remove-operations --project <fwdata> --draft <name> <operationId> [<operationId>...] [--force]` |
+| `split` | Developer | `split --project <fwdata> <proposalId> <draftName>=<opId>[,<opId>...] [<draftName>=<opId>[,<opId>...] ...] [--force]` |
+| `defer` | Developer | `defer --project <fwdata> <proposalId>` |
+| `reject` | Developer | `reject --project <fwdata> <proposalId>` |
+| `supersede` | Developer | `supersede --project <fwdata> <proposalId> <supersededByProposalId>` |
+| `list` | Developer | `list --project <fwdata> [--json]` |
+| `show` | Developer | `show --project <fwdata> <proposalId> [--json]` |
+| `apply` | Developer | `apply <proposalId> --project <fwdata> --user <name> [--force] [--json]` |
+| `log` | Developer | `log --project <fwdata> [--json]` |
+| `config show` | Released | `Usage: motif config show --project <fwdata> [--json]` |
+| `report` | Released | `Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]` |
+| `report --list-kinds` | Released | `Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]` |
+| `compare` | Released | `Usage: motif compare --project <fwdata> --from <assessmentId> --to <assessmentId> [--json]` |
+| `baseline capture` | Released | `baseline capture <project> [--json]` |
+| `assess` | Released | `assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] [--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--json]` |
+| `stats` | Released | `stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]` |
+| `handoff` | Released | `handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]` |
+| `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |
+| `add-document` | Released | `add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> [--title <text>] [--licence <text>] [--may-derive true\|false] [--licence-basis <text>]` |
+| `add-corpus-bundle` | Released | `add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)` |
+| `corpora` | Released | `corpora --project <fwdata> [--json]` |
+| `show-corpus` | Released | `show-corpus --project <fwdata> <corpusId> [--json]` |
+| `baseline-refresh` | Released | `baseline-refresh --project <fwdata>` |
+| `dry-run` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
+| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
+| `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--wait] [--json]` |
+| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--wait] [--json]` |
+| `jobs show` | Released | `jobs show <jobId> --project <fwdata> [--json]` |
+| `jobs assessments` | Released | `jobs assessments <jobId> --project <fwdata> [--json]` |
+| `jobs list` | Released | `jobs list --all [--json]` |
+| `jobs cancel` | Released | `jobs cancel <jobId> --project <fwdata> [--json]` |
+| `jobs requeue` | Released | `jobs requeue <jobId> --project <fwdata> [--json]` |
+| `jobs move` | Released | `motif jobs move <jobId> --project <fwdata> (--before <jobId> \| --to-top \| --to-bottom) [--json]` |
 
 `jobs list --all` is the one verb that does not take `--project`: it spans every project this
 installation has been pointed at, resolved through the machine store's `KnownProjects` rather than
 through the working directory.
+
+## Released and developer surfaces
+
+The Released surface contains `open`, `analyses`, `config show`, `report`, `report --list-kinds`,
+`compare`, `baseline capture`, `assess`, `stats`, `handoff`, `add-corpus`, `add-document`,
+`add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
+`jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
+
+The Developer surface contains `new`, `add-set-gloss`, `add-delete-lexeme-form`,
+`compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
+`finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
+`supersede`, `list`, `show`, `apply`, `log`, `dry-run`, `dry-run --wait`, `trial`, and `trial --wait`.
+
+`CommandSurfacePolicy.IsAvailable` exposes a command when its surface is Released or when developer
+commands are enabled. Set `MOTIF_DEVELOPER_COMMANDS=1` exactly to re-enable the Developer commands for
+both help and dispatch; other values leave them unavailable.
+
+`FailureEnvelope.ExitCodeFor` maps `InvalidArgument` to `1`, `NotFound` and `Refused` to `2`, `Busy` to
+`3`, and `StoreInconsistent` to `4`; its fallback also returns `4`. A `Cancelled` reason is being added
+by another lane and is intended to map to the same code as `Refused`; it is not part of the current
+mapping yet.
 
 The verb set is expected to churn. [ADR 0021](adr/0021-cli-is-the-full-surface-layer-1-churns.md) settles
 that churn is welcome in this surface and forbidden in the hashed operation vocabulary and canonical JSON

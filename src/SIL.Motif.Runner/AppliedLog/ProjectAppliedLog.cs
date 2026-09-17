@@ -8,8 +8,8 @@ namespace SIL.Motif.Runner.AppliedLog;
 
 /// <summary>
 /// Reads and writes Motif's applied-change log, stored as <c>CmResource</c> entries in
-/// <c>LangProject.LexDbOA.ResourcesOC</c>: <c>Version</c> (a <c>Guid</c>) holds the stable
-/// <c>changeSetId</c>, the field used for identity matching, and <c>Name</c> holds a packed,
+/// <c>LangProject.LexDbOA.ResourcesOC</c>: <c>Version</c> (a <c>Guid</c>) holds the stable stored
+/// Proposal identity in <c>changeSetId</c>, the field used for identity matching, and <c>Name</c> holds a packed,
 /// single-line provenance string of the form
 /// <c>Motif|&lt;format&gt;|&lt;timestamp&gt;|&lt;user&gt;|&lt;intentDigest&gt;|&lt;description&gt;</c>.
 /// </summary>

@@ -234,6 +234,7 @@ public sealed class HandoffAssetsTests
         var statisticsDir = Directory.CreateDirectory(Path.Combine(root, "statistics")).FullName;
 
         ExtractEmbeddedAsset(InstructionsResource, Path.Combine(root, "instructions.md"));
+        ExtractEmbeddedAsset(StarterPromptResource, Path.Combine(root, "starter-prompt.md"));
         ExtractEmbeddedAsset(RecipesResource, Path.Combine(root, "recipes.md"));
         var scriptPath = Path.Combine(root, "read_handoff.py");
         ExtractEmbeddedAsset(ReadHandoffPyResource, scriptPath);

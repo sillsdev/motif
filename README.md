@@ -42,7 +42,9 @@ calling exactly one CLI verb.
 | --- | --- |
 | `motif` CLI | `net10.0`. Batch, automation, and AI-agent use; the complete front end — every catalogued command has a verb — and owns the live project while it holds the FieldWorks lock |
 | `SIL.Motif.App` | `net10.0` Avalonia, in this repository. Ships its first window — Baseline, Selection, Assessment, statistics, Handoff. Calls the catalog in-process; never parses `--json` and never holds a live project model |
-| FieldWorks integration | One CLI call, `motif apply --all-pending`, run at a save boundary with the project released. FieldWorks reloads afterward, the FLExBridge pattern |
+| FieldWorks integration | Intended, but not yet built: at a save boundary with the project released, FieldWorks will call Motif's apply surface for pending work and reload afterward. The current `apply` verb takes one Proposal id; see [AGENTS.md's compatibility target](AGENTS.md#compatibility-targets) for the planned integration shape |
+
+The command catalog has 47 descriptors: 22 are on the Released surface and 25 are Developer commands. The latter are hidden from help and refused at dispatch unless `MOTIF_DEVELOPER_COMMANDS=1` is set; see [the CLI API contract](docs/cli-api.md) for the complete split, usage lines, and exit-code rules.
 
 Everything else is infrastructure or a dependency — a job runner installed with Motif takes work that must
 outlive a command, PanGloss is a subprocess, and `SIL.Motif.Contract` is a published contract that a separate
@@ -112,7 +114,7 @@ deterministically rather than merged optimistically.
 | **Motif application** | The Avalonia surface a linguist keeps open beside FieldWorks — project selection, Proposal review, the Handoff. Calls the command catalog in-process; never parses `--json` and never holds a live project model |
 | **Motif job runner** | Durable jobs, Baselines, per-project queues, PanGloss limits, cleanup, and reconciliation. Claims work from the paired database; nothing asks it anything |
 | **LibLCM / FieldWorks** | Model invariants, project lifecycle, unit of work, persistence, and compatibility validation. **The only authority on Motif's path** |
-| **FieldWorks integration** | Calls exactly one verb, `motif apply --all-pending`, at a save boundary with the project released, and reloads afterward — the pattern FLExBridge already uses. Lists, shows, trials, and authors nothing |
+| **FieldWorks integration** | Intended, but not yet built: at a save boundary with the project released, FieldWorks will call Motif's apply surface for pending work and reload afterward. The current `apply` verb takes one Proposal id; see [AGENTS.md's compatibility target](AGENTS.md#compatibility-targets). Lists, shows, trials, and authors nothing |
 | **Lexbox** | Optional future sharing of Proposal and Receipt records |
 | **PanGloss** | Immutable parser Assessments and parser facts; Motif policy decides what evidence is required |
 
@@ -408,4 +410,4 @@ digests are reproducible across languages.
 The project was previously named LCAtom. That name is retired. The repository, product, namespaces,
 solution, and CLI are now **Motif**:
 
-<https://github.com/johnml1135/motif>
+<https://github.com/sillsdev/motif>

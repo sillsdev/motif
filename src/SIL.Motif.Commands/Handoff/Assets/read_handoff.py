@@ -43,6 +43,7 @@ STATISTICS_GROUPS = ("word", "object", "allomorph", "morpheme", "group", "never-
 
 REQUIRED_TOP_LEVEL_FILES = (
     "instructions.md",
+    "starter-prompt.md",
     "grammar.json",
     "selection.txt",
     "statistics.md",
