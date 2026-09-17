@@ -40,8 +40,9 @@ internal sealed class FakeAssessor : IAssessor
         }
 
         var evidence = CaptureEvidence?.Invoke(scope, exportedCandidate);
+        var grammarSourceSha256 = evidence?.SourceBytesSha256 ?? FakeGrammarSha256;
         IReadOnlyList<ProducedAssessment> produced = wanted
-            .Select(kind => new ProducedAssessment(kind, FakeGrammarSha256, "sha256:" + new string('0', 64),
+            .Select(kind => new ProducedAssessment(kind, grammarSourceSha256, "sha256:" + new string('0', 64),
                 "sha256:" + new string('0', 64), "fake-model", "fake-pipeline", 0,
                 _rawFor?.Invoke(kind) ?? new AssessmentRaw.WordMeasurements([])) { Invocation = evidence })
             .ToList();

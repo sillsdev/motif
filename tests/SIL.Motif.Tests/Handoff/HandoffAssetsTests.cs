@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Handoff;
 using Xunit;
 
 namespace SIL.Motif.Tests.Handoff;
@@ -63,6 +64,7 @@ public sealed class HandoffAssetsTests
     private static readonly Assembly CommandsAssembly = typeof(CommandCatalog).Assembly;
 
     private const string InstructionsResource = "SIL.Motif.Commands.Handoff.Assets.instructions.md";
+    private const string StarterPromptResource = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
     private const string RecipesResource = "SIL.Motif.Commands.Handoff.Assets.recipes.md";
     private const string ReadHandoffPyResource = "SIL.Motif.Commands.Handoff.Assets.read_handoff.py";
     private const string GrammarFormatResource = "SIL.Motif.Commands.Handoff.Reference.grammar-format.md";
@@ -71,15 +73,15 @@ public sealed class HandoffAssetsTests
 
     private static readonly string[] ExpectedRawGitHubUrls =
     [
-        "https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/grammar-format.md",
-        "https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/flextext-json-format.md",
-        "https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/hc-mechanics.md",
-        "https://raw.githubusercontent.com/johnml1135/motif/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py",
+        "https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/grammar-format.md",
+        "https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/flextext-json-format.md",
+        "https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/hc-mechanics.md",
+        "https://raw.githubusercontent.com/sillsdev/motif/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py",
     ];
 
     private static readonly string[] AllTextAssetResources =
     [
-        InstructionsResource, RecipesResource, ReadHandoffPyResource,
+        InstructionsResource, StarterPromptResource, RecipesResource, ReadHandoffPyResource,
         GrammarFormatResource, FlexTextFormatResource, HcMechanicsResource,
     ];
 
@@ -99,6 +101,24 @@ public sealed class HandoffAssetsTests
 
         foreach (var url in ExpectedRawGitHubUrls)
             Assert.Contains(url, instructions);
+    }
+
+    [Fact]
+    public void StarterPromptListsTheWriterFileShapes()
+    {
+        var prompt = ReadEmbeddedText(StarterPromptResource);
+
+        Assert.Contains("`instructions.md`", prompt, StringComparison.Ordinal);
+        Assert.Contains($"`statistics/*.jsonl`", prompt, StringComparison.Ordinal);
+        Assert.Contains($"`texts/*.flextext.json`", prompt, StringComparison.Ordinal);
+        Assert.Contains($"`reference/*.md`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`recipes.md`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`read_handoff.py`", prompt, StringComparison.Ordinal);
+        Assert.Contains("convenience", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("answered from the files directly", prompt, StringComparison.Ordinal);
+        foreach (var group in HandoffWriter.StatisticsGroups)
+            Assert.Contains(group, prompt, StringComparison.Ordinal);
+        Assert.Equal(HandoffWriter.StatisticsGroups.Count, HandoffWriter.StatisticsGroups.Distinct().Count());
     }
 
     [Theory]
@@ -214,6 +234,7 @@ public sealed class HandoffAssetsTests
         var statisticsDir = Directory.CreateDirectory(Path.Combine(root, "statistics")).FullName;
 
         ExtractEmbeddedAsset(InstructionsResource, Path.Combine(root, "instructions.md"));
+        ExtractEmbeddedAsset(StarterPromptResource, Path.Combine(root, "starter-prompt.md"));
         ExtractEmbeddedAsset(RecipesResource, Path.Combine(root, "recipes.md"));
         var scriptPath = Path.Combine(root, "read_handoff.py");
         ExtractEmbeddedAsset(ReadHandoffPyResource, scriptPath);

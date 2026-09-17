@@ -146,18 +146,18 @@ public static class CliVerbCatalog
             new[]
             {
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
-                "[--retry-failed] [--retry-slower-than <ms>] [--json]",
+                "[--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--json]",
             }),
 
         new CliVerbDescriptor(
             "Assess", "stats", "stats",
-            new[] { "stats <project> [--proposal <id>] [--json] [-- <pangloss stats options>]" }),
+            new[] { "stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]" }),
 
         new CliVerbDescriptor(
             "Handoff", "handoff", "handoff",
             new[]
             {
-                "handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]",
+                "handoff <project> --out <folder> --invocation <id> [--flextext] [--no-assess] [--json]",
             }),
 
         new CliVerbDescriptor(

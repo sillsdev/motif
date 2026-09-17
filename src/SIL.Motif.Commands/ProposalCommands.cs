@@ -501,7 +501,7 @@ public static partial class ProposalCommands
                 if (corpus is null)
                 {
                     return CommandOutcome<PromoteGlossAddedResponse>.Refused(new Refusal(
-                        "corpus.not-found", FailureReason.Refused,
+                        "corpus.not-found", FailureReason.NotFound,
                         $"Corpus '{request.CorpusId}' not found. Run 'corpora' to see what is there.",
                         Fact(("corpusId", request.CorpusId))));
                 }
@@ -768,10 +768,16 @@ public static partial class ProposalCommands
                     "proposal.inconsistent", FailureReason.StoreInconsistent, ex.Message,
                     Fact(("proposalId", id))));
             }
+            catch (ArgumentException ex)
+            {
+                return CommandOutcome<ReopenedResponse>.Refused(new Refusal(
+                    "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
+                    Fact(("proposalId", id))));
+            }
             catch (Exception ex)
             {
                 return CommandOutcome<ReopenedResponse>.Refused(new Refusal(
-                    "proposal.invalid-id", FailureReason.Refused, ex.Message, Fact(("proposalId", id))));
+                    "proposal.inconsistent", FailureReason.Refused, ex.Message, Fact(("proposalId", id))));
             }
         });
     }
@@ -852,6 +858,18 @@ public static partial class ProposalCommands
 
                 return CommandOutcome<ProposalStatusChangedResponse>.Success(
                     new ProposalStatusChangedResponse(id, newStatus, relatedProposalId));
+            }
+            catch (ArgumentException ex)
+            {
+                return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
+                    "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
+                    Fact(("proposalId", proposalId))));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
+                    "proposal.not-found", FailureReason.NotFound, ex.Message,
+                    Fact(("proposalId", proposalId))));
             }
             catch (Exception ex)
             {
@@ -969,10 +987,16 @@ public static partial class ProposalCommands
                     "proposal.inconsistent", FailureReason.StoreInconsistent, ex.Message,
                     Fact(("proposalId", sourceId))));
             }
+            catch (ArgumentException ex)
+            {
+                return CommandOutcome<DuplicatedResponse>.Refused(new Refusal(
+                    "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
+                    Fact(("proposalId", sourceId))));
+            }
             catch (Exception ex)
             {
                 return CommandOutcome<DuplicatedResponse>.Refused(new Refusal(
-                    "proposal.invalid-id", FailureReason.Refused, ex.Message, Fact(("proposalId", sourceId))));
+                    "proposal.inconsistent", FailureReason.Refused, ex.Message, Fact(("proposalId", sourceId))));
             }
         });
     }
@@ -1268,10 +1292,16 @@ public static partial class ProposalCommands
                     "proposal.inconsistent", FailureReason.StoreInconsistent, ex.Message,
                     Fact(("sourceProposalId", sourceId))));
             }
+            catch (ArgumentException ex)
+            {
+                return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
+                    "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
+                    Fact(("sourceProposalId", sourceId))));
+            }
             catch (Exception ex)
             {
                 return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
-                    "proposal.invalid-id", FailureReason.Refused, ex.Message,
+                    "proposal.inconsistent", FailureReason.Refused, ex.Message,
                     Fact(("sourceProposalId", sourceId))));
             }
         });
@@ -1462,6 +1492,18 @@ public static partial class ProposalCommands
             // Distinct from the rollback wording below: the mutation may already be durable.
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                 "apply.reconciliation-needed", ReasonFor(ex), ex.Message, Fact(("proposalId", proposalId))));
+        }
+        catch (ArgumentException ex)
+        {
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
+                Fact(("proposalId", proposalId))));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                "proposal.not-found", FailureReason.NotFound, ex.Message,
+                Fact(("proposalId", proposalId))));
         }
         catch (Exception ex)
         {

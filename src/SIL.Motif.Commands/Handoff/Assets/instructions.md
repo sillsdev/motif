@@ -20,6 +20,7 @@ save is not here.
 | `selection.txt` | The exact list of words a parse run was asked to attempt, and where each one came from |
 | `statistics.md` | The parser's own summary of that run — coverage, timing, what completed and what did not |
 | `statistics/<group>.jsonl` | One file per statistics group — `word`, `object`, `allomorph`, `morpheme`, `group`, `never-fires` — for a question the summary alone cannot answer |
+| `starter-prompt.md` | A ready-to-use prompt that gives an AI agent the folder's purpose, constraints, and first reading steps |
 | `read_handoff.py` | One script, Python standard library only, that loads and validates the files above, indexes the grammar by GUID, and answers the common questions in `recipes.md` without you writing the plumbing yourself |
 | `recipes.md` | Worked examples: how to ask for each of the above, with the call and the question it answers |
 | `reference/` | Three reference documents this repository maintains and copies into every Handoff: the grammar format, the Texts format, and how the parser itself behaves |
@@ -51,10 +52,10 @@ public repository and copied into every Handoff folder at the moment it is writt
 question turns on a detail that seems to have changed since, the current version is always at:
 
 ```
-https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/grammar-format.md
-https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/flextext-json-format.md
-https://raw.githubusercontent.com/johnml1135/motif/main/docs/handoff/hc-mechanics.md
-https://raw.githubusercontent.com/johnml1135/motif/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py
+https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/grammar-format.md
+https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/flextext-json-format.md
+https://raw.githubusercontent.com/sillsdev/motif/main/docs/handoff/hc-mechanics.md
+https://raw.githubusercontent.com/sillsdev/motif/main/src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py
 ```
 
 Use the raw URL, not the ordinary GitHub page — it returns plain text with no site chrome, which

@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -6,7 +7,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Contract.Commands;
-using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
@@ -50,11 +50,6 @@ public static class StatsCommand
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(request.ForwardedArguments);
 
-        if (request.AssessmentId is not null && request.ProposalId is not null)
-            return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
-                "stats.selector-conflict", FailureReason.InvalidArgument,
-                "Select an exact Assessment or a Proposal, not both."));
-
         if (request.Output == StatsOutputKind.JsonRows && ContainsFormatFlag(request.ForwardedArguments))
         {
             return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
@@ -62,18 +57,6 @@ public static class StatsCommand
                 "The forwarded arguments already name --format; --json requests PanGloss's JSONL rows " +
                 "itself and cannot override the caller's own choice.",
                 Fact(("projectPath", request.ProjectPath))));
-        }
-
-        CanonicalId? proposalId = null;
-        if (request.ProposalId is not null)
-        {
-            if (!CanonicalId.TryParse(request.ProposalId, out var parsed, out var idError))
-            {
-                return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
-                    "stats.invalid-proposal-id", FailureReason.InvalidArgument, idError!,
-                    Fact(("proposalId", request.ProposalId))));
-            }
-            proposalId = parsed;
         }
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
@@ -86,6 +69,12 @@ public static class StatsCommand
             {
                 try { assessment = assessments.Get(request.AssessmentId); }
                 catch (KeyNotFoundException) { assessment = null; }
+                catch (ArgumentException exception)
+                {
+                    return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
+                        "stats.no-assessment", FailureReason.InvalidArgument, exception.Message,
+                        Fact(("assessmentId", request.AssessmentId))));
+                }
                 if (assessment is not null && !assessment.Kind.IsStoredKind(AssessmentKind.ObjectTiming))
                     return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
                         "stats.wrong-kind", FailureReason.InvalidArgument,
@@ -93,10 +82,7 @@ public static class StatsCommand
             }
             else
             {
-                var candidates = proposalId is null
-                    ? assessments.ListBaselineAssessments(kind)
-                    : assessments.ListByProposal(proposalId.Value)
-                        .Where(record => record.Kind.IsStoredKind(AssessmentKind.ObjectTiming)).ToList();
+                var candidates = assessments.ListBaselineAssessments(kind);
                 assessment = candidates.Count > 0 ? candidates[^1] : null;
             }
             if (assessment is null)
@@ -105,11 +91,8 @@ public static class StatsCommand
                     "stats.no-assessment", FailureReason.NotFound,
                     request.AssessmentId is not null
                         ? $"Assessment '{request.AssessmentId}' was not found."
-                        : proposalId is null
-                        ? "No Baseline Assessment with per-object statistics has been recorded yet; run " +
-                          "`motif assess` first."
-                        : $"No Trial Assessment with per-object statistics has been recorded for Proposal " +
-                          $"'{request.ProposalId}'.",
+                        : "No Baseline Assessment with per-object statistics has been recorded yet; run " +
+                          "`motif assess` first.",
                     Fact(("projectPath", request.ProjectPath))));
             }
 
@@ -208,6 +191,5 @@ public static class StatsCommand
         return dictionary;
     }
 
-    private static string ResolveProductVersion() =>
-        typeof(StatsCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 }

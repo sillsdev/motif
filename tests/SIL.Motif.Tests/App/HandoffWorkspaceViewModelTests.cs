@@ -33,6 +33,7 @@ public sealed class HandoffWorkspaceViewModelTests
         new BaselineCaptureResponse(NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false),
         new SelectionProjection([], []), ["assessment/time", "assessment/one"], summary)
     {
+        InvocationId = "invocation/one",
         Measurements = [new ProducedAssessmentReference("assessment/time", "ParseTime", "run"),
             new ProducedAssessmentReference("assessment/one", "ObjectTiming", "run")],
     };
@@ -100,6 +101,52 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.Equal(ProjectPath, workspace.Handoff.ProjectPath);
     }
 
+    // The owner's first run: a project chosen before any capture showed no Texts even after Refresh succeeded.
+    [Fact]
+    public async Task RefreshingAProjectThatHadNoBaselineLoadsItsTextsWithoutChoosingItAgain()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+        projectPicker.PathToReturn = ProjectPath;
+        await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        Assert.Equal("Capture a Baseline to choose Texts.", workspace.Selection.TextsEmptyMessage);
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal("Alpha", Assert.Single(workspace.Selection.Texts).Title);
+        Assert.Null(workspace.Selection.TextsEmptyMessage);
+        Assert.Equal(ProjectPath, Assert.Single(fake.ListTextsRequests.Skip(1)).ProjectPath);
+        Assert.False(workspace.RerunOffered);
+    }
+
+    [Fact]
+    public async Task RefreshingKeepsACheckedTextTheNewBaselineStillHoldsAndTheOtherSources()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        var goneId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(TextId, "Alpha"), new TextChoiceSummary(goneId, "Gone")], HasBaseline: true));
+        projectPicker.PathToReturn = ProjectPath;
+        await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        workspace.Selection.Texts.Single(text => text.Id == TextId).IsChecked = true;
+        workspace.Selection.Texts.Single(text => text.Id == goneId).IsChecked = true;
+        workspace.Selection.PastedWords = "kept";
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal([TextId], workspace.Selection.ChosenTextIds);
+        Assert.Equal("kept", workspace.Selection.PastedWords);
+        Assert.Equal("1 text, 1 pasted word", workspace.Selection.SummaryText);
+    }
+
     [Fact]
     public async Task ACompletedAssessmentFeedsBaselineHasAssessmentAndTheStatisticsSummary()
     {
@@ -113,6 +160,7 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.True(workspace.Baseline.HasAssessment);
         Assert.Equal("(summary)", workspace.Statistics.SummaryMarkdown);
         Assert.Equal("assessment/one", workspace.Statistics.AssessmentId);
+        Assert.Equal("invocation/one", workspace.Handoff.InvocationId);
         Assert.True(workspace.HasEverAssessed);
         Assert.False(workspace.NotYetAssessed);
     }
@@ -177,8 +225,9 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.True(workspace.NotYetAssessed);
         Assert.Null(workspace.Statistics.SummaryMarkdown);
         Assert.Null(workspace.Statistics.AssessmentId);
+        Assert.Null(workspace.Handoff.InvocationId);
         Assert.Empty(workspace.Statistics.Rows);
-        Assert.Equal(AssessRunState.Idle, workspace.Assess.State);
+        Assert.Equal(RunState.Idle, workspace.Assess.State);
         Assert.Null(workspace.Assess.Result);
         Assert.Empty(workspace.Handoff.Files);
     }
@@ -198,7 +247,7 @@ public sealed class HandoffWorkspaceViewModelTests
 
         fake.AssessCompletesWith(NewAssessResponse("(summary)"));
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        Assert.Equal(AssessRunState.Completed, workspace.Assess.State);
+        Assert.Equal(RunState.Completed, workspace.Assess.State);
 
         fake.StatsCompletesWith(new StatsCommandResponse(
             "assessment/one", "grammar.json", "cache.sqlite", null,
@@ -223,10 +272,13 @@ public sealed class HandoffWorkspaceViewModelTests
         fake.HandoffCompletesWith(new HandoffCommandResponse(
             @"C:\out",
             new BaselineCaptureResponse(NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false),
-            new SelectionProjection([], []), ["grammar.json"], ["assessment/two"]));
+            new SelectionProjection([], []), ["grammar.json"], ["assessment/two"])
+        {
+            InvocationId = "invocation/one",
+        });
         await workspace.Handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(HandoffRunState.Completed, workspace.Handoff.State);
+        Assert.Equal(RunState.Completed, workspace.Handoff.State);
         var file = Assert.Single(workspace.Handoff.Files);
         await workspace.Handoff.DragFileAsync(null!, file);
         Assert.Equal([file.FullPath], dragSource.LastPaths);

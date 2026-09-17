@@ -1,8 +1,10 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -12,25 +14,26 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Assess;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Handoff;
 
-/// <summary>Which project to hand off, where to publish it, what to include, and how to select its Texts and words.</summary>
+/// <summary>Which project to hand off, where to publish it, and whether to export a retained invocation.</summary>
 public sealed record HandoffRequest(
     string ProjectPath,
     string OutputDirectory,
     SelectionRequest Selection,
     bool WriteFlexTextXml,
-    bool Assess);
+    bool Assess,
+    string? InvocationId = null);
 
 /// <summary>
 /// Writes the self-explaining AI Handoff folder (design decision 6) by composing the commands that
-/// already exist: <see cref="BaselineCaptureCommand"/> for the project copy, <see cref="AssessCommand"/>
-/// for the optional measurement and its statistics summary, and <see cref="StatsCommand"/> for the six
-/// per-group JSONL files, plus the PanGloss invocation for the grammar snapshot. None of their internals
-/// are reimplemented here.
+/// already exist: <see cref="BaselineCaptureCommand"/> for a Baseline-only export, <see cref="StatsCommand"/>
+/// for retained statistics, and the PanGloss invocation for the grammar snapshot. A selected retained
+/// invocation supplies its own Baseline, Selection, evidence, and Assessment identities.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -81,6 +84,11 @@ public static class HandoffCommand
         ArgumentNullException.ThrowIfNull(assessor);
         ArgumentNullException.ThrowIfNull(invoker);
 
+        if (request.Assess && string.IsNullOrWhiteSpace(request.InvocationId))
+            return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                "handoff.invocation-required", FailureReason.InvalidArgument,
+                "Run assess first or pass the completed Assessment invocation id."));
+
         if (File.Exists(request.OutputDirectory) ||
             (Directory.Exists(request.OutputDirectory) &&
                 Directory.EnumerateFileSystemEntries(request.OutputDirectory).Any()))
@@ -91,7 +99,7 @@ public static class HandoffCommand
                 Fact(("outputDirectory", request.OutputDirectory))));
         }
 
-        return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, _) =>
+        return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             try
             {
@@ -100,15 +108,175 @@ public static class HandoffCommand
                 string? statisticsMarkdown = null;
                 string? statisticsAssessmentId = null;
                 var assessmentIds = new List<string>();
+                string? exportedInvocationId = null;
+                RetainedInvocationRecord? retained = null;
+                StatsEvidenceReplay? replay = null;
+                LcmCache? retainedSource = null;
 
-                if (request.Assess)
+                if (request.Assess && request.InvocationId is not null)
+                {
+                    try
+                    {
+                        retained = new RetainedInvocationRepository(database).Get(request.InvocationId);
+                    }
+                    catch (KeyNotFoundException)
+                    {
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.invocation-not-found", FailureReason.NotFound,
+                            $"Retained invocation '{request.InvocationId}' was not found.",
+                            Fact(("invocationId", request.InvocationId))));
+                    }
+
+                    var workspaceKey = ProjectWorkspaceKey.Compute(project);
+                    if (!StringComparer.Ordinal.Equals(retained.ProjectKey, workspaceKey))
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.invocation-mismatch", FailureReason.Refused,
+                            $"Retained invocation '{request.InvocationId}' belongs to another project.",
+                            Fact(("invocationId", request.InvocationId))));
+
+                    var sourceAssessment = retained.Assessments.FirstOrDefault(item =>
+                        item.Kind.IsStoredKind(AssessmentKind.ParseTime));
+                    var statisticsAssessment = retained.Assessments.FirstOrDefault(item =>
+                        item.Kind.IsStoredKind(AssessmentKind.ObjectTiming));
+                    if (sourceAssessment?.Invocation is null ||
+                        string.IsNullOrWhiteSpace(sourceAssessment.Invocation.SourcePath) ||
+                        string.IsNullOrWhiteSpace(sourceAssessment.Invocation.SourceBytesSha256) ||
+                        !File.Exists(sourceAssessment.Invocation.SourcePath))
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.source-unavailable", FailureReason.Refused,
+                            $"Retained invocation '{request.InvocationId}' has no available source evidence.",
+                            Fact(("invocationId", request.InvocationId))));
+
+                    var sourceRefusal = ValidateRetainedSources(retained, request.InvocationId);
+                    if (sourceRefusal is not null)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(sourceRefusal);
+
+                    if (statisticsAssessment?.Invocation is null ||
+                        string.IsNullOrWhiteSpace(statisticsAssessment.CachePath) ||
+                        string.IsNullOrWhiteSpace(statisticsAssessment.CacheDigest))
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.statistics-unavailable", FailureReason.Refused,
+                            $"Retained invocation '{request.InvocationId}' has no available statistics evidence.",
+                            Fact(("invocationId", request.InvocationId))));
+
+                    try
+                    {
+                        replay = StatsEvidenceReplay.Create(
+                            statisticsAssessment.Invocation, statisticsAssessment.CachePath,
+                            statisticsAssessment.CacheDigest);
+                    }
+                    catch (Exception exception) when (exception is IOException or InvalidDataException or
+                        UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
+                    {
+                        replay?.Dispose();
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.statistics-unavailable", FailureReason.Refused, exception.Message,
+                            Fact(("invocationId", request.InvocationId))));
+                    }
+
+                    try
+                    {
+                        if (!File.Exists(retained.BaselineFwDataPath))
+                            throw new FileNotFoundException(
+                                "The retained Baseline source is not available.", retained.BaselineFwDataPath);
+                        retainedSource = new FwDataProjectLoader().LoadScratchCache(retained.BaselineFwDataPath);
+                    }
+                    catch (Exception exception) when (exception is IOException or InvalidDataException or
+                        UnauthorizedAccessException or ArgumentException)
+                    {
+                        replay?.Dispose();
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.source-unavailable", FailureReason.Refused, exception.Message,
+                            Fact(("invocationId", request.InvocationId))));
+                    }
+
+                    Guid? missingTextId = null;
+                    var retainedTextRepository = retainedSource.ServiceLocator.GetInstance<ITextRepository>();
+                    foreach (var textId in retained.Selection.TextIds)
+                    {
+                        if (!retainedTextRepository.TryGetObject(textId, out _))
+                        {
+                            missingTextId = textId;
+                            break;
+                        }
+                    }
+                    if (missingTextId is not null)
+                    {
+                        retainedSource.Dispose();
+                        replay.Dispose();
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.text-not-found", FailureReason.InvalidArgument,
+                            $"Text '{missingTextId:D}' is not present in the retained Baseline source.",
+                            Fact(("textId", missingTextId.Value.ToString("D")))));
+                    }
+
+                    baseline = new BaselineCaptureResponse(
+                        retained.BaselineToken, retained.BaselineFwDataPath,
+                        retained.BaselineSourceLastWriteUtc, false, true);
+                    selectionProjection = new SelectionProjection(
+                        retained.Selection.ResolvedWords, retained.Selection.SourceCounts);
+                    assessmentIds.AddRange(retained.Members.Select(member => member.AssessmentId));
+                    exportedInvocationId = retained.InvocationId;
+                    statisticsAssessmentId = statisticsAssessment.AssessmentId;
+
+                    var summary = StatsCommand.Run(
+                        new StatsRequest(request.ProjectPath, statisticsAssessmentId, StatsOutputKind.Text, []),
+                        invoker, cancellationToken);
+                    if (!summary.Succeeded || summary.Value?.Text is null)
+                    {
+                        retainedSource.Dispose();
+                        replay.Dispose();
+                        if (cancellationToken.IsCancellationRequested ||
+                            summary.Refusal?.Reason == FailureReason.Cancelled)
+                            return CommandOutcome<HandoffCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.statistics-unavailable", FailureReason.Refused,
+                            $"Retained invocation '{request.InvocationId}' statistics could not be replayed: " +
+                                (summary.Refusal?.Message ?? "the retained evidence was rejected."),
+                            Fact(("invocationId", request.InvocationId))));
+                    }
+
+                    sourceRefusal = ValidateRetainedSources(retained, request.InvocationId);
+                    if (sourceRefusal is not null)
+                    {
+                        retainedSource.Dispose();
+                        replay.Dispose();
+                        return CommandOutcome<HandoffCommandResponse>.Refused(sourceRefusal);
+                    }
+
+                    var parseAssessment = retained.Assessments.FirstOrDefault(item =>
+                        item.Kind.IsStoredKind(AssessmentKind.ParseTime));
+                    if (parseAssessment is null)
+                    {
+                        retainedSource.Dispose();
+                        replay.Dispose();
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.statistics-unavailable", FailureReason.Refused,
+                            $"Retained invocation '{request.InvocationId}' has no ParseTime Assessment.",
+                            Fact(("invocationId", request.InvocationId))));
+                    }
+
+                    var words = parseAssessment.Words ?? [];
+                    var incomplete = words.Count(word => word.Outcome is "capped" or "timed-out");
+                    var skipped = words.Count(word => word.Outcome == "skipped");
+                    statisticsMarkdown = AssessCommand.RenderSummaryMarkdown(
+                        AssessCommand.CompletionSummary(words.Count - incomplete - skipped, incomplete, skipped),
+                        summary.Value.Text);
+                }
+                else if (request.Assess)
                 {
                     var assessOutcome = AssessCommand.Run(
                         new AssessRequest(request.ProjectPath, request.Selection), managedRoot,
                         assessor, invoker, ForwardExceptComplete(onProgress),
                         cancellationToken);
                     if (!assessOutcome.Succeeded)
-                        return CommandOutcome<HandoffCommandResponse>.Refused(assessOutcome.Refusal!);
+                    {
+                        // The person cancelled a Handoff, not an Assessment; the nested code must not leak out.
+                        var cancelled = cancellationToken.IsCancellationRequested
+                            || assessOutcome.Refusal!.Reason == FailureReason.Cancelled;
+                        return CommandOutcome<HandoffCommandResponse>.Refused(
+                            cancelled ? Cancelled(request.ProjectPath) : assessOutcome.Refusal!);
+                    }
 
                     baseline = assessOutcome.Value!.Baseline;
                     selectionProjection = assessOutcome.Value!.Selection;
@@ -137,32 +305,43 @@ public static class HandoffCommand
                     selectionProjection = composed.Value!.Projection;
                 }
 
-                StatsEvidenceReplay? replay = null;
                 if (statisticsAssessmentId is not null)
                 {
-                    try
+                    if (replay is null)
                     {
-                        var recorded = new AssessmentRepository(database).Get(statisticsAssessmentId);
-                        if (!recorded.Kind.IsStoredKind(AssessmentKind.ObjectTiming) || recorded.Invocation is null ||
-                            recorded.CachePath is null || recorded.CacheDigest is null)
-                            throw new InvalidDataException("The Handoff's ObjectTiming Assessment has no complete retained evidence.");
-                        replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest);
-                    }
-                    catch (Exception exception) when (exception is IOException or InvalidDataException or
-                        UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
-                    {
-                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
-                            "handoff.statistics-unavailable", FailureReason.Refused, exception.Message,
-                            Fact(("assessmentId", statisticsAssessmentId))));
+                        try
+                        {
+                            var recorded = new AssessmentRepository(database).Get(statisticsAssessmentId);
+                            if (!recorded.Kind.IsStoredKind(AssessmentKind.ObjectTiming) || recorded.Invocation is null ||
+                                recorded.CachePath is null || recorded.CacheDigest is null)
+                                throw new InvalidDataException("The Handoff's ObjectTiming Assessment has no complete retained evidence.");
+                            replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest);
+                        }
+                        catch (Exception exception) when (exception is IOException or InvalidDataException or
+                            UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
+                        {
+                            return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                                "handoff.statistics-unavailable", FailureReason.Refused, exception.Message,
+                                Fact(("assessmentId", statisticsAssessmentId))));
+                        }
                     }
                 }
                 using var replayLease = replay;
-                var grammarPath = request.Assess ? replay!.GrammarPath : baseline.FwDataPath;
+                using var retainedSourceLease = retainedSource;
+                var grammarPath = retained is not null ? replay!.GrammarPath : request.Assess ? replay!.GrammarPath : baseline.FwDataPath;
 
                 var writeRefusal = HandoffWriter.Publish(request.OutputDirectory, request.Assess, incoming =>
                 {
-                    using (var cache = new FwDataProjectLoader().LoadScratchCache(grammarPath))
-                        HandoffWriter.WriteTexts(cache, request.Selection.TextIds, incoming, request.WriteFlexTextXml);
+                    if (retainedSource is not null)
+                        HandoffWriter.WriteTexts(retainedSource,
+                            retained?.Selection.TextIds ?? request.Selection.TextIds, incoming,
+                            request.WriteFlexTextXml);
+                    else
+                    {
+                        using var cache = new FwDataProjectLoader().LoadScratchCache(grammarPath);
+                        HandoffWriter.WriteTexts(cache, request.Selection.TextIds, incoming,
+                            request.WriteFlexTextXml);
+                    }
 
                     HandoffWriter.WriteSelectionTxt(incoming, selectionProjection);
 
@@ -193,7 +372,19 @@ public static class HandoffCommand
                                     new[] { "--group", group, "--format", "jsonl" })
                                     { AssessmentId = statisticsAssessmentId },
                                 invoker, cancellationToken);
-                            if (!groupOutcome.Succeeded) return groupOutcome.Refusal;
+                            if (!groupOutcome.Succeeded)
+                            {
+                                if (cancellationToken.IsCancellationRequested ||
+                                    groupOutcome.Refusal?.Reason == FailureReason.Cancelled)
+                                    return Cancelled(request.ProjectPath);
+                                if (retained is not null)
+                                    return new Refusal(
+                                        "handoff.statistics-unavailable", FailureReason.Refused,
+                                        $"Retained invocation '{retained.InvocationId}' statistics could not be " +
+                                            $"replayed: {groupOutcome.Refusal?.Message}",
+                                        Fact(("invocationId", retained.InvocationId)));
+                                return groupOutcome.Refusal;
+                            }
 
                             File.WriteAllText(
                                 Path.Combine(statisticsDir, group + ".jsonl"), groupOutcome.Value!.Text);
@@ -210,7 +401,10 @@ public static class HandoffCommand
                 Report(onProgress, AssessmentStage.Complete, "Handoff complete.");
                 var files = HandoffWriter.ListFiles(request.OutputDirectory);
                 return CommandOutcome<HandoffCommandResponse>.Success(new HandoffCommandResponse(
-                    request.OutputDirectory, baseline, selectionProjection, files, assessmentIds));
+                    request.OutputDirectory, baseline, selectionProjection, files, assessmentIds)
+                {
+                    InvocationId = exportedInvocationId,
+                });
             }
             catch (OperationCanceledException)
             {
@@ -232,12 +426,43 @@ public static class HandoffCommand
             };
 
     private static Refusal Cancelled(string projectPath) => new(
-        "handoff.cancelled", FailureReason.Refused,
+        "handoff.cancelled", FailureReason.Cancelled,
         "The Handoff run was cancelled; no destination directory was created.",
         Fact(("projectPath", projectPath)));
 
-    private static string ResolveProductVersion() =>
-        typeof(HandoffCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    private static Refusal? ValidateRetainedSources(
+        RetainedInvocationRecord retained, string invocationId)
+    {
+        foreach (var assessment in retained.Assessments)
+        {
+            var evidence = assessment.Invocation;
+            if (evidence is null || string.IsNullOrWhiteSpace(evidence.SourcePath) ||
+                string.IsNullOrWhiteSpace(evidence.SourceBytesSha256) || !File.Exists(evidence.SourcePath))
+                return new Refusal(
+                    "handoff.source-unavailable", FailureReason.Refused,
+                    $"Retained invocation '{invocationId}' has no available source evidence.",
+                    Fact(("invocationId", invocationId)));
+
+            try
+            {
+                if (BatchInvocationEvidence.DigestFile(evidence.SourcePath) != evidence.SourceBytesSha256)
+                    return new Refusal(
+                        "handoff.source-unavailable", FailureReason.Refused,
+                        $"Retained invocation '{invocationId}' has changed source evidence.",
+                        Fact(("invocationId", invocationId)));
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return new Refusal(
+                    "handoff.source-unavailable", FailureReason.Refused, exception.Message,
+                    Fact(("invocationId", invocationId)));
+            }
+        }
+
+        return null;
+    }
+
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 
     private static Dictionary<string, string> Fact(params (string Key, string Value)[] facts)
     {

@@ -61,7 +61,12 @@ public sealed class WindowsCpuJob : IDisposable
         try
         {
             if (!NativeMethods.AssignProcessToJobObject(_handle, process.SafeHandle))
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+            {
+                var error = Marshal.GetLastWin32Error();
+                // A process that already finished has nothing left to cap or kill.
+                if (process.HasExited) return;
+                throw new Win32Exception(error, $"Assigning process {process.Id} to the CPU job failed (error {error}).");
+            }
         }
         finally
         {

@@ -73,10 +73,10 @@ public sealed class ParserSeamIntegrationTests : IDisposable
     }
 
     [RealParserFact(Skip = "The shipped pangloss has no assess subcommand (grill K46).")]
-    public void EveryMorphemeTheParserNames_IsAnObjectTheProjectContains()
+    public async Task EveryMorphemeTheParserNames_IsAnObjectTheProjectContains()
     {
-        var report = new PanGlossAssessmentProcess().RunAsync(Path.GetDirectoryName(_projectPath)!, CancellationToken.None)
-            .GetAwaiter().GetResult();
+        var report = await new PanGlossAssessmentProcess().RunAsync(
+            Path.GetDirectoryName(_projectPath)!, CancellationToken.None);
 
         // Provenance arrives for free and is what a coverage figure must cite (ADR 0032 §4).
         Assert.StartsWith("sha256:", report.GrammarSourceSha256);

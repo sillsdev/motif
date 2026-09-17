@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -89,7 +90,7 @@ public sealed class JobRunnerHost : IDisposable
         host._ownedTestRoot = workerRoot is null ? root : null;
         if (composeRuntime)
         {
-            var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0));
+            var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current);
             host.CreateRuntimeRegistry(catalog,
                 (jobs, key) => new WorkerRecoveryCoordinator(new WorkerRecovery(jobs),
                     new WorkspaceCleaner(ownership)));

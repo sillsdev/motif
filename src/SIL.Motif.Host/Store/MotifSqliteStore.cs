@@ -320,30 +320,42 @@ internal sealed class MotifSqliteStore : IDisposable
     private static FileStream AcquireOwnershipCore(string path)
     {
         var lockPath = path + ".owner.lock";
+        FileStream stream;
         try
         {
-            var stream = new FileStream(
+            stream = new FileStream(
                 lockPath,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
                 FileShare.None,
                 1,
                 FileOptions.DeleteOnClose);
-            try
-            {
-                stream.Lock(0, 1);
-                return stream;
-            }
-            catch
-            {
-                stream.Dispose();
-                throw;
-            }
         }
-        catch (IOException exception)
+        catch (IOException exception) when (IsOwnershipLockContention(exception))
         {
-            throw new IOException("Another Motif worker owns this database.", exception);
+            throw new MotifStoreLockException("Another Motif worker owns this database.", exception);
         }
+
+        try
+        {
+            stream.Lock(0, 1);
+            return stream;
+        }
+        catch (IOException exception) when (IsOwnershipLockContention(exception))
+        {
+            stream.Dispose();
+            throw new MotifStoreLockException("Another Motif worker owns this database.", exception);
+        }
+        catch
+        {
+            stream.Dispose();
+            throw;
+        }
+    }
+
+    private static bool IsOwnershipLockContention(IOException exception)
+    {
+        return exception.HResult is unchecked((int)0x80070020) or unchecked((int)0x80070021);
     }
 
     private static bool HasUserTables(SqliteConnection connection)

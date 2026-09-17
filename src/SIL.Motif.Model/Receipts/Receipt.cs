@@ -32,7 +32,7 @@ namespace SIL.Motif.Model.Receipts;
 /// <param name="ResultNote">
 /// Human-readable summary of the outcome: what was applied, or why nothing was (already applied,
 /// including a content-check note if the supplied Proposal's intent digest differs from the one
-/// recorded at the prior apply — same <c>changeSetId</c> identity, different content, surfaced
+/// recorded at the prior apply — the same stored <c>changeSetId</c> identity with different content, surfaced
 /// rather than reported as a clean "already applied").
 /// </param>
 /// <param name="ActualEffects">

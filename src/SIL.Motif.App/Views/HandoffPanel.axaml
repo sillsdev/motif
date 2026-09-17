@@ -56,20 +56,100 @@
     <TextBlock Text="{Binding Handoff.OutputDirectory, StringFormat='Destination: {0}'}"
                IsVisible="{Binding Handoff.OutputDirectory, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
 
-    <TextBlock Text="All files"
-               FontWeight="Bold"
-               PointerPressed="OnAllFilesPointerPressed"
-               AutomationProperties.Name="Drag all Handoff files" />
+    <Border IsVisible="{Binding Handoff.HasCompletedFiles}"
+            BorderBrush="#82909E"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="14"
+            Background="#F3F6F8">
+      <StackPanel Spacing="12">
+        <DockPanel LastChildFill="False">
+          <TextBlock Text="{Binding Handoff.Introduction}" TextWrapping="Wrap" />
+          <Button Content="Copy starter prompt"
+                  Click="OnCopyStarterPromptClick"
+                  IsEnabled="{Binding Handoff.HasCompletedFiles}"
+                  AutomationProperties.Name="Copy the starter prompt"
+                  Margin="10,0,0,0" />
+        </DockPanel>
 
-    <ListBox ItemsSource="{Binding Handoff.Files}"
-             MaxHeight="220"
-             AutomationProperties.Name="Handoff files">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:HandoffFileViewModel">
-          <TextBlock Text="{Binding RelativePath}" PointerPressed="OnFileRowPointerPressed" />
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+        <TextBlock Text="Reference documents" FontWeight="Bold" />
+        <ItemsControl ItemsSource="{Binding Handoff.ReferenceDocuments}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="4" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ReferenceDocument">
+              <HyperlinkButton Content="{Binding DisplayPath}"
+                               NavigateUri="{Binding Url}"
+                               AutomationProperties.Name="{Binding AccessibleName}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border BorderBrush="#82909E"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="10"
+                Background="#E8EDF1">
+          <TextBlock Text="All files"
+                     FontWeight="Bold"
+                     PointerPressed="OnAllFilesPointerPressed"
+                     AutomationProperties.Name="Drag all Handoff files" />
+        </Border>
+
+        <ItemsControl ItemsSource="{Binding Handoff.Files}"
+                      AutomationProperties.Name="Handoff files">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" ItemWidth="210" ItemHeight="170" ItemSpacing="10" LineSpacing="10" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:HandoffFileViewModel">
+              <Border Width="200"
+                      Padding="10"
+                      BorderBrush="#82909E"
+                      BorderThickness="1"
+                      CornerRadius="10"
+                      Background="#FFFFFF"
+                      PointerPressed="OnFileTilePointerPressed"
+                      AutomationProperties.Name="{Binding DragAccessibleName}">
+                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+                  <Border Width="58"
+                          Height="70"
+                          CornerRadius="8"
+                          Background="#263746"
+                          HorizontalAlignment="Left">
+                    <Grid RowDefinitions="16,*">
+                      <Border Grid.Row="0" Background="#2F9EAA" CornerRadius="8,8,0,0" />
+                      <TextBlock Grid.Row="1"
+                                 Text="{Binding KindLabel}"
+                                 Foreground="#FFFFFF"
+                                 FontSize="11"
+                                 FontWeight="Bold"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                  <TextBlock Grid.Row="1"
+                             Text="{Binding RelativePath}"
+                             TextWrapping="Wrap"
+                             Foreground="#1F2933"
+                             VerticalAlignment="Center" />
+                  <Button Grid.Row="2"
+                          Content="Copy path"
+                          Click="OnCopyPathClick"
+                          HorizontalAlignment="Left"
+                          AutomationProperties.Name="{Binding CopyPathAccessibleName}" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
 
     <Expander Header="Read this first" IsExpanded="False">
       <md:MarkdownRenderer MarkdownBuilder="{Binding Handoff.InstructionsMarkdown,

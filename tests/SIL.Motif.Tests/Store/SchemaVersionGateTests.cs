@@ -117,7 +117,7 @@ public sealed class SchemaVersionGateTests : IDisposable
         using var connection = database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT MinimumWorkerVersion FROM MotifMetadata WHERE Id = 1;";
-        Assert.Equal("1.0", command.ExecuteScalar() as string);
+        Assert.Equal("0.1", command.ExecuteScalar() as string);
     }
 
     private static int PragmaUserVersion(string path)

@@ -29,6 +29,28 @@ public sealed class CommandCatalogParityTests
     }
 
     [Fact]
+    public void CliVerbCatalogPreservesTheCommandSurfacePartition()
+    {
+        var surfaceByCommand = CommandCatalog.All.ToDictionary(command => command.Name);
+
+        foreach (var surface in Enum.GetValues<CommandSurface>())
+        {
+            var commands = CommandCatalog.All
+                .Where(command => command.Surface == surface)
+                .Select(command => command.Name)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            var verbs = CliVerbCatalog.All
+                .Where(verb => surfaceByCommand[verb.CommandName].Surface == surface)
+                .Select(verb => verb.CommandName)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.Equal(commands, verbs);
+        }
+    }
+
+    [Fact]
     public void CommandCatalogNamesAreUnique()
     {
         var names = CommandCatalog.All.Select(command => command.Name).ToList();
@@ -54,7 +76,10 @@ public sealed class CommandCatalogParityTests
     {
         "apply.drift", "apply.dry-run-missing", "apply.not-ready", "apply.project-in-use",
         "apply.reconciliation-needed",
+        "assess.baseline-changed", "assess.invocation-inconsistent", "assess.measurements-incomplete",
         "assess.parser-unavailable", "assess.unsupported-kind",
+        "selection.retry-source-required", "selection.retry-source-not-found", "selection.retry-source-invalid",
+        "selection.retry-source-mismatch", "selection.retry-source-project-mismatch", "selection.retry-source-without-retry",
         "assessment.aggregate-unavailable", "assessment.cancelled", "assessment.invalid-evidence", "assessment.invalid-id", "assessment.not-found",
         "baseline.busy", "baseline.copy-unloadable", "baseline.owned-root-violation",
         "baseline.source-incomplete",
@@ -63,19 +88,22 @@ public sealed class CommandCatalogParityTests
         "corpus.bundle-invalid", "corpus.document-invalid", "corpus.document-not-found", "corpus.invalid",
         "corpus.not-found",
         "draft.invalid", "draft.name-collision", "draft.not-found",
-        "handoff.cancelled", "handoff.destination-exists", "handoff.parser-unavailable", "handoff.statistics-unavailable",
+        "handoff.cancelled", "handoff.destination-exists", "handoff.invocation-mismatch", "handoff.invocation-not-found",
+        "handoff.invocation-required", "handoff.parser-unavailable", "handoff.source-unavailable",
+        "handoff.statistics-unavailable", "handoff.text-not-found",
         "job.already-finished", "job.dry-run-incomplete", "job.invalid-id", "job.invalid-move",
-        "job.move-target-not-found", "job.no-assessments", "job.not-finished", "job.not-found",
+        "job.assessments-inconsistent", "job.move-target-not-found", "job.no-assessments", "job.not-finished", "job.not-found",
         "job.wait-timeout",
         "operation.cascading-delete", "operation.invalid-dependency", "operation.invalid-id",
         "operation.invalid-target", "operation.invalid-writing-system",
-        "project.busy", "project.invalid", "project.not-found", "project.refused",
+        "project.busy", "project.invalid", "project.not-found", "project.operation-io", "project.refused",
+        "project.store-io",
         "proposal.inconsistent", "proposal.invalid-id", "proposal.invalid-status", "proposal.not-found",
         "proposal.split-duplicate-operation",
         "report.assessment-not-found", "report.invalid-kind", "report.refused",
         "selection.empty", "selection.text-not-found",
-        "stats.invalid-evidence", "stats.no-evidence", "stats.selector-conflict", "stats.wrong-kind",
-        "stats.cancelled", "stats.format-conflict", "stats.invalid-proposal-id", "stats.no-assessment",
+        "stats.invalid-evidence", "stats.no-evidence", "stats.wrong-kind",
+        "stats.cancelled", "stats.format-conflict", "stats.no-assessment",
         "stats.no-cache", "stats.parser-refused", "stats.parser-unavailable",
         "stats.timed-out",
         "store.inconsistent", "store.unsupported",

@@ -19,9 +19,14 @@ namespace SIL.Motif.Contract.Requests;
 /// greater than this threshold. A word that timed out comes back only when its recorded cap itself
 /// clears the threshold, not merely because it timed out.
 /// </param>
+/// <param name="RetrySourceAssessmentId">
+/// The exact Baseline ParseTime Assessment to use for retry. It is required when either retry option is set
+/// and must be omitted otherwise.
+/// </param>
 public sealed record SelectionRequest(
     bool AllWordforms,
     IReadOnlyList<Guid> TextIds,
     IReadOnlyList<string> Words,
     bool RetryFailed,
-    TimeSpan? RetrySlowerThan);
+    TimeSpan? RetrySlowerThan,
+    string? RetrySourceAssessmentId = null);

@@ -62,7 +62,7 @@ public sealed class MachineStoreTests : IDisposable
     }
 
     [Fact]
-    public void ConcurrentUsageAppendsFromTwoConnectionsBothLand()
+    public async Task ConcurrentUsageAppendsFromTwoConnectionsBothLand()
     {
         using var first = MachineDatabase.Open(_root);
         using var second = MachineDatabase.Open(_root);
@@ -75,7 +75,7 @@ public sealed class MachineStoreTests : IDisposable
             Task.Run(() => { for (var i = 0; i < perWriter; i++) firstLog.Append(Entry("first", i)); }),
             Task.Run(() => { for (var i = 0; i < perWriter; i++) secondLog.Append(Entry("second", i)); })
         };
-        Task.WaitAll(writers);
+        await Task.WhenAll(writers);
 
         var recorded = firstLog.ReadAll();
         Assert.Equal(perWriter * 2, recorded.Count);

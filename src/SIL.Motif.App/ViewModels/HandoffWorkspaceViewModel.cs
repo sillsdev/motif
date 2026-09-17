@@ -14,6 +14,8 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
+    private string? _projectPath;
+
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection,
         AssessViewModel assess, StatisticsViewModel statistics, HandoffViewModel handoff)
@@ -33,6 +35,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Handoff = handoff;
 
         Project.ProjectChosen += OnProjectChosen;
+        Baseline.Refreshed += OnBaselineRefreshed;
         Baseline.OfferRerun += OnOfferRerun;
         Assess.PropertyChanged += OnAssessPropertyChanged;
 
@@ -87,6 +90,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         await CancelActiveWorkAsync().ConfigureAwait(true);
         ClearProjectBoundState();
+        _projectPath = fwDataPath;
 
         await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
@@ -99,6 +103,12 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private async void OnProjectChosen(object? sender, string fwDataPath) =>
         await SetProjectAsync(fwDataPath).ConfigureAwait(true);
 
+    // The Text list belongs to the Baseline just captured, not to the one (or none) shown before Refresh.
+    private async void OnBaselineRefreshed(object? sender, EventArgs e)
+    {
+        if (_projectPath is { } path) await Selection.LoadTextsAsync(path).ConfigureAwait(true);
+    }
+
     private void OnOfferRerun(object? sender, EventArgs e) => RerunOffered = true;
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -106,13 +116,14 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         if (e.PropertyName == nameof(AssessViewModel.IsActive))
             OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
 
-        if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == AssessRunState.Completed)
+        if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Completed)
         {
             Baseline.HasAssessment = true;
             Statistics.Reset();
             Statistics.SummaryMarkdown = Assess.Result?.SummaryMarkdown;
             Statistics.AssessmentId = Assess.Result?.Measurements
                 .SingleOrDefault(measurement => measurement.Kind == "ObjectTiming")?.AssessmentId;
+            Handoff.InvocationId = Assess.Result?.InvocationId;
             HasEverAssessed = true;
         }
     }
@@ -144,19 +155,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         RerunOffered = false;
         HasEverAssessed = false;
 
-        Assess.State = AssessRunState.Idle;
-        Assess.Progress = null;
-        Assess.Result = null;
-        Assess.Refusal = null;
+        Assess.Reset();
 
         Statistics.Reset();
 
-        Handoff.State = HandoffRunState.Idle;
-        Handoff.Progress = null;
-        Handoff.Result = null;
-        Handoff.Refusal = null;
-        Handoff.OutputDirectory = null;
-        Handoff.Files.Clear();
+        Handoff.Reset();
     }
 
     /// <summary>Cancels and awaits any active run, so nothing keeps running past this workspace's lifetime.</summary>

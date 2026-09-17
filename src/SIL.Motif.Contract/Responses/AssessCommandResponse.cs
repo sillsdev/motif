@@ -12,6 +12,10 @@ public sealed record AssessCommandResponse(
     IReadOnlyList<string> AssessmentIds,
     string SummaryMarkdown)
 {
+    /// <summary>The immutable retained result identity for this successful Assessment.</summary>
+    public string InvocationId { get; init; } = string.Empty;
+    /// <summary>The complete caller request and resolved Selection provenance for this result.</summary>
+    public SelectionDescriptor? SelectionDescriptor { get; init; }
     public IReadOnlyList<AssessmentWordResult> Words { get; init; } = new AssessmentWordResult[0];
     public IReadOnlyList<ProducedAssessmentReference> Measurements { get; init; } = new ProducedAssessmentReference[0];
     public string CompletionSummary { get; init; } = string.Empty;
@@ -42,4 +46,4 @@ public sealed record AssessmentWordResult(
 }
 
 /// <summary>The exact measurement recorded by this call, with its kind and shared invocation identity.</summary>
-public sealed record ProducedAssessmentReference(string AssessmentId, string Kind, string? InvocationId);
+public sealed record ProducedAssessmentReference(string AssessmentId, string Kind, string InvocationId);

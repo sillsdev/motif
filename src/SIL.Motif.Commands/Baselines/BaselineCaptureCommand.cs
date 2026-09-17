@@ -1,14 +1,19 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Store;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
 
 namespace SIL.Motif.Commands.Baselines;
 
@@ -114,10 +119,12 @@ public static class BaselineCaptureCommand
                         Fact(("projectPath", request.ProjectPath))));
                 }
 
+                var registrationFailure = RecordKnownProject(managedRoot, project);
+
                 var held = File.Exists(project.FullFwDataPath + ".lock");
                 return CommandOutcome<BaselineCaptureResponse>.Success(new BaselineCaptureResponse(
                     publication.Token, publication.FwDataPath, copy.SourceLastWriteUtc, held,
-                    publication.ReusedExistingBytes));
+                    publication.ReusedExistingBytes, registrationFailure));
             }
             finally
             {
@@ -125,6 +132,17 @@ public static class BaselineCaptureCommand
                 DeleteFile(bundlePath);
             }
         });
+    }
+
+    // A captured project is one the machine knows about, whichever front end captured it (ADR 0043).
+    private static KnownProjectRegistrationFailure? RecordKnownProject(string managedRoot, ProjectLocator project)
+    {
+        var failure = KnownProjectRecorder.TryRecord(managedRoot, project);
+        return failure is null
+            ? null
+            : new KnownProjectRegistrationFailure(
+                "The capture succeeded and was published, but machine-store registration failed for '" +
+                Path.Combine(Path.GetFullPath(managedRoot), "motif.db") + "': " + failure.Message);
     }
 
     private static void DeleteDirectory(string path)
@@ -139,8 +157,7 @@ public static class BaselineCaptureCommand
         catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
-    private static string ResolveProductVersion() =>
-        typeof(BaselineCaptureCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 
     private static Dictionary<string, string> Fact(params (string Key, string? Value)[] entries)
     {

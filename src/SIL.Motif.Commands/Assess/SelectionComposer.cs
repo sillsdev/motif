@@ -1,5 +1,9 @@
 using System.Text;
+using System.Text.Json;
 using SIL.LCModel;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -11,8 +15,9 @@ using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Assess;
 
-/// <summary>A composed Selection together with the Contract-shaped projection <c>selection.txt</c> is written from.</summary>
-public sealed record SelectionComposition(Selection Selection, SelectionProjection Projection);
+/// <summary>A composed Selection, its human-facing projection, and its complete retained descriptor.</summary>
+public sealed record SelectionComposition(
+    Selection Selection, SelectionProjection Projection, SelectionDescriptor Descriptor);
 
 /// <summary>
 /// Builds one <see cref="Selection"/> from any combination of the four sources design decision 4 settled
@@ -42,7 +47,8 @@ public static class SelectionComposer
     /// <c>selection.text-not-found</c> Refusal when a chosen Text's GUID does not resolve in this project.
     /// </summary>
     public static CommandOutcome<SelectionComposition> Compose(
-        LcmCache cache, SelectionRequest request, IAssessmentRepository assessmentRepository)
+        LcmCache cache, SelectionRequest request, IAssessmentRepository assessmentRepository,
+        string? baselineToken = null)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(request);
@@ -54,9 +60,13 @@ public static class SelectionComposer
         if (request.AllWordforms)
             Contribute(provenance, words, "all-wordforms", LcmWordformCorpus.ExtractForms(cache));
 
-        if (request.TextIds.Count > 0)
+        var textIds = request.TextIds
+            .Distinct()
+            .OrderBy(textId => textId.ToString("D"), StringComparer.Ordinal)
+            .ToArray();
+        if (textIds.Length > 0)
         {
-            var fromTexts = ReadChosenTextWordforms(cache, request.TextIds, out var missingTextId);
+            var fromTexts = ReadChosenTextWordforms(cache, textIds, out var missingTextId);
             if (missingTextId is { } guid)
             {
                 return CommandOutcome<SelectionComposition>.Refused(new Refusal(
@@ -67,24 +77,73 @@ public static class SelectionComposer
             Contribute(provenance, words, "texts", fromTexts);
         }
 
-        var pasted = request.Words.Where(word => !string.IsNullOrWhiteSpace(word));
+        var pasted = request.Words
+            .Select(word => word.Trim())
+            .Where(word => word.Length > 0)
+            .Select(word => word.Normalize(NormalizationForm.FormD))
+            .ToArray();
         if (request.Words.Count > 0) Contribute(provenance, words, "pasted-words", pasted);
 
+        AssessmentRecord? retrySource = null;
         if (request.RetryFailed || request.RetrySlowerThan is not null)
         {
-            var previousRun = LatestBaselineRun(assessmentRepository);
+            if (string.IsNullOrWhiteSpace(request.RetrySourceAssessmentId))
+            {
+                return CommandOutcome<SelectionComposition>.Refused(new Refusal(
+                    "selection.retry-source-required", FailureReason.InvalidArgument,
+                    "RetryFailed and RetrySlowerThan require an explicit source Assessment id."));
+            }
+            try
+            {
+                retrySource = assessmentRepository.Get(request.RetrySourceAssessmentId);
+            }
+            catch (KeyNotFoundException)
+            {
+                return CommandOutcome<SelectionComposition>.Refused(new Refusal(
+                    "selection.retry-source-not-found", FailureReason.InvalidArgument,
+                    $"Retry source Assessment '{request.RetrySourceAssessmentId}' was not found."));
+            }
+
+            if (retrySource.ProposalId is not null || retrySource.Kind != RetryKind)
+            {
+                return CommandOutcome<SelectionComposition>.Refused(new Refusal(
+                    "selection.retry-source-invalid", FailureReason.InvalidArgument,
+                    "Retry source must be a Baseline ParseTime Assessment."));
+            }
+
+            if (baselineToken is not null &&
+                !StringComparer.Ordinal.Equals(retrySource.BaselineToken, baselineToken))
+            {
+                return CommandOutcome<SelectionComposition>.Refused(new Refusal(
+                    "selection.retry-source-mismatch", FailureReason.InvalidArgument,
+                    "Retry source Assessment belongs to a different Baseline."));
+            }
+
+            if (baselineToken is not null &&
+                !RetrySourceBelongsToProject(cache, retrySource.BaselineToken, baselineToken))
+            {
+                return CommandOutcome<SelectionComposition>.Refused(new Refusal(
+                    "selection.retry-source-project-mismatch", FailureReason.InvalidArgument,
+                    "Retry source Assessment belongs to a different project."));
+            }
 
             if (request.RetryFailed)
             {
-                var failed = WordsWithOutcome(previousRun, WordOutcome.NoAnalysis, WordOutcome.Skipped);
+                var failed = WordsWithOutcome(retrySource, WordOutcome.NoAnalysis, WordOutcome.Skipped);
                 Contribute(provenance, words, "retry-failed", failed);
             }
 
             if (request.RetrySlowerThan is not null)
             {
-                var slow = WordsSlowerThan(previousRun, request.RetrySlowerThan.Value);
+                var slow = WordsSlowerThan(retrySource, request.RetrySlowerThan.Value);
                 Contribute(provenance, words, "retry-slower-than", slow);
             }
+        }
+        else if (request.RetrySourceAssessmentId is not null)
+        {
+            return CommandOutcome<SelectionComposition>.Refused(new Refusal(
+                "selection.retry-source-without-retry", FailureReason.InvalidArgument,
+                "RetrySourceAssessmentId requires RetryFailed or RetrySlowerThan."));
         }
 
         if (words.Count == 0)
@@ -96,7 +155,12 @@ public static class SelectionComposer
 
         var selection = Selection.Create(cache.ProjectId.Name, words);
         var projection = new SelectionProjection(selection.Words, provenance);
-        return CommandOutcome<SelectionComposition>.Success(new SelectionComposition(selection, projection));
+        var descriptor = new SelectionDescriptor(
+            textIds, pasted, request.AllWordforms, request.RetryFailed,
+            retrySource?.AssessmentId, request.RetrySlowerThan, selection.Words, selection.Sha256,
+            projection.Provenance);
+        descriptor = descriptor with { DescriptorSha256 = SelectionDescriptorDigest.Compute(descriptor) };
+        return CommandOutcome<SelectionComposition>.Success(new SelectionComposition(selection, projection, descriptor));
     }
 
     // Normalizes one source's raw words, appends them to the running total, and records its provenance count.
@@ -140,11 +204,20 @@ public static class SelectionComposer
         return forms;
     }
 
-    // The newest Baseline (Proposal-free) ParseTime Assessment, or null when none has ever been recorded.
-    private static AssessmentRecord? LatestBaselineRun(IAssessmentRepository repository)
+    private static bool RetrySourceBelongsToProject(LcmCache cache, string sourceBaselineJson, string currentBaselineJson)
     {
-        var runs = repository.ListBaselineAssessments(RetryKind);
-        return runs.Count > 0 ? runs[^1] : null;
+        try
+        {
+            var current = JsonSerializer.Deserialize<BaselineToken>(currentBaselineJson, MotifJson.CreateOptions());
+            var source = JsonSerializer.Deserialize<BaselineToken>(sourceBaselineJson, MotifJson.CreateOptions());
+            return current is not null && source is not null &&
+                StringComparer.Ordinal.Equals(current.ProjectIdentity, source.ProjectIdentity) &&
+                StringComparer.Ordinal.Equals(current.ProjectIdentity, cache.LangProject.Guid.ToString("D"));
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
+        {
+            return false;
+        }
     }
 
     private static IEnumerable<string> WordsWithOutcome(AssessmentRecord? run, params WordOutcome[] outcomes)

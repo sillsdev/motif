@@ -74,8 +74,8 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
         // The human text is unchanged (no "error: " prefix); the JSON failure now carries a stable code too.
         var missingText = LegacyCorpusCommands.ShowCorpus(_fwDataPath, "1.0", "missing");
         var missingJson = LegacyCorpusCommands.ShowCorpusJson(_fwDataPath, "1.0", "missing");
-        Assert.Equal(1, missingText.ExitCode);
-        Assert.Equal(1, missingJson.ExitCode);
+        Assert.Equal(2, missingText.ExitCode);
+        Assert.Equal(2, missingJson.ExitCode);
         Assert.Equal("No corpus 'missing' in store." + Environment.NewLine, missingText.Output);
         var envelope = ProjectionJson.Deserialize<FailureEnvelope>(missingJson.Output)!;
         Assert.Equal("corpus.not-found", envelope.Code);

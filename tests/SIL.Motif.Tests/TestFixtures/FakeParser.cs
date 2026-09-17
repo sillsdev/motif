@@ -15,6 +15,7 @@ namespace SIL.Motif.Tests.TestFixtures;
 internal static class FakeParser
 {
     private const string BehaviourFileName = "_fake-pangloss.json";
+    private const string WrongDescriptionFileName = "_fake-pangloss-wrong-description";
 
     /// <summary>The fake parser's path, built alongside the test project.</summary>
     internal static string ExecutablePath
@@ -34,4 +35,14 @@ internal static class FakeParser
     internal static void Behave(string candidateDirectory, object behaviour) =>
         File.WriteAllText(Path.Combine(candidateDirectory, BehaviourFileName),
             JsonSerializer.Serialize(behaviour));
+
+    internal static string CopyWithWrongDescription(string candidateDirectory)
+    {
+        Directory.CreateDirectory(candidateDirectory);
+        var sourceDirectory = Path.GetDirectoryName(ExecutablePath)!;
+        foreach (var source in Directory.EnumerateFiles(sourceDirectory, "pangloss.*"))
+            File.Copy(source, Path.Combine(candidateDirectory, Path.GetFileName(source)), overwrite: true);
+        File.WriteAllText(Path.Combine(candidateDirectory, WrongDescriptionFileName), string.Empty);
+        return Path.Combine(candidateDirectory, OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss");
+    }
 }

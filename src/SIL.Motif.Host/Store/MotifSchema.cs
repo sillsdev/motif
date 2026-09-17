@@ -16,11 +16,11 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 15;
+    public const int CurrentSchema = 16;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
-        ? new Version(1, 0)
+        ? new Version(0, 1)
         : throw new NotSupportedException($"Motif schema {schema} is not known to this worker.");
 
     /// <summary>Builds every table, index and the identity row for a brand-new database, in one step.</summary>
@@ -29,7 +29,8 @@ public static class MotifSchema
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + AssessmentDdl + JobDdl + BaselineDdl;
+            command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + AssessmentDdl + JobDdl +
+                BaselineDdl + RetainedInvocationDdl;
             command.ExecuteNonQuery();
         }
 
@@ -54,13 +55,15 @@ public static class MotifSchema
         {
             "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
-            "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines"
+            "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
+            "RetainedInvocationMembers"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
             "IX_AssessedWords_Assessment", "IX_AssessedWords_Word", "IX_ParsedAnalyses_Word",
             "IX_Jobs_Lineage_Attempt", "IX_Jobs_Status_Updated", "IX_Jobs_Lease", "IX_Jobs_QueueOrder",
-            "IX_Proposals_DraftName", "IX_Assessments_Proposal", "IX_Assessments_Kind"
+            "IX_Proposals_DraftName", "IX_Assessments_Proposal", "IX_Assessments_Kind",
+            "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment"
         };
 
         using (var objects = connection.CreateCommand())
@@ -173,6 +176,7 @@ public static class MotifSchema
         {
             "MotifMetadata" => "CHECK (Id = 1)",
             "AssessedWords" => "AUTOINCREMENT",
+            "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
             _ => null
         };
         using var command = connection.CreateCommand();
@@ -256,6 +260,8 @@ public static class MotifSchema
         "IX_Jobs_Lineage_Attempt" or "IX_Jobs_Status_Updated" or "IX_Jobs_Lease" or "IX_Jobs_QueueOrder" => "Jobs",
         "IX_Proposals_DraftName" => "Proposals",
         "IX_Assessments_Proposal" or "IX_Assessments_Kind" => "Assessments",
+        "IX_RetainedInvocations_Project" => "RetainedInvocations",
+        "IX_RetainedInvocationMembers_Assessment" => "RetainedInvocationMembers",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -273,6 +279,8 @@ public static class MotifSchema
         "IX_Proposals_DraftName" => ["DraftName"],
         "IX_Assessments_Proposal" => ["ProposalId"],
         "IX_Assessments_Kind" => ["Kind"],
+        "IX_RetainedInvocations_Project" => ["ProjectKey"],
+        "IX_RetainedInvocationMembers_Assessment" => ["AssessmentId"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -281,6 +289,9 @@ public static class MotifSchema
         "CorpusDocuments" => [new("Corpora", "CorpusId", "CorpusId", "NO ACTION", "NO ACTION", "NONE")],
         "Assessments" => [new("AssessmentInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE"),
             new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "RetainedInvocations" => [new("AssessmentInvocations", "ArtifactInvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
+        "RetainedInvocationMembers" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
+            new("RetainedInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -360,6 +371,19 @@ public static class MotifSchema
             C("CapturedHostSessionId", "TEXT"), C("CapturedEditGeneration", "INTEGER"),
             C("RootDirectory", "TEXT", true), C("FwDataPath", "TEXT", true), C("PublishedUtc", "TEXT", true),
             C("SourceLastWriteUtc", "TEXT", true)],
+        "RetainedInvocations" =>
+        [C("InvocationId", "TEXT", false, 1), C("ProjectKey", "TEXT", true),
+            C("BaselineToken", "TEXT", true), C("BaselineRootDirectory", "TEXT", true),
+            C("BaselineFwDataPath", "TEXT", true), C("BaselineSourceLastWriteUtc", "TEXT", true),
+            C("BaselinePublishedUtc", "TEXT", true), C("SavedUtc", "TEXT", true),
+            C("SelectionDescriptorJson", "TEXT", true), C("SelectionDescriptorSha256", "TEXT", true),
+            C("ExpectedKindsJson", "TEXT", true),
+            C("Assessor", "TEXT", true),
+            C("ScopeJson", "TEXT", true), C("ScopeDigest", "TEXT", true),
+            C("ArtifactInvocationId", "TEXT", true)],
+        "RetainedInvocationMembers" =>
+        [C("InvocationId", "TEXT", true, 1), C("Kind", "TEXT", true, 2),
+            C("AssessmentId", "TEXT", true)],
         _ => throw new InvalidDataException($"Motif table {table} is not registered.")
     };
 
@@ -603,5 +627,35 @@ public static class MotifSchema
             CHECK ((CapturedHostSessionId IS NULL) = (CapturedEditGeneration IS NULL)),
             CHECK (CapturedEditGeneration IS NULL OR CapturedEditGeneration >= 0)
         );
+        """;
+
+    private const string RetainedInvocationDdl = """
+        CREATE TABLE RetainedInvocations (
+            InvocationId TEXT PRIMARY KEY,
+            ProjectKey TEXT NOT NULL,
+            BaselineToken TEXT NOT NULL,
+            BaselineRootDirectory TEXT NOT NULL,
+            BaselineFwDataPath TEXT NOT NULL,
+            BaselineSourceLastWriteUtc TEXT NOT NULL,
+            BaselinePublishedUtc TEXT NOT NULL,
+            SavedUtc TEXT NOT NULL,
+            SelectionDescriptorJson TEXT NOT NULL,
+            SelectionDescriptorSha256 TEXT NOT NULL,
+            ExpectedKindsJson TEXT NOT NULL,
+            Assessor TEXT NOT NULL,
+            ScopeJson TEXT NOT NULL,
+            ScopeDigest TEXT NOT NULL,
+            ArtifactInvocationId TEXT NOT NULL REFERENCES AssessmentInvocations(InvocationId)
+        );
+        CREATE INDEX IX_RetainedInvocations_Project ON RetainedInvocations(ProjectKey);
+
+        CREATE TABLE RetainedInvocationMembers (
+            InvocationId TEXT NOT NULL REFERENCES RetainedInvocations(InvocationId),
+            Kind TEXT NOT NULL,
+            AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
+            PRIMARY KEY (InvocationId, Kind),
+            UNIQUE (AssessmentId)
+        );
+        CREATE INDEX IX_RetainedInvocationMembers_Assessment ON RetainedInvocationMembers(AssessmentId);
         """;
 }

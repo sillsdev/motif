@@ -8,6 +8,12 @@
 *.chm
 WritingSystemStore/
 TestLangProj/
+## The one exception: synthetic conformance fixtures. Nobody's language lives in these; each is a
+## grammar backed out into a LibLCM project by the Machine conformance suite, with its provenance in
+## SOURCE.md beside it. The owner ruled that the rule above is about real project data, not these.
+!tests/SIL.Motif.Tests/TestFixtures/Conformance/**/*.fwdata
+!tests/SIL.Motif.Tests/TestFixtures/Conformance/**/WritingSystemStore/
+!tests/SIL.Motif.Tests/TestFixtures/Conformance/**/*.ldml
 
 ## .NET build output
 bin/

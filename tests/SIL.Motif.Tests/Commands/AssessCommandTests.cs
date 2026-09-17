@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Versioning;
 using System.Threading;
 using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
@@ -26,7 +25,6 @@ namespace SIL.Motif.Tests.Commands;
 /// recording Assessments, a second run reusing that Baseline, cancellation recording nothing, an empty
 /// Selection's refusal, and the reported progress stages.
 /// </summary>
-[SupportedOSPlatform("windows")]
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class AssessCommandTests : IDisposable
 {
@@ -69,6 +67,62 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
     }
 
+    [Fact]
+    public void MissingInvocationEvidenceRefusesBeforeRecordingAssessments()
+    {
+        using var seeded = NewSeededScratch();
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(),
+            new FakeAssessor("missing-evidence", CollectedKinds), NewInvoker(),
+            onProgress: null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("assess.invocation-inconsistent", outcome.Refusal!.Code);
+        var repository = OpenRepository(seeded.FwDataPath);
+        Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+        Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
+    [Fact]
+    public void InvocationEvidenceProducesAQueryableRetainedAggregateWithSelectionDescriptor()
+    {
+        using var seeded = NewSeededScratch();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds)
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate)
+        };
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath,
+                new SelectionRequest(false, [], ["motifa"], false, null)), NewManagedRoot(), assessor,
+            NewInvoker(), onProgress: null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var response = outcome.Value!;
+        Assert.NotEmpty(response.InvocationId);
+        Assert.All(response.Measurements, measurement =>
+            Assert.Equal(response.InvocationId, measurement.InvocationId));
+        Assert.NotNull(response.SelectionDescriptor);
+        Assert.Equal(["motifa"], response.SelectionDescriptor!.PastedWords);
+
+        var project = new ProjectLocator(Path.GetFullPath(seeded.FwDataPath),
+            Path.GetFileNameWithoutExtension(seeded.FwDataPath));
+        using var database = MotifDatabase.OpenOwned(
+            ProjectDatabaseCatalog.DatabasePathFor(project), project, MotifSchema.CurrentSchema, new Version(1, 0));
+        var retained = new RetainedInvocationRepository(database).Get(response.InvocationId!);
+        Assert.Equal(response.InvocationId, retained.InvocationId);
+        Assert.Equal(2, retained.Members.Count);
+        Assert.Equal(2, retained.Assessments.Count);
+        Assert.All(retained.Assessments, assessment =>
+            Assert.Equal(response.InvocationId, assessment.Invocation!.InvocationId));
+        Assert.All(retained.Assessments, assessment =>
+            Assert.Equal(assessment.Invocation!.SourceBytesSha256, assessment.GrammarSourceSha256));
+        var listed = new RetainedInvocationRepository(database).List(retained.ProjectKey);
+        Assert.All(listed.Single().Assessments, assessment => Assert.Null(assessment.Words));
+        Assert.Equal(response.Baseline.Token, retained.BaselineToken);
+    }
+
     [RealParserFact]
     public void SupportedAssessmentRecordsRealTimingAndStatisticsWithOneInvocation()
     {
@@ -107,7 +161,11 @@ public sealed class AssessCommandTests : IDisposable
                     [new(0, "motifa", 700, SIL.Motif.Host.Parser.WordOutcome.Capped, "partial-match"),
                      new(1, "motifb", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
                     1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
-                : new AssessmentRaw.WordMeasurements([]));
+                 : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate)
+        };
         var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
             new SelectionRequest(false, [], ["motifa", "motifb"], false, null)), NewManagedRoot(),
             assessor, NewInvoker(), null, CancellationToken.None);
@@ -239,6 +297,7 @@ public sealed class AssessCommandTests : IDisposable
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("assessment.cancelled", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Cancelled, outcome.Refusal.Reason);
 
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
@@ -416,7 +475,11 @@ public sealed class AssessCommandTests : IDisposable
     private static readonly IReadOnlyList<AssessmentKind> CollectedKinds =
         [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming];
 
-    private static FakeAssessor NewAssessor() => new("fake-assessor", CollectedKinds);
+    private FakeAssessor NewAssessor() => new("fake-assessor", CollectedKinds)
+    {
+        CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+            _managedRootsParent, scope, candidate),
+    };
 
     // Answers every stats request with fixed rows; no test here asserts on the summary's content.
     private static FakeInvoker NewInvoker() => new()

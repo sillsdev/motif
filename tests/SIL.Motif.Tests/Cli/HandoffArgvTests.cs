@@ -62,6 +62,18 @@ public sealed class HandoffArgvTests : IDisposable
         Assert.Contains("Usage: motif handoff <project>", result.Error, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TextsCannotBeCombinedWithAnInvocation()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+        var outDir = Path.Combine(_workerRoot, "out");
+
+        var result = Run($"handoff \"{missing}\" --out \"{outDir}\" --invocation invocation/one --texts not-a-guid");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: motif handoff <project>", result.Error, StringComparison.Ordinal);
+    }
+
     // No parser is pointed at deliberately: the project must be resolved before one is ever built.
     [Fact]
     public void ANonexistentProjectRefusesTheWayEveryOtherVerbDoes()
@@ -69,7 +81,7 @@ public sealed class HandoffArgvTests : IDisposable
         var missing = Path.Combine(_workerRoot, "absent.fwdata");
         var outDir = Path.Combine(_workerRoot, "out");
 
-        var result = Run($"handoff \"{missing}\" --out \"{outDir}\" --json");
+        var result = Run($"handoff \"{missing}\" --out \"{outDir}\" --no-assess --json");
 
         var envelope = Envelope(result.Error);
         Assert.Equal("project.not-found", envelope.Code);
@@ -85,7 +97,7 @@ public sealed class HandoffArgvTests : IDisposable
         Directory.CreateDirectory(outDir);
         File.WriteAllText(Path.Combine(outDir, "keep.txt"), "do not touch");
 
-        var result = Run($"handoff \"{missing}\" --out \"{outDir}\" --json");
+        var result = Run($"handoff \"{missing}\" --out \"{outDir}\" --no-assess --json");
 
         var envelope = Envelope(result.Error);
         Assert.Equal("handoff.destination-exists", envelope.Code);

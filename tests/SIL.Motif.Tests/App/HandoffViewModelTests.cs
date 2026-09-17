@@ -32,6 +32,7 @@ public sealed class HandoffViewModelTests
         var handoff = new HandoffViewModel(fake, selection, new FakeFolderPicker(folder), dragSource)
         {
             ProjectPath = ProjectPath,
+            InvocationId = "invocation/one",
         };
         return (fake, dragSource, handoff);
     }
@@ -53,9 +54,32 @@ public sealed class HandoffViewModelTests
         await handoff.RunCommand.ExecuteAsync(null);
 
         Assert.Empty(fake.HandoffRequests);
-        Assert.Equal(HandoffRunState.Idle, handoff.State);
+        Assert.Equal(RunState.Idle, handoff.State);
         Assert.Null(handoff.OutputDirectory);
         Assert.Empty(handoff.Files);
+    }
+
+    [Fact]
+    public void RunIsDisabledUntilACompletedAssessmentIsSelected()
+    {
+        var (fake, _, handoff) = NewViewModel();
+        handoff.InvocationId = null;
+
+        Assert.False(handoff.RunCommand.CanExecute(null));
+
+        handoff.InvocationId = "invocation/one";
+        Assert.True(handoff.RunCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void ResetClearsTheSelectedInvocation()
+    {
+        var (_, _, handoff) = NewViewModel();
+
+        handoff.Reset();
+
+        Assert.Null(handoff.InvocationId);
+        Assert.False(handoff.RunCommand.CanExecute(null));
     }
 
     [Fact]
@@ -67,7 +91,11 @@ public sealed class HandoffViewModelTests
 
         await handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(HandoffRunState.Completed, handoff.State);
+        Assert.Equal(RunState.Completed, handoff.State);
+        var request = Assert.Single(fake.HandoffRequests);
+        Assert.Equal("invocation/one", request.InvocationId);
+        Assert.Empty(request.Selection.TextIds);
+        Assert.Empty(request.Selection.Words);
         Assert.Equal(@"C:\out", handoff.OutputDirectory);
         Assert.Equal(
             new[] { "grammar.json", "texts/one.flextext.json" },
@@ -102,6 +130,55 @@ public sealed class HandoffViewModelTests
         Assert.Contains(HandoffViewModel.DataSensitivitySentence, instructions, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("grammar.json", HandoffFileKind.Json)]
+    [InlineData("statistics/word.jsonl", HandoffFileKind.Jsonl)]
+    [InlineData("instructions.md", HandoffFileKind.Markdown)]
+    [InlineData("read_handoff.py", HandoffFileKind.Python)]
+    [InlineData("selection.txt", HandoffFileKind.Text)]
+    [InlineData("texts/example.flextext.xml", HandoffFileKind.Xml)]
+    [InlineData("reference/README", HandoffFileKind.Unknown)]
+    public void HandoffFileKindIsDerivedFromTheRelativePathExtension(
+        string relativePath, HandoffFileKind expectedKind)
+    {
+        Assert.Equal(expectedKind, HandoffFileViewModel.KindFromRelativePath(relativePath));
+    }
+
+    [Fact]
+    public void HandoffIntroductionNamesTheUploadStepsAndReferenceLocations()
+    {
+        var introduction = HandoffViewModel.IntroductionText;
+
+        Assert.Contains("instructions.md", introduction, StringComparison.Ordinal);
+        Assert.Contains("Claude", introduction, StringComparison.Ordinal);
+        Assert.Contains("ChatGPT", introduction, StringComparison.Ordinal);
+        Assert.Contains("Gemini", introduction, StringComparison.Ordinal);
+        Assert.Contains("docs/handoff/grammar-format.md", introduction, StringComparison.Ordinal);
+        Assert.Contains("docs/handoff/flextext-json-format.md", introduction, StringComparison.Ordinal);
+        Assert.Contains("docs/handoff/hc-mechanics.md", introduction, StringComparison.Ordinal);
+        Assert.Contains("src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py", introduction,
+            StringComparison.Ordinal);
+        Assert.Contains(HandoffViewModel.RepositoryUrlBase, introduction, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StarterPromptIsEmbeddedAndNamesTheHandoffContents()
+    {
+        var prompt = HandoffViewModel.StarterPromptMarkdown;
+
+        Assert.Contains("Read `instructions.md` first", prompt, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks' last save", prompt, StringComparison.Ordinal);
+        Assert.Contains("`grammar.json`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`selection.txt`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`statistics/*.jsonl`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`texts/*.flextext.json`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`reference/*.md`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`recipes.md`", prompt, StringComparison.Ordinal);
+        Assert.Contains("`read_handoff.py`", prompt, StringComparison.Ordinal);
+        Assert.Contains("file and record", prompt, StringComparison.Ordinal);
+        Assert.Contains("flag guesses", prompt, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task WriteFlexTextXmlIsForwardedToTheHandoffRequest()
     {
@@ -134,7 +211,7 @@ public sealed class HandoffViewModelTests
         await handoff.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(steps, observed);
-        Assert.Equal(HandoffRunState.Completed, handoff.State);
+        Assert.Equal(RunState.Completed, handoff.State);
     }
 
     [Fact]
@@ -142,18 +219,18 @@ public sealed class HandoffViewModelTests
     {
         var (fake, _, handoff) = NewViewModel();
         var cancelledRefusal = new Refusal(
-            "handoff.cancelled", FailureReason.Refused, "The Handoff run was cancelled.");
+            "handoff.cancelled", FailureReason.Cancelled, "The Handoff run was cancelled.");
         fake.HandoffBlocksUntilCancelled(cancelledRefusal);
 
         // Cancelling is transient: the run can finish before Execute returns, so record rather than sample.
-        var states = new List<HandoffRunState>();
+        var states = new List<RunState>();
         handoff.PropertyChanged += (_, changed) =>
         {
             if (changed.PropertyName == nameof(HandoffViewModel.State)) states.Add(handoff.State);
         };
 
         var running = handoff.RunCommand.ExecuteAsync(null);
-        Assert.Equal(HandoffRunState.Running, handoff.State);
+        Assert.Equal(RunState.Running, handoff.State);
         Assert.True(handoff.CancelCommand.CanExecute(null));
 
         handoff.CancelCommand.Execute(null);
@@ -162,8 +239,8 @@ public sealed class HandoffViewModelTests
         await running;
 
         Assert.Equal(
-            new[] { HandoffRunState.Running, HandoffRunState.Cancelling, HandoffRunState.Cancelled }, states);
-        Assert.Equal(HandoffRunState.Cancelled, handoff.State);
+            new[] { RunState.Running, RunState.Cancelling, RunState.Cancelled }, states);
+        Assert.Equal(RunState.Cancelled, handoff.State);
         Assert.Equal("handoff.cancelled", handoff.Refusal!.Code);
         Assert.True(handoff.RunCommand.CanExecute(null));
     }
@@ -180,7 +257,7 @@ public sealed class HandoffViewModelTests
 
         await handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(HandoffRunState.Refused, handoff.State);
+        Assert.Equal(RunState.Refused, handoff.State);
         Assert.Same(refusal, handoff.Refusal);
         Assert.Equal([$"outputDirectory: {@"C:\out"}"], handoff.RefusalFacts);
         Assert.True(handoff.RunCommand.CanExecute(null));
@@ -191,15 +268,15 @@ public sealed class HandoffViewModelTests
     {
         var (fake, _, handoff) = NewViewModel();
         var cancelledRefusal = new Refusal(
-            "handoff.cancelled", FailureReason.Refused, "The Handoff run was cancelled.");
+            "handoff.cancelled", FailureReason.Cancelled, "The Handoff run was cancelled.");
         fake.HandoffBlocksUntilCancelled(cancelledRefusal);
 
         _ = handoff.RunCommand.ExecuteAsync(null);
-        Assert.Equal(HandoffRunState.Running, handoff.State);
+        Assert.Equal(RunState.Running, handoff.State);
 
         await handoff.DisposeAsync();
 
-        Assert.Equal(HandoffRunState.Cancelled, handoff.State);
+        Assert.Equal(RunState.Cancelled, handoff.State);
     }
 
     [Fact]

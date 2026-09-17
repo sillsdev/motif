@@ -87,14 +87,14 @@ public sealed class LexEntryReferenceCollectionOperationsTests : IDisposable
         var proposal = BuildProposal(LexEntryDoNotPublishInOperationKinds.AddRefDoNotPublishIn, target, memberId);
         var dryRun1 = ScratchDryRun.Of(_cache, proposal);
         ProposalApplier.Apply(_cache, proposal, dryRun1.Anchor, "motif-tests");
-        Assert.Equal(1, entry.DoNotPublishInRC.Count(m => m.Guid == member.Guid));
+        Assert.Single(entry.DoNotPublishInRC, m => m.Guid == member.Guid);
 
         // A second, distinct addRef of the SAME member must not duplicate it.
         var secondProposal = BuildProposal(
             LexEntryDoNotPublishInOperationKinds.AddRefDoNotPublishIn, target, memberId, CanonicalId.Mint());
         var dryRun2 = ScratchDryRun.Of(_cache, secondProposal);
         ProposalApplier.Apply(_cache, secondProposal, dryRun2.Anchor, "motif-tests");
-        Assert.Equal(1, entry.DoNotPublishInRC.Count(m => m.Guid == member.Guid));
+        Assert.Single(entry.DoNotPublishInRC, m => m.Guid == member.Guid);
     }
 
     [Fact]

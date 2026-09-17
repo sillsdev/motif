@@ -53,6 +53,12 @@ public static class CompareCommands
                     "comparison.assessment-not-found", FailureReason.NotFound, exception.Message,
                     Fact(("fromAssessmentId", request.FromAssessmentId), ("toAssessmentId", request.ToAssessmentId))));
             }
+            catch (ArgumentException exception)
+            {
+                return CommandOutcome<CompareResponse>.Refused(new Refusal(
+                    "comparison.assessment-not-found", FailureReason.InvalidArgument, exception.Message,
+                    Fact(("fromAssessmentId", request.FromAssessmentId), ("toAssessmentId", request.ToAssessmentId))));
+            }
 
             AssessmentComparison comparison;
             try

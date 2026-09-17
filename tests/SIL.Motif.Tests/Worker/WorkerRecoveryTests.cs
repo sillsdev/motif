@@ -29,7 +29,7 @@ public sealed class WorkerRecoveryTests : IDisposable
 
         Assert.Contains(running.JobId, result.InterruptedJobIds);
         Assert.Equal(JobStatus.Interrupted, jobs.Get(running.JobId)!.Status);
-        var retry = Assert.Single(jobs.ListAttempts(running.LogicalJobId).Where(x => x.JobId != running.JobId));
+        var retry = Assert.Single(jobs.ListAttempts(running.LogicalJobId), x => x.JobId != running.JobId);
         Assert.Equal(JobStatus.Queued, retry.Status);
         Assert.Equal(JobFailureCategory.None, retry.FailureCategory);
         Assert.True(DateTimeOffset.Parse(retry.NotBeforeUtc!) > clock.UtcNow);
@@ -205,7 +205,7 @@ public sealed class WorkerRecoveryTests : IDisposable
         var attempts = jobs.ListAttempts(running.LogicalJobId);
         Assert.Equal(2, attempts.Count);
         Assert.Equal(JobStatus.Interrupted, jobs.Get(running.JobId)!.Status);
-        Assert.Equal(JobStatus.Queued, Assert.Single(attempts.Where(job => job.Attempt == 2)).Status);
+        Assert.Equal(JobStatus.Queued, Assert.Single(attempts, job => job.Attempt == 2).Status);
         Assert.Equal(1, results.Sum(result => result.RetryJobs.Count));
         Assert.DoesNotContain(attempts, job => job.Attempt > 2);
     }

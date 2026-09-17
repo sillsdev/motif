@@ -20,6 +20,9 @@
     <EmbeddedResource Include="Handoff\Assets\instructions.md">
       <LogicalName>SIL.Motif.Commands.Handoff.Assets.instructions.md</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="Handoff\Assets\starter-prompt.md">
+      <LogicalName>SIL.Motif.Commands.Handoff.Assets.starter-prompt.md</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Handoff\Assets\recipes.md">
       <LogicalName>SIL.Motif.Commands.Handoff.Assets.recipes.md</LogicalName>
     </EmbeddedResource>

@@ -321,6 +321,16 @@ public sealed class CommandsRefusalsTests
         Assert.Equal(recordBefore.IntentDigest, recordAfter.IntentDigest);
     }
 
+    [Fact]
+    public void Reopen_InvalidProposalId_IsAnInvalidArgument()
+    {
+        var result = Reopen("reopened", "not-a-canonical-id");
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.invalid-id", result.Refusal!.Code);
+        Assert.Equal(FailureReason.InvalidArgument, result.Refusal.Reason);
+    }
+
     // --- Duplicate ---
 
     [Fact]
@@ -356,6 +366,17 @@ public sealed class CommandsRefusalsTests
         Assert.Equal(FailureReason.StoreInconsistent, refusal.Reason);
         Assert.Contains("store inconsistency", refusal.Message);
         Assert.False(DraftExists("copy"));
+    }
+
+    [Fact]
+    public void Duplicate_InvalidProposalId_IsAnInvalidArgument()
+    {
+        var result = ProposalCommands.Duplicate(
+            new DuplicateRequest(_fwDataPath, ProductVersion, "not-a-canonical-id", "copy"));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.invalid-id", result.Refusal!.Code);
+        Assert.Equal(FailureReason.InvalidArgument, result.Refusal.Reason);
     }
 
     // --- RemoveOperations ---
@@ -614,15 +635,15 @@ public sealed class CommandsRefusalsTests
     }
 
     [Fact]
-    public void Apply_InvalidProposalId_WrapsTheMessageWithADiscardCacheHint()
+    public void Apply_InvalidProposalId_IsAnInvalidArgument()
     {
         var result = Apply("not-a-canonical-id", "tester");
 
         Assert.False(result.Succeeded);
         var refusal = result.Refusal!;
-        Assert.Equal("apply.drift", refusal.Code);
+        Assert.Equal("proposal.invalid-id", refusal.Code);
+        Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
         Assert.Contains("is not a valid canonical Proposal id", refusal.Message);
-        Assert.Contains("Discard it and reload the project.", refusal.Message);
     }
 
     // --- DryRun (store-consistency checks GetFinalized runs before the project is even opened) ---

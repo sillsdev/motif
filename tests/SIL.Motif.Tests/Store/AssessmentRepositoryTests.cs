@@ -400,7 +400,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         Assert.Equal("promoted", repository.GetCurrent()!.AssessmentId);
         Assert.Throws<KeyNotFoundException>(() => repository.Get("scratch-1"));
         Assert.Throws<KeyNotFoundException>(() => repository.Get("scratch-2"));
-        Assert.Empty(repository.ListByProposal(proposal).Where(record => record.AssessmentId != "promoted"));
+        Assert.DoesNotContain(repository.ListByProposal(proposal), record => record.AssessmentId != "promoted");
     }
 
     [Fact]

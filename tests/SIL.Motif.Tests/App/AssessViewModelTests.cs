@@ -52,7 +52,7 @@ public sealed class AssessViewModelTests
     {
         var (_, _, assess) = NewViewModel();
 
-        Assert.Equal(AssessRunState.Idle, assess.State);
+        Assert.Equal(RunState.Idle, assess.State);
         Assert.True(assess.RunCommand.CanExecute(null));
         Assert.False(assess.IsActive);
     }
@@ -73,7 +73,7 @@ public sealed class AssessViewModelTests
 
         Assert.Equal(Steps, observed);
         foreach (var step in observed) Assert.True(step.Total is null || step.Completed <= step.Total);
-        Assert.Equal(AssessRunState.Completed, assess.State);
+        Assert.Equal(RunState.Completed, assess.State);
         Assert.Same(response, assess.Result);
     }
 
@@ -82,18 +82,18 @@ public sealed class AssessViewModelTests
     {
         var (fake, _, assess) = NewViewModel();
         var cancelledRefusal = new Refusal(
-            "assessment.cancelled", FailureReason.Refused, "The Assessment run was cancelled.");
+            "assessment.cancelled", FailureReason.Cancelled, "The Assessment run was cancelled.");
         fake.AssessBlocksUntilCancelled(cancelledRefusal);
 
         // Cancelling is transient: the run can finish before Execute returns, so record rather than sample.
-        var states = new List<AssessRunState>();
+        var states = new List<RunState>();
         assess.PropertyChanged += (_, changed) =>
         {
             if (changed.PropertyName == nameof(AssessViewModel.State)) states.Add(assess.State);
         };
 
         var running = assess.RunCommand.ExecuteAsync(null);
-        Assert.Equal(AssessRunState.Running, assess.State);
+        Assert.Equal(RunState.Running, assess.State);
         Assert.True(assess.IsActive);
         Assert.False(assess.RunCommand.CanExecute(null));
         Assert.True(assess.CancelCommand.CanExecute(null));
@@ -104,8 +104,8 @@ public sealed class AssessViewModelTests
         await running;
 
         Assert.Equal(
-            new[] { AssessRunState.Running, AssessRunState.Cancelling, AssessRunState.Cancelled }, states);
-        Assert.Equal(AssessRunState.Cancelled, assess.State);
+            new[] { RunState.Running, RunState.Cancelling, RunState.Cancelled }, states);
+        Assert.Equal(RunState.Cancelled, assess.State);
         Assert.False(assess.IsActive);
         Assert.Equal("assessment.cancelled", assess.Refusal!.Code);
         Assert.True(assess.RunCommand.CanExecute(null));
@@ -122,7 +122,7 @@ public sealed class AssessViewModelTests
 
         await assess.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(AssessRunState.Refused, assess.State);
+        Assert.Equal(RunState.Refused, assess.State);
         Assert.Same(refusal, assess.Refusal);
         Assert.Equal([$"projectPath: {ProjectPath}"], assess.RefusalFacts);
         Assert.True(assess.RunCommand.CanExecute(null));
@@ -133,15 +133,15 @@ public sealed class AssessViewModelTests
     {
         var (fake, _, assess) = NewViewModel();
         var cancelledRefusal = new Refusal(
-            "assessment.cancelled", FailureReason.Refused, "The Assessment run was cancelled.");
+            "assessment.cancelled", FailureReason.Cancelled, "The Assessment run was cancelled.");
         fake.AssessBlocksUntilCancelled(cancelledRefusal);
 
         _ = assess.RunCommand.ExecuteAsync(null);
-        Assert.Equal(AssessRunState.Running, assess.State);
+        Assert.Equal(RunState.Running, assess.State);
 
         await assess.DisposeAsync();
 
-        Assert.Equal(AssessRunState.Cancelled, assess.State);
+        Assert.Equal(RunState.Cancelled, assess.State);
     }
 
     [Fact]

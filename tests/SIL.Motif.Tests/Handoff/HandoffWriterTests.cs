@@ -2,13 +2,20 @@ using System.Diagnostics;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Handoff;
+using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Handoff;
@@ -43,24 +50,159 @@ public sealed class HandoffWriterTests : IDisposable
         catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
+    [Fact]
+    public void AssessedHandoffRequiresARetainedInvocation()
+    {
+        using var seeded = NewSeededScratch();
+        using var invoker = NewInvoker();
+        var destination = Path.Combine(_root, "handoff-cancelled");
+        var cancellingAssessor = new FakeAssessor(
+            "cancelling", CollectedKinds, _ => throw new OperationCanceledException());
+
+        var outcome = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
+            NewManagedRoot(), cancellingAssessor, invoker, onProgress: null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("handoff.invocation-required", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.InvalidArgument, outcome.Refusal.Reason);
+        Assert.False(Directory.Exists(destination));
+    }
+
     // Complete must arrive once, at the end: the nested Assessment reports its own part way through.
     [Fact]
     public void ProgressReachesCompleteOnlyOnceTheFolderIsActuallyWritten()
     {
         using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        using var assessmentInvoker = NewInvoker();
+        var assessment = RunAssessment(seeded, managedRoot, NewAssessor(), assessmentInvoker);
         using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-progress");
         var reported = new List<AssessmentProgress>();
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
-            NewManagedRoot(), NewAssessor(), invoker, reported.Add, CancellationToken.None);
+            AssessedRequest(seeded, destination, assessment.InvocationId),
+            managedRoot, NewAssessor(), invoker, reported.Add, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         Assert.Contains(AssessmentStage.ImportingGrammar, reported.Select(step => step.Stage));
         var complete = Assert.Single(reported, step => step.Stage == AssessmentStage.Complete);
         Assert.Same(reported[^1], complete);
         Assert.Equal("Handoff complete.", complete.Message);
+    }
+
+    [Fact]
+    public void HandoffExportsTheSelectedRetainedAssessmentWithoutCreatingAnotherOne()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        var selectionA = new SelectionRequest(false, [], ["motifa"], false, null);
+        var selectionB = new SelectionRequest(false, [], ["motifb"], false, null);
+        using var assessorInvokerA = NewInvoker();
+        var assessmentA = RunAssessment(seeded, managedRoot, NewAssessor(), assessorInvokerA, selectionA);
+        using var assessorInvokerB = NewInvoker();
+        _ = RunAssessment(seeded, managedRoot, NewAssessor(), assessorInvokerB, selectionB);
+
+        var before = WalkthroughStoreAssertions.ListInvocations(seeded.FwDataPath);
+        var retainedA = Assert.Single(before, invocation => invocation.InvocationId == assessmentA.InvocationId);
+        AddPlainText(seeded.Cache, "changed after assessment");
+        new FwDataProjectLoader().Save(seeded.Cache);
+
+        string? importedDigest = null;
+        using var realInvoker = NewInvoker();
+        var invoker = new InspectingInvoker(realInvoker, request =>
+        {
+            if (request is PanGlossRequest.Import import)
+                importedDigest = BatchInvocationEvidence.DigestFile(import.FwDataPath);
+        });
+        var destination = Path.Combine(_root, "handoff-retained-a");
+        var outcome = HandoffCommand.Run(
+            AssessedRequest(seeded, destination, assessmentA.InvocationId),
+            managedRoot, NewAssessor(), invoker, null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(assessmentA.InvocationId, outcome.Value!.InvocationId);
+        Assert.Equal(assessmentA.AssessmentIds.OrderBy(id => id), outcome.Value.AssessmentIds.OrderBy(id => id));
+        Assert.Equal(assessmentA.Baseline.Token, outcome.Value.Baseline.Token);
+        Assert.Equal(retainedA.Assessments[0].Invocation!.SourceBytesSha256, importedDigest);
+        Assert.Contains("motifa", File.ReadAllText(Path.Combine(destination, "selection.txt")), StringComparison.Ordinal);
+        Assert.DoesNotContain("motifb", File.ReadAllText(Path.Combine(destination, "selection.txt")), StringComparison.Ordinal);
+        Assert.Equal(before.Count, WalkthroughStoreAssertions.ListInvocations(seeded.FwDataPath).Count);
+    }
+
+    [Fact]
+    public void UnknownRetainedInvocationRefusesBeforeTouchingTheDestination()
+    {
+        using var seeded = NewSeededScratch();
+        var destination = Path.Combine(_root, "handoff-unknown-invocation");
+
+        var outcome = HandoffCommand.Run(
+            AssessedRequest(seeded, destination, "missing-invocation"),
+            NewManagedRoot(), NewAssessor(), new FakeInvoker(), null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("handoff.invocation-not-found", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, outcome.Refusal.Reason);
+        Assert.Contains("missing-invocation", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(destination));
+    }
+
+    [Fact]
+    public void RetainedInvocationFromAnotherProjectRefusesBeforeTouchingTheDestination()
+    {
+        using var selectedProject = NewSeededScratch();
+        using var otherProject = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        using var assessmentInvoker = NewInvoker();
+        var otherAssessment = RunAssessment(otherProject, managedRoot, NewAssessor(), assessmentInvoker);
+        var destination = Path.Combine(_root, "handoff-mismatched-invocation");
+
+        var outcome = HandoffCommand.Run(
+            AssessedRequest(selectedProject, destination, otherAssessment.InvocationId),
+            managedRoot, NewAssessor(), new FakeInvoker(), null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("handoff.invocation-not-found", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, outcome.Refusal.Reason);
+        Assert.False(Directory.Exists(destination));
+    }
+
+    [Fact]
+    public void MissingRetainedTextRefusesBeforeWritingTheDestination()
+    {
+        using var seeded = NewSeededScratch();
+        using var assessmentInvoker = NewInvoker();
+        var selection = new SelectionRequest(true, [seeded.TextId], [], false, null);
+        var assessment = RunAssessment(seeded, NewManagedRoot(), NewAssessor(), assessmentInvoker, selection);
+        var retained = Assert.Single(WalkthroughStoreAssertions.ListInvocations(seeded.FwDataPath));
+        var descriptor = retained.Selection with { TextIds = [Guid.NewGuid()] };
+        descriptor = descriptor with { DescriptorSha256 = SelectionDescriptorDigest.Compute(descriptor) };
+        var locator = new ProjectLocator(Path.GetFullPath(seeded.FwDataPath),
+            Path.GetFileNameWithoutExtension(seeded.FwDataPath));
+        using (var database = MotifDatabase.OpenOwned(
+            ProjectDatabaseCatalog.DatabasePathFor(locator), locator,
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE RetainedInvocations SET SelectionDescriptorJson = $json, " +
+                "SelectionDescriptorSha256 = $digest WHERE InvocationId = $invocation;";
+            command.Parameters.AddWithValue("$json", System.Text.Json.JsonSerializer.Serialize(descriptor));
+            command.Parameters.AddWithValue("$digest", descriptor.DescriptorSha256);
+            command.Parameters.AddWithValue("$invocation", assessment.InvocationId);
+            command.ExecuteNonQuery();
+        }
+
+        var destination = Path.Combine(_root, "handoff-missing-retained-text");
+        var outcome = HandoffCommand.Run(
+            AssessedRequest(seeded, destination, assessment.InvocationId), NewManagedRoot(),
+            NewAssessor(), new FakeInvoker(), null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("handoff.text-not-found", outcome.Refusal!.Code);
+        Assert.Contains(descriptor.TextIds[0].ToString("D"), outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(destination));
     }
 
     [Theory]
@@ -88,6 +230,9 @@ public sealed class HandoffWriterTests : IDisposable
                 return evidence = FakeAssessmentEvidence.Capture(_root, scope, candidate);
             }
         };
+        var managedRoot = NewManagedRoot();
+        using var assessmentInvoker = NewInvoker();
+        var assessment = RunAssessment(seeded, managedRoot, assessor, assessmentInvoker);
         var changed = false;
         var invoker = new InspectingInvoker(realInvoker, request =>
         {
@@ -104,13 +249,13 @@ public sealed class HandoffWriterTests : IDisposable
         });
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
-            NewManagedRoot(), assessor, invoker, null, CancellationToken.None);
+            AssessedRequest(seeded, destination, assessment.InvocationId),
+            managedRoot, NewAssessor(), invoker, null, CancellationToken.None);
 
         Assert.Equal(!tamperRetained, outcome.Succeeded);
         if (tamperRetained)
         {
-            Assert.Equal("handoff.statistics-unavailable", outcome.Refusal!.Code);
+            Assert.Equal("handoff.source-unavailable", outcome.Refusal!.Code);
             Assert.Null(importedPath);
             Assert.False(Directory.Exists(destination));
         }
@@ -139,11 +284,13 @@ public sealed class HandoffWriterTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        using var assessmentInvoker = NewInvoker();
+        var assessment = RunAssessment(seeded, managedRoot, NewAssessor(), assessmentInvoker);
         using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-full");
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
+            AssessedRequest(seeded, destination, assessment.InvocationId),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
@@ -153,6 +300,7 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.True(response.Selection.Words.Count > 0);
 
         AssertFile(destination, "instructions.md");
+        AssertFile(destination, "starter-prompt.md");
         AssertFile(destination, "grammar.json");
         AssertFile(destination, "selection.txt");
         AssertFile(destination, "statistics.md");
@@ -170,6 +318,7 @@ public sealed class HandoffWriterTests : IDisposable
 
         Assert.Contains("grammar.json", response.Files);
         Assert.Contains("selection.txt", response.Files);
+        Assert.Contains("starter-prompt.md", response.Files);
     }
 
     [PythonAvailableFact]
@@ -177,11 +326,13 @@ public sealed class HandoffWriterTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        using var assessmentInvoker = NewInvoker();
+        var assessment = RunAssessment(seeded, managedRoot, NewAssessor(), assessmentInvoker);
         using var invoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-python");
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
+            AssessedRequest(seeded, destination, assessment.InvocationId),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
         Assert.True(outcome.Succeeded);
 
@@ -228,6 +379,7 @@ public sealed class HandoffWriterTests : IDisposable
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.cancelled", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Cancelled, outcome.Refusal.Reason);
         Assert.False(Directory.Exists(destination));
     }
 
@@ -374,13 +526,29 @@ public sealed class HandoffWriterTests : IDisposable
         "Local\\MotifHandoffWriterTests-" + Guid.NewGuid().ToString("N") + "-1",
     }));
 
+    private static AssessCommandResponse RunAssessment(
+        SeededScratch seeded, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
+        SelectionRequest? selection = null)
+    {
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, selection ?? AllWordformsAllTexts), managedRoot,
+            assessor, invoker, onProgress: null, CancellationToken.None);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        return outcome.Value!;
+    }
+
+    private static HandoffRequest AssessedRequest(
+        SeededScratch seeded, string destination, string invocationId) =>
+        new(seeded.FwDataPath, destination, new SelectionRequest(false, [], [], false, null),
+            false, true, invocationId);
+
     // SeedText's wordforms must be saved to disk for HandoffCommand's own scratch loads to see them.
     private SeededScratch NewSeededScratch()
     {
         var cache = _pristine.NewScratch();
-        SeededProject.SeedText(cache, _pristine.Seed);
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
         new FwDataProjectLoader().Save(cache);
-        return new SeededScratch(cache);
+        return new SeededScratch(cache, text.TextId);
     }
 
     private string NewManagedRoot()
@@ -406,10 +574,11 @@ public sealed class HandoffWriterTests : IDisposable
         });
     }
 
-    private sealed class SeededScratch(LcmCache cache) : IDisposable
+    private sealed class SeededScratch(LcmCache cache, Guid textId) : IDisposable
     {
         public LcmCache Cache => cache;
         public string FwDataPath => cache.ProjectId.Path;
+        public Guid TextId => textId;
         public void Dispose() => cache.Dispose();
     }
 

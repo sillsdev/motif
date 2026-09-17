@@ -58,7 +58,7 @@ public class SnapshotAndEffectJsonTests
         var json = ObjectSnapshotJsonWriter.WriteJson(emptySnapshot);
         using var document = JsonDocument.Parse(json);
 
-        Assert.Equal(0, document.RootElement.GetProperty("fields").EnumerateObject().Count());
+        Assert.Empty(document.RootElement.GetProperty("fields").EnumerateObject());
     }
 
     [Fact]

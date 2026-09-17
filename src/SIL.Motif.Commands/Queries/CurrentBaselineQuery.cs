@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.IO;
 using SIL.Motif.Contract.Baselines;
@@ -35,6 +36,5 @@ public static class CurrentBaselineQuery
                 baseline?.Token, baseline?.SourceLastWriteUtc, held));
         });
 
-    private static string ResolveProductVersion() =>
-        typeof(CurrentBaselineQuery).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 }

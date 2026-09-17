@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.Versioning;
 using SIL.Motif.Host.PanGloss;
 using Xunit;
 
@@ -15,7 +14,6 @@ public sealed class RequiresWindowsFactAttribute : FactAttribute
     }
 }
 
-[SupportedOSPlatform("windows")]
 public sealed class WindowsCpuJobTests
 {
     private static readonly TimeSpan BoundedWait = TimeSpan.FromSeconds(10);
@@ -47,6 +45,22 @@ public sealed class WindowsCpuJobTests
             limits.BasicLimitInformation.LimitFlags & NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY);
         // Charging the job rather than each process is what stops several parsers adding up past the bound.
         Assert.Equal(UIntPtr.Zero, limits.ProcessMemoryLimit);
+    }
+
+    // A short parser call such as --describe can finish before it is assigned; that is not a failure.
+    [RequiresWindowsFact]
+    public void AssignProcess_IgnoresAProcessThatAlreadyExited()
+    {
+        using var job = new WindowsCpuJob();
+        using var process = Process.Start(new ProcessStartInfo("cmd.exe", "/c exit 0")
+        {
+            UseShellExecute = false, CreateNoWindow = true,
+        })!;
+        process.WaitForExit();
+
+        var exception = Record.Exception(() => job.AssignProcess(process));
+
+        Assert.Null(exception);
     }
 
     [RequiresWindowsFact]

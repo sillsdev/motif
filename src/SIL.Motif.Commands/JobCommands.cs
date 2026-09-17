@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -169,15 +170,22 @@ public static class JobCommands
                     Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(job.Status)))));
             }
 
-            var repository = new ProposalRepository(database);
-            var id = ProposalCommands.NormalizeId(request.ProposalId);
-            var canonicalId = CanonicalId.Parse(id);
-            var dryRun = ParsePublishedDryRun(job.DryRunJson);
+            try
+            {
+                var repository = new ProposalRepository(database);
+                var id = ProposalCommands.NormalizeId(request.ProposalId);
+                var canonicalId = CanonicalId.Parse(id);
+                var dryRun = ParsePublishedDryRun(job.DryRunJson);
 
-            // Persist the bound-DryRun anchor (docs/adr/0004 decision 3): apply requires it present and unmoved.
-            repository.SetAnchor(canonicalId, JsonSerializer.Serialize(dryRun.Anchor));
+                // Persist the bound-DryRun anchor: apply requires it present and unmoved.
+                repository.SetAnchor(canonicalId, JsonSerializer.Serialize(dryRun.Anchor));
 
-            return CommandOutcome<DryRunProjection>.Success(DryRunProjectionBuilder.Build(id, dryRun));
+                return CommandOutcome<DryRunProjection>.Success(DryRunProjectionBuilder.Build(id, dryRun));
+            }
+            catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+            {
+                return CommandOutcome<DryRunProjection>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+            }
         });
     }
 
@@ -263,10 +271,22 @@ public static class JobCommands
             }
 
             var repository = new AssessmentRepository(database);
-            var summaries = assessmentIds
-                .Select(repository.Get)
-                .Select(record => new JobAssessmentSummary(record.AssessmentId, record.Assessor, record.Kind, record.SavedUtc))
-                .ToArray();
+            JobAssessmentSummary[] summaries;
+            try
+            {
+                summaries = assessmentIds
+                    .Select(repository.Get)
+                    .Select(record => new JobAssessmentSummary(
+                        record.AssessmentId, record.Assessor, record.Kind, record.SavedUtc))
+                    .ToArray();
+            }
+            catch (KeyNotFoundException exception)
+            {
+                return CommandOutcome<JobAssessmentsResponse>.Refused(new Refusal(
+                    "job.assessments-inconsistent", FailureReason.StoreInconsistent,
+                    "The job recorded an Assessment that is missing from the project store: " + exception.Message,
+                    Fact(("jobId", request.JobId))));
+            }
             return CommandOutcome<JobAssessmentsResponse>.Success(
                 new JobAssessmentsResponse(request.JobId, summaries));
         });
@@ -463,7 +483,7 @@ public static class JobCommands
     }
 
     private static Version ParseProductVersion(string productVersion) =>
-        Version.TryParse(productVersion, out var parsed) ? parsed : new Version(1, 0);
+        Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
 
     private static string NowStamp() =>
         DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");

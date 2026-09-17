@@ -1,5 +1,4 @@
 using Microsoft.Data.Sqlite;
-using System.Runtime.Versioning;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
@@ -13,7 +12,6 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-[SupportedOSPlatform("windows")]
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture pristine)
 {

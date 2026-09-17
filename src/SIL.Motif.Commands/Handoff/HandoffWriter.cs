@@ -28,6 +28,7 @@ public static class HandoffWriter
         ["word", "object", "allomorph", "morpheme", "group", "never-fires"];
 
     private const string InstructionsResource = "SIL.Motif.Commands.Handoff.Assets.instructions.md";
+    private const string StarterPromptResource = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
     private const string RecipesResource = "SIL.Motif.Commands.Handoff.Assets.recipes.md";
     private const string ReadHandoffPyResource = "SIL.Motif.Commands.Handoff.Assets.read_handoff.py";
     private const string GrammarFormatResource = "SIL.Motif.Commands.Handoff.Reference.grammar-format.md";
@@ -35,6 +36,7 @@ public static class HandoffWriter
     private const string HcMechanicsResource = "SIL.Motif.Commands.Handoff.Reference.hc-mechanics.md";
 
     private const string InstructionsFileName = "instructions.md";
+    internal const string StarterPromptFileName = "starter-prompt.md";
     private const string RecipesFileName = "recipes.md";
     private const string ReadHandoffPyFileName = "read_handoff.py";
     internal const string GrammarFileName = "grammar.json";
@@ -45,7 +47,7 @@ public static class HandoffWriter
     private const string FlexTextXmlExtension = "flextext.xml";
 
     private static readonly string[] AlwaysRequiredTopLevelFiles =
-        [InstructionsFileName, GrammarFileName, SelectionFileName, RecipesFileName, ReadHandoffPyFileName];
+        [InstructionsFileName, StarterPromptFileName, GrammarFileName, SelectionFileName, RecipesFileName, ReadHandoffPyFileName];
 
     private static readonly string[] ReferenceFiles =
         ["grammar-format.md", "flextext-json-format.md", "hc-mechanics.md"];
@@ -162,12 +164,12 @@ public static class HandoffWriter
     }
 
     /// <summary>
-    /// Extracts every Handoff asset embedded in this assembly: the read-this-first prose, the recipes,
-    /// the standard-library reader, and the three <c>reference/</c> documents.
+    /// Extracts every Handoff asset embedded in this assembly, including the prompt and three reference documents.
     /// </summary>
     internal static void WriteEmbeddedAssets(string incomingRoot)
     {
         ExtractEmbeddedAsset(InstructionsResource, Path.Combine(incomingRoot, InstructionsFileName));
+        ExtractEmbeddedAsset(StarterPromptResource, Path.Combine(incomingRoot, StarterPromptFileName));
         ExtractEmbeddedAsset(RecipesResource, Path.Combine(incomingRoot, RecipesFileName));
         ExtractEmbeddedAsset(ReadHandoffPyResource, Path.Combine(incomingRoot, ReadHandoffPyFileName));
 

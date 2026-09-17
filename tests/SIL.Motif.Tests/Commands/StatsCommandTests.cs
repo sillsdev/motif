@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
 /// Pins <see cref="StatsCommand"/> over a real, file-backed project store: resolving the latest Baseline
-/// Assessment by default and a Trial Assessment under <c>--proposal</c>, refusing absent source evidence, cache,
+/// Assessment by default and an explicitly selected Assessment under <c>--assessment</c>, refusing absent source evidence, cache,
 /// or Assessment with a distinct <c>stats.*</c> code each, the <c>--format</c>/<c>--json</c> conflict, that
 /// forwarding to the invocation module preserves argument order exactly and appends <c>--format jsonl</c>
 /// only for JSON rows, and that every non-completed outcome the invoker returns becomes its own refusal.
@@ -168,7 +168,7 @@ public sealed class StatsCommandTests : IDisposable
     }
 
     [Fact]
-    public void AnInvalidProposalIdIsRefused()
+    public void AnUnknownAssessmentIdIsRefused()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         CaptureBaseline(fwDataPath);
@@ -177,20 +177,19 @@ public sealed class StatsCommandTests : IDisposable
         var outcome = Run(fwDataPath, "not-a-canonical-id", StatsOutputKind.Text, [], fake);
 
         Assert.False(outcome.Succeeded);
-        Assert.Equal("stats.invalid-proposal-id", outcome.Refusal!.Code);
-        Assert.Equal(FailureReason.InvalidArgument, outcome.Refusal.Reason);
+        Assert.Equal("stats.no-assessment", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, outcome.Refusal.Reason);
         Assert.Empty(fake.Requests);
     }
 
     [Fact]
-    public void AProposalWithNoTrialAssessmentIsRefused()
+    public void AnExplicitAssessmentWithNoRecordIsRefused()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         CaptureBaseline(fwDataPath);
-        var proposalId = CanonicalId.Mint("proposal/");
         var fake = new FakeInvoker();
 
-        var outcome = Run(fwDataPath, proposalId.Value, StatsOutputKind.Text, [], fake);
+        var outcome = Run(fwDataPath, "assessment/missing", StatsOutputKind.Text, [], fake);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("stats.no-assessment", outcome.Refusal!.Code);
@@ -198,21 +197,19 @@ public sealed class StatsCommandTests : IDisposable
     }
 
     [Fact]
-    public void AProposalIdSelectsItsTrialAssessmentInsteadOfTheBaselineOne()
+    public void AnExactAssessmentIdSelectsThatAssessmentInsteadOfTheNewestBaseline()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         CaptureBaseline(fwDataPath);
         RecordAssessment(fwDataPath, proposalId: null, cachePath: "baseline-cache.sqlite");
-        var proposalId = CanonicalId.Mint("proposal/");
-        SeedProposal(fwDataPath, proposalId);
-        var trialAssessmentId = RecordAssessment(fwDataPath, proposalId, cachePath: "trial-cache.sqlite");
+        var selectedAssessmentId = RecordAssessment(fwDataPath, proposalId: null, cachePath: "selected-cache.sqlite");
         var fake = Completing("trial stats" + Environment.NewLine);
 
-        var outcome = Run(fwDataPath, proposalId.Value, StatsOutputKind.Text, [], fake);
+        var outcome = Run(fwDataPath, selectedAssessmentId, StatsOutputKind.Text, [], fake);
 
         Assert.True(outcome.Succeeded);
-        Assert.Equal(trialAssessmentId, outcome.Value!.AssessmentId);
-        Assert.Equal("trial-cache.sqlite", Path.GetFileName(outcome.Value.CachePath));
+        Assert.Equal(selectedAssessmentId, outcome.Value!.AssessmentId);
+        Assert.Equal("selected-cache.sqlite", Path.GetFileName(outcome.Value.CachePath));
         Assert.NotEqual(outcome.Value.CachePath, SeenStats(fake).CachePath);
     }
 
@@ -290,8 +287,8 @@ public sealed class StatsCommandTests : IDisposable
         RecordAssessment(project, null, "newer.sqlite", "2026-01-02T00:00:00Z");
         CaptureBaseline(project);
         var fake = Completing("original stats");
-        var result = StatsCommand.Run(new StatsRequest(project, null, StatsOutputKind.Text, [])
-            { AssessmentId = original }, fake, CancellationToken.None);
+        var result = StatsCommand.Run(new StatsRequest(project, original, StatsOutputKind.Text, []), fake,
+            CancellationToken.None);
         Assert.True(result.Succeeded);
         Assert.Equal(original, result.Value!.AssessmentId);
         Assert.Equal(RetainedSource(project, original), result.Value.GrammarPath);
@@ -377,26 +374,16 @@ public sealed class StatsCommandTests : IDisposable
         var project = _pristine.CopyProjectFile();
         var id = wrongKind ? RecordAssessment(project, null, "cache.sqlite", kind: AssessmentKind.ParseTime) : "missing";
         var fake = Completing("must not run");
-        var result = StatsCommand.Run(new StatsRequest(project, null, StatsOutputKind.Text, [])
-            { AssessmentId = id }, fake, CancellationToken.None);
+        var result = StatsCommand.Run(new StatsRequest(project, id, StatsOutputKind.Text, []), fake,
+            CancellationToken.None);
         Assert.Equal(wrongKind ? "stats.wrong-kind" : "stats.no-assessment", result.Refusal!.Code);
         Assert.Empty(fake.Requests);
     }
 
-    [Fact]
-    public void ExactAssessmentAndProposalSelectorsCannotBeCombined()
-    {
-        var fake = Completing("must not run");
-        var result = StatsCommand.Run(new StatsRequest(_pristine.CopyProjectFile(), CanonicalId.Mint("proposal/").Value,
-            StatsOutputKind.Text, []) { AssessmentId = "exact" }, fake, CancellationToken.None);
-        Assert.Equal("stats.selector-conflict", result.Refusal!.Code);
-        Assert.Empty(fake.Requests);
-    }
-
-    private static CommandOutcome<StatsCommandResponse> Run(string fwDataPath, string? proposalId,
+    private static CommandOutcome<StatsCommandResponse> Run(string fwDataPath, string? assessmentId,
         StatsOutputKind output, IReadOnlyList<string> forwarded, IPanGlossInvoker invoker,
         CancellationToken cancellationToken = default) =>
-        StatsCommand.Run(new StatsRequest(fwDataPath, proposalId, output, forwarded), invoker, cancellationToken);
+        StatsCommand.Run(new StatsRequest(fwDataPath, assessmentId, output, forwarded), invoker, cancellationToken);
 
     // Answers every stats request with the same rows; what the command sent is read back from Requests.
     private static FakeInvoker Completing(string standardOutput) => new()

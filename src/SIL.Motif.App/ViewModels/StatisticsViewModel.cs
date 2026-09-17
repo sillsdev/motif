@@ -43,10 +43,6 @@ public sealed partial class StatisticsViewModel : ObservableObject
     [ObservableProperty]
     private string? _projectPath;
 
-    /// <summary>A Proposal selector takes precedence over the displayed Assessment selector.</summary>
-    [ObservableProperty]
-    private string? _proposalId;
-
     [ObservableProperty]
     private string? _assessmentId;
 
@@ -117,7 +113,6 @@ public sealed partial class StatisticsViewModel : ObservableObject
         Refusal = null;
         SummaryMarkdown = null;
         AssessmentId = null;
-        ProposalId = null;
         Metadata.Clear();
     }
 
@@ -125,10 +120,8 @@ public sealed partial class StatisticsViewModel : ObservableObject
     {
         if (ProjectPath is null) return;
 
-        var request = new StatsRequest(ProjectPath, ProposalId, StatsOutputKind.JsonRows, ["--group", SelectedGroup])
-        {
-            AssessmentId = ProposalId is null ? AssessmentId : null,
-        };
+        var request = new StatsRequest(ProjectPath, AssessmentId, StatsOutputKind.JsonRows,
+            ["--group", SelectedGroup]);
         var outcome = await _commandClient.StatsAsync(request, CancellationToken.None);
 
         if (outcome.Succeeded)

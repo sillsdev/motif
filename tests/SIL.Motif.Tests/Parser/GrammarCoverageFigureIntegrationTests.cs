@@ -39,7 +39,7 @@ public sealed class GrammarCoverageFigureIntegrationTests : IDisposable
     }
 
     [RealParserFact(Skip = "The shipped pangloss has no assess subcommand (grill K46); the figure needs its report.")]
-    public void ExtractingAnalysingAndComputing_ProducesAFigureThatCitesItsOwnRun()
+    public async Task ExtractingAnalysingAndComputing_ProducesAFigureThatCitesItsOwnRun()
     {
         // One word matching a seeded stem (should be analysable) and one that matches nothing.
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
@@ -56,11 +56,11 @@ public sealed class GrammarCoverageFigureIntegrationTests : IDisposable
         using var invoker = new PanGlossInvoker();
         var parser = new PanGlossParser(invoker);
 
-        var batchResult = parser.AnalyseBatchAsync(projectPath, corpus.Words, TimeSpan.FromSeconds(5), "test:coverage", CancellationToken.None).GetAwaiter().GetResult();
+        var batchResult = await parser.AnalyseBatchAsync(projectPath, corpus.Words, TimeSpan.FromSeconds(5), "test:coverage", CancellationToken.None);
         Assert.True(batchResult.Succeeded, batchResult.Refusal?.Detail ?? batchResult.Outcome.Message);
 
-        var report = new PanGlossAssessmentProcess().RunAsync(Path.GetDirectoryName(projectPath)!, CancellationToken.None)
-            .GetAwaiter().GetResult();
+        var report = await new PanGlossAssessmentProcess().RunAsync(
+            Path.GetDirectoryName(projectPath)!, CancellationToken.None);
 
         var figure = GrammarCoverageFigure.Compute(batchResult.Analysis!, corpus, report);
 

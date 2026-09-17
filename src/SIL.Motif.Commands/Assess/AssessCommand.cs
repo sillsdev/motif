@@ -1,5 +1,7 @@
+using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -34,9 +36,8 @@ namespace SIL.Motif.Commands.Assess;
 /// <para>
 /// This command never wakes the durable job runner — it captures, measures, and returns within one call,
 /// the same synchronous shape <see cref="BaselineCaptureCommand"/> already established. A cancelled run
-/// records nothing: <see cref="Run"/> only calls <see cref="SIL.Motif.Worker.Store.AssessmentRepository.Record"/>
-/// after the Assessor has already returned, so a cancellation raised while it is still running never leaves
-/// a partial Assessment behind.
+/// records nothing: <see cref="RetainedInvocationRepository.Record"/> is called only after the Assessor has already
+/// returned, so a cancellation raised while it is still running never leaves a partial Assessment behind.
 /// </para>
 /// <para>
 /// Shares its interpretation of <c>ProducedAssessment</c> with <c>TrialJobHandler</c> through
@@ -93,6 +94,7 @@ public static class AssessCommand
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baselines = new BaselineRepository(database);
             var assessments = new AssessmentRepository(database);
+            var retainedInvocations = new RetainedInvocationRepository(database);
 
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.Capturing, 0, null, "Ensuring a current Baseline exists..."));
@@ -106,7 +108,8 @@ public static class AssessCommand
             SelectionComposition composition;
             using (var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath))
             {
-                var composed = SelectionComposer.Compose(cache, request.Selection, assessments);
+                var composed = SelectionComposer.Compose(
+                    cache, request.Selection, assessments, JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions()));
                 if (!composed.Succeeded)
                     return CommandOutcome<AssessCommandResponse>.Refused(composed.Refusal!);
                 composition = composed.Value!;
@@ -122,6 +125,12 @@ public static class AssessCommand
             {
                 var collected = assessor.SupportedKinds.Contains(AssessmentKind.Correctness)
                     ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
+                var unsupported = collected.Where(kind => !assessor.SupportedKinds.Contains(kind)).ToArray();
+                if (unsupported.Length > 0)
+                    return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                        "assess.unsupported-kind", FailureReason.Refused,
+                        $"The Assessor does not declare required Assessment kind '{unsupported[0]}'.",
+                        new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
                 scope = new AssessmentScope(composition.Selection.Words, collected,
                     AssessmentScopeConfiguration.DefaultPerWordLimit);
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
@@ -141,15 +150,33 @@ public static class AssessCommand
                     new Dictionary<string, string> { ["kind"] = ex.Kind.ToString() }));
             }
 
+            if (produced is null)
+            {
+                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                    "assess.measurements-incomplete", FailureReason.StoreInconsistent,
+                    "The Assessor returned no measurement collection."));
+            }
             var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
             try
             {
+                var expectedKinds = (scope.Collect.Count == 0 ? assessor.SupportedKinds : scope.Collect)
+                    .ToArray();
+                if (produced is null || produced.Count != expectedKinds.Length ||
+                    produced.Select(item => item.Kind).Distinct().Count() != produced.Count ||
+                    expectedKinds.Except(produced.Select(item => item.Kind)).Any() ||
+                    produced.Select(item => item.Kind).Except(expectedKinds).Any())
+                {
+                    return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                        "assess.measurements-incomplete", FailureReason.StoreInconsistent,
+                        "The Assessor did not return exactly one measurement for every required kind."));
+                }
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
                 var scopeJson = ScopeCodec.Write(
                     new StoredScope.Trial(ScopeQuery, scope.Words, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
                 var scopeDigest = AssessmentMaterial.Digest(scopeJson);
                 var baselineTokenJson = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
+                var savedUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
 
                 var assessmentIds = new List<string>();
                 var pendingRecords = new List<NewAssessmentRecord>();
@@ -160,7 +187,7 @@ public static class AssessCommand
                     var assessmentId = CanonicalId.Mint("assessment/").Value;
                     var record = AssessmentMaterial.ToRecord(item, assessmentId, proposalId: null,
                         proposalIntentDigest: null, assessor.Name, scopeJson, scopeDigest, TokeniserName,
-                        TokeniserVersion, baselineTokenJson, composition.Selection);
+                        TokeniserVersion, baselineTokenJson, composition.Selection) with { SavedUtc = savedUtc };
                     pendingRecords.Add(record);
                     assessmentIds.Add(assessmentId);
                     if (record.CachePath is not null)
@@ -169,6 +196,19 @@ public static class AssessCommand
                         statisticsRecord = record;
                     }
                 }
+
+                var invocations = pendingRecords.Select(record => record.Invocation).Distinct().ToArray();
+                if (invocations.Any(item => item is null) ||
+                    invocations.OfType<BatchInvocationEvidence>().Distinct().Count() != 1 ||
+                    pendingRecords.Any(record => record.GrammarSourceSha256 !=
+                        invocations.OfType<BatchInvocationEvidence>().Single().SourceBytesSha256))
+                {
+                    return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                        "assess.invocation-inconsistent", FailureReason.Refused,
+                        "The collected Assessments do not share one non-null invocation evidence record " +
+                        "and its source-byte digest."));
+                }
+                var invocation = invocations.OfType<BatchInvocationEvidence>().Single();
 
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
@@ -200,7 +240,7 @@ public static class AssessCommand
                     switch (summary)
                     {
                         case PanGlossOutcome.Completed completed:
-                            summaryMarkdown = "```" + Environment.NewLine + completed.Output + "```" + Environment.NewLine;
+                            summaryMarkdown = completed.Output;
                             break;
                         case PanGlossOutcome.Cancelled:
                             return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
@@ -212,7 +252,21 @@ public static class AssessCommand
 
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                assessments.RecordBatch(pendingRecords);
+                var currentBaseline = baselines.GetCurrent(workspaceKey);
+                if (currentBaseline is null || currentBaseline.Token != baseline.Token)
+                    return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                        "assess.baseline-changed", FailureReason.StoreInconsistent,
+                        "The Baseline changed while the Assessment was running."));
+                var retained = new RetainedInvocationRecord(
+                    invocation.InvocationId, workspaceKey, baseline.Token,
+                    Path.GetDirectoryName(baseline.FwDataPath)!, baseline.FwDataPath,
+                    currentBaseline.SourceLastWriteUtc, currentBaseline.PublishedUtc,
+                    DateTimeOffset.ParseExact(savedUtc, "O", CultureInfo.InvariantCulture,
+                        DateTimeStyles.RoundtripKind),
+                    composition.Descriptor, assessor.Name, scopeJson, scopeDigest, invocation.InvocationId,
+                    pendingRecords.Select(record => new RetainedInvocationMember(record.Kind, record.AssessmentId))
+                        .ToArray());
+                retainedInvocations.Record(retained, pendingRecords);
                 foreach (var lease in artifactLeases) lease.Retain();
 
                 var timing = produced.FirstOrDefault(item => item.Kind == AssessmentKind.ParseTime);
@@ -232,12 +286,9 @@ public static class AssessCommand
                     { Morphology = word.Morphology, Correctness = word.Correctness }).ToArray()
                     : Array.Empty<AssessmentWordResult>();
                 var completedCount = words.Count(word => !word.IsIncomplete && word.Outcome != "skipped");
-                var searchNoun = completedCount == 1 ? "search" : "searches";
-                var completionSummary = $"{completedCount} {searchNoun} completed; " +
-                    $"{words.Count(word => word.IsIncomplete)} incomplete; {words.Count(word => word.Outcome == "skipped")} skipped.";
-                summaryMarkdown = completionSummary + Environment.NewLine + Environment.NewLine + summaryMarkdown;
-                var invocation = produced.Select(item => item.Invocation)
-                    .OfType<BatchInvocationEvidence>().FirstOrDefault();
+                var completionSummary = CompletionSummary(completedCount, words.Count(word => word.IsIncomplete),
+                    words.Count(word => word.Outcome == "skipped"));
+                summaryMarkdown = RenderSummaryMarkdown(completionSummary, summaryMarkdown);
                 var grammarWarnings = invocation?.GrammarWarningLines is { Count: > 0 } warningLines
                     ? warningLines : null;
 
@@ -259,7 +310,9 @@ public static class AssessCommand
                               "Search completion is reported separately for each word."
                             : "Correctness unavailable: this Assessment did not collect approved morphology comparisons.",
                         Measurements = pendingRecords.Select(record => new ProducedAssessmentReference(
-                            record.AssessmentId, record.Kind, record.Invocation?.InvocationId)).ToArray(),
+                            record.AssessmentId, record.Kind, record.Invocation!.InvocationId)).ToArray(),
+                        InvocationId = invocation.InvocationId,
+                        SelectionDescriptor = composition.Descriptor,
                     });
             }
             finally
@@ -287,12 +340,21 @@ public static class AssessCommand
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
     private static Refusal Cancelled(string projectPath) => new(
-        "assessment.cancelled", FailureReason.Refused,
+        "assessment.cancelled", FailureReason.Cancelled,
         "The Assessment run was cancelled; no Assessments were recorded.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
-    private static string ResolveProductVersion() =>
-        typeof(AssessCommand).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    internal static string RenderSummaryMarkdown(string completionSummary, string statisticsOutput) =>
+        completionSummary + Environment.NewLine + Environment.NewLine +
+        "```" + Environment.NewLine + statisticsOutput + "```" + Environment.NewLine;
+
+    internal static string CompletionSummary(int completedCount, int incompleteCount, int skippedCount)
+    {
+        var searchNoun = completedCount == 1 ? "search" : "searches";
+        return $"{completedCount} {searchNoun} completed; {incompleteCount} incomplete; {skippedCount} skipped.";
+    }
+
+    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 }
 
 /// <summary>
