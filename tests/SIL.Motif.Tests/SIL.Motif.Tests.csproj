@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <SupportedPlatform Include="windows" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Built, not referenced: tests launch it as the parser rather than calling into it. -->
     <!-- Private=false keeps its pangloss.exe out of this project's output, where parser discovery
          prefers an executable beside the application and would take the fake for the real one. -->

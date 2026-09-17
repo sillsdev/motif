@@ -99,7 +99,7 @@ public sealed class BaselineDryRunIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void TwentyDryRunsFromOneCaptureAreIdenticalAndLeaveTheBaselineByteForByteUnchanged()
+    public async Task TwentyDryRunsFromOneCaptureAreIdenticalAndLeaveTheBaselineByteForByteUnchanged()
     {
         var proposals = new ProposalRepository(_database);
         var lanes = new ProjectLaneRegistry(_ => _token);
@@ -125,8 +125,7 @@ public sealed class BaselineDryRunIntegrationTests : IDisposable
                 "dry-run", _proposalJson, "2026-08-24T00:00:00Z");
             var claim = DryRunJobTestHarness.Claim(_jobs, job.JobId);
 
-            var completed = DryRunJobTestHarness.RunAndFinishAsync(_jobs, handler, claim, _project)
-                .GetAwaiter().GetResult();
+            var completed = await DryRunJobTestHarness.RunAndFinishAsync(_jobs, handler, claim, _project);
             Assert.Equal(JobStatus.CompletedDryRunOnly, completed.Status);
             Assert.True(completed.DryRunPublished);
             Assert.NotNull(completed.DryRunJson);
@@ -149,7 +148,7 @@ public sealed class BaselineDryRunIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void ADryRunJobOpensThePublishedBaselineExactlyOnce()
+    public async Task ADryRunJobOpensThePublishedBaselineExactlyOnce()
     {
         var proposals = new ProposalRepository(_database);
         var lanes = new ProjectLaneRegistry(_ => _token);
@@ -168,8 +167,7 @@ public sealed class BaselineDryRunIntegrationTests : IDisposable
             "dry-run", _proposalJson, "2026-08-24T00:00:00Z");
         var claim = DryRunJobTestHarness.Claim(_jobs, job.JobId);
 
-        var completed = DryRunJobTestHarness.RunAndFinishAsync(_jobs, handler, claim, _project)
-            .GetAwaiter().GetResult();
+        var completed = await DryRunJobTestHarness.RunAndFinishAsync(_jobs, handler, claim, _project);
 
         Assert.Equal(JobStatus.CompletedDryRunOnly, completed.Status);
         Assert.Equal(1, _loader.LoadScratchCacheCount);

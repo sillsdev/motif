@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.Versioning;
 using SIL.Motif.Host.PanGloss;
 using Xunit;
 
@@ -15,7 +14,6 @@ public sealed class RequiresWindowsFactAttribute : FactAttribute
     }
 }
 
-[SupportedOSPlatform("windows")]
 public sealed class WindowsCpuJobTests
 {
     private static readonly TimeSpan BoundedWait = TimeSpan.FromSeconds(10);

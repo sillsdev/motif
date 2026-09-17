@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Versioning;
 using System.Threading;
 using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
@@ -26,7 +25,6 @@ namespace SIL.Motif.Tests.Commands;
 /// recording Assessments, a second run reusing that Baseline, cancellation recording nothing, an empty
 /// Selection's refusal, and the reported progress stages.
 /// </summary>
-[SupportedOSPlatform("windows")]
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class AssessCommandTests : IDisposable
 {
