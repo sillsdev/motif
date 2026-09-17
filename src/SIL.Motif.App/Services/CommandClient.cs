@@ -14,6 +14,12 @@ namespace SIL.Motif.App.Services;
 /// process's JSON.
 /// </summary>
 /// <remarks>
+/// <para>
+/// The cancellation token goes to the command, never to <see cref="Task.Run(Action)"/>: a token that is already
+/// cancelled when the work is queued would otherwise surface as a <see cref="TaskCanceledException"/> in the
+/// view model instead of the command's own typed cancellation refusal, pinned by
+/// <c>CommandClientCancellationTests.ACancellationBeforeTheCommandStartsIsStillATypedRefusal</c>.
+/// </para>
 /// <see cref="HandoffAsync"/> does not yet report through its <c>progress</c> parameter: there is no
 /// in-process collaborator to produce Handoff progress steps from. The parameter exists so a caller can
 /// already depend on the same <see cref="IProgress{T}"/> shape <see cref="AssessAsync"/> uses.
@@ -32,36 +38,36 @@ public sealed class CommandClient : ICommandClient
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => BaselineCaptureCommand.Capture(request, _managedRoot), cancellationToken);
+        Task.Run(() => BaselineCaptureCommand.Capture(request, _managedRoot));
 
     public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
-        Task.Run(() => KnownProjectsQuery.List(_managedRoot), cancellationToken);
+        Task.Run(() => KnownProjectsQuery.List(_managedRoot));
 
     public Task<CommandOutcome<CurrentBaselineResponse>> GetCurrentBaselineAsync(
         CurrentBaselineRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => CurrentBaselineQuery.Query(request), cancellationToken);
+        Task.Run(() => CurrentBaselineQuery.Query(request));
 
     public Task<CommandOutcome<TextInventoryResponse>> ListTextsAsync(
         TextInventoryRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => TextInventoryQuery.Query(request), cancellationToken);
+        Task.Run(() => TextInventoryQuery.Query(request));
 
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
         return Task.Run(
-            () => AssessCommand.Assess(request, _managedRoot, progress.Report, cancellationToken), cancellationToken);
+            () => AssessCommand.Assess(request, _managedRoot, progress.Report, cancellationToken));
     }
 
     public Task<CommandOutcome<StatsCommandResponse>> StatsAsync(
         StatsRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => StatsCommand.Stats(request, cancellationToken), cancellationToken);
+        Task.Run(() => StatsCommand.Stats(request, cancellationToken));
 
     public Task<CommandOutcome<HandoffCommandResponse>> HandoffAsync(
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
         return Task.Run(
-            () => HandoffCommand.Handoff(request, _managedRoot, progress.Report, cancellationToken), cancellationToken);
+            () => HandoffCommand.Handoff(request, _managedRoot, progress.Report, cancellationToken));
     }
 }
