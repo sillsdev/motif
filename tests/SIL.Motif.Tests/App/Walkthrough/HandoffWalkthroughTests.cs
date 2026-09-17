@@ -37,7 +37,7 @@ public sealed class HandoffWalkthroughTests(PristineProjectFixture pristine)
                 walkthrough.Click("Write the Handoff folder");
                 var handoffDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == HandoffRunState.Completed,
+                    () => walkthrough.Workspace.Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(handoffDeadline), "the Handoff did not complete");
 
                 var handoff = walkthrough.Workspace.Handoff;

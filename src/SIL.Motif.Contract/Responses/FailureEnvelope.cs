@@ -20,6 +20,9 @@ public enum FailureReason
     /// <summary>Well-formed, and refused: a failed precondition, a policy denial, or drift.</summary>
     Refused,
 
+    /// <summary>The caller asked to stop; nothing was recorded.</summary>
+    Cancelled,
+
     /// <summary>Well-formed, and not attemptable now: a held lock, a busy store, a lease elsewhere.</summary>
     Busy,
 
@@ -76,6 +79,7 @@ public sealed record FailureEnvelope
         FailureReason.InvalidArgument => 1,
         FailureReason.NotFound => 2,
         FailureReason.Refused => 2,
+        FailureReason.Cancelled => 2,
         FailureReason.Busy => 3,
         FailureReason.StoreInconsistent => 4,
         _ => 4,

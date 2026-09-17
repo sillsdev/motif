@@ -125,7 +125,7 @@ public sealed class DesktopServiceBoundaryTests
     {
         var fake = new FakeCommandClient();
         var onCancelled = new Refusal(
-            "assessment.cancelled", FailureReason.Refused, "The Assessment run was cancelled.");
+            "assessment.cancelled", FailureReason.Cancelled, "The Assessment run was cancelled.");
         fake.AssessBlocksUntilCancelled(onCancelled);
 
         using var cts = new CancellationTokenSource();
@@ -200,7 +200,7 @@ public sealed class DesktopServiceBoundaryTests
     {
         var fake = new FakeCommandClient();
         var onCancelled = new Refusal(
-            "handoff.cancelled", FailureReason.Refused, "The Handoff run was cancelled.");
+            "handoff.cancelled", FailureReason.Cancelled, "The Handoff run was cancelled.");
         fake.HandoffBlocksUntilCancelled(onCancelled);
 
         using var cts = new CancellationTokenSource();

@@ -2,35 +2,12 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
-
-/// <summary>The Handoff panel's own state machine for one synchronous folder-writing run.</summary>
-public enum HandoffRunState
-{
-    /// <summary>No run has started, or the previous one already reached a terminal state.</summary>
-    Idle,
-
-    /// <summary>The command is running; Handoff is disabled and Cancel is available.</summary>
-    Running,
-
-    /// <summary>Cancel was requested; waiting for the command to unwind and return its refusal.</summary>
-    Cancelling,
-
-    /// <summary>The command returned a typed success.</summary>
-    Completed,
-
-    /// <summary>The command returned <c>handoff.cancelled</c> after a requested cancellation.</summary>
-    Cancelled,
-
-    /// <summary>The command returned a refusal other than cancellation.</summary>
-    Refused,
-}
 
 /// <summary>One repository document linked from the completed Handoff.</summary>
 public sealed record ReferenceDocument(string DisplayPath, Uri Url, string AccessibleName);
@@ -47,9 +24,8 @@ public sealed record ReferenceDocument(string DisplayPath, Uri Url, string Acces
 /// view model never reads a Handoff file's bytes; it only hands <see cref="IFileDragSource"/> the exact,
 /// already-verified paths of a drag gesture the view forwarded to it.
 /// </remarks>
-public sealed partial class HandoffViewModel : ObservableObject, IProgress<AssessmentProgress>, IAsyncDisposable
+public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffCommandResponse>
 {
-    private const string CancelledRefusalCode = "handoff.cancelled";
     private const string InstructionsResourceName = "SIL.Motif.Commands.Handoff.Assets.instructions.md";
     private const string StarterPromptResourceName = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
 
@@ -65,7 +41,7 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
     private readonly SelectionViewModel _selection;
     private readonly IHandoffFolderPicker _folderPicker;
     private readonly IFileDragSource _dragSource;
-    private CancellationTokenSource? _cts;
+    private string? _pendingFolder;
 
     /// <summary>Repository documents that explain the files in a completed Handoff.</summary>
     public IReadOnlyList<ReferenceDocument> ReferenceDocuments { get; } =
@@ -97,8 +73,6 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
         _folderPicker = folderPicker;
         _dragSource = dragSource;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
-        RunCommand = new AsyncRelayCommand(RunAsync, CanRun);
-        CancelCommand = new RelayCommand(Cancel, CanCancel);
     }
 
     /// <summary>The Handoff's own read-this-first prose, rendered in full in an expandable preview.</summary>
@@ -130,64 +104,17 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
     [ObservableProperty]
     private bool _writeFlexTextXml;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsActive))]
-    private HandoffRunState _state = HandoffRunState.Idle;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsIndeterminate))]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction))]
-    private AssessmentProgress? _progress;
-
-    // The command's typed success, once State reaches HandoffRunState.Completed.
-    [ObservableProperty]
-    private HandoffCommandResponse? _result;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(RefusalFacts))]
-    private Refusal? _refusal;
-
     /// <summary>Where the completed run wrote the folder, or <c>null</c> before a run has completed.</summary>
     [ObservableProperty]
     private string? _outputDirectory;
-
-    public IAsyncRelayCommand RunCommand { get; }
-
-    public IRelayCommand CancelCommand { get; }
 
     /// <summary>The completed run's own files, each already verified to sit inside <see cref="OutputDirectory"/>.</summary>
     public ObservableCollection<HandoffFileViewModel> Files { get; } = [];
 
     /// <summary>Whether the completed Handoff has files that can be dragged or copied.</summary>
-    public bool HasCompletedFiles => State == HandoffRunState.Completed && Files.Count > 0;
-
-    /// <summary>Whether project and Selection controls should show disabled while a run is in flight.</summary>
-    public bool IsActive => State is HandoffRunState.Running or HandoffRunState.Cancelling;
-
-    /// <summary>
-    /// Whether the progress bar must render indeterminate: the command's own stages do not all carry a
-    /// total, and a missing <see cref="AssessmentProgress.Total"/> is never replaced with a fabricated one.
-    /// </summary>
-    public bool IsIndeterminate => Progress?.Total is null;
-
-    /// <summary>The current stage's own completion fraction, meaningful only when <see cref="IsIndeterminate"/> is false.</summary>
-    public double ProgressFraction =>
-        Progress is { Total: { } total } && total > 0 ? (double)Progress.Completed / total : 0d;
-
-    /// <summary>The current <see cref="Refusal"/>'s facts, rendered as one line per entry for an expandable details list.</summary>
-    public IReadOnlyList<string> RefusalFacts =>
-        Refusal is null ? [] : Refusal.Facts.Select(fact => $"{fact.Key}: {fact.Value}").ToList();
+    public bool HasCompletedFiles => State == RunState.Completed && Files.Count > 0;
 
     partial void OnProjectPathChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
-
-    partial void OnStateChanged(HandoffRunState value)
-    {
-        RunCommand.NotifyCanExecuteChanged();
-        CancelCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(HasCompletedFiles));
-    }
-
-    void IProgress<AssessmentProgress>.Report(AssessmentProgress value) => Progress = value;
 
     /// <summary>Hands the exact path of one Handoff file to the drag adapter; never reads its bytes.</summary>
     public Task<DragDropEffects> DragFileAsync(PointerPressedEventArgs trigger, HandoffFileViewModel file)
@@ -205,69 +132,43 @@ public sealed partial class HandoffViewModel : ObservableObject, IProgress<Asses
         if (e.PropertyName == nameof(SelectionViewModel.CanAssess)) RunCommand.NotifyCanExecuteChanged();
     }
 
-    private bool CanRun() =>
-        ProjectPath is not null && _selection.CanAssess
-        && State is HandoffRunState.Idle or HandoffRunState.Completed or HandoffRunState.Cancelled
-            or HandoffRunState.Refused;
+    protected override bool CanStartCore() => ProjectPath is not null && _selection.CanAssess;
 
-    private bool CanCancel() => State == HandoffRunState.Running;
-
-    private async Task RunAsync()
+    protected override async Task<bool> PrepareRunAsync()
     {
-        if (ProjectPath is null) return;
+        _pendingFolder = await _folderPicker.PickFolderAsync();
+        return _pendingFolder is not null;
+    }
 
-        // Backing out of the folder dialog leaves State untouched; no run exists yet for Cancel to unwind.
-        var folder = await _folderPicker.PickFolderAsync();
-        if (folder is null) return;
-
-        var cts = new CancellationTokenSource();
-        _cts = cts;
-        Progress = null;
-        Result = null;
-        Refusal = null;
+    protected override void OnRunStarting()
+    {
         Files.Clear();
         OutputDirectory = null;
-        State = HandoffRunState.Running;
-
-        try
-        {
-            var request = new HandoffRequest(ProjectPath, folder, _selection.BuildRequest(), WriteFlexTextXml, true);
-            var outcome = await _commandClient.HandoffAsync(request, this, cts.Token);
-            if (outcome.Succeeded)
-            {
-                Result = outcome.Value;
-                OutputDirectory = outcome.Value!.OutputDirectory;
-                PopulateFiles(outcome.Value!);
-                State = HandoffRunState.Completed;
-            }
-            else
-            {
-                Refusal = outcome.Refusal;
-                State = outcome.Refusal!.Code == CancelledRefusalCode
-                    ? HandoffRunState.Cancelled
-                    : HandoffRunState.Refused;
-            }
-        }
-        finally
-        {
-            _cts = null;
-            cts.Dispose();
-        }
     }
 
-    private void Cancel()
+    protected override Task<CommandOutcome<HandoffCommandResponse>> ExecuteCoreAsync(
+        CancellationToken cancellationToken)
     {
-        if (_cts is null) return;
-        State = HandoffRunState.Cancelling;
-        _cts.Cancel();
+        var request = new HandoffRequest(
+            ProjectPath!, _pendingFolder!, _selection.BuildRequest(), WriteFlexTextXml, true);
+        return _commandClient.HandoffAsync(request, this, cancellationToken);
     }
 
-    /// <summary>Cancels an in-flight run and awaits it, so nothing keeps running past this view model's lifetime.</summary>
-    public async ValueTask DisposeAsync()
+    protected override void OnRunSucceeded(HandoffCommandResponse response)
     {
-        Cancel();
-        if (RunCommand.ExecutionTask is { } running) await running.ConfigureAwait(false);
+        OutputDirectory = response.OutputDirectory;
+        PopulateFiles(response);
+        _pendingFolder = null;
     }
+
+    protected override void OnReset()
+    {
+        _pendingFolder = null;
+        Files.Clear();
+        OutputDirectory = null;
+    }
+
+    protected override void OnRunStateChanged(RunState value) => OnPropertyChanged(nameof(HasCompletedFiles));
 
     // A path outside the output directory is dropped rather than exposed as a draggable row.
     private void PopulateFiles(HandoffCommandResponse response)

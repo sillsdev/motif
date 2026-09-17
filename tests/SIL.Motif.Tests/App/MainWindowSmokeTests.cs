@@ -83,7 +83,7 @@ public sealed class MainWindowSmokeTests
             workspace.Assess.Refusal = new Refusal(
                 "assess.parser-unavailable", FailureReason.Refused, "PanGloss is not built.");
             workspace.Handoff.Refusal = new Refusal(
-                "handoff.cancelled", FailureReason.Refused, "The Handoff run was cancelled.");
+                "handoff.cancelled", FailureReason.Cancelled, "The Handoff run was cancelled.");
 
             var application = Application.Current!;
             var exception = Record.Exception(() =>
@@ -190,7 +190,7 @@ public sealed class MainWindowSmokeTests
                     new HandoffFileViewModel("statistics/word.jsonl", @"C:\handoff\statistics\word.jsonl"),
                 };
                 foreach (var file in files) workspace.Handoff.Files.Add(file);
-                workspace.Handoff.State = HandoffRunState.Completed;
+                workspace.Handoff.State = RunState.Completed;
 
                 window.Show();
                 window.ApplyTemplate();
@@ -246,7 +246,7 @@ public sealed class MainWindowSmokeTests
             try
             {
                 workspace.Handoff.Files.Add(new HandoffFileViewModel("instructions.md", @"C:\handoff\instructions.md"));
-                workspace.Handoff.State = HandoffRunState.Completed;
+                workspace.Handoff.State = RunState.Completed;
 
                 window.Show();
                 window.ApplyTemplate();

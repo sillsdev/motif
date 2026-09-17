@@ -112,7 +112,7 @@ public static class HandoffCommand
                     {
                         // The person cancelled a Handoff, not an Assessment; the nested code must not leak out.
                         var cancelled = cancellationToken.IsCancellationRequested
-                            || assessOutcome.Refusal!.Code == AssessCommand.CancelledRefusalCode;
+                            || assessOutcome.Refusal!.Reason == FailureReason.Cancelled;
                         return CommandOutcome<HandoffCommandResponse>.Refused(
                             cancelled ? Cancelled(request.ProjectPath) : assessOutcome.Refusal!);
                     }
@@ -239,7 +239,7 @@ public static class HandoffCommand
             };
 
     private static Refusal Cancelled(string projectPath) => new(
-        "handoff.cancelled", FailureReason.Refused,
+        "handoff.cancelled", FailureReason.Cancelled,
         "The Handoff run was cancelled; no destination directory was created.",
         Fact(("projectPath", projectPath)));
 

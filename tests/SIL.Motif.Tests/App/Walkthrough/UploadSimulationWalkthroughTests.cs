@@ -35,7 +35,7 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 walkthrough.Click("Write the Handoff folder");
                 var handoffDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == HandoffRunState.Completed,
+                    () => walkthrough.Workspace.Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(handoffDeadline), "the Handoff did not complete");
 
                 var receiver = new FakeChatReceiver(output);

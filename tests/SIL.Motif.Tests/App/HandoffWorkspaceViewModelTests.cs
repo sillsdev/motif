@@ -224,7 +224,7 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.Null(workspace.Statistics.SummaryMarkdown);
         Assert.Null(workspace.Statistics.AssessmentId);
         Assert.Empty(workspace.Statistics.Rows);
-        Assert.Equal(AssessRunState.Idle, workspace.Assess.State);
+        Assert.Equal(RunState.Idle, workspace.Assess.State);
         Assert.Null(workspace.Assess.Result);
         Assert.Empty(workspace.Handoff.Files);
     }
@@ -244,7 +244,7 @@ public sealed class HandoffWorkspaceViewModelTests
 
         fake.AssessCompletesWith(NewAssessResponse("(summary)"));
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        Assert.Equal(AssessRunState.Completed, workspace.Assess.State);
+        Assert.Equal(RunState.Completed, workspace.Assess.State);
 
         fake.StatsCompletesWith(new StatsCommandResponse(
             "assessment/one", "grammar.json", "cache.sqlite", null,
@@ -272,7 +272,7 @@ public sealed class HandoffWorkspaceViewModelTests
             new SelectionProjection([], []), ["grammar.json"], ["assessment/two"]));
         await workspace.Handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(HandoffRunState.Completed, workspace.Handoff.State);
+        Assert.Equal(RunState.Completed, workspace.Handoff.State);
         var file = Assert.Single(workspace.Handoff.Files);
         await workspace.Handoff.DragFileAsync(null!, file);
         Assert.Equal([file.FullPath], dragSource.LastPaths);

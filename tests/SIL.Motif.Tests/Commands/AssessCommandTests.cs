@@ -299,6 +299,7 @@ public sealed class AssessCommandTests : IDisposable
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("assessment.cancelled", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Cancelled, outcome.Refusal.Reason);
 
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));

@@ -62,7 +62,7 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 var runStarted = Stopwatch.GetTimestamp();
                 walkthrough.Click("Run the Assessment");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Assess.State == AssessRunState.Completed,
+                    () => walkthrough.Workspace.Assess.State == RunState.Completed,
                     TimeSpan.FromSeconds(300), "the conformance Assessment did not complete");
                 var runElapsed = Stopwatch.GetElapsedTime(runStarted);
 
@@ -98,7 +98,7 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
 
                 walkthrough.Click("Write the Handoff folder");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == HandoffRunState.Completed,
+                    () => walkthrough.Workspace.Handoff.State == RunState.Completed,
                     TimeSpan.FromSeconds(300), "the conformance Handoff did not complete");
 
                 var grammarPath = Path.Combine(outputDirectory, "grammar.json");

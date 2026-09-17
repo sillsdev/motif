@@ -59,6 +59,7 @@ public sealed class HandoffWriterTests : IDisposable
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.cancelled", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Cancelled, outcome.Refusal.Reason);
         Assert.False(Directory.Exists(destination));
     }
 
@@ -249,6 +250,7 @@ public sealed class HandoffWriterTests : IDisposable
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.cancelled", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Cancelled, outcome.Refusal.Reason);
         Assert.False(Directory.Exists(destination));
     }
 

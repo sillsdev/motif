@@ -53,7 +53,7 @@ public sealed class HandoffViewModelTests
         await handoff.RunCommand.ExecuteAsync(null);
 
         Assert.Empty(fake.HandoffRequests);
-        Assert.Equal(HandoffRunState.Idle, handoff.State);
+        Assert.Equal(RunState.Idle, handoff.State);
         Assert.Null(handoff.OutputDirectory);
         Assert.Empty(handoff.Files);
     }
@@ -67,7 +67,7 @@ public sealed class HandoffViewModelTests
 
         await handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(HandoffRunState.Completed, handoff.State);
+        Assert.Equal(RunState.Completed, handoff.State);
         Assert.Equal(@"C:\out", handoff.OutputDirectory);
         Assert.Equal(
             new[] { "grammar.json", "texts/one.flextext.json" },
@@ -183,7 +183,7 @@ public sealed class HandoffViewModelTests
         await handoff.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(steps, observed);
-        Assert.Equal(HandoffRunState.Completed, handoff.State);
+        Assert.Equal(RunState.Completed, handoff.State);
     }
 
     [Fact]
@@ -191,18 +191,18 @@ public sealed class HandoffViewModelTests
     {
         var (fake, _, handoff) = NewViewModel();
         var cancelledRefusal = new Refusal(
-            "handoff.cancelled", FailureReason.Refused, "The Handoff run was cancelled.");
+            "handoff.cancelled", FailureReason.Cancelled, "The Handoff run was cancelled.");
         fake.HandoffBlocksUntilCancelled(cancelledRefusal);
 
         // Cancelling is transient: the run can finish before Execute returns, so record rather than sample.
-        var states = new List<HandoffRunState>();
+        var states = new List<RunState>();
         handoff.PropertyChanged += (_, changed) =>
         {
             if (changed.PropertyName == nameof(HandoffViewModel.State)) states.Add(handoff.State);
         };
 
         var running = handoff.RunCommand.ExecuteAsync(null);
-        Assert.Equal(HandoffRunState.Running, handoff.State);
+        Assert.Equal(RunState.Running, handoff.State);
         Assert.True(handoff.CancelCommand.CanExecute(null));
 
         handoff.CancelCommand.Execute(null);
@@ -211,8 +211,8 @@ public sealed class HandoffViewModelTests
         await running;
 
         Assert.Equal(
-            new[] { HandoffRunState.Running, HandoffRunState.Cancelling, HandoffRunState.Cancelled }, states);
-        Assert.Equal(HandoffRunState.Cancelled, handoff.State);
+            new[] { RunState.Running, RunState.Cancelling, RunState.Cancelled }, states);
+        Assert.Equal(RunState.Cancelled, handoff.State);
         Assert.Equal("handoff.cancelled", handoff.Refusal!.Code);
         Assert.True(handoff.RunCommand.CanExecute(null));
     }
@@ -229,7 +229,7 @@ public sealed class HandoffViewModelTests
 
         await handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(HandoffRunState.Refused, handoff.State);
+        Assert.Equal(RunState.Refused, handoff.State);
         Assert.Same(refusal, handoff.Refusal);
         Assert.Equal([$"outputDirectory: {@"C:\out"}"], handoff.RefusalFacts);
         Assert.True(handoff.RunCommand.CanExecute(null));
@@ -240,15 +240,15 @@ public sealed class HandoffViewModelTests
     {
         var (fake, _, handoff) = NewViewModel();
         var cancelledRefusal = new Refusal(
-            "handoff.cancelled", FailureReason.Refused, "The Handoff run was cancelled.");
+            "handoff.cancelled", FailureReason.Cancelled, "The Handoff run was cancelled.");
         fake.HandoffBlocksUntilCancelled(cancelledRefusal);
 
         _ = handoff.RunCommand.ExecuteAsync(null);
-        Assert.Equal(HandoffRunState.Running, handoff.State);
+        Assert.Equal(RunState.Running, handoff.State);
 
         await handoff.DisposeAsync();
 
-        Assert.Equal(HandoffRunState.Cancelled, handoff.State);
+        Assert.Equal(RunState.Cancelled, handoff.State);
     }
 
     [Fact]

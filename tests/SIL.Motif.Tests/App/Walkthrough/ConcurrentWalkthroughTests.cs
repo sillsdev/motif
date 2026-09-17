@@ -41,10 +41,10 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
                 WalkthroughSteps.StartSlowAssessment(firstWalkthrough, deadline);
                 WalkthroughSteps.StartAssessmentOverPastedWords(secondWalkthrough, deadline);
                 firstWalkthrough.WaitUntil(
-                    () => firstWalkthrough.Workspace.Assess.State == AssessRunState.Completed,
+                    () => firstWalkthrough.Workspace.Assess.State == RunState.Completed,
                     WalkthroughSteps.Remaining(deadline), "the conformance Assessment did not complete beside the second");
                 secondWalkthrough.WaitUntil(
-                    () => secondWalkthrough.Workspace.Assess.State == AssessRunState.Completed,
+                    () => secondWalkthrough.Workspace.Assess.State == RunState.Completed,
                     WalkthroughSteps.Remaining(deadline), "the seeded Assessment did not complete beside the first");
                 output.WriteLine($"Slow word list Run-to-Completed wall time: {Stopwatch.GetElapsedTime(slowStarted).TotalSeconds:F3} seconds.");
 

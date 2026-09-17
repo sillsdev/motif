@@ -116,7 +116,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         if (e.PropertyName == nameof(AssessViewModel.IsActive))
             OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
 
-        if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == AssessRunState.Completed)
+        if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Completed)
         {
             Baseline.HasAssessment = true;
             Statistics.Reset();
@@ -154,19 +154,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         RerunOffered = false;
         HasEverAssessed = false;
 
-        Assess.State = AssessRunState.Idle;
-        Assess.Progress = null;
-        Assess.Result = null;
-        Assess.Refusal = null;
+        Assess.Reset();
 
         Statistics.Reset();
 
-        Handoff.State = HandoffRunState.Idle;
-        Handoff.Progress = null;
-        Handoff.Result = null;
-        Handoff.Refusal = null;
-        Handoff.OutputDirectory = null;
-        Handoff.Files.Clear();
+        Handoff.Reset();
     }
 
     /// <summary>Cancels and awaits any active run, so nothing keeps running past this workspace's lifetime.</summary>

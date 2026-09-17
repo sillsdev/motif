@@ -35,37 +35,37 @@ public sealed class CancelHandoffWalkthroughTests(ITestOutputHelper output)
                         ConformanceProject.OneAnalysisShort));
                 walkthrough.Click("Run the Assessment");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Assess.State is AssessRunState.Completed or AssessRunState.Refused,
+                    () => walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Refused,
                     WalkthroughSteps.Remaining(deadline), "the Assessment before Handoff did not complete");
-                Assert.Equal(AssessRunState.Completed, walkthrough.Workspace.Assess.State);
+                Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
                 Assert.Null(walkthrough.Workspace.Assess.Refusal);
 
                 walkthrough.Click("Write the Handoff folder");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == HandoffRunState.Running ||
-                        walkthrough.Workspace.Handoff.State == HandoffRunState.Completed ||
-                        walkthrough.Workspace.Handoff.State == HandoffRunState.Refused,
+                    () => walkthrough.Workspace.Handoff.State == RunState.Running ||
+                        walkthrough.Workspace.Handoff.State == RunState.Completed ||
+                        walkthrough.Workspace.Handoff.State == RunState.Refused,
                     WalkthroughSteps.Remaining(deadline), "the Handoff did not start or complete");
 
-                if (walkthrough.Workspace.Handoff.State == HandoffRunState.Running)
+                if (walkthrough.Workspace.Handoff.State == RunState.Running)
                 {
                     output.WriteLine("Handoff cancellation observed: yes.");
                     walkthrough.Click("Cancel the running Handoff");
                     walkthrough.WaitUntil(
                         () => walkthrough.Workspace.Handoff.State
-                            is HandoffRunState.Cancelled or HandoffRunState.Refused or HandoffRunState.Completed,
+                            is RunState.Cancelled or RunState.Refused or RunState.Completed,
                         WalkthroughSteps.Remaining(deadline), "the Handoff cancellation did not unwind");
-                    Assert.Equal(HandoffRunState.Cancelled, walkthrough.Workspace.Handoff.State);
+                    Assert.Equal(RunState.Cancelled, walkthrough.Workspace.Handoff.State);
                     Assert.Equal("handoff.cancelled", walkthrough.Workspace.Handoff.Refusal?.Code);
                     Assert.True(!Directory.Exists(outputDirectory) ||
                         !Directory.EnumerateFileSystemEntries(outputDirectory).Any());
                     AssertNoGrammarFiles(handoffParent);
-                    Assert.Equal(AssessRunState.Completed, walkthrough.Workspace.Assess.State);
+                    Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
                     Assert.NotNull(walkthrough.Workspace.Assess.Result);
 
                     walkthrough.Click("Write the Handoff folder");
                     walkthrough.WaitUntil(
-                        () => walkthrough.Workspace.Handoff.State == HandoffRunState.Completed,
+                        () => walkthrough.Workspace.Handoff.State == RunState.Completed,
                         WalkthroughSteps.Remaining(deadline), "the retried Handoff did not complete");
                 }
                 else
@@ -73,7 +73,7 @@ public sealed class CancelHandoffWalkthroughTests(ITestOutputHelper output)
                     output.WriteLine("Handoff cancellation observed: no; the first Handoff completed before Cancel.");
                 }
 
-                Assert.Equal(HandoffRunState.Completed, walkthrough.Workspace.Handoff.State);
+                Assert.Equal(RunState.Completed, walkthrough.Workspace.Handoff.State);
                 Assert.True(File.Exists(Path.Combine(outputDirectory, "grammar.json")));
                 Assert.NotEmpty(walkthrough.Workspace.Handoff.Files);
                 return Task.CompletedTask;

@@ -79,7 +79,7 @@ internal static class WalkthroughSteps
     {
         StartAssessmentOverPastedWords(walkthrough, deadline);
         walkthrough.WaitUntil(
-            () => walkthrough.Workspace.Assess.State == AssessRunState.Completed,
+            () => walkthrough.Workspace.Assess.State == RunState.Completed,
             Remaining(deadline), "the Assessment did not complete");
     }
 
@@ -92,7 +92,7 @@ internal static class WalkthroughSteps
         Assert.False(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
         Assert.False(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
         walkthrough.WaitUntil(
-            () => walkthrough.Workspace.Assess.State == AssessRunState.Running &&
+            () => walkthrough.Workspace.Assess.State == RunState.Running &&
                 walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled,
             Remaining(deadline), "the slow Assessment did not reach its cancellable Running state");
     }
@@ -105,7 +105,7 @@ internal static class WalkthroughSteps
         walkthrough.Click("Run the Assessment");
 
         // Three seeded words can finish inside the click's own pump; only a run still going shows the disabled hosts.
-        if (walkthrough.Workspace.Assess.State == AssessRunState.Running)
+        if (walkthrough.Workspace.Assess.State == RunState.Running)
         {
             Assert.False(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
             Assert.False(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
@@ -113,6 +113,6 @@ internal static class WalkthroughSteps
             return;
         }
 
-        Assert.Equal(AssessRunState.Completed, walkthrough.Workspace.Assess.State);
+        Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
     }
 }

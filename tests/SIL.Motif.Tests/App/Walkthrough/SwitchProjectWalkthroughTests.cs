@@ -36,7 +36,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(existing, appeared);
-                return walkthrough.Workspace.Assess.State == AssessRunState.Cancelled;
+                return walkthrough.Workspace.Assess.State == RunState.Cancelled;
             }, WalkthroughSteps.Remaining(deadline), "the first Assessment did not cancel");
             Assert.True(walkthrough.Find<Button>("Browse for a FieldWorks project file").IsEffectivelyEnabled);
 
@@ -45,7 +45,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(existing, appeared);
-                return walkthrough.Workspace.Assess.State == AssessRunState.Idle &&
+                return walkthrough.Workspace.Assess.State == RunState.Idle &&
                     walkthrough.Workspace.Assess.Result is null &&
                     walkthrough.Workspace.Assess.Refusal is null &&
                     !walkthrough.Workspace.HasEverAssessed &&
@@ -69,7 +69,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 WalkthroughSteps.Remaining(deadline), "the second project Baseline did not complete");
             walkthrough.Check(SeededProject.TextTitle);
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
-            Assert.Equal(AssessRunState.Completed, walkthrough.Workspace.Assess.State);
+            Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }

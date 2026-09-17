@@ -30,7 +30,7 @@ public sealed class CancelAssessmentWalkthroughTests
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(existing, appeared);
-                return walkthrough.Workspace.Assess.State == AssessRunState.Cancelled;
+                return walkthrough.Workspace.Assess.State == RunState.Cancelled;
             }, WalkthroughSteps.Remaining(deadline), "the Assessment cancellation did not complete");
             walkthrough.WaitUntil(() =>
             {
@@ -54,7 +54,7 @@ public sealed class CancelAssessmentWalkthroughTests
             walkthrough.Type("Pasted words", ConformanceProject.OneAnalysisShort);
             walkthrough.Click("Run the Assessment");
             walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Assess.State == AssessRunState.Completed,
+                () => walkthrough.Workspace.Assess.State == RunState.Completed,
                 WalkthroughSteps.Remaining(deadline), "the rerun after cancellation did not complete");
 
             var invocation = Assert.Single(WalkthroughStoreAssertions.ListInvocations(project.FwDataPath));
