@@ -33,6 +33,7 @@ public sealed class HandoffWorkspaceViewModelTests
         new BaselineCaptureResponse(NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false),
         new SelectionProjection([], []), ["assessment/time", "assessment/one"], summary)
     {
+        InvocationId = "invocation/one",
         Measurements = [new ProducedAssessmentReference("assessment/time", "ParseTime", "run"),
             new ProducedAssessmentReference("assessment/one", "ObjectTiming", "run")],
     };
@@ -159,6 +160,7 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.True(workspace.Baseline.HasAssessment);
         Assert.Equal("(summary)", workspace.Statistics.SummaryMarkdown);
         Assert.Equal("assessment/one", workspace.Statistics.AssessmentId);
+        Assert.Equal("invocation/one", workspace.Handoff.InvocationId);
         Assert.True(workspace.HasEverAssessed);
         Assert.False(workspace.NotYetAssessed);
     }
@@ -223,6 +225,7 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.True(workspace.NotYetAssessed);
         Assert.Null(workspace.Statistics.SummaryMarkdown);
         Assert.Null(workspace.Statistics.AssessmentId);
+        Assert.Null(workspace.Handoff.InvocationId);
         Assert.Empty(workspace.Statistics.Rows);
         Assert.Equal(RunState.Idle, workspace.Assess.State);
         Assert.Null(workspace.Assess.Result);
@@ -269,7 +272,10 @@ public sealed class HandoffWorkspaceViewModelTests
         fake.HandoffCompletesWith(new HandoffCommandResponse(
             @"C:\out",
             new BaselineCaptureResponse(NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false),
-            new SelectionProjection([], []), ["grammar.json"], ["assessment/two"]));
+            new SelectionProjection([], []), ["grammar.json"], ["assessment/two"])
+        {
+            InvocationId = "invocation/one",
+        });
         await workspace.Handoff.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(RunState.Completed, workspace.Handoff.State);

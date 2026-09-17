@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -13,8 +13,8 @@ namespace SIL.Motif.App.ViewModels;
 public sealed record ReferenceDocument(string DisplayPath, Uri Url, string AccessibleName);
 
 /// <summary>
-/// Writes an AI Handoff folder for the current Selection, following the same run-state-machine shape as
-/// <see cref="AssessViewModel"/>: one <see cref="RunCommand"/> owns one <see cref="CancellationTokenSource"/>,
+/// Writes an AI Handoff folder for the completed Assessment, following the same run-state-machine shape
+/// as <see cref="AssessViewModel"/>: one <see cref="RunCommand"/> owns one <see cref="CancellationTokenSource"/>,
 /// progress replays the command's own stages, and disposal cancels and awaits an active run.
 /// </summary>
 /// <remarks>
@@ -38,7 +38,6 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         "at https://github.com/sillsdev/motif on main.";
 
     private readonly ICommandClient _commandClient;
-    private readonly SelectionViewModel _selection;
     private readonly IHandoffFolderPicker _folderPicker;
     private readonly IFileDragSource _dragSource;
     private string? _pendingFolder;
@@ -69,10 +68,8 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         ArgumentNullException.ThrowIfNull(folderPicker);
         ArgumentNullException.ThrowIfNull(dragSource);
         _commandClient = commandClient;
-        _selection = selection;
         _folderPicker = folderPicker;
         _dragSource = dragSource;
-        _selection.PropertyChanged += OnSelectionPropertyChanged;
     }
 
     /// <summary>The Handoff's own read-this-first prose, rendered in full in an expandable preview.</summary>
@@ -101,6 +98,10 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     [ObservableProperty]
     private string? _projectPath;
 
+    /// <summary>The completed Assessment whose retained result this Handoff publishes.</summary>
+    [ObservableProperty]
+    private string? _invocationId;
+
     [ObservableProperty]
     private bool _writeFlexTextXml;
 
@@ -116,6 +117,8 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     partial void OnProjectPathChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
 
+    partial void OnInvocationIdChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
+
     /// <summary>Hands the exact path of one Handoff file to the drag adapter; never reads its bytes.</summary>
     public Task<DragDropEffects> DragFileAsync(PointerPressedEventArgs trigger, HandoffFileViewModel file)
     {
@@ -127,12 +130,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     public Task<DragDropEffects> DragAllFilesAsync(PointerPressedEventArgs trigger) =>
         _dragSource.StartDragAsync(trigger, Files.Select(file => file.FullPath).ToList(), DragDropEffects.Copy);
 
-    private void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(SelectionViewModel.CanAssess)) RunCommand.NotifyCanExecuteChanged();
-    }
-
-    protected override bool CanStartCore() => ProjectPath is not null && _selection.CanAssess;
+    protected override bool CanStartCore() => ProjectPath is not null && !string.IsNullOrWhiteSpace(InvocationId);
 
     protected override async Task<bool> PrepareRunAsync()
     {
@@ -150,7 +148,8 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         CancellationToken cancellationToken)
     {
         var request = new HandoffRequest(
-            ProjectPath!, _pendingFolder!, _selection.BuildRequest(), WriteFlexTextXml, true);
+            ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], [], false, null),
+            WriteFlexTextXml, true, InvocationId);
         return _commandClient.HandoffAsync(request, this, cancellationToken);
     }
 
@@ -163,6 +162,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     protected override void OnReset()
     {
+        InvocationId = null;
         _pendingFolder = null;
         Files.Clear();
         OutputDirectory = null;

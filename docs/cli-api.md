@@ -302,25 +302,25 @@ recorded without a statistics cache), `stats.parser-unavailable` (the executable
 `stats.cancelled`. Every statistics invocation takes machine-queue admission and runs inside the
 Windows job object, with a default ten-minute wall-clock cap.
 
-**`handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]`** writes a
+**`handoff <project> --out <folder> --invocation <id> [--flextext] [--no-assess] [--json]`** writes a
 self-explaining folder that an AI agent with no network and no package installer can read on its own: the
 grammar, the chosen Texts, the exact selection that was parsed, and — unless `--no-assess` — PanGloss's own
 statistics, alongside a reader script and reference documents the repository maintains and copies in
 unchanged. It composes `baseline capture`, `assess`, and the six `stats` groups rather than reimplementing
 any of them, and shares the same project/store refusals every verb behind `ProjectStoreCommand` does.
-Both `<project>` and `--out <folder>` are required positional/flag values; omitting either, or passing a
-`--texts` value that does not parse as a comma-separated GUID list, is a usage failure naming the verb
-before any project is even touched — pinned by `OmittingTheProjectIsAUsageFailureNamingTheVerb`,
-`OmittingOutIsAUsageFailure`, and `AnUnparseableTextsGuidListIsAUsageFailure`.
+Both `<project>` and `--out <folder>` are required positional/flag values; omitting either is a usage
+failure. `--invocation <id>` selects one completed retained Assessment. It is required unless `--no-assess`
+is given, and `--texts` cannot be combined with it: the retained Selection decides which Texts and words
+belong in the Handoff. A missing or cross-project invocation is refused before the destination is touched.
+The selected invocation's Baseline, source evidence, Selection descriptor, statistics Assessment, and
+Assessment ids are exported together, so changing the live project or Selection editor cannot substitute
+different evidence.
 
-With no `--texts`, every Text in the project is exported and every wordform is selected — the same "select
-everything" a bare `assess --all-wordforms` would ask for. Naming `--texts <guid,guid>` restricts the
-export to those Texts and the Selection to their words; a duplicate Text title is disambiguated by its own
-GUID in the file name, so two Texts sharing a title still produce two distinct files — pinned by
-`DuplicateTextTitlesProduceTwoDistinctFiles`. A named id that does not resolve to a Text in the project is
-skipped rather than refused, so one mistyped id does not stop every other requested Text from being
-written. Naming `--texts` with an id list that resolves to no words at all is refused as `selection.empty`
-before the destination is touched — pinned by `AnEmptySelectionRefusesWithoutTouchingTheDestination`.
+With `--no-assess`, the command keeps the Baseline-only path: no Assessment is selected, every Text is
+exported when `--texts` is absent, and a chosen GUID list restricts the Text files. A named id that does not
+resolve to a Text is skipped on this legacy Baseline-only path; retained-result exports refuse a missing
+Text id instead. A duplicate Text title is disambiguated by its own GUID in the file name, so two Texts
+sharing a title still produce two distinct files — pinned by `DuplicateTextTitlesProduceTwoDistinctFiles`.
 
 **Destination atomicity.** The folder is built in a sibling `.incoming-<guid>` directory next to the
 requested `--out` path, its exact listing is validated as complete, and only then is it moved into place
@@ -365,11 +365,14 @@ FieldWorks' last save)" wording `baseline capture` and `assess` use, the Selecti
 file count, and the recorded Assessment ids (or `(none; --no-assess)`). `--json` binds to
 `HandoffCommandResponse`: `outputDirectory`, `baseline` (a full `BaselineCaptureResponse`), `selection` (a
 `SelectionProjection`), `files` (every Handoff-relative path written, forward-slashed, in write order), and
-`assessmentIds`.
+`invocationId` (the selected retained result, or null for `--no-assess`) and `assessmentIds` (its child
+measurements).
 
-Refusals of its own: `handoff.destination-exists`, `handoff.cancelled` (the run was cancelled; no
-destination directory was created), `handoff.parser-unavailable` (the grammar import invocation could
-not start, was refused, timed out, or produced no grammar file) — plus `selection.empty`,
+Refusals of its own: `handoff.destination-exists`, `handoff.invocation-required`,
+`handoff.invocation-not-found`, `handoff.invocation-mismatch`, `handoff.source-unavailable`,
+`handoff.statistics-unavailable`, `handoff.text-not-found`, and `handoff.cancelled` (the run was
+cancelled; no destination directory was created), `handoff.parser-unavailable` (the grammar import
+invocation could not start, was refused, timed out, or produced no grammar file) — plus `selection.empty`,
 `selection.text-not-found`, and
 every `baseline capture`/`assess` refusal above, since `handoff` composes both the same way it does `stats`.
 A mistyped project path is refused as `project.not-found` before any parser is built, the same guarantee

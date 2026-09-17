@@ -240,7 +240,7 @@ public static class AssessCommand
                     switch (summary)
                     {
                         case PanGlossOutcome.Completed completed:
-                            summaryMarkdown = "```" + Environment.NewLine + completed.Output + "```" + Environment.NewLine;
+                            summaryMarkdown = completed.Output;
                             break;
                         case PanGlossOutcome.Cancelled:
                             return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
@@ -286,10 +286,9 @@ public static class AssessCommand
                     { Morphology = word.Morphology, Correctness = word.Correctness }).ToArray()
                     : Array.Empty<AssessmentWordResult>();
                 var completedCount = words.Count(word => !word.IsIncomplete && word.Outcome != "skipped");
-                var searchNoun = completedCount == 1 ? "search" : "searches";
-                var completionSummary = $"{completedCount} {searchNoun} completed; " +
-                    $"{words.Count(word => word.IsIncomplete)} incomplete; {words.Count(word => word.Outcome == "skipped")} skipped.";
-                summaryMarkdown = completionSummary + Environment.NewLine + Environment.NewLine + summaryMarkdown;
+                var completionSummary = CompletionSummary(completedCount, words.Count(word => word.IsIncomplete),
+                    words.Count(word => word.Outcome == "skipped"));
+                summaryMarkdown = RenderSummaryMarkdown(completionSummary, summaryMarkdown);
                 var grammarWarnings = invocation?.GrammarWarningLines is { Count: > 0 } warningLines
                     ? warningLines : null;
 
@@ -344,6 +343,16 @@ public static class AssessCommand
         "assessment.cancelled", FailureReason.Cancelled,
         "The Assessment run was cancelled; no Assessments were recorded.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
+
+    internal static string RenderSummaryMarkdown(string completionSummary, string statisticsOutput) =>
+        completionSummary + Environment.NewLine + Environment.NewLine +
+        "```" + Environment.NewLine + statisticsOutput + "```" + Environment.NewLine;
+
+    internal static string CompletionSummary(int completedCount, int incompleteCount, int skippedCount)
+    {
+        var searchNoun = completedCount == 1 ? "search" : "searches";
+        return $"{completedCount} {searchNoun} completed; {incompleteCount} incomplete; {skippedCount} skipped.";
+    }
 
     private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 }

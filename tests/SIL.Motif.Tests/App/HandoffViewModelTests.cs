@@ -32,6 +32,7 @@ public sealed class HandoffViewModelTests
         var handoff = new HandoffViewModel(fake, selection, new FakeFolderPicker(folder), dragSource)
         {
             ProjectPath = ProjectPath,
+            InvocationId = "invocation/one",
         };
         return (fake, dragSource, handoff);
     }
@@ -59,6 +60,29 @@ public sealed class HandoffViewModelTests
     }
 
     [Fact]
+    public void RunIsDisabledUntilACompletedAssessmentIsSelected()
+    {
+        var (fake, _, handoff) = NewViewModel();
+        handoff.InvocationId = null;
+
+        Assert.False(handoff.RunCommand.CanExecute(null));
+
+        handoff.InvocationId = "invocation/one";
+        Assert.True(handoff.RunCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void ResetClearsTheSelectedInvocation()
+    {
+        var (_, _, handoff) = NewViewModel();
+
+        handoff.Reset();
+
+        Assert.Null(handoff.InvocationId);
+        Assert.False(handoff.RunCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task RunningWritesTheDestinationAndExposesEveryFileAsADraggableRow()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -68,6 +92,10 @@ public sealed class HandoffViewModelTests
         await handoff.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(RunState.Completed, handoff.State);
+        var request = Assert.Single(fake.HandoffRequests);
+        Assert.Equal("invocation/one", request.InvocationId);
+        Assert.Empty(request.Selection.TextIds);
+        Assert.Empty(request.Selection.Words);
         Assert.Equal(@"C:\out", handoff.OutputDirectory);
         Assert.Equal(
             new[] { "grammar.json", "texts/one.flextext.json" },

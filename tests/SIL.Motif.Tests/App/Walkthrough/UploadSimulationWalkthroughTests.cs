@@ -31,6 +31,8 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, baselineDeadline);
                 walkthrough.Check(SeededProject.TextTitle);
                 WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
+                var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
+                var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
                 walkthrough.Click("Write the Handoff folder");
                 var handoffDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
@@ -50,6 +52,9 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
 
                 var validation = receiver.Validate();
                 Assert.Empty(validation.Failures);
+                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.Handoff.Result!.InvocationId);
+                Assert.Equal(retainedBeforeHandoff.Count,
+                    WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
             }, WalkthroughSteps.Remaining(deadline));
         }

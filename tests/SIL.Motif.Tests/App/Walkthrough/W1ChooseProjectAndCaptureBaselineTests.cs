@@ -22,7 +22,7 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
 
             walkthrough.Check(SeededProject.TextTitle);
             Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
-            Assert.True(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
+            Assert.False(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
             Assert.Equal("1 text", walkthrough.Workspace.Selection.SummaryText);
 
             Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));

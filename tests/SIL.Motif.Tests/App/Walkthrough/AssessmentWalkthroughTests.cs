@@ -32,6 +32,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
 
             var assessmentDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, assessmentDeadline);
+            Assert.True(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
 
             var result = walkthrough.Workspace.Assess.Result;
             Assert.NotNull(result);
@@ -74,6 +75,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             var invocations = new RetainedInvocationRepository(database).List(
                 ProjectWorkspaceKey.Compute(projectLocator));
             Assert.Single(invocations);
+            Assert.Equal(result.InvocationId, walkthrough.Workspace.Handoff.InvocationId);
             Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
 
             return Task.CompletedTask;

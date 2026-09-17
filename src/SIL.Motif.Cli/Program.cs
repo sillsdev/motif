@@ -606,6 +606,12 @@ try
         case "handoff":
             if (positionals.Count != 1 || !flags.TryGetValue("out", out var handoffOut))
                 return Usage(HandoffUsage(), asJson);
+            var handoffNoAssess = flags.ContainsKey("no-assess");
+            var hasHandoffInvocation = flags.TryGetValue("invocation", out var handoffInvocation);
+            if (!handoffNoAssess && !hasHandoffInvocation)
+                return Usage(HandoffUsage(), asJson);
+            if (hasHandoffInvocation && flags.ContainsKey("texts"))
+                return Usage(HandoffUsage(), asJson);
             if (!TryParseGuidList(flags.GetValueOrDefault("texts"), out var handoffTextIds))
                 return Usage(HandoffUsage(), asJson);
             // No --texts means every wordform and every Text; a chosen list means only those Texts' words.
@@ -614,7 +620,7 @@ try
             result = RenderCommand(HandoffCommand.Handoff(
                 new HandoffRequest(
                     positionals[0], handoffOut, handoffSelection, flags.ContainsKey("flextext"),
-                    !flags.ContainsKey("no-assess")),
+                    !handoffNoAssess, handoffInvocation),
                 asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
             break;
 

@@ -157,7 +157,7 @@ public static class CliVerbCatalog
             "Handoff", "handoff", "handoff",
             new[]
             {
-                "handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]",
+                "handoff <project> --out <folder> --invocation <id> [--flextext] [--no-assess] [--json]",
             }),
 
         new CliVerbDescriptor(

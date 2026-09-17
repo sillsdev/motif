@@ -39,6 +39,8 @@ public sealed class CancelHandoffWalkthroughTests(ITestOutputHelper output)
                     WalkthroughSteps.Remaining(deadline), "the Assessment before Handoff did not complete");
                 Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
                 Assert.Null(walkthrough.Workspace.Assess.Refusal);
+                var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
+                var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
                 walkthrough.Click("Write the Handoff folder");
                 walkthrough.WaitUntil(
@@ -76,6 +78,9 @@ public sealed class CancelHandoffWalkthroughTests(ITestOutputHelper output)
                 Assert.Equal(RunState.Completed, walkthrough.Workspace.Handoff.State);
                 Assert.True(File.Exists(Path.Combine(outputDirectory, "grammar.json")));
                 Assert.NotEmpty(walkthrough.Workspace.Handoff.Files);
+                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.Handoff.Result!.InvocationId);
+                Assert.Equal(retainedBeforeHandoff.Count,
+                    WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 return Task.CompletedTask;
             }, WalkthroughSteps.Remaining(deadline));
         }

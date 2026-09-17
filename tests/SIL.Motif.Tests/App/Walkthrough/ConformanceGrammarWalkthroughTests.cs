@@ -95,6 +95,8 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
 
                 output.WriteLine($"Assessment Run-to-Completed wall time: {runElapsed.TotalSeconds:F3} seconds.");
                 output.WriteLine($"Midpoint branch: {midpointBranch}.");
+                var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
+                var assessmentInvocationId = result.InvocationId;
 
                 walkthrough.Click("Write the Handoff folder");
                 walkthrough.WaitUntil(
@@ -106,6 +108,9 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 using var grammar = JsonDocument.Parse(File.ReadAllText(grammarPath));
                 var entries = grammar.RootElement.GetProperty("lexicon").GetProperty("entries");
                 Assert.Equal(13, entries.GetArrayLength());
+                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.Handoff.Result!.InvocationId);
+                Assert.Equal(retainedBeforeHandoff.Count,
+                    WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 output.WriteLine("grammar.json lexical entry count JSON path: $.lexicon.entries.");
                 Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
 

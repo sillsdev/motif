@@ -31,6 +31,8 @@ public sealed class HandoffWalkthroughTests(PristineProjectFixture pristine)
                 walkthrough.Check(SeededProject.TextTitle);
 
                 WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
+                var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
+                var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
                 Assert.NotNull(walkthrough.Workspace.Baseline.Token);
                 var baselineToken = walkthrough.Workspace.Baseline.Token!;
@@ -56,6 +58,9 @@ public sealed class HandoffWalkthroughTests(PristineProjectFixture pristine)
                 });
 
                 Assert.Equal(baselineToken, handoff.Result!.Baseline.Token);
+                Assert.Equal(assessmentInvocationId, handoff.Result.InvocationId);
+                Assert.Equal(retainedBeforeHandoff.Count,
+                    WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 walkthrough.DragAllFiles();
                 Assert.All(handoff.Files, file => Assert.Contains(file.FullPath, walkthrough.DraggedPaths));
                 Assert.Equal(project.SourceSha256, Sha256(project.FwDataPath));
