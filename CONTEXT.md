@@ -181,8 +181,19 @@ _Avoid_: check, test, gate, validation, CI run
 **Selection**:
 A named set of word forms to be parsed, listed out in full, with a note of where they came from. Not a query
 and not a sample — a person may pick fourteen words with nothing in common, and why they matter is theirs.
-A list can be exported from an Assessment, but what is kept is the words, so nothing has to be re-derived.
+A word may be typed rather than found: it need not occur anywhere in the language project, and it is parsed
+and measured like any other. A list can be exported from an Assessment, but what is kept is the words, so
+nothing has to be re-derived.
 _Avoid_: query, sample, filter, scope, subset, test set, corpus descriptor
+
+**Trace**:
+The parser's own account of what it tried on one word: each step's rule, stratum or template, which subrule
+or allomorph fired, the word forms in and out, and where a path died. The only thing in the system that
+answers *why* a word did not parse, where statistics answer *whether* and *how expensively*. Costlier than
+the parse it describes, because the parser stops collapsing equivalent analyses while tracing — so which
+words get one is a decision, never a default for all of them. A Trace that ran out of budget is kept and
+marked, not discarded.
+_Avoid_: log, debug output, explanation, derivation dump
 
 **Hole**:
 A combination the grammar licenses that no analysis exercises. Undecided by construction: it means an
@@ -266,10 +277,12 @@ naming its Documents, with each one's origin and licence. It names files; it doe
 _Avoid_: import, package, archive, manifest
 
 **Handoff**:
-The folder Motif writes for a person to give to a chat model: the grammar in PanGloss's JSON, the Texts as a
-JSON mirror of FLExText, the statistics from a parse run over a Selection, one helper script for reading them, and
-the instructions for reading all of it. Outbound, where a Corpus bundle is inbound. Motif sends nothing anywhere; the person drags the files. Also
-*AI handoff* where the audience needs the qualifier.
+The five flat files Motif writes for a person to give to a chat model, plus the block of text they paste
+ahead of their question: the grammar in PanGloss's JSON, every chosen Text in one JSON mirror of FLExText,
+the Assessment, one helper script for reading them, and one short file saying what each is. Always five,
+whatever was selected. The long explanations do not travel in it; the pasted text links to them. Outbound,
+where a Corpus bundle is inbound. Motif sends nothing anywhere; the person drags the files. Also *AI
+handoff* where the audience needs the qualifier.
 _Avoid_: export, bundle, package, dump, advice folder
 
 **Licence capabilities**:
