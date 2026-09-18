@@ -18,7 +18,7 @@ public sealed class HoldingCommandClientTests
         var holding = new HoldingCommandClient(inner, holdHandoff: true);
         using var cancellation = new CancellationTokenSource();
         var request = new HandoffRequest(
-            "project.fwdata", "handoff", new SelectionRequest(false, [], [], false, null), false, false);
+            "project.fwdata", "handoff", new SelectionRequest(false, [], [], false, null), false);
 
         var running = holding.HandoffAsync(request, new Progress<AssessmentProgress>(), cancellation.Token);
         await Task.Yield();

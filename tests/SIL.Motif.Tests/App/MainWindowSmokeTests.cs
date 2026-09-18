@@ -176,7 +176,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void CompletedHandoffShowsAccessibleFileTilesAndReferenceLinks()
+    public void CompletedHandoffShowsAccessibleFileTiles()
     {
         _avalonia.Invoke(() =>
         {
@@ -185,9 +185,9 @@ public sealed class MainWindowSmokeTests
             {
                 var files = new[]
                 {
-                    new HandoffFileViewModel("instructions.md", @"C:\handoff\instructions.md"),
+                    new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"),
                     new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"),
-                    new HandoffFileViewModel("statistics/word.jsonl", @"C:\handoff\statistics\word.jsonl"),
+                    new HandoffFileViewModel("assessment.json", @"C:\handoff\assessment.json"),
                 };
                 foreach (var file in files) workspace.Handoff.Files.Add(file);
                 workspace.Handoff.State = RunState.Completed;
@@ -208,19 +208,8 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(), text =>
                     AutomationProperties.GetName(text) == "Drag all Handoff files");
 
-                var text = string.Join(" ", panel.GetLogicalDescendants().OfType<TextBlock>()
-                    .Select(block => block.Text));
-                Assert.Contains(HandoffViewModel.RepositoryUrlBase, text, StringComparison.Ordinal);
-                Assert.Contains("instructions.md", text, StringComparison.Ordinal);
-
-                var links = panel.GetLogicalDescendants().OfType<HyperlinkButton>().ToList();
-                Assert.Equal(workspace.Handoff.ReferenceDocuments.Count, links.Count);
-                Assert.Contains(links, link => link.NavigateUri == workspace.Handoff.ReferenceDocuments[0].Url);
-                Assert.All(links, link => Assert.False(
-                    string.IsNullOrWhiteSpace(AutomationProperties.GetName(link))));
-
                 var tile = tiles.Single(item =>
-                    AutomationProperties.GetName(item) == "Drag statistics/word.jsonl");
+                    AutomationProperties.GetName(item) == "Drag assessment.json");
                 using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
                 var args = new PointerPressedEventArgs(
                     tile, pointer, window, new Point(), 0, PointerPointProperties.None, KeyModifiers.None);
@@ -245,7 +234,8 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
             try
             {
-                workspace.Handoff.Files.Add(new HandoffFileViewModel("instructions.md", @"C:\handoff\instructions.md"));
+                workspace.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
+                workspace.Handoff.PastedHeader = "pasted header text";
                 workspace.Handoff.State = RunState.Completed;
 
                 window.Show();
@@ -266,7 +256,7 @@ public sealed class MainWindowSmokeTests
             }
         }, TimeSpan.FromSeconds(5));
 
-        Assert.Equal(HandoffViewModel.StarterPromptMarkdown, clipboardText);
+        Assert.Equal("pasted header text", clipboardText);
     }
 
     // The explicit AutomationProperties.Name, or the plain-text Content a Button/CheckBox falls back to.

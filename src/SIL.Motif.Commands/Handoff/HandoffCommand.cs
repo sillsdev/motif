@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.WritingSystems;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Projects;
@@ -25,15 +26,14 @@ public sealed record HandoffRequest(
     string ProjectPath,
     string OutputDirectory,
     SelectionRequest Selection,
-    bool WriteFlexTextXml,
     bool Assess,
     string? InvocationId = null);
 
 /// <summary>
-/// Writes the self-explaining AI Handoff folder (design decision 6) by composing the commands that
-/// already exist: <see cref="BaselineCaptureCommand"/> for a Baseline-only export, <see cref="StatsCommand"/>
-/// for retained statistics, and the PanGloss invocation for the grammar snapshot. A selected retained
-/// invocation supplies its own Baseline, Selection, evidence, and Assessment identities.
+/// Writes the five-file AI Handoff (ADR 0045) by composing the commands that already exist:
+/// <see cref="BaselineCaptureCommand"/> for a Baseline-only export, <see cref="AssessCommand"/> for a fresh
+/// Assessment, or a selected retained invocation, which supplies its own Baseline, Selection, evidence, and
+/// Assessment identities.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -45,7 +45,7 @@ public sealed record HandoffRequest(
 /// Progress is reported through the command-owned stages of <see cref="AssessmentStage"/>, which was
 /// written for this run as much as for a bare Assessment. The nested <see cref="AssessCommand"/>'s own
 /// stages are forwarded, minus its <see cref="AssessmentStage.Complete"/>: that is true of the Assessment
-/// and false of the Handoff, which still has the grammar, the texts, and six statistics files to write.
+/// and false of the Handoff, which still has the grammar and the texts to write.
 /// Reporting it would tell a caller the run had finished part way through, so this command swallows it and
 /// reports its own once the folder is actually in place.
 /// </para>
@@ -105,13 +105,15 @@ public static class HandoffCommand
             {
                 BaselineCaptureResponse baseline;
                 SelectionProjection selectionProjection;
-                string? statisticsMarkdown = null;
+                IReadOnlyList<HandoffWriter.AssessedWordStatistics>? assessedWords = null;
                 string? statisticsAssessmentId = null;
                 var assessmentIds = new List<string>();
                 string? exportedInvocationId = null;
                 RetainedInvocationRecord? retained = null;
                 StatsEvidenceReplay? replay = null;
                 LcmCache? retainedSource = null;
+                string? languageName = null;
+                string? projectName = null;
 
                 if (request.Assess && request.InvocationId is not null)
                 {
@@ -218,31 +220,8 @@ public static class HandoffCommand
                     assessmentIds.AddRange(retained.Members.Select(member => member.AssessmentId));
                     exportedInvocationId = retained.InvocationId;
                     statisticsAssessmentId = statisticsAssessment.AssessmentId;
-
-                    var summary = StatsCommand.Run(
-                        new StatsRequest(request.ProjectPath, statisticsAssessmentId, StatsOutputKind.Text, []),
-                        invoker, cancellationToken);
-                    if (!summary.Succeeded || summary.Value?.Text is null)
-                    {
-                        retainedSource.Dispose();
-                        replay.Dispose();
-                        if (cancellationToken.IsCancellationRequested ||
-                            summary.Refusal?.Reason == FailureReason.Cancelled)
-                            return CommandOutcome<HandoffCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
-                            "handoff.statistics-unavailable", FailureReason.Refused,
-                            $"Retained invocation '{request.InvocationId}' statistics could not be replayed: " +
-                                (summary.Refusal?.Message ?? "the retained evidence was rejected."),
-                            Fact(("invocationId", request.InvocationId))));
-                    }
-
-                    sourceRefusal = ValidateRetainedSources(retained, request.InvocationId);
-                    if (sourceRefusal is not null)
-                    {
-                        retainedSource.Dispose();
-                        replay.Dispose();
-                        return CommandOutcome<HandoffCommandResponse>.Refused(sourceRefusal);
-                    }
+                    languageName = LanguageNameOf(retainedSource);
+                    projectName = retainedSource.ProjectId.Name;
 
                     var parseAssessment = retained.Assessments.FirstOrDefault(item =>
                         item.Kind.IsStoredKind(AssessmentKind.ParseTime));
@@ -255,13 +234,9 @@ public static class HandoffCommand
                             $"Retained invocation '{request.InvocationId}' has no ParseTime Assessment.",
                             Fact(("invocationId", request.InvocationId))));
                     }
-
-                    var words = parseAssessment.Words ?? [];
-                    var incomplete = words.Count(word => word.Outcome is "capped" or "timed-out");
-                    var skipped = words.Count(word => word.Outcome == "skipped");
-                    statisticsMarkdown = AssessCommand.RenderSummaryMarkdown(
-                        AssessCommand.CompletionSummary(words.Count - incomplete - skipped, incomplete, skipped),
-                        summary.Value.Text);
+                    assessedWords = (parseAssessment.Words ?? []).Select(word =>
+                        new HandoffWriter.AssessedWordStatistics(word.Word, word.Outcome, word.ElapsedMs, word.RawSignature))
+                        .ToList();
                 }
                 else if (request.Assess)
                 {
@@ -280,7 +255,6 @@ public static class HandoffCommand
 
                     baseline = assessOutcome.Value!.Baseline;
                     selectionProjection = assessOutcome.Value!.Selection;
-                    statisticsMarkdown = assessOutcome.Value!.SummaryMarkdown;
                     assessmentIds.AddRange(assessOutcome.Value!.AssessmentIds);
                     statisticsAssessmentId = assessOutcome.Value.Measurements
                         .SingleOrDefault(item => item.Kind == AssessmentKind.ObjectTiming.ToStoredKind())?.AssessmentId;
@@ -288,6 +262,10 @@ public static class HandoffCommand
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.statistics-unavailable", FailureReason.Refused,
                             "The Assessment returned no identified ObjectTiming measurement for this Handoff."));
+                    assessedWords = assessOutcome.Value.Words
+                        .Select(word => new HandoffWriter.AssessedWordStatistics(
+                            word.Word, word.Outcome, word.ElapsedMs, word.RawSignature))
+                        .ToList();
                 }
                 else
                 {
@@ -303,47 +281,51 @@ public static class HandoffCommand
                     if (!composed.Succeeded)
                         return CommandOutcome<HandoffCommandResponse>.Refused(composed.Refusal!);
                     selectionProjection = composed.Value!.Projection;
+                    languageName = LanguageNameOf(selectionCache);
+                    projectName = selectionCache.ProjectId.Name;
                 }
 
-                if (statisticsAssessmentId is not null)
+                if (statisticsAssessmentId is not null && replay is null)
                 {
-                    if (replay is null)
+                    try
                     {
-                        try
-                        {
-                            var recorded = new AssessmentRepository(database).Get(statisticsAssessmentId);
-                            if (!recorded.Kind.IsStoredKind(AssessmentKind.ObjectTiming) || recorded.Invocation is null ||
-                                recorded.CachePath is null || recorded.CacheDigest is null)
-                                throw new InvalidDataException("The Handoff's ObjectTiming Assessment has no complete retained evidence.");
-                            replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest);
-                        }
-                        catch (Exception exception) when (exception is IOException or InvalidDataException or
-                            UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
-                        {
-                            return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
-                                "handoff.statistics-unavailable", FailureReason.Refused, exception.Message,
-                                Fact(("assessmentId", statisticsAssessmentId))));
-                        }
+                        var recorded = new AssessmentRepository(database).Get(statisticsAssessmentId);
+                        if (!recorded.Kind.IsStoredKind(AssessmentKind.ObjectTiming) || recorded.Invocation is null ||
+                            recorded.CachePath is null || recorded.CacheDigest is null)
+                            throw new InvalidDataException("The Handoff's ObjectTiming Assessment has no complete retained evidence.");
+                        replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest);
+                    }
+                    catch (Exception exception) when (exception is IOException or InvalidDataException or
+                        UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
+                    {
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.statistics-unavailable", FailureReason.Refused, exception.Message,
+                            Fact(("assessmentId", statisticsAssessmentId))));
                     }
                 }
                 using var replayLease = replay;
                 using var retainedSourceLease = retainedSource;
-                var grammarPath = retained is not null ? replay!.GrammarPath : request.Assess ? replay!.GrammarPath : baseline.FwDataPath;
+                var grammarPath = request.Assess ? replay!.GrammarPath : baseline.FwDataPath;
 
                 var writeRefusal = HandoffWriter.Publish(request.OutputDirectory, request.Assess, incoming =>
                 {
+                    Refusal? textsRefusal;
+                    string? sampleTextKey;
                     if (retainedSource is not null)
-                        HandoffWriter.WriteTexts(retainedSource,
-                            retained?.Selection.TextIds ?? request.Selection.TextIds, incoming,
-                            request.WriteFlexTextXml);
+                    {
+                        textsRefusal = HandoffWriter.WriteTextsJson(
+                            retainedSource, retained?.Selection.TextIds ?? request.Selection.TextIds, incoming,
+                            out sampleTextKey);
+                    }
                     else
                     {
                         using var cache = new FwDataProjectLoader().LoadScratchCache(grammarPath);
-                        HandoffWriter.WriteTexts(cache, request.Selection.TextIds, incoming,
-                            request.WriteFlexTextXml);
+                        languageName ??= LanguageNameOf(cache);
+                        projectName ??= cache.ProjectId.Name;
+                        textsRefusal = HandoffWriter.WriteTextsJson(
+                            cache, request.Selection.TextIds, incoming, out sampleTextKey);
                     }
-
-                    HandoffWriter.WriteSelectionTxt(incoming, selectionProjection);
+                    if (textsRefusal is not null) return textsRefusal;
 
                     Report(onProgress, AssessmentStage.ImportingGrammar, "Importing the grammar...");
                     var import = invoker.RunAsync(
@@ -358,40 +340,13 @@ public static class HandoffCommand
                     }
 
                     if (request.Assess)
-                    {
-                        File.WriteAllText(
-                            Path.Combine(incoming, HandoffWriter.StatisticsSummaryFileName), statisticsMarkdown);
-                        Report(onProgress, AssessmentStage.ReadingStatistics, "Reading PanGloss's statistics...");
-                        var statisticsDir = Directory.CreateDirectory(
-                            Path.Combine(incoming, HandoffWriter.StatisticsDirectoryName)).FullName;
+                        HandoffWriter.WriteAssessmentJson(incoming, assessedWords ?? []);
 
-                        foreach (var group in HandoffWriter.StatisticsGroups)
-                        {
-                            var groupOutcome = StatsCommand.Run(
-                                new StatsRequest(request.ProjectPath, null, StatsOutputKind.Text,
-                                    new[] { "--group", group, "--format", "jsonl" })
-                                    { AssessmentId = statisticsAssessmentId },
-                                invoker, cancellationToken);
-                            if (!groupOutcome.Succeeded)
-                            {
-                                if (cancellationToken.IsCancellationRequested ||
-                                    groupOutcome.Refusal?.Reason == FailureReason.Cancelled)
-                                    return Cancelled(request.ProjectPath);
-                                if (retained is not null)
-                                    return new Refusal(
-                                        "handoff.statistics-unavailable", FailureReason.Refused,
-                                        $"Retained invocation '{retained.InvocationId}' statistics could not be " +
-                                            $"replayed: {groupOutcome.Refusal?.Message}",
-                                        Fact(("invocationId", retained.InvocationId)));
-                                return groupOutcome.Refusal;
-                            }
+                    var sampleWord = selectionProjection.Words.Count > 0 ? selectionProjection.Words[0] : "word";
+                    var handoffMarkdown = HandoffWriter.BuildHandoffMarkdown(
+                        request.Assess, sampleTextKey ?? "text", sampleWord);
+                    File.WriteAllText(Path.Combine(incoming, HandoffWriter.HandoffMarkdownFileName), handoffMarkdown);
 
-                            File.WriteAllText(
-                                Path.Combine(statisticsDir, group + ".jsonl"), groupOutcome.Value!.Text);
-                        }
-                    }
-
-                    HandoffWriter.WriteEmbeddedAssets(incoming);
                     return null;
                 });
 
@@ -400,10 +355,16 @@ public static class HandoffCommand
 
                 Report(onProgress, AssessmentStage.Complete, "Handoff complete.");
                 var files = HandoffWriter.ListFiles(request.OutputDirectory);
+                var pastedHeader = HandoffWriter.BuildPastedHeader(
+                    languageName ?? "the language", projectName ?? Path.GetFileNameWithoutExtension(request.ProjectPath));
+                var handoffMarkdownContent = File.ReadAllText(
+                    Path.Combine(request.OutputDirectory, HandoffWriter.HandoffMarkdownFileName));
                 return CommandOutcome<HandoffCommandResponse>.Success(new HandoffCommandResponse(
                     request.OutputDirectory, baseline, selectionProjection, files, assessmentIds)
                 {
                     InvocationId = exportedInvocationId,
+                    PastedHeader = pastedHeader,
+                    HandoffMarkdown = handoffMarkdownContent,
                 });
             }
             catch (OperationCanceledException)
@@ -412,6 +373,11 @@ public static class HandoffCommand
             }
         });
     }
+
+    private static string LanguageNameOf(LcmCache cache) =>
+        WritingSystemInventoryReader.Read(cache).DefaultVernacular?.Name is { Length: > 0 } name
+            ? name
+            : "the language";
 
     private static void Report(Action<AssessmentProgress>? onProgress, AssessmentStage stage, string message) =>
         onProgress?.Invoke(new AssessmentProgress(stage, 0, null, message));

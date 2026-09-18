@@ -1,20 +1,25 @@
-# Start here
+This is a Motif Handoff — a linguistic export from FieldWorks Language Explorer, software for
+building a computational grammar of a language.
 
-Read `instructions.md` first. These attached files are a Motif Handoff of a FieldWorks project as of
-FieldWorks' last save.
+- It describes the **{{LANGUAGE_NAME}}** language, from the FieldWorks project **{{PROJECT_NAME}}**.
+- `grammar.json` is the grammar a parser called PanGloss used: word-structure rules, parts of
+  speech, and lexicon entries.
+- `texts.json` holds real interlinear sentences from the project, word by word and morpheme by
+  morpheme.
+- `assessment.json`, when present, records whether PanGloss actually accepted each word and how —
+  read it before trusting any claim about why a word did or did not parse.
+- Read `handoff.md` first: it names every file, how to search it, and where the full file-format
+  documents live.
 
-The package contains:
+Two questions this Handoff exists to answer:
 
-- `instructions.md`: the data-sensitivity warning and guidance for reading the package.
-- `grammar.json`: the grammar known to the parser.
-- `selection.txt`: the words selected for the parser run and their sources.
-- `statistics.md`: the parser run summary.
-- `statistics/*.jsonl`: per-word, per-object, per-allomorph, per-morpheme, per-group, and never-fires
-  statistics groups.
-- `texts/*.flextext.json`: the chosen interlinear Texts, word by word and morpheme by morpheme.
-- `reference/*.md`: the grammar, Texts, and parser reference documents.
-- `recipes.md`: worked examples for asking questions over the package.
-- `read_handoff.py`: a convenience Python standard-library reader and validator; everything can be
-  answered from the files directly.
+1. Why didn't this word parse?
+2. Why is parsing this so slow, and how do I fix it?
 
-Use the files themselves as evidence. Cite the file and record for every number, and flag guesses.
+Reference documents (fetch these for anything past what `handoff.md` states):
+
+- https://raw.githubusercontent.com/sillsdev/motif/{{MOTIF_REF}}/docs/handoff/flextext-json-format.md
+- https://raw.githubusercontent.com/sillsdev/motif/{{MOTIF_REF}}/docs/handoff/assessment-format.md
+- https://raw.githubusercontent.com/sillsdev/PanGloss/{{PANGLOSS_REF}}/docs/formats/grammar-format.md
+- https://raw.githubusercontent.com/sillsdev/PanGloss/{{PANGLOSS_REF}}/docs/formats/trace-format.md
+- https://raw.githubusercontent.com/sillsdev/PanGloss/{{PANGLOSS_REF}}/docs/formats/hc-mechanics.md

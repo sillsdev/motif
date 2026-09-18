@@ -46,7 +46,9 @@ public sealed class HandoffWalkthroughTests(PristineProjectFixture pristine)
                 Assert.NotEmpty(handoff.Files);
                 var relativePaths = handoff.Files.Select(file => file.RelativePath).ToList();
                 Assert.Contains("grammar.json", relativePaths);
-                Assert.Contains("instructions.md", relativePaths);
+                Assert.Contains("texts.json", relativePaths);
+                Assert.Contains("assessment.json", relativePaths);
+                Assert.Contains("handoff.md", relativePaths);
 
                 var outputPrefix = Path.GetFullPath(outputDirectory) + Path.DirectorySeparatorChar;
                 Assert.All(handoff.Files, file =>

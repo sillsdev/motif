@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -11,9 +13,11 @@ using SIL.Motif.Host.Texts;
 namespace SIL.Motif.Commands.Handoff;
 
 /// <summary>
-/// Writes the content design decision 6 puts in an AI Handoff folder, and publishes it atomically: every
-/// file lands in a sibling <c>.incoming-&lt;guid&gt;</c> directory first, the exact listing is validated,
-/// and only then one <see cref="Directory.Move(string, string)"/> makes it appear at its destination.
+/// Writes the five flat files ADR 0045 puts in an AI Handoff — <c>grammar.json</c>, <c>texts.json</c>,
+/// <c>assessment.json</c>, and <c>handoff.md</c> here; <c>parse_grammar_texts_assessment.py</c> is written
+/// elsewhere — and publishes them atomically: every file lands in a sibling <c>.incoming-&lt;guid&gt;</c>
+/// directory first, the exact listing is validated, and only then one
+/// <see cref="Directory.Move(string, string)"/> makes it appear at its destination.
 /// </summary>
 /// <remarks>
 /// <see cref="Publish"/> is the whole atomicity contract: its populate callback writes files freely into
@@ -23,34 +27,27 @@ namespace SIL.Motif.Commands.Handoff;
 /// </remarks>
 public static class HandoffWriter
 {
-    /// <summary>The six groups <c>pangloss stats --group</c> accepts; <c>never-fires</c> is the only hyphenated one.</summary>
-    public static readonly IReadOnlyList<string> StatisticsGroups =
-        ["word", "object", "allomorph", "morpheme", "group", "never-fires"];
-
-    private const string InstructionsResource = "SIL.Motif.Commands.Handoff.Assets.instructions.md";
-    private const string StarterPromptResource = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
-    private const string RecipesResource = "SIL.Motif.Commands.Handoff.Assets.recipes.md";
-    private const string ReadHandoffPyResource = "SIL.Motif.Commands.Handoff.Assets.read_handoff.py";
-    private const string GrammarFormatResource = "SIL.Motif.Commands.Handoff.Reference.grammar-format.md";
-    private const string FlexTextFormatResource = "SIL.Motif.Commands.Handoff.Reference.flextext-json-format.md";
-    private const string HcMechanicsResource = "SIL.Motif.Commands.Handoff.Reference.hc-mechanics.md";
-
-    private const string InstructionsFileName = "instructions.md";
-    internal const string StarterPromptFileName = "starter-prompt.md";
-    private const string RecipesFileName = "recipes.md";
-    private const string ReadHandoffPyFileName = "read_handoff.py";
     internal const string GrammarFileName = "grammar.json";
-    internal const string SelectionFileName = "selection.txt";
-    internal const string StatisticsSummaryFileName = "statistics.md";
-    internal const string StatisticsDirectoryName = "statistics";
-    private const string FlexTextJsonExtension = "flextext.json";
-    private const string FlexTextXmlExtension = "flextext.xml";
+    internal const string TextsFileName = "texts.json";
+    internal const string AssessmentFileName = "assessment.json";
+    internal const string HandoffMarkdownFileName = "handoff.md";
+
+    private const string StarterPromptResource = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
+
+    /// <summary>The one place the pasted header's document links resolve against until a release tag exists.</summary>
+    /// <summary>The ref motif's own documents are linked at. Its release tag once one exists.</summary>
+    internal const string MotifRef = "main";
+
+    /// <summary>
+    /// The ref PanGloss's documents are linked at, which moves on PanGloss's release schedule and not
+    /// motif's. It is a branch only until a PanGloss release contains <c>docs/formats/</c>; no tag does yet.
+    /// </summary>
+    internal const string PanGlossRef = "main";
 
     private static readonly string[] AlwaysRequiredTopLevelFiles =
-        [InstructionsFileName, StarterPromptFileName, GrammarFileName, SelectionFileName, RecipesFileName, ReadHandoffPyFileName];
+        [GrammarFileName, TextsFileName, HandoffMarkdownFileName];
 
-    private static readonly string[] ReferenceFiles =
-        ["grammar-format.md", "flextext-json-format.md", "hc-mechanics.md"];
+    private static readonly JsonSerializerOptions CompactOptions = new() { WriteIndented = false };
 
     /// <summary>
     /// Builds a Handoff folder in a fresh sibling incoming directory via <paramref name="populate"/>,
@@ -60,7 +57,7 @@ public static class HandoffWriter
     /// Where the folder must appear. Assumed already checked non-existent or empty by the caller; an
     /// existing empty directory here is removed immediately before the final move.
     /// </param>
-    /// <param name="includeStatistics">Whether <c>statistics.md</c> and <c>statistics/</c> are required.</param>
+    /// <param name="includeAssessment">Whether <c>assessment.json</c> is required (design decision 2: absent, not empty, when there is none).</param>
     /// <param name="populate">
     /// Writes every file into the incoming directory it is handed. Returning a <see cref="Refusal"/>
     /// aborts without moving anything; an exception it throws propagates after the incoming directory is
@@ -68,7 +65,7 @@ public static class HandoffWriter
     /// </param>
     /// <returns>The <see cref="Refusal"/> <paramref name="populate"/> returned, or <see langword="null"/> on success.</returns>
     public static Refusal? Publish(
-        string destinationDirectory, bool includeStatistics, Func<string, Refusal?> populate)
+        string destinationDirectory, bool includeAssessment, Func<string, Refusal?> populate)
     {
         ArgumentNullException.ThrowIfNull(destinationDirectory);
         ArgumentNullException.ThrowIfNull(populate);
@@ -85,7 +82,7 @@ public static class HandoffWriter
             var refusal = populate(incoming);
             if (refusal is not null) return refusal;
 
-            ValidateListing(incoming, includeStatistics);
+            ValidateListing(incoming, includeAssessment);
 
             // Known empty by the caller's own pre-check; removed here so Directory.Move never sees it.
             if (Directory.Exists(full)) Directory.Delete(full);
@@ -99,25 +96,37 @@ public static class HandoffWriter
     }
 
     /// <summary>
-    /// Writes one <c>texts/&lt;title&gt;-&lt;guid&gt;.flextext.json</c> per chosen Text — every Text in
-    /// the project when <paramref name="requestedTextIds"/> is empty — and, when
-    /// <paramref name="writeFlexTextXml"/> is set, a matching <c>.flextext.xml</c> beside it.
+    /// Writes <c>texts.json</c>: every requested Text — every Text in the project when
+    /// <paramref name="requestedTextIds"/> is empty — each carrying its own sanitized-title-and-GUID
+    /// <c>key</c> field, one compact record per line (design decisions 1 and 3). Each line is a complete,
+    /// independently parseable JSON object — not a fragment of a larger one — so <c>json.loads</c> on one
+    /// line and <c>json.load</c> on the whole file agree on the same records.
     /// </summary>
-    /// <returns>The Handoff-relative paths of every file written, in write order.</returns>
-    internal static IReadOnlyList<string> WriteTexts(
-        LcmCache cache, IReadOnlyList<Guid> requestedTextIds, string incomingRoot, bool writeFlexTextXml)
+    /// <param name="firstKey">The first written Text's own <c>key</c> field, for a working example elsewhere.</param>
+    /// <returns>
+    /// A refusal naming the first unresolved Text id, or <see langword="null"/> on success. An id that does
+    /// not resolve is refused rather than silently dropped, so a Handoff never claims fewer Texts than the
+    /// person actually chose.
+    /// </returns>
+    internal static Refusal? WriteTextsJson(
+        LcmCache cache, IReadOnlyList<Guid> requestedTextIds, string incomingRoot, out string? firstKey)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(requestedTextIds);
+        firstKey = null;
 
         var repository = cache.ServiceLocator.GetInstance<ITextRepository>();
         var chosen = new List<IText>();
         if (requestedTextIds.Count > 0)
         {
-            // Skipped rather than thrown: one unresolvable id must not stop every other chosen Text.
             foreach (var textId in requestedTextIds)
             {
-                if (repository.TryGetObject(textId, out var text)) chosen.Add(text);
+                if (!repository.TryGetObject(textId, out var text))
+                    return new Refusal(
+                        "handoff.text-not-found", FailureReason.InvalidArgument,
+                        $"Text '{textId:D}' is not present in the project.",
+                        new Dictionary<string, string> { ["textId"] = textId.ToString("D") });
+                chosen.Add(text);
             }
         }
         else
@@ -125,58 +134,159 @@ public static class HandoffWriter
             chosen.AddRange(repository.AllInstances());
         }
 
-        var textsDir = Directory.CreateDirectory(Path.Combine(incomingRoot, "texts")).FullName;
-        var written = new List<string>();
-        foreach (var text in chosen)
-        {
-            var projection = InterlinearTextReader.Read(cache, text);
-
-            var jsonName = InterlinearTextFileNaming.BuildFileName(projection, FlexTextJsonExtension);
-            File.WriteAllText(Path.Combine(textsDir, jsonName), FlexTextJsonWriter.Serialize(projection));
-            written.Add("texts/" + jsonName);
-
-            if (!writeFlexTextXml) continue;
-
-            var xmlName = InterlinearTextFileNaming.BuildFileName(projection, FlexTextXmlExtension);
-            using var stream = File.Create(Path.Combine(textsDir, xmlName));
-            FlexTextXmlWriter.WriteTo(projection, stream);
-            written.Add("texts/" + xmlName);
-        }
-        return written;
+        var records = chosen.Select(text => InterlinearTextReader.Read(cache, text))
+            .Select(projection =>
+            {
+                var written = FlexTextJsonWriter.Write(projection);
+                var document = written["document"];
+                written.Remove("document");
+                return (JsonNode)new JsonObject
+                {
+                    ["key"] = InterlinearTextFileNaming.BuildKey(projection),
+                    ["document"] = document,
+                };
+            })
+            .ToList();
+        firstKey = records.Count > 0 ? records[0]!["key"]!.GetValue<string>() : null;
+        File.WriteAllText(Path.Combine(incomingRoot, TextsFileName), BuildLineDelimitedJsonArray(records));
+        return null;
     }
 
-    /// <summary>Writes <c>selection.txt</c>: the final word list and which sources contributed to it.</summary>
-    internal static void WriteSelectionTxt(string incomingRoot, SelectionProjection projection)
+    /// <summary>One Selection word's batch-pass statistics, the shape <c>assessment.json</c> writes per line.</summary>
+    internal readonly record struct AssessedWordStatistics(string Word, string Outcome, int? ElapsedMs, string? RawSignature);
+
+    /// <summary>
+    /// Writes <c>assessment.json</c>: every Assessment word, each record carrying its own <c>word</c> field
+    /// so a future trace can join the same record instead of a parallel structure (design decisions 2 and
+    /// 12 — this call never writes a trace itself; see <see cref="SIL.Motif.Host.PanGloss.IPanGlossTracer"/>).
+    /// </summary>
+    internal static void WriteAssessmentJson(string incomingRoot, IReadOnlyList<AssessedWordStatistics> words)
     {
-        ArgumentNullException.ThrowIfNull(projection);
+        ArgumentNullException.ThrowIfNull(words);
 
-        var text = new StringBuilder();
-        text.AppendLine($"# Selection ({projection.Words.Count} word(s))");
-        text.AppendLine();
-        text.AppendLine("Provenance:");
-        foreach (var entry in projection.Provenance)
-            text.AppendLine($"  {entry.Source}: {entry.Count}");
-        text.AppendLine();
-        foreach (var word in projection.Words)
-            text.AppendLine(word);
+        var records = words
+            .OrderBy(word => word.Word, StringComparer.Ordinal)
+            .Select(word => (JsonNode)BuildAssessedWordRecord(word))
+            .ToList();
+        File.WriteAllText(Path.Combine(incomingRoot, AssessmentFileName), BuildLineDelimitedJsonArray(records));
+    }
 
-        File.WriteAllText(Path.Combine(incomingRoot, SelectionFileName), text.ToString());
+    private static JsonObject BuildAssessedWordRecord(AssessedWordStatistics word)
+    {
+        var value = new JsonObject { ["word"] = word.Word, ["outcome"] = word.Outcome };
+        if (word.ElapsedMs is { } elapsed) value["elapsedMs"] = elapsed;
+        if (!string.IsNullOrEmpty(word.RawSignature)) value["signature"] = word.RawSignature;
+        return value;
     }
 
     /// <summary>
-    /// Extracts every Handoff asset embedded in this assembly, including the prompt and three reference documents.
+    /// Builds <c>handoff.md</c>'s content: orientation, a manifest of the files this run actually wrote, and
+    /// per file, what it is, one <c>grep</c> example, and one Python call. Capped at 100
+    /// lines by <c>HandoffMarkdownTests.HandoffMarkdownNeverExceedsTheHundredLineCap</c>.
     /// </summary>
-    internal static void WriteEmbeddedAssets(string incomingRoot)
+    internal static string BuildHandoffMarkdown(bool hasAssessment, string sampleTextKey, string sampleWord)
     {
-        ExtractEmbeddedAsset(InstructionsResource, Path.Combine(incomingRoot, InstructionsFileName));
-        ExtractEmbeddedAsset(StarterPromptResource, Path.Combine(incomingRoot, StarterPromptFileName));
-        ExtractEmbeddedAsset(RecipesResource, Path.Combine(incomingRoot, RecipesFileName));
-        ExtractEmbeddedAsset(ReadHandoffPyResource, Path.Combine(incomingRoot, ReadHandoffPyFileName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(sampleTextKey);
 
-        var referenceDir = Directory.CreateDirectory(Path.Combine(incomingRoot, "reference")).FullName;
-        ExtractEmbeddedAsset(GrammarFormatResource, Path.Combine(referenceDir, "grammar-format.md"));
-        ExtractEmbeddedAsset(FlexTextFormatResource, Path.Combine(referenceDir, "flextext-json-format.md"));
-        ExtractEmbeddedAsset(HcMechanicsResource, Path.Combine(referenceDir, "hc-mechanics.md"));
+        var assessmentManifestLine = hasAssessment
+            ? "- `assessment.json` — whether PanGloss accepted each Selection word, and how long it took."
+            : "- No Assessment was run for this Handoff, so `assessment.json` is not included.";
+
+        // Derived from the manifest's own condition: a literal count drifted from the list it introduced.
+        var fileCount = hasAssessment ? "four" : "three";
+
+        var assessmentSection = hasAssessment
+            ? $"""
+
+                ## assessment.json
+
+                One record per Selection word, each carrying its own `word` field: the outcome PanGloss
+                reported (`analysed`, `no-analysis`, `capped`, `timed-out`, or `skipped`) and how long the
+                batch pass took. A traced word, when one has been chosen for tracing, carries its
+                derivation in the same record. See
+                https://raw.githubusercontent.com/sillsdev/motif/{MotifRef}/docs/handoff/assessment-format.md.
+
+                ```
+                grep '"{sampleWord}"' assessment.json
+                ```
+                ```
+                python -c "import json; d=json.load(open('assessment.json')); print([r for r in d if r['word']=='{sampleWord}'][0])"
+                ```
+                """
+            : $"""
+
+                ## No Assessment
+
+                Nobody ran an Assessment before this Handoff was written, which is a complete Handoff and
+                not a broken one. There is no `assessment.json`, and so no evidence for why any word did
+                or did not parse; run an Assessment and hand off again to get one.
+                """;
+
+        var markdown = $"""
+            # Handoff
+
+            The {fileCount} files listed below describe one FieldWorks project as of its last save: the
+            grammar PanGloss parsed with, the interlinear Texts that were selected, what happened when
+            each Selection word was parsed, and this file. There are no other files and no subfolders.
+
+            Every JSON file here is valid JSON with **one record per line** — pretty-printed down to the
+            record, compact within it — so a `grep` for a word returns that word's whole record on one
+            line, that same line parses on its own with `json.loads`, and the file as a whole still loads
+            with a plain `json.load`.
+
+            `parse_grammar_texts_assessment.py`, when it is listed below, has convenience routines for all
+            of the above and a `--help` that teaches the file shapes; its source is linked from each
+            section below rather than repeated here.
+
+            ## Files in this folder
+
+            - `grammar.json` — the grammar PanGloss actually parsed with.
+            - `texts.json` — every selected Text, each record carrying its own sanitized-title-and-GUID `key`.
+            {assessmentManifestLine}
+            - `handoff.md` — this file.
+
+            ## grammar.json
+
+            Rules, parts of speech, phonemes, and lexicon entries, exactly as PanGloss read them. See
+            https://raw.githubusercontent.com/sillsdev/PanGloss/{PanGlossRef}/docs/formats/grammar-format.md.
+
+            ```
+            grep '"guid"' grammar.json
+            ```
+            ```
+            python -c "import json; print(len(json.load(open('grammar.json'))))"
+            ```
+
+            ## texts.json
+
+            One record per selected Text. `{sampleTextKey}` is one such record's `key` in this Handoff.
+
+            ```
+            grep '"{sampleTextKey}"' texts.json
+            ```
+            ```
+            python -c "import json; print([t['key'] for t in json.load(open('texts.json'))])"
+            ```
+            {assessmentSection}
+            """;
+
+        return NormalizeNewlines(markdown);
+    }
+
+    /// <summary>
+    /// Builds the text a person pastes into the chat alongside the dragged files (design decision 5): the
+    /// <c>starter-prompt.md</c> asset with this run's language and project name substituted in.
+    /// </summary>
+    internal static string BuildPastedHeader(string languageName, string projectName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(languageName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectName);
+
+        return ReadEmbeddedText(StarterPromptResource)
+            .Replace("{{LANGUAGE_NAME}}", languageName, StringComparison.Ordinal)
+            .Replace("{{PROJECT_NAME}}", projectName, StringComparison.Ordinal)
+            .Replace("{{MOTIF_REF}}", MotifRef, StringComparison.Ordinal)
+            .Replace("{{PANGLOSS_REF}}", PanGlossRef, StringComparison.Ordinal);
     }
 
     /// <summary>Every file the published folder contains, as Handoff-relative, forward-slashed paths.</summary>
@@ -190,7 +300,7 @@ public static class HandoffWriter
     }
 
     // The folder's own consistency guard: never move an incomplete listing to the caller's destination.
-    private static void ValidateListing(string root, bool includeStatistics)
+    private static void ValidateListing(string root, bool includeAssessment)
     {
         foreach (var name in AlwaysRequiredTopLevelFiles)
         {
@@ -198,36 +308,41 @@ public static class HandoffWriter
                 throw new InvalidOperationException($"The Handoff folder is missing '{name}'.");
         }
 
-        foreach (var name in ReferenceFiles)
+        var assessmentPath = Path.Combine(root, AssessmentFileName);
+        if (includeAssessment)
         {
-            if (!File.Exists(Path.Combine(root, "reference", name)))
-                throw new InvalidOperationException($"The Handoff folder is missing 'reference/{name}'.");
+            if (!File.Exists(assessmentPath))
+                throw new InvalidOperationException("The Handoff folder is missing 'assessment.json'.");
         }
-
-        if (includeStatistics)
+        else if (File.Exists(assessmentPath))
         {
-            if (!File.Exists(Path.Combine(root, StatisticsSummaryFileName)))
-                throw new InvalidOperationException("The Handoff folder is missing the statistics summary.");
-
-            foreach (var group in StatisticsGroups)
-            {
-                if (!File.Exists(Path.Combine(root, StatisticsDirectoryName, group + ".jsonl")))
-                    throw new InvalidOperationException($"The Handoff folder is missing 'statistics/{group}.jsonl'.");
-            }
-        }
-        else if (File.Exists(Path.Combine(root, StatisticsSummaryFileName)) ||
-            Directory.Exists(Path.Combine(root, StatisticsDirectoryName)))
-        {
-            throw new InvalidOperationException("A --no-assess Handoff must not write statistics.");
+            throw new InvalidOperationException("A --no-assess Handoff must not write 'assessment.json'.");
         }
     }
 
-    private static void ExtractEmbeddedAsset(string resourceName, string destinationPath)
+    // One record per line, compact within it, so a grepped line also parses alone as its own JSON value.
+    private static string BuildLineDelimitedJsonArray(IReadOnlyList<JsonNode> records)
+    {
+        var text = new StringBuilder();
+        text.Append('[').Append('\n');
+        for (var index = 0; index < records.Count; index++)
+        {
+            text.Append(records[index].ToJsonString(CompactOptions));
+            if (index < records.Count - 1) text.Append(',');
+            text.Append('\n');
+        }
+        text.Append(']').Append('\n');
+        return text.ToString();
+    }
+
+    private static string NormalizeNewlines(string text) => text.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+    private static string ReadEmbeddedText(string resourceName)
     {
         using var stream = typeof(HandoffWriter).Assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' was not found.");
-        using var destination = File.Create(destinationPath);
-        stream.CopyTo(destination);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     private static void DeleteDirectorySafely(string path)

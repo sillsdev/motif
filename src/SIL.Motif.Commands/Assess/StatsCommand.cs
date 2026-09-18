@@ -31,6 +31,10 @@ namespace SIL.Motif.Commands.Assess;
 /// </remarks>
 public static class StatsCommand
 {
+    /// <summary>The six groups <c>pangloss stats --group</c> accepts; <c>never-fires</c> is the only hyphenated one.</summary>
+    public static readonly IReadOnlyList<string> StatisticsGroups =
+        ["word", "object", "allomorph", "morpheme", "group", "never-fires"];
+
     /// <summary>Queries statistics through a real parser invocation.</summary>
     public static CommandOutcome<StatsCommandResponse> Stats(
         StatsRequest request, CancellationToken cancellationToken = default)

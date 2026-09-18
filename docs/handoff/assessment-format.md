@@ -52,13 +52,24 @@ grep '"mirusi"' assessment.json
 
 ## Per-word statistics
 
-Every word in the Selection — whether or not it was chosen for tracing — gets one statistics
-record from the batch pass: which word it is, what happened when PanGloss parsed it (it parsed, it
-failed to parse, or it hit a limit before finishing), how long that took, and PanGloss's own step
-count for it. The step count travels alongside the measured time rather than instead of it because
-step counts compare across machines and measured times do not — two people running the same
-Assessment on different hardware can compare step counts meaningfully in a way they cannot compare
-milliseconds.
+Every word in the Selection — whether or not it was chosen for tracing — gets one record from the
+batch pass, with these fields:
+
+| Field | What it holds |
+|---|---|
+| `word` | The surface form that was parsed. Always present; this is what a `grep` lands on. |
+| `outcome` | One of `analysed`, `no-analysis`, `capped`, `timed-out`, `skipped`. |
+| `elapsedMs` | How long the batch pass took on this word. Absent when it was not measured. |
+| `signature` | PanGloss's own analysis signature, when it produced one. |
+
+`outcome` is the field to read before trusting any claim about a word. `no-analysis` means the
+parser ran to completion and found nothing, which is a real answer. `capped` and `timed-out` mean
+it stopped early, so "this word does not parse" is **not** a conclusion you may draw from them —
+the search was cut short, not exhausted. `skipped` means the word never reached the parser.
+
+There is deliberately no step count here. Step counts compare across machines where milliseconds do
+not, so one would be the better measure, but Motif does not yet record one for the batch pass and
+this file states only what it actually holds.
 
 ## The Selection, including typed words
 

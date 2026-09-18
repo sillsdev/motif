@@ -15,38 +15,10 @@
     <ProjectReference Include="..\SIL.Motif.Worker\SIL.Motif.Worker.csproj" />
   </ItemGroup>
 
-  <!-- The Handoff folder's own assets: read-this-first prose, recipes, and the standard-library reader. -->
+  <!-- The pasted-header template (ADR 0045 decision 5): the only Handoff asset left once reference/ is gone. -->
   <ItemGroup>
-    <EmbeddedResource Include="Handoff\Assets\instructions.md">
-      <LogicalName>SIL.Motif.Commands.Handoff.Assets.instructions.md</LogicalName>
-    </EmbeddedResource>
     <EmbeddedResource Include="Handoff\Assets\starter-prompt.md">
       <LogicalName>SIL.Motif.Commands.Handoff.Assets.starter-prompt.md</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Handoff\Assets\recipes.md">
-      <LogicalName>SIL.Motif.Commands.Handoff.Assets.recipes.md</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Handoff\Assets\read_handoff.py">
-      <LogicalName>SIL.Motif.Commands.Handoff.Assets.read_handoff.py</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
-
-  <!--
-    The three reference documents live once in docs/handoff and are copied into every Handoff
-    folder, so they are embedded from there rather than duplicated under this project.
-  -->
-  <ItemGroup>
-    <EmbeddedResource Include="..\..\docs\handoff\grammar-format.md">
-      <LogicalName>SIL.Motif.Commands.Handoff.Reference.grammar-format.md</LogicalName>
-      <Link>Handoff\Reference\grammar-format.md</Link>
-    </EmbeddedResource>
-    <EmbeddedResource Include="..\..\docs\handoff\flextext-json-format.md">
-      <LogicalName>SIL.Motif.Commands.Handoff.Reference.flextext-json-format.md</LogicalName>
-      <Link>Handoff\Reference\flextext-json-format.md</Link>
-    </EmbeddedResource>
-    <EmbeddedResource Include="..\..\docs\handoff\hc-mechanics.md">
-      <LogicalName>SIL.Motif.Commands.Handoff.Reference.hc-mechanics.md</LogicalName>
-      <Link>Handoff\Reference\hc-mechanics.md</Link>
     </EmbeddedResource>
   </ItemGroup>
 

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using SIL.LCModel;
@@ -28,8 +27,8 @@ namespace SIL.Motif.Tests.Handoff;
 /// <summary>
 /// Drives <see cref="HandoffCommand"/> over a real, file-backed seeded project against a fake
 /// <see cref="IAssessor"/> and the real <see cref="PanGlossInvoker"/> pointed at the FakePanGloss
-/// executable: the exact folder listing, atomicity on an existing destination, cancellation and
-/// PanGloss-failure cleanup, <c>--no-assess</c>, <c>--flextext</c>, and duplicate Text titles.
+/// executable: the exact four-file listing, atomicity on an existing destination, cancellation and
+/// PanGloss-failure cleanup, <c>--no-assess</c>, and duplicate Text titles.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class HandoffWriterTests : IDisposable
@@ -65,7 +64,7 @@ public sealed class HandoffWriterTests : IDisposable
             "cancelling", CollectedKinds, _ => throw new OperationCanceledException());
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, true),
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, true),
             NewManagedRoot(), cancellingAssessor, invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
@@ -131,8 +130,8 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Equal(assessmentA.AssessmentIds.OrderBy(id => id), outcome.Value.AssessmentIds.OrderBy(id => id));
         Assert.Equal(assessmentA.Baseline.Token, outcome.Value.Baseline.Token);
         Assert.Equal(retainedA.Assessments[0].Invocation!.SourceBytesSha256, importedDigest);
-        Assert.Contains("motifa", File.ReadAllText(Path.Combine(destination, "selection.txt")), StringComparison.Ordinal);
-        Assert.DoesNotContain("motifb", File.ReadAllText(Path.Combine(destination, "selection.txt")), StringComparison.Ordinal);
+        Assert.Contains("motifa", outcome.Value.Selection.Words);
+        Assert.DoesNotContain("motifb", outcome.Value.Selection.Words);
         Assert.Equal(before.Count, WalkthroughStoreAssertions.ListInvocations(seeded.FwDataPath).Count);
     }
 
@@ -265,13 +264,16 @@ public sealed class HandoffWriterTests : IDisposable
         var managedRoot = NewManagedRoot();
         using var assessmentInvoker = NewInvoker();
         var assessment = RunAssessment(seeded, managedRoot, assessor, assessmentInvoker);
-        var changed = false;
+
+        // Evidence is verified up front; the baseline is read only once, early, so a later tamper cannot matter.
+        if (tamperRetained) File.WriteAllText(evidence!.SourcePath, "unreadable changed project bytes");
+        var baselineTampered = false;
         var invoker = new InspectingInvoker(realInvoker, request =>
         {
-            if (request is PanGlossRequest.Stats && !changed)
+            if (!tamperRetained && !baselineTampered && request is PanGlossRequest.Import)
             {
-                File.WriteAllText(tamperRetained ? evidence!.SourcePath : baselinePath!, "unreadable changed project bytes");
-                changed = true;
+                File.WriteAllText(baselinePath!, "unreadable changed project bytes");
+                baselineTampered = true;
             }
             if (request is PanGlossRequest.Import import)
             {
@@ -312,7 +314,7 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
-    public void AnEndToEndHandoffWritesTheExactListingAndEveryFileValidates()
+    public void AnEndToEndHandoffWritesExactlyFourFilesAndEveryJsonFileValidates()
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
@@ -325,57 +327,70 @@ public sealed class HandoffWriterTests : IDisposable
             AssessedRequest(seeded, destination, assessment.InvocationId),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
-        Assert.True(outcome.Succeeded);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var response = outcome.Value!;
         Assert.Equal(destination, response.OutputDirectory);
         Assert.Equal(2, response.AssessmentIds.Count);
         Assert.True(response.Selection.Words.Count > 0);
 
-        AssertFile(destination, "instructions.md");
-        AssertFile(destination, "starter-prompt.md");
+        // No sixth file and no subfolder: parse_grammar_texts_assessment.py is a different lane's file.
+        Assert.Equal(
+            new[] { "assessment.json", "grammar.json", "handoff.md", "texts.json" },
+            Directory.GetFiles(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+
         AssertFile(destination, "grammar.json");
-        AssertFile(destination, "selection.txt");
-        AssertFile(destination, "statistics.md");
-        AssertFile(destination, "recipes.md");
-        AssertFile(destination, "read_handoff.py");
-        AssertFile(destination, Path.Combine("reference", "grammar-format.md"));
-        AssertFile(destination, Path.Combine("reference", "flextext-json-format.md"));
-        AssertFile(destination, Path.Combine("reference", "hc-mechanics.md"));
+        AssertFile(destination, "texts.json");
+        AssertFile(destination, "assessment.json");
+        AssertFile(destination, "handoff.md");
 
-        foreach (var group in HandoffWriter.StatisticsGroups)
-            AssertFile(destination, Path.Combine("statistics", group + ".jsonl"));
-
-        var textFiles = Directory.GetFiles(Path.Combine(destination, "texts"), "*.flextext.json");
-        Assert.Single(textFiles);
+        using (JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "grammar.json")))) { }
+        using (JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "texts.json")))) { }
+        using (JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "assessment.json")))) { }
 
         Assert.Contains("grammar.json", response.Files);
-        Assert.Contains("selection.txt", response.Files);
-        Assert.Contains("starter-prompt.md", response.Files);
+        Assert.Contains("texts.json", response.Files);
+        Assert.Contains("assessment.json", response.Files);
+        Assert.Contains("handoff.md", response.Files);
+        Assert.False(string.IsNullOrWhiteSpace(response.PastedHeader));
+        Assert.False(string.IsNullOrWhiteSpace(response.HandoffMarkdown));
     }
 
-    [PythonAvailableFact]
-    public void ReadHandoffPyValidatesAndSummarizesARealHandoffFolder()
+    // Pins one-record-per-line: a grep for a word's surface form finds that word's whole record on one line.
+    [Fact]
+    public void GreppingEitherJsonFileForAWordReturnsThatWordsWholeRecordOnOneLine()
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
+        var selection = new SelectionRequest(false, [], ["mirusi"], false, null);
+        var cachePath = WriteFakeCache();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ObjectTiming
+            ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
+            : new AssessmentRaw.WordMeasurements([new AssessedWord("mirusi", "analysed", [], 42, "sig")]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_root, scope, candidate),
+        };
         using var assessmentInvoker = NewInvoker();
-        var assessment = RunAssessment(seeded, managedRoot, NewAssessor(), assessmentInvoker);
+        var assessment = RunAssessment(seeded, managedRoot, assessor, assessmentInvoker, selection);
         using var invoker = NewInvoker();
-        var destination = Path.Combine(_root, "handoff-python");
+        var destination = Path.Combine(_root, "handoff-grep");
 
         var outcome = HandoffCommand.Run(
             AssessedRequest(seeded, destination, assessment.InvocationId),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
-        Assert.True(outcome.Succeeded);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
 
-        var scriptPath = Path.Combine(destination, "read_handoff.py");
-        var validate = RunPython(scriptPath, "validate-handoff", destination);
-        Assert.Equal(0, validate.ExitCode);
-        Assert.Equal("[]", validate.StandardOutput.Trim());
+        var assessmentLines = File.ReadAllLines(Path.Combine(destination, "assessment.json"));
+        var matches = assessmentLines.Where(line => line.Contains("\"mirusi\"", StringComparison.Ordinal)).ToList();
+        var match = Assert.Single(matches);
+        Assert.Contains("\"outcome\"", match, StringComparison.Ordinal);
+        using (JsonDocument.Parse(match.TrimEnd(','))) { } // one record per line, compact within it
+    }
 
-        var summarize = RunPython(scriptPath, "summarize-counts", destination);
-        Assert.Equal(0, summarize.ExitCode);
-        Assert.Contains("\"text_count\": 1", summarize.StandardOutput);
+    private string WriteFakeCache()
+    {
+        var cachePath = Path.Combine(_root, "fake-stats-cache-" + Guid.NewGuid().ToString("N") + ".bin");
+        File.WriteAllText(cachePath, "fake per-object stats cache");
+        return cachePath;
     }
 
     [Fact]
@@ -389,7 +404,7 @@ public sealed class HandoffWriterTests : IDisposable
         File.WriteAllText(Path.Combine(destination, "keep.txt"), "do not touch");
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
@@ -406,7 +421,7 @@ public sealed class HandoffWriterTests : IDisposable
         var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Cancelled() };
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
@@ -424,7 +439,7 @@ public sealed class HandoffWriterTests : IDisposable
         var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Unavailable("boom") };
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
@@ -432,8 +447,9 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.False(Directory.Exists(destination));
     }
 
+    // ADR 0045 decision 2: a Handoff with no Assessment is valid, not a degraded one.
     [Fact]
-    public void NoAssessOmitsStatisticsButStillWritesGrammarTextsAndSelection()
+    public void NoAssessOmitsAssessmentJsonButStillWritesGrammarAndTexts()
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
@@ -441,42 +457,22 @@ public sealed class HandoffWriterTests : IDisposable
         var destination = Path.Combine(_root, "handoff-no-assess");
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
-        Assert.True(outcome.Succeeded);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         Assert.Empty(outcome.Value!.AssessmentIds);
         AssertFile(destination, "grammar.json");
-        AssertFile(destination, "selection.txt");
-        Assert.True(Directory.Exists(Path.Combine(destination, "texts")));
-        Assert.False(File.Exists(Path.Combine(destination, "statistics.md")));
-        Assert.False(Directory.Exists(Path.Combine(destination, "statistics")));
+        AssertFile(destination, "texts.json");
+        AssertFile(destination, "handoff.md");
+        Assert.False(File.Exists(Path.Combine(destination, "assessment.json")));
+        Assert.Contains(
+            "No Assessment was run", File.ReadAllText(Path.Combine(destination, "handoff.md")),
+            StringComparison.Ordinal);
     }
 
     [Fact]
-    public void FlexTextAddsMatchingXmlBesideJson()
-    {
-        using var seeded = NewSeededScratch();
-        var managedRoot = NewManagedRoot();
-        using var invoker = NewInvoker();
-        var destination = Path.Combine(_root, "handoff-flextext");
-
-        var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, true, false),
-            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
-
-        Assert.True(outcome.Succeeded);
-        var jsonFiles = Directory.GetFiles(Path.Combine(destination, "texts"), "*.flextext.json");
-        var xmlFiles = Directory.GetFiles(Path.Combine(destination, "texts"), "*.flextext.xml");
-        Assert.Single(jsonFiles);
-        Assert.Single(xmlFiles);
-        Assert.Equal(
-            Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(jsonFiles[0])),
-            Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(xmlFiles[0])));
-    }
-
-    [Fact]
-    public void DuplicateTextTitlesProduceTwoDistinctFiles()
+    public void DuplicateTextTitlesProduceTwoDistinctRecords()
     {
         using var seeded = NewSeededScratch();
         AddPlainText(seeded.Cache, SeededProject.TextTitle);
@@ -487,13 +483,15 @@ public sealed class HandoffWriterTests : IDisposable
         var destination = Path.Combine(_root, "handoff-duplicate-titles");
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false, false),
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
-        Assert.True(outcome.Succeeded);
-        var textFiles = Directory.GetFiles(Path.Combine(destination, "texts"), "*.flextext.json");
-        Assert.Equal(2, textFiles.Length);
-        Assert.Equal(2, textFiles.Distinct().Count());
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "texts.json")));
+        var keys = document.RootElement.EnumerateArray()
+            .Select(record => record.GetProperty("key").GetString()).ToList();
+        Assert.Equal(2, keys.Count);
+        Assert.Equal(2, keys.Distinct().Count());
     }
 
     [Fact]
@@ -506,7 +504,7 @@ public sealed class HandoffWriterTests : IDisposable
         var emptySelection = new SelectionRequest(false, [], [], false, null);
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(seeded.FwDataPath, destination, emptySelection, false, false),
+            new HandoffRequest(seeded.FwDataPath, destination, emptySelection, false),
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
@@ -529,7 +527,7 @@ public sealed class HandoffWriterTests : IDisposable
         };
 
         var outcome = HandoffCommand.Run(
-            new HandoffRequest(missingProject, destination, AllWordformsAllTexts, false, false),
+            new HandoffRequest(missingProject, destination, AllWordformsAllTexts, false),
             managedRoot, mustNotRun, unreachableInvoker, onProgress: null, CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
@@ -571,8 +569,7 @@ public sealed class HandoffWriterTests : IDisposable
 
     private static HandoffRequest AssessedRequest(
         SeededScratch seeded, string destination, string invocationId) =>
-        new(seeded.FwDataPath, destination, new SelectionRequest(false, [], [], false, null),
-            false, true, invocationId);
+        new(seeded.FwDataPath, destination, new SelectionRequest(false, [], [], false, null), true, invocationId);
 
     private static RetainedInvocationRecord ForeignRetained(string invocationId) => new(
         invocationId, "foreign-project", ForeignBaseline(), "C:/managed/foreign",
@@ -649,28 +646,4 @@ public sealed class HandoffWriterTests : IDisposable
         public void Dispose() => cache.Dispose();
     }
 
-    private static (int ExitCode, string StandardOutput) RunPython(string scriptPath, params string[] args)
-    {
-        var startInfo = new ProcessStartInfo("python")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        startInfo.ArgumentList.Add(scriptPath);
-        foreach (var arg in args) startInfo.ArgumentList.Add(arg);
-
-        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start python.");
-
-        // Drain both streams concurrently: a large enough write on either one deadlocks a sequential read.
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        Assert.True(process.WaitForExit(60_000), "read_handoff.py did not exit within its bound.");
-        var output = outputTask.GetAwaiter().GetResult();
-        var error = errorTask.GetAwaiter().GetResult();
-
-        Assert.True(process.ExitCode == 0 || process.ExitCode == 1, $"Unexpected exit {process.ExitCode}: {error}");
-        return (process.ExitCode, output);
-    }
 }

@@ -10,10 +10,6 @@
 
     <TextBlock Text="Handoff" FontWeight="Bold" />
 
-    <CheckBox Content="Include FLExText XML"
-              IsChecked="{Binding Handoff.WriteFlexTextXml}"
-              AutomationProperties.Name="Include FLExText XML" />
-
     <DockPanel LastChildFill="False">
       <Button Content="Handoff"
               Command="{Binding Handoff.RunCommand}"
@@ -64,29 +60,13 @@
             Background="#F3F6F8">
       <StackPanel Spacing="12">
         <DockPanel LastChildFill="False">
-          <TextBlock Text="{Binding Handoff.Introduction}" TextWrapping="Wrap" />
+          <TextBlock Text="Drag these files into your chat (Claude, ChatGPT or Gemini)." TextWrapping="Wrap" />
           <Button Content="Copy starter prompt"
                   Click="OnCopyStarterPromptClick"
                   IsEnabled="{Binding Handoff.HasCompletedFiles}"
                   AutomationProperties.Name="Copy the starter prompt"
                   Margin="10,0,0,0" />
         </DockPanel>
-
-        <TextBlock Text="Reference documents" FontWeight="Bold" />
-        <ItemsControl ItemsSource="{Binding Handoff.ReferenceDocuments}">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="4" />
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ReferenceDocument">
-              <HyperlinkButton Content="{Binding DisplayPath}"
-                               NavigateUri="{Binding Url}"
-                               AutomationProperties.Name="{Binding AccessibleName}" />
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
 
         <Border BorderBrush="#82909E"
                 BorderThickness="1"
@@ -151,8 +131,8 @@
       </StackPanel>
     </Border>
 
-    <Expander Header="Read this first" IsExpanded="False">
-      <md:MarkdownRenderer MarkdownBuilder="{Binding Handoff.InstructionsMarkdown,
+    <Expander Header="handoff.md" IsExpanded="False" IsVisible="{Binding Handoff.HandoffMarkdown, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+      <md:MarkdownRenderer MarkdownBuilder="{Binding Handoff.HandoffMarkdown,
                              Converter={x:Static md:ValueConverters.ToObservableStringBuilder}}" />
     </Expander>
 

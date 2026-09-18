@@ -3,7 +3,7 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
-using SIL.Motif.Commands.Handoff;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 
@@ -13,7 +13,7 @@ namespace SIL.Motif.App.ViewModels;
 /// Queries PanGloss's per-object statistics for one of the six groups <c>pangloss stats --group</c>
 /// accepts and holds them as a client-side, filterable, sortable grid (design decision 5). Motif does
 /// not own PanGloss's statistics vocabulary: <see cref="Groups"/> is exactly
-/// <see cref="HandoffWriter.StatisticsGroups"/>, and each <see cref="StatsRowViewModel"/> keeps every
+/// <see cref="StatsCommand.StatisticsGroups"/>, and each <see cref="StatsRowViewModel"/> keeps every
 /// column PanGloss's row carried, known or not.
 /// </summary>
 /// <remarks>
@@ -37,7 +37,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
     }
 
     /// <summary>The six groups PanGloss's own <c>stats</c> vocabulary accepts.</summary>
-    public IReadOnlyList<string> Groups => HandoffWriter.StatisticsGroups;
+    public IReadOnlyList<string> Groups => StatsCommand.StatisticsGroups;
 
     /// <summary>The project containing the retained Assessment, or <c>null</c> before one is chosen.</summary>
     [ObservableProperty]

@@ -10,33 +10,32 @@ public sealed class FakeChatReceiverTests
         using var files = new TemporaryFiles();
         var receiver = new FakeChatReceiver();
         receiver.Drop([files.Write("grammar.json", "not json")]);
-        receiver.Paste("Please use `grammar.json` and `instructions.md`.");
+        receiver.Paste("Please use `grammar.json` and `handoff.md`.");
 
         var result = receiver.Validate();
 
-        Assert.Contains(result.Failures, failure => failure.Contains("instructions.md", StringComparison.Ordinal));
+        Assert.Contains(result.Failures, failure => failure.Contains("handoff.md", StringComparison.Ordinal));
         Assert.Contains(result.Failures, failure => failure.Contains("grammar.json", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void ValidateMatchesSelectionWordsToWordStatisticsRowsAndReportsFlatPathFindings()
+    public void ValidateAcceptsTheFourFlatFilesAndReportsFlatPathFindings()
     {
         using var files = new TemporaryFiles();
         var receiver = new FakeChatReceiver();
         receiver.Drop([
-            files.Write("instructions.md", "See `statistics/word.jsonl`, `reference/grammar-format.md`, and `texts/*.flextext.json`.") ,
-            files.Write("grammar.json", "{}"),
-            files.Write("selection.txt", "# Selection (2 word(s))\n\nProvenance:\n  pasted: 2\n\nalpha\nbeta\n"),
-            files.Write("word.jsonl", "{\"word\":\"alpha\"}\n{\"word\":\"beta\"}\n"),
+            files.Write("handoff.md", "See `docs/handoff/assessment-format.md` for the shape of `assessment.json`."),
+            files.Write("grammar.json", "[]"),
+            files.Write("texts.json", "[{\"key\":\"example-1\"}]"),
+            files.Write("assessment.json", "[{\"word\":\"alpha\"}]"),
         ]);
-        receiver.Paste("Read `instructions.md` first. Use `grammar.json`, `selection.txt`, and `word.jsonl`.");
+        receiver.Paste("Read `handoff.md` first. Use `grammar.json`, `texts.json`, and `assessment.json`.");
 
         var result = receiver.Validate();
 
         Assert.Empty(result.Failures);
-        Assert.Contains(result.Findings, finding => finding.Contains("statistics/word.jsonl", StringComparison.Ordinal));
-        Assert.Contains(result.Findings, finding => finding.Contains("reference/grammar-format.md", StringComparison.Ordinal));
-        Assert.Contains(result.Findings, finding => finding.Contains("texts/*.flextext.json", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Findings, finding => finding.Contains("docs/handoff/assessment-format.md", StringComparison.Ordinal));
     }
 
     [Fact]

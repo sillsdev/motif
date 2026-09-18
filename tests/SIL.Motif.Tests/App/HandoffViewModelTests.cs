@@ -46,6 +46,10 @@ public sealed class HandoffViewModelTests
         files,
         ["assessment/one"]);
 
+    private static HandoffCommandResponse NewResponseWithHeader(
+        string outputDirectory, string pastedHeader, string handoffMarkdown) =>
+        NewResponse(outputDirectory) with { PastedHeader = pastedHeader, HandoffMarkdown = handoffMarkdown };
+
     [Fact]
     public async Task BackingOutOfTheFolderDialogLeavesStateIdleAndNeverCallsHandoff()
     {
@@ -118,16 +122,14 @@ public sealed class HandoffViewModelTests
         Assert.Equal("grammar.json", row.RelativePath);
     }
 
-    // Reading the shipped asset is the point: restating the literal here would pin nothing.
+    // ADR 0045 decision 13: what leaves the machine is stated once beside the tiles, not read from a file.
     [Fact]
-    public void DataSensitivitySentenceIsTakenVerbatimFromTheInstructionsAsset()
+    public void DataSensitivitySentenceNamesWhatLeavesTheMachine()
     {
-        var instructions = HandoffViewModel.InstructionsMarkdown
-            .Replace("\r\n", "\n")
-            .Replace("\n", " ")
-            .Replace("**", "");
-
-        Assert.Contains(HandoffViewModel.DataSensitivitySentence, instructions, StringComparison.Ordinal);
+        Assert.Contains("chat model", HandoffViewModel.DataSensitivitySentence, StringComparison.Ordinal);
+        Assert.Contains(
+            "OpenAI, Anthropic, or another provider", HandoffViewModel.DataSensitivitySentence,
+            StringComparison.Ordinal);
     }
 
     [Theory]
@@ -144,51 +146,31 @@ public sealed class HandoffViewModelTests
         Assert.Equal(expectedKind, HandoffFileViewModel.KindFromRelativePath(relativePath));
     }
 
+    // The pasted header and handoff.md are generated per run (ADR 0045 decisions 4 and 5), not a static asset.
     [Fact]
-    public void HandoffIntroductionNamesTheUploadStepsAndReferenceLocations()
-    {
-        var introduction = HandoffViewModel.IntroductionText;
-
-        Assert.Contains("instructions.md", introduction, StringComparison.Ordinal);
-        Assert.Contains("Claude", introduction, StringComparison.Ordinal);
-        Assert.Contains("ChatGPT", introduction, StringComparison.Ordinal);
-        Assert.Contains("Gemini", introduction, StringComparison.Ordinal);
-        Assert.Contains("docs/handoff/grammar-format.md", introduction, StringComparison.Ordinal);
-        Assert.Contains("docs/handoff/flextext-json-format.md", introduction, StringComparison.Ordinal);
-        Assert.Contains("docs/handoff/hc-mechanics.md", introduction, StringComparison.Ordinal);
-        Assert.Contains("src/SIL.Motif.Commands/Handoff/Assets/read_handoff.py", introduction,
-            StringComparison.Ordinal);
-        Assert.Contains(HandoffViewModel.RepositoryUrlBase, introduction, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void StarterPromptIsEmbeddedAndNamesTheHandoffContents()
-    {
-        var prompt = HandoffViewModel.StarterPromptMarkdown;
-
-        Assert.Contains("Read `instructions.md` first", prompt, StringComparison.Ordinal);
-        Assert.Contains("FieldWorks' last save", prompt, StringComparison.Ordinal);
-        Assert.Contains("`grammar.json`", prompt, StringComparison.Ordinal);
-        Assert.Contains("`selection.txt`", prompt, StringComparison.Ordinal);
-        Assert.Contains("`statistics/*.jsonl`", prompt, StringComparison.Ordinal);
-        Assert.Contains("`texts/*.flextext.json`", prompt, StringComparison.Ordinal);
-        Assert.Contains("`reference/*.md`", prompt, StringComparison.Ordinal);
-        Assert.Contains("`recipes.md`", prompt, StringComparison.Ordinal);
-        Assert.Contains("`read_handoff.py`", prompt, StringComparison.Ordinal);
-        Assert.Contains("file and record", prompt, StringComparison.Ordinal);
-        Assert.Contains("flag guesses", prompt, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task WriteFlexTextXmlIsForwardedToTheHandoffRequest()
+    public async Task RunningPopulatesThePastedHeaderAndHandoffMarkdownFromTheResponse()
     {
         var (fake, _, handoff) = NewViewModel();
-        fake.HandoffCompletesWith(NewResponse(@"C:\out"));
-        handoff.WriteFlexTextXml = true;
+        var response = NewResponseWithHeader(@"C:\out", "pasted header text", "# handoff.md content");
+        fake.HandoffCompletesWith(response);
 
         await handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.True(Assert.Single(fake.HandoffRequests).WriteFlexTextXml);
+        Assert.Equal("pasted header text", handoff.PastedHeader);
+        Assert.Equal("# handoff.md content", handoff.HandoffMarkdown);
+    }
+
+    [Fact]
+    public void ResetClearsThePastedHeaderAndHandoffMarkdown()
+    {
+        var (_, _, handoff) = NewViewModel();
+        handoff.PastedHeader = "stale";
+        handoff.HandoffMarkdown = "stale";
+
+        handoff.Reset();
+
+        Assert.Null(handoff.PastedHeader);
+        Assert.Null(handoff.HandoffMarkdown);
     }
 
     [Fact]

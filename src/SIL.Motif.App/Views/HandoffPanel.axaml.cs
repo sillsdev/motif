@@ -40,8 +40,9 @@ public sealed partial class HandoffPanel : UserControl
 
     private async void OnCopyStarterPromptClick(object? sender, RoutedEventArgs e)
     {
+        if (Handoff.PastedHeader is not { } header) return;
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel?.Clipboard is { } clipboard)
-            await clipboard.SetTextAsync(HandoffViewModel.StarterPromptMarkdown);
+            await clipboard.SetTextAsync(header);
     }
 }

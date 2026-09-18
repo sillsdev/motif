@@ -187,7 +187,7 @@ public sealed class DesktopServiceBoundaryTests
         var progress = new RecordingProgress();
         var outcome = await fake.HandoffAsync(
             new HandoffRequest(
-                @"C:\p.fwdata", @"C:\out", new SelectionRequest(true, [], [], false, null), false, false),
+                @"C:\p.fwdata", @"C:\out", new SelectionRequest(true, [], [], false, null), false),
             progress, CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
@@ -206,7 +206,7 @@ public sealed class DesktopServiceBoundaryTests
         using var cts = new CancellationTokenSource();
         var task = fake.HandoffAsync(
             new HandoffRequest(
-                @"C:\p.fwdata", @"C:\out", new SelectionRequest(true, [], [], false, null), false, false),
+                @"C:\p.fwdata", @"C:\out", new SelectionRequest(true, [], [], false, null), false),
             new RecordingProgress(), cts.Token);
 
         Assert.False(task.IsCompleted);

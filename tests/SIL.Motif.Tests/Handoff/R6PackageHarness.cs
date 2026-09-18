@@ -54,8 +54,7 @@ public sealed class R6PackageHarness(PristineProjectFixture pristine) : IDisposa
             cache.Dispose();
 
             var outcome = HandoffCommand.Handoff(
-                new HandoffRequest(projectPath, destination, new SelectionRequest(true, [], [], false, null),
-                    false, true),
+                new HandoffRequest(projectPath, destination, new SelectionRequest(true, [], [], false, null), true),
                 onProgress: null);
 
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message ?? "no refusal");

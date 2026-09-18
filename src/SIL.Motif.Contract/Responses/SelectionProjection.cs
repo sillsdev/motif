@@ -12,9 +12,9 @@ namespace SIL.Motif.Contract.Responses;
 public sealed record SelectionProvenanceEntry(string Source, int Count);
 
 /// <summary>
-/// The Selection a Baseline Assessment or Handoff measured, written beside it as <c>selection.txt</c>: the
-/// final word list plus which of the four agreed sources produced it and how many words each contributed,
-/// so a model reading the Handoff later knows what was parsed and why.
+/// The Selection a Baseline Assessment or Handoff measured: the final word list plus which of the four
+/// agreed sources produced it and how many words each contributed. A Handoff's own record of which words
+/// were actually run lives in <c>assessment.json</c>, keyed by word; this projection is what produced it.
 /// </summary>
 /// <param name="Words">
 /// The final, de-duplicated, ordinally-sorted word list — the same list a corresponding

@@ -130,9 +130,9 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 
-# Left-boundaried so a legitimate research filename's tail cannot match.
+# Left-boundaried so a legitimate research filename's tail cannot match; one alternative is exact-case.
 $categories = [ordered]@{
-    'plan-reference'  = 'docs/plan-motif|docs/plan-cross-repo|docs/plan-lcmcrdt|plan-motif\.md|HANDOFF\.md|build-stages\.md|implementation-plan\.md|operation-catalog-plan\.md|stage2-change-management\.md'
+    'plan-reference'  = 'docs/plan-motif|docs/plan-cross-repo|docs/plan-lcmcrdt|plan-motif\.md|(?-i:HANDOFF\.md)|build-stages\.md|implementation-plan\.md|operation-catalog-plan\.md|stage2-change-management\.md'
     # The last alternative is a bare register ID, which needs no file path beside it in order to rot.
     'issue-reference' = '(?-i:\bMOT-\d+)|docs/issues|issues\.md|(?-i:\b(?:issue|issues)\s+[A-Z]\d+)|(?-i:(?<![A-Za-z0-9_+#/-])[A-Z]\d{1,2}(?![A-Za-z0-9_.+#-]))'
     'slice-status'    = 'not wired|NOT wired|purely additive|Purely additive|not yet consumed|no slice ships|today exactly|currently names|a later increment|later slice'

@@ -92,8 +92,8 @@ public sealed class FakeChatReceiver
             }
         }
 
-        if (!_files.ContainsKey("instructions.md"))
-            failures.Add("instructions.md was not received.");
+        if (!_files.ContainsKey("handoff.md"))
+            failures.Add("handoff.md was not received.");
 
         if (_files.TryGetValue("grammar.json", out var grammar))
         {
@@ -105,7 +105,8 @@ public sealed class FakeChatReceiver
             failures.Add("grammar.json was not received.");
         }
 
-        ValidateSelectionAgainstWordRows(failures);
+        ValidateJsonFileIfReceived("texts.json", failures);
+        ValidateJsonFileIfReceived("assessment.json", failures);
         ReportNestedPathFindings(findings);
         foreach (var finding in findings) _output?.WriteLine("Finding: " + finding);
         return new ChatValidationResult(failures, findings);
@@ -117,69 +118,23 @@ public sealed class FakeChatReceiver
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-    private void ValidateSelectionAgainstWordRows(List<string> failures)
+    // Optional: a Baseline-only Handoff carries neither file, so only whichever was received is checked.
+    private void ValidateJsonFileIfReceived(string name, List<string> failures)
     {
-        if (!_files.TryGetValue("selection.txt", out var selection))
-        {
-            failures.Add("selection.txt was not received.");
-            return;
-        }
-
-        var words = SelectionWords(selection.Bytes);
-        if (!_files.TryGetValue("word.jsonl", out var wordRows))
-        {
-            failures.Add("word.jsonl was not received for the selected words.");
-            return;
-        }
-
-        var rows = new HashSet<string>(StringComparer.Ordinal);
-        using var reader = new StringReader(System.Text.Encoding.UTF8.GetString(wordRows.Bytes));
-        string? line;
-        while ((line = reader.ReadLine()) is not null)
-        {
-            if (string.IsNullOrWhiteSpace(line)) continue;
-            try
-            {
-                using var document = JsonDocument.Parse(line);
-                var value = document.RootElement.TryGetProperty("form", out var form) ? form
-                    : document.RootElement.TryGetProperty("word", out var word) ? word : default;
-                if (value.ValueKind == JsonValueKind.String) rows.Add(value.GetString()!);
-            }
-            catch (JsonException exception)
-            {
-                failures.Add($"word.jsonl contains invalid JSON: {exception.Message}");
-            }
-        }
-
-        foreach (var word in words)
-            if (!rows.Contains(word)) failures.Add($"selection.txt word '{word}' has no word.jsonl row.");
-    }
-
-    private static IReadOnlyList<string> SelectionWords(byte[] bytes)
-    {
-        var lines = System.Text.Encoding.UTF8.GetString(bytes).Replace("\r\n", "\n").Split('\n');
-        var provenance = Array.FindIndex(lines, line => line == "Provenance:");
-        if (provenance < 0) return [];
-        var firstWord = -1;
-        for (var index = provenance + 1; index < lines.Length; index++)
-        {
-            if (!string.IsNullOrWhiteSpace(lines[index])) continue;
-            firstWord = index;
-            break;
-        }
-        return firstWord < 0 ? [] : lines[(firstWord + 1)..]
-            .Select(line => line.Trim()).Where(line => line.Length > 0 && !line.StartsWith('#')).ToList();
+        if (!_files.TryGetValue(name, out var file)) return;
+        try { using var _ = JsonDocument.Parse(file.Bytes); }
+        catch (JsonException exception) { failures.Add($"{name} is not valid JSON: {exception.Message}"); }
     }
 
     private void ReportNestedPathFindings(List<string> findings)
     {
-        if (!_files.TryGetValue("instructions.md", out var instructions)) return;
-        foreach (var path in CodeSpan.Matches(System.Text.Encoding.UTF8.GetString(instructions.Bytes))
+        if (!_files.TryGetValue("handoff.md", out var handoffMarkdown)) return;
+        foreach (var path in CodeSpan.Matches(System.Text.Encoding.UTF8.GetString(handoffMarkdown.Bytes))
                      .Select(match => match.Groups[1].Value)
                      .Where(value => value.Contains('/') && !value.Contains("\n") && !value.Contains("://"))
                      .Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            findings.Add($"instructions.md refers to nested path '{path}', but flat upload keeps only its basename.");
+            findings.Add($"handoff.md refers to nested path '{path}', but flat upload keeps only its basename.");
         }
     }
 }
