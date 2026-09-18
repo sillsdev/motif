@@ -115,8 +115,9 @@ public sealed class PanGlossSurfaceTests
         Assert.Equal(1, description.RootElement.GetProperty("schema_version").GetInt32());
         Assert.Equal("pangloss", description.RootElement.GetProperty("binary").GetString());
         var commands = Commands(description);
-        Assert.Equal(new[] { "batch", "describe", "import", "stats" }, commands.Keys.OrderBy(name => name));
+        Assert.Equal(new[] { "batch", "describe", "import", "parse", "stats" }, commands.Keys.OrderBy(name => name));
         AssertRequestsMatch(commands);
+        AssertTraceCommandIsDeclared(commands);
     }
 
     [RealParserFact]
@@ -127,6 +128,7 @@ public sealed class PanGlossSurfaceTests
         Assert.Equal(1, realDescription.RootElement.GetProperty("schema_version").GetInt32());
         var commands = Commands(realDescription);
         AssertRequestsMatch(commands);
+        AssertTraceCommandIsDeclared(commands);
         foreach (var fake in Commands(fakeDescription))
         {
             Assert.True(commands.TryGetValue(fake.Key, out var real), $"FakePanGloss invented '{fake.Key}'.");
@@ -159,8 +161,10 @@ public sealed class PanGlossSurfaceTests
             new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
         ];
+        // Trace is checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()
-            .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type)).OrderBy(type => type.Name);
+            .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace))
+            .OrderBy(type => type.Name);
         Assert.Equal(requestTypes, requests.Select(request => request.GetType()).OrderBy(type => type.Name));
         foreach (var request in requests)
         {
@@ -188,6 +192,20 @@ public sealed class PanGlossSurfaceTests
             }
             Assert.Equal(command.GetProperty("positionals").GetArrayLength(), positionals);
         }
+    }
+
+    /// A narrower check for `parse`, skipping AssertRequestsMatch's value-adjacency walk (see its comment).
+    private static void AssertTraceCommandIsDeclared(IReadOnlyDictionary<string, JsonElement> commands)
+    {
+        Assert.True(commands.TryGetValue("parse", out var parse), "the description does not expose 'parse'.");
+        Assert.False(parse.GetProperty("hidden").GetBoolean());
+        Assert.Equal(2, parse.GetProperty("positionals").GetArrayLength());
+        var flags = parse.GetProperty("flags").EnumerateArray()
+            .ToDictionary(flag => flag.GetProperty("name").GetString()!, flag => flag);
+        Assert.True(flags.ContainsKey("--trace"), "the description does not declare 'parse --trace'.");
+        Assert.True(flags.TryGetValue("--trace-format", out var traceFormat),
+            "the description does not declare 'parse --trace-format'.");
+        Assert.True(traceFormat.GetProperty("takes_value").GetBoolean());
     }
 
     private static async Task<JsonDocument> Describe(string executable)

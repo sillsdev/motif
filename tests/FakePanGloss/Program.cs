@@ -45,6 +45,8 @@ internal static class Program
         new("describe", [], [], RunDescription),
         new("stats", ["project-or-grammar"],
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
+        new("parse", ["grammar", "word"],
+            [new("--trace", true), new("--trace-format", true)], RunParse),
     ];
 
     private static int Main(string[] args)
@@ -248,6 +250,37 @@ internal static class Program
         return behaviour.ExitCode;
     }
 
+    // parse <grammar> <word> --trace --trace-format json
+    private static int RunParse(string[] args)
+    {
+        if (args.Length < 3)
+        {
+            Console.Error.WriteLine("usage: pangloss parse <grammar> <word> --trace --trace-format json");
+            return 64;
+        }
+        var grammarPath = args[1];
+        var word = args[2];
+        var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
+        RecordArgv(directory, args);
+        var behaviour = Behaviour.Read(directory);
+
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+
+        if (behaviour.DelayMilliseconds > 0)
+            Thread.Sleep(behaviour.DelayMilliseconds);
+
+        if (behaviour.Mode == "fail")
+        {
+            Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");
+            return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
+        }
+
+        var signature = behaviour.TraceSignature ?? word + "-sig";
+        Console.Out.Write(word + "\t" + signature + "\n");
+        if (behaviour.TraceJson is { } json) Console.Out.Write(json);
+        return behaviour.ExitCode;
+    }
+
     private static void RecordArgv(string? directory, string[] args)
     {
         var serialized = JsonSerializer.Serialize(args);
@@ -317,6 +350,8 @@ internal static class Program
         public string SourceSha256 { get; init; } = "sha256:" + new string('c', 64);
         public string ModelFingerprint { get; init; } = "fp-1";
         public IReadOnlyList<FakeWord> Words { get; init; } = [new FakeWord("motifa", "complete")];
+        public string? TraceSignature { get; init; }
+        public string? TraceJson { get; init; }
 
         internal static Behaviour Read(string? directory)
         {

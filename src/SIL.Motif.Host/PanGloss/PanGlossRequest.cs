@@ -129,6 +129,38 @@ public abstract record PanGlossRequest
             new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
     }
 
+    /// <summary>
+    /// <c>pangloss parse &lt;grammar&gt; &lt;word&gt; --trace --trace-format json</c>: one word, traced and
+    /// unmerged. The only subcommand that can trace at all — <c>batch</c> carries no <c>--trace</c> flag, and
+    /// tracing runs unmerged deliberately, so this must stay a single-word request rather than growing a
+    /// word list.
+    /// </summary>
+    public sealed record Trace(string GrammarPath, string Word) : PanGlossRequest
+    {
+        public override string Subcommand => "parse";
+
+        internal override void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
+            if (string.IsNullOrEmpty(Word)) throw new ArgumentException("Required.", nameof(Word));
+            if (!File.Exists(GrammarPath))
+                throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
+        }
+
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add("parse");
+            startInfo.ArgumentList.Add(GrammarPath);
+            startInfo.ArgumentList.Add(Word);
+            startInfo.ArgumentList.Add("--trace");
+            startInfo.ArgumentList.Add("--trace-format");
+            startInfo.ArgumentList.Add("json");
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed) =>
+            new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+    }
+
     /// <summary><c>pangloss import</c>: the grammar snapshot of a saved <c>.fwdata</c>, written where the caller says.</summary>
     public sealed record Import(string FwDataPath, string GrammarJsonPath) : PanGlossRequest
     {
