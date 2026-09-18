@@ -29,8 +29,9 @@ from the files on disk — the failures were of identity and provenance, not of 
 did not help; naming the language would have.
 
 **Merging is the cost of tracing, and it is not ours to switch off.** PanGloss's trace is a port of
-HermitCrab's `TraceManager`: 19 trace types, 24 failure reasons, per step the named rule, stratum or
-template, which subrule or allomorph fired, and the word forms in and out. It is the only thing in the
+HermitCrab's `TraceManager`: 21 trace types, 23 failure reasons, per step the named rule, stratum or
+template, which subrule or allomorph fired, and the word forms in and out. (Counted from the enum bodies
+in `pg-rules/src/trace.rs`. That file's own module comment says 19, and is stale.) It is the only thing in the
 system that can answer "why didn't *xyz* parse". But a traced parse deliberately runs unmerged —
 `AnalysisStratumRule.cs:152`'s "don't merge if tracing, it messes up the tracing" guard, ported at
 `pg-parse/src/morpher.rs:402` — because a merged trace understates the search. PanGloss's own audit
