@@ -1,0 +1,8 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Throwaway harnesses, kept out of the product directory for the same reason the tests are. -->
+  <PropertyGroup>
+    <OutputPath>$(MotifBinRoot)spikes\</OutputPath>
+  </PropertyGroup>
+</Project>

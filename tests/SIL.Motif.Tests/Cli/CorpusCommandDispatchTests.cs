@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using SIL.Motif.Commands;
-using SIL.Motif.Generator;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection.Usage;
@@ -88,8 +87,7 @@ public sealed class CorpusCommandDispatchTests : IDisposable
 
     private (int ExitCode, string Output, string Error) Run(string command)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = $"{command} --project \"{_fwDataPath}\" --json",

@@ -1,3 +1,4 @@
+using SIL.Motif.Tests.TestFixtures;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -6,7 +7,6 @@ using System.Reflection;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Generator;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
@@ -201,8 +201,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
 
     private CliRun Run(string arguments, bool developerCommands)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,

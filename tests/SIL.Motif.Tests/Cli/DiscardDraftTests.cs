@@ -3,7 +3,6 @@ using System.Diagnostics;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Generator;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -183,8 +182,7 @@ public sealed class DiscardDraftTests : IDisposable
 
     private static CliRun Run(string arguments)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,

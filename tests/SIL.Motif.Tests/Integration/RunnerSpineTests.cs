@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Cli;
-using SIL.Motif.Generator;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -222,8 +221,7 @@ public sealed class RunnerSpineTests : IDisposable
     /// Starts the runner with no project of its own; it sweeps whatever the CLI has already made Known.
     private Process StartRunner(int leaseSeconds)
     {
-        var executable = Path.Combine(RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Worker", "bin", "Debug",
-            "net10.0", "SIL.Motif.Worker.exe");
+        var executable = BuildOutput.Worker;
         Assert.True(File.Exists(executable), "The runner was not built: " + executable);
         var start = new ProcessStartInfo(executable)
         {
@@ -279,8 +277,7 @@ public sealed class RunnerSpineTests : IDisposable
     /// Runs the real CLI against this test's own isolated worker root, the one <see cref="StartRunner"/> uses too.
     private CliRun Cli(string arguments)
     {
-        var executable = Path.Combine(RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug",
-            "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,

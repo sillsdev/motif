@@ -5,5 +5,11 @@
     <AssemblyName>pangloss</AssemblyName>
     <RootNamespace>SIL.Motif.FakePanGloss</RootNamespace>
     <IsPackable>false</IsPackable>
+    <!--
+      A directory of its own, below the tests' output rather than in it: parser discovery prefers an
+      executable sitting beside the running application, so a fake beside the test host would be
+      chosen for every test, including the ones that need no parser at all.
+    -->
+    <OutputPath>$(MotifBinRoot)tests\fake-pangloss\</OutputPath>
   </PropertyGroup>
 </Project>

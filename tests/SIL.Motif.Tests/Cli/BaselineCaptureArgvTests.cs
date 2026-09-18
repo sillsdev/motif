@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Generator;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -95,8 +94,7 @@ public sealed class BaselineCaptureArgvTests : IDisposable
 
     private CliRun Run(string arguments)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,

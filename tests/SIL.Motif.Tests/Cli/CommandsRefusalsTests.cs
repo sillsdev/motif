@@ -9,7 +9,6 @@ using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Generator;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -719,8 +718,7 @@ public sealed class CommandsRefusalsTests
 
     private (int ExitCode, string Output, string Error) RunCli(string arguments)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = $"{arguments} --project \"{_fwDataPath}\"",

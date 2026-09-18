@@ -1,5 +1,4 @@
 using System.Text.Json;
-using SIL.Motif.Generator;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
@@ -17,14 +16,16 @@ internal static class FakeParser
     private const string BehaviourFileName = "_fake-pangloss.json";
     private const string WrongDescriptionFileName = "_fake-pangloss-wrong-description";
 
-    /// <summary>The fake parser's path, built alongside the test project.</summary>
+    /// <summary>
+    /// The fake parser's path: a directory below the test binaries, never beside them, because parser
+    /// discovery prefers an executable sitting next to the running application.
+    /// </summary>
     internal static string ExecutablePath
     {
         get
         {
             var name = OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss";
-            var path = Path.Combine(RepoPaths.FindRepoRoot(), "tests", "FakePanGloss", "bin", "Debug",
-                "net10.0", name);
+            var path = Path.Combine(AppContext.BaseDirectory, "fake-pangloss", name);
             if (!File.Exists(path))
                 throw new FileNotFoundException("The fake parser was not built beside the tests.", path);
             return path;

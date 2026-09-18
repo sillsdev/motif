@@ -81,29 +81,8 @@ public static class RunnerKick
             ? "SIL.Motif.Worker.exe"
             : "SIL.Motif.Worker";
 
-        // Published beside the CLI: one artifact, one version (ADR 0040 decision 5).
+        // Beside the CLI, built or published alike: one artifact, one version (ADR 0040 decision 5).
         var sibling = Path.Combine(AppContext.BaseDirectory, fileName);
-        if (File.Exists(sibling)) return sibling;
-
-        // The unpublished dev tree builds the runner into its own project's own output directory.
-        var repoRoot = TryFindRepositoryRoot();
-        if (repoRoot is null) return null;
-        var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name ?? "Debug";
-        var candidate = Path.Combine(
-            repoRoot, "src", "SIL.Motif.Worker", "bin", configuration, "net10.0", fileName);
-        return File.Exists(candidate) ? candidate : null;
-    }
-
-    /// Walks up looking for the marker files that identify this repository's root.
-    private static string? TryFindRepositoryRoot()
-    {
-        var dir = AppContext.BaseDirectory;
-        for (var i = 0; i < 12 && dir is not null; i++)
-        {
-            if (File.Exists(Path.Combine(dir, "AGENTS.md")) && Directory.Exists(Path.Combine(dir, "manifest")))
-                return dir;
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-        return null;
+        return File.Exists(sibling) ? sibling : null;
     }
 }

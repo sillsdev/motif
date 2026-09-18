@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!--
+    Test binaries land under the product's own configuration directory but not in it. Two reasons, and
+    either alone is enough: a test host that outlives its run keeps a lock on this directory, and a lock
+    on bin/Debug itself would stall the next build rather than fail it; and the product looks beside
+    itself for its worker and its parser, so nothing built for the suite may share that directory.
+  -->
+  <PropertyGroup>
+    <OutputPath>$(MotifBinRoot)tests\</OutputPath>
+  </PropertyGroup>
+</Project>

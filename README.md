@@ -343,7 +343,7 @@ runs and a green run means one green run.
 Launch the window from the repository root:
 
 ```powershell
-./src/SIL.Motif.App/bin/Debug/net10.0/SIL.Motif.App.exe
+./bin/Debug/SIL.Motif.App.exe
 ```
 
 **Building PanGloss.** Motif shells out to a `pangloss` executable it does not build. In a sibling
@@ -359,7 +359,7 @@ Back in the Motif worktree, select that executable before starting the app or ru
 
 ```powershell
 $env:MOTIF_PANGLOSS_EXE = 'C:\path\reported\by\the\build\pangloss.exe'
-./src/SIL.Motif.App/bin/Debug/net10.0/SIL.Motif.App.exe
+./bin/Debug/SIL.Motif.App.exe
 ```
 
 **PanGloss discovery.** The window (like `motif assess`, `stats`, and `handoff`) shells out to the

@@ -1,9 +1,9 @@
+using SIL.Motif.Tests.TestFixtures;
 using System;
 using System.Diagnostics;
 using System.IO;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
-using SIL.Motif.Generator;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -140,8 +140,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
 
     private static (int ExitCode, string Output, string Error) RunCli(string workingDirectory, string arguments)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,

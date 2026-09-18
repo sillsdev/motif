@@ -25,6 +25,30 @@ owner's ruling. The one external dependency that remains is the `pangloss` execu
 build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails — when
 it is not built, since "the parser is not built here" is an ordinary state of a developer's machine.
 
+## Where the build lands
+
+One directory per configuration at the repository root, not a `bin` tree under every project:
+
+```
+bin/Debug/motif.exe                 the CLI
+bin/Debug/SIL.Motif.App.exe         the window
+bin/Debug/SIL.Motif.Worker.exe      the job runner
+bin/Debug/tests/                    the suite
+bin/Debug/tests/fake-pangloss/      the suite's fake parser
+bin/Debug/spikes/                   the throwaway harnesses
+```
+
+`Release` reads the same with `Release` in place of `Debug`. The three executables sit together on
+purpose: the CLI finds its worker, and either front end finds a bundled parser, by looking beside
+itself, so a development build takes the same branch a published one does. The suite gets a
+subdirectory because a test host that outlives its run holds a lock on the directory it was launched
+from, and that must not be the product's; the fake parser gets one below that because parser discovery
+prefers an executable sitting beside the application, and the fake must never be that executable.
+
+A test names an executable through `BuildOutput` (`tests/SIL.Motif.Tests/TestFixtures/`), which
+resolves from the test binaries' own directory. Do not spell a configuration into a test path: a
+hard-coded `Debug` makes a `Release` run drive the wrong build, or none at all.
+
 ## Building against a local libpalaso (opt-in, off by default)
 
 `SIL.WritingSystems`/`SIL.Core` are pinned transitively via `SIL.LCModel` (`SilVersions.props`).

@@ -17,6 +17,25 @@
   </PropertyGroup>
 
   <!--
+    One output directory per configuration at the repository root, rather than a bin tree under every
+    project. The three executables then sit side by side, which is the layout a published Motif has:
+    the CLI finds its worker, and either front end finds a bundled parser, by looking beside itself,
+    so a development build exercises the same lookup a shipped one does.
+
+    Tests and spikes take subdirectories of their own (tests/Directory.Build.props,
+    spikes/Directory.Build.props). A test host left running holds a lock on whatever directory it was
+    launched from, and that must not be the product's; and the suite's fake pangloss.exe must never
+    come to rest beside the real motif.exe, where parser discovery would prefer it.
+  -->
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <MotifBinRoot>$(MSBuildThisFileDirectory)bin\$(Configuration)\</MotifBinRoot>
+    <OutputPath>$(MotifBinRoot)</OutputPath>
+    <!-- Every project here is single-targeted, so the framework folder only adds depth. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <!--
     Opt-in local libpalaso override (design rule 16). Off unless LOCAL_NUGET_REPO names an existing
     folder; CI never sets it, so this is inert there regardless of what SilVersions.props contains.
     tools/Manage-LocalLibraries.ps1 and AGENTS.md document the workflow.

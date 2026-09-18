@@ -1,7 +1,7 @@
+using SIL.Motif.Tests.TestFixtures;
 using System;
 using System.Diagnostics;
 using System.IO;
-using SIL.Motif.Generator;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker;
 using Xunit;
@@ -70,8 +70,7 @@ public sealed class KnownProjectRegistrationTests : IDisposable
 
     private (int ExitCode, string Output, string Error) Run(string arguments)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,

@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Generator;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
@@ -168,8 +167,7 @@ public sealed class AssessArgvTests : IDisposable
 
     private CliRun Run(string arguments, string? panGlossExecutablePath = null)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,

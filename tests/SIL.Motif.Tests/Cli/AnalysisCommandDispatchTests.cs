@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using SIL.Motif.Contract.Projects;
-using SIL.Motif.Generator;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
@@ -137,8 +136,7 @@ public sealed class AnalysisCommandDispatchTests : IDisposable
 
     private (int ExitCode, string Output, string Error) Run(string arguments)
     {
-        var executable = Path.Combine(
-            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug", "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,

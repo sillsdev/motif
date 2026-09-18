@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.Json;
-using SIL.Motif.Generator;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -71,8 +70,7 @@ public sealed class RunnerKickRaceTests : IDisposable
     /// Runs the real CLI with the kick enabled, sharing this test's isolated root and runner namespace.
     private CliRun Cli(string arguments)
     {
-        var executable = Path.Combine(RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli", "bin", "Debug",
-            "net10.0", "motif.exe");
+        var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
         {
             Arguments = arguments,
