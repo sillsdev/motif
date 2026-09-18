@@ -154,3 +154,33 @@ The decision is made when the person drags, not when a model reads line 4 of a M
 - **Put the data-sensitivity warning in `handoff.md`.** Rejected: a warning addressed to the person, buried
   in a file addressed to the model, is read by neither — and it arrives after the drag it was meant to
   inform.
+
+## Amendment, 2026-09-18: what `traceComplete` can actually mean
+
+Building the trace seam established two facts about `pangloss parse --trace` that decision 11 was
+written without. Decision 11 stands as the intent; this records what is reachable today.
+
+**A trace is written once, at the end.** `pg-cli/src/main.rs` runs `parse_word_traced` to completion and
+only then walks the sink with `render_json`. Nothing streams. So a trace killed by Motif's own wall-clock
+timeout yields no tree at all — there is no half-finished derivation to keep, because none was ever
+written. The word is still worth recording: "this could not be traced inside the timeout" is a real answer
+to *why is this so slow*. But an implementer reading decision 11 would build for partial content that
+cannot arrive on that path.
+
+**A cap-hit is invisible on the wire.** `ParseOutcome` carries `capped` and `timed_out`, and
+`parse` prints neither — its output is `word\tsignature`, on the traced and untraced paths alike. The
+trace tree cannot supply it either: all 23 `FailureReason` values are HermitCrab's linguistic reasons, and
+`MaxApplicationCount` is HermitCrab's own per-rule cap, not PanGloss's step budget. A capped, genuinely
+partial tree is therefore indistinguishable from a complete one.
+
+Together these mean `traceComplete` can currently only report "the process was not killed by Motif's
+timeout" — which is the one case that carries no tree anyway. The flag as decision 11 describes it is not
+implementable against today's parser.
+
+**This reclassifies one of the PanGloss asks.** The Consequences section files a trace surface on `batch`
+and trace-specific containment as issues rather than blockers. That holds for `batch`. It does not hold
+for surfacing `capped` on `parse`'s output: without it, decision 11 and the `Completed` field of decision
+12's derived summary are both inert. The change is small — one more field on the parity line, or in the
+trace JSON's envelope — and `batch` already reports this per word. Until it lands, Motif must not claim a
+trace is complete; a summary derived from a process that exited cleanly says only that, and says it in
+those words.
