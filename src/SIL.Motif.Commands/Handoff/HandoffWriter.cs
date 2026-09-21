@@ -44,8 +44,8 @@ public static class HandoffWriter
     /// <summary>
     /// The PanGloss release tag its documents are linked at, which moves on PanGloss's release schedule
     /// and not motif's. A tag rather than a branch, so a Handoff's links keep describing the formats it
-    /// was written in after PanGloss moves on; <c>v0.3.2</c> is the first release carrying
-    /// <c>docs/formats/</c>.
+    /// was written in after PanGloss moves on. It must equal the tag in <c>pangloss-release.json</c>, the
+    /// release the package bundles, so the documents describe the parser that wrote the files.
     /// </summary>
     internal const string PanGlossRef = "v0.3.2";
 

@@ -6,20 +6,18 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.HandoffPanel"
              x:DataType="views:HandoffPanel">
-  <StackPanel Spacing="8" Margin="12">
+  <StackPanel Spacing="16" Margin="24">
 
-    <TextBlock Text="Handoff" FontWeight="Bold" />
+    <StackPanel Spacing="4">
+      <TextBlock Classes="stage-title" Text="Handoff" />
+      <TextBlock Classes="muted"
+                 Text="Give a chat model the files it needs to help you read this Assessment."
+                 TextWrapping="Wrap" />
+    </StackPanel>
 
-    <DockPanel LastChildFill="False">
-      <Button Content="Handoff"
-              Command="{Binding Handoff.RunCommand}"
-              AutomationProperties.Name="Write the Handoff folder" />
-      <Button Content="Cancel"
-              Command="{Binding Handoff.CancelCommand}"
-              IsVisible="{Binding Handoff.IsActive}"
-              AutomationProperties.Name="Cancel the running Handoff"
-              Margin="8,0,0,0" />
-    </DockPanel>
+    <Border Classes="notice">
+      <TextBlock Text="{Binding Handoff.DataSensitivitySentence}" TextWrapping="Wrap" />
+    </Border>
 
     <ProgressBar IsVisible="{Binding Handoff.IsActive}"
                  IsIndeterminate="{Binding Handoff.IsIndeterminate}"
@@ -27,12 +25,15 @@
                  Maximum="1"
                  Value="{Binding Handoff.ProgressFraction}"
                  AutomationProperties.Name="Handoff progress" />
-    <TextBlock Text="{Binding Handoff.Progress.Message}"
-               IsVisible="{Binding Handoff.IsActive}" />
+    <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding Handoff.IsActive}">
+      <TextBlock Text="{Binding Handoff.Progress.Message}" VerticalAlignment="Center" />
+      <Button Content="Cancel"
+              Command="{Binding Handoff.CancelCommand}"
+              AutomationProperties.Name="Cancel the running Handoff" />
+    </StackPanel>
 
-    <TextBlock Text="{Binding Handoff.Refusal.Message}"
-               IsVisible="{Binding Handoff.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-               Foreground="Red" />
+    <TextBlock Classes="error" Text="{Binding Handoff.Refusal.Message}"
+               IsVisible="{Binding Handoff.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
     <Expander Header="Details"
               IsExpanded="False"
               IsVisible="{Binding Handoff.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
@@ -45,91 +46,89 @@
       </ItemsControl>
     </Expander>
 
-    <TextBlock Text="{Binding Handoff.DataSensitivitySentence}"
-               TextWrapping="Wrap"
-               FontStyle="Italic" />
+    <Grid IsVisible="{Binding Handoff.HasCompletedFiles}" ColumnDefinitions="*,300" ColumnSpacing="16">
 
-    <TextBlock Text="{Binding Handoff.OutputDirectory, StringFormat='Destination: {0}'}"
-               IsVisible="{Binding Handoff.OutputDirectory, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="section-title" Text="{Binding Handoff.Files.Count, StringFormat='{}{0} file(s)'}" />
+            <TextBlock Classes="muted" Text="{Binding Handoff.OutputDirectory}" TextWrapping="Wrap" FontSize="12" />
+          </StackPanel>
 
-    <Border IsVisible="{Binding Handoff.HasCompletedFiles}"
-            BorderBrush="#82909E"
-            BorderThickness="1"
-            CornerRadius="10"
-            Padding="14"
-            Background="#F3F6F8">
-      <StackPanel Spacing="12">
-        <DockPanel LastChildFill="False">
-          <TextBlock Text="Drag these files into your chat (Claude, ChatGPT or Gemini)." TextWrapping="Wrap" />
-          <Button Content="Copy starter prompt"
-                  Click="OnCopyStarterPromptClick"
-                  IsEnabled="{Binding Handoff.HasCompletedFiles}"
-                  AutomationProperties.Name="Copy the starter prompt"
-                  Margin="10,0,0,0" />
-        </DockPanel>
+          <Button x:Name="AllFilesButton"
+                  Content="Drag all files into your chat"
+                  Click="OnAllFilesClick"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center"
+                  Height="64"
+                  ToolTip.Tip="Drag into a chat. From the keyboard, press Enter to copy the folder path."
+                  AutomationProperties.Name="Drag all Handoff files" />
 
-        <Border BorderBrush="#82909E"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="10"
-                Background="#E8EDF1">
-          <TextBlock Text="All files"
-                     FontWeight="Bold"
-                     PointerPressed="OnAllFilesPointerPressed"
-                     AutomationProperties.Name="Drag all Handoff files" />
-        </Border>
-
-        <ItemsControl ItemsSource="{Binding Handoff.Files}"
-                      AutomationProperties.Name="Handoff files">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <WrapPanel Orientation="Horizontal" ItemWidth="210" ItemHeight="170" ItemSpacing="10" LineSpacing="10" />
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:HandoffFileViewModel">
-              <Border Width="200"
-                      Padding="10"
-                      BorderBrush="#82909E"
-                      BorderThickness="1"
-                      CornerRadius="10"
-                      Background="#FFFFFF"
-                      PointerPressed="OnFileTilePointerPressed"
-                      AutomationProperties.Name="{Binding DragAccessibleName}">
-                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
-                  <Border Width="58"
-                          Height="70"
-                          CornerRadius="8"
-                          Background="#263746"
-                          HorizontalAlignment="Left">
-                    <Grid RowDefinitions="16,*">
-                      <Border Grid.Row="0" Background="#2F9EAA" CornerRadius="8,8,0,0" />
-                      <TextBlock Grid.Row="1"
-                                 Text="{Binding KindLabel}"
-                                 Foreground="#FFFFFF"
+          <ItemsControl ItemsSource="{Binding Handoff.Files}"
+                        AutomationProperties.Name="Handoff files">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:HandoffFileViewModel">
+                <Border Padding="0,8"
+                        BorderBrush="{DynamicResource SemiColorBorder}"
+                        BorderThickness="0,1,0,0"
+                        Background="Transparent"
+                        PointerPressed="OnFileTilePointerPressed"
+                        AutomationProperties.Name="{Binding DragAccessibleName}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border Background="{DynamicResource SemiColorPrimary}"
+                            CornerRadius="6"
+                            MinWidth="48"
+                            Padding="6,4"
+                            VerticalAlignment="Center">
+                      <TextBlock Text="{Binding KindLabel}"
+                                 Foreground="White"
                                  FontSize="11"
                                  FontWeight="Bold"
-                                 HorizontalAlignment="Center"
-                                 VerticalAlignment="Center" />
-                    </Grid>
-                  </Border>
-                  <TextBlock Grid.Row="1"
-                             Text="{Binding RelativePath}"
-                             TextWrapping="Wrap"
-                             Foreground="#1F2933"
-                             VerticalAlignment="Center" />
-                  <Button Grid.Row="2"
-                          Content="Copy path"
-                          Click="OnCopyPathClick"
-                          HorizontalAlignment="Left"
-                          AutomationProperties.Name="{Binding CopyPathAccessibleName}" />
-                </Grid>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </Border>
+                                 HorizontalAlignment="Center" />
+                    </Border>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding RelativePath}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="2"
+                            Content="Copy path"
+                            Click="OnCopyPathClick"
+                            AutomationProperties.Name="{Binding CopyPathAccessibleName}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" VerticalAlignment="Top">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="section-title" Text="Next" />
+
+          <StackPanel Spacing="8">
+            <TextBlock Text="1. Copy the starter prompt" FontWeight="SemiBold" />
+            <Button Content="Copy starter prompt"
+                    Classes="Primary" Theme="{DynamicResource SolidButton}"
+                    Click="OnCopyStarterPromptClick"
+                    IsEnabled="{Binding Handoff.HasCompletedFiles}"
+                    HorizontalAlignment="Left"
+                    AutomationProperties.Name="Copy the starter prompt" />
+          </StackPanel>
+
+          <StackPanel Spacing="2">
+            <TextBlock Text="2. Open a chat" FontWeight="SemiBold" />
+            <TextBlock Classes="muted" Text="Claude, ChatGPT or Gemini." TextWrapping="Wrap" />
+          </StackPanel>
+
+          <StackPanel Spacing="2">
+            <TextBlock Text="3. Add the files, then paste" FontWeight="SemiBold" />
+            <TextBlock Classes="muted" Text="Drag the files into the chat, then paste the prompt."
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
 
     <Expander Header="handoff.md" IsExpanded="False" IsVisible="{Binding Handoff.HandoffMarkdown, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
       <md:MarkdownRenderer MarkdownBuilder="{Binding Handoff.HandoffMarkdown,

@@ -10,7 +10,8 @@ namespace SIL.Motif.App.ViewModels;
 /// and loads the new project's Baseline and Text state. This is also where the two loose ends the child
 /// view models left for composition get wired: <see cref="ViewModels.BaselineViewModel.HasAssessment"/>
 /// is set once an Assessment actually completes, and <see cref="ViewModels.StatisticsViewModel.SummaryMarkdown"/>
-/// is fed from that same completed Assessment's own rendered summary.
+/// is fed from that same completed Assessment's own rendered summary. It also owns which of the four
+/// <see cref="WorkflowStage"/>s the window shows, and what each stage's rail entry says.
 /// </summary>
 public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
@@ -34,14 +35,79 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Statistics = statistics;
         Handoff = handoff;
 
+        Stages =
+        [
+            new StageViewModel(WorkflowStage.Project, "Project"),
+            new StageViewModel(WorkflowStage.Selection, "Selection"),
+            new StageViewModel(WorkflowStage.Results, "Results"),
+            new StageViewModel(WorkflowStage.Handoff, "Handoff"),
+        ];
+        ShowStageCommand = new RelayCommand<WorkflowStage>(stage => CurrentStage = stage);
+
         Project.ProjectChosen += OnProjectChosen;
         Baseline.Refreshed += OnBaselineRefreshed;
         Baseline.OfferRerun += OnOfferRerun;
+        Baseline.PropertyChanged += OnChildPropertyChanged;
+        Selection.PropertyChanged += OnChildPropertyChanged;
+        Handoff.PropertyChanged += OnChildPropertyChanged;
         Assess.PropertyChanged += OnAssessPropertyChanged;
 
         AcceptRerunCommand = new AsyncRelayCommand(AcceptRerunAsync, () => RerunOffered);
         DismissRerunCommand = new RelayCommand(() => RerunOffered = false, () => RerunOffered);
+        RefreshStages();
     }
+
+    /// <summary>The stage rail's entries, in workflow order.</summary>
+    public IReadOnlyList<StageViewModel> Stages { get; }
+
+    /// <summary>The stage the window is showing.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedStage))]
+    [NotifyPropertyChangedFor(nameof(IsProjectStage))]
+    [NotifyPropertyChangedFor(nameof(IsSelectionStage))]
+    [NotifyPropertyChangedFor(nameof(IsResultsStage))]
+    [NotifyPropertyChangedFor(nameof(IsHandoffStage))]
+    private WorkflowStage _currentStage;
+
+    /// <summary>The rail entry for <see cref="CurrentStage"/>; setting it opens that stage.</summary>
+    public StageViewModel SelectedStage
+    {
+        get => Stages[(int)CurrentStage];
+        set
+        {
+            if (value is not null) CurrentStage = value.Stage;
+        }
+    }
+
+    public bool IsProjectStage => CurrentStage == WorkflowStage.Project;
+
+    public bool IsSelectionStage => CurrentStage == WorkflowStage.Selection;
+
+    public bool IsResultsStage => CurrentStage == WorkflowStage.Results;
+
+    public bool IsHandoffStage => CurrentStage == WorkflowStage.Handoff;
+
+    /// <summary>Opens the stage passed as the command parameter.</summary>
+    public IRelayCommand<WorkflowStage> ShowStageCommand { get; }
+
+    /// <summary>The chosen project's file name for the window header, or a prompt before one is chosen.</summary>
+    public string ProjectName => _projectPath is null ? "No project chosen" : Path.GetFileName(_projectPath);
+
+    /// <summary>Whether a project has been chosen in this window.</summary>
+    public bool HasProject => _projectPath is not null;
+
+    /// <summary>The Baseline's captured time for the window header.</summary>
+    public string BaselineHeaderText => $"Baseline: {Baseline.CapturedTimeText}";
+
+    /// <summary>What the Handoff stage's action reads: the first write, or a rewrite.</summary>
+    public string HandoffActionText => Handoff.HasCompletedFiles ? "Write Handoff again" : "Write Handoff";
+
+    /// <summary>Where the Handoff stands, for the rail and the action bar.</summary>
+    public string HandoffStatusText => Handoff.HasCompletedFiles
+        ? $"Written: {Handoff.Files.Count} file(s)"
+        : "Not written yet";
+
+    partial void OnCurrentStageChanged(WorkflowStage value) => RefreshStages();
 
     public ProjectViewModel Project { get; }
 
@@ -74,6 +140,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Whether Project and Selection controls should accept input right now.</summary>
     public bool ProjectAndSelectionEnabled => !Assess.IsActive;
 
+    partial void OnHasEverAssessedChanged(bool value) => RefreshStages();
+
     partial void OnRerunOfferedChanged(bool value)
     {
         AcceptRerunCommand.NotifyCanExecuteChanged();
@@ -91,6 +159,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         await CancelActiveWorkAsync().ConfigureAwait(true);
         ClearProjectBoundState();
         _projectPath = fwDataPath;
+        OnPropertyChanged(nameof(ProjectName));
+        OnPropertyChanged(nameof(HasProject));
+        CurrentStage = WorkflowStage.Project;
+        RefreshStages();
 
         await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
@@ -111,10 +183,46 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private void OnOfferRerun(object? sender, EventArgs e) => RerunOffered = true;
 
+    private void OnChildPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(BaselineHeaderText));
+        OnPropertyChanged(nameof(HandoffActionText));
+        OnPropertyChanged(nameof(HandoffStatusText));
+        RefreshStages();
+    }
+
+    private void RefreshStages()
+    {
+        var project = Stages[(int)WorkflowStage.Project];
+        project.Summary = !HasProject ? "Choose a project" : Baseline.HasBaseline ? "Baseline captured" : "No Baseline yet";
+        project.IsDone = Baseline.HasBaseline;
+
+        var selection = Stages[(int)WorkflowStage.Selection];
+        selection.Summary = Selection.SummaryText;
+        selection.IsDone = Selection.CanAssess;
+
+        var results = Stages[(int)WorkflowStage.Results];
+        results.Summary = Assess.IsActive ? "Running..." : HasEverAssessed
+            ? Assess.Result?.CompletionSummary is { Length: > 0 } summary ? summary : "Completed"
+            : "Not run yet";
+        results.IsDone = HasEverAssessed;
+
+        var handoff = Stages[(int)WorkflowStage.Handoff];
+        handoff.Summary = HandoffStatusText;
+        handoff.IsDone = Handoff.HasCompletedFiles;
+
+        foreach (var stage in Stages) stage.IsCurrent = stage.Stage == CurrentStage;
+    }
+
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(AssessViewModel.IsActive))
+        {
             OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
+            if (Assess.IsActive) CurrentStage = WorkflowStage.Results;
+        }
+
+        RefreshStages();
 
         if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Completed)
         {

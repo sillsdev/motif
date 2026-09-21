@@ -57,6 +57,7 @@ public sealed class WalkthroughWindow : IDisposable
         Window.ApplyTemplate();
         Window.UpdateLayout();
         Pump();
+        RealizeEveryStage();
     }
 
     public void LoadKnownProjects()
@@ -66,10 +67,59 @@ public sealed class WalkthroughWindow : IDisposable
         loading.GetAwaiter().GetResult();
     }
 
-    public T Find<T>(string accessibleName) where T : Control =>
-        Window.GetLogicalDescendants().OfType<T>().Single(control =>
-            string.Equals(Avalonia.Automation.AutomationProperties.GetName(control), accessibleName,
+    public T Find<T>(string accessibleName) where T : Control
+    {
+        var control = Window.GetLogicalDescendants().OfType<T>().Single(candidate =>
+            string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate), accessibleName,
                 StringComparison.Ordinal));
+        ShowStageOwning(control);
+        return control;
+    }
+
+    // A person reaches a control in another stage through the rail, so the walkthrough does the same.
+    private void ShowStageOwning(Control control)
+    {
+        var stage = control.GetLogicalAncestors().OfType<Control>().Select(ancestor => ancestor.Name switch
+        {
+            "ProjectStage" => WorkflowStage.Project,
+            "ProjectActions" => WorkflowStage.Project,
+            "SelectionStage" => WorkflowStage.Selection,
+            "SelectionActions" => WorkflowStage.Selection,
+            "ResultsStage" => WorkflowStage.Results,
+            "ResultsActions" => WorkflowStage.Results,
+            "HandoffStage" => WorkflowStage.Handoff,
+            "HandoffActions" => WorkflowStage.Handoff,
+            _ => (WorkflowStage?)null,
+        }).FirstOrDefault(candidate => candidate is not null);
+        if (stage is { } owning) ShowStage(owning);
+    }
+
+    /// <summary>Opens a stage the way a person does, by its entry in the rail.</summary>
+    public void ShowStage(WorkflowStage stage)
+    {
+        if (Workspace.CurrentStage == stage) return;
+
+        var name = $"{stage} stage";
+        var railEntry = Window.GetLogicalDescendants().OfType<ListBoxItem>().Single(item =>
+            string.Equals(Avalonia.Automation.AutomationProperties.GetName(item), name, StringComparison.Ordinal));
+        ClickControl(railEntry, name);
+        Assert.Equal(stage, Workspace.CurrentStage);
+    }
+
+    // A stage nobody has opened has no template applied, so its controls are not in the tree until it is.
+    private void RealizeEveryStage()
+    {
+        var opening = Workspace.CurrentStage;
+        foreach (var stage in Enum.GetValues<WorkflowStage>())
+        {
+            Workspace.CurrentStage = stage;
+            Window.UpdateLayout();
+            Pump();
+        }
+
+        Workspace.CurrentStage = opening;
+        Window.UpdateLayout();
+    }
 
     public void Click(string accessibleName)
     {
@@ -79,8 +129,10 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void Check(string content)
     {
+        ShowStage(WorkflowStage.Selection);
         var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
             Equals(control.Content, content));
+        ShowStageOwning(checkBox);
         var before = checkBox.IsChecked;
         ClickControl(checkBox, content);
         Assert.NotEqual(before, checkBox.IsChecked);
@@ -118,7 +170,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void DragAllFiles()
     {
-        var allFiles = Find<TextBlock>("Drag all Handoff files");
+        var allFiles = Find<Button>("Drag all Handoff files");
         using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
         var args = new PointerPressedEventArgs(
             allFiles, pointer, Window, new Point(), 0, PointerPointProperties.None, KeyModifiers.None);

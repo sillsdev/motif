@@ -6,6 +6,7 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -58,7 +59,9 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var (_, window, _) = NewComposedWindow();
+            var (workspace, window, _) = NewComposedWindow();
+            window.Show();
+            ShowEveryStage(window, workspace);
 
             var controls = window.GetLogicalDescendants().OfType<Control>()
                 .Where(control => control is Button or HyperlinkButton or CheckBox or ComboBox or TextBox or NumericUpDown or DataGrid)
@@ -97,7 +100,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void AssessmentPanelShowsGlobalWarningsAndExpandableCopyableReadings()
+    public void AssessmentPanelShowsCollapsibleSectionsAndWordAndWarningTablesWithoutIdentifiers()
     {
         _avalonia.Invoke(() =>
         {
@@ -120,7 +123,11 @@ public sealed class MainWindowSmokeTests
                                 ParseMorphEvidence.Schema, 0, "motifa", 1, false, false, false,
                                 [new ParseAnalysis([
                                     new("11111111-1111-1111-1111-111111111111",
-                                        "22222222-2222-2222-2222-222222222222", null, "guessed")])], [])
+                                        "22222222-2222-2222-2222-222222222222", null, null)])], []),
+                            Readings = [new ParserReading([new ParserReadingMorph(
+                                "motif-", "first gloss", "v", null, false,
+                                "silfw://localhost/link?database%3dp%26tool%3dlexiconEdit")])],
+                            TryWordLink = "silfw://localhost/link?database%3dp%26tool%3dAnalyses",
                         },
                         new AssessmentWordResult("motifb", "capped", true,
                             "INCOMPLETE — parsing did not finish (step limit)", 700, "partial")
@@ -140,33 +147,36 @@ public sealed class MainWindowSmokeTests
                     ],
                 };
 
+                workspace.CurrentStage = WorkflowStage.Results;
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>());
-                var readingExpanders = panel.GetLogicalDescendants().OfType<Expander>()
-                    .Where(expander => Equals(expander.Header, "Parser readings")).ToList();
-                Assert.Equal(4, readingExpanders.Count);
-                foreach (var expander in readingExpanders)
-                {
-                    expander.IsExpanded = true;
-                    expander.ApplyTemplate();
-                }
+                var sections = panel.GetLogicalDescendants().OfType<Expander>()
+                    .Select(AutomationProperties.GetName).Where(name => name?.EndsWith(" section") == true);
+                Assert.Equal(["Run section", "Summary section", "Grammar warnings section", "Words section"], sections);
+
+                Assert.Equal(1, workspace.Assess.GrammarWarnings.TotalCount);
+                Assert.Equal(4, workspace.Assess.Words.TotalCount);
+                var rows = workspace.Assess.Words.Rows.Cast<AssessWordRowViewModel>().ToList();
+                Assert.Equal("motif- = first gloss", Assert.Single(rows[0].Readings).Text);
+                Assert.True(rows[0].HasTryWordLink);
+                Assert.Contains("INCOMPLETE — parsing did not finish (step limit)", rows[1].Detail);
+                Assert.Contains("Morphology evidence unavailable.", rows[2].Detail);
+                Assert.Contains("Morphology evidence unavailable: invalid shape.", rows[3].Detail);
+
+                var words = panel.GetLogicalDescendants().OfType<DataGrid>()
+                    .Single(grid => AutomationProperties.GetName(grid) == "Words");
+                words.SelectedItem = rows[0];
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                Assert.Contains(panel.GetLogicalDescendants().OfType<SelectableTextBlock>(),
-                    text => text.Text == "11111111-1111-1111-1111-111111111111");
-                Assert.Contains(panel.GetLogicalDescendants().OfType<SelectableTextBlock>(),
-                    text => text.Text == "warning: grammar-wide finding");
-                Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(),
-                    text => text.Text == "INCOMPLETE — parsing did not finish (step limit)");
-                Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(),
-                    text => text.Text == "Morphology evidence unavailable.");
-                Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(),
-                    text => text.Text == "Morphology evidence unavailable: invalid shape.");
+                Assert.Contains(panel.GetVisualDescendants().OfType<HyperlinkButton>(),
+                    link => Equals(link.Content, "motif-") && link.IsEffectivelyVisible);
+                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
             }
             finally
             {
@@ -191,6 +201,7 @@ public sealed class MainWindowSmokeTests
                 };
                 foreach (var file in files) workspace.Handoff.Files.Add(file);
                 workspace.Handoff.State = RunState.Completed;
+                workspace.CurrentStage = WorkflowStage.Handoff;
 
                 window.Show();
                 window.ApplyTemplate();
@@ -205,8 +216,8 @@ public sealed class MainWindowSmokeTests
                 foreach (var file in files)
                     Assert.Contains(tiles, tile => AutomationProperties.GetName(tile) == file.DragAccessibleName);
 
-                Assert.Contains(panel.GetLogicalDescendants().OfType<TextBlock>(), text =>
-                    AutomationProperties.GetName(text) == "Drag all Handoff files");
+                Assert.Contains(panel.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Drag all Handoff files" && button.Focusable);
 
                 var tile = tiles.Single(item =>
                     AutomationProperties.GetName(item) == "Drag assessment.json");
@@ -237,6 +248,7 @@ public sealed class MainWindowSmokeTests
                 workspace.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
                 workspace.Handoff.PastedHeader = "pasted header text";
                 workspace.Handoff.State = RunState.Completed;
+                workspace.CurrentStage = WorkflowStage.Handoff;
 
                 window.Show();
                 window.ApplyTemplate();
@@ -257,6 +269,16 @@ public sealed class MainWindowSmokeTests
         }, TimeSpan.FromSeconds(5));
 
         Assert.Equal("pasted header text", clipboardText);
+    }
+
+    // A stage nobody has opened has no template applied, so its controls join the tree only once it is shown.
+    private static void ShowEveryStage(MainWindow window, HandoffWorkspaceViewModel workspace)
+    {
+        foreach (var stage in Enum.GetValues<WorkflowStage>())
+        {
+            workspace.CurrentStage = stage;
+            window.UpdateLayout();
+        }
     }
 
     // The explicit AutomationProperties.Name, or the plain-text Content a Button/CheckBox falls back to.

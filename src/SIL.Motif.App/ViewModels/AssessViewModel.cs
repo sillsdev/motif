@@ -23,6 +23,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         _commandClient = commandClient;
         _selection = selection;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
+        PropertyChanged += OnResultChanged;
     }
 
     /// <summary>The project this Assessment measures, or <c>null</c> before a project has been chosen.</summary>
@@ -31,7 +32,21 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
     partial void OnProjectPathChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
 
+    /// <summary>The last successful Assessment's grammar findings, as a sortable, searchable table.</summary>
+    public GrammarWarningsViewModel GrammarWarnings { get; } = new();
+
     protected override bool CanStartCore() => ProjectPath is not null && _selection.CanAssess;
+
+    /// <summary>The last successful Assessment's words, as a sortable, searchable table.</summary>
+    public AssessWordsViewModel Words { get; } = new();
+
+    private void OnResultChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(Result)) return;
+        GrammarWarnings.Load(Result?.GrammarWarningDetails ?? Result?.GrammarWarnings?
+            .Select(line => new GrammarWarning(string.Empty, string.Empty, [], [new(line, "text")], line)).ToArray());
+        Words.Load(Result?.Words);
+    }
 
     protected override Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(
         CancellationToken cancellationToken)

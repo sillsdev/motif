@@ -5,9 +5,9 @@
              xmlns:queries="clr-namespace:SIL.Motif.Commands.Queries;assembly=SIL.Motif.Commands"
              x:Class="SIL.Motif.App.Views.ProjectPanel"
              x:DataType="views:ProjectPanel">
-  <StackPanel Spacing="8" Margin="12">
+  <StackPanel Spacing="8" Margin="24">
 
-    <TextBlock Text="Project" FontWeight="Bold" />
+    <TextBlock Classes="stage-title" Text="Project" />
     <DockPanel LastChildFill="True">
       <Button Content="Browse..."
               Command="{Binding Project.BrowseCommand}"
@@ -25,13 +25,12 @@
       </ComboBox>
     </DockPanel>
 
-    <TextBlock Text="Baseline" FontWeight="Bold" Margin="0,12,0,0" />
+    <TextBlock Classes="section-title" Text="Baseline" Margin="0,16,0,0" />
     <TextBlock Text="{Binding Baseline.CapturedTimeText}" />
     <TextBlock Text="{Binding Baseline.FreshnessText}" IsVisible="{Binding Baseline.HasBaseline}" />
     <TextBlock Text="{Binding Baseline.HeldStatusText}" />
-    <TextBlock Text="{Binding Baseline.RefusalMessage}"
-               IsVisible="{Binding Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-               Foreground="Red" />
+    <TextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}"
+               IsVisible="{Binding Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
     <Button Content="Refresh"
             Command="{Binding Baseline.RefreshCommand}"
             AutomationProperties.Name="Refresh the Baseline" />

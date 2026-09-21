@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
+    # Defaults to downloading the release pangloss-release.json pins; a supplied file must match it.
     [string] $ParserArtifact,
 
     [Parameter(Mandatory = $true)]
@@ -19,12 +19,30 @@ if (-not [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
     throw 'The portable package is Windows x64 only.'
 }
 
+$parserPin = Get-Content -LiteralPath (Join-Path $repoRoot 'pangloss-release.json') -Raw | ConvertFrom-Json
+if ($parserPin.sha256 -notmatch '^[0-9a-f]{64}$') {
+    throw 'pangloss-release.json does not carry a lowercase SHA-256.'
+}
+if ([string]::IsNullOrWhiteSpace($ParserArtifact)) {
+    $downloadDirectory = Join-Path $repoRoot ".tmp\pangloss\$($parserPin.tag)"
+    $ParserArtifact = Join-Path $downloadDirectory 'pangloss.exe'
+    if (-not (Test-Path -LiteralPath $ParserArtifact -PathType Leaf)) {
+        New-Item -ItemType Directory -Path $downloadDirectory -Force | Out-Null
+        Invoke-WebRequest -Uri $parserPin.url -OutFile $ParserArtifact
+    }
+}
+
 $parser = Get-Item -LiteralPath $ParserArtifact -ErrorAction Stop
 if (-not $parser.PSIsContainer -and $parser.Length -eq 0) {
     throw "PanGloss artifact is empty: $($parser.FullName)"
 }
 if ($parser.PSIsContainer) {
     throw "PanGloss artifact is not a file: $($parser.FullName)"
+}
+
+$pinnedParserHash = (Get-FileHash -LiteralPath $parser.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($pinnedParserHash -ne $parserPin.sha256) {
+    throw "PanGloss artifact is not the pinned $($parserPin.tag) (sha256 $pinnedParserHash): $($parser.FullName)"
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
@@ -154,6 +172,9 @@ try {
     }
 
     $sourceParserHash = (Get-FileHash -LiteralPath $parser.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($sourceParserHash -ne $parserPin.sha256) {
+        throw 'PanGloss changed after it was verified; no package was published.'
+    }
     $forbiddenWorkerAssets = @(
         'SIL.Motif.Worker.exe',
         'SIL.Motif.Worker.deps.json',
@@ -197,8 +218,8 @@ try {
             [ordered]@{ name = 'cli'; path = 'cli/motif.exe' }
         )
         dependencies = @(
-            [ordered]@{ name = 'PanGloss'; path = 'app/pangloss.exe'; sha256 = $appParserHash },
-            [ordered]@{ name = 'PanGloss'; path = 'cli/pangloss.exe'; sha256 = $cliParserHash }
+            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserPin.url; path = 'app/pangloss.exe'; sha256 = $appParserHash },
+            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserPin.url; path = 'cli/pangloss.exe'; sha256 = $cliParserHash }
         )
         files = $fileRecords
     }

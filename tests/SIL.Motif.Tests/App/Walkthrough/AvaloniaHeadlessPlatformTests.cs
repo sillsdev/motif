@@ -63,15 +63,18 @@ public sealed class AvaloniaHeadlessPlatformTests
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             using var walkthrough = new WalkthroughWindow(Path.GetTempPath(), "unused.fwdata");
-            var scrollViewer = Assert.IsType<ScrollViewer>(walkthrough.Window.Content);
-            var root = Assert.IsType<StackPanel>(scrollViewer.Content);
+            var root = Assert.IsType<Grid>(walkthrough.Window.Content);
             var probe = new Button
             {
                 Content = "Count probe",
                 Command = new RelayCommand(() => count++),
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
             };
             AutomationProperties.SetName(probe, "Count probe");
-            root.Children.Insert(0, probe);
+            Grid.SetRow(probe, 1);
+            Grid.SetColumn(probe, 1);
+            root.Children.Add(probe);
 
             walkthrough.Show();
             walkthrough.Click("Count probe");

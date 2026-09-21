@@ -5,9 +5,9 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.SelectionPanel"
              x:DataType="views:SelectionPanel">
-  <StackPanel Spacing="8" Margin="12">
+  <StackPanel Spacing="8" Margin="24">
 
-    <TextBlock Text="Selection" FontWeight="Bold" />
+    <TextBlock Classes="stage-title" Text="Selection" />
 
     <TextBox PlaceholderText="Search texts..."
              Text="{Binding Selection.SearchText}"
@@ -22,12 +22,11 @@
       </ListBox.ItemTemplate>
     </ListBox>
 
-    <TextBlock Text="{Binding Selection.TextsEmptyMessage}"
+    <TextBlock Classes="muted" Text="{Binding Selection.TextsEmptyMessage}"
                IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-               TextWrapping="Wrap"
-               Foreground="{DynamicResource SemiColorTextSecondary}" />
+               TextWrapping="Wrap" />
 
-    <TextBlock Text="Pasted words" FontWeight="Bold" Margin="0,12,0,0" />
+    <TextBlock Classes="section-title" Text="Pasted words" Margin="0,16,0,0" />
     <TextBox Text="{Binding Selection.PastedWords}"
              AcceptsReturn="True"
              TextWrapping="Wrap"
@@ -43,14 +42,11 @@
                       Minimum="0"
                       AutomationProperties.Name="Retry slower than, in milliseconds" />
     </DockPanel>
-    <TextBlock Text="{Binding Selection.ThresholdValidationMessage}"
-               IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-               Foreground="Red" />
+    <TextBlock Classes="error" Text="{Binding Selection.ThresholdValidationMessage}"
+               IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
 
-    <TextBlock Text="{Binding Selection.SummaryText}" Margin="0,12,0,0" FontWeight="Bold" />
-    <TextBlock Text="{Binding Selection.RefusalMessage}"
-               IsVisible="{Binding Selection.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-               Foreground="Red" />
+    <TextBlock Classes="error" Text="{Binding Selection.RefusalMessage}"
+               IsVisible="{Binding Selection.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
 
   </StackPanel>
 </UserControl>

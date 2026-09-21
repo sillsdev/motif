@@ -46,9 +46,13 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
             var assessPanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<AssessPanel>());
-            var readingExpanders = assessPanel.GetLogicalDescendants().OfType<Expander>()
-                .Where(expander => Equals(expander.Header, "Parser readings")).ToList();
-            Assert.Equal(3, readingExpanders.Count);
+            Assert.Same(walkthrough.Workspace.Assess, assessPanel.Assess);
+            var rows = walkthrough.Workspace.Assess.Words.Rows.Cast<AssessWordRowViewModel>().ToList();
+            Assert.Equal(3, rows.Count);
+            // Readings are resolved against the project: every parsed word's morphs name a form, never an identifier.
+            Assert.All(rows.Where(row => row.IsParsed), row => Assert.All(row.Readings.SelectMany(r => r.Morphs),
+                morph => Assert.DoesNotContain("(missing", morph.Form, StringComparison.Ordinal)));
+            Assert.All(rows.Where(row => row.IsParsed), row => Assert.NotEmpty(row.Readings));
             Assert.True(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
             Assert.True(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
 

@@ -7,7 +7,7 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Handoff strip and its file list, bound to its own <see cref="Handoff"/> view model.</summary>
+/// <summary>The Handoff stage and its file list, bound to its own <see cref="Handoff"/> view model.</summary>
 public sealed partial class HandoffPanel : UserControl
 {
     public HandoffPanel(HandoffViewModel handoff)
@@ -16,6 +16,10 @@ public sealed partial class HandoffPanel : UserControl
         Handoff = handoff;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
+
+        // A Button handles its own pointer press, so the drag has to start ahead of it in the tunnel.
+        this.FindControl<Button>("AllFilesButton")!
+            .AddHandler(PointerPressedEvent, OnAllFilesPointerPressed, RoutingStrategies.Tunnel);
     }
 
     public HandoffViewModel Handoff { get; }
@@ -28,8 +32,20 @@ public sealed partial class HandoffPanel : UserControl
             await Handoff.DragFileAsync(e, file);
     }
 
-    private async void OnAllFilesPointerPressed(object? sender, PointerPressedEventArgs e) =>
+    // Handled, so the press only drags: a keyboard activation of the same button is what copies the folder.
+    private async void OnAllFilesPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        e.Handled = true;
         await Handoff.DragAllFilesAsync(e);
+    }
+
+    // A drag needs a pointer, so the keyboard route to the same files is their folder's path.
+    private async void OnAllFilesClick(object? sender, RoutedEventArgs e)
+    {
+        if (Handoff.OutputDirectory is not { } folder) return;
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.Clipboard is { } clipboard) await clipboard.SetTextAsync(folder);
+    }
 
     private async void OnCopyPathClick(object? sender, RoutedEventArgs e)
     {

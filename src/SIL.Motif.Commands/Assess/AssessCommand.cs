@@ -291,6 +291,21 @@ public static class AssessCommand
                 summaryMarkdown = RenderSummaryMarkdown(completionSummary, summaryMarkdown);
                 var grammarWarnings = invocation?.GrammarWarningLines is { Count: > 0 } warningLines
                     ? warningLines : null;
+                IReadOnlyList<GrammarWarning>? grammarWarningDetails = null;
+                if (grammarWarnings is not null || words.Length > 0)
+                {
+                    // A second scratch load, paid only when there is something to name.
+                    using var namingCache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+                    var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
+                    if (grammarWarnings is not null)
+                        grammarWarningDetails = GrammarWarningReader.Read(namingCache, projectName, grammarWarnings);
+                    words = words.Select(word => word with
+                    {
+                        Readings = word.Morphology is null
+                            ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology),
+                        TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
+                    }).ToArray();
+                }
 
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, completionSummary));
@@ -300,6 +315,7 @@ public static class AssessCommand
                         Words = words,
                         CompletionSummary = completionSummary,
                         GrammarWarnings = grammarWarnings,
+                        GrammarWarningDetails = grammarWarningDetails,
                         CorrectnessStatus = words.Any(word => word.Correctness is not null)
                             ? $"{words.Sum(word => word.Correctness?.Matched ?? 0)}/" +
                               $"{words.Sum(word => word.Correctness?.Expected ?? 0)} approved readings matched; " +

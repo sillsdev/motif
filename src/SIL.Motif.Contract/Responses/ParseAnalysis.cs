@@ -30,3 +30,19 @@ public sealed record WordCorrectness(
 {
     public IReadOnlyList<string> Unavailable { get; init; } = new string[0];
 }
+
+/// <summary>
+/// One parser reading as a person reads an interlinear gloss: its morphs in order, each resolved from the
+/// identifiers in the matching <see cref="ParseAnalysis"/> to the form, gloss and category the project gives it.
+/// </summary>
+public sealed record ParserReading(IReadOnlyList<ParserReadingMorph> Morphs);
+
+/// <summary>One morph of a <see cref="ParserReading"/>.</summary>
+/// <param name="Form">The allomorph as written, with its morph type's affix markers, such as <c>-a</c>.</param>
+/// <param name="Gloss">The gloss of the sense that uses this grammatical info, or empty when none does.</param>
+/// <param name="Category">The grammatical info's interlinear abbreviation, such as <c>v</c> or <c>v:Any</c>.</param>
+/// <param name="InflectionType">The irregularly inflected form type's abbreviation, when the reading used one.</param>
+/// <param name="Guessed">Whether the parser guessed this morph rather than finding it in the lexicon.</param>
+/// <param name="FieldWorksLink">A <c>silfw:</c> link opening the morph's entry, or <see langword="null"/>.</param>
+public sealed record ParserReadingMorph(
+    string Form, string Gloss, string Category, string? InflectionType, bool Guessed, string? FieldWorksLink);

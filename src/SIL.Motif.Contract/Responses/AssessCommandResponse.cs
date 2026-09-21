@@ -21,6 +21,8 @@ public sealed record AssessCommandResponse(
     public string CompletionSummary { get; init; } = string.Empty;
     public string CorrectnessStatus { get; init; } = "Correctness unavailable: authoritative analysis identities are not supplied.";
     public IReadOnlyList<string>? GrammarWarnings { get; init; }
+    /// <summary><see cref="GrammarWarnings"/>, line for line, with each named object resolved and linked.</summary>
+    public IReadOnlyList<GrammarWarning>? GrammarWarningDetails { get; init; }
 }
 
 /// <summary>One word's completion is independent of whatever findings the parser returned.</summary>
@@ -28,6 +30,13 @@ public sealed record AssessmentWordResult(
     string Word, string Outcome, bool IsIncomplete, string CompletionStatus, int? ElapsedMs, string? RawSignature)
 {
     public ParseWordEvidence? Morphology { get; init; }
+    /// <summary><see cref="ParseWordEvidence.Analyses"/>, reading for reading, as forms, glosses and categories.</summary>
+    public IReadOnlyList<ParserReading>? Readings { get; init; }
+    /// <summary>
+    /// A <c>silfw:</c> link selecting this word in FieldWorks' Word Analyses, where Parser ▸ Try a Word opens
+    /// with it entered; <see langword="null"/> when the project has no wordform spelled this way.
+    /// </summary>
+    public string? TryWordLink { get; init; }
     public WordCorrectness? Correctness { get; init; }
     public bool HasUnavailableEvidence => Morphology?.Unavailable is { Count: > 0 };
     public string EvidenceStatus => Morphology switch
