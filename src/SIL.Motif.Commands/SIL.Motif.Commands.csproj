@@ -22,4 +22,11 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- The Handoff's reader script (ADR 0045 decision 1): every Handoff carries it, with or without an Assessment. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Handoff\Assets\parse_grammar_texts_assessment.py">
+      <LogicalName>SIL.Motif.Commands.Handoff.Assets.parse_grammar_texts_assessment.py</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

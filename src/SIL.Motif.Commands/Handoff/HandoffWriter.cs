@@ -14,10 +14,10 @@ namespace SIL.Motif.Commands.Handoff;
 
 /// <summary>
 /// Writes the five flat files ADR 0045 puts in an AI Handoff — <c>grammar.json</c>, <c>texts.json</c>,
-/// <c>assessment.json</c>, and <c>handoff.md</c> here; <c>parse_grammar_texts_assessment.py</c> is written
-/// elsewhere — and publishes them atomically: every file lands in a sibling <c>.incoming-&lt;guid&gt;</c>
-/// directory first, the exact listing is validated, and only then one
-/// <see cref="Directory.Move(string, string)"/> makes it appear at its destination.
+/// <c>assessment.json</c>, <c>parse_grammar_texts_assessment.py</c>, and <c>handoff.md</c> — and publishes
+/// them atomically: every file lands in a sibling <c>.incoming-&lt;guid&gt;</c> directory first, the exact
+/// listing is validated, and only then one <see cref="Directory.Move(string, string)"/> makes it appear at
+/// its destination.
 /// </summary>
 /// <remarks>
 /// <see cref="Publish"/> is the whole atomicity contract: its populate callback writes files freely into
@@ -30,22 +30,27 @@ public static class HandoffWriter
     internal const string GrammarFileName = "grammar.json";
     internal const string TextsFileName = "texts.json";
     internal const string AssessmentFileName = "assessment.json";
+    internal const string PythonHelperFileName = "parse_grammar_texts_assessment.py";
     internal const string HandoffMarkdownFileName = "handoff.md";
 
     private const string StarterPromptResource = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
 
-    /// <summary>The one place the pasted header's document links resolve against until a release tag exists.</summary>
+    private const string PythonHelperResource =
+        "SIL.Motif.Commands.Handoff.Assets.parse_grammar_texts_assessment.py";
+
     /// <summary>The ref motif's own documents are linked at. Its release tag once one exists.</summary>
     internal const string MotifRef = "main";
 
     /// <summary>
-    /// The ref PanGloss's documents are linked at, which moves on PanGloss's release schedule and not
-    /// motif's. It is a branch only until a PanGloss release contains <c>docs/formats/</c>; no tag does yet.
+    /// The PanGloss release tag its documents are linked at, which moves on PanGloss's release schedule
+    /// and not motif's. A tag rather than a branch, so a Handoff's links keep describing the formats it
+    /// was written in after PanGloss moves on; <c>v0.3.2</c> is the first release carrying
+    /// <c>docs/formats/</c>.
     /// </summary>
-    internal const string PanGlossRef = "main";
+    internal const string PanGlossRef = "v0.3.2";
 
     private static readonly string[] AlwaysRequiredTopLevelFiles =
-        [GrammarFileName, TextsFileName, HandoffMarkdownFileName];
+        [GrammarFileName, TextsFileName, PythonHelperFileName, HandoffMarkdownFileName];
 
     private static readonly JsonSerializerOptions CompactOptions = new() { WriteIndented = false };
 
@@ -98,9 +103,9 @@ public static class HandoffWriter
     /// <summary>
     /// Writes <c>texts.json</c>: every requested Text — every Text in the project when
     /// <paramref name="requestedTextIds"/> is empty — each carrying its own sanitized-title-and-GUID
-    /// <c>key</c> field, one compact record per line (design decisions 1 and 3). Each line is a complete,
-    /// independently parseable JSON object — not a fragment of a larger one — so <c>json.loads</c> on one
-    /// line and <c>json.load</c> on the whole file agree on the same records.
+    /// <c>key</c> field, one compact record per line (design decisions 1 and 3). Each line holds one whole
+    /// record rather than a fragment of one, but every record except the last also carries the array's
+    /// separating comma, so a line parses alone only once that comma is stripped.
     /// </summary>
     /// <param name="firstKey">The first written Text's own <c>key</c> field, for a working example elsewhere.</param>
     /// <returns>
@@ -180,6 +185,21 @@ public static class HandoffWriter
     }
 
     /// <summary>
+    /// Writes <c>parse_grammar_texts_assessment.py</c> into the incoming directory: the embedded reader
+    /// script every Handoff carries, unconditionally, since it reads <c>grammar.json</c> and <c>texts.json</c>
+    /// whether or not this run also collected an Assessment.
+    /// </summary>
+    internal static void WritePythonHelper(string incomingRoot) =>
+        File.WriteAllText(
+            Path.Combine(incomingRoot, PythonHelperFileName),
+            SubstituteDocumentRefs(ReadEmbeddedText(PythonHelperResource)));
+
+    private static string SubstituteDocumentRefs(string template) =>
+        template
+            .Replace("{{MOTIF_REF}}", MotifRef, StringComparison.Ordinal)
+            .Replace("{{PANGLOSS_REF}}", PanGlossRef, StringComparison.Ordinal);
+
+    /// <summary>
     /// Builds <c>handoff.md</c>'s content: orientation, a manifest of the files this run actually wrote, and
     /// per file, what it is, one <c>grep</c> example, and one Python call. Capped at 100
     /// lines by <c>HandoffMarkdownTests.HandoffMarkdownNeverExceedsTheHundredLineCap</c>.
@@ -193,7 +213,7 @@ public static class HandoffWriter
             : "- No Assessment was run for this Handoff, so `assessment.json` is not included.";
 
         // Derived from the manifest's own condition: a literal count drifted from the list it introduced.
-        var fileCount = hasAssessment ? "four" : "three";
+        var fileCount = hasAssessment ? "five" : "four";
 
         var assessmentSection = hasAssessment
             ? $"""
@@ -212,6 +232,9 @@ public static class HandoffWriter
                 ```
                 python -c "import json; d=json.load(open('assessment.json')); print([r for r in d if r['word']=='{sampleWord}'][0])"
                 ```
+                ```
+                python parse_grammar_texts_assessment.py word {sampleWord}
+                ```
                 """
             : $"""
 
@@ -227,22 +250,25 @@ public static class HandoffWriter
 
             The {fileCount} files listed below describe one FieldWorks project as of its last save: the
             grammar PanGloss parsed with, the interlinear Texts that were selected, what happened when
-            each Selection word was parsed, and this file. There are no other files and no subfolders.
+            each Selection word was parsed, the script that reads all of that, and this file. There are
+            no other files and no subfolders.
 
             Every JSON file here is valid JSON with **one record per line** — pretty-printed down to the
             record, compact within it — so a `grep` for a word returns that word's whole record on one
-            line, that same line parses on its own with `json.loads`, and the file as a whole still loads
-            with a plain `json.load`.
+            line. The whole file loads with a plain `json.load`. A single grepped line carries the array's
+            trailing comma, so strip it before `json.loads`, or hand the line to
+            `parse_grammar_texts_assessment.py`, whose loaders take either form.
 
-            `parse_grammar_texts_assessment.py`, when it is listed below, has convenience routines for all
-            of the above and a `--help` that teaches the file shapes; its source is linked from each
-            section below rather than repeated here.
+            `parse_grammar_texts_assessment.py`, in this same folder, has convenience routines for all of
+            the above and a `--help` that teaches the file shapes; run it directly rather than reading its
+            source copied in here.
 
             ## Files in this folder
 
             - `grammar.json` — the grammar PanGloss actually parsed with.
             - `texts.json` — every selected Text, each record carrying its own sanitized-title-and-GUID `key`.
             {assessmentManifestLine}
+            - `parse_grammar_texts_assessment.py` — reads the three files above; see its own `--help`.
             - `handoff.md` — this file.
 
             ## grammar.json
@@ -256,6 +282,9 @@ public static class HandoffWriter
             ```
             python -c "import json; print(len(json.load(open('grammar.json'))))"
             ```
+            ```
+            python parse_grammar_texts_assessment.py grammar rule <name>
+            ```
 
             ## texts.json
 
@@ -266,6 +295,9 @@ public static class HandoffWriter
             ```
             ```
             python -c "import json; print([t['key'] for t in json.load(open('texts.json'))])"
+            ```
+            ```
+            python parse_grammar_texts_assessment.py text {sampleTextKey}
             ```
             {assessmentSection}
             """;
@@ -282,11 +314,9 @@ public static class HandoffWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(languageName);
         ArgumentException.ThrowIfNullOrWhiteSpace(projectName);
 
-        return ReadEmbeddedText(StarterPromptResource)
+        return SubstituteDocumentRefs(ReadEmbeddedText(StarterPromptResource)
             .Replace("{{LANGUAGE_NAME}}", languageName, StringComparison.Ordinal)
-            .Replace("{{PROJECT_NAME}}", projectName, StringComparison.Ordinal)
-            .Replace("{{MOTIF_REF}}", MotifRef, StringComparison.Ordinal)
-            .Replace("{{PANGLOSS_REF}}", PanGlossRef, StringComparison.Ordinal);
+            .Replace("{{PROJECT_NAME}}", projectName, StringComparison.Ordinal));
     }
 
     /// <summary>Every file the published folder contains, as Handoff-relative, forward-slashed paths.</summary>
@@ -320,7 +350,7 @@ public static class HandoffWriter
         }
     }
 
-    // One record per line, compact within it, so a grepped line also parses alone as its own JSON value.
+    // One record per line; all but the last carry the array's comma, so a line parses alone once stripped.
     private static string BuildLineDelimitedJsonArray(IReadOnlyList<JsonNode> records)
     {
         var text = new StringBuilder();

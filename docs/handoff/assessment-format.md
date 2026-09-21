@@ -43,7 +43,8 @@ regardless of which words happened to get traced.
 Like every JSON file in the Handoff, `assessment.json` is valid JSON with **one record per line**:
 pretty-printed to the record, compact within it. This means a `grep` for a word's surface form
 returns that word's whole record on one line, and the file as a whole still loads with a plain
-`json.load` (or, line by line, with one `json.loads` per line). For example, to find everything
+`json.load`. A single grepped line carries the array's trailing comma, so strip that comma before
+`json.loads` on the line by itself — `parse_grammar_texts_assessment.py`'s loaders accept either. For example, to find everything
 the Assessment recorded about the word *mirusi*:
 
 ```
@@ -98,7 +99,7 @@ For every traced word, `assessment.json` carries two things together, keyed by t
 - **The tree, verbatim.** Exactly what `pangloss parse <grammar> <word> --trace
   --trace-format=json` produced for that word. This document does not restate what the tree's
   fields mean or what its node types are — see PanGloss's own
-  [`docs/formats/trace-format.md`](https://github.com/sillsdev/PanGloss/blob/main/docs/formats/trace-format.md)
+  [`docs/formats/trace-format.md`](https://github.com/sillsdev/PanGloss/blob/v0.3.2/docs/formats/trace-format.md)
   for that. The tree travels unedited because deciding which branch of a derivation mattered is
   the judgement being handed to whoever — person or model — reads the Handoff; Motif does not
   prune it first.

@@ -327,6 +327,8 @@ public static class HandoffCommand
                     }
                     if (textsRefusal is not null) return textsRefusal;
 
+                    HandoffWriter.WritePythonHelper(incoming);
+
                     Report(onProgress, AssessmentStage.ImportingGrammar, "Importing the grammar...");
                     var import = invoker.RunAsync(
                             new PanGlossRequest.Import(grammarPath, Path.Combine(incoming, HandoffWriter.GrammarFileName)),

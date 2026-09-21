@@ -29,7 +29,20 @@ public sealed class HandoffMarkdownTests
         Assert.Contains("`grammar.json`", markdown, StringComparison.Ordinal);
         Assert.Contains("`texts.json`", markdown, StringComparison.Ordinal);
         Assert.Contains("`assessment.json`", markdown, StringComparison.Ordinal);
+        Assert.Contains("`parse_grammar_texts_assessment.py`", markdown, StringComparison.Ordinal);
         Assert.Contains("`handoff.md`", markdown, StringComparison.Ordinal);
+    }
+
+    // The reader script is always written now, whether or not this run collected an Assessment.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void HandoffMarkdownAlwaysNamesThePythonHelperAndCountsFiveOrFourFiles(bool hasAssessment)
+    {
+        var markdown = HandoffWriter.BuildHandoffMarkdown(hasAssessment, "example-key", "mirusi");
+
+        Assert.Contains("`parse_grammar_texts_assessment.py`", markdown, StringComparison.Ordinal);
+        Assert.Contains(hasAssessment ? "five files" : "four files", markdown, StringComparison.Ordinal);
     }
 
     [Fact]

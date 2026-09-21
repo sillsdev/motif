@@ -1,16 +1,18 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Handoff;
 using Xunit;
 
 namespace SIL.Motif.Tests.Handoff;
 
 /// <summary>
-/// Pins the Handoff's one surviving static asset — the pasted-header template — now that
-/// <c>reference/</c> and its embedded copies of <c>grammar-format.md</c>, <c>flextext-json-format.md</c>
-/// and <c>hc-mechanics.md</c> are gone (ADR 0045 decision 6): it is embedded in
-/// <see cref="SIL.Motif.Commands"/>, its links resolve as raw Markdown rather than a rendered GitHub page,
-/// and no asset's prose leaks a path local to whichever machine wrote it.
+/// Pins the pasted-header template — one of the two static assets left once <c>reference/</c> and its
+/// embedded copies of <c>grammar-format.md</c>, <c>flextext-json-format.md</c> and <c>hc-mechanics.md</c>
+/// are gone (ADR 0045 decision 6): it is embedded in <see cref="SIL.Motif.Commands"/>, its links resolve as
+/// raw Markdown rather than a rendered GitHub page, and no asset's prose leaks a path local to whichever
+/// machine wrote it. The other asset, <c>parse_grammar_texts_assessment.py</c>, is pinned in
+/// <see cref="HandoffPythonHelperTests"/>.
 /// </summary>
 public sealed class HandoffAssetsTests
 {
@@ -45,6 +47,38 @@ public sealed class HandoffAssetsTests
         Assert.Contains("raw.githubusercontent.com/sillsdev/PanGloss/", template, StringComparison.Ordinal);
         Assert.DoesNotContain("github.com/sillsdev/motif/blob", template, StringComparison.Ordinal);
         Assert.DoesNotContain("github.com/sillsdev/PanGloss/blob", template, StringComparison.Ordinal);
+    }
+
+    // A branch ref drifts under a written Handoff; a tag keeps describing the formats it was written in.
+    [Fact]
+    public void PanGlossDocumentsAreLinkedAtAReleaseTag()
+    {
+        Assert.Matches(@"^v\d+\.\d+\.\d+$", HandoffWriter.PanGlossRef);
+    }
+
+    [Fact]
+    public void TheWrittenPastedHeaderAndHelperCarryNoUnsubstitutedPlaceholder()
+    {
+        var header = HandoffWriter.BuildPastedHeader("Sena", "Sena 3");
+        var folder = Directory.CreateTempSubdirectory("motif-handoff-helper-");
+        try
+        {
+            HandoffWriter.WritePythonHelper(folder.FullName);
+            var helper = File.ReadAllText(Path.Combine(folder.FullName, HandoffWriter.PythonHelperFileName));
+
+            foreach (var written in new[] { header, helper })
+            {
+                Assert.DoesNotContain("{{", written, StringComparison.Ordinal);
+                Assert.Contains(
+                    $"raw.githubusercontent.com/sillsdev/PanGloss/{HandoffWriter.PanGlossRef}/docs/formats/",
+                    written,
+                    StringComparison.Ordinal);
+            }
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
     }
 
     [Fact]

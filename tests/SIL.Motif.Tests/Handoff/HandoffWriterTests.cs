@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using SIL.LCModel;
@@ -27,7 +28,7 @@ namespace SIL.Motif.Tests.Handoff;
 /// <summary>
 /// Drives <see cref="HandoffCommand"/> over a real, file-backed seeded project against a fake
 /// <see cref="IAssessor"/> and the real <see cref="PanGlossInvoker"/> pointed at the FakePanGloss
-/// executable: the exact four-file listing, atomicity on an existing destination, cancellation and
+/// executable: the exact five-file listing, atomicity on an existing destination, cancellation and
 /// PanGloss-failure cleanup, <c>--no-assess</c>, and duplicate Text titles.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
@@ -314,7 +315,7 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
-    public void AnEndToEndHandoffWritesExactlyFourFilesAndEveryJsonFileValidates()
+    public void AnEndToEndHandoffWritesExactlyFiveFilesAndEveryJsonFileValidates()
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
@@ -333,14 +334,19 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Equal(2, response.AssessmentIds.Count);
         Assert.True(response.Selection.Words.Count > 0);
 
-        // No sixth file and no subfolder: parse_grammar_texts_assessment.py is a different lane's file.
+        // No sixth file and no subfolder: exactly the five files ADR 0045 names.
         Assert.Equal(
-            new[] { "assessment.json", "grammar.json", "handoff.md", "texts.json" },
+            new[]
+            {
+                "assessment.json", "grammar.json", "handoff.md",
+                "parse_grammar_texts_assessment.py", "texts.json",
+            },
             Directory.GetFiles(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal));
 
         AssertFile(destination, "grammar.json");
         AssertFile(destination, "texts.json");
         AssertFile(destination, "assessment.json");
+        AssertFile(destination, "parse_grammar_texts_assessment.py");
         AssertFile(destination, "handoff.md");
 
         using (JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "grammar.json")))) { }
@@ -350,6 +356,7 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Contains("grammar.json", response.Files);
         Assert.Contains("texts.json", response.Files);
         Assert.Contains("assessment.json", response.Files);
+        Assert.Contains("parse_grammar_texts_assessment.py", response.Files);
         Assert.Contains("handoff.md", response.Files);
         Assert.False(string.IsNullOrWhiteSpace(response.PastedHeader));
         Assert.False(string.IsNullOrWhiteSpace(response.HandoffMarkdown));
@@ -384,6 +391,63 @@ public sealed class HandoffWriterTests : IDisposable
         var match = Assert.Single(matches);
         Assert.Contains("\"outcome\"", match, StringComparison.Ordinal);
         using (JsonDocument.Parse(match.TrimEnd(','))) { } // one record per line, compact within it
+    }
+
+    // Round-trips the helper against a Handoff the writer actually produced, not a typed-by-hand fixture.
+    [RequiresPythonFact]
+    public void ThePythonHelperReadsBackTheWordAndTextRecordsTheWriterActuallyWrote()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        var selection = new SelectionRequest(false, [], ["mirusi"], false, null);
+        var cachePath = WriteFakeCache();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ObjectTiming
+            ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
+            : new AssessmentRaw.WordMeasurements([new AssessedWord("mirusi", "analysed", [], 42, "sig")]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_root, scope, candidate),
+        };
+        using var assessmentInvoker = NewInvoker();
+        var assessment = RunAssessment(seeded, managedRoot, assessor, assessmentInvoker, selection);
+        using var invoker = NewInvoker();
+        var destination = Path.Combine(_root, "handoff-python-roundtrip");
+
+        var outcome = HandoffCommand.Run(
+            AssessedRequest(seeded, destination, assessment.InvocationId),
+            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+
+        using var textsDocument = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "texts.json")));
+        var expectedKey = textsDocument.RootElement.EnumerateArray().First().GetProperty("key").GetString()!;
+
+        using var wordJson = JsonDocument.Parse(RunPythonHelper(destination, "word", "mirusi"));
+        var wordRecord = Assert.Single(wordJson.RootElement.EnumerateArray());
+        Assert.Equal("mirusi", wordRecord.GetProperty("word").GetString());
+        Assert.Equal("analysed", wordRecord.GetProperty("outcome").GetString());
+        Assert.Equal(42, wordRecord.GetProperty("elapsedMs").GetInt32());
+
+        using var textJson = JsonDocument.Parse(RunPythonHelper(destination, "text", expectedKey));
+        Assert.Equal(expectedKey, textJson.RootElement.GetProperty("key").GetString());
+    }
+
+    private static string RunPythonHelper(string destination, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo(PythonExecutable.Path!)
+        {
+            WorkingDirectory = destination,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add(Path.Combine(destination, "parse_grammar_texts_assessment.py"));
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+
+        using var process = Process.Start(startInfo)!;
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        Assert.True(process.WaitForExit(15000), "The python helper did not exit within 15 seconds.");
+        Assert.True(process.ExitCode == 0, $"python exited {process.ExitCode}: {stderr}");
+        return stdout;
     }
 
     private string WriteFakeCache()
@@ -464,6 +528,7 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Empty(outcome.Value!.AssessmentIds);
         AssertFile(destination, "grammar.json");
         AssertFile(destination, "texts.json");
+        AssertFile(destination, "parse_grammar_texts_assessment.py");
         AssertFile(destination, "handoff.md");
         Assert.False(File.Exists(Path.Combine(destination, "assessment.json")));
         Assert.Contains(
