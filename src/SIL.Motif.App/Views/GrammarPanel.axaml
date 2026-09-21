@@ -1,0 +1,94 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.GrammarPanel"
+             x:DataType="views:GrammarPanel">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.severity">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="TextBlock.severity.warning">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="TextBlock.severity.capability">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,Auto,*" Margin="24" RowSpacing="12">
+
+    <StackPanel Spacing="4">
+      <TextBlock Classes="stage-title" Text="Grammar" />
+      <TextBlock Classes="muted"
+                 Text="What the parser reports about the grammar as a whole. None of it depends on which texts are chosen."
+                 TextWrapping="Wrap" />
+    </StackPanel>
+
+    <TextBlock Grid.Row="1" Classes="muted"
+               Text="{Binding Assess.GrammarStatusText}"
+               IsVisible="{Binding Assess.GrammarStatusText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
+               TextWrapping="Wrap" />
+
+    <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" RowSpacing="8"
+          IsVisible="{Binding Assess.GrammarWarnings.HasAny}">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <TextBlock Classes="section-title" Text="Findings" />
+        <TextBlock Classes="muted" Text="{Binding Assess.GrammarWarnings.CountSummary}" VerticalAlignment="Center" />
+      </StackPanel>
+        <Grid Grid.Row="1" ColumnDefinitions="110,150,*,2*" ColumnSpacing="6">
+          <TextBox Grid.Column="0" Text="{Binding Assess.GrammarWarnings.SeverityFilter}"
+                   PlaceholderText="Severity..." AutomationProperties.Name="Filter grammar warnings by severity" />
+          <TextBox Grid.Column="1" Text="{Binding Assess.GrammarWarnings.KindFilter}"
+                   PlaceholderText="Kind..." AutomationProperties.Name="Filter grammar warnings by kind" />
+          <TextBox Grid.Column="2" Text="{Binding Assess.GrammarWarnings.WhereFilter}"
+                   PlaceholderText="Where..." AutomationProperties.Name="Filter grammar warnings by where they apply" />
+          <TextBox Grid.Column="3" Text="{Binding Assess.GrammarWarnings.ProblemFilter}"
+                   PlaceholderText="Problem..." AutomationProperties.Name="Filter grammar warnings by problem" />
+        </Grid>
+        <DataGrid Grid.Row="2" ItemsSource="{Binding Assess.GrammarWarnings.Rows}"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True"
+                  CanUserResizeColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  ClipboardCopyMode="IncludeHeader"
+                  AutomationProperties.Name="Grammar warnings">
+          <DataGrid.Columns>
+            <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
+                 DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
+            <DataGridTemplateColumn Header="Severity" Width="110" SortMemberPath="Severity"
+                                    ClipboardContentBinding="{ReflectionBinding Severity}">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                  <TextBlock Classes="severity"
+                             Classes.warning="{Binding IsWarning}"
+                             Classes.capability="{Binding IsCapability}"
+                             Text="{Binding Severity}" Margin="6,4" VerticalAlignment="Top"
+                             ToolTip.Tip="{Binding Text}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Kind" Width="150" Binding="{ReflectionBinding Kind}" />
+            <DataGridTemplateColumn Header="Where" Width="*" SortMemberPath="Where"
+                                    ClipboardContentBinding="{ReflectionBinding Where}">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                  <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" Margin="6,4" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Problem" Width="2*" SortMemberPath="Problem"
+                                    ClipboardContentBinding="{ReflectionBinding Problem}">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                  <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" Margin="6,4"
+                                                  ToolTip.Tip="{Binding Text}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+  </Grid>
+</UserControl>

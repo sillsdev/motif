@@ -83,15 +83,34 @@ public sealed class WalkthroughWindow : IDisposable
         {
             "ProjectStage" => WorkflowStage.Project,
             "ProjectActions" => WorkflowStage.Project,
-            "SelectionStage" => WorkflowStage.Selection,
-            "SelectionActions" => WorkflowStage.Selection,
+            "GrammarStage" => WorkflowStage.Grammar,
+            "GrammarActions" => WorkflowStage.Grammar,
+            "TextsStage" => WorkflowStage.Texts,
+            "TextsActions" => WorkflowStage.Texts,
             "ResultsStage" => WorkflowStage.Results,
             "ResultsActions" => WorkflowStage.Results,
             "HandoffStage" => WorkflowStage.Handoff,
             "HandoffActions" => WorkflowStage.Handoff,
             _ => (WorkflowStage?)null,
         }).FirstOrDefault(candidate => candidate is not null);
-        if (stage is { } owning) ShowStage(owning);
+        if (stage is not { } owning) return;
+
+        ShowStage(owning);
+        if (owning != WorkflowStage.Results) return;
+
+        var owners = control.GetLogicalAncestors().OfType<Control>().Select(ancestor => ancestor.Name).ToList();
+        if (owners.Contains("StatisticsHost")) ShowResultsView(ResultsView.Statistics);
+        else if (owners.Contains("AssessHost")) ShowResultsView(ResultsView.Words);
+    }
+
+    /// <summary>Opens a Results view the way a person does, by its tab in the Results toolbar.</summary>
+    public void ShowResultsView(ResultsView view)
+    {
+        if (Workspace.ResultsView == view) return;
+
+        var name = $"{view} results view";
+        ClickControl(Find<Button>(name), name);
+        Assert.Equal(view, Workspace.ResultsView);
     }
 
     /// <summary>Opens a stage the way a person does, by its entry in the rail.</summary>
@@ -113,10 +132,15 @@ public sealed class WalkthroughWindow : IDisposable
         foreach (var stage in Enum.GetValues<WorkflowStage>())
         {
             Workspace.CurrentStage = stage;
-            Window.UpdateLayout();
-            Pump();
+            foreach (var view in Enum.GetValues<ResultsView>())
+            {
+                Workspace.ResultsView = view;
+                Window.UpdateLayout();
+                Pump();
+            }
         }
 
+        Workspace.ResultsView = ResultsView.Words;
         Workspace.CurrentStage = opening;
         Window.UpdateLayout();
     }
@@ -129,7 +153,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void Check(string content)
     {
-        ShowStage(WorkflowStage.Selection);
+        ShowStage(WorkflowStage.Texts);
         var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
             Equals(control.Content, content));
         ShowStageOwning(checkBox);

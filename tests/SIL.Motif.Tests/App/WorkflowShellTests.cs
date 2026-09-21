@@ -24,7 +24,8 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WorkflowShellTests
 {
-    private static readonly string[] StageHosts = ["ProjectStage", "SelectionStage", "ResultsStage", "HandoffStage"];
+    private static readonly string[] StageHosts =
+        ["ProjectStage", "GrammarStage", "TextsStage", "ResultsStage", "HandoffStage"];
 
     private readonly AvaloniaHeadlessFixture _avalonia;
 
@@ -76,7 +77,7 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
-    public void ChoosingARailEntryOpensItsStageAndEveryEntryIsNamedForItsStage()
+    public void ChoosingAStepperEntryOpensItsStageAndEveryEntryIsNamedForItsStage()
     {
         _avalonia.Invoke(() =>
         {
@@ -88,10 +89,10 @@ public sealed class WorkflowShellTests
 
                 var entries = window.GetLogicalDescendants().OfType<ListBoxItem>().ToList();
                 Assert.Equal(
-                    ["Project stage", "Selection stage", "Results stage", "Handoff stage"],
+                    ["Project stage", "Grammar stage", "Texts stage", "Results stage", "Handoff stage"],
                     entries.Select(AutomationProperties.GetName));
 
-                entries[3].IsSelected = true;
+                entries[4].IsSelected = true;
 
                 Assert.Equal(WorkflowStage.Handoff, workspace.CurrentStage);
                 Assert.True(Host(window, "HandoffStage").IsVisible);
@@ -116,7 +117,8 @@ public sealed class WorkflowShellTests
 
                 string[] actions =
                 [
-                    "Continue to Selection", "Run the Assessment", "Continue to Handoff", "Write the Handoff folder",
+                    "Continue to Grammar", "Continue to Texts", "Run the Assessment", "Continue to Handoff",
+                    "Write the Handoff folder",
                 ];
                 foreach (var stage in Enum.GetValues<WorkflowStage>())
                 {
@@ -126,6 +128,36 @@ public sealed class WorkflowShellTests
                     var shown = actions.Where(name => ButtonNamed(window, name).IsEffectivelyVisible).ToList();
                     Assert.Equal([actions[(int)stage]], shown);
                 }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void OnlyTheCurrentResultsViewShowsAndItsTabIsMarkedActive()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window) = NewComposedWindow();
+            try
+            {
+                workspace.CurrentStage = WorkflowStage.Results;
+                window.Show();
+                window.UpdateLayout();
+
+                Assert.Contains("active", ButtonNamed(window, "Words results view").Classes);
+                Assert.DoesNotContain("active", ButtonNamed(window, "Statistics results view").Classes);
+                Assert.True(Host(window, "AssessHost").IsEffectivelyVisible);
+                Assert.False(Host(window, "StatisticsHost").IsEffectivelyVisible);
+
+                ButtonNamed(window, "Statistics results view").Command!.Execute(ResultsView.Statistics);
+                window.UpdateLayout();
+
+                Assert.False(Host(window, "AssessHost").IsEffectivelyVisible);
+                Assert.Contains("active", ButtonNamed(window, "Statistics results view").Classes);
             }
             finally
             {

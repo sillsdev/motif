@@ -40,12 +40,18 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// <summary>The last successful Assessment's words, as a sortable, searchable table.</summary>
     public AssessWordsViewModel Words { get; } = new();
 
+    /// <summary>What the Grammar stage says when it has no table to show: no run yet, or a run with no findings.</summary>
+    public string GrammarStatusText => Result is null
+        ? "Findings appear here after the first Assessment. Reading them when the project opens is not built yet."
+        : GrammarWarnings.HasAny ? string.Empty : "The parser reported no findings.";
+
     private void OnResultChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(Result)) return;
         GrammarWarnings.Load(Result?.GrammarWarningDetails ?? Result?.GrammarWarnings?
             .Select(line => new GrammarWarning(string.Empty, string.Empty, [], [new(line, "text")], line)).ToArray());
         Words.Load(Result?.Words);
+        OnPropertyChanged(nameof(GrammarStatusText));
     }
 
     protected override Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(

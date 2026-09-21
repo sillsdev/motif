@@ -10,8 +10,8 @@ namespace SIL.Motif.App.ViewModels;
 /// and loads the new project's Baseline and Text state. This is also where the two loose ends the child
 /// view models left for composition get wired: <see cref="ViewModels.BaselineViewModel.HasAssessment"/>
 /// is set once an Assessment actually completes, and <see cref="ViewModels.StatisticsViewModel.SummaryMarkdown"/>
-/// is fed from that same completed Assessment's own rendered summary. It also owns which of the four
-/// <see cref="WorkflowStage"/>s the window shows, and what each stage's rail entry says.
+/// is fed from that same completed Assessment's own rendered summary. It also owns which of the five
+/// <see cref="WorkflowStage"/>s the window shows, and what each stage's stepper entry says.
 /// </summary>
 public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
@@ -38,11 +38,13 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Stages =
         [
             new StageViewModel(WorkflowStage.Project, "Project"),
-            new StageViewModel(WorkflowStage.Selection, "Selection"),
+            new StageViewModel(WorkflowStage.Grammar, "Grammar"),
+            new StageViewModel(WorkflowStage.Texts, "Texts"),
             new StageViewModel(WorkflowStage.Results, "Results"),
             new StageViewModel(WorkflowStage.Handoff, "Handoff"),
         ];
         ShowStageCommand = new RelayCommand<WorkflowStage>(stage => CurrentStage = stage);
+        ShowResultsViewCommand = new RelayCommand<ResultsView>(view => ResultsView = view);
 
         Project.ProjectChosen += OnProjectChosen;
         Baseline.Refreshed += OnBaselineRefreshed;
@@ -51,25 +53,27 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Selection.PropertyChanged += OnChildPropertyChanged;
         Handoff.PropertyChanged += OnChildPropertyChanged;
         Assess.PropertyChanged += OnAssessPropertyChanged;
+        Assess.GrammarWarnings.PropertyChanged += OnChildPropertyChanged;
 
         AcceptRerunCommand = new AsyncRelayCommand(AcceptRerunAsync, () => RerunOffered);
         DismissRerunCommand = new RelayCommand(() => RerunOffered = false, () => RerunOffered);
         RefreshStages();
     }
 
-    /// <summary>The stage rail's entries, in workflow order.</summary>
+    /// <summary>The stage stepper's entries, in workflow order.</summary>
     public IReadOnlyList<StageViewModel> Stages { get; }
 
     /// <summary>The stage the window is showing.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedStage))]
     [NotifyPropertyChangedFor(nameof(IsProjectStage))]
-    [NotifyPropertyChangedFor(nameof(IsSelectionStage))]
+    [NotifyPropertyChangedFor(nameof(IsGrammarStage))]
+    [NotifyPropertyChangedFor(nameof(IsTextsStage))]
     [NotifyPropertyChangedFor(nameof(IsResultsStage))]
     [NotifyPropertyChangedFor(nameof(IsHandoffStage))]
     private WorkflowStage _currentStage;
 
-    /// <summary>The rail entry for <see cref="CurrentStage"/>; setting it opens that stage.</summary>
+    /// <summary>The stepper entry for <see cref="CurrentStage"/>; setting it opens that stage.</summary>
     public StageViewModel SelectedStage
     {
         get => Stages[(int)CurrentStage];
@@ -81,7 +85,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     public bool IsProjectStage => CurrentStage == WorkflowStage.Project;
 
-    public bool IsSelectionStage => CurrentStage == WorkflowStage.Selection;
+    public bool IsGrammarStage => CurrentStage == WorkflowStage.Grammar;
+
+    public bool IsTextsStage => CurrentStage == WorkflowStage.Texts;
 
     public bool IsResultsStage => CurrentStage == WorkflowStage.Results;
 
@@ -90,19 +96,32 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Opens the stage passed as the command parameter.</summary>
     public IRelayCommand<WorkflowStage> ShowStageCommand { get; }
 
-    /// <summary>The chosen project's file name for the window header, or a prompt before one is chosen.</summary>
+    /// <summary>Which view of a finished Assessment the Results stage is showing.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowResultsWords))]
+    [NotifyPropertyChangedFor(nameof(ShowResultsStatistics))]
+    private ResultsView _resultsView;
+
+    public bool ShowResultsWords => ResultsView == ResultsView.Words;
+
+    public bool ShowResultsStatistics => ResultsView == ResultsView.Statistics;
+
+    /// <summary>Opens the Results view passed as the command parameter.</summary>
+    public IRelayCommand<ResultsView> ShowResultsViewCommand { get; }
+
+    /// <summary>The chosen project's file name for the top bar, or a prompt before one is chosen.</summary>
     public string ProjectName => _projectPath is null ? "No project chosen" : Path.GetFileName(_projectPath);
 
     /// <summary>Whether a project has been chosen in this window.</summary>
     public bool HasProject => _projectPath is not null;
 
-    /// <summary>The Baseline's captured time for the window header.</summary>
+    /// <summary>The Baseline's captured time for the project menu.</summary>
     public string BaselineHeaderText => $"Baseline: {Baseline.CapturedTimeText}";
 
     /// <summary>What the Handoff stage's action reads: the first write, or a rewrite.</summary>
     public string HandoffActionText => Handoff.HasCompletedFiles ? "Write Handoff again" : "Write Handoff";
 
-    /// <summary>Where the Handoff stands, for the rail and the action bar.</summary>
+    /// <summary>Where the Handoff stands, for the stepper and the Handoff stage.</summary>
     public string HandoffStatusText => Handoff.HasCompletedFiles
         ? $"Written: {Handoff.Files.Count} file(s)"
         : "Not written yet";
@@ -128,10 +147,14 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Whether the current project has completed at least one Assessment since it was chosen.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NotYetAssessed))]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyResults))]
     private bool _hasEverAssessed;
 
     /// <summary>The negation <see cref="HasEverAssessed"/> binds against, so a view never composes <c>!</c> itself.</summary>
     public bool NotYetAssessed => !HasEverAssessed;
+
+    /// <summary>Whether the Words view has nothing to show and nothing to explain yet: no run, no refusal.</summary>
+    public bool ShowEmptyResults => NotYetAssessed && !Assess.IsActive && Assess.Refusal is null;
 
     public IAsyncRelayCommand AcceptRerunCommand { get; }
 
@@ -197,9 +220,16 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         project.Summary = !HasProject ? "Choose a project" : Baseline.HasBaseline ? "Baseline captured" : "No Baseline yet";
         project.IsDone = Baseline.HasBaseline;
 
-        var selection = Stages[(int)WorkflowStage.Selection];
-        selection.Summary = Selection.SummaryText;
-        selection.IsDone = Selection.CanAssess;
+        var grammar = Stages[(int)WorkflowStage.Grammar];
+        var findings = Assess.GrammarWarnings.TotalCount;
+        grammar.Summary = Assess.Result is null ? "Findings appear after the first Assessment"
+            : findings == 0 ? "No findings" : $"{findings} finding(s)";
+        grammar.Badge = findings > 0 ? findings.ToString(System.Globalization.CultureInfo.CurrentCulture) : string.Empty;
+        grammar.IsDone = Assess.Result is not null;
+
+        var texts = Stages[(int)WorkflowStage.Texts];
+        texts.Summary = Selection.SummaryText;
+        texts.IsDone = Selection.CanAssess;
 
         var results = Stages[(int)WorkflowStage.Results];
         results.Summary = Assess.IsActive ? "Running..." : HasEverAssessed
@@ -216,10 +246,16 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(ShowEmptyResults));
+
         if (e.PropertyName == nameof(AssessViewModel.IsActive))
         {
             OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
-            if (Assess.IsActive) CurrentStage = WorkflowStage.Results;
+            if (Assess.IsActive)
+            {
+                ResultsView = ResultsView.Words;
+                CurrentStage = WorkflowStage.Results;
+            }
         }
 
         RefreshStages();

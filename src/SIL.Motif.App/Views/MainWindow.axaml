@@ -4,18 +4,18 @@
         x:Class="SIL.Motif.App.Views.MainWindow"
         x:DataType="vm:HandoffWorkspaceViewModel"
         Title="Motif"
-        Width="1180"
-        Height="760"
-        MinWidth="900"
+        Width="1240"
+        Height="780"
+        MinWidth="1040"
         MinHeight="600">
   <Window.Styles>
     <Style Selector="Border.marker">
-      <Setter Property="Width" Value="26" />
-      <Setter Property="Height" Value="26" />
-      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="CornerRadius" Value="10" />
       <Setter Property="BorderThickness" Value="1.5" />
       <Setter Property="BorderBrush" Value="{DynamicResource SemiColorText3}" />
-      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.marker.current">
       <Setter Property="Background" Value="{DynamicResource SemiColorPrimary}" />
@@ -25,168 +25,236 @@
       <Setter Property="Background" Value="{DynamicResource SemiColorSuccess}" />
       <Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}" />
     </Style>
+    <Style Selector="Border.badge">
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tab">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="Button.tab.active">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
   </Window.Styles>
 
-  <Grid RowDefinitions="Auto,*" ColumnDefinitions="248,*">
+  <Grid RowDefinitions="Auto,Auto,*">
 
-    <Border Grid.ColumnSpan="2"
-            BorderBrush="{DynamicResource SemiColorBorder}"
+    <Border BorderBrush="{DynamicResource SemiColorBorder}"
             BorderThickness="0,0,0,1"
-            Padding="20,10">
-      <DockPanel LastChildFill="False">
-        <Button DockPanel.Dock="Right"
-                Content="Change project"
-                Command="{Binding ShowStageCommand}"
-                CommandParameter="{x:Static vm:WorkflowStage.Project}"
-                AutomationProperties.Name="Change the project" />
-        <TextBlock Text="Motif" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
-        <TextBlock Text="{Binding ProjectName}" Margin="20,0,0,0" VerticalAlignment="Center" />
-        <TextBlock Classes="muted" Text="{Binding BaselineHeaderText}" Margin="16,0,0,0"
-                   VerticalAlignment="Center" />
-      </DockPanel>
-    </Border>
+            Padding="16,8">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
 
-    <Border Grid.Row="1"
-            BorderBrush="{DynamicResource SemiColorBorder}"
-            BorderThickness="0,0,1,0"
-            Padding="12,16">
-      <ListBox ItemsSource="{Binding Stages}"
-               SelectedItem="{Binding SelectedStage}"
-               AutomationProperties.Name="Stages">
-        <ListBox.Styles>
-          <Style Selector="ListBoxItem" x:DataType="vm:StageViewModel">
-            <Setter Property="Padding" Value="10" />
-            <Setter Property="Margin" Value="0,2" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
-          </Style>
-        </ListBox.Styles>
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="vm:StageViewModel">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-              <Border Classes="marker" Classes.current="{Binding IsCurrent}" Classes.done="{Binding ShowsCheck}">
-                <Panel>
-                  <TextBlock Text="{Binding Number}" FontSize="12" FontWeight="SemiBold"
-                             HorizontalAlignment="Center" VerticalAlignment="Center"
-                             IsVisible="{Binding !ShowsCheck}" />
-                  <TextBlock Text="&#x2713;" FontSize="13" FontWeight="Bold" Foreground="White"
-                             HorizontalAlignment="Center" VerticalAlignment="Center"
-                             IsVisible="{Binding ShowsCheck}" />
-                </Panel>
-              </Border>
-              <StackPanel Grid.Column="1" Spacing="2">
-                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                <TextBlock Classes="muted" Text="{Binding Summary}" FontSize="12" TextWrapping="Wrap" />
+        <TextBlock Text="Motif" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+
+        <ListBox Grid.Column="1"
+                 ItemsSource="{Binding Stages}"
+                 SelectedItem="{Binding SelectedStage}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="0"
+                 HorizontalAlignment="Left"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 AutomationProperties.Name="Stages">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="2" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem" x:DataType="vm:StageViewModel">
+              <Setter Property="Padding" Value="8,4" />
+              <Setter Property="MinHeight" Value="32" />
+              <Setter Property="CornerRadius" Value="6" />
+              <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+              <Setter Property="ToolTip.Tip" Value="{Binding Summary}" />
+            </Style>
+          </ListBox.Styles>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:StageViewModel">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <Border Classes="marker" Classes.current="{Binding IsCurrent}" Classes.done="{Binding ShowsCheck}">
+                  <Panel>
+                    <TextBlock Text="{Binding Number}" FontSize="11" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding !ShowsCheck}" />
+                    <TextBlock Text="&#x2713;" FontSize="12" FontWeight="Bold" Foreground="White"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding ShowsCheck}" />
+                  </Panel>
+                </Border>
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Border Classes="badge" IsVisible="{Binding HasBadge}">
+                  <TextBlock Text="{Binding Badge}" FontSize="11" FontWeight="SemiBold" />
+                </Border>
               </StackPanel>
-            </Grid>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-    </Border>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
 
-    <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,*,Auto">
-
-      <Border IsVisible="{Binding RerunOffered}"
-              Margin="20,16,20,0"
-              Classes="card">
-        <DockPanel LastChildFill="True">
-          <Button Content="Run again"
-                  Command="{Binding AcceptRerunCommand}"
-                  AutomationProperties.Name="Run the Assessment again"
-                  DockPanel.Dock="Right" />
-          <Button Content="Dismiss"
-                  Command="{Binding DismissRerunCommand}"
-                  AutomationProperties.Name="Dismiss the rerun offer"
-                  DockPanel.Dock="Right"
-                  Margin="0,0,8,0" />
-          <TextBlock Text="A new Baseline was captured; the previous Assessment may be out of date."
-                     VerticalAlignment="Center"
-                     TextWrapping="Wrap" />
-        </DockPanel>
-      </Border>
-
-      <Panel Grid.Row="1">
-        <ScrollViewer x:Name="ProjectStage" IsVisible="{Binding IsProjectStage}">
-          <ContentControl x:Name="ProjectHost" IsEnabled="{Binding ProjectAndSelectionEnabled}" />
-        </ScrollViewer>
-        <ScrollViewer x:Name="SelectionStage" IsVisible="{Binding IsSelectionStage}">
-          <ContentControl x:Name="SelectionHost" IsEnabled="{Binding ProjectAndSelectionEnabled}" />
-        </ScrollViewer>
-        <ScrollViewer x:Name="ResultsStage" IsVisible="{Binding IsResultsStage}">
-          <StackPanel Spacing="0">
-            <ContentControl x:Name="AssessHost" />
-            <TextBlock Classes="muted"
-                       Text="Run an Assessment to see statistics here."
-                       IsVisible="{Binding NotYetAssessed}"
-                       Margin="24,12"
-                       FontStyle="Italic" />
-            <ContentControl x:Name="StatisticsHost"
-                            IsVisible="{Binding HasEverAssessed}"
-                            MinHeight="320" />
+        <Button x:Name="ProjectMenuButton"
+                Grid.Column="2"
+                MaxWidth="240"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Project menu">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding ProjectName}" MaxWidth="190" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="&#x25BE;" />
           </StackPanel>
-        </ScrollViewer>
-        <ScrollViewer x:Name="HandoffStage" IsVisible="{Binding IsHandoffStage}">
-          <ContentControl x:Name="HandoffHost" />
-        </ScrollViewer>
-      </Panel>
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <StackPanel Spacing="8" MinWidth="280">
+                <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" />
+                <TextBlock Classes="muted" Text="{Binding BaselineHeaderText}" TextWrapping="Wrap" />
+                <Button Content="Change project..."
+                        Click="OnChangeProjectClick"
+                        Command="{Binding ShowStageCommand}"
+                        CommandParameter="{x:Static vm:WorkflowStage.Project}"
+                        AutomationProperties.Name="Change the project" />
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
 
-      <Border Grid.Row="2"
-              BorderBrush="{DynamicResource SemiColorBorder}"
-              BorderThickness="0,1,0,0"
-              Padding="24,12">
-        <Panel>
+        <Panel Grid.Column="3" VerticalAlignment="Center">
 
-          <DockPanel x:Name="ProjectActions" IsVisible="{Binding IsProjectStage}">
-            <Button DockPanel.Dock="Right"
-                    Content="Continue to Selection"
+          <StackPanel x:Name="ProjectActions" IsVisible="{Binding IsProjectStage}" Orientation="Horizontal">
+            <Button Content="Continue"
                     Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Command="{Binding ShowStageCommand}"
-                    CommandParameter="{x:Static vm:WorkflowStage.Selection}"
+                    CommandParameter="{x:Static vm:WorkflowStage.Grammar}"
                     IsEnabled="{Binding HasProject}"
-                    AutomationProperties.Name="Continue to Selection" />
-            <TextBlock Classes="muted" Text="Choose a project, then capture its Baseline to list its Texts."
-                       VerticalAlignment="Center" TextWrapping="Wrap" />
-          </DockPanel>
+                    AutomationProperties.Name="Continue to Grammar" />
+          </StackPanel>
 
-          <DockPanel x:Name="SelectionActions" IsVisible="{Binding IsSelectionStage}">
-            <Button DockPanel.Dock="Right"
-                    Content="Run assessment"
+          <StackPanel x:Name="GrammarActions" IsVisible="{Binding IsGrammarStage}" Orientation="Horizontal">
+            <Button Content="Continue to Texts"
+                    Classes="Primary" Theme="{DynamicResource SolidButton}"
+                    Command="{Binding ShowStageCommand}"
+                    CommandParameter="{x:Static vm:WorkflowStage.Texts}"
+                    AutomationProperties.Name="Continue to Texts" />
+          </StackPanel>
+
+          <StackPanel x:Name="TextsActions" IsVisible="{Binding IsTextsStage}" Orientation="Horizontal">
+            <Button Content="Run assessment"
                     Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Command="{Binding Assess.RunCommand}"
                     AutomationProperties.Name="Run the Assessment" />
-            <TextBlock Text="{Binding Selection.SummaryText}" FontWeight="SemiBold" VerticalAlignment="Center"
-                       TextWrapping="Wrap" />
-          </DockPanel>
+          </StackPanel>
 
-          <DockPanel x:Name="ResultsActions" IsVisible="{Binding IsResultsStage}">
-            <Button DockPanel.Dock="Right"
-                    Content="Continue to Handoff"
+          <StackPanel x:Name="ResultsActions" IsVisible="{Binding IsResultsStage}" Orientation="Horizontal">
+            <Button Content="Continue to Handoff"
                     Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Command="{Binding ShowStageCommand}"
                     CommandParameter="{x:Static vm:WorkflowStage.Handoff}"
                     IsEnabled="{Binding HasEverAssessed}"
                     AutomationProperties.Name="Continue to Handoff" />
-            <Button DockPanel.Dock="Right"
-                    Content="Run again"
-                    Command="{Binding Assess.RunCommand}"
-                    Margin="0,0,8,0"
-                    AutomationProperties.Name="Run the Assessment from Results" />
-            <TextBlock Text="{Binding Assess.Result.CompletionSummary, FallbackValue='Not run yet'}"
-                       FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
-          </DockPanel>
+          </StackPanel>
 
-          <DockPanel x:Name="HandoffActions" IsVisible="{Binding IsHandoffStage}">
-            <Button DockPanel.Dock="Right"
-                    Content="{Binding HandoffActionText}"
+          <StackPanel x:Name="HandoffActions" IsVisible="{Binding IsHandoffStage}" Orientation="Horizontal">
+            <Button Content="{Binding HandoffActionText}"
                     Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Command="{Binding Handoff.RunCommand}"
                     AutomationProperties.Name="Write the Handoff folder" />
-            <TextBlock Text="{Binding HandoffStatusText}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          </DockPanel>
+          </StackPanel>
 
         </Panel>
-      </Border>
-    </Grid>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1"
+            IsVisible="{Binding RerunOffered}"
+            Margin="16,12,16,0"
+            Classes="card">
+      <DockPanel LastChildFill="True">
+        <Button Content="Run again"
+                Command="{Binding AcceptRerunCommand}"
+                AutomationProperties.Name="Run the Assessment again"
+                DockPanel.Dock="Right" />
+        <Button Content="Dismiss"
+                Command="{Binding DismissRerunCommand}"
+                AutomationProperties.Name="Dismiss the rerun offer"
+                DockPanel.Dock="Right"
+                Margin="0,0,8,0" />
+        <TextBlock Text="A new Baseline was captured; the previous Assessment may be out of date."
+                   VerticalAlignment="Center"
+                   TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
+
+    <Panel Grid.Row="2">
+
+      <ScrollViewer x:Name="ProjectStage" IsVisible="{Binding IsProjectStage}">
+        <ContentControl x:Name="ProjectHost" IsEnabled="{Binding ProjectAndSelectionEnabled}" />
+      </ScrollViewer>
+
+      <Grid x:Name="GrammarStage" IsVisible="{Binding IsGrammarStage}">
+        <ContentControl x:Name="GrammarHost" />
+      </Grid>
+
+      <ScrollViewer x:Name="TextsStage" IsVisible="{Binding IsTextsStage}">
+        <ContentControl x:Name="SelectionHost" IsEnabled="{Binding ProjectAndSelectionEnabled}" />
+      </ScrollViewer>
+
+      <Grid x:Name="ResultsStage" IsVisible="{Binding IsResultsStage}" RowDefinitions="Auto,*">
+
+        <Border BorderBrush="{DynamicResource SemiColorBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="16,4">
+          <DockPanel>
+            <Button DockPanel.Dock="Right"
+                    Content="Run again"
+                    Command="{Binding Assess.RunCommand}"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Run the Assessment from Results" />
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="4">
+              <Button Content="Words"
+                      Classes="tab" Classes.active="{Binding ShowResultsWords}"
+                      Theme="{DynamicResource BorderlessButton}"
+                      Command="{Binding ShowResultsViewCommand}"
+                      CommandParameter="{x:Static vm:ResultsView.Words}"
+                      AutomationProperties.Name="Words results view" />
+              <Button Content="Statistics"
+                      Classes="tab" Classes.active="{Binding ShowResultsStatistics}"
+                      Theme="{DynamicResource BorderlessButton}"
+                      Command="{Binding ShowResultsViewCommand}"
+                      CommandParameter="{x:Static vm:ResultsView.Statistics}"
+                      AutomationProperties.Name="Statistics results view" />
+            </StackPanel>
+            <TextBlock Classes="muted"
+                       Text="{Binding Assess.Result.CompletionSummary}"
+                       Margin="16,0"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+        </Border>
+
+        <Panel Grid.Row="1">
+          <Panel IsVisible="{Binding ShowResultsWords}">
+            <ContentControl x:Name="AssessHost" />
+            <TextBlock Classes="muted"
+                       Text="No results yet. Choose what to assess in Texts, then run."
+                       IsVisible="{Binding ShowEmptyResults}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+          </Panel>
+          <Panel IsVisible="{Binding ShowResultsStatistics}">
+            <TextBlock Classes="muted"
+                       Text="Run an Assessment to see statistics here."
+                       IsVisible="{Binding NotYetAssessed}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+            <ContentControl x:Name="StatisticsHost" IsVisible="{Binding HasEverAssessed}" />
+          </Panel>
+        </Panel>
+      </Grid>
+
+      <ScrollViewer x:Name="HandoffStage" IsVisible="{Binding IsHandoffStage}">
+        <ContentControl x:Name="HandoffHost" />
+      </ScrollViewer>
+
+    </Panel>
   </Grid>
 </Window>

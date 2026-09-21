@@ -16,16 +16,6 @@
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="Margin" Value="12,0,0,0" />
     </Style>
-    <Style Selector="TextBlock.severity">
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-    </Style>
-    <Style Selector="TextBlock.severity.warning">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
-    </Style>
-    <Style Selector="TextBlock.severity.capability">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
     <Style Selector="TextBlock.result">
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
@@ -41,7 +31,7 @@
     </Style>
   </UserControl.Styles>
 
-  <StackPanel Spacing="10" Margin="24">
+  <Grid RowDefinitions="Auto,Auto,*" Margin="16,12,16,16" RowSpacing="8">
 
     <Expander Classes="section" IsExpanded="True" AutomationProperties.Name="Run section">
       <Expander.IsVisible>
@@ -87,99 +77,17 @@
       </StackPanel>
     </Expander>
 
-    <Expander Classes="section" IsExpanded="True" AutomationProperties.Name="Summary section"
-              IsVisible="{Binding Assess.Result, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
-      <Expander.Header>
-        <TextBlock Classes="section-title" Text="Summary" />
-      </Expander.Header>
-      <StackPanel Spacing="6">
-        <TextBlock Text="{Binding Assess.Result.CompletionSummary}" FontWeight="SemiBold" TextWrapping="Wrap"
-                   AutomationProperties.Name="Completed and incomplete searches" />
-        <TextBlock Text="{Binding Assess.Result.CorrectnessStatus}" TextWrapping="Wrap" />
-      </StackPanel>
-    </Expander>
+    <TextBlock Grid.Row="1" Classes="muted"
+               Text="{Binding Assess.Result.CorrectnessStatus}"
+               IsVisible="{Binding Assess.Words.HasAny}"
+               TextWrapping="Wrap" />
 
-    <Expander Classes="section" IsExpanded="True" AutomationProperties.Name="Grammar warnings section"
-              IsVisible="{Binding Assess.GrammarWarnings.HasAny}">
-      <Expander.Header>
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Classes="section-title" Text="Grammar warnings" />
-          <TextBlock Classes="section-count" Text="{Binding Assess.GrammarWarnings.CountSummary}" />
-        </StackPanel>
-      </Expander.Header>
-      <StackPanel Spacing="6">
-        <TextBlock Classes="muted"
-                   Text="These concern the grammar as a whole rather than any one word. Click a name to open it in FieldWorks."
-                   TextWrapping="Wrap" />
-        <Grid ColumnDefinitions="110,150,*,2*" ColumnSpacing="6">
-          <TextBox Grid.Column="0" Text="{Binding Assess.GrammarWarnings.SeverityFilter}"
-                   PlaceholderText="Severity..." AutomationProperties.Name="Filter grammar warnings by severity" />
-          <TextBox Grid.Column="1" Text="{Binding Assess.GrammarWarnings.KindFilter}"
-                   PlaceholderText="Kind..." AutomationProperties.Name="Filter grammar warnings by kind" />
-          <TextBox Grid.Column="2" Text="{Binding Assess.GrammarWarnings.WhereFilter}"
-                   PlaceholderText="Where..." AutomationProperties.Name="Filter grammar warnings by where they apply" />
-          <TextBox Grid.Column="3" Text="{Binding Assess.GrammarWarnings.ProblemFilter}"
-                   PlaceholderText="Problem..." AutomationProperties.Name="Filter grammar warnings by problem" />
-        </Grid>
-        <DataGrid ItemsSource="{Binding Assess.GrammarWarnings.Rows}"
-                  MaxHeight="280"
-                  IsReadOnly="True"
-                  CanUserSortColumns="True"
-                  CanUserResizeColumns="True"
-                  GridLinesVisibility="Horizontal"
-                  ClipboardCopyMode="IncludeHeader"
-                  AutomationProperties.Name="Grammar warnings">
-          <DataGrid.Columns>
-            <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
-                 DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
-            <DataGridTemplateColumn Header="Severity" Width="110" SortMemberPath="Severity"
-                                    ClipboardContentBinding="{ReflectionBinding Severity}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <TextBlock Classes="severity"
-                             Classes.warning="{Binding IsWarning}"
-                             Classes.capability="{Binding IsCapability}"
-                             Text="{Binding Severity}" Margin="6,4" VerticalAlignment="Top"
-                             ToolTip.Tip="{Binding Text}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Kind" Width="150" Binding="{ReflectionBinding Kind}" />
-            <DataGridTemplateColumn Header="Where" Width="*" SortMemberPath="Where"
-                                    ClipboardContentBinding="{ReflectionBinding Where}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" Margin="6,4" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Problem" Width="2*" SortMemberPath="Problem"
-                                    ClipboardContentBinding="{ReflectionBinding Problem}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" Margin="6,4"
-                                                  ToolTip.Tip="{Binding Text}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-          </DataGrid.Columns>
-        </DataGrid>
-      </StackPanel>
-    </Expander>
-
-    <Expander Classes="section" IsExpanded="True" AutomationProperties.Name="Words section"
-              IsVisible="{Binding Assess.Words.HasAny}">
-      <Expander.Header>
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Classes="section-title" Text="Words" />
-          <TextBlock Classes="section-count" Text="{Binding Assess.Words.CountSummary}" />
-        </StackPanel>
-      </Expander.Header>
-      <StackPanel Spacing="6">
-        <TextBlock Classes="muted"
-                   Text="Select a word to see its readings. Try a Word opens it in FieldWorks' Word Analyses; then choose Parser ▸ Try a Word and the word is already entered."
-                   TextWrapping="Wrap" />
-        <Grid ColumnDefinitions="*,*,2*" ColumnSpacing="6">
+    <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" RowSpacing="8"
+          IsVisible="{Binding Assess.Words.HasAny}">
+      <TextBlock Classes="muted"
+                 Text="Select a word to see its readings. Try a Word opens it in FieldWorks' Word Analyses; then choose Parser &#9656; Try a Word and the word is already entered."
+                 TextWrapping="Wrap" />
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,2*" ColumnSpacing="6">
           <TextBox Grid.Column="0" Text="{Binding Assess.Words.WordFilter}"
                    PlaceholderText="Word..." AutomationProperties.Name="Filter words by word" />
           <TextBox Grid.Column="1" Text="{Binding Assess.Words.ResultFilter}"
@@ -187,8 +95,7 @@
           <TextBox Grid.Column="2" Text="{Binding Assess.Words.ReadingFilter}"
                    PlaceholderText="Reading (form or gloss)..." AutomationProperties.Name="Filter words by reading" />
         </Grid>
-        <DataGrid ItemsSource="{Binding Assess.Words.Rows}"
-                  MaxHeight="360"
+        <DataGrid Grid.Row="2" ItemsSource="{Binding Assess.Words.Rows}"
                   IsReadOnly="True"
                   CanUserSortColumns="True"
                   CanUserResizeColumns="True"
@@ -279,8 +186,6 @@
             </DataTemplate>
           </DataGrid.RowDetailsTemplate>
         </DataGrid>
-      </StackPanel>
-    </Expander>
-
-  </StackPanel>
+    </Grid>
+  </Grid>
 </UserControl>

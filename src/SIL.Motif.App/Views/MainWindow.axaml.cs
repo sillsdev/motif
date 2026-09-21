@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
 
@@ -30,11 +31,15 @@ public sealed partial class MainWindow : Window
         DataContext = workspace;
 
         Host("ProjectHost").Content = new ProjectPanel(workspace.Project, workspace.Baseline);
+        Host("GrammarHost").Content = new GrammarPanel(workspace.Assess);
         Host("SelectionHost").Content = new SelectionPanel(workspace.Selection);
         Host("AssessHost").Content = new AssessPanel(workspace.Assess);
         Host("StatisticsHost").Content = new StatisticsPanel(workspace.Statistics);
         Host("HandoffHost").Content = new HandoffPanel(workspace.Handoff);
     }
+
+    private void OnChangeProjectClick(object? sender, RoutedEventArgs e) =>
+        this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
 
     // Looked up by name rather than a generated field, so this never depends on the compiler's own codegen.
     private ContentControl Host(string name) =>

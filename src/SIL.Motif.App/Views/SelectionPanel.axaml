@@ -7,7 +7,10 @@
              x:DataType="views:SelectionPanel">
   <StackPanel Spacing="8" Margin="24">
 
-    <TextBlock Classes="stage-title" Text="Selection" />
+    <StackPanel Spacing="4">
+      <TextBlock Classes="stage-title" Text="Texts" />
+      <TextBlock Text="{Binding Selection.SummaryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+    </StackPanel>
 
     <TextBox PlaceholderText="Search texts..."
              Text="{Binding Selection.SearchText}"

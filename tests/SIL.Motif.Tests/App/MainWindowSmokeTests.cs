@@ -155,7 +155,8 @@ public sealed class MainWindowSmokeTests
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>());
                 var sections = panel.GetLogicalDescendants().OfType<Expander>()
                     .Select(AutomationProperties.GetName).Where(name => name?.EndsWith(" section") == true);
-                Assert.Equal(["Run section", "Summary section", "Grammar warnings section", "Words section"], sections);
+                Assert.Equal(["Run section"], sections);
+                Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>());
 
                 Assert.Equal(1, workspace.Assess.GrammarWarnings.TotalCount);
                 Assert.Equal(4, workspace.Assess.Words.TotalCount);
@@ -275,8 +276,10 @@ public sealed class MainWindowSmokeTests
     private static void ShowEveryStage(MainWindow window, HandoffWorkspaceViewModel workspace)
     {
         foreach (var stage in Enum.GetValues<WorkflowStage>())
+        foreach (var view in Enum.GetValues<ResultsView>())
         {
             workspace.CurrentStage = stage;
+            workspace.ResultsView = view;
             window.UpdateLayout();
         }
     }

@@ -10,7 +10,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins the stage rail's state on <see cref="HandoffWorkspaceViewModel"/>: which stage is showing, what each
+/// Pins the stage stepper's state on <see cref="HandoffWorkspaceViewModel"/>: which stage is showing, what each
 /// entry says and whether it counts as done, and the two moves the workspace makes on its own — a run
 /// starting opens Results, and a chosen project reopens Project.
 /// </summary>
@@ -55,19 +55,21 @@ public sealed class WorkflowStageTests
     };
 
     [Fact]
-    public void TheRailListsTheFourStagesInWorkflowOrderAndOpensOnProject()
+    public void TheStepperListsTheFiveStagesInWorkflowOrderAndOpensOnProject()
     {
         var (_, _, workspace) = NewWorkspace();
 
         Assert.Equal(
-            [WorkflowStage.Project, WorkflowStage.Selection, WorkflowStage.Results, WorkflowStage.Handoff],
+            [WorkflowStage.Project, WorkflowStage.Grammar, WorkflowStage.Texts, WorkflowStage.Results,
+                WorkflowStage.Handoff],
             workspace.Stages.Select(stage => stage.Stage));
-        Assert.Equal([1, 2, 3, 4], workspace.Stages.Select(stage => stage.Number));
+        Assert.Equal([1, 2, 3, 4, 5], workspace.Stages.Select(stage => stage.Number));
         Assert.Equal(WorkflowStage.Project, workspace.CurrentStage);
         Assert.True(workspace.IsProjectStage);
         Assert.Equal("Choose a project", workspace.Stages[0].Summary);
-        Assert.Equal("Not run yet", workspace.Stages[2].Summary);
-        Assert.Equal("Not written yet", workspace.Stages[3].Summary);
+        Assert.Equal("Findings appear after the first Assessment", workspace.Stages[1].Summary);
+        Assert.Equal("Not run yet", workspace.Stages[3].Summary);
+        Assert.Equal("Not written yet", workspace.Stages[4].Summary);
     }
 
     [Fact]
@@ -79,16 +81,16 @@ public sealed class WorkflowStageTests
 
         Assert.True(workspace.IsResultsStage);
         Assert.False(workspace.IsProjectStage);
-        Assert.Same(workspace.Stages[2], workspace.SelectedStage);
-        Assert.Equal([false, false, true, false], workspace.Stages.Select(stage => stage.IsCurrent));
+        Assert.Same(workspace.Stages[3], workspace.SelectedStage);
+        Assert.Equal([false, false, false, true, false], workspace.Stages.Select(stage => stage.IsCurrent));
     }
 
     [Fact]
-    public void SelectingARailEntryOpensItsStageAndClearingTheSelectionChangesNothing()
+    public void SelectingAStepperEntryOpensItsStageAndClearingTheSelectionChangesNothing()
     {
         var (_, _, workspace) = NewWorkspace();
 
-        workspace.SelectedStage = workspace.Stages[3];
+        workspace.SelectedStage = workspace.Stages[4];
         workspace.SelectedStage = null!;
 
         Assert.Equal(WorkflowStage.Handoff, workspace.CurrentStage);
@@ -124,23 +126,67 @@ public sealed class WorkflowStageTests
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
-        workspace.ShowStageCommand.Execute(WorkflowStage.Selection);
+        workspace.ShowStageCommand.Execute(WorkflowStage.Texts);
         workspace.Selection.AllWordforms = true;
-        Assert.True(workspace.Stages[1].IsDone);
+        Assert.True(workspace.Stages[2].IsDone);
         fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
 
         var running = workspace.Assess.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(WorkflowStage.Results, workspace.CurrentStage);
-        Assert.Equal("Running...", workspace.Stages[2].Summary);
+        Assert.Equal("Running...", workspace.Stages[3].Summary);
         workspace.Assess.CancelCommand.Execute(null);
         await running;
 
         fake.AssessCompletesWith(NewAssessResponse());
         await workspace.Assess.RunCommand.ExecuteAsync(null);
 
-        Assert.True(workspace.Stages[2].IsDone);
-        Assert.Equal("3 searches completed", workspace.Stages[2].Summary);
+        Assert.True(workspace.Stages[3].IsDone);
+        Assert.Equal("3 searches completed", workspace.Stages[3].Summary);
+        Assert.Equal("No findings", workspace.Stages[1].Summary);
+        Assert.True(workspace.Stages[1].IsDone);
+    }
+
+    [Fact]
+    public async Task ARunStartingReturnsResultsToItsWordsView()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        workspace.ShowResultsViewCommand.Execute(ResultsView.Statistics);
+        Assert.True(workspace.ShowResultsStatistics);
+        Assert.False(workspace.ShowResultsWords);
+        fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
+
+        var running = workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        Assert.True(workspace.ShowResultsWords);
+        workspace.Assess.CancelCommand.Execute(null);
+        await running;
+    }
+
+    [Fact]
+    public async Task TheGrammarEntryCountsTheFindingsOfACompletedAssessment()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        var plain = NewAssessResponse();
+        fake.AssessCompletesWith(new AssessCommandResponse(plain.Baseline, plain.Selection, [], "summary")
+        {
+            InvocationId = "invocation/one",
+            GrammarWarningDetails =
+            [
+                new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped"),
+            ],
+        });
+
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        Assert.Equal("1", workspace.Stages[1].Badge);
+        Assert.True(workspace.Stages[1].HasBadge);
+        Assert.Equal("1 finding(s)", workspace.Stages[1].Summary);
+        Assert.Equal(string.Empty, workspace.Assess.GrammarStatusText);
     }
 
     [Fact]
@@ -152,10 +198,10 @@ public sealed class WorkflowStageTests
         Assert.True(workspace.Stages[0].IsCurrent);
         Assert.False(workspace.Stages[0].ShowsCheck);
 
-        workspace.ShowStageCommand.Execute(WorkflowStage.Selection);
+        workspace.ShowStageCommand.Execute(WorkflowStage.Texts);
 
         Assert.True(workspace.Stages[0].ShowsCheck);
-        Assert.False(workspace.Stages[1].ShowsCheck);
+        Assert.False(workspace.Stages[2].ShowsCheck);
     }
 
     [Fact]
@@ -169,7 +215,7 @@ public sealed class WorkflowStageTests
 
         Assert.Equal("Write Handoff again", workspace.HandoffActionText);
         Assert.Equal("Written: 1 file(s)", workspace.HandoffStatusText);
-        Assert.True(workspace.Stages[3].IsDone);
+        Assert.True(workspace.Stages[4].IsDone);
     }
 
     private sealed class FakeProjectPicker : IProjectPicker
