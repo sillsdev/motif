@@ -25,7 +25,17 @@ public sealed record GrammarWarning(
     string Kind,
     IReadOnlyList<GrammarWarningPart> Subject,
     IReadOnlyList<GrammarWarningPart> Problem,
-    string Text);
+    string Text)
+{
+    /// <summary>
+    /// The parser's own plain-language name for this kind of finding, such as "Partial morpheme analysis", or
+    /// <see langword="null"/> when the parser gave it none. Findings with the same name belong together.
+    /// </summary>
+    public string? Group { get; init; }
+
+    /// <summary>The parser's stable code for this kind of finding, or <see langword="null"/> when it gave none.</summary>
+    public string? Code { get; init; }
+}
 
 /// <summary>
 /// One run of a <see cref="GrammarWarning"/>'s text: plain prose, a quoted value the parser echoed, or a

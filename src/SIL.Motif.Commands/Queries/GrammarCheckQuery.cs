@@ -5,7 +5,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
+using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
@@ -80,8 +82,7 @@ public static class GrammarCheckQuery
             IReadOnlyList<GrammarHealthFindingJson> findings;
             try
             {
-                findings = JsonSerializer.Deserialize<IReadOnlyList<GrammarHealthFindingJson>>(
-                    completed.Output, JsonOptions) ?? throw new JsonException("Missing findings array.");
+                findings = ReadFindings(completed.Output);
             }
             catch (JsonException exception)
             {
@@ -98,7 +99,7 @@ public static class GrammarCheckQuery
                 .Where(line => line.StartsWith("warning:", StringComparison.OrdinalIgnoreCase) ||
                     line.StartsWith("capability:", StringComparison.OrdinalIgnoreCase)).ToArray();
             var loadWarnings = GrammarWarningReader.Read(cache, projectName, warningLines);
-            var healthFindings = findings.Select(ToGrammarWarning).ToArray();
+            var healthFindings = findings.Select(finding => ToGrammarWarning(cache, projectName, finding)).ToArray();
 
             var response = new GrammarCheckResponse([.. loadWarnings, .. healthFindings], HasBaseline: true);
             if (stamp is not null) WriteCache(cachePath, stamp, response);
@@ -145,16 +146,46 @@ public static class GrammarCheckQuery
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    // Subjects carry pg-grammar's own internal indices, never a FieldWorks GUID, so they stay plain text.
-    private static GrammarWarning ToGrammarWarning(GrammarHealthFindingJson finding)
+    // Older parsers write a bare array; newer ones wrap it as {"schema_version", "findings"}.
+    private static IReadOnlyList<GrammarHealthFindingJson> ReadFindings(string output)
+    {
+        using var document = JsonDocument.Parse(output);
+        var root = document.RootElement;
+        var array = root.ValueKind == JsonValueKind.Array ? root
+            : root.ValueKind == JsonValueKind.Object && root.TryGetProperty("findings", out var wrapped) &&
+              wrapped.ValueKind == JsonValueKind.Array ? wrapped
+            : throw new JsonException("Missing findings array.");
+        return array.Deserialize<IReadOnlyList<GrammarHealthFindingJson>>(JsonOptions)
+            ?? throw new JsonException("Missing findings array.");
+    }
+
+    // A subject the parser identifies by FieldWorks GUID links there; one it names only by index stays text.
+    private static GrammarWarning ToGrammarWarning(LcmCache cache, string projectName, GrammarHealthFindingJson finding)
     {
         var subject = (finding.Subjects ?? Array.Empty<GrammarHealthSubjectJson>())
-            .Where(part => !string.IsNullOrEmpty(part.Name))
-            .Select(part => new GrammarWarningPart(part.Name!, "text"))
+            .Where(part => !string.IsNullOrEmpty(part.Title ?? part.Name))
+            .Select(part => SubjectPart(cache, projectName, part))
             .ToArray();
-        var problem = new[] { new GrammarWarningPart(finding.Message ?? string.Empty, "text") };
-        var text = $"{finding.Severity}: {finding.Code}: {finding.Message}";
-        return new GrammarWarning(finding.Severity ?? string.Empty, ReadableCode(finding.Code), subject, problem, text);
+        var message = finding.Problem ?? finding.Message ?? string.Empty;
+        var problem = new[] { new GrammarWarningPart(message, "text") };
+        var text = $"{finding.Severity}: {finding.Code}: {message}";
+        return new GrammarWarning(finding.Severity ?? string.Empty, ReadableCode(finding.Code), subject, problem, text)
+        {
+            Group = finding.GroupName is { Length: > 0 } group ? group : null,
+            Code = finding.Code,
+        };
+    }
+
+    private static GrammarWarningPart SubjectPart(LcmCache cache, string projectName, GrammarHealthSubjectJson part)
+    {
+        var title = part.Subtitle is { Length: > 0 } subtitle ? $"{part.Title ?? part.Name} ({subtitle})" : (part.Title ?? part.Name)!;
+        var link = part.FieldWorks?.Url;
+        if (link is null && Guid.TryParse(part.FieldWorks?.Guid, out var guid) &&
+            cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out var found))
+            link = FieldWorksLinks.For(cache, projectName, found);
+        return link is null
+            ? new GrammarWarningPart(title, "text")
+            : new GrammarWarningPart(title, "object", part.FieldWorks?.Guid, part.Kind, link);
     }
 
     // "hc-undeclared-segment" -> "Undeclared segment": humanises PanGloss's stable wire code for display.
@@ -169,9 +200,18 @@ public static class GrammarCheckQuery
     }
 
     private sealed record GrammarHealthFindingJson(
-        string? Severity, string? Code, string? Message, IReadOnlyList<GrammarHealthSubjectJson>? Subjects);
+        string? Severity,
+        string? Code,
+        [property: JsonPropertyName("group_name")] string? GroupName,
+        string? Problem,
+        string? Message,
+        IReadOnlyList<GrammarHealthSubjectJson>? Subjects);
 
-    private sealed record GrammarHealthSubjectJson(string? Kind, string? Name);
+    private sealed record GrammarHealthSubjectJson(
+        string? Kind, string? Name, string? Title, string? Subtitle,
+        [property: JsonPropertyName("fieldworks")] GrammarHealthLinkJson? FieldWorks);
+
+    private sealed record GrammarHealthLinkJson(string? Guid, string? Tool, string? Url);
 
     private static Refusal Cancelled(string projectPath) => new(
         "grammarcheck.cancelled", FailureReason.Cancelled, "The grammar check was cancelled.",

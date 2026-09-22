@@ -16,12 +16,29 @@ public sealed class PanGlossExecutableTests : IDisposable
     }
 
     [Fact]
-    public void BundledParserIsPreferredToDevelopmentFallback()
+    public void InsideACheckoutTheSiblingBuildBeatsABundledParser()
+    {
+        var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
+        var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;
+        Touch(Path.Combine(applicationDirectory, "pangloss.exe"));
+        var beside = Touch(DevelopmentParserPath(repositoryRoot));
+
+        var result = PanGlossExecutable.TryLocate(
+            configuredPath: null,
+            applicationDirectory: applicationDirectory,
+            fileName: "pangloss.exe",
+            repositoryRoot: repositoryRoot);
+
+        // Local work runs the parser being built beside Motif, never a pinned copy left in the output folder.
+        Assert.Equal(Path.GetFullPath(beside), result);
+    }
+
+    [Fact]
+    public void InsideACheckoutWithNoSiblingBuildTheBundledParserIsUsed()
     {
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
         var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;
         var bundled = Touch(Path.Combine(applicationDirectory, "pangloss.exe"));
-        Touch(DevelopmentParserPath(repositoryRoot));
 
         var result = PanGlossExecutable.TryLocate(
             configuredPath: null,
@@ -68,7 +85,7 @@ public sealed class PanGlossExecutableTests : IDisposable
     }
 
     [Fact]
-    public void DevelopmentFallbackIsUsedWhenTheBundleIsAbsent()
+    public void TheSiblingBuildIsUsedWhenTheBundleIsAbsent()
     {
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
         var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;

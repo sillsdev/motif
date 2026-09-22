@@ -16,8 +16,8 @@ public static class PanGlossExecutable
     /// <summary>
     /// Returns the executable's path, or <c>null</c> when it cannot be found. A configured override is
     /// authoritative: when it is set but missing, discovery stops instead of silently selecting another
-    /// parser. Otherwise the bundled executable beside the application is preferred to the development
-    /// checkout fallback.
+    /// parser. Inside a Motif checkout the sibling PanGloss build wins, so local work always runs the parser
+    /// beside it rather than a pinned copy; a shipped Motif has no checkout, so it uses the bundled one.
     /// </summary>
     public static string? TryLocate()
     {
@@ -28,20 +28,19 @@ public static class PanGlossExecutable
             TryFindRepositoryRoot());
     }
 
-    /// <summary>Resolves a parser from explicit configuration, an application directory, or a repository.</summary>
+    /// <summary>Resolves a parser from explicit configuration, a sibling checkout, or the application directory.</summary>
     internal static string? TryLocate(
         string? configuredPath, string applicationDirectory, string fileName, string? repositoryRoot)
     {
         if (!string.IsNullOrWhiteSpace(configuredPath))
             return ExistingFile(configuredPath);
 
-        var bundled = ExistingFile(Path.Combine(applicationDirectory, fileName));
-        if (bundled is not null) return bundled;
+        if (repositoryRoot is not null &&
+            ExistingFile(Path.Combine(repositoryRoot, "..", "PanGloss", "rust", "target", "release", fileName))
+                is { } beside)
+            return beside;
 
-        if (repositoryRoot is null) return null;
-
-        return ExistingFile(Path.Combine(
-            repositoryRoot, "..", "PanGloss", "rust", "target", "release", fileName));
+        return ExistingFile(Path.Combine(applicationDirectory, fileName));
     }
 
     private static string? ExistingFile(string path) =>

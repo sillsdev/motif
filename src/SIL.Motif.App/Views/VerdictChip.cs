@@ -3,6 +3,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -56,6 +57,20 @@ public sealed class VerdictChip : Border
         set => SetValue(CompactProperty, value);
     }
 
+    // Inside a button the button owns the pointer, so the chip's words are plain there and selectable elsewhere.
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        var insideButton = this.FindAncestorOfType<Button>() is not null;
+        if (insideButton == _insideButton) return;
+        _insideButton = insideButton;
+        Rebuild();
+    }
+
+    private bool _insideButton;
+
+    private TextBlock Words(string text) => _insideButton ? new TextBlock { Text = text } : new CopyableTextBlock { Text = text };
+
     private void Rebuild()
     {
         foreach (var name in new[] { "agrees", "differs", "new", "noresult", "limit", "several" }) Classes.Remove(name);
@@ -63,13 +78,11 @@ public sealed class VerdictChip : Border
         Classes.Set("compact", Compact);
 
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        row.Children.Add(new CopyableTextBlock
-        {
-            Text = Verdicts.GlyphOf(Verdict),
-            FontWeight = FontWeight.Bold,
-            IsHitTestVisible = false,
-        });
-        if (Text is { Length: > 0 } text) row.Children.Add(new CopyableTextBlock { Text = text });
+        var glyph = Words(Verdicts.GlyphOf(Verdict));
+        glyph.FontWeight = FontWeight.Bold;
+        glyph.IsHitTestVisible = false;
+        row.Children.Add(glyph);
+        if (Text is { Length: > 0 } text) row.Children.Add(Words(text));
         Child = row;
         AutomationProperties.SetName(this, Text is { Length: > 0 } label ? label : Verdicts.LegendOf(Verdict));
     }

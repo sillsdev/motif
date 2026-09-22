@@ -82,6 +82,37 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void TheWrappedFindingsShapeCarriesTheParsersGroupNameAndLinksSubjectsByGuid()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var entryGuid = _pristine.Seed.FirstEntryId.ToString("D");
+        Capture(fwDataPath);
+        // The shape a newer parser writes: an envelope, "problem" for the sentence, and titled subjects.
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(
+                "{\"schema_version\":1,\"findings\":[{\"severity\":\"warning\",\"code\":\"hc-partial-morpheme\"," +
+                "\"group_name\":\"Partial morpheme analysis\",\"problem\":\"Lexical entry 'mbo - ADD' is partially analyzed.\"," +
+                "\"subjects\":[{\"kind\":\"lex_entry\",\"title\":\"mbo - ADD\",\"subtitle\":null,\"internal_id\":\"lex_entry#34\"," +
+                "\"fieldworks\":{\"guid\":\"" + entryGuid + "\",\"tool\":\"lexiconEdit\",\"url\":null," +
+                "\"url_unavailable\":\"no FieldWorks project name supplied\"}}]}]}",
+                string.Empty, TimeSpan.Zero),
+        };
+
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var finding = Assert.Single(outcome.Value!.Findings);
+        Assert.Equal("Partial morpheme analysis", finding.Group);
+        Assert.Equal("hc-partial-morpheme", finding.Code);
+        Assert.Contains("partially analyzed", finding.Problem.Single().Text, StringComparison.Ordinal);
+        var subject = Assert.Single(finding.Subject);
+        Assert.Equal("mbo - ADD", subject.Text);
+        Assert.Equal("object", subject.Role);
+        Assert.StartsWith("silfw://", subject.FieldWorksLink, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ASecondCheckOfTheSameBaselineByTheSameParserAnswersFromTheCacheWithoutRunningIt()
     {
         var fwDataPath = _pristine.CopyProjectFile();

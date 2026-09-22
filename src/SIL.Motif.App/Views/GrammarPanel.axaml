@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.GrammarPanel"
@@ -14,6 +15,17 @@
     </Style>
     <Style Selector=":is(TextBlock).severity.capability">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Button.findingGroup">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="8,6" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.findingGroup.chosen">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
     </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,*" Margin="24" RowSpacing="12">
@@ -62,14 +74,76 @@
         <views:CopyableTextBlock Classes="muted" Text="The parser loaded the grammar without warnings." HorizontalAlignment="Center" />
       </StackPanel>
 
-      <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8" IsVisible="{Binding Grammar.ShowFindings}">
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <views:CopyableTextBlock Classes="section-title" Text="Findings" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
-          <Button Content="Reload grammar"
+      <Grid RowDefinitions="Auto,*" RowSpacing="10" IsVisible="{Binding Grammar.ShowFindings}">
+        <DockPanel LastChildFill="False">
+          <WrapPanel DockPanel.Dock="Left">
+            <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}" />
+            <views:FilterChip Label="Left out of the grammar" Count="{Binding Grammar.Warnings.LeftOutCount}" Verdict="Differs"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.LeftOut}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.LeftOut}" />
+            <views:FilterChip Label="Worth a look" Count="{Binding Grammar.Warnings.WorthALookCount}" Verdict="Limit"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.WorthALook}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.WorthALook}" />
+          </WrapPanel>
+          <Button DockPanel.Dock="Right" Content="Reload grammar"
                   Command="{Binding Grammar.CheckCommand}"
                   AutomationProperties.Name="Check the grammar again" />
-        </StackPanel>
+          <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Margin="0,0,12,0" VerticalAlignment="Center"
+                     Text="Findings never block an Assessment." />
+        </DockPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="320,*" ColumnSpacing="16">
+
+          <!-- Left: every kind of finding, the ones where the parser left something out first. -->
+          <ScrollViewer Grid.Column="0">
+            <StackPanel Spacing="2">
+              <views:CopyableTextBlock Classes="muted" FontSize="12" FontWeight="SemiBold" Margin="8,4,0,2"
+                         Text="{Binding Grammar.Warnings.LeftOutCount, StringFormat='LEFT OUT OF THE GRAMMAR · {0}'}"
+                         IsVisible="{Binding Grammar.Warnings.HasLeftOutGroups}" />
+              <ItemsControl ItemsSource="{Binding Grammar.Warnings.LeftOutGroups}" IsVisible="{Binding Grammar.Warnings.HasLeftOutGroups}"
+                            AutomationProperties.Name="Kinds of finding left out of the grammar">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
+                    <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
+                            Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.SelectGroupCommand}"
+                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
+                      <DockPanel>
+                        <views:VerdictChip DockPanel.Dock="Right" Verdict="{Binding Meaning}" Text="{Binding Count}" Compact="True" />
+                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" Margin="0,0,8,0" VerticalAlignment="Center" />
+                      </DockPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <views:CopyableTextBlock Classes="muted" FontSize="12" FontWeight="SemiBold" Margin="8,12,0,2"
+                         Text="{Binding Grammar.Warnings.WorthALookCount, StringFormat='WORTH A LOOK · {0}'}"
+                         IsVisible="{Binding Grammar.Warnings.HasWorthALookGroups}" />
+              <ItemsControl ItemsSource="{Binding Grammar.Warnings.WorthALookGroups}" IsVisible="{Binding Grammar.Warnings.HasWorthALookGroups}"
+                            AutomationProperties.Name="Kinds of finding worth a look">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
+                    <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
+                            Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.SelectGroupCommand}"
+                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
+                      <DockPanel>
+                        <views:VerdictChip DockPanel.Dock="Right" Verdict="{Binding Meaning}" Text="{Binding Count}" Compact="True" />
+                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" Margin="0,0,8,0" VerticalAlignment="Center" />
+                      </DockPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- Right: the chosen kind's findings, each with the objects it names linked into FieldWorks. -->
+          <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <views:CopyableTextBlock Classes="section-title" Text="{Binding Grammar.Warnings.SelectedGroupTitle}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
+            </StackPanel>
         <Grid Grid.Row="1" ColumnDefinitions="110,150,*,2*" ColumnSpacing="6">
           <TextBox Grid.Column="0" Text="{Binding Grammar.Warnings.SeverityFilter}"
                    PlaceholderText="Severity..." AutomationProperties.Name="Filter grammar warnings by severity" />
@@ -129,6 +203,8 @@
             </DataGridTemplateColumn>
           </DataGrid.Columns>
         </DataGrid>
+          </Grid>
+        </Grid>
       </Grid>
     </Panel>
   </Grid>
