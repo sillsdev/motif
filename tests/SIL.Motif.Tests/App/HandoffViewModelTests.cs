@@ -51,6 +51,28 @@ public sealed class HandoffViewModelTests
         NewResponse(outputDirectory) with { PastedHeader = pastedHeader, HandoffMarkdown = handoffMarkdown };
 
     [Fact]
+    public async Task FilesWrittenBeforeTheLatestAssessmentSayTheyAreOutOfDate()
+    {
+        var (fake, _, handoff) = NewViewModel();
+        fake.HandoffCompletesWith(NewResponse(@"C:\out", "handoff.md"));
+        handoff.InvocationId = "assessment/one";
+
+        await handoff.RunCommand.ExecuteAsync(null);
+
+        Assert.True(handoff.HasCompletedFiles);
+        Assert.StartsWith("Last written", handoff.WrittenAtText, StringComparison.Ordinal);
+        Assert.False(handoff.IsOutOfDate);
+
+        // An Assessment that finished before the write leaves the files current.
+        handoff.LatestAssessmentAt = handoff.WrittenAt!.Value.AddMinutes(-5);
+        Assert.False(handoff.IsOutOfDate);
+
+        handoff.LatestAssessmentAt = handoff.WrittenAt!.Value.AddMinutes(35);
+        Assert.True(handoff.IsOutOfDate);
+        Assert.Contains("Write the Handoff again", handoff.OutOfDateText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task BackingOutOfTheFolderDialogLeavesStateIdleAndNeverCallsHandoff()
     {
         var (fake, _, handoff) = NewViewModel(folder: null);

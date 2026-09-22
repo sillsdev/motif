@@ -33,6 +33,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private IReadOnlyList<TraceCandidateViewModel> _candidates = [];
     private IReadOnlyList<TraceAnalysisViewModel> _analyses = [];
     private IReadOnlyList<TraceStepViewModel> _filteredRoots = [];
+    private IReadOnlyList<TraceStopGroupViewModel> _stopGroups = [];
     private string? _diagnosticJson;
 
     public TraceWordViewModel(ICommandClient? commandClient = null)
@@ -41,6 +42,10 @@ public sealed partial class TraceWordViewModel : ObservableObject
         TryCommand = new AsyncRelayCommand(TryAsync, () => _projectPath is not null && WordToTry.Trim().Length > 0);
         SetViewCommand = new RelayCommand<TraceView>(view => View = view);
         CancelCommand = new RelayCommand(CancelRunning, () => IsLoading);
+        // Choosing the group already in force clears the filter, so one control both narrows and widens.
+        SelectStopGroupCommand = new RelayCommand<TraceStopGroupViewModel?>(group =>
+            SelectedStopGroup = ReferenceEquals(group, SelectedStopGroup) ? null : group);
+        ShowEveryAttemptCommand = new RelayCommand(() => ShowEveryAttempt = true);
     }
 
     [ObservableProperty]
@@ -91,7 +96,10 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(Analyses));
         OnPropertyChanged(nameof(HasAnalyses));
         OnPropertyChanged(nameof(FailedAttemptCount));
+        RebuildStopGroups();
         OnPropertyChanged(nameof(SearchStatusText));
+        OnPropertyChanged(nameof(AnswerText));
+        OnPropertyChanged(nameof(AnswerVerdict));
         OnPropertyChanged(nameof(ProvenanceWarning));
         OnPropertyChanged(nameof(HasProvenanceWarning));
         OnPropertyChanged(nameof(WritingSystemSummary));
@@ -146,6 +154,112 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public bool HasAnalyses => _analyses.Count > 0;
 
     public int FailedAttemptCount => _candidates.Count(candidate => candidate.IsFailure);
+
+    /// <summary>Whether the word parsed, as the one word a reader wants before anything else.</summary>
+    public string AnswerText => Result is not { } result ? string.Empty
+        : result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "Did not parse";
+
+    /// <summary>The colour that answer wears: the same green and amber every other stage uses.</summary>
+    public Verdict AnswerVerdict => Result is { Parsed: true } ? Verdict.Agrees
+        : Result is { Complete: false } ? Verdict.Limit
+        : Verdict.NoResult;
+
+    /// <summary>The rules that stopped the failed attempts, the busiest first; empty when nothing failed.</summary>
+    public IReadOnlyList<TraceStopGroupViewModel> StopGroups => _stopGroups;
+
+    public bool HasStopGroups => _stopGroups.Count > 0;
+
+    /// <summary>One line over the groups: how many rules account for how many attempts.</summary>
+    public string StopGroupsSummary
+    {
+        get
+        {
+            if (_stopGroups.Count == 0) return string.Empty;
+            var attempts = _stopGroups.Sum(group => group.Count);
+            var rules = _stopGroups.Count == 1 ? "1 rule" : $"{_stopGroups.Count} rules";
+            var tries = attempts == 1 ? "1 attempt" : $"{attempts:N0} attempts";
+            return $"{rules} stopped all {tries} · choose one to see only its attempts";
+        }
+    }
+
+    /// <summary>The group whose attempts are shown, or <see langword="null"/> for every failed attempt.</summary>
+    [ObservableProperty]
+    private TraceStopGroupViewModel? _selectedStopGroup;
+
+    partial void OnSelectedStopGroupChanged(TraceStopGroupViewModel? value)
+    {
+        foreach (var group in _stopGroups) group.IsSelected = ReferenceEquals(group, value);
+        ShowEveryAttempt = false;
+        RaiseAttempts();
+    }
+
+    /// <summary>Whether every attempt of the chosen group is listed, rather than the closest few.</summary>
+    [ObservableProperty]
+    private bool _showEveryAttempt;
+
+    partial void OnShowEveryAttemptChanged(bool value) => RaiseAttempts();
+
+    /// <summary>
+    /// The failed attempts worth reading first: those of the chosen group, or all of them, ordered by how
+    /// many morphemes they had assembled, since that is how close they came to building the word.
+    /// </summary>
+    public IReadOnlyList<TraceCandidateViewModel> ClosestAttempts =>
+        [.. MatchingAttempts().Take(ShowEveryAttempt ? int.MaxValue : ClosestShown)];
+
+    public bool HasClosestAttempts => ClosestAttempts.Count > 0;
+
+    /// <summary>What the button under the attempts offers, or empty when they are all on screen.</summary>
+    public string MoreAttemptsText
+    {
+        get
+        {
+            var hidden = MatchingAttempts().Count() - ClosestAttempts.Count;
+            return hidden <= 0 ? string.Empty
+                : SelectedStopGroup is { } group ? $"Show the other {hidden:N0} stopped by {group.RuleText}"
+                : $"Show the other {hidden:N0} attempts";
+        }
+    }
+
+    public bool HasMoreAttempts => MoreAttemptsText.Length > 0;
+
+    /// <summary>Shows every failed attempt of the chosen group instead of the closest few.</summary>
+    public IRelayCommand ShowEveryAttemptCommand { get; }
+
+    /// <summary>Chooses a stopping rule to filter the attempts by; the same one again clears the filter.</summary>
+    public IRelayCommand<TraceStopGroupViewModel?> SelectStopGroupCommand { get; }
+
+    private const int ClosestShown = 3;
+
+    private IEnumerable<TraceCandidateViewModel> MatchingAttempts() => _candidates
+        .Where(candidate => candidate.IsFailure)
+        .Where(candidate => SelectedStopGroup is not { } group || group.Matches(candidate))
+        .OrderByDescending(candidate => candidate.Morphs.Count)
+        .ThenByDescending(candidate => candidate.Steps.Count);
+
+    private void RebuildStopGroups()
+    {
+        _stopGroups = _candidates.Where(candidate => candidate.IsFailure)
+            .GroupBy(candidate => (candidate.StoppedByRule, candidate.FailureReason))
+            .Select(group => new TraceStopGroupViewModel(group.Key.StoppedByRule, group.Key.FailureReason,
+                group.First().Explanation, group.Count()))
+            .OrderByDescending(group => group.Count)
+            .ToArray();
+        var largest = _stopGroups.Count == 0 ? 0 : _stopGroups.Max(group => group.Count);
+        foreach (var group in _stopGroups) group.SetShare(largest);
+        SelectedStopGroup = null;
+        OnPropertyChanged(nameof(StopGroups));
+        OnPropertyChanged(nameof(HasStopGroups));
+        OnPropertyChanged(nameof(StopGroupsSummary));
+        RaiseAttempts();
+    }
+
+    private void RaiseAttempts()
+    {
+        OnPropertyChanged(nameof(ClosestAttempts));
+        OnPropertyChanged(nameof(HasClosestAttempts));
+        OnPropertyChanged(nameof(MoreAttemptsText));
+        OnPropertyChanged(nameof(HasMoreAttempts));
+    }
 
     public IReadOnlyList<TraceStepViewModel> FilteredRoots => _filteredRoots;
 
@@ -601,6 +715,63 @@ public sealed class TraceMorphViewModel
     public string LinkName => $"Open the compatible FieldWorks entry for {Form}";
 }
 
+/// <summary>
+/// One rule that stopped attempts, with how many it stopped: the answer to "why did this word not parse",
+/// before any single attempt is read. A group with no rule holds the attempts that simply ran out.
+/// </summary>
+public sealed partial class TraceStopGroupViewModel : ObservableObject
+{
+    public TraceStopGroupViewModel(string? rule, string? reasonCode, string? explanation, int count)
+    {
+        Rule = rule;
+        ReasonCode = reasonCode;
+        Explanation = explanation;
+        Count = count;
+        RuleText = rule is { Length: > 0 } named ? named : "no rule";
+        ReasonText = explanation is { Length: > 0 } sentence ? sentence
+            : reasonCode is { Length: > 0 } code ? code
+            : "The attempt stopped without a recorded reason.";
+        CountText = count.ToString("N0");
+    }
+
+    /// <summary>The rule as the project names it, or <see langword="null"/> when no rule was to blame.</summary>
+    public string? Rule { get; }
+
+    /// <summary>The parser's own reason code, shown after the sentence for anyone matching it to a trace.</summary>
+    public string? ReasonCode { get; }
+
+    public string? Explanation { get; }
+
+    /// <summary>The rule's name for a heading, reading "no rule" when the attempts simply ran out.</summary>
+    public string RuleText { get; }
+
+    /// <summary>Why this rule stopped them, in the plain language FieldWorks uses where there is one.</summary>
+    public string ReasonText { get; }
+
+    public int Count { get; }
+
+    public string CountText { get; }
+
+    public bool HasRule => Rule is { Length: > 0 };
+
+    /// <summary>How long this group's bar is: 1 for the rule that stopped the most attempts.</summary>
+    public double Share { get; private set; }
+
+    /// <summary>Whether the attempt list is filtered to this group.</summary>
+    [ObservableProperty]
+    private bool _isSelected;
+
+    internal void SetShare(int largest)
+    {
+        Share = largest <= 0 ? 0 : (double)Count / largest;
+        OnPropertyChanged(nameof(Share));
+    }
+
+    internal bool Matches(TraceCandidateViewModel candidate) =>
+        string.Equals(candidate.StoppedByRule, Rule, StringComparison.Ordinal) &&
+        string.Equals(candidate.FailureReason, ReasonCode, StringComparison.Ordinal);
+}
+
 /// <summary>One candidate attempt, kept separate from recorded analyses.</summary>
 public sealed class TraceCandidateViewModel
 {
@@ -669,6 +840,9 @@ public sealed class TraceCandidateViewModel
     public string Text { get; }
     public string Gloss { get; }
     public string StatusText => Succeeded ? "succeeded" : IsFailure ? "failed" : "recorded attempt";
+
+    /// <summary>The shared meaning behind this attempt: it built the word, or a rule stopped it.</summary>
+    public Verdict Meaning => Succeeded ? Verdict.Agrees : IsFailure ? Verdict.Differs : Verdict.Limit;
 }
 
 /// <summary>One row of aggregate parser effort, explicitly separated from selected-step details.</summary>

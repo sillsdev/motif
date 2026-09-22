@@ -1,6 +1,8 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -62,6 +64,13 @@ public sealed class DiagnosticPanelBehaviorTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
                 Assert.Single(model.FilteredRoots);
+                // The full derivation starts closed, under the answer; a reader opens it to reach the tree.
+                var derivation = panel.GetVisualDescendants().OfType<Expander>()
+                    .Single(expander => AutomationProperties.GetName(expander) == "Full derivation tree");
+                derivation.IsExpanded = true;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
                 var tree = panel.FindControl<TreeView>("TreeHost")!;
                 var container = Assert.IsType<TreeViewItem>(tree.ContainerFromIndex(0));
                 Assert.True(container.IsExpanded);

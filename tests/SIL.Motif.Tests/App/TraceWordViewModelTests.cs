@@ -88,6 +88,63 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
+    public async Task FailedAttemptsAreGroupedByTheRuleThatStoppedThem_ClosestFirstAndFilterable()
+    {
+        static TraceCandidate Attempt(string rule, string reason, string surface, int morphs) =>
+            new([.. Enumerable.Range(0, morphs).Select(index => new ParserReadingMorph($"m{index}", "gloss", "v", null, false, null))],
+                Succeeded: false, reason, $"Because of {reason}.", [])
+            {
+                Surface = surface, StoppedByRule = rule, OutcomeStatus = "failed",
+            };
+        var fake = new FakeCommandClient();
+        fake.TraceWordCompletesWith(new WordTraceResponse(
+            "hawajafika", Parsed: false, Complete: true, StopReason: null, StepCount: 9, DeepestRule: null, ElapsedMs: 5,
+            [
+                Attempt("-a", "SurfaceFormMismatch", "hawajafik", 4),
+                Attempt("-a", "SurfaceFormMismatch", "hawajaf", 2),
+                Attempt("-a", "SurfaceFormMismatch", "haw", 1),
+                Attempt("-a", "SurfaceFormMismatch", "ha", 1),
+                Attempt("-ja-", "ObligatorySyntacticFeatures", "hawafika", 3),
+                new TraceCandidate([], Succeeded: true, null, null, []) { Surface = "other" },
+            ],
+            Leaf("WordAnalysis")));
+        var trace = new TraceWordViewModel(fake);
+        trace.SetProjectPath(ProjectPath);
+        trace.WordToTry = "hawajafika";
+
+        await trace.TryCommand.ExecuteAsync(null);
+
+        Assert.Equal("Did not parse", trace.AnswerText);
+        Assert.Equal(Verdict.NoResult, trace.AnswerVerdict);
+        // The busiest rule leads, and the bar is drawn against it.
+        Assert.Equal(["-a", "-ja-"], trace.StopGroups.Select(group => group.RuleText));
+        Assert.Equal([4, 1], trace.StopGroups.Select(group => group.Count));
+        Assert.Equal(1.0, trace.StopGroups[0].Share);
+        Assert.Equal(0.25, trace.StopGroups[1].Share);
+        Assert.Contains("2 rules stopped all 5 attempts", trace.StopGroupsSummary, StringComparison.Ordinal);
+
+        // Unfiltered, the closest three of all five: most morphemes first.
+        Assert.Equal(["hawajafik", "hawafika", "hawajaf"], trace.ClosestAttempts.Select(attempt => attempt.Surface));
+        Assert.Equal("Show the other 2 attempts", trace.MoreAttemptsText);
+
+        trace.SelectStopGroupCommand.Execute(trace.StopGroups[1]);
+        Assert.True(trace.StopGroups[1].IsSelected);
+        Assert.Equal(["hawafika"], trace.ClosestAttempts.Select(attempt => attempt.Surface));
+        Assert.False(trace.HasMoreAttempts);
+
+        trace.SelectStopGroupCommand.Execute(trace.StopGroups[0]);
+        Assert.Equal(3, trace.ClosestAttempts.Count);
+        Assert.Equal("Show the other 1 stopped by -a", trace.MoreAttemptsText);
+        trace.ShowEveryAttemptCommand.Execute(null);
+        Assert.Equal(4, trace.ClosestAttempts.Count);
+
+        // Choosing the group in force again clears the filter.
+        trace.SelectStopGroupCommand.Execute(trace.StopGroups[0]);
+        Assert.Null(trace.SelectedStopGroup);
+        Assert.Equal(3, trace.ClosestAttempts.Count);
+    }
+
+    [Fact]
     public void TheEffortTableShadesEachNumberAgainstTheLargestInItsOwnColumn()
     {
         var rows = TraceEffortViewModel.Table(

@@ -26,36 +26,143 @@
     <Style Selector=":is(TextBlock).succeeded">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
     </Style>
+    <Style Selector="Button.stopGroup">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.stopGroup.chosen">
+      <Setter Property="Background" Value="{DynamicResource SemiColorDangerLight}" />
+    </Style>
   </UserControl.Styles>
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="16" Spacing="12">
-      <StackPanel Spacing="8">
-        <StackPanel Spacing="3">
-          <views:CopyableTextBlock Text="{Binding Result.Word}" FontSize="20" FontWeight="SemiBold"
+      <!-- The answer first: did it parse, then how hard the parser worked. Tools sit behind one menu. -->
+      <StackPanel Spacing="6">
+        <DockPanel LastChildFill="False">
+          <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Result.Word}" FontSize="20" FontWeight="SemiBold"
                      IsVisible="{Binding HasResult}" AutomationProperties.Name="Diagnostic word" />
-          <views:CopyableTextBlock Text="{Binding SummaryText}" Classes="status" TextWrapping="Wrap"
-                     IsVisible="{Binding HasResult}" AutomationProperties.Name="Diagnostic result" />
-          <views:CopyableTextBlock Text="{Binding SearchStatusText}" Classes="status" TextWrapping="Wrap"
-                     IsVisible="{Binding HasResult}" AutomationProperties.Name="Search completeness" />
-          <views:CopyableTextBlock Text="{Binding WritingSystemSummary}" Classes="muted" TextWrapping="Wrap"
-                     IsVisible="{Binding HasResult}" AutomationProperties.Name="Writing system direction and font" />
-          <Expander Header="Capture details" IsExpanded="False" IsVisible="{Binding HasCaptureDetails}"
-                    AutomationProperties.Name="Diagnostic capture details">
-            <views:CopyableTextBlock Text="{Binding CaptureDetails}" Classes="muted" TextWrapping="Wrap" />
-          </Expander>
-          <views:CopyableTextBlock Text="{Binding ProvenanceWarning}" Classes="failed" TextWrapping="Wrap"
-                     IsVisible="{Binding HasProvenanceWarning}" AutomationProperties.Name="Diagnostic provenance warning" />
-          <views:CopyableTextBlock Text="Standalone diagnostic: recorded evidence only; live FieldWorks navigation is unavailable."
-                     Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsStandalone}" />
+          <views:VerdictChip DockPanel.Dock="Left" Margin="10,0,0,0" Verdict="{Binding AnswerVerdict}" Text="{Binding AnswerText}"
+                             IsVisible="{Binding HasResult}" />
+          <Button DockPanel.Dock="Right" Content="&#x22ef;" FontSize="16" Padding="10,2"
+                  AutomationProperties.Name="Diagnostic tools">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Spacing="4" MinWidth="240">
+                  <Button Content="Copy for a chat model" Click="OnCopyInstructionsClick" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Copy AI diagnostic instructions" />
+                  <Button Content="Save diagnostic JSON..." Click="OnSaveClick" IsEnabled="{Binding HasDiagnosticJson}"
+                          HorizontalAlignment="Stretch" AutomationProperties.Name="Save full diagnostic JSON" />
+                  <Button Content="Copy diagnostic JSON" Click="OnCopyJsonClick" IsEnabled="{Binding HasDiagnosticJson}"
+                          HorizontalAlignment="Stretch" AutomationProperties.Name="Copy full diagnostic JSON" />
+                  <Button Content="Open a saved diagnostic..." Click="OnOpenClick" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Open a diagnostic JSON file" />
+                  <views:CopyableTextBlock Text="{Binding CaptureDetails}" Classes="muted" TextWrapping="Wrap" FontSize="11"
+                             IsVisible="{Binding HasCaptureDetails}" AutomationProperties.Name="Diagnostic capture details" />
+                  <views:CopyableTextBlock Text="{Binding WritingSystemSummary}" Classes="muted" TextWrapping="Wrap" FontSize="11"
+                             IsVisible="{Binding HasResult}" AutomationProperties.Name="Writing system direction and font" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+        </DockPanel>
+        <views:CopyableTextBlock Text="{Binding SummaryText}" Classes="muted" TextWrapping="Wrap"
+                   IsVisible="{Binding HasResult}" AutomationProperties.Name="Diagnostic result" />
+        <views:CopyableTextBlock Text="{Binding SearchStatusText}" Classes="status" TextWrapping="Wrap"
+                   IsVisible="{Binding HasStopReason}" AutomationProperties.Name="Search completeness" />
+        <views:CopyableTextBlock Text="{Binding ProvenanceWarning}" Classes="failed" TextWrapping="Wrap"
+                   IsVisible="{Binding HasProvenanceWarning}" AutomationProperties.Name="Diagnostic provenance warning" />
+        <views:CopyableTextBlock Text="Standalone diagnostic: recorded evidence only; live FieldWorks navigation is unavailable."
+                   Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsStandalone}" />
+      </StackPanel>
+
+      <!-- Why it did not parse: every failed attempt grouped by the rule that stopped it. -->
+      <Border Classes="card" IsVisible="{Binding HasStopGroups}" AutomationProperties.Name="Why it did not parse">
+        <StackPanel Spacing="6">
+          <DockPanel LastChildFill="False">
+            <views:CopyableTextBlock DockPanel.Dock="Left" Text="Why it did not parse" FontSize="15" FontWeight="SemiBold" />
+            <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" FontSize="12" VerticalAlignment="Center"
+                       Text="{Binding StopGroupsSummary}" />
+          </DockPanel>
+          <ItemsControl ItemsSource="{Binding StopGroups}" AutomationProperties.Name="Rules that stopped attempts">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TraceStopGroupViewModel">
+                <Button Classes="stopGroup" Classes.chosen="{Binding IsSelected}" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch" Margin="0,1"
+                        Command="{Binding $parent[UserControl].((vm:TraceWordViewModel)DataContext).SelectStopGroupCommand}"
+                        CommandParameter="{Binding}"
+                        AutomationProperties.Name="{Binding RuleText}">
+                  <Grid ColumnDefinitions="190,*,86" ColumnSpacing="12">
+                    <TextBlock Text="{Binding RuleText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding ReasonText}" TextWrapping="Wrap" FontSize="12"
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                      <ProgressBar Width="34" Height="6" Minimum="0" Maximum="1" Value="{Binding Share}"
+                                   IsHitTestVisible="False" />
+                      <TextBlock Text="{Binding CountText}" FontWeight="SemiBold" />
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
-        <WrapPanel Orientation="Horizontal">
-          <Button Content="Copy JSON" Click="OnCopyJsonClick" IsEnabled="{Binding HasDiagnosticJson}" AutomationProperties.Name="Copy full diagnostic JSON" />
-          <Button Content="Save JSON..." Click="OnSaveClick" IsEnabled="{Binding HasDiagnosticJson}" AutomationProperties.Name="Save full diagnostic JSON" />
-          <Button Content="Copy AI instructions" Click="OnCopyInstructionsClick"
-                  AutomationProperties.Name="Copy AI diagnostic instructions" />
-          <Button Content="Open..." Click="OnOpenClick" AutomationProperties.Name="Open a diagnostic JSON file" />
-        </WrapPanel>
+      </Border>
+
+      <!-- The attempts that came closest, each as its own story. -->
+      <StackPanel Spacing="6" IsVisible="{Binding HasClosestAttempts}">
+        <DockPanel LastChildFill="False">
+          <views:CopyableTextBlock DockPanel.Dock="Left" Text="Closest attempts" FontSize="15" FontWeight="SemiBold" />
+          <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" FontSize="12" VerticalAlignment="Center"
+                     Text="sorted by how many morphemes they had" />
+        </DockPanel>
+        <ItemsControl ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Closest attempts">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TraceCandidateViewModel">
+              <Border Classes="card" Margin="0,0,0,6">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding Surface}" IsVisible="{Binding HasSurface}" />
+                    <views:CopyableTextBlock Classes="muted" FontSize="12" VerticalAlignment="Center"
+                               Text="{Binding Text}" IsVisible="{Binding HasMorphs}" />
+                  </StackPanel>
+                  <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasMorphs}" Separators="True" />
+                  <views:CopyableTextBlock Classes="muted" Text="The parser recorded no morphemes for this attempt."
+                             IsVisible="{Binding !HasMorphs}" FontSize="12" />
+                  <views:CopyableTextBlock Text="{Binding StopHeadline}" Classes="failed" FontWeight="SemiBold"
+                             TextWrapping="Wrap" AutomationProperties.Name="What stopped the attempt" />
+                  <views:CopyableTextBlock Text="{Binding StopReason}" TextWrapping="Wrap" FontSize="12" />
+                  <views:CopyableTextBlock Classes="muted" FontSize="12" Text="{Binding FailureRequired, StringFormat='Required: {0}'}"
+                             IsVisible="{Binding FailureRequired, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                  <views:CopyableTextBlock Classes="muted" FontSize="12" Text="{Binding FailureActual, StringFormat='Actual: {0}'}"
+                             IsVisible="{Binding FailureActual, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                  <views:CopyableTextBlock Classes="muted" FontSize="12" Text="{Binding FailureEnvironment, StringFormat='Environment: {0}'}"
+                             IsVisible="{Binding FailureEnvironment, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                  <Expander Header="Steps on this path" IsExpanded="False" IsVisible="{Binding Steps.Count}">
+                    <ItemsControl ItemsSource="{Binding Steps}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TraceStepViewModel">
+                          <DockPanel Margin="0,1">
+                            <views:CopyableTextBlock DockPanel.Dock="Left" Classes="muted" Width="18" FontSize="11"
+                                       Text="{Binding StatusText}" />
+                            <views:CopyableTextBlock Text="{Binding Label}" FontSize="12" TextWrapping="Wrap" />
+                          </DockPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Expander>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Content="{Binding MoreAttemptsText}" IsVisible="{Binding HasMoreAttempts}"
+                Command="{Binding ShowEveryAttemptCommand}" HorizontalAlignment="Left"
+                AutomationProperties.Name="Show every attempt" />
       </StackPanel>
 
       <views:CopyableTextBlock x:Name="ErrorText" Classes="failed" IsVisible="False" TextWrapping="Wrap"
@@ -125,61 +232,7 @@
         </ItemsControl>
       </StackPanel>
 
-      <Expander Header="{Binding FailedAttemptCount, StringFormat='Failed attempts ({0})'}"
-                IsExpanded="{Binding HasAnalyses, Converter={x:Static conv:BoolConverters.Not}}" AutomationProperties.Name="Failed trace attempts">
-        <ItemsControl ItemsSource="{Binding Candidates}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:TraceCandidateViewModel">
-              <Border Classes="card" Margin="0,0,0,6" IsVisible="{Binding IsFailure}">
-                <StackPanel Spacing="6">
-                  <!-- One failed attempt as a story: what it had built, from which morphemes, and what stopped it. -->
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <views:CopyableTextBlock Text="✗" Classes="failed" FontWeight="Bold" VerticalAlignment="Center" />
-                    <views:CopyableTextBlock Text="{Binding Surface}" IsVisible="{Binding HasSurface}" FontSize="15" FontWeight="SemiBold"
-                               VerticalAlignment="Center" AutomationProperties.Name="Form the attempt had built" />
-                  </StackPanel>
-                  <ItemsControl ItemsSource="{Binding Morphs}" IsVisible="{Binding HasMorphs}"
-                                AutomationProperties.Name="Morphemes the attempt had">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal" />
-                      </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                        <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,1,0"
-                                Padding="0,0,10,0" Margin="0,0,10,4">
-                          <StackPanel Spacing="0">
-                            <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
-                                             Padding="0" FontWeight="SemiBold" AutomationProperties.Name="{Binding LinkName}" />
-                            <views:CopyableTextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontWeight="SemiBold" />
-                            <views:CopyableTextBlock Text="{Binding GlossOrPlaceholder}" />
-                            <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" FontSize="11" />
-                          </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <views:CopyableTextBlock Classes="muted" Text="The parser recorded no morphemes for this attempt."
-                             IsVisible="{Binding !HasMorphs}" />
-                  <views:CopyableTextBlock Text="{Binding StopHeadline}" Classes="failed" FontWeight="SemiBold" TextWrapping="Wrap"
-                             AutomationProperties.Name="What stopped the attempt" />
-                  <views:CopyableTextBlock Text="{Binding StopReason}" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Text="{Binding FailureRequired, StringFormat='Required: {0}'}"
-                             IsVisible="{Binding FailureRequired, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                  <views:CopyableTextBlock Text="{Binding FailureActual, StringFormat='Actual: {0}'}"
-                             IsVisible="{Binding FailureActual, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                  <views:CopyableTextBlock Text="{Binding FailureEnvironment, StringFormat='Environment: {0}'}"
-                             IsVisible="{Binding FailureEnvironment, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                  <views:CopyableTextBlock Text="{Binding SourceIdentity}" Classes="muted" TextWrapping="Wrap" />
-                </StackPanel>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </Expander>
-
-      <Expander Header="Full derivation" IsExpanded="True" AutomationProperties.Name="Full derivation tree">
+      <Expander Header="Full derivation" IsExpanded="False" AutomationProperties.Name="Full derivation tree">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="2*,*,*,Auto" ColumnSpacing="6">
             <TextBox Text="{Binding SearchText}" PlaceholderText="Search all recorded steps..."
@@ -225,15 +278,12 @@
                   <DataTemplate x:DataType="vm:TraceEffortViewModel">
                     <Grid ColumnDefinitions="180,70,70,70,70,*,80" ColumnSpacing="4" Margin="0,1">
                       <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                      <Panel Grid.Column="1" Classes="cell"><Border Classes="heat" Opacity="{Binding WorkHeat}" /><views:CopyableTextBlock Text="{Binding Work}" /></Panel>
-                      <Panel Grid.Column="2" Classes="cell"><Border Classes="heat" Opacity="{Binding UsesHeat}" /><views:CopyableTextBlock Text="{Binding Uses}" /></Panel>
-                      <Panel Grid.Column="3" Classes="cell"><Border Classes="heat" Opacity="{Binding TriedHeat}" /><views:CopyableTextBlock Text="{Binding Tried}" /></Panel>
-                      <Panel Grid.Column="4" Classes="cell"><Border Classes="heat" Opacity="{Binding ProducedHeat}" /><views:CopyableTextBlock Text="{Binding Produced}" /></Panel>
-                      <Panel Grid.Column="5" Classes="cell">
-                        <Border Classes="heat" Opacity="{Binding MissedHeat}" />
-                        <views:CopyableTextBlock Text="{Binding Missed}" TextWrapping="Wrap" HorizontalAlignment="Left" />
-                      </Panel>
-                      <Panel Grid.Column="6" Classes="cell"><Border Classes="heat" Opacity="{Binding TimeHeat}" /><views:CopyableTextBlock Text="{Binding Time}" /></Panel>
+                      <views:HeatCell Grid.Column="1" Text="{Binding Work}" Intensity="{Binding WorkHeat}" />
+                      <views:HeatCell Grid.Column="2" Text="{Binding Uses}" Intensity="{Binding UsesHeat}" />
+                      <views:HeatCell Grid.Column="3" Text="{Binding Tried}" Intensity="{Binding TriedHeat}" />
+                      <views:HeatCell Grid.Column="4" Text="{Binding Produced}" Intensity="{Binding ProducedHeat}" />
+                      <views:HeatCell Grid.Column="5" Text="{Binding Missed}" Intensity="{Binding MissedHeat}" TextAlignment="Left" />
+                      <views:HeatCell Grid.Column="6" Text="{Binding Time}" Intensity="{Binding TimeHeat}" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

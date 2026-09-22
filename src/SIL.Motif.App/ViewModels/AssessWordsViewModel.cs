@@ -183,6 +183,25 @@ public sealed class AssessWordRowViewModel
     /// <summary>Grade against the project's own analyses: Approved, Disapproved, No opinion, Missed, or none available.</summary>
     public string VsProject { get; }
 
+    /// <summary>The shared meaning behind <see cref="VsProject"/>: a missed approved analysis is a no result.</summary>
+    public Verdict Meaning => VsProject switch
+    {
+        "Approved" => Verdict.Agrees,
+        "Disapproved" => Verdict.Differs,
+        "No opinion" => Verdict.New,
+        "Missed" => Verdict.NoResult,
+        _ => Verdict.Limit,
+    };
+
+    /// <summary>The shared meaning behind <see cref="Result"/>: what the parser itself came to.</summary>
+    public Verdict ResultMeaning => Result switch
+    {
+        "Parsed" => Verdict.Agrees,
+        "No parse" => Verdict.NoResult,
+        "Time limit" or "Step limit" or "Skipped" => Verdict.Limit,
+        _ => Verdict.New,
+    };
+
     public IReadOnlyList<ParserReadingViewModel> Readings { get; }
     public bool HasReadings => Readings.Count > 0;
 
@@ -229,6 +248,16 @@ public sealed class ParserReadingViewModel
     public string Text { get; }
 
     public string? Grade { get; }
+
+    /// <summary>The shared meaning behind <see cref="Grade"/>, so a reading is coloured like everything else.</summary>
+    public Verdict Meaning => Grade switch
+    {
+        "approved" => Verdict.Agrees,
+        "disapproved" => Verdict.Differs,
+        "missed" => Verdict.NoResult,
+        _ => Verdict.New,
+    };
+
     public bool IsApproved { get; }
     public bool IsDisapproved { get; }
     public bool IsMissed { get; }

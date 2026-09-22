@@ -317,6 +317,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             Statistics.AssessmentId = Assess.Result?.Measurements
                 .SingleOrDefault(measurement => measurement.Kind == "ObjectTiming")?.AssessmentId;
             Handoff.InvocationId = Assess.Result?.InvocationId;
+            Handoff.LatestAssessmentAt = Assess.CompletedAt;
             HasEverAssessed = true;
         }
     }

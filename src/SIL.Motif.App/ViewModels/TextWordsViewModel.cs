@@ -30,6 +30,18 @@ public enum WordProjectStatus
     SeveralAnalyses,
 }
 
+/// <summary>Reads a Texts status as one of the six meanings every stage shares.</summary>
+public static class WordProjectStatuses
+{
+    /// <summary>Approved agrees with the project, several analyses is neutral, and nothing stored is new.</summary>
+    public static Verdict VerdictOf(WordProjectStatus status) => status switch
+    {
+        WordProjectStatus.Approved => Verdict.Agrees,
+        WordProjectStatus.SeveralAnalyses => Verdict.Several,
+        _ => Verdict.New,
+    };
+}
+
 /// <summary>
 /// Reads the checked Texts' words for the Texts stage: the Words table (one row per distinct form, its
 /// occurrences, and what the project holds for it) and the In Text reader (the Texts read in place, each
@@ -277,6 +289,10 @@ public sealed class TextWordRowViewModel
     public int OccurrenceCount { get; }
     public bool HasApproved { get; }
     public WordProjectStatus Status { get; }
+
+    /// <summary>The shared meaning behind <see cref="Status"/>, so Texts is coloured like every other stage.</summary>
+    public Verdict Verdict => WordProjectStatuses.VerdictOf(Status);
+
     public string StatusLabel { get; }
     public string ProjectSummary { get; }
     public IReadOnlyList<WordOccurrenceRowViewModel> Occurrences { get; }
@@ -422,6 +438,9 @@ public sealed class ReaderTokenViewModel
     public string WordLinkName => $"Open {Text} in FieldWorks";
 
     public WordProjectStatus? Status { get; }
+
+    /// <summary>The shared meaning behind <see cref="Status"/>; punctuation has none.</summary>
+    public Verdict Verdict => Status is { } status ? WordProjectStatuses.VerdictOf(status) : Verdict.Several;
     public ReaderOccurrenceViewModel? Occurrence { get; }
 }
 

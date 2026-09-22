@@ -310,6 +310,22 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool IsNew => Verdict == OccurrenceVerdict.New;
     public bool IsNoParse => Verdict is OccurrenceVerdict.NoParse or OccurrenceVerdict.Limit;
 
+    /// <summary>The shared meaning behind <see cref="Verdict"/>, for the colour and glyph every stage uses.</summary>
+    public Verdict Meaning => Verdict switch
+    {
+        OccurrenceVerdict.Matches => ViewModels.Verdict.Agrees,
+        OccurrenceVerdict.Differs => ViewModels.Verdict.Differs,
+        OccurrenceVerdict.New => ViewModels.Verdict.New,
+        OccurrenceVerdict.NoParse => ViewModels.Verdict.NoResult,
+        _ => ViewModels.Verdict.Limit,
+    };
+
+    /// <summary>Whether the parser also produced a reading the project has rejected for this word.</summary>
+    public bool HasDisapprovedReading => Readings.Any(reading => reading.IsDisapproved);
+
+    /// <summary>What the disapproved marker says when a reader stops on it.</summary>
+    public string DisapprovedTip => $"The parser also produced a reading the project disapproves for {Text}.";
+
     /// <summary>Whether the active filter passes over this word, so it recedes rather than disappears.</summary>
     [ObservableProperty]
     private bool _isDimmed;

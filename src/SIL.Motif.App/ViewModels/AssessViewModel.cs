@@ -53,9 +53,14 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
     protected override bool CanStartCore() => ProjectPath is not null && _selection.CanAssess;
 
+    /// <summary>When the last Assessment finished, so an older Handoff can say it is out of date.</summary>
+    [ObservableProperty]
+    private DateTimeOffset? _completedAt;
+
     private void OnResultChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(Result)) return;
+        if (Result is not null) CompletedAt = DateTimeOffset.Now;
         Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null);
     }
 

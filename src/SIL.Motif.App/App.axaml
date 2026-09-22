@@ -37,6 +37,108 @@
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="14,10" />
     </Style>
+
+    <!-- One verdict, one colour: the six meanings every stage shares, on chips, glyphs and word underlines. -->
+    <Style Selector="Border.verdictChip">
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="7,1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
+    </Style>
+    <Style Selector="Border.verdictChip :is(TextBlock)">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="Border.verdictChip.compact :is(TextBlock)">
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="Border.verdictChip.agrees">
+      <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
+    </Style>
+    <Style Selector="Border.verdictChip.agrees :is(TextBlock), TextBlock.verdictGlyph.agrees, :is(TextBlock).verdictText.agrees">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
+    </Style>
+    <Style Selector="Border.verdictChip.differs">
+      <Setter Property="Background" Value="{DynamicResource SemiColorDangerLight}" />
+    </Style>
+    <Style Selector="Border.verdictChip.differs :is(TextBlock), TextBlock.verdictGlyph.differs, :is(TextBlock).verdictText.differs">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
+    </Style>
+    <Style Selector="Border.verdictChip.new">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
+    </Style>
+    <Style Selector="Border.verdictChip.new :is(TextBlock), TextBlock.verdictGlyph.new, :is(TextBlock).verdictText.new">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Border.verdictChip.noresult">
+      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
+    </Style>
+    <Style Selector="Border.verdictChip.noresult :is(TextBlock), TextBlock.verdictGlyph.noresult, :is(TextBlock).verdictText.noresult">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="Border.verdictChip.several">
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
+    </Style>
+    <Style Selector="Border.verdictChip.several :is(TextBlock), TextBlock.verdictGlyph.several, :is(TextBlock).verdictText.several">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorLink}" />
+    </Style>
+
+    <!-- The underline a word wears in a reader, in the same six colours. -->
+    <Style Selector="Border.wordVerdict">
+      <Setter Property="BorderThickness" Value="0,0,0,3" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorText3}" />
+      <Setter Property="Padding" Value="4,2" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.wordVerdict.agrees">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}" />
+    </Style>
+    <Style Selector="Border.wordVerdict.differs">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorDanger}" />
+    </Style>
+    <Style Selector="Border.wordVerdict.new">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Border.wordVerdict.noresult">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="Border.wordVerdict.several">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorLink}" />
+    </Style>
+    <Style Selector="Border.wordVerdict.dimmed">
+      <Setter Property="Opacity" Value="0.35" />
+    </Style>
+
+    <!-- Filter chips: one look for every stage's chips. -->
+    <Style Selector="Button.filterChip">
+      <Setter Property="Padding" Value="9,3" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Margin" Value="0,0,4,4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.filterChip.active">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Button.filterChip TextBlock.chipCount">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="Button.filterChip.active TextBlock.chipCount">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+
+    <!-- A number's heat shade, and the hairline between morphemes in an interlinear row. -->
+    <Style Selector="Border.heat">
+      <Setter Property="Background" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="Border.morphEdge">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+    </Style>
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>

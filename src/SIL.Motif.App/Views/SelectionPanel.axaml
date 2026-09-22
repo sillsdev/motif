@@ -6,41 +6,7 @@
              x:Class="SIL.Motif.App.Views.SelectionPanel"
              x:DataType="views:SelectionPanel">
   <UserControl.Styles>
-    <Style Selector="Border.statusChip">
-      <Setter Property="CornerRadius" Value="9" />
-      <Setter Property="Padding" Value="7,1" />
-      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
-    </Style>
-    <Style Selector="Border.statusChip :is(TextBlock)">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-    </Style>
-    <Style Selector="Border.statusChip.approved">
-      <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
-    </Style>
-    <Style Selector="Border.statusChip.approved :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
-    </Style>
-    <Style Selector="Border.statusChip.several">
-      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
-    </Style>
-    <Style Selector="Border.statusChip.several :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
-    <Style Selector="Button.filterChip">
-      <Setter Property="Padding" Value="9,3" />
-      <Setter Property="CornerRadius" Value="12" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-      <Setter Property="BorderThickness" Value="1" />
-    </Style>
-    <Style Selector="Button.filterChip.active">
-      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
+    <!-- Chips, word underlines and morpheme rows come from App.axaml; only this view's own chips live here. -->
     <Style Selector="Button.viewChip">
       <Setter Property="Padding" Value="10,4" />
       <Setter Property="Background" Value="Transparent" />
@@ -50,18 +16,6 @@
     <Style Selector="Button.viewChip.active">
       <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
       <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector="Border.wordUnderline">
-      <Setter Property="BorderThickness" Value="0,0,0,2" />
-    </Style>
-    <Style Selector="Border.wordUnderline.approved">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}" />
-    </Style>
-    <Style Selector="Border.wordUnderline.several">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
-    <Style Selector="Border.wordUnderline.none">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorText3}" />
     </Style>
   </UserControl.Styles>
 
@@ -145,22 +99,18 @@
         <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="6">
           <TextBox Grid.Column="0" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
                    AutomationProperties.Name="Search words" />
-          <Button Grid.Column="1" Classes="filterChip" Content="{Binding Words.AllCount, StringFormat='All {0}'}"
-                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.IsNull}}"
-                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Null}"
-                  AutomationProperties.Name="Show all words" />
-          <Button Grid.Column="2" Classes="filterChip" Content="{Binding Words.ApprovedFilterCount, StringFormat='Approved {0}'}"
-                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
-                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Approved}"
-                  AutomationProperties.Name="Show approved words" />
-          <Button Grid.Column="3" Classes="filterChip" Content="{Binding Words.NoneFilterCount, StringFormat='None {0}'}"
-                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.None}}"
-                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.None}"
-                  AutomationProperties.Name="Show unanalysed words" />
-          <Button Grid.Column="4" Classes="filterChip" Content="{Binding Words.SeveralFilterCount, StringFormat='Several analyses {0}'}"
-                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.SeveralAnalyses}}"
-                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.SeveralAnalyses}"
-                  AutomationProperties.Name="Show words that differ by occurrence" />
+          <views:FilterChip Grid.Column="1" Label="All" Count="{Binding Words.AllCount}"
+                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.IsNull}}"
+                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Null}" />
+          <views:FilterChip Grid.Column="2" Label="Approved" Count="{Binding Words.ApprovedFilterCount}" Verdict="Agrees"
+                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
+                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Approved}" />
+          <views:FilterChip Grid.Column="3" Label="Not stored yet" Count="{Binding Words.NoneFilterCount}" Verdict="New"
+                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.None}}"
+                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.None}" />
+          <views:FilterChip Grid.Column="4" Label="Several analyses" Count="{Binding Words.SeveralFilterCount}" Verdict="Several"
+                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.SeveralAnalyses}}"
+                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.SeveralAnalyses}" />
         </Grid>
 
         <ListBox Grid.Row="1" ItemsSource="{Binding Words.Rows}" AutomationProperties.Name="Words to test">
@@ -172,10 +122,7 @@
                     <views:CopyableTextBlock Grid.Column="0" Text="{Binding Form}" FontWeight="SemiBold" />
                     <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceCount}" />
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-                      <Border Classes="statusChip" Classes.approved="{Binding HasApproved}"
-                              Classes.several="{Binding StatusLabel, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Several analyses'}">
-                        <views:CopyableTextBlock Text="{Binding StatusLabel}" />
-                      </Border>
+                      <views:VerdictChip Verdict="{Binding Verdict}" Text="{Binding StatusLabel}" />
                       <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectSummary}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                   </Grid>
@@ -230,12 +177,9 @@
                           <Panel Margin="0,0,14,10">
                             <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}" FontSize="15" />
                             <!-- One interlinear block: word, morphemes, morph glosses, then word gloss and category. -->
-                            <Border IsVisible="{Binding IsWord}" Classes="wordUnderline" Padding="4,2"
-                                    Background="Transparent" Focusable="True"
+                            <Border IsVisible="{Binding IsWord}" Classes="wordVerdict" Focusable="True"
                                     PointerPressed="OnReaderTokenPressed" KeyDown="OnReaderTokenKeyDown" Tag="{Binding}"
-                                    Classes.approved="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
-                                    Classes.several="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.SeveralAnalyses}}"
-                                    Classes.none="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.None}}"
+                                    views:VerdictClasses.Verdict="{Binding Verdict}"
                                     ToolTip.Tip="Click for this word's analyses and every place it occurs">
                               <StackPanel Spacing="1">
                                 <HyperlinkButton Content="{Binding Text}" NavigateUri="{Binding WordLink}"
@@ -243,29 +187,7 @@
                                                  AutomationProperties.Name="{Binding WordLinkName}" />
                                 <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding HasNoWordLink}"
                                            FontSize="15" FontWeight="SemiBold" />
-                                <ItemsControl ItemsSource="{Binding Morphs}" IsVisible="{Binding HasAnalysis}">
-                                  <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                      <StackPanel Orientation="Horizontal" Spacing="8" />
-                                    </ItemsPanelTemplate>
-                                  </ItemsControl.ItemsPanel>
-                                  <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                                      <StackPanel Spacing="0">
-                                        <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}"
-                                                         IsVisible="{Binding HasLink}" Padding="0" FontSize="13"
-                                                         AutomationProperties.Name="{Binding LinkName}" />
-                                        <views:CopyableTextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontSize="13" />
-                                        <HyperlinkButton Content="{Binding GlossOrPlaceholder}" NavigateUri="{Binding Link}"
-                                                         IsVisible="{Binding HasLink}" Padding="0" FontSize="12"
-                                                         Foreground="{DynamicResource SemiColorText1}"
-                                                         AutomationProperties.Name="{Binding LinkName}" />
-                                        <views:CopyableTextBlock Classes="muted" Text="{Binding GlossOrPlaceholder}" IsVisible="{Binding HasNoLink}"
-                                                   FontSize="12" />
-                                      </StackPanel>
-                                    </DataTemplate>
-                                  </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasAnalysis}" ShowCategory="False" />
                                 <views:CopyableTextBlock Classes="muted" Text="{Binding WordLine}" FontSize="11" FontStyle="Italic"
                                            IsVisible="{Binding WordLine, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                                 <views:CopyableTextBlock Classes="muted" Text="not analysed" FontSize="11" FontStyle="Italic"
@@ -290,25 +212,8 @@
               <views:CopyableTextBlock Classes="muted" Text="{Binding OccurrenceLabel}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Classes="section-title" Text="In this occurrence" FontSize="13" />
               <views:CopyableTextBlock Text="{Binding Status}" IsVisible="{Binding Analysis, Converter={x:Static conv:ObjectConverters.IsNull}}" />
-              <ItemsControl ItemsSource="{Binding Analysis.Morphs}" IsVisible="{Binding Analysis, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <WrapPanel Orientation="Horizontal" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                    <StackPanel Margin="0,0,10,0" Spacing="0">
-                      <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
-                                       Padding="0" FontWeight="SemiBold" FontSize="12"
-                                       AutomationProperties.Name="{Binding LinkName}" />
-                      <views:CopyableTextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontWeight="SemiBold" FontSize="12" />
-                      <views:CopyableTextBlock Classes="muted" Text="{Binding GlossOrPlaceholder}" FontSize="11" />
-                      <views:CopyableTextBlock Classes="muted" Text="{Binding Category}" FontSize="10" />
-                    </StackPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+              <views:MorphemeRow Morphs="{Binding Analysis.Morphs}"
+                                 IsVisible="{Binding Analysis, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
               <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" FontSize="12" IsVisible="{Binding HasSeveralAnalyses}"
                          Text="This spelling carries different analyses in different places, usually because it is more than one word (homographs)." />
               <views:CopyableTextBlock Classes="section-title" Text="Approved on the word form" FontSize="13"
@@ -316,23 +221,7 @@
               <ItemsControl ItemsSource="{Binding ApprovedAnalyses}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:ProjectAnalysisViewModel">
-                    <ItemsControl ItemsSource="{Binding Morphs}" Margin="0,2">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <WrapPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                          <StackPanel Margin="0,0,10,0" Spacing="0">
-                            <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
-                                             Padding="0" FontSize="12" AutomationProperties.Name="{Binding LinkName}" />
-                            <views:CopyableTextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontSize="12" />
-                            <views:CopyableTextBlock Classes="muted" Text="{Binding GlossOrPlaceholder}" FontSize="11" />
-                          </StackPanel>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <views:MorphemeRow Morphs="{Binding Morphs}" Margin="0,2" ShowCategory="False" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>

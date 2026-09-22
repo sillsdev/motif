@@ -59,6 +59,31 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     [ObservableProperty]
     private string? _invocationId;
 
+    /// <summary>When these files were written, so the stage can say whether newer results have arrived.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WrittenAtText))]
+    private DateTimeOffset? _writtenAt;
+
+    /// <summary>The time of writing as the stage shows it, or a prompt before the first write.</summary>
+    public string WrittenAtText => WrittenAt is { } written
+        ? $"Last written {written.ToLocalTime():t}"
+        : "Not written yet";
+
+    /// <summary>When the last Assessment finished, set by the workspace; newer than the files means stale.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsOutOfDate))]
+    [NotifyPropertyChangedFor(nameof(OutOfDateText))]
+    private DateTimeOffset? _latestAssessmentAt;
+
+    /// <summary>Whether an Assessment finished after these files were written, so they no longer match Results.</summary>
+    public bool IsOutOfDate => HasCompletedFiles && WrittenAt is { } written && LatestAssessmentAt > written;
+
+    /// <summary>The sentence the stage shows when the files are stale.</summary>
+    public string OutOfDateText => LatestAssessmentAt is { } assessed && WrittenAt is { } written
+        ? $"The Assessment was run again at {assessed.ToLocalTime():t}, after these files were written at " +
+          $"{written.ToLocalTime():t}. Write the Handoff again to include the new results."
+        : string.Empty;
+
     /// <summary>Where the completed run wrote the folder, or <c>null</c> before a run has completed.</summary>
     [ObservableProperty]
     private string? _outputDirectory;
@@ -118,6 +143,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     protected override void OnRunSucceeded(HandoffCommandResponse response)
     {
+        WrittenAt = DateTimeOffset.Now;
         OutputDirectory = response.OutputDirectory;
         PastedHeader = response.PastedHeader;
         HandoffMarkdown = response.HandoffMarkdown;
