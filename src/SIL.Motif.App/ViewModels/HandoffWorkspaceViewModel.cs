@@ -5,33 +5,42 @@ using CommunityToolkit.Mvvm.Input;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// Composes the six child view models of the first Motif window into one workflow: choosing a project
-/// cancels whatever Assessment or Handoff run is active, clears the state the previous project displayed,
-/// and loads the new project's Baseline and Text state. This is also where the two loose ends the child
-/// view models left for composition get wired: <see cref="ViewModels.BaselineViewModel.HasAssessment"/>
-/// is set once an Assessment actually completes, and <see cref="ViewModels.StatisticsViewModel.SummaryMarkdown"/>
-/// is fed from that same completed Assessment's own rendered summary. It also owns which of the five
-/// <see cref="WorkflowStage"/>s the window shows, and what each stage's stepper entry says.
+/// Composes the child view models of the first Motif window into one workflow: choosing a project cancels
+/// whatever Assessment or Handoff run is active, clears the state the previous project displayed, and
+/// loads the new project's Baseline, grammar findings, history, and Text state. This is also where the
+/// two loose ends the child view models left for composition get wired:
+/// <see cref="ViewModels.BaselineViewModel.HasAssessment"/> is set once an Assessment actually completes,
+/// and <see cref="ViewModels.StatisticsViewModel.SummaryMarkdown"/> is fed from that same completed
+/// Assessment's own rendered summary. It also owns which of the five <see cref="WorkflowStage"/>s the
+/// window shows, and what each stage's stepper entry says.
 /// </summary>
 public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
     private string? _projectPath;
 
     public HandoffWorkspaceViewModel(
-        ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection,
+        ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
+        GrammarViewModel grammar, SelectionViewModel selection, TextWordsViewModel words,
         AssessViewModel assess, StatisticsViewModel statistics, HandoffViewModel handoff)
     {
         ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(projectHistory);
         ArgumentNullException.ThrowIfNull(baseline);
+        ArgumentNullException.ThrowIfNull(grammar);
         ArgumentNullException.ThrowIfNull(selection);
+        ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
         ArgumentNullException.ThrowIfNull(statistics);
         ArgumentNullException.ThrowIfNull(handoff);
 
         Project = project;
+        ProjectHistory = projectHistory;
         Baseline = baseline;
+        Grammar = grammar;
         Selection = selection;
+        Words = words;
         Assess = assess;
+        Assess.TextWords = words;
         Statistics = statistics;
         Handoff = handoff;
 
@@ -51,9 +60,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Baseline.OfferRerun += OnOfferRerun;
         Baseline.PropertyChanged += OnChildPropertyChanged;
         Selection.PropertyChanged += OnChildPropertyChanged;
+        Words.PropertyChanged += OnChildPropertyChanged;
         Handoff.PropertyChanged += OnChildPropertyChanged;
         Assess.PropertyChanged += OnAssessPropertyChanged;
-        Assess.GrammarWarnings.PropertyChanged += OnChildPropertyChanged;
+        Grammar.PropertyChanged += OnChildPropertyChanged;
+        Grammar.Warnings.PropertyChanged += OnChildPropertyChanged;
 
         AcceptRerunCommand = new AsyncRelayCommand(AcceptRerunAsync, () => RerunOffered);
         DismissRerunCommand = new RelayCommand(() => RerunOffered = false, () => RerunOffered);
@@ -130,9 +141,15 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     public ProjectViewModel Project { get; }
 
+    public ProjectHistoryViewModel ProjectHistory { get; }
+
     public BaselineViewModel Baseline { get; }
 
+    public GrammarViewModel Grammar { get; }
+
     public SelectionViewModel Selection { get; }
+
+    public TextWordsViewModel Words { get; }
 
     public AssessViewModel Assess { get; }
 
@@ -187,8 +204,13 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         CurrentStage = WorkflowStage.Project;
         RefreshStages();
 
+        // The grammar check is the slowest read and needs nothing the others produce, so it starts first.
+        var grammar = Grammar.SetProjectAsync(fwDataPath, cancellationToken);
+        await ProjectHistory.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
+        await Words.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
+        await grammar.ConfigureAwait(true);
 
         Assess.ProjectPath = fwDataPath;
         Statistics.ProjectPath = fwDataPath;
@@ -198,10 +220,14 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private async void OnProjectChosen(object? sender, string fwDataPath) =>
         await SetProjectAsync(fwDataPath).ConfigureAwait(true);
 
-    // The Text list belongs to the Baseline just captured, not to the one (or none) shown before Refresh.
+    // The Text list and grammar findings belong to the Baseline just captured, not the one shown before Refresh.
     private async void OnBaselineRefreshed(object? sender, EventArgs e)
     {
-        if (_projectPath is { } path) await Selection.LoadTextsAsync(path).ConfigureAwait(true);
+        if (_projectPath is not { } path) return;
+        var grammar = Grammar.CheckCommand.ExecuteAsync(null);
+        await Selection.LoadTextsAsync(path).ConfigureAwait(true);
+        await ProjectHistory.LoadAsync().ConfigureAwait(true);
+        await grammar.ConfigureAwait(true);
     }
 
     private void OnOfferRerun(object? sender, EventArgs e) => RerunOffered = true;
@@ -221,11 +247,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         project.IsDone = Baseline.HasBaseline;
 
         var grammar = Stages[(int)WorkflowStage.Grammar];
-        var findings = Assess.GrammarWarnings.TotalCount;
-        grammar.Summary = Assess.Result is null ? "Findings appear after the first Assessment"
-            : findings == 0 ? "No findings" : $"{findings} finding(s)";
-        grammar.Badge = findings > 0 ? findings.ToString(System.Globalization.CultureInfo.CurrentCulture) : string.Empty;
-        grammar.IsDone = Assess.Result is not null;
+        var findings = Grammar.Warnings.TotalCount;
+        grammar.Summary = Grammar.SummaryText;
+        grammar.Badge = Grammar.ShowFindings ? findings.ToString(System.Globalization.CultureInfo.CurrentCulture) : string.Empty;
+        grammar.IsDone = Grammar.HasChecked;
 
         var texts = Stages[(int)WorkflowStage.Texts];
         texts.Summary = Selection.SummaryText;
@@ -300,6 +325,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         HasEverAssessed = false;
 
         Assess.Reset();
+        Assess.Trace.Reset();
 
         Statistics.Reset();
 

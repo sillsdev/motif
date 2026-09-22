@@ -110,7 +110,14 @@ public static class MorphologyCorrectness
         { Unavailable = unavailable };
     }
 
-    private static bool Matches(ParseAnalysis actual, ApprovedMorphology expected) =>
+    /// <summary>
+    /// Whether <paramref name="actual"/> and <paramref name="expected"/> are the same analysis by FieldWorks'
+    /// own <c>MatchesIWfiAnalysis</c> rule: ordered morph count, per-morph Form/MSA/inflection-type identity,
+    /// and the guessed-string special case. The one comparison every correctness verdict in this codebase is
+    /// built from — <see cref="Compare"/> uses it, and so does grading a produced reading against the
+    /// project's own approved and disapproved analyses.
+    /// </summary>
+    public static bool Matches(ParseAnalysis actual, ApprovedMorphology expected) =>
         actual.Morphs.Count > 0 && actual.Morphs.Count == expected.Morphs.Count &&
         actual.Morphs.Zip(expected.Morphs).All(pair => pair.First.Form is not null && pair.First.Msa is not null &&
             pair.First.Form == pair.Second.Form &&

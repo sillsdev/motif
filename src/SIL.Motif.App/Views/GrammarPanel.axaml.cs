@@ -4,16 +4,16 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Grammar stage: the parser's findings about the grammar as a whole, bound to <see cref="Assess"/>.</summary>
+/// <summary>The Grammar stage: the parser's findings about the grammar as a whole, bound to <see cref="Grammar"/>.</summary>
 public sealed partial class GrammarPanel : UserControl
 {
-    public GrammarPanel(AssessViewModel assess)
+    public GrammarPanel(GrammarViewModel grammar)
     {
-        ArgumentNullException.ThrowIfNull(assess);
-        Assess = assess;
+        ArgumentNullException.ThrowIfNull(grammar);
+        Grammar = grammar;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
     }
 
-    public AssessViewModel Assess { get; }
+    public GrammarViewModel Grammar { get; }
 }

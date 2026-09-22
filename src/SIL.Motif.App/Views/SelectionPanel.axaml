@@ -5,51 +5,353 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.SelectionPanel"
              x:DataType="views:SelectionPanel">
-  <StackPanel Spacing="8" Margin="24">
+  <UserControl.Styles>
+    <Style Selector="Border.statusChip">
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="7,1" />
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
+    </Style>
+    <Style Selector="Border.statusChip TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="Border.statusChip.approved">
+      <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
+    </Style>
+    <Style Selector="Border.statusChip.approved TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
+    </Style>
+    <Style Selector="Border.statusChip.differs">
+      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
+    </Style>
+    <Style Selector="Border.statusChip.differs TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="Button.filterChip">
+      <Setter Property="Padding" Value="9,3" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.filterChip.active">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Button.viewChip">
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.viewChip.active">
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.wordUnderline">
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+    </Style>
+    <Style Selector="Border.wordUnderline.approved">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}" />
+    </Style>
+    <Style Selector="Border.wordUnderline.differs">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="Border.wordUnderline.none">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorText3}" />
+    </Style>
+  </UserControl.Styles>
 
-    <StackPanel Spacing="4">
-      <TextBlock Classes="stage-title" Text="Texts" />
-      <TextBlock Text="{Binding Selection.SummaryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-    </StackPanel>
+  <Grid ColumnDefinitions="300,*" ColumnSpacing="16" Margin="24">
 
-    <TextBox PlaceholderText="Search texts..."
-             Text="{Binding Selection.SearchText}"
-             AutomationProperties.Name="Search texts" />
-    <ListBox ItemsSource="{Binding Selection.Texts}"
-             MaxHeight="180"
-             AutomationProperties.Name="Texts">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:TextChoiceViewModel">
-          <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked}" />
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <!-- Left: choose which Texts feed the Words view and the assessment. -->
+    <ScrollViewer Grid.Column="0">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="stage-title" Text="Texts" />
+        <TextBlock Text="{Binding Selection.SummaryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
 
-    <TextBlock Classes="muted" Text="{Binding Selection.TextsEmptyMessage}"
-               IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-               TextWrapping="Wrap" />
+        <TextBox PlaceholderText="Search texts..."
+                 Text="{Binding Selection.SearchText}"
+                 AutomationProperties.Name="Search texts" />
+        <ListBox ItemsSource="{Binding Selection.Texts}"
+                 MaxHeight="260"
+                 AutomationProperties.Name="Texts">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:TextChoiceViewModel">
+              <StackPanel Spacing="0">
+                <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked}" />
+                <TextBlock Classes="muted" Text="{Binding CountsText}" FontSize="11" Margin="26,0,0,4"
+                           IsVisible="{Binding CountsText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
 
-    <TextBlock Classes="section-title" Text="Pasted words" Margin="0,16,0,0" />
-    <TextBox Text="{Binding Selection.PastedWords}"
-             AcceptsReturn="True"
-             TextWrapping="Wrap"
-             Height="80"
-             AutomationProperties.Name="Pasted words" />
+        <TextBlock Classes="muted" Text="{Binding Selection.TextsEmptyMessage}"
+                   IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                   TextWrapping="Wrap" />
 
-    <CheckBox Content="All wordforms" IsChecked="{Binding Selection.AllWordforms}" />
-    <CheckBox Content="Retry failed" IsChecked="{Binding Selection.RetryFailed}" />
+        <Expander Header="Pasted words" IsExpanded="True" Margin="0,8,0,0">
+          <TextBox Text="{Binding Selection.PastedWords}"
+                   AcceptsReturn="True"
+                   TextWrapping="Wrap"
+                   Height="80"
+                   AutomationProperties.Name="Pasted words" />
+        </Expander>
 
-    <DockPanel LastChildFill="False">
-      <TextBlock Text="Retry slower than (ms)" VerticalAlignment="Center" Margin="0,0,8,0" />
-      <NumericUpDown Value="{Binding Selection.RetrySlowerThanMilliseconds}"
-                      Minimum="0"
-                      AutomationProperties.Name="Retry slower than, in milliseconds" />
-    </DockPanel>
-    <TextBlock Classes="error" Text="{Binding Selection.ThresholdValidationMessage}"
-               IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+        <Expander Header="Options" IsExpanded="False">
+          <StackPanel Spacing="8" Margin="0,8,0,0">
+            <CheckBox Content="All wordforms" IsChecked="{Binding Selection.AllWordforms}" />
+            <CheckBox Content="Retry failed" IsChecked="{Binding Selection.RetryFailed}" />
+            <DockPanel LastChildFill="False">
+              <TextBlock Text="Retry slower than (ms)" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <NumericUpDown Value="{Binding Selection.RetrySlowerThanMilliseconds}"
+                              Minimum="0"
+                              AutomationProperties.Name="Retry slower than, in milliseconds" />
+            </DockPanel>
+            <TextBlock Classes="error" Text="{Binding Selection.ThresholdValidationMessage}"
+                       IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+        </Expander>
 
-    <TextBlock Classes="error" Text="{Binding Selection.RefusalMessage}"
-               IsVisible="{Binding Selection.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+        <TextBlock Classes="error" Text="{Binding Selection.RefusalMessage}"
+                   IsVisible="{Binding Selection.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+      </StackPanel>
+    </ScrollViewer>
 
-  </StackPanel>
+    <!-- Centre: the checked Texts' words, or the Texts read in place. -->
+    <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+
+      <DockPanel LastChildFill="False">
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="4">
+          <Button Classes="viewChip" Content="Words" Classes.active="{Binding Words.ShowWords}"
+                  Command="{Binding Words.SetViewCommand}" CommandParameter="{x:Static vm:TextsView.Words}"
+                  AutomationProperties.Name="Show the Words view" />
+          <Button Classes="viewChip" Content="In text" Classes.active="{Binding Words.ShowInText}"
+                  Command="{Binding Words.SetViewCommand}" CommandParameter="{x:Static vm:TextsView.InText}"
+                  AutomationProperties.Name="Show the In text view" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding Words.SummaryText}" VerticalAlignment="Center" />
+      </DockPanel>
+
+      <TextBlock Classes="muted" Text="{Binding Words.RefusalMessage}"
+                 IsVisible="{Binding Words.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+      <!-- Words view -->
+      <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="8" IsVisible="{Binding Words.ShowWords}">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="6">
+          <TextBox Grid.Column="0" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
+                   AutomationProperties.Name="Search words" />
+          <Button Grid.Column="1" Classes="filterChip" Content="{Binding Words.AllCount, StringFormat='All {0}'}"
+                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.IsNull}}"
+                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Null}"
+                  AutomationProperties.Name="Show all words" />
+          <Button Grid.Column="2" Classes="filterChip" Content="{Binding Words.ApprovedFilterCount, StringFormat='Approved {0}'}"
+                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
+                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Approved}"
+                  AutomationProperties.Name="Show approved words" />
+          <Button Grid.Column="3" Classes="filterChip" Content="{Binding Words.NoneFilterCount, StringFormat='None {0}'}"
+                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.None}}"
+                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.None}"
+                  AutomationProperties.Name="Show unanalysed words" />
+          <Button Grid.Column="4" Classes="filterChip" Content="{Binding Words.DiffersFilterCount, StringFormat='Differs {0}'}"
+                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.DiffersByOccurrence}}"
+                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.DiffersByOccurrence}"
+                  AutomationProperties.Name="Show words that differ by occurrence" />
+        </Grid>
+
+        <ListBox Grid.Row="1" ItemsSource="{Binding Words.Rows}" AutomationProperties.Name="Words to test">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:TextWordRowViewModel">
+              <Expander Margin="0,0,0,4">
+                <Expander.Header>
+                  <Grid ColumnDefinitions="2*,Auto,3*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Text="{Binding Form}" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceCount}" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                      <Border Classes="statusChip" Classes.approved="{Binding HasApproved}"
+                              Classes.differs="{Binding StatusLabel, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Differs by occurrence'}">
+                        <TextBlock Text="{Binding StatusLabel}" />
+                      </Border>
+                      <TextBlock Classes="muted" Text="{Binding ProjectSummary}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Grid>
+                </Expander.Header>
+                <StackPanel Spacing="4" Margin="12,4,0,4">
+                  <TextBlock Classes="muted" FontSize="12"
+                             Text="Where it appears, and the analysis chosen there." />
+                  <ItemsControl ItemsSource="{Binding Occurrences}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
+                        <StackPanel Margin="0,4" Spacing="1">
+                          <TextBlock Classes="muted" Text="{Binding Location}" FontSize="12" />
+                          <TextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Expander>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+
+      <!-- In text view -->
+      <Grid Grid.Row="2" ColumnDefinitions="*,320" ColumnSpacing="12" IsVisible="{Binding Words.ShowInText}">
+        <Grid Grid.Column="0" RowDefinitions="Auto,*" RowSpacing="8">
+          <ComboBox ItemsSource="{Binding Words.ReaderTexts}" SelectedItem="{Binding Words.SelectedReaderText}"
+                    AutomationProperties.Name="Text to read">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ReaderTextViewModel">
+                <TextBlock Text="{Binding Title}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Grid.Row="1" Classes="muted" Text="{Binding Words.ReaderMessage}" TextWrapping="Wrap"
+                     IsVisible="{Binding Words.HasReaderMessage}" Margin="0,8" />
+          <ScrollViewer Grid.Row="1" IsVisible="{Binding !Words.HasReaderMessage}">
+            <ItemsControl ItemsSource="{Binding Words.SelectedReaderText.Lines}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ReaderLineViewModel">
+                  <DockPanel Margin="0,4" LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Classes="muted" Text="{Binding Number}" Width="28" />
+                    <ItemsControl ItemsSource="{Binding Tokens}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ReaderTokenViewModel">
+                          <Panel Margin="0,0,14,10">
+                            <TextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}" FontSize="15" />
+                            <!-- One interlinear block: word, morphemes, morph glosses, then word gloss and category. -->
+                            <Border IsVisible="{Binding IsWord}" Classes="wordUnderline" Padding="4,2"
+                                    Background="Transparent" Focusable="True"
+                                    PointerPressed="OnReaderTokenPressed" KeyDown="OnReaderTokenKeyDown" Tag="{Binding}"
+                                    Classes.approved="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
+                                    Classes.differs="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.DiffersByOccurrence}}"
+                                    Classes.none="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.None}}"
+                                    ToolTip.Tip="Click for this word's analyses and every place it occurs">
+                              <StackPanel Spacing="1">
+                                <HyperlinkButton Content="{Binding Text}" NavigateUri="{Binding WordLink}"
+                                                 IsVisible="{Binding HasWordLink}" Padding="0" FontSize="15" FontWeight="SemiBold"
+                                                 AutomationProperties.Name="{Binding WordLinkName}" />
+                                <TextBlock Text="{Binding Text}" IsVisible="{Binding HasNoWordLink}"
+                                           FontSize="15" FontWeight="SemiBold" />
+                                <ItemsControl ItemsSource="{Binding Morphs}" IsVisible="{Binding HasAnalysis}">
+                                  <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                      <StackPanel Orientation="Horizontal" Spacing="8" />
+                                    </ItemsPanelTemplate>
+                                  </ItemsControl.ItemsPanel>
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                                      <StackPanel Spacing="0">
+                                        <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}"
+                                                         IsVisible="{Binding HasLink}" Padding="0" FontSize="13"
+                                                         AutomationProperties.Name="{Binding LinkName}" />
+                                        <TextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontSize="13" />
+                                        <HyperlinkButton Content="{Binding GlossOrPlaceholder}" NavigateUri="{Binding Link}"
+                                                         IsVisible="{Binding HasLink}" Padding="0" FontSize="12"
+                                                         Foreground="{DynamicResource SemiColorText1}"
+                                                         AutomationProperties.Name="{Binding LinkName}" />
+                                        <TextBlock Classes="muted" Text="{Binding GlossOrPlaceholder}" IsVisible="{Binding HasNoLink}"
+                                                   FontSize="12" />
+                                      </StackPanel>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="muted" Text="{Binding WordLine}" FontSize="11" FontStyle="Italic"
+                                           IsVisible="{Binding WordLine, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                                <TextBlock Classes="muted" Text="not analysed" FontSize="11" FontStyle="Italic"
+                                           IsVisible="{Binding IsUnanalysed}" />
+                              </StackPanel>
+                            </Border>
+                          </Panel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Column="1" Classes="card" IsVisible="{Binding Words.SelectedOccurrence, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+          <ScrollViewer>
+            <StackPanel Spacing="8" DataContext="{Binding Words.SelectedOccurrence}" x:DataType="vm:ReaderOccurrenceViewModel">
+              <TextBlock Text="{Binding Form}" FontWeight="SemiBold" FontSize="16" />
+              <TextBlock Classes="muted" Text="{Binding OccurrenceLabel}" TextWrapping="Wrap" />
+              <TextBlock Classes="section-title" Text="In this occurrence" FontSize="13" />
+              <TextBlock Text="{Binding Status}" IsVisible="{Binding Analysis, Converter={x:Static conv:ObjectConverters.IsNull}}" />
+              <ItemsControl ItemsSource="{Binding Analysis.Morphs}" IsVisible="{Binding Analysis, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                    <StackPanel Margin="0,0,10,0" Spacing="0">
+                      <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
+                                       Padding="0" FontWeight="SemiBold" FontSize="12"
+                                       AutomationProperties.Name="{Binding LinkName}" />
+                      <TextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontWeight="SemiBold" FontSize="12" />
+                      <TextBlock Classes="muted" Text="{Binding GlossOrPlaceholder}" FontSize="11" />
+                      <TextBlock Classes="muted" Text="{Binding Category}" FontSize="10" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="12" IsVisible="{Binding Differs}"
+                         Text="This form carries different analyses in different places." />
+              <TextBlock Classes="section-title" Text="Approved on the word form" FontSize="13"
+                         IsVisible="{Binding ApprovedAnalyses.Count}" />
+              <ItemsControl ItemsSource="{Binding ApprovedAnalyses}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ProjectAnalysisViewModel">
+                    <ItemsControl ItemsSource="{Binding Morphs}" Margin="0,2">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                          <StackPanel Margin="0,0,10,0" Spacing="0">
+                            <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
+                                             Padding="0" FontSize="12" AutomationProperties.Name="{Binding LinkName}" />
+                            <TextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontSize="12" />
+                            <TextBlock Classes="muted" Text="{Binding GlossOrPlaceholder}" FontSize="11" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Classes="section-title" Text="All occurrences" FontSize="13" />
+              <ItemsControl ItemsSource="{Binding AllOccurrences}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
+                    <DockPanel Margin="0,2">
+                      <TextBlock Classes="muted" Text="{Binding Location}" FontSize="12" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Not parsed yet. After the run, the Results stage adds the parser's readings, their cost and the trace." />
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+    </Grid>
+  </Grid>
 </UserControl>

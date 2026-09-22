@@ -8,7 +8,7 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
-internal sealed class HoldingCommandClient : ICommandClient
+internal sealed partial class HoldingCommandClient : ICommandClient
 {
     private readonly ICommandClient _inner;
     private readonly TaskCompletionSource _assessGate;

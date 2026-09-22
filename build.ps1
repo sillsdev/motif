@@ -58,10 +58,12 @@ if ($SkipHygiene) {
 }
 else {
     Write-Step 'comment hygiene'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/comment-hygiene.ps1')
+    Push-Location $repoRoot
+    try { & dotnet run --file tools/CommentHygiene/comment-hygiene.cs }
+    finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) {
         Write-Host ''
-        Write-Host 'Comment hygiene failed. Run tools/comment-hygiene.ps1 -List to see every violation.' -ForegroundColor Red
+        Write-Host 'Comment hygiene failed. Run: dotnet run tools/CommentHygiene/comment-hygiene.cs -- -List' -ForegroundColor Red
         exit 1
     }
 }

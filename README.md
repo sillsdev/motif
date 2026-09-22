@@ -1,3 +1,5 @@
+<p align="center"><img src="src/SIL.Motif.App/Assets/motif.png" alt="Motif logo" width="240"></p>
+
 # Motif
 
 **A PR-like collaboration system for semantic changes to language data.**

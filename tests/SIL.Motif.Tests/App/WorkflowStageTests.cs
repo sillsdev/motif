@@ -27,10 +27,14 @@ public sealed class WorkflowStageTests
         var fake = new FakeCommandClient();
         var projectPicker = new FakeProjectPicker();
         var selection = new SelectionViewModel(fake);
+        var words = new TextWordsViewModel(fake, selection);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, projectPicker),
+            new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
+            new GrammarViewModel(fake),
             selection,
+            words,
             new AssessViewModel(fake, selection),
             new StatisticsViewModel(fake),
             new HandoffViewModel(fake, selection, new FakeFolderPicker(), new FakeDragSource()));
@@ -67,7 +71,7 @@ public sealed class WorkflowStageTests
         Assert.Equal(WorkflowStage.Project, workspace.CurrentStage);
         Assert.True(workspace.IsProjectStage);
         Assert.Equal("Choose a project", workspace.Stages[0].Summary);
-        Assert.Equal("Findings appear after the first Assessment", workspace.Stages[1].Summary);
+        Assert.Equal("Not checked yet", workspace.Stages[1].Summary);
         Assert.Equal("Not run yet", workspace.Stages[3].Summary);
         Assert.Equal("Not written yet", workspace.Stages[4].Summary);
     }
@@ -166,27 +170,35 @@ public sealed class WorkflowStageTests
     }
 
     [Fact]
-    public async Task TheGrammarEntryCountsTheFindingsOfACompletedAssessment()
+    public async Task ChoosingAProjectChecksGrammarIndependentlyOfAssessingAnything()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
-        await ChooseProjectAsync(fake, projectPicker, workspace);
-        workspace.Selection.AllWordforms = true;
-        var plain = NewAssessResponse();
-        fake.AssessCompletesWith(new AssessCommandResponse(plain.Baseline, plain.Selection, [], "summary")
-        {
-            InvocationId = "invocation/one",
-            GrammarWarningDetails =
-            [
-                new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped"),
-            ],
-        });
+        fake.CheckGrammarCompletesWith(new GrammarCheckResponse(
+            [new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped")],
+            HasBaseline: true));
 
-        await workspace.Assess.RunCommand.ExecuteAsync(null);
+        await ChooseProjectAsync(fake, projectPicker, workspace);
 
         Assert.Equal("1", workspace.Stages[1].Badge);
         Assert.True(workspace.Stages[1].HasBadge);
         Assert.Equal("1 finding(s)", workspace.Stages[1].Summary);
-        Assert.Equal(string.Empty, workspace.Assess.GrammarStatusText);
+        Assert.True(workspace.Stages[1].IsDone);
+        Assert.Single(fake.CheckGrammarRequests);
+        Assert.Empty(fake.AssessRequests);
+    }
+
+    [Fact]
+    public async Task RefreshingTheBaselineChecksGrammarAgain()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        Assert.Single(fake.CheckGrammarRequests);
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            Token, ProjectPath, DateTimeOffset.UtcNow, false, false));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, fake.CheckGrammarRequests.Count);
     }
 
     [Fact]

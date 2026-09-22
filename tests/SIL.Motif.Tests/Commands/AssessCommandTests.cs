@@ -4,10 +4,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using SIL.LCModel;
+using SIL.LCModel.DomainServices;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
@@ -264,6 +267,111 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void ReadingsAreGradedAndMissedApprovedListsWhatTheParserDidNotProduce()
+    {
+        using var seeded = NewSeededScratch();
+        string firstMorph, firstMsa, secondMorph, secondMsa;
+        IReadOnlyList<ApprovedMorphology> approvedExpectations;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(seeded.FwDataPath))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+                .Single(w => w.Form.VernacularDefaultWritingSystem?.Text == SeededProject.AnalysedWordForm);
+            var approved = wordform.HumanApprovedAnalyses.Single();
+            firstMorph = approved.MorphBundlesOS[0].MorphRA!.Guid.ToString("D");
+            firstMsa = approved.MorphBundlesOS[0].MsaRA!.Guid.ToString("D");
+            secondMorph = approved.MorphBundlesOS[1].MorphRA!.Guid.ToString("D");
+            secondMsa = approved.MorphBundlesOS[1].MsaRA!.Guid.ToString("D");
+
+            // A second analysis on the same wordform, explicitly disapproved rather than left with no opinion.
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var disapproved = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(disapproved);
+                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                disapproved.MorphBundlesOS.Add(bundle);
+                bundle.MorphRA = approved.MorphBundlesOS[0].MorphRA;
+                bundle.MsaRA = approved.MorphBundlesOS[0].MsaRA;
+                cache.LangProject.DefaultUserAgent.SetEvaluation(disapproved, Opinions.disapproves);
+            });
+            new FwDataProjectLoader().Save(cache);
+            approvedExpectations = ApprovedMorphologyReader.Read(cache)[SeededProject.AnalysedWordForm];
+        }
+
+        var morphology = new ParseWordEvidence(
+            SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0, SeededProject.AnalysedWordForm, 5, false, false, false,
+            [
+                new ParseAnalysis([new ParseMorph(firstMorph, firstMsa, null, null)]),
+                new ParseAnalysis([new ParseMorph(
+                    "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", null, null)]),
+            ], []);
+        var correctness = SIL.Motif.Host.Parser.MorphologyCorrectness.Compare(morphology, approvedExpectations);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig")
+                        { Morphology = morphology, Correctness = correctness }],
+                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], [SeededProject.AnalysedWordForm], false, null)),
+            NewManagedRoot(), assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var word = Assert.Single(outcome.Value!.Words);
+        Assert.Equal(["disapproved", "no-opinion"], word.ReadingGrades);
+        var missed = Assert.Single(word.MissedApproved!);
+        Assert.Equal(2, missed.Morphs.Count);
+        Assert.Equal(SeededProject.FirstForm, missed.Morphs[0].Form);
+        Assert.Equal(SeededProject.FirstGloss, missed.Morphs[0].Gloss);
+        Assert.Equal(SeededProject.SecondForm, missed.Morphs[1].Form);
+        Assert.Equal(SeededProject.SecondGloss, missed.Morphs[1].Gloss);
+    }
+
+    [Fact]
+    public void AttemptsAndPassesComeFromPerWordStatistics_AndStayNullWhenAWordIsMissingFromThem()
+    {
+        using var seeded = NewSeededScratch();
+        // ObjectTiming must produce a real cache file: only then does AssessCommand ask for word stats at all.
+        var cachePath = Path.Combine(_managedRootsParent, "attempts-passes.bin");
+        File.WriteAllText(cachePath, "statistics artifact");
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig"),
+                     new(1, SeededProject.UnanalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "-")],
+                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                : new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath)))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+        var invoker = new FakeInvoker
+        {
+            Respond = request => request is PanGlossRequest.Stats stats && stats.ForwardedArguments.Contains("--group")
+                ? new PanGlossOutcome.Completed(
+                    "{\"meta\":true}\n{\"form\":\"" + SeededProject.AnalysedWordForm +
+                    "\",\"elapsed_ns\":3000000,\"attempts\":42,\"passes\":7,\"capped\":false,\"timed_out\":false}\n",
+                    string.Empty, TimeSpan.Zero)
+                : new PanGlossOutcome.Completed("default stats view", string.Empty, TimeSpan.Zero),
+        };
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm], false, null)),
+            NewManagedRoot(), assessor, invoker, null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var analysed = outcome.Value!.Words.Single(word => word.Word == SeededProject.AnalysedWordForm);
+        Assert.Equal(42, analysed.Attempts);
+        Assert.Equal(7, analysed.Passes);
+        var unanalysed = outcome.Value.Words.Single(word => word.Word == SeededProject.UnanalysedWordForm);
+        Assert.Null(unanalysed.Attempts);
+        Assert.Null(unanalysed.Passes);
+    }
+
+    [Fact]
     public void SecondRunReusesTheExistingBaselineRatherThanRecapturing()
     {
         using var seeded = NewSeededScratch();
@@ -440,10 +548,21 @@ public sealed class AssessCommandTests : IDisposable
             new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, invoker,
             onProgress: null, CancellationToken.None);
 
-        var request = Assert.IsType<PanGlossRequest.Stats>(Assert.Single(invoker.Requests).Request);
+        // Only "completed" reaches the follow-up per-word stats call; every other case returns first.
+        var request = Assert.IsType<PanGlossRequest.Stats>(invoker.Requests[0].Request);
         Assert.NotEqual(cachePath, request.CachePath);
         Assert.False(File.Exists(request.CachePath));
         Assert.Empty(request.ForwardedArguments);
+        if (result == "completed")
+        {
+            Assert.Equal(2, invoker.Requests.Count);
+            var wordRequest = Assert.IsType<PanGlossRequest.Stats>(invoker.Requests[1].Request);
+            Assert.Equal(["--group", "word", "--format", "jsonl"], wordRequest.ForwardedArguments);
+        }
+        else
+        {
+            Assert.Single(invoker.Requests);
+        }
         Assert.Equal(refusalCode is null, outcome.Succeeded);
         if (refusalCode is not null) Assert.Equal(refusalCode, outcome.Refusal!.Code);
         else Assert.Contains("statistics rows", outcome.Value!.SummaryMarkdown, StringComparison.Ordinal);

@@ -169,4 +169,33 @@ public sealed class AssessViewModelTests
         Assert.False(assess.IsIndeterminate);
         Assert.Equal(0.5, assess.ProgressFraction);
     }
+
+    [Fact]
+    public async Task ChoosingAResultsRowPrimesTryAWordWithoutStartingATrace()
+    {
+        var (fake, _, assess) = NewViewModel();
+        fake.AssessCompletesWith(NewResponse() with
+        {
+            Words = [new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 10, null)],
+        });
+        await assess.RunCommand.ExecuteAsync(null);
+
+        assess.Words.SelectedRow = assess.Words.Rows.Single();
+
+        Assert.Equal("kitabu", assess.Trace.WordToTry);
+        Assert.Empty(fake.TraceWordRequests);
+    }
+
+    [Fact]
+    public void SettingProjectPathPropagatesToTraceSoItCanRun()
+    {
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake);
+        var assess = new AssessViewModel(fake, selection) { Trace = { WordToTry = "kitabu" } };
+        Assert.False(assess.Trace.TryCommand.CanExecute(null));
+
+        assess.ProjectPath = ProjectPath;
+
+        Assert.True(assess.Trace.TryCommand.CanExecute(null));
+    }
 }

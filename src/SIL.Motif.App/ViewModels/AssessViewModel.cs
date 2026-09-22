@@ -10,6 +10,7 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>
 /// Adapts the Assessment request and response to the shared cancellable command-run module. The module
 /// owns lifecycle, cancellation, progress, and refusal classification; this adapter owns Selection input.
+/// Grammar findings are not read here — <see cref="GrammarViewModel"/> reads them independently of any run.
 /// </summary>
 public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandResponse>
 {
@@ -23,35 +24,50 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         _commandClient = commandClient;
         _selection = selection;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
+        Trace = new TraceWordViewModel(commandClient);
         PropertyChanged += OnResultChanged;
+        Words.PropertyChanged += OnWordsPropertyChanged;
     }
 
     /// <summary>The project this Assessment measures, or <c>null</c> before a project has been chosen.</summary>
     [ObservableProperty]
     private string? _projectPath;
 
-    partial void OnProjectPathChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
+    partial void OnProjectPathChanged(string? value)
+    {
+        RunCommand.NotifyCanExecuteChanged();
+        Trace.SetProjectPath(value);
+    }
 
-    /// <summary>The last successful Assessment's grammar findings, as a sortable, searchable table.</summary>
-    public GrammarWarningsViewModel GrammarWarnings { get; } = new();
-
-    protected override bool CanStartCore() => ProjectPath is not null && _selection.CanAssess;
+    /// <summary>
+    /// The Texts stage's word data, for looking up how often a Results word occurs in the chosen Texts.
+    /// <see langword="null"/> shows no occurrence count rather than guessing one.
+    /// </summary>
+    public TextWordsViewModel? TextWords { get; set; }
 
     /// <summary>The last successful Assessment's words, as a sortable, searchable table.</summary>
     public AssessWordsViewModel Words { get; } = new();
 
-    /// <summary>What the Grammar stage says when it has no table to show: no run yet, or a run with no findings.</summary>
-    public string GrammarStatusText => Result is null
-        ? "Findings appear here after the first Assessment. Reading them when the project opens is not built yet."
-        : GrammarWarnings.HasAny ? string.Empty : "The parser reported no findings.";
+    /// <summary>Traces one word on demand against the current Baseline's grammar, for Try a Word.</summary>
+    public TraceWordViewModel Trace { get; }
+
+    protected override bool CanStartCore() => ProjectPath is not null && _selection.CanAssess;
 
     private void OnResultChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(Result)) return;
-        GrammarWarnings.Load(Result?.GrammarWarningDetails ?? Result?.GrammarWarnings?
-            .Select(line => new GrammarWarning(string.Empty, string.Empty, [], [new(line, "text")], line)).ToArray());
-        Words.Load(Result?.Words);
-        OnPropertyChanged(nameof(GrammarStatusText));
+        Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null);
+    }
+
+    private static int? LookUpOccurrences(TextWordsViewModel textWords, string word) =>
+        textWords.Rows.FirstOrDefault(row => row.Form == word)?.OccurrenceCount;
+
+    // Choosing a Results word primes Try a Word with it, without starting a trace the person did not ask for.
+    private void OnWordsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(AssessWordsViewModel.SelectedRow)) return;
+        Trace.Reset();
+        if (Words.SelectedRow is { } row) Trace.SetWord(row.Word);
     }
 
     protected override Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(

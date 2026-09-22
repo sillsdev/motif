@@ -1,6 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.GrammarPanel"
@@ -17,37 +16,71 @@
       <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
     </Style>
   </UserControl.Styles>
-  <Grid RowDefinitions="Auto,Auto,*" Margin="24" RowSpacing="12">
+  <Grid RowDefinitions="Auto,*" Margin="24" RowSpacing="12">
 
     <StackPanel Spacing="4">
       <TextBlock Classes="stage-title" Text="Grammar" />
       <TextBlock Classes="muted"
-                 Text="What the parser reports about the grammar as a whole. None of it depends on which texts are chosen."
+                 Text="Loaded with the project. Nothing here depends on which texts you choose."
                  TextWrapping="Wrap" />
     </StackPanel>
 
-    <TextBlock Grid.Row="1" Classes="muted"
-               Text="{Binding Assess.GrammarStatusText}"
-               IsVisible="{Binding Assess.GrammarStatusText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
-               TextWrapping="Wrap" />
+    <Panel Grid.Row="1">
 
-    <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" RowSpacing="8"
-          IsVisible="{Binding Assess.GrammarWarnings.HasAny}">
-      <StackPanel Orientation="Horizontal" Spacing="12">
-        <TextBlock Classes="section-title" Text="Findings" />
-        <TextBlock Classes="muted" Text="{Binding Assess.GrammarWarnings.CountSummary}" VerticalAlignment="Center" />
+      <StackPanel IsVisible="{Binding Grammar.ShowLoading}" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <TextBlock Text="Checking the grammar..." FontWeight="SemiBold" />
+          <TextBlock Classes="muted" Text="{Binding Grammar.ElapsedText}" />
+        </StackPanel>
+        <ProgressBar IsIndeterminate="True" AutomationProperties.Name="Grammar loading" />
+        <TextBlock Classes="muted" TextWrapping="Wrap"
+                   Text="The parser reads the whole project, so the first check of a Baseline can take a minute on a large project. Later visits are instant until the Baseline is refreshed. You can choose texts meanwhile; they do not depend on the grammar." />
       </StackPanel>
+
+      <StackPanel IsVisible="{Binding Grammar.ShowRefused}" Spacing="8">
+        <Border Classes="notice">
+          <StackPanel Spacing="4">
+            <TextBlock Text="The parser declined this grammar" FontWeight="SemiBold" />
+            <TextBlock Classes="muted" Text="Nothing can be assessed until it loads. The Details say why." TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+        <Expander Header="Details" IsExpanded="False">
+          <TextBlock Text="{Binding Grammar.Refusal.Message}" TextWrapping="Wrap" />
+        </Expander>
+        <Button Content="Try again"
+                Classes="Primary" Theme="{DynamicResource SolidButton}"
+                Command="{Binding Grammar.CheckCommand}"
+                AutomationProperties.Name="Try checking the grammar again" />
+      </StackPanel>
+
+      <StackPanel IsVisible="{Binding Grammar.ShowNoBaseline}" Spacing="8">
+        <TextBlock Classes="muted" Text="Capture a Baseline in Project before the grammar can be checked." TextWrapping="Wrap" />
+      </StackPanel>
+
+      <StackPanel IsVisible="{Binding Grammar.ShowNoFindings}" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="No findings" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Classes="muted" Text="The parser loaded the grammar without warnings." HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8" IsVisible="{Binding Grammar.ShowFindings}">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Classes="section-title" Text="Findings" />
+          <TextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
+          <Button Content="Reload grammar"
+                  Command="{Binding Grammar.CheckCommand}"
+                  AutomationProperties.Name="Check the grammar again" />
+        </StackPanel>
         <Grid Grid.Row="1" ColumnDefinitions="110,150,*,2*" ColumnSpacing="6">
-          <TextBox Grid.Column="0" Text="{Binding Assess.GrammarWarnings.SeverityFilter}"
+          <TextBox Grid.Column="0" Text="{Binding Grammar.Warnings.SeverityFilter}"
                    PlaceholderText="Severity..." AutomationProperties.Name="Filter grammar warnings by severity" />
-          <TextBox Grid.Column="1" Text="{Binding Assess.GrammarWarnings.KindFilter}"
+          <TextBox Grid.Column="1" Text="{Binding Grammar.Warnings.KindFilter}"
                    PlaceholderText="Kind..." AutomationProperties.Name="Filter grammar warnings by kind" />
-          <TextBox Grid.Column="2" Text="{Binding Assess.GrammarWarnings.WhereFilter}"
+          <TextBox Grid.Column="2" Text="{Binding Grammar.Warnings.WhereFilter}"
                    PlaceholderText="Where..." AutomationProperties.Name="Filter grammar warnings by where they apply" />
-          <TextBox Grid.Column="3" Text="{Binding Assess.GrammarWarnings.ProblemFilter}"
+          <TextBox Grid.Column="3" Text="{Binding Grammar.Warnings.ProblemFilter}"
                    PlaceholderText="Problem..." AutomationProperties.Name="Filter grammar warnings by problem" />
         </Grid>
-        <DataGrid Grid.Row="2" ItemsSource="{Binding Assess.GrammarWarnings.Rows}"
+        <DataGrid Grid.Row="2" ItemsSource="{Binding Grammar.Warnings.Rows}"
                   IsReadOnly="True"
                   CanUserSortColumns="True"
                   CanUserResizeColumns="True"
@@ -89,6 +122,7 @@
             </DataGridTemplateColumn>
           </DataGrid.Columns>
         </DataGrid>
-    </Grid>
+      </Grid>
+    </Panel>
   </Grid>
 </UserControl>

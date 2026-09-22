@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.App;
 /// progress steps first, or block until its caller cancels — the block resolves purely from the
 /// <see cref="CancellationToken"/> passed to the call, never from a timer.
 /// </summary>
-public sealed class FakeCommandClient : ICommandClient
+public sealed partial class FakeCommandClient : ICommandClient
 {
     private Func<BaselineCaptureRequest, CancellationToken, Task<CommandOutcome<BaselineCaptureResponse>>>
         _captureBaseline = (_, _) => throw NotConfigured(nameof(CaptureBaselineAsync));

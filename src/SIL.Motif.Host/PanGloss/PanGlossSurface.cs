@@ -96,6 +96,7 @@ internal static class PanGlossSurface
             new PanGlossRequest.Batch("project.fwdata", ["motifa"], TimeSpan.FromSeconds(1), "cache.sqlite"),
             new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
+            new PanGlossRequest.GrammarHealth("project.fwdata"),
         ];
         foreach (var request in requests)
         {

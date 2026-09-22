@@ -23,10 +23,27 @@ public static class ParserReadingReader
         ArgumentNullException.ThrowIfNull(evidence);
         var objects = cache.ServiceLocator.ObjectRepository;
         return evidence.Analyses
-            .Select(analysis => new ParserReading(
-                analysis.Morphs.Select(morph => ReadMorph(cache, objects, projectName, morph)).ToArray()))
+            .Select(analysis => new ParserReading(ReadMorphs(cache, objects, projectName, analysis.Morphs)))
             .ToArray();
     }
+
+    /// <summary>
+    /// Resolves one ordered morph list on its own — the same resolution <see cref="Read"/> applies to every
+    /// analysis of a batch result, reused wherever another reader (a project's own analyses, an approved
+    /// reading the parser missed) needs the identical form/gloss/category rendering.
+    /// </summary>
+    public static IReadOnlyList<ParserReadingMorph> ReadMorphs(
+        LcmCache cache, string projectName, IReadOnlyList<ParseMorph> morphs)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(projectName);
+        ArgumentNullException.ThrowIfNull(morphs);
+        return ReadMorphs(cache, cache.ServiceLocator.ObjectRepository, projectName, morphs);
+    }
+
+    private static IReadOnlyList<ParserReadingMorph> ReadMorphs(
+        LcmCache cache, ICmObjectRepository objects, string projectName, IReadOnlyList<ParseMorph> morphs) =>
+        morphs.Select(morph => ReadMorph(cache, objects, projectName, morph)).ToArray();
 
     private static ParserReadingMorph ReadMorph(
         LcmCache cache, ICmObjectRepository objects, string projectName, ParseMorph morph)

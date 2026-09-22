@@ -35,7 +35,7 @@ public sealed class PanGlossInvokerTests : IDisposable
             "test:stats", CancellationToken.None);
 
         var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
-        Assert.Contains("\"group\":\"word\"", completed.Output, StringComparison.Ordinal);
+        Assert.Contains("\"orientation\":\"word\"", completed.Output, StringComparison.Ordinal);
         Assert.Equal(["stats", grammar, "--cache", cache, "--group", "word", "--format", "jsonl"], Argv(grammar));
     }
 

@@ -146,6 +146,44 @@ public sealed class SelectionViewModelTests
     }
 
     [Fact]
+    public async Task CheckingOrUncheckingATextRaisesChangeNotificationForChosenTextIds()
+    {
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(AlphaId, "Alpha")], HasBaseline: true));
+        var viewModel = new SelectionViewModel(fake);
+        await viewModel.SetProjectAsync(ProjectPath);
+        var raised = 0;
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SelectionViewModel.ChosenTextIds)) raised++;
+        };
+
+        viewModel.Texts[0].IsChecked = true;
+        viewModel.Texts[0].IsChecked = false;
+
+        Assert.Equal(2, raised);
+    }
+
+    [Fact]
+    public async Task SetTextCountsUpdatesTheMatchingTextAndClearCountsResetsEveryone()
+    {
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(AlphaId, "Alpha"), new TextChoiceSummary(BetaId, "Beta")], HasBaseline: true));
+        var viewModel = new SelectionViewModel(fake);
+        await viewModel.SetProjectAsync(ProjectPath);
+
+        viewModel.SetTextCounts(AlphaId, occurrenceCount: 12, distinctWordCount: 5);
+
+        Assert.Equal("12 words · 5 distinct", viewModel.Texts.Single(text => text.Id == AlphaId).CountsText);
+        Assert.Equal(string.Empty, viewModel.Texts.Single(text => text.Id == BetaId).CountsText);
+
+        viewModel.ClearTextCounts();
+
+        Assert.Equal(string.Empty, viewModel.Texts.Single(text => text.Id == AlphaId).CountsText);
+    }
+
+    [Fact]
     public async Task SearchingFiltersTheDisplayedListButNeverUnchecksAHiddenText()
     {
         var fake = new FakeCommandClient();

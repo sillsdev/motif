@@ -35,13 +35,27 @@
             Command="{Binding Baseline.RefreshCommand}"
             AutomationProperties.Name="Refresh the Baseline" />
 
-    <Expander Header="Details" IsExpanded="False" Margin="0,12,0,0">
-      <StackPanel Spacing="4">
-        <TextBlock Text="{Binding Baseline.Token.ProjectIdentity, StringFormat='Project identity: {0}'}" />
-        <TextBlock Text="{Binding Baseline.Token.SemanticSnapshotDigest, StringFormat='Semantic digest: {0}'}" />
-        <TextBlock Text="{Binding Baseline.Token.BundleDigest, StringFormat='Bundle digest: {0}'}" />
-      </StackPanel>
-    </Expander>
+    <TextBlock Classes="section-title" Text="History" Margin="0,16,0,0" />
+    <TextBlock Classes="muted" Text="Loading history..." IsVisible="{Binding History.IsLoading}" />
+    <TextBlock Classes="error" Text="{Binding History.RefusalMessage}"
+               IsVisible="{Binding History.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+    <TextBlock Classes="muted" Text="Nothing recorded for this project yet."
+               IsVisible="{Binding !History.HasEntries}" />
+    <ItemsControl ItemsSource="{Binding History.Entries}" AutomationProperties.Name="Project history">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="queries:ProjectHistoryEntry">
+          <Border Classes="card" Margin="0,0,0,6">
+            <DockPanel LastChildFill="True">
+              <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding At}" />
+              <StackPanel Spacing="2">
+                <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
 
   </StackPanel>
 </UserControl>

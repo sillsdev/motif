@@ -161,6 +161,41 @@ public abstract record PanGlossRequest
             new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
     }
 
+    /// <summary>
+    /// <c>pangloss grammar-health &lt;grammar&gt; &lt;out.json&gt;</c>: the ported HermitCrab grammar-authoring
+    /// health checks, written to a scratch file rather than read from standard output — writing to a named
+    /// file keeps this request's positional shape identical to the binary's own <c>--describe</c> declaration
+    /// (<c>grammar</c> plus an optional <c>out.json</c>), where reading standard output instead would supply
+    /// only the first of the two and fail that conformance check on every invocation, not only this one's own.
+    /// </summary>
+    public sealed record GrammarHealth(string GrammarPath) : PanGlossRequest
+    {
+        public override string Subcommand => "grammar-health";
+
+        internal override void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
+            if (!File.Exists(GrammarPath))
+                throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
+        }
+
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add("grammar-health");
+            startInfo.ArgumentList.Add(GrammarPath);
+            startInfo.ArgumentList.Add(Path.Combine(scratch, "health.json"));
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed)
+        {
+            var path = Path.Combine(scratch, "health.json");
+            return File.Exists(path)
+                ? new PanGlossOutcome.Completed(File.ReadAllText(path), standardError, elapsed)
+                : new PanGlossOutcome.Incomplete(
+                    $"pangloss grammar-health exited 0 but wrote no findings to '{path}'.", standardError);
+        }
+    }
+
     /// <summary><c>pangloss import</c>: the grammar snapshot of a saved <c>.fwdata</c>, written where the caller says.</summary>
     public sealed record Import(string FwDataPath, string GrammarJsonPath) : PanGlossRequest
     {

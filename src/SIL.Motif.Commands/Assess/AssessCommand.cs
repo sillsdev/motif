@@ -13,6 +13,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.LcmUtils;
@@ -213,6 +214,8 @@ public static class AssessCommand
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
                 string summaryMarkdown;
+                // Null, or a missing word, always leaves that word's Attempts/Passes null (never faked).
+                Dictionary<string, (int? Attempts, int? Passes)>? wordStats = null;
                 if (statsCachePath is null)
                 {
                     summaryMarkdown = "(no per-object statistics were collected)" + Environment.NewLine;
@@ -248,6 +251,14 @@ public static class AssessCommand
                             return CommandOutcome<AssessCommandResponse>.Refused(
                                 ParserUnavailable(request.ProjectPath, summary.Message));
                     }
+                    // Best effort: per-word attempts/passes are a cheap extra, never a reason to fail the run.
+                    var perWord = invoker.RunAsync(
+                            new PanGlossRequest.Stats(
+                                replay.GrammarPath, replay.CachePath, ["--group", "word", "--format", "jsonl"]),
+                            "assess:stats:word:" + workspaceKey, cancellationToken)
+                        .GetAwaiter().GetResult();
+                    if (perWord is PanGlossOutcome.Completed perWordCompleted)
+                        wordStats = ReadWordStats(perWordCompleted.Output);
                 }
 
                 if (cancellationToken.IsCancellationRequested)
@@ -299,11 +310,29 @@ public static class AssessCommand
                     var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
                     if (grammarWarnings is not null)
                         grammarWarningDetails = GrammarWarningReader.Read(namingCache, projectName, grammarWarnings);
-                    words = words.Select(word => word with
+                    var approvedByWord = ApprovedMorphologyReader.Read(namingCache);
+                    var disapprovedByWord = ApprovedMorphologyReader.ReadDisapproved(namingCache);
+                    words = words.Select(word =>
                     {
-                        Readings = word.Morphology is null
-                            ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology),
-                        TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
+                        var readings = word.Morphology is null
+                            ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology);
+                        var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : ((int?)null, (int?)null);
+                        return word with
+                        {
+                            Readings = readings,
+                            TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
+                            ReadingGrades = word.Morphology is null ? null : GradeReadings(
+                                word.Morphology.Analyses,
+                                approvedByWord.TryGetValue(word.Word, out var approved) ? approved : Array.Empty<ApprovedMorphology>(),
+                                disapprovedByWord.TryGetValue(word.Word, out var disapproved) ? disapproved : Array.Empty<ApprovedMorphology>()),
+                            MissedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
+                                .Select(index => word.Correctness.Expectations[index])
+                                .Select(missed => new ParserReading(ParserReadingReader.ReadMorphs(namingCache, projectName,
+                                    missed.Morphs.Select(morph => new ParseMorph(morph.Form, morph.Msa, morph.InflType, GuessedString: null)).ToArray())))
+                                .ToArray(),
+                            Attempts = stats.Item1,
+                            Passes = stats.Item2,
+                        };
                     }).ToArray();
                 }
 
@@ -368,6 +397,39 @@ public static class AssessCommand
     {
         var searchNoun = completedCount == 1 ? "search" : "searches";
         return $"{completedCount} {searchNoun} completed; {incompleteCount} incomplete; {skippedCount} skipped.";
+    }
+
+    // One grade per produced analysis, in Readings' own order, using the same match Correctness uses.
+    private static IReadOnlyList<string> GradeReadings(
+        IReadOnlyList<ParseAnalysis> analyses, IReadOnlyList<ApprovedMorphology> approved,
+        IReadOnlyList<ApprovedMorphology> disapproved) =>
+        analyses.Select(analysis => approved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "approved"
+            : disapproved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "disapproved"
+            : "no-opinion").ToArray();
+
+    // Optional per-word attempts/passes; a line this cannot parse or make sense of is skipped, never fatal.
+    private static Dictionary<string, (int? Attempts, int? Passes)> ReadWordStats(string jsonl)
+    {
+        var stats = new Dictionary<string, (int? Attempts, int? Passes)>(StringComparer.Ordinal);
+        foreach (var line in jsonl.Split('\n'))
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            JsonDocument document;
+            try { document = JsonDocument.Parse(line); }
+            catch (JsonException) { continue; }
+            using (document)
+            {
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object || root.TryGetProperty("meta", out _)) continue;
+                if (!root.TryGetProperty("form", out var formElement) || formElement.GetString() is not { } form) continue;
+                var attempts = root.TryGetProperty("attempts", out var attemptsElement) && attemptsElement.ValueKind == JsonValueKind.Number
+                    ? attemptsElement.GetInt32() : (int?)null;
+                var passes = root.TryGetProperty("passes", out var passesElement) && passesElement.ValueKind == JsonValueKind.Number
+                    ? passesElement.GetInt32() : (int?)null;
+                stats[form] = (attempts, passes);
+            }
+        }
+        return stats;
     }
 
     private static string ResolveProductVersion() => MotifProductVersion.CurrentText;

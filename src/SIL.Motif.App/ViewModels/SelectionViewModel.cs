@@ -150,6 +150,28 @@ public sealed partial class SelectionViewModel : ObservableObject
         if (e.PropertyName == nameof(TextChoiceViewModel.IsChecked)) Recompute();
     }
 
+    /// <summary>
+    /// Sets one Text's occurrence and distinct-word counts, once its words have been read. A Text nothing
+    /// has set counts for shows none, rather than a stale count from before it was last unchecked.
+    /// </summary>
+    public void SetTextCounts(Guid textId, int occurrenceCount, int distinctWordCount)
+    {
+        var text = _allTexts.FirstOrDefault(candidate => candidate.Id == textId);
+        if (text is null) return;
+        text.OccurrenceCount = occurrenceCount;
+        text.DistinctWordCount = distinctWordCount;
+    }
+
+    /// <summary>Clears every Text's counts, for a reload whose response no longer covers some of them.</summary>
+    public void ClearTextCounts()
+    {
+        foreach (var text in _allTexts)
+        {
+            text.OccurrenceCount = null;
+            text.DistinctWordCount = null;
+        }
+    }
+
     private void ApplyFilter()
     {
         Texts.Clear();
@@ -162,7 +184,9 @@ public sealed partial class SelectionViewModel : ObservableObject
     // Recomputed from raw, client-side state alone: no project is opened here (design decision 4).
     private void Recompute()
     {
+        var chosenBefore = ChosenTextIds;
         ChosenTextIds = _allTexts.Where(text => text.IsChecked).Select(text => text.Id).ToList();
+        if (!chosenBefore.SequenceEqual(ChosenTextIds)) OnPropertyChanged(nameof(ChosenTextIds));
         PastedWordEntries = SplitPastedWords(PastedWords);
 
         var hasThreshold = RetrySlowerThanMilliseconds is not null;

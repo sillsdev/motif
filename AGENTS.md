@@ -88,7 +88,7 @@ records, not counter-examples.
 ## Comments
 
 **Authoritative rules: `.claude/skills/code-comments/SKILL.md`. Enforced by
-`tools/comment-hygiene.ps1`.** Ported from PanGloss, where the same rot was measured and corrected;
+`tools/CommentHygiene/comment-hygiene.cs`.** Ported from PanGloss, where the same rot was measured and corrected;
 the intent is identical and the mechanics are adapted for C#.
 
 A comment explains what the code cannot: why this, why not the obvious alternative, what breaks if you

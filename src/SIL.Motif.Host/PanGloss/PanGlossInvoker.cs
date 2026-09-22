@@ -61,7 +61,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
             return await _queue.RunAsync(label,
                 async (cpuJob, token) =>
                 {
-                    if (request is PanGlossRequest.Batch or PanGlossRequest.Stats)
+                    if (request is PanGlossRequest.Batch or PanGlossRequest.Stats or PanGlossRequest.GrammarHealth)
                     {
                         var surface = await VerifySurfaceAsync(_executable, cpuJob.AssignProcess, token)
                             .ConfigureAwait(false);

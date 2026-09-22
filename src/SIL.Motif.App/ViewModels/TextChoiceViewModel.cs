@@ -21,4 +21,17 @@ public sealed partial class TextChoiceViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isChecked;
+
+    /// <summary>This Text's occurrence count once read; <see langword="null"/> until then.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CountsText))]
+    private int? _occurrenceCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CountsText))]
+    private int? _distinctWordCount;
+
+    public string CountsText => OccurrenceCount is { } occurrences && DistinctWordCount is { } distinct
+        ? $"{occurrences} words · {distinct} distinct"
+        : string.Empty;
 }

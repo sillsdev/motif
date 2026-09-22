@@ -16,7 +16,7 @@
 
   Two things this cannot do, so do not read a green result as more than it is. It is a diff-shape
   check, not a semantic one: it cannot tell a good comment from a bad one (that is
-  comment-hygiene.ps1), and it cannot tell that a deleted comment should have been kept. What it does
+  comment-hygiene.cs), and it cannot tell that a deleted comment should have been kept. What it does
   tell you, with no compiler and in under a second, is that the code is untouched.
 
   .PARAMETER Path

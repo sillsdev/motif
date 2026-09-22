@@ -33,11 +33,15 @@ public sealed partial class App : Application
         var commandClient = new CommandClient();
         var pickers = new AvaloniaStoragePickers(window);
         var selection = new SelectionViewModel(commandClient);
+        var words = new TextWordsViewModel(commandClient, selection);
 
         return new HandoffWorkspaceViewModel(
             new ProjectViewModel(commandClient, pickers),
+            new ProjectHistoryViewModel(commandClient),
             new BaselineViewModel(commandClient),
+            new GrammarViewModel(commandClient),
             selection,
+            words,
             new AssessViewModel(commandClient, selection),
             new StatisticsViewModel(commandClient),
             new HandoffViewModel(commandClient, selection, pickers, pickers));

@@ -4,15 +4,17 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>Project choice and Baseline state, bound to its own <see cref="Project"/> and <see cref="Baseline"/>.</summary>
+/// <summary>Project choice, Baseline state, and project history, bound to its own child view models.</summary>
 public sealed partial class ProjectPanel : UserControl
 {
-    public ProjectPanel(ProjectViewModel project, BaselineViewModel baseline)
+    public ProjectPanel(ProjectViewModel project, BaselineViewModel baseline, ProjectHistoryViewModel history)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
+        ArgumentNullException.ThrowIfNull(history);
         Project = project;
         Baseline = baseline;
+        History = history;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
     }
@@ -20,4 +22,6 @@ public sealed partial class ProjectPanel : UserControl
     public ProjectViewModel Project { get; }
 
     public BaselineViewModel Baseline { get; }
+
+    public ProjectHistoryViewModel History { get; }
 }

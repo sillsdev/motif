@@ -46,7 +46,11 @@ public sealed class MainWindowSmokeTests
             Assert.Same(workspace, window.DataContext);
             Assert.Same(workspace.Project, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).Project);
             Assert.Same(workspace.Baseline, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).Baseline);
+            Assert.Same(
+                workspace.ProjectHistory, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).History);
+            Assert.Same(workspace.Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
             Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
+            Assert.Same(workspace.Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
             Assert.Same(workspace.Assess, Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>()).Assess);
             Assert.Same(
                 workspace.Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
@@ -114,7 +118,6 @@ public sealed class MainWindowSmokeTests
                         "project.fwdata", DateTimeOffset.UtcNow, false, false),
                     new SelectionProjection([], []), [], "4 searches completed; 1 incomplete")
                 {
-                    GrammarWarnings = ["warning: grammar-wide finding"],
                     Words =
                     [
                         new AssessmentWordResult("motifa", "analysed", false, "Search completed", 1, null)
@@ -158,7 +161,6 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal(["Run section"], sections);
                 Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>());
 
-                Assert.Equal(1, workspace.Assess.GrammarWarnings.TotalCount);
                 Assert.Equal(4, workspace.Assess.Words.TotalCount);
                 var rows = workspace.Assess.Words.Rows.Cast<AssessWordRowViewModel>().ToList();
                 Assert.Equal("motif- = first gloss", Assert.Single(rows[0].Readings).Text);
@@ -167,8 +169,8 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Morphology evidence unavailable.", rows[2].Detail);
                 Assert.Contains("Morphology evidence unavailable: invalid shape.", rows[3].Detail);
 
-                var words = panel.GetLogicalDescendants().OfType<DataGrid>()
-                    .Single(grid => AutomationProperties.GetName(grid) == "Words");
+                var words = panel.GetLogicalDescendants().OfType<ListBox>()
+                    .Single(list => AutomationProperties.GetName(list) == "Words");
                 words.SelectedItem = rows[0];
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -297,11 +299,15 @@ public sealed class MainWindowSmokeTests
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
+        var words = new TextWordsViewModel(fake, selection);
         var dragSource = new FakeDragSource();
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new FakeProjectPicker()),
+            new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
+            new GrammarViewModel(fake),
             selection,
+            words,
             new AssessViewModel(fake, selection),
             new StatisticsViewModel(fake),
             new HandoffViewModel(fake, selection, new FakeFolderPicker(), dragSource));

@@ -23,10 +23,17 @@ namespace SIL.Motif.App.Services;
 /// <see cref="HandoffAsync"/> does not yet report through its <c>progress</c> parameter: there is no
 /// in-process collaborator to produce Handoff progress steps from. The parameter exists so a caller can
 /// already depend on the same <see cref="IProgress{T}"/> shape <see cref="AssessAsync"/> uses.
+/// <para>
+/// Every call that opens a project copy through LibLCM runs one at a time. LibLCM locks a project file
+/// exclusively, and the window starts several such reads at once when a project is chosen — the grammar
+/// check, the Text list, and the Text words — so without this the second and third fail with a locked-file
+/// error. A word trace joins them because the parser reads that same file; the store-only reads do not.
+/// </para>
 /// </remarks>
-public sealed class CommandClient : ICommandClient
+public sealed partial class CommandClient : ICommandClient
 {
     private readonly string _managedRoot;
+    private readonly SemaphoreSlim _projectGate = new(1, 1);
 
     public CommandClient() : this(SIL.Motif.Worker.RunnerOptions.ResolveRoot()) { }
 
@@ -38,7 +45,7 @@ public sealed class CommandClient : ICommandClient
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => BaselineCaptureCommand.Capture(request, _managedRoot));
+        OneAtATime(() => BaselineCaptureCommand.Capture(request, _managedRoot));
 
     public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
         Task.Run(() => KnownProjectsQuery.List(_managedRoot));
@@ -49,13 +56,13 @@ public sealed class CommandClient : ICommandClient
 
     public Task<CommandOutcome<TextInventoryResponse>> ListTextsAsync(
         TextInventoryRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => TextInventoryQuery.Query(request));
+        OneAtATime(() => TextInventoryQuery.Query(request));
 
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return Task.Run(
+        return OneAtATime(
             () => AssessCommand.Assess(request, _managedRoot, progress.Report, cancellationToken));
     }
 
@@ -67,7 +74,21 @@ public sealed class CommandClient : ICommandClient
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return Task.Run(
+        return OneAtATime(
             () => HandoffCommand.Handoff(request, _managedRoot, progress.Report, cancellationToken));
     }
+
+    // Waits without the caller's token, so a cancelled wait still reaches the command's own typed refusal.
+    private Task<T> OneAtATime<T>(Func<T> work) => Task.Run(async () =>
+    {
+        await _projectGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            return work();
+        }
+        finally
+        {
+            _projectGate.Release();
+        }
+    });
 }

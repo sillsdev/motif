@@ -15,7 +15,7 @@ namespace SIL.Motif.App.Services;
 /// never shells out to the CLI and never parses JSON; <see cref="CommandClient"/> runs everything
 /// in-process, and a deterministic fake stands in for it in tests.
 /// </summary>
-public interface ICommandClient
+public partial interface ICommandClient
 {
     Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken);

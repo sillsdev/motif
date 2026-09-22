@@ -4,6 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SIL.Motif.App</RootNamespace>
+    <ApplicationIcon>Assets\motif.ico</ApplicationIcon>
     <!-- Views bind against plain view models without a per-file x:DataType; AVLN2100 otherwise refuses every binding. -->
   </PropertyGroup>
 
@@ -14,6 +15,10 @@
     <PackageReference Include="Semi.Avalonia.DataGrid" Version="12.1.0.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="LiveMarkdown.Avalonia" Version="2.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\motif.ico;Assets\motif-icon.png" />
   </ItemGroup>
 
   <ItemGroup>

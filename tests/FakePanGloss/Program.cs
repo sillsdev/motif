@@ -47,6 +47,7 @@ internal static class Program
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
         new("parse", ["grammar", "word"],
             [new("--trace", true), new("--trace-format", true)], RunParse),
+        new("grammar-health", ["grammar", "out.json"], [], RunGrammarHealth),
     ];
 
     private static int Main(string[] args)
@@ -245,8 +246,10 @@ internal static class Program
         var formatIndex = Array.IndexOf(forwarded, "--format");
         var jsonl = formatIndex >= 0 && formatIndex + 1 < forwarded.Length
             && forwarded[formatIndex + 1] == "jsonl";
+        var groupIndex = Array.IndexOf(forwarded, "--group");
+        var wordGroup = groupIndex >= 0 && groupIndex + 1 < forwarded.Length && forwarded[groupIndex + 1] == "word";
 
-        Console.Out.Write(jsonl ? StatsJsonl(behaviour) : StatsText(behaviour));
+        Console.Out.Write(wordGroup && jsonl ? StatsWordJsonl(behaviour) : jsonl ? StatsJsonl(behaviour) : StatsText(behaviour));
         return behaviour.ExitCode;
     }
 
@@ -281,6 +284,38 @@ internal static class Program
         return behaviour.ExitCode;
     }
 
+    // grammar-health <grammar> [<out.json>]
+    private static int RunGrammarHealth(string[] args)
+    {
+        if (args.Length < 2)
+        {
+            Console.Error.WriteLine("usage: pangloss grammar-health <grammar> [<out.json>]");
+            return 64;
+        }
+        var grammarPath = args[1];
+        var outPath = args.Length > 2 ? args[2] : null;
+        var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
+        RecordArgv(directory, args);
+        var behaviour = Behaviour.Read(directory);
+
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+        if (behaviour.DelayMilliseconds > 0) Thread.Sleep(behaviour.DelayMilliseconds);
+
+        foreach (var warning in behaviour.GrammarWarnings) Console.Error.WriteLine("warning: " + warning);
+
+        if (behaviour.Mode == "fail")
+        {
+            Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");
+            return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
+        }
+
+        var json = behaviour.GrammarHealthFindingsJson ?? "[]";
+        if (outPath is not null) File.WriteAllText(outPath, json);
+        else Console.Out.Write(json);
+        Console.Error.WriteLine("grammar-health complete: 0 error(s), 0 warning(s)");
+        return behaviour.ExitCode;
+    }
+
     private static void RecordArgv(string? directory, string[] args)
     {
         var serialized = JsonSerializer.Serialize(args);
@@ -311,6 +346,28 @@ internal static class Program
         Environment.NewLine +
         JsonSerializer.Serialize(new { group = "word", key = "beta", count = 1 }) + Environment.NewLine;
 
+    // Mirrors the real `stats --group word --format jsonl` shape: one meta line, then one row per word.
+    private static string StatsWordJsonl(Behaviour behaviour)
+    {
+        var lines = new List<string>
+        {
+            JsonSerializer.Serialize(new { meta = true, orientation = "word" }),
+        };
+        foreach (var word in behaviour.Words)
+        {
+            lines.Add(JsonSerializer.Serialize(new
+            {
+                form = word.Word,
+                elapsed_ns = 3_000_000,
+                attempts = word.Attempts ?? 0,
+                passes = word.Passes ?? 0,
+                capped = word.Outcome == "capped",
+                timed_out = word.Outcome == "timed-out",
+            }));
+        }
+        return string.Join(Environment.NewLine, lines) + Environment.NewLine;
+    }
+
     /// Ticks forever so a caller can prove that cancelling it actually stops the process.
     private static int Tick(string heartbeatPath)
     {
@@ -337,7 +394,7 @@ internal static class Program
         }));
 
     private sealed record FakeWord(string Word, string Outcome, string? Signature = null,
-        IReadOnlyList<JsonElement>? Analyses = null);
+        IReadOnlyList<JsonElement>? Analyses = null, int? Attempts = null, int? Passes = null);
 
     private sealed record Behaviour
     {
@@ -352,6 +409,8 @@ internal static class Program
         public IReadOnlyList<FakeWord> Words { get; init; } = [new FakeWord("motifa", "complete")];
         public string? TraceSignature { get; init; }
         public string? TraceJson { get; init; }
+        public IReadOnlyList<string> GrammarWarnings { get; init; } = [];
+        public string? GrammarHealthFindingsJson { get; init; }
 
         internal static Behaviour Read(string? directory)
         {

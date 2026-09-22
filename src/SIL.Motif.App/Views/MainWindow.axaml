@@ -4,6 +4,7 @@
         x:Class="SIL.Motif.App.Views.MainWindow"
         x:DataType="vm:HandoffWorkspaceViewModel"
         Title="Motif"
+        Icon="avares://SIL.Motif.App/Assets/motif.ico"
         Width="1240"
         Height="780"
         MinWidth="1040"
@@ -47,7 +48,10 @@
             Padding="16,8">
       <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
 
-        <TextBlock Text="Motif" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Image Source="avares://SIL.Motif.App/Assets/motif-icon.png" Width="24" Height="24" />
+          <TextBlock Text="Motif" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+        </StackPanel>
 
         <ListBox Grid.Column="1"
                  ItemsSource="{Binding Stages}"
