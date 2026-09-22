@@ -28,7 +28,7 @@ public sealed class PanGlossTraceInvocationTests : IDisposable
         "{\"type\":\"LexicalLookup\",\"source\":\"S\",\"inputShape\":\"sagd\",\"children\":[]}]}";
 
     [Fact]
-    public async Task Trace_ArgvIsParseGrammarWordTraceTraceFormatJson_AndCompletedCarriesTheTreeAndSummary()
+    public async Task Trace_ArgvAsksForTheDetailedJson_AndCompletedCarriesTheTreeSummaryAndDetails()
     {
         var grammar = Project("trace");
         FakeParser.Behave(_root, new { traceSignature = "32+PAST|sag+?d", traceJson = GoldenTraceJson });
@@ -41,7 +41,26 @@ public sealed class PanGlossTraceInvocationTests : IDisposable
         Assert.Equal("32+PAST|sag+?d", completed.Summary.Signature);
         Assert.Equal(2, completed.Summary.StepCount);
         Assert.NotNull(completed.Tree);
-        Assert.Equal(["parse", grammar, "sagd", "--trace", "--trace-format", "json"], Argv(grammar));
+        Assert.Equal(42, completed.Details!.Steps);
+        Assert.Equal(
+            ["parse", grammar, "sagd", "--trace", "--trace-format", "json", "--trace-details"], Argv(grammar));
+    }
+
+    [Fact]
+    public async Task ATraceTheParserCappedIsIncomplete_KeepingTheTreeAndSayingWhy()
+    {
+        var grammar = Project("trace-capped");
+        FakeParser.Behave(_root, new { traceSignature = "-", traceJson = GoldenTraceJson, traceCapped = true });
+        using var invoker = Invoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        var outcome = await tracer.TraceAsync(grammar, "sagd", CancellationToken.None);
+
+        var incomplete = Assert.IsType<PanGlossTraceOutcome.Incomplete>(outcome);
+        Assert.NotNull(incomplete.Tree);
+        Assert.False(incomplete.Summary!.Completed);
+        Assert.True(incomplete.Details!.Capped);
+        Assert.Contains("step cap after 42 steps", incomplete.Reason, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
@@ -52,6 +53,38 @@ public sealed class TraceWordViewModelTests
         Assert.True(seen.IsCancellationRequested);
         Assert.False(trace.IsLoading);
         Assert.Null(trace.Refusal);
+    }
+
+    [Fact]
+    public async Task TheSummarySaysHowHardTheParserWorked_AndWhyATraceStoppedShort()
+    {
+        var fake = new FakeCommandClient();
+        fake.TraceWordCompletesWith(new WordTraceResponse(
+            "kitabu", Parsed: false, Complete: false, StopReason: "The parser stopped at its step cap.", StepCount: 3,
+            DeepestRule: null, ElapsedMs: 1500, [], Leaf("WordAnalysis"))
+        {
+            ParserSteps = 12345,
+            ParserElapsedMs = 0.2876,
+            Effort = [new TraceEffort("Root lookups", 2, 0, 0, 1, 0, 0, null)],
+        });
+        var trace = new TraceWordViewModel(fake);
+        trace.SetProjectPath(ProjectPath);
+        trace.WordToTry = "kitabu";
+
+        await trace.TryCommand.ExecuteAsync(null);
+
+        Assert.True(trace.HasResult);
+        Assert.Contains("Did not parse", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("12,345 parser steps", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("0.29 ms in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Equal("The parser stopped at its step cap.", trace.StopReason);
+        var root = Assert.Single(trace.Effort);
+        Assert.Equal("1 found no root", root.Missed);
+        Assert.Equal("not timed", root.Time);
+
+        trace.Reset();
+        Assert.False(trace.HasResult);
+        Assert.Empty(trace.Effort);
     }
 
     [Fact]
@@ -239,5 +272,117 @@ public sealed class TraceWordViewModelTests
         Assert.Equal(TraceView.Candidates, trace.View);
         Assert.Null(trace.Result);
         Assert.Empty(trace.Roots);
+    }
+
+    [Fact]
+    public void RichResultPutsAnalysesFirstAndKeepsFailedAttemptsCollapsedByDefault()
+    {
+        var response = new WordTraceResponse(
+            "kitabu", Parsed: true, Complete: false, StopReason: "The search reached its limit.", StepCount: 5,
+            DeepestRule: null, ElapsedMs: 12,
+            [
+                new TraceCandidate(
+                    [new ParserReadingMorph("ki", "book", "n", "regular", false, "silfw://entry/1")],
+                    Succeeded: true, FailureReason: null, Explanation: null, Steps: []),
+                new TraceCandidate(
+                    [new ParserReadingMorph("ta", "write", "v", null, false, null)],
+                    Succeeded: false, FailureReason: "surface-mismatch", Explanation: "The output did not match.", Steps: [])
+            ],
+            Leaf("WordSynthesis"))
+        {
+            Effort = [new TraceEffort("Lexical entries", 3, 2, 1, 0, 0, 4, 0.5) { Work = 2 }],
+            Analyses = [new TraceAnalysis("analysis-1", 0, "kitabu", "available",
+                [new TraceMorph("morph-1", "ki", "kika", "book", "N", null, null, null, null, null)])],
+        };
+        var trace = new TraceWordViewModel(new FakeCommandClient()) { Result = response };
+
+        Assert.Single(trace.Analyses);
+        Assert.Equal("ki", trace.Analyses[0].Morphs[0].Form);
+        Assert.Equal("kika", trace.Analyses[0].Morphs[0].Headword);
+        Assert.Equal("book", trace.Analyses[0].Morphs[0].Gloss);
+        Assert.Equal("N", trace.Analyses[0].Morphs[0].Category);
+        Assert.Equal(1, trace.FailedAttemptCount);
+        Assert.Equal("Search incomplete: The search reached its limit.", trace.SearchStatusText);
+        Assert.Equal("4", trace.Effort[0].Uses);
+        Assert.Equal("2", trace.Effort[0].Work);
+        Assert.Equal("failed", trace.Candidates[1].StatusText);
+    }
+    [Fact]
+    public void LoadingProducerEnvelopeKeepsRawJsonAndRecordedRichAnalysis()
+    {
+        const string json = """
+            {"schemaVersion":"pangloss.trace-details.v2","word":"sagd",
+             "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":9},
+             "result":{"signature":"a","guessed":false,"analyses":[
+               {"analysisId":"analysis-0","index":0,"surface":"sagd","morphemes":"root",
+                "projection":{"profile":"fieldworks-parse-analysis/v1","status":"available"},
+                "morphs":[{"identity":{"formId":"f1","entryId":"e1","msaId":"m1","quality":"exact"},
+                  "form":{"text":"sag","writingSystem":"en","sourceId":"f1"},
+                  "headword":{"text":"say"},"gloss":{"text":"say"},
+                  "msa":{"category":{"name":"verb","abbreviation":"v"}}}] }]},
+             "categories":{},
+             "trace":{"type":"Failed","children":[],"outcome":{"status":"failed","eventType":"surface-mismatch"},
+                      "failureContext":{"reason":"required feature missing"}},
+             "hostCapture":{"projectIdentity":"project-a","grammarHash":"abc","grammarHashSemantics":"snapshot-semantic-sha256-v1",
+                             "capturedUtc":"2026-09-22T12:00:00Z","wallElapsedMs":1234,
+                             "writingSystems":[{"id":"ar","name":"Arabic","isVernacular":true,"isDefault":true,"direction":"rtl","font":"Noto Sans Arabic"}]}}
+            """;
+
+        var trace = TraceWordViewModel.FromDiagnosticJson(json);
+
+        Assert.Equal(json, trace.DiagnosticJson);
+        var analysis = Assert.Single(trace.Analyses);
+        Assert.Equal("say", Assert.Single(analysis.Morphs).Headword);
+        Assert.Equal("root", analysis.LegacyMorphemes);
+        Assert.Equal(1234, trace.Result!.HostCapture!.WallElapsedMs);
+        Assert.Contains("ar", trace.WritingSystemSummary, StringComparison.Ordinal);
+        Assert.Contains("project-a", trace.CaptureDetails, StringComparison.Ordinal);
+        Assert.Equal("failed", trace.Root!.StatusText);
+    }
+
+    [Fact]
+    public void InvalidSavedDiagnosticIsRejectedWithoutAProject()
+    {
+        var exception = Assert.Throws<JsonException>(() => TraceWordViewModel.FromDiagnosticJson(
+            "{\"schemaVersion\":\"unsupported.major\",\"word\":\"word\"}"));
+
+        Assert.Contains("schema", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+    [Fact]
+    public void MorphSearchKeepsMatchingDescendantAndAncestorAndExpandsThePath()
+    {
+        var child = new TraceStep("Failed", "rule-x", "in", "out", "blocked", [])
+        {
+            OutcomeStatus = "failed",
+            AttemptedMorphs = [new TraceMorph("m1", "needle", "head", "gloss", "verb", null, null, null, null, null)],
+        };
+        var response = new WordTraceResponse(
+            "word", Parsed: false, Complete: true, StopReason: null, StepCount: 2,
+            DeepestRule: null, ElapsedMs: 1, Candidates: [], Root: new TraceStep(
+                "WordSynthesis", "root", "in", "out", null, [child]));
+        var trace = new TraceWordViewModel { Result = response };
+
+        trace.MorphFilter = "needle";
+
+        var root = Assert.Single(trace.FilteredRoots);
+        Assert.True(root.ExpandForFilter);
+        Assert.Single(root.Children);
+        Assert.Equal("rule-x", root.Children[0].Source);
+        Assert.Equal(0, trace.HiddenStepCount);
+    }
+
+    [Fact]
+    public void StandaloneRichMorphDoesNotEnableAFileProvidedFieldWorksLink()
+    {
+        var response = new WordTraceResponse(
+            "word", Parsed: true, Complete: true, StopReason: null, StepCount: 1,
+            DeepestRule: null, ElapsedMs: 1, Candidates: [], Root: Leaf("Success"))
+        {
+            Analyses = [new TraceAnalysis("a", 0, "word", "available",
+                [new TraceMorph("m", "form", "head", "gloss", "noun", null, null, null, null, "silfw://entry/1")])],
+        };
+        var trace = new TraceWordViewModel { Result = response };
+
+        Assert.False(Assert.Single(Assert.Single(trace.Analyses).Morphs).HasLink);
     }
 }

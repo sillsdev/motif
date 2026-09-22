@@ -1,26 +1,14 @@
 namespace SIL.Motif.Host.PanGloss;
 
-/// <summary>
-/// Traces one word through <see cref="IPanGlossInvoker"/>: builds the <see cref="PanGlossRequest.Trace"/>,
-/// reads the parity line and the verbatim tree back out of the process's own output, and derives the
-/// one-line summary that travels with it. See <see cref="IPanGlossTracer"/> for the contract this fulfils.
-/// </summary>
+/// <summary>Traces one word and preserves the parser diagnostic document.</summary>
 public sealed class PanGlossTracer : IPanGlossTracer
 {
-    /// <summary>
-    /// PanGloss has no trace-specific bound of its own — <c>parse</c> takes no <c>--step-cap</c>, and its
-    /// fixed internal cap (50,000,000 steps) is a runaway guard, not a wall-clock one — and tracing runs
-    /// unmerged, so it costs more than the batch pass that measured the same word. Motif imposes a timeout
-    /// well short of <see cref="PanGlossInvoker.DefaultWallClockCap"/> so a single traced word can never
-    /// itself approach the bound a whole batch invocation is allowed.
-    /// </summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(2);
 
     private readonly IPanGlossInvoker _invoker;
 
     public PanGlossTracer(IPanGlossInvoker invoker) => _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
 
-    /// <inheritdoc />
     public async Task<PanGlossTraceOutcome> TraceAsync(
         string grammarPath, string word, CancellationToken cancellationToken, TimeSpan? timeout = null)
     {
@@ -45,10 +33,32 @@ public sealed class PanGlossTracer : IPanGlossTracer
 
     private static PanGlossTraceOutcome Interpret(string word, PanGlossOutcome.Completed completed)
     {
-        if (!PanGlossTraceOutput.TryParse(completed.Output, out var signature, out var root))
-            return new PanGlossTraceOutcome.Malformed(word, completed.Output,
-                "pangloss parse --trace --trace-format json did not write the word\\tsignature line and trace tree this module reads.");
-        var summary = PanGlossTraceSummary.Derive(signature, root, completed: true);
-        return new PanGlossTraceOutcome.Completed(word, root, summary);
+        if (!PanGlossTraceOutput.TryRead(completed.Output, out var document, out var error))
+            return new PanGlossTraceOutcome.Malformed(word, completed.Output, error);
+
+        if (!string.Equals(document!.Word, word, StringComparison.Ordinal))
+            return new PanGlossTraceOutcome.Malformed(
+                word,
+                completed.Output,
+                $"The trace document records word '{document.Word}', but the requested word was '{word}'.");
+
+        var details = document.Details;
+        var stopped = details.Capped || details.TimedOut;
+        var summary = PanGlossTraceSummary.Derive(document.Signature, document.Root, completed: !stopped);
+        if (!stopped)
+            return new PanGlossTraceOutcome.Completed(word, document.Root, summary)
+            {
+                Details = details,
+                Document = document,
+            };
+
+        var reason = details.Capped
+            ? $"The parser stopped at its step cap after {details.Steps:N0} steps, so this trace is not the whole search."
+            : "The parser stopped at its own time limit, so this trace is not the whole search.";
+        return new PanGlossTraceOutcome.Incomplete(word, document.Root, summary, reason)
+        {
+            Details = details,
+            Document = document,
+        };
     }
 }

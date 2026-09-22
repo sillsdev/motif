@@ -46,7 +46,7 @@ internal static class Program
         new("stats", ["project-or-grammar"],
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
         new("parse", ["grammar", "word"],
-            [new("--trace", true), new("--trace-format", true)], RunParse),
+            [new("--trace", true), new("--trace-format", true), new("--trace-details", false)], RunParse),
         new("grammar-health", ["grammar", "out.json"], [], RunGrammarHealth),
     ];
 
@@ -253,12 +253,12 @@ internal static class Program
         return behaviour.ExitCode;
     }
 
-    // parse <grammar> <word> --trace --trace-format json
+    // parse <grammar> <word> --trace --trace-format json --trace-details
     private static int RunParse(string[] args)
     {
         if (args.Length < 3)
         {
-            Console.Error.WriteLine("usage: pangloss parse <grammar> <word> --trace --trace-format json");
+            Console.Error.WriteLine("usage: pangloss parse <grammar> <word> --trace --trace-format json --trace-details");
             return 64;
         }
         var grammarPath = args[1];
@@ -279,10 +279,21 @@ internal static class Program
         }
 
         var signature = behaviour.TraceSignature ?? word + "-sig";
-        Console.Out.Write(word + "\t" + signature + "\n");
-        if (behaviour.TraceJson is { } json) Console.Out.Write(json);
+        Console.Out.Write(TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped));
         return behaviour.ExitCode;
     }
+
+    // The pangloss.trace-details.v1 document, with the tree embedded verbatim so a malformed tree stays malformed.
+    private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped) =>
+        "{\"schemaVersion\":\"pangloss.trace-details.v1\",\"word\":" + JsonSerializer.Serialize(word) +
+        ",\"search\":{\"completed\":" + (capped ? "false" : "true") + ",\"capped\":" + (capped ? "true" : "false") +
+        ",\"timedOut\":false,\"invalidShape\":false,\"steps\":42,\"elapsedNs\":1500000}" +
+        ",\"result\":{\"signature\":" + JsonSerializer.Serialize(signature) + ",\"guessed\":false,\"analyses\":[]}" +
+        ",\"categories\":{\"morphRule\":{\"attempts\":3,\"work\":12,\"outputs\":2,\"notApplied\":1,\"noRoot\":0," +
+        "\"surfaceMismatch\":0,\"uses\":1,\"timingAvailable\":true,\"selfElapsedNs\":48700}," +
+        "\"phonRule\":{\"attempts\":0,\"work\":0,\"outputs\":0,\"notApplied\":0,\"noRoot\":0," +
+        "\"surfaceMismatch\":0,\"uses\":0,\"timingAvailable\":false,\"selfElapsedNs\":null}}" +
+        ",\"trace\":" + (treeJson ?? "null") + "}";
 
     // grammar-health <grammar> [<out.json>]
     private static int RunGrammarHealth(string[] args)
@@ -409,6 +420,7 @@ internal static class Program
         public IReadOnlyList<FakeWord> Words { get; init; } = [new FakeWord("motifa", "complete")];
         public string? TraceSignature { get; init; }
         public string? TraceJson { get; init; }
+        public bool TraceCapped { get; init; }
         public IReadOnlyList<string> GrammarWarnings { get; init; } = [];
         public string? GrammarHealthFindingsJson { get; init; }
 

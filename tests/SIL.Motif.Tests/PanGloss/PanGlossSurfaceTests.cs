@@ -208,6 +208,9 @@ public sealed class PanGlossSurfaceTests
         Assert.True(flags.TryGetValue("--trace-format", out var traceFormat),
             "the description does not declare 'parse --trace-format'.");
         Assert.True(traceFormat.GetProperty("takes_value").GetBoolean());
+        Assert.True(flags.TryGetValue("--trace-details", out var traceDetails),
+            "the description does not declare 'parse --trace-details'.");
+        Assert.False(traceDetails.GetProperty("takes_value").GetBoolean());
     }
 
     private static async Task<JsonDocument> Describe(string executable)

@@ -299,14 +299,7 @@
                 <TextBox Text="{Binding WordToTry}" PlaceholderText="Try another word..."
                          AutomationProperties.Name="Word to try" />
               </DockPanel>
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <Button Classes="viewChip" Content="Candidates" Classes.active="{Binding ShowCandidates}"
-                        Command="{Binding SetViewCommand}" CommandParameter="{x:Static vm:TraceView.Candidates}"
-                        AutomationProperties.Name="Show trace candidates" />
-                <Button Classes="viewChip" Content="Full derivation" Classes.active="{Binding ShowFullDerivation}"
-                        Command="{Binding SetViewCommand}" CommandParameter="{x:Static vm:TraceView.FullDerivation}"
-                        AutomationProperties.Name="Show the full derivation" />
-              </StackPanel>
+
               <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsLoading}">
                 <TextBlock Classes="muted" Text="Tracing... this can take up to two minutes." VerticalAlignment="Center" />
                 <Button Content="Cancel" Command="{Binding CancelCommand}"
@@ -315,86 +308,8 @@
               <TextBlock Classes="error" Text="{Binding Refusal.Message}"
                          IsVisible="{Binding Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
 
-              <!-- Every candidate expands into its own full, ordered step list — root first, not just the
-                   final failure — so each path the parser tried can be read in depth, not only its outcome. -->
-              <ListBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}"
-                       IsVisible="{Binding ShowCandidates}" AutomationProperties.Name="Trace candidates">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:TraceCandidateViewModel">
-                    <Expander Margin="0,0,0,6">
-                      <Expander.Header>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <TextBlock Text="{Binding Text}" FontWeight="SemiBold" />
-                          <TextBlock Classes="muted" Text="{Binding Gloss}" />
-                          <TextBlock Text="✓" Foreground="{DynamicResource SemiColorSuccess}" IsVisible="{Binding Succeeded}" />
-                          <TextBlock Text="✗" Foreground="{DynamicResource SemiColorDanger}" IsVisible="{Binding !Succeeded}" />
-                        </StackPanel>
-                      </Expander.Header>
-                      <StackPanel Spacing="4">
-                        <TextBlock Classes="muted" Text="{Binding Explanation}" TextWrapping="Wrap"
-                                   IsVisible="{Binding Explanation, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                        <ItemsControl ItemsSource="{Binding Steps}">
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:TraceStepViewModel">
-                              <Button Background="Transparent" BorderThickness="0" Padding="4,2" HorizontalContentAlignment="Left"
-                                      HorizontalAlignment="Stretch" Click="OnTraceStepClick" Tag="{Binding}">
-                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
-                                  <TextBlock Grid.Column="0" Text="✓" Foreground="{DynamicResource SemiColorSuccess}" IsVisible="{Binding Passed}" />
-                                  <TextBlock Grid.Column="0" Text="✗" Foreground="{DynamicResource SemiColorDanger}" IsVisible="{Binding !Passed}" />
-                                  <StackPanel Grid.Column="1" Spacing="0">
-                                    <TextBlock FontSize="12" Classes.deepest="{Binding IsDeepest}">
-                                      <Run Text="{Binding Type}" FontWeight="SemiBold" />
-                                      <Run Text=" " />
-                                      <Run Text="{Binding Source}" Foreground="{DynamicResource SemiColorLink}"
-                                           FontFamily="Cascadia Mono, Consolas, monospace" />
-                                    </TextBlock>
-                                    <TextBlock FontSize="11" Classes="muted"
-                                               Text="{Binding Input, StringFormat='{}{0} →'}"
-                                               IsVisible="{Binding Input, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                                  </StackPanel>
-                                  <TextBlock Grid.Column="2" FontSize="11" Text="{Binding Output}" />
-                                </Grid>
-                              </Button>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                      </StackPanel>
-                    </Expander>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-
-              <Grid IsVisible="{Binding ShowFullDerivation}" MinHeight="200">
-                <TreeView ItemsSource="{Binding Roots}" SelectedItem="{Binding SelectedStep}">
-                  <TreeView.Styles>
-                    <Style Selector="TreeViewItem">
-                      <Setter Property="IsExpanded" Value="True" />
-                    </Style>
-                  </TreeView.Styles>
-                  <TreeView.ItemTemplate>
-                    <TreeDataTemplate x:DataType="vm:TraceStepViewModel" ItemsSource="{Binding Children}">
-                      <TextBlock Text="{Binding Label}" FontSize="12" Classes.deepest="{Binding IsDeepest}" />
-                    </TreeDataTemplate>
-                  </TreeView.ItemTemplate>
-                </TreeView>
-              </Grid>
-
-              <!-- Shared by both views: whichever step was last selected, from a candidate's path or the tree. -->
-              <Border Classes="card" Padding="10" IsVisible="{Binding SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
-                <StackPanel Spacing="4" DataContext="{Binding SelectedStep}" x:DataType="vm:TraceStepViewModel">
-                  <TextBlock Classes="section-title" Text="Selected step" FontSize="13" />
-                  <TextBlock Text="{Binding Type}" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding Source, StringFormat='Rule: {0}'}"
-                             IsVisible="{Binding Source, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding Input, StringFormat='Input: {0}'}"
-                             IsVisible="{Binding Input, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding Output, StringFormat='Output: {0}'}"
-                             IsVisible="{Binding Output, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                  <TextBlock Text="Passed" Foreground="{DynamicResource SemiColorSuccess}" FontWeight="SemiBold"
-                             IsVisible="{Binding Passed}" />
-                  <TextBlock Classes="error" Text="{Binding FailureReason}" IsVisible="{Binding HasFailureReason}" TextWrapping="Wrap" />
-                </StackPanel>
-              </Border>
+              <ContentControl x:Name="RichDiagnosticHost"
+                              IsVisible="{Binding HasResult}" />
             </StackPanel>
           </Grid>
         </StackPanel>

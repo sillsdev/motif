@@ -15,6 +15,7 @@ public sealed partial class AssessPanel : UserControl
         Assess = assess;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
+        this.FindControl<ContentControl>("RichDiagnosticHost")!.Content = new DiagnosticPanel(Assess.Trace);
     }
 
     public AssessViewModel Assess { get; }

@@ -20,4 +20,22 @@ public sealed record PanGlossTraceNode(
     string? FailureReason,
     string? OutputShape,
     string? InputShape,
-    IReadOnlyList<PanGlossTraceNode> Children);
+    IReadOnlyList<PanGlossTraceNode> Children)
+{
+    public string? OutcomeStatus { get; init; }
+    public string? OutcomeEventType { get; init; }
+    public string? FailureContext { get; init; }
+    public string? FailureRequired { get; init; }
+    public string? FailureActual { get; init; }
+    public string? FailureEnvironment { get; init; }
+    public string? SourceIdentityKind { get; init; }
+    public string? SourceIdentityId { get; init; }
+    public string? SourceIdentityQuality { get; init; }
+    public IReadOnlyList<PanGlossTraceMorph> AttemptedMorphs { get; init; } = [];
+}
+
+/// <summary>Producer context attached to a v2 trace node when available.</summary>
+public static class PanGlossTraceNodeContext
+{
+    public const string Unavailable = "unavailable";
+}

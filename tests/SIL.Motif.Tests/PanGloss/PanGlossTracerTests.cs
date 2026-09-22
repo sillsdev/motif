@@ -1,4 +1,5 @@
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.PanGloss;
@@ -11,9 +12,8 @@ namespace SIL.Motif.Tests.PanGloss;
 /// </summary>
 public sealed class PanGlossTracerTests
 {
-    /// A real capture against PanGloss's own <c>trace_render.rs</c> golden grammar and word, not imagined JSON.
-    private const string GoldenStandardOutput =
-        "sagd\t32+PAST|sag+?d\n" +
+    /// The tree a real capture against PanGloss's own <c>trace_render.rs</c> golden grammar and word printed.
+    private const string GoldenTree =
         "{\"type\":\"WordAnalysis\",\"inputShape\":\"sagd\",\"children\":[" +
         "{\"type\":\"StratumAnalysisInput\",\"source\":\"S\",\"inputShape\":\"sagd\",\"children\":[]}," +
         "{\"type\":\"StratumAnalysisOutput\",\"source\":\"S\",\"outputShape\":\"sagd\",\"children\":[]}," +
@@ -28,6 +28,8 @@ public sealed class PanGlossTracerTests
         "\"failureReason\":\"NonPartialRuleProhibitedAfterFinalTemplate\",\"inputShape\":\"sag\",\"children\":[]}," +
         "{\"type\":\"Failed\",\"failureReason\":\"PartialParse\",\"outputShape\":\"sag\",\"children\":[]}]}," +
         "{\"type\":\"LexicalLookup\",\"source\":\"S\",\"inputShape\":\"sagd\",\"children\":[]}]}";
+
+    private static readonly string GoldenStandardOutput = TraceEnvelope.Of("32+PAST|sag+?d", GoldenTree);
 
     [Fact]
     public async Task CompletedTrace_ParsesTheVerbatimTreeAndDerivesTheSummary()
@@ -56,7 +58,7 @@ public sealed class PanGlossTracerTests
     [Fact]
     public async Task AWordWithNoTraceableShapeIsCompletedWithAnEmptyTree()
     {
-        var stub = new StubInvoker { Respond = _ => new PanGlossOutcome.Completed("zagz\t-\n", string.Empty, TimeSpan.FromMilliseconds(1)) };
+        var stub = new StubInvoker { Respond = _ => new PanGlossOutcome.Completed(TraceEnvelope.Of("-", null, invalidShape: true).Replace("sagd", "zagz", StringComparison.Ordinal), string.Empty, TimeSpan.FromMilliseconds(1)) };
         var tracer = new PanGlossTracer(stub);
 
         var outcome = await tracer.TraceAsync("golden.xml", "zagz", CancellationToken.None);
@@ -68,6 +70,40 @@ public sealed class PanGlossTracerTests
         Assert.True(completed.Summary.Completed);
         Assert.Empty(completed.Summary.FailureReasons);
         Assert.Null(completed.Summary.DeepestRuleReached);
+    }
+
+    [Fact]
+    public async Task TheDetailsCarryTheParsersOwnSearchStateAndEffort_KeepingUntimedKindsUntimed()
+    {
+        var stub = new StubInvoker { Respond = _ => new PanGlossOutcome.Completed(TraceEnvelope.Of("-", GoldenTree, guessed: true), string.Empty, TimeSpan.Zero) };
+        var tracer = new PanGlossTracer(stub);
+
+        var outcome = await tracer.TraceAsync("golden.xml", "sagd", CancellationToken.None);
+
+        var details = Assert.IsType<PanGlossTraceOutcome.Completed>(outcome).Details!;
+        Assert.True(details.SearchCompleted);
+        Assert.Equal(17, details.Steps);
+        Assert.Equal(287600, details.ElapsedNs);
+        Assert.True(details.Guessed);
+        var lexEntry = Assert.Single(details.Categories, category => category.Kind == "lexEntry");
+        Assert.Equal(4800, lexEntry.SelfElapsedNs);
+        var rootIndex = Assert.Single(details.Categories, category => category.Kind == "rootIndex");
+        Assert.Equal(1, rootIndex.NoRoot);
+        Assert.Null(rootIndex.SelfElapsedNs);
+    }
+
+    [Fact]
+    public async Task ATraceStoppedAtTheParsersStepCapIsIncomplete_WithItsTreeKept()
+    {
+        var stub = new StubInvoker { Respond = _ => new PanGlossOutcome.Completed(TraceEnvelope.Of("-", GoldenTree, capped: true), string.Empty, TimeSpan.Zero) };
+        var tracer = new PanGlossTracer(stub);
+
+        var outcome = await tracer.TraceAsync("golden.xml", "sagd", CancellationToken.None);
+
+        var incomplete = Assert.IsType<PanGlossTraceOutcome.Incomplete>(outcome);
+        Assert.NotNull(incomplete.Tree);
+        Assert.False(incomplete.Summary!.Completed);
+        Assert.Contains("step cap", incomplete.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -132,9 +168,10 @@ public sealed class PanGlossTracerTests
     }
 
     [Theory]
-    [InlineData("sagd\t32+PAST|sag+?d\n{\"type\":\"WordAnalysis\",\"inputShape\":\"sagd\",\"children\":[")]
-    [InlineData("sagd\t32+PAST|sag+?d\n{\"type\":\"WordAnalysis\", this is not json at all")]
-    [InlineData("no tab or newline anywhere in this output")]
+    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v1\",\"search\":{")]
+    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v2\",\"search\":{},\"result\":{},\"categories\":{},\"trace\":null}")]
+    [InlineData("sagd\t32+PAST|sag+?d\n{\"type\":\"WordAnalysis\",\"inputShape\":\"sagd\",\"children\":[]}")]
+    [InlineData("no JSON anywhere in this output")]
     public async Task MalformedOrTruncatedOutputIsATypedRefusal_NotAnException(string standardOutput)
     {
         var stub = new StubInvoker { Respond = _ => new PanGlossOutcome.Completed(standardOutput, string.Empty, TimeSpan.Zero) };

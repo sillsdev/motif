@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SIL.Motif.App.Views.DiagnosticWindow"
+        Title="Motif diagnostic"
+        Width="1100"
+        Height="760"
+        MinWidth="640"
+        MinHeight="480">
+  <ContentControl x:Name="PanelHost" />
+</Window>

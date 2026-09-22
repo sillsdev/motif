@@ -15,6 +15,15 @@ public abstract record PanGlossTraceOutcome
     /// <summary>One human sentence saying what happened.</summary>
     public abstract string Message { get; }
 
+    /// <summary>
+    /// The parser's own account of the search besides the tree, when it wrote one: always on
+    /// <see cref="Completed"/>, and on <see cref="Incomplete"/> when the parser's own cap stopped it.
+    /// </summary>
+    public PanGlossTraceDetails? Details { get; init; }
+
+    /// <summary>The parsed diagnostic document, including its exact raw JSON, when one was emitted.</summary>
+    public PanGlossTraceDiagnosticDocument? Document { get; init; }
+
     /// <summary>The parser produced a trace tree — possibly empty, when the word's shape was never traceable
     /// — and the derived summary that accompanies it.</summary>
     public sealed record Completed(string Word, PanGlossTraceNode? Tree, PanGlossTraceSummary Summary)

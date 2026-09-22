@@ -117,6 +117,7 @@
                         Command="{Binding ShowStageCommand}"
                         CommandParameter="{x:Static vm:WorkflowStage.Project}"
                         AutomationProperties.Name="Change the project" />
+                 <Button Content="Open diagnostic..." Click="OnOpenDiagnosticClick" AutomationProperties.Name="Open a saved diagnostic" />
               </StackPanel>
             </Flyout>
           </Button.Flyout>

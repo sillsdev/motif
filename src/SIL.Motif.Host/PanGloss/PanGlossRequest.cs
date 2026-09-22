@@ -130,10 +130,11 @@ public abstract record PanGlossRequest
     }
 
     /// <summary>
-    /// <c>pangloss parse &lt;grammar&gt; &lt;word&gt; --trace --trace-format json</c>: one word, traced and
-    /// unmerged. The only subcommand that can trace at all — <c>batch</c> carries no <c>--trace</c> flag, and
-    /// tracing runs unmerged deliberately, so this must stay a single-word request rather than growing a
-    /// word list.
+    /// <c>pangloss parse &lt;grammar&gt; &lt;word&gt; --trace --trace-format json --trace-details</c>: one word,
+    /// traced and unmerged, written as one JSON document holding the tree, the search state and the effort by
+    /// kind of grammar object. The only subcommand that can trace at all — <c>batch</c> carries no
+    /// <c>--trace</c> flag, and tracing runs unmerged deliberately, so this must stay a single-word request
+    /// rather than growing a word list. Needs PanGloss 0.3.3 or later.
     /// </summary>
     public sealed record Trace(string GrammarPath, string Word) : PanGlossRequest
     {
@@ -155,6 +156,7 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--trace");
             startInfo.ArgumentList.Add("--trace-format");
             startInfo.ArgumentList.Add("json");
+            startInfo.ArgumentList.Add("--trace-details");
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed) =>

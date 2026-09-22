@@ -9,7 +9,7 @@ namespace SIL.Motif.Host.PanGloss;
 public interface IPanGlossTracer
 {
     /// <summary>
-    /// Runs <c>pangloss parse &lt;grammarPath&gt; &lt;word&gt; --trace --trace-format json</c> and returns
+    /// Runs <c>pangloss parse &lt;grammarPath&gt; &lt;word&gt; --trace --trace-format json --trace-details</c> and returns
     /// what came of it. Never throws for anything the parser did. <paramref name="timeout"/> overrides
     /// <see cref="PanGlossTracer.DefaultTimeout"/>; the batch's own per-word or wall-clock limits are a
     /// separate concern this method does not read.

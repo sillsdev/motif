@@ -20,8 +20,7 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class WordTraceQueryTests : IDisposable
 {
     /// The same real capture <see cref="SIL.Motif.Tests.PanGloss.PanGlossTracerTests"/> pins at the reader level.
-    private const string GoldenStandardOutput =
-        "sagd\t32+PAST|sag+?d\n" +
+    private static readonly string GoldenStandardOutput = TraceEnvelope.Of("32+PAST|sag+?d",
         "{\"type\":\"WordAnalysis\",\"inputShape\":\"sagd\",\"children\":[" +
         "{\"type\":\"StratumAnalysisInput\",\"source\":\"S\",\"inputShape\":\"sagd\",\"children\":[]}," +
         "{\"type\":\"StratumAnalysisOutput\",\"source\":\"S\",\"outputShape\":\"sagd\",\"children\":[]}," +
@@ -35,7 +34,7 @@ public sealed class WordTraceQueryTests : IDisposable
         "{\"type\":\"MorphologicalRuleSynthesis\",\"source\":\"ed_suffix\"," +
         "\"failureReason\":\"NonPartialRuleProhibitedAfterFinalTemplate\",\"inputShape\":\"sag\",\"children\":[]}," +
         "{\"type\":\"Failed\",\"failureReason\":\"PartialParse\",\"outputShape\":\"sag\",\"children\":[]}]}," +
-        "{\"type\":\"LexicalLookup\",\"source\":\"S\",\"inputShape\":\"sagd\",\"children\":[]}]}";
+        "{\"type\":\"LexicalLookup\",\"source\":\"S\",\"inputShape\":\"sagd\",\"children\":[]}]}");
 
     private readonly PristineProjectFixture _pristine;
     private readonly string _managedRootsParent =
@@ -90,6 +89,13 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.True(response.Complete);
         Assert.Null(response.StopReason);
         Assert.Equal(13, response.StepCount);
+        Assert.Equal(17, response.ParserSteps);
+        Assert.Equal(0.2876, response.ParserElapsedMs!.Value, precision: 4);
+        Assert.False(response.Guessed);
+        // A kind the parser never touched says nothing, so it is left out rather than shown as a row of zeros.
+        Assert.Equal(["Lexical entries", "Root lookups"], response.Effort.Select(effort => effort.Kind));
+        Assert.Equal(1, response.Effort[1].NoRoot);
+        Assert.Null(response.Effort[1].SelfMs);
         Assert.Equal("ed_suffix", response.DeepestRule);
         Assert.Equal("WordAnalysis", response.Root.Type);
         Assert.Equal(4, response.Root.Children.Count);
@@ -99,7 +105,7 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.True(succeeded.Succeeded);
         Assert.Null(succeeded.FailureReason);
         Assert.Null(succeeded.Explanation);
-        Assert.Equal("sag", Assert.Single(succeeded.Morphs).Form);
+        Assert.Empty(succeeded.Morphs);
         Assert.Equal("Successful", succeeded.Steps[^1].Type);
 
         var failed = response.Candidates[1];
@@ -109,27 +115,26 @@ public sealed class WordTraceQueryTests : IDisposable
             "This parse does not include all analyzed morphemes. Perhaps the missing morphemes are in an " +
             "inflectional template that is not available at this point in the synthesis.",
             failed.Explanation);
-        Assert.Equal("sag", Assert.Single(failed.Morphs).Form);
+        Assert.Empty(failed.Morphs);
         Assert.Equal("Failed", failed.Steps[^1].Type);
-        Assert.Equal(["LexicalLookup", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));
+        Assert.Equal(["MorphologicalRuleAnalysis", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));
     }
 
     [Fact]
     public void AnOutcomeOnABranchWithNoLookupOfItsOwnDoesNotBorrowANeighbouringBranchsRoot()
     {
-        const string twoBranches =
-            "xyz\t\n" +
+        var twoBranches = TraceEnvelope.Of("",
             "{\"type\":\"WordAnalysis\",\"inputShape\":\"xyz\",\"children\":[" +
             "{\"type\":\"MorphologicalRuleAnalysis\",\"source\":\"first\",\"outputShape\":\"xy\",\"children\":[" +
             "{\"type\":\"LexicalLookup\",\"source\":\"S\",\"inputShape\":\"xy\",\"children\":[]}," +
             "{\"type\":\"Failed\",\"failureReason\":\"PartialParse\",\"outputShape\":\"xy\",\"children\":[]}]}," +
             "{\"type\":\"MorphologicalRuleAnalysis\",\"source\":\"second\",\"outputShape\":\"x\",\"children\":[" +
-            "{\"type\":\"Failed\",\"failureReason\":\"PartialParse\",\"outputShape\":\"x\",\"children\":[]}]}]}";
+            "{\"type\":\"Failed\",\"failureReason\":\"PartialParse\",\"outputShape\":\"x\",\"children\":[]}]}]}");
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var invoker = new FakeInvoker
         {
-            Respond = _ => new PanGlossOutcome.Completed(twoBranches, string.Empty, TimeSpan.FromMilliseconds(1)),
+            Respond = _ => new PanGlossOutcome.Completed(twoBranches.Replace("sagd", "xyz", StringComparison.Ordinal), string.Empty, TimeSpan.FromMilliseconds(1)),
         };
 
         var outcome = WordTraceQuery.Query(
@@ -137,8 +142,9 @@ public sealed class WordTraceQueryTests : IDisposable
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var bySource = outcome.Value!.Candidates.ToDictionary(candidate => candidate.Steps[1].Source!);
-        Assert.Equal("xy", Assert.Single(bySource["first"].Morphs).Form);
-        Assert.Equal("x", Assert.Single(bySource["second"].Morphs).Form);
+        Assert.Empty(bySource["first"].Morphs);
+        Assert.Empty(bySource["second"].Morphs);
+        Assert.DoesNotContain(bySource["first"].Steps, step => step.Type == "LexicalLookup");
         Assert.DoesNotContain(bySource["second"].Steps, step => step.Type == "LexicalLookup");
     }
 
@@ -149,7 +155,7 @@ public sealed class WordTraceQueryTests : IDisposable
         Capture(fwDataPath);
         var invoker = new FakeInvoker
         {
-            Respond = _ => new PanGlossOutcome.Completed("zagz\t-\n", string.Empty, TimeSpan.Zero),
+            Respond = _ => new PanGlossOutcome.Completed(TraceEnvelope.Of("-", null, invalidShape: true).Replace("sagd", "zagz", StringComparison.Ordinal), string.Empty, TimeSpan.Zero),
         };
 
         var outcome = WordTraceQuery.Query(

@@ -114,22 +114,10 @@ public sealed record TextToken(string Text, string? Form, string? Gloss, string?
     public string? WordLink { get; init; }
 }
 
-/// <summary>Which word to trace, against which project's current Baseline grammar.</summary>
+/// <summary>Which word to trace against the current Baseline grammar.</summary>
 public sealed record WordTraceRequest(string ProjectPath, string Word);
 
-/// <summary>
-/// The parser's own account of one word: the candidate morph sequences it tried and why each failed, as
-/// FieldWorks' Try a Word reports them, and the full derivation tree behind them.
-/// </summary>
-/// <param name="Word">The word traced.</param>
-/// <param name="Parsed">Whether any candidate succeeded.</param>
-/// <param name="Complete">False when the trace stopped early; <paramref name="StopReason"/> then says why.</param>
-/// <param name="StopReason">Why the trace stopped early, or <see langword="null"/> when it finished.</param>
-/// <param name="StepCount">How many derivation steps the trace holds.</param>
-/// <param name="DeepestRule">The deepest rule the derivation reached, or <see langword="null"/>.</param>
-/// <param name="ElapsedMs">How long the trace took.</param>
-/// <param name="Candidates">Each candidate sequence, successes first, then failures by depth reached.</param>
-/// <param name="Root">The derivation tree.</param>
+/// <summary>The parser response plus the complete portable diagnostic envelope.</summary>
 public sealed record WordTraceResponse(
     string Word,
     bool Parsed,
@@ -139,32 +127,141 @@ public sealed record WordTraceResponse(
     string? DeepestRule,
     int ElapsedMs,
     IReadOnlyList<TraceCandidate> Candidates,
-    TraceStep Root);
+    TraceStep Root)
+{
+    public long? ParserSteps { get; init; }
+    public double? ParserElapsedMs { get; init; }
+    public bool Guessed { get; init; }
+    public IReadOnlyList<TraceEffort> Effort { get; init; } = [];
+    public string DiagnosticJson { get; init; } = string.Empty;
+    public string DiagnosticFormat { get; init; } = string.Empty;
+    public string SearchStatus { get; init; } = "complete";
+    public bool InvalidShape { get; init; }
+    public IReadOnlyList<TraceAnalysis> Analyses { get; init; } = [];
+    public TraceHostCapture? HostCapture { get; init; }
+    public TraceProvenanceComparison? Provenance { get; init; }
+    public string? ParserName { get; init; }
+    public string? ParserVersion { get; init; }
+    public string? TraceProfile { get; init; }
+    public string? GrammarHash { get; init; }
+    public string? GrammarHashSemantics { get; init; }
+}
 
-/// <summary>One morph sequence the parser tried for a word.</summary>
-/// <param name="Morphs">The morphs of the sequence, as a person reads them.</param>
-/// <param name="Succeeded">Whether this sequence produced the word.</param>
-/// <param name="FailureReason">The parser's failure reason code, or <see langword="null"/> when it succeeded.</param>
-/// <param name="Explanation">The failure in plain language, as FieldWorks words it, or <see langword="null"/>.</param>
-/// <param name="Steps">The steps along this candidate's path, root first, each marked as passing or failing.</param>
+public sealed record TraceEffort(
+    string Kind, long Attempts, long Outputs, long NotApplied, long NoRoot, long SurfaceMismatch, long Uses, double? SelfMs)
+{
+    public long Work { get; init; }
+    public bool TimingAvailable => SelfMs is not null;
+}
+
+public sealed record TraceAnalysis(
+    string? AnalysisId,
+    int? Index,
+    string? Surface,
+    string Availability,
+    IReadOnlyList<TraceMorph> Morphs)
+{
+    public string? LegacyMorphemes { get; init; }
+    public string? ProjectionStatus { get; init; }
+    public string? ProjectionError { get; init; }
+}
+
+public sealed record TraceMorph(
+    string? Identity,
+    string? Form,
+    string? Headword,
+    string? Gloss,
+    string? Category,
+    string? Slot,
+    string? InflectionClass,
+    string? Features,
+    string? GuessedString,
+    string? FieldWorksLink)
+{
+    public string? FormId { get; init; }
+    public string? EntryId { get; init; }
+    public string? MsaId { get; init; }
+    public string? InflTypeId { get; init; }
+    public string? IdentityQuality { get; init; }
+    public string? FormWritingSystem { get; init; }
+    public string? HeadwordWritingSystem { get; init; }
+    public string? GlossWritingSystem { get; init; }
+    public string? CategoryId { get; init; }
+    public string? CategoryName { get; init; }
+    public string? CategoryAbbreviation { get; init; }
+    public string? SlotId { get; init; }
+    public bool? SlotOptional { get; init; }
+    public string? InflectionClassId { get; init; }
+    public string? InflectionClassName { get; init; }
+    public string? InflectionClassAbbreviation { get; init; }
+    public string? FeaturesSource { get; init; }
+    public string? FeaturesStatus { get; init; }
+    public string? RawJson { get; init; }
+}
+
 public sealed record TraceCandidate(
     IReadOnlyList<ParserReadingMorph> Morphs,
     bool Succeeded,
     string? FailureReason,
     string? Explanation,
-    IReadOnlyList<TraceStep> Steps);
-
-/// <summary>One node of the derivation tree.</summary>
-/// <param name="Type">The parser's node type, such as <c>MorphologicalRuleSynthesis</c>.</param>
-/// <param name="Source">The rule, stratum or template the step belongs to, or <see langword="null"/>.</param>
-/// <param name="Input">The form entering the step, or <see langword="null"/>.</param>
-/// <param name="Output">The form leaving the step, or <see langword="null"/>.</param>
-/// <param name="FailureReason">Why the step failed, or <see langword="null"/> when it did not.</param>
-/// <param name="Children">The steps beneath this one.</param>
+    IReadOnlyList<TraceStep> Steps)
+{
+    public string? AttemptId { get; init; }
+    public string? OutcomeStatus { get; init; }
+    public string? ContextualFailure { get; init; }
+    public string? FailureRequired { get; init; }
+    public string? FailureActual { get; init; }
+    public string? FailureEnvironment { get; init; }
+    public string? SourceIdentityKind { get; init; }
+    public string? SourceIdentityId { get; init; }
+    public string? SourceIdentityQuality { get; init; }
+    public string MorphAvailability { get; init; } = "unavailable";
+    public IReadOnlyList<TraceMorph> RichMorphs { get; init; } = [];
+}
 public sealed record TraceStep(
     string Type,
     string? Source,
     string? Input,
     string? Output,
     string? FailureReason,
-    IReadOnlyList<TraceStep> Children);
+    IReadOnlyList<TraceStep> Children)
+{
+    public int? Subrule { get; init; }
+    public string? OutcomeStatus { get; init; }
+    public string? OutcomeEventType { get; init; }
+    public string? ContextualFailure { get; init; }
+    public string? FailureRequired { get; init; }
+    public string? FailureActual { get; init; }
+    public string? FailureEnvironment { get; init; }
+    public IReadOnlyList<TraceMorph> AttemptedMorphs { get; init; } = [];
+    public string? SourceIdentityKind { get; init; }
+    public string? SourceIdentityId { get; init; }
+    public string? SourceIdentityQuality { get; init; }
+}
+
+public sealed record TraceHostCapture(
+    string? ProjectIdentity,
+    string? GrammarHash,
+    string? GrammarHashSemantics,
+    string? BundleDigest,
+    DateTimeOffset? CapturedUtc,
+    long? WallElapsedMs,
+    IReadOnlyList<TraceWritingSystem> WritingSystems);
+
+public sealed record TraceWritingSystem(
+    string Id,
+    string? Name,
+    bool IsVernacular,
+    bool IsDefault,
+    string? Direction,
+    string? Font);
+
+public sealed record TraceProvenanceComparison(
+    string ProjectIdentityStatus,
+    string GrammarStatus,
+    string WritingSystemsStatus,
+    bool IsCompatible,
+    string Warning)
+{
+    public bool CanNavigate { get; init; }
+}

@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform.Storage;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -40,6 +41,31 @@ public sealed partial class MainWindow : Window
 
     private void OnChangeProjectClick(object? sender, RoutedEventArgs e) =>
         this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
+    private async void OnOpenDiagnosticClick(object? sender, RoutedEventArgs e)
+    {
+        this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
+        try
+        {
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Open diagnostic JSON",
+                AllowMultiple = false,
+                FileTypeFilter = [new FilePickerFileType("Motif diagnostic JSON") { Patterns = ["*.json"] }],
+            });
+            if (files.Count == 0) return;
+
+            await using var stream = await files[0].OpenReadAsync();
+            using var reader = new StreamReader(stream);
+            var trace = TraceWordViewModel.FromDiagnosticJson(await reader.ReadToEndAsync());
+            new DiagnosticWindow(trace).Show(this);
+        }
+        catch (Exception exception)
+        {
+            var window = new DiagnosticWindow(new TraceWordViewModel());
+            window.Show(this);
+            window.ShowDiagnosticError($"Unable to open diagnostic: {exception.Message}");
+        }
+    }
 
     // Looked up by name rather than a generated field, so this never depends on the compiler's own codegen.
     private ContentControl Host(string name) =>
