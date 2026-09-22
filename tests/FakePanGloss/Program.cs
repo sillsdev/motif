@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace SIL.Motif.FakePanGloss;
@@ -279,13 +281,19 @@ internal static class Program
         }
 
         var signature = behaviour.TraceSignature ?? word + "-sig";
-        Console.Out.Write(TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped));
+        // Raw UTF-8 bytes, as serde_json writes them: Console.Out would encode through the console code page.
+        var envelope = TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped);
+        using (var stdout = Console.OpenStandardOutput())
+            stdout.Write(new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(envelope));
         return behaviour.ExitCode;
     }
 
+    private static readonly JsonSerializerOptions Unescaped =
+        new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
     // The pangloss.trace-details.v1 document, with the tree embedded verbatim so a malformed tree stays malformed.
     private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped) =>
-        "{\"schemaVersion\":\"pangloss.trace-details.v1\",\"word\":" + JsonSerializer.Serialize(word) +
+        "{\"schemaVersion\":\"pangloss.trace-details.v1\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
         ",\"search\":{\"completed\":" + (capped ? "false" : "true") + ",\"capped\":" + (capped ? "true" : "false") +
         ",\"timedOut\":false,\"invalidShape\":false,\"steps\":42,\"elapsedNs\":1500000}" +
         ",\"result\":{\"signature\":" + JsonSerializer.Serialize(signature) + ",\"guessed\":false,\"analyses\":[]}" +

@@ -47,6 +47,22 @@ public sealed class PanGlossTraceInvocationTests : IDisposable
     }
 
     [Fact]
+    public async Task ANonLatinWordSurvivesTheRoundTrip_BecauseTheParsersUtf8StdoutIsDecodedAsUtf8()
+    {
+        const string ethiopic = "ሌባው";
+        var grammar = Project("trace-ethiopic");
+        FakeParser.Behave(_root, new { traceJson = GoldenTraceJson });
+        using var invoker = Invoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        var outcome = await tracer.TraceAsync(grammar, ethiopic, CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(outcome);
+        Assert.Equal(ethiopic, completed.Document!.Word);
+        Assert.Equal(ethiopic + "-sig", completed.Summary.Signature);
+    }
+
+    [Fact]
     public async Task ATraceTheParserCappedIsIncomplete_KeepingTheTreeAndSayingWhy()
     {
         var grammar = Project("trace-capped");

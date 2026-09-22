@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Host.Parser;
 
@@ -97,6 +98,8 @@ public sealed class PanGlossAssessmentProcess : IPanGlossAssessor
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = PanGlossProcessEnvironment.StreamEncoding,
+            StandardErrorEncoding = PanGlossProcessEnvironment.StreamEncoding,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
