@@ -15,7 +15,7 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var window = new MainWindow();
+            var window = new MainWindow(rememberBounds: true);
             var workspace = ComposeWorkspace(window);
             window.Compose(workspace);
             desktop.MainWindow = window;

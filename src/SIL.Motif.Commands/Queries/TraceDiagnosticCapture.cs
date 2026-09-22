@@ -53,11 +53,28 @@ internal static class TraceDiagnosticCapture
                 link = FieldWorksLinks.For(cache, projectName, found);
             return morph with { FieldWorksLink = link };
         }
+        string? RuleName(string? id, string? fallback) =>
+            projectMatches && Guid.TryParse(id, out var guid) && repository.TryGetObject(guid, out var rule)
+                ? NameOf(rule) ?? fallback
+                : fallback;
         TraceStep ResolveStep(TraceStep step) => step with
         {
+            Source = step.SourceIdentityKind is "morphRule" or "phonRule" or "compoundingRule" or "affixTemplate"
+                ? RuleName(step.SourceIdentityId, step.Source) : step.Source,
             AttemptedMorphs = step.AttemptedMorphs.Select(Resolve).ToArray(),
             Children = step.Children.Select(ResolveStep).ToArray(),
         };
+        TraceCandidate ResolveCandidate(TraceCandidate candidate)
+        {
+            var morphs = candidate.RichMorphs.Select(Resolve).ToArray();
+            return candidate with
+            {
+                RichMorphs = morphs,
+                Morphs = morphs.Length > 0 ? morphs.Select(TraceDiagnosticProjection.ToReadingMorph).ToArray() : candidate.Morphs,
+                StoppedByRule = RuleName(candidate.StoppedByRuleId, candidate.StoppedByRule),
+                Steps = candidate.Steps.Select(ResolveStep).ToArray(),
+            };
+        }
         var json = JsonNode.Parse(response.DiagnosticJson, documentOptions: new JsonDocumentOptions { MaxDepth = 512 })!.AsObject();
         var host = json["hostCapture"] as JsonObject ?? new JsonObject();
         var captured = JsonSerializer.SerializeToNode(capture, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!.AsObject();
@@ -69,13 +86,27 @@ internal static class TraceDiagnosticCapture
             Provenance = comparison,
             DiagnosticJson = json.ToJsonString(new JsonSerializerOptions { MaxDepth = 512 }),
             Analyses = response.Analyses.Select(analysis => analysis with { Morphs = analysis.Morphs.Select(Resolve).ToArray() }).ToArray(),
-            Candidates = response.Candidates.Select(candidate => candidate with
-            {
-                RichMorphs = candidate.RichMorphs.Select(Resolve).ToArray(),
-                Steps = candidate.Steps.Select(ResolveStep).ToArray(),
-            }).ToArray(),
+            Candidates = response.Candidates.Select(ResolveCandidate).ToArray(),
             Root = ResolveStep(response.Root),
         };
+    }
+
+    // An affix rule is known by its entry, as FieldWorks shows it: headword, then the sense gloss if any.
+    private static string? NameOf(ICmObject rule)
+    {
+        var msa = rule as IMoMorphSynAnalysis;
+        for (var owner = rule; owner is not null; owner = owner.Owner)
+        {
+            if (owner is ILexEntry entry)
+            {
+                var headword = entry.HeadWord?.Text;
+                var gloss = (msa is null ? entry.SensesOS.FirstOrDefault()
+                        : entry.AllSenses.FirstOrDefault(sense => sense.MorphoSyntaxAnalysisRA == msa))
+                    ?.Gloss.BestAnalysisAlternative.Text;
+                return gloss is { Length: > 0 } && gloss != "***" ? $"{headword} ‘{gloss}’" : headword;
+            }
+        }
+        return rule.ShortName is { Length: > 0 } name && name != "***" ? name : null;
     }
 
     internal static TraceProvenanceComparison Compare(TraceHostCapture? recorded, TraceHostCapture? current)

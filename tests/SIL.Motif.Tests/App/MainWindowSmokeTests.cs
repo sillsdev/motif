@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -29,7 +30,7 @@ namespace SIL.Motif.Tests.App;
 /// <see cref="CheckBox"/>, the plain-text <see cref="ContentControl.Content"/> a screen reader falls back
 /// to), and switching the Semi theme variant while a refusal and an in-progress state are bound raises no
 /// exception. It cannot check visual clipping at 125%/150%/200% scale or real keyboard tab order — a
-/// headless platform renders no pixels and starts no dispatcher loop, so those remain for a human running
+/// headless platform has no display scaling and starts no dispatcher loop, so those remain for a human running
 /// the app.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
@@ -492,6 +493,40 @@ public sealed class MainWindowSmokeTests
     }
 
     // The explicit AutomationProperties.Name, or the plain-text Content a Button/CheckBox falls back to.
+    [Fact]
+    public void AtTheNarrowestWindowEveryStageStaysClearOfTheMenuAndOpensOnAClick()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            window.Width = window.MinWidth;
+            window.Height = window.MinHeight;
+            window.Show();
+            try
+            {
+                foreach (var stage in Enum.GetValues<WorkflowStage>().Reverse())
+                {
+                    var entry = window.GetLogicalDescendants().OfType<ListBoxItem>()
+                        .Single(item => item.DataContext is StageViewModel model && model.Stage == stage);
+                    var menuLeft = window.FindControl<Button>("ProjectMenuButton")!.TranslatePoint(new Point(0, 0), window)!.Value.X;
+                    var right = entry.TranslatePoint(new Point(entry.Bounds.Width, 0), window)!.Value.X;
+                    Assert.True(right <= menuLeft, $"'{stage}' ends at {right:0}, under the project menu at {menuLeft:0}.");
+
+                    var centre = entry.TranslatePoint(new Point(entry.Bounds.Width / 2, entry.Bounds.Height / 2), window)!.Value;
+                    window.MouseDown(centre, MouseButton.Left);
+                    window.MouseUp(centre, MouseButton.Left);
+                    window.UpdateLayout();
+
+                    Assert.Equal(stage, workspace.CurrentStage);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static string? EffectiveAccessibleName(Control control)
     {
         var explicitName = AutomationProperties.GetName(control);

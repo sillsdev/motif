@@ -88,6 +88,42 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
+    public void TheEffortTableShadesEachNumberAgainstTheLargestInItsOwnColumn()
+    {
+        var rows = TraceEffortViewModel.Table(
+        [
+            new TraceEffort("Affix and derivation rules", 12, 8, 4, 0, 0, 4, 0.052) { Work = 64 },
+            new TraceEffort("Root lookups", 5, 0, 0, 1, 0, 0, null) { Work = 33 },
+        ]);
+
+        Assert.Equal(1.0, TraceEffortViewModel.Intensity(12, 12));
+        Assert.Equal(0.0, TraceEffortViewModel.Intensity(0, 12));
+        Assert.Equal(0.7, rows[0].TriedHeat, precision: 6);
+        Assert.True(rows[1].TriedHeat is > 0 and < 0.7);
+        Assert.Equal(0, rows[1].ProducedHeat);
+        Assert.Equal(0, rows[1].TimeHeat);
+    }
+
+    [Fact]
+    public void AFailedAttemptSaysWhichRuleStoppedItAndWhy()
+    {
+        var candidate = new TraceCandidateViewModel(new TraceCandidate(
+            [new ParserReadingMorph("ma-", "PFV", "v", null, false, null), new ParserReadingMorph("tin", "cut", "v", null, false, null)],
+            Succeeded: false, "NonPartialRuleProhibitedAfterFinalTemplate", "No rule may apply after the final template.", [])
+        {
+            Surface = "matin",
+            StoppedByRule = "-lu ‘APPL’",
+            OutcomeStatus = "failed",
+        });
+
+        Assert.True(candidate.IsFailure);
+        Assert.Equal("matin", candidate.Surface);
+        Assert.Equal(2, candidate.Morphs.Count);
+        Assert.Equal("Stopped by -lu ‘APPL’", candidate.StopHeadline);
+        Assert.Equal("No rule may apply after the final template. (NonPartialRuleProhibitedAfterFinalTemplate)", candidate.StopReason);
+    }
+
+    [Fact]
     public async Task ACandidateKeepsItsIdentityAcrossReads()
     {
         var fake = new FakeCommandClient();

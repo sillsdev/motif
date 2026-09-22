@@ -43,6 +43,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Assess.TextWords = words;
         Statistics = statistics;
         Handoff = handoff;
+        ResultsInText = new ResultsInTextViewModel(words, assess, ShowWordInResults, TryWordInResults);
 
         Stages =
         [
@@ -110,10 +111,13 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Which view of a finished Assessment the Results stage is showing.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowResultsWords))]
+    [NotifyPropertyChangedFor(nameof(ShowResultsInText))]
     [NotifyPropertyChangedFor(nameof(ShowResultsStatistics))]
     private ResultsView _resultsView;
 
     public bool ShowResultsWords => ResultsView == ResultsView.Words;
+
+    public bool ShowResultsInText => ResultsView == ResultsView.InText;
 
     public bool ShowResultsStatistics => ResultsView == ResultsView.Statistics;
 
@@ -156,6 +160,26 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public StatisticsViewModel Statistics { get; }
 
     public HandoffViewModel Handoff { get; }
+
+    /// <summary>The Results stage's In text view: the chosen Texts, each occurrence against the Assessment.</summary>
+    public ResultsInTextViewModel ResultsInText { get; }
+
+    // Opens a word in the Words view with every filter cleared, so the word is certain to be listed.
+    private void ShowWordInResults(string word)
+    {
+        Assess.Words.WordFilter = string.Empty;
+        Assess.Words.SelectedFilter = ResultsWordFilter.All;
+        Assess.Words.SelectedRow = Assess.Words.Rows.FirstOrDefault(row => row.Word == word) ?? Assess.Words.SelectedRow;
+        ResultsView = ResultsView.Words;
+    }
+
+    // Asked for by a click, so this traces straight away rather than only priming the box.
+    private void TryWordInResults(string word)
+    {
+        ShowWordInResults(word);
+        Assess.Trace.SetWord(word);
+        if (Assess.Trace.TryCommand.CanExecute(null)) _ = Assess.Trace.TryCommand.ExecuteAsync(null);
+    }
 
     /// <summary>Whether a successful Refresh replaced a Baseline an Assessment already covered.</summary>
     [ObservableProperty]

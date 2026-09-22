@@ -104,6 +104,7 @@ public sealed class WalkthroughWindow : IDisposable
 
         var owners = control.GetLogicalAncestors().OfType<Control>().Select(ancestor => ancestor.Name).ToList();
         if (owners.Contains("StatisticsHost")) ShowResultsView(ResultsView.Statistics);
+        else if (owners.Contains("ResultsInTextHost")) ShowResultsView(ResultsView.InText);
         else if (owners.Contains("AssessHost")) ShowResultsView(ResultsView.Words);
     }
 
@@ -112,7 +113,7 @@ public sealed class WalkthroughWindow : IDisposable
     {
         if (Workspace.ResultsView == view) return;
 
-        var name = $"{view} results view";
+        var name = view == ResultsView.InText ? "In text results view" : $"{view} results view";
         ClickControl(Find<Button>(name), name);
         Assert.Equal(view, Workspace.ResultsView);
     }

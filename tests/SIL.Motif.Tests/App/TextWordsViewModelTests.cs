@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins <see cref="TextWordsViewModel"/>: it reloads whenever the checked Texts change, computes each
-/// word's project status (None, Approved, Differs by occurrence), the toolbar's summary counts, the reader's
+/// word's project status (None, Approved, Several analyses), the toolbar's summary counts, the reader's
 /// per-Text lines with each token's status, and feeds <see cref="TextChoiceViewModel"/>'s own counts.
 /// </summary>
 public sealed class TextWordsViewModelTests
@@ -68,7 +68,7 @@ public sealed class TextWordsViewModelTests
     }
 
     [Fact]
-    public async Task AWordWithDifferentChosenAnalysesAcrossOccurrencesDiffers()
+    public async Task AWordWithDifferentChosenAnalysesAcrossOccurrencesHasSeveral_AsHomographsDo()
     {
         var (fake, selection, words) = NewViewModel();
         await words.SetProjectAsync(ProjectPath);
@@ -82,8 +82,8 @@ public sealed class TextWordsViewModelTests
         await words.ReloadAsync();
 
         var row = Assert.Single(words.Rows);
-        Assert.Equal(WordProjectStatus.DiffersByOccurrence, row.Status);
-        Assert.Equal("Differs by occurrence", row.StatusLabel);
+        Assert.Equal(WordProjectStatus.SeveralAnalyses, row.Status);
+        Assert.Equal("Several analyses", row.StatusLabel);
     }
 
     [Fact]

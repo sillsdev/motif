@@ -80,7 +80,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         var directions = WritingSystemsById(value);
         _candidates = value?.Candidates.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions)).ToArray() ?? [];
         _analyses = value?.Analyses.Select(analysis => new TraceAnalysisViewModel(analysis, allowLiveLinks, directions)).ToArray() ?? [];
-        Effort = value?.Effort.Select(effort => new TraceEffortViewModel(effort)).ToArray() ?? [];
+        Effort = TraceEffortViewModel.Table(value?.Effort ?? []);
         OnPropertyChanged(nameof(Effort));
         OnPropertyChanged(nameof(HasEffort));
         OnPropertyChanged(nameof(HasResult));
@@ -624,7 +624,31 @@ public sealed class TraceCandidateViewModel
         Steps = candidate.Steps.Select(step => new TraceStepViewModel(step, deepestRule: null, directions)).ToArray();
         Text = RichMorphs.Count > 0 ? string.Join(" + ", RichMorphs.Select(morph => morph.Form)) : Morphs.Count > 0 ? string.Join(" + ", Morphs.Select(morph => morph.Form)) : candidate.Steps.LastOrDefault()?.Source ?? "Recorded attempt";
         Gloss = string.Join(" + ", Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
+        Surface = candidate.Surface;
+        StoppedByRule = candidate.StoppedByRule;
+        StopHeadline = Succeeded ? "Built the word"
+            : StoppedByRule is { Length: > 0 } rule ? $"Stopped by {rule}"
+            : "Stopped";
+        StopReason = Explanation is { Length: > 0 } explanation
+            ? FailureReason is { Length: > 0 } code ? $"{explanation} ({code})" : explanation
+            : FailureReason ?? string.Empty;
     }
+
+    /// <summary>The form the attempt had built when it ended.</summary>
+    public string? Surface { get; }
+
+    public bool HasSurface => Surface is { Length: > 0 };
+
+    /// <summary>The rule whose step failed just before the attempt ended, by its FieldWorks name when known.</summary>
+    public string? StoppedByRule { get; }
+
+    /// <summary>What ended the attempt, in a few words: which rule, or that the attempt simply stopped.</summary>
+    public string StopHeadline { get; }
+
+    /// <summary>Why, in the plain language FieldWorks uses, with the parser's own reason code after it.</summary>
+    public string StopReason { get; }
+
+    public bool HasMorphs => Morphs.Count > 0;
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
     public IReadOnlyList<TraceMorphViewModel> RichMorphs { get; }
@@ -650,7 +674,9 @@ public sealed class TraceCandidateViewModel
 /// <summary>One row of aggregate parser effort, explicitly separated from selected-step details.</summary>
 public sealed class TraceEffortViewModel
 {
-    public TraceEffortViewModel(TraceEffort effort)
+    public TraceEffortViewModel(TraceEffort effort) : this(effort, effort) { }
+
+    private TraceEffortViewModel(TraceEffort effort, TraceEffort largest)
     {
         ArgumentNullException.ThrowIfNull(effort);
         Kind = effort.Kind;
@@ -664,6 +690,45 @@ public sealed class TraceEffortViewModel
         if (effort.SurfaceMismatch > 0) misses.Add($"{effort.SurfaceMismatch:N0} did not match the word");
         Missed = misses.Count == 0 ? "—" : string.Join(", ", misses);
         Time = effort.SelfMs is { } ms ? TraceWordViewModel.FormatMs(ms) : "not timed";
+
+        WorkHeat = Shade(effort.Work, largest.Work);
+        UsesHeat = Shade(effort.Uses, largest.Uses);
+        TriedHeat = Shade(effort.Attempts, largest.Attempts);
+        ProducedHeat = Shade(effort.Outputs, largest.Outputs);
+        MissedHeat = Shade(effort.NotApplied + effort.NoRoot + effort.SurfaceMismatch,
+            largest.NotApplied + largest.NoRoot + largest.SurfaceMismatch);
+        TimeHeat = Shade(effort.SelfMs ?? 0, largest.SelfMs ?? 0);
+    }
+
+    /// <summary>The rows of the effort table, each cell shaded against the largest value in its own column.</summary>
+    public static IReadOnlyList<TraceEffortViewModel> Table(IReadOnlyList<TraceEffort> rows)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        if (rows.Count == 0) return [];
+        // Misses are one column, so their largest total rides in NotApplied with the other two kinds left at zero.
+        var largest = new TraceEffort("largest",
+            Attempts: rows.Max(row => row.Attempts),
+            Outputs: rows.Max(row => row.Outputs),
+            NotApplied: rows.Max(row => row.NotApplied + row.NoRoot + row.SurfaceMismatch),
+            NoRoot: 0,
+            SurfaceMismatch: 0,
+            Uses: rows.Max(row => row.Uses),
+            SelfMs: rows.Max(row => row.SelfMs ?? 0))
+        {
+            Work = rows.Max(row => row.Work),
+        };
+        return rows.Select(row => new TraceEffortViewModel(row, largest)).ToArray();
+    }
+
+    /// <summary>How strongly a cell is shaded, from 0 for nothing to 1 for its column's largest value.</summary>
+    public static double Intensity(double value, double largest) =>
+        value <= 0 || largest <= 0 ? 0 : Math.Clamp(value / largest, 0, 1);
+
+    // The opacity of a cell's heat layer; a small nonzero value still shows, so zero stays visibly different.
+    private static double Shade(double value, double largest)
+    {
+        var intensity = Intensity(value, largest);
+        return intensity == 0 ? 0 : 0.12 + 0.58 * intensity;
     }
 
     public string Kind { get; }
@@ -673,6 +738,14 @@ public sealed class TraceEffortViewModel
     public string Produced { get; }
     public string Missed { get; }
     public string Time { get; }
+
+    /// <summary>The opacity of the Work cell's heat layer: 0 for nothing, rising to 0.7 for the column's largest.</summary>
+    public double WorkHeat { get; }
+    public double UsesHeat { get; }
+    public double TriedHeat { get; }
+    public double ProducedHeat { get; }
+    public double MissedHeat { get; }
+    public double TimeHeat { get; }
 }
 
 /// <summary>One node of the derivation tree, wrapped for a TreeView with its own children.</summary>

@@ -1,0 +1,223 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ResultsInTextPanel"
+             x:DataType="views:ResultsInTextPanel">
+  <UserControl.Styles>
+    <Style Selector="Button.filterChip">
+      <Setter Property="Padding" Value="9,3" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.filterChip.active">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Border.word">
+      <Setter Property="BorderThickness" Value="0,0,0,3" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorText3}" />
+      <Setter Property="Padding" Value="4,2" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.word.match">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}" />
+    </Style>
+    <Style Selector="Border.word.differs">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorDanger}" />
+    </Style>
+    <Style Selector="Border.word.new">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Border.word.noparse">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="Border.word.dimmed">
+      <Setter Property="Opacity" Value="0.35" />
+    </Style>
+    <Style Selector=":is(TextBlock).verdict">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector=":is(TextBlock).verdict.match">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
+    </Style>
+    <Style Selector=":is(TextBlock).verdict.differs">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
+    </Style>
+    <Style Selector=":is(TextBlock).verdict.new">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector=":is(TextBlock).verdict.noparse">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="*,340" ColumnSpacing="12" Margin="16,12,16,16">
+
+    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+      <ComboBox ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
+                MinWidth="260" AutomationProperties.Name="Results text to read">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:ResultsTextViewModel">
+            <TextBlock Text="{Binding Title}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+
+      <WrapPanel Grid.Row="1">
+        <Button Classes="filterChip" Content="{Binding InText.AllCount, StringFormat='All {0}'}"
+                Classes.active="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
+                Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}"
+                AutomationProperties.Name="Show every word in text" Margin="0,0,4,4" />
+        <Button Classes="filterChip" Content="{Binding InText.DiffersCount, StringFormat='Differs from stored {0}'}"
+                Classes.active="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Differs}}"
+                Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Differs}"
+                AutomationProperties.Name="Show words where the parser differs from what is stored" Margin="0,0,4,4" />
+        <Button Classes="filterChip" Content="{Binding InText.NewCount, StringFormat='Not stored yet {0}'}"
+                Classes.active="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.New}}"
+                Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.New}"
+                AutomationProperties.Name="Show words with nothing stored that the parser analyses" Margin="0,0,4,4" />
+        <Button Classes="filterChip" Content="{Binding InText.NoParseCount, StringFormat='No parse {0}'}"
+                Classes.active="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NoParse}}"
+                Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NoParse}"
+                AutomationProperties.Name="Show words with nothing stored and no parse" Margin="0,0,4,4" />
+        <Button Classes="filterChip" Content="{Binding InText.MatchesCount, StringFormat='Matches {0}'}"
+                Classes.active="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Matches}}"
+                Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Matches}"
+                AutomationProperties.Name="Show words where the parser agrees with what is stored" Margin="0,0,4,4" />
+      </WrapPanel>
+
+      <views:CopyableTextBlock Grid.Row="2" Classes="muted" Text="{Binding InText.Message}" TextWrapping="Wrap"
+                 IsVisible="{Binding InText.HasMessage}" Margin="0,8" />
+      <ScrollViewer Grid.Row="2" IsVisible="{Binding !InText.HasMessage}">
+        <ItemsControl ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Results text lines">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ResultsLineViewModel">
+              <DockPanel Margin="0,4" LastChildFill="True">
+                <views:CopyableTextBlock DockPanel.Dock="Left" Classes="muted" Text="{Binding Number}" Width="28" />
+                <ItemsControl ItemsSource="{Binding Tokens}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ResultsTokenViewModel">
+                      <Panel Margin="0,0,14,10">
+                        <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}" FontSize="15" />
+                        <!-- One block: the word, what is stored here, then the parser's verdict on it. -->
+                        <Border IsVisible="{Binding IsWord}" Classes="word" Focusable="True" Tag="{Binding}"
+                                Classes.match="{Binding IsMatch}" Classes.differs="{Binding IsDiffers}"
+                                Classes.new="{Binding IsNew}" Classes.noparse="{Binding IsNoParse}"
+                                Classes.dimmed="{Binding IsDimmed}"
+                                PointerPressed="OnTokenPressed" KeyDown="OnTokenKeyDown"
+                                ToolTip.Tip="{Binding VerdictLabel}">
+                          <StackPanel Spacing="1">
+                            <HyperlinkButton Content="{Binding Text}" NavigateUri="{Binding WordLink}"
+                                             IsVisible="{Binding HasWordLink}" Padding="0" FontSize="15" FontWeight="SemiBold"
+                                             AutomationProperties.Name="{Binding WordLinkName}" />
+                            <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding HasNoWordLink}" FontSize="15" FontWeight="SemiBold" />
+                            <ItemsControl ItemsSource="{Binding Stored}" IsVisible="{Binding HasStored}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                  <StackPanel Orientation="Horizontal" Spacing="8" />
+                                </ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                                  <StackPanel Spacing="0">
+                                    <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}"
+                                                     IsVisible="{Binding HasLink}" Padding="0" FontSize="13"
+                                                     AutomationProperties.Name="{Binding LinkName}" />
+                                    <views:CopyableTextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontSize="13" />
+                                    <HyperlinkButton Content="{Binding GlossOrPlaceholder}" NavigateUri="{Binding Link}"
+                                                     IsVisible="{Binding HasLink}" Padding="0" FontSize="12"
+                                                     Foreground="{DynamicResource SemiColorText1}"
+                                                     AutomationProperties.Name="{Binding LinkName}" />
+                                    <views:CopyableTextBlock Classes="muted" Text="{Binding GlossOrPlaceholder}" IsVisible="{Binding HasNoLink}" FontSize="12" />
+                                  </StackPanel>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <views:CopyableTextBlock Classes="muted" Text="nothing stored" FontSize="11" FontStyle="Italic"
+                                       IsVisible="{Binding HasNothingStored}" />
+                            <views:CopyableTextBlock Classes="verdict" Text="{Binding ParserLine}" MaxWidth="260" TextWrapping="Wrap"
+                                       Classes.match="{Binding IsMatch}" Classes.differs="{Binding IsDiffers}"
+                                       Classes.new="{Binding IsNew}" Classes.noparse="{Binding IsNoParse}" />
+                          </StackPanel>
+                        </Border>
+                      </Panel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </DockPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- Right: the clicked word, what is stored here, and every reading the parser produced. -->
+    <Border Grid.Column="1" Classes="card" IsVisible="{Binding InText.HasSelectedToken}">
+      <ScrollViewer>
+        <StackPanel Spacing="8" DataContext="{Binding InText.SelectedToken}" x:DataType="vm:ResultsTokenViewModel">
+          <views:CopyableTextBlock Text="{Binding Text}" FontWeight="SemiBold" FontSize="16" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
+          <views:CopyableTextBlock Text="{Binding VerdictLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
+
+          <views:CopyableTextBlock Classes="section-title" Text="Stored at this occurrence" FontSize="13" />
+          <views:CopyableTextBlock Classes="muted" Text="Nothing is stored here." IsVisible="{Binding HasNothingStored}" />
+          <ItemsControl ItemsSource="{Binding Stored}" IsVisible="{Binding HasStored}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                <StackPanel Margin="0,0,10,0" Spacing="0">
+                  <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
+                                   Padding="0" FontWeight="SemiBold" FontSize="12"
+                                   AutomationProperties.Name="{Binding LinkName}" />
+                  <views:CopyableTextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontWeight="SemiBold" FontSize="12" />
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding GlossOrPlaceholder}" FontSize="11" />
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding Category}" FontSize="10" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <views:CopyableTextBlock Classes="section-title" Text="What the parser produced" FontSize="13" />
+          <views:CopyableTextBlock Classes="muted" Text="No readings." IsVisible="{Binding !HasReadings}" />
+          <ItemsControl ItemsSource="{Binding Readings}" AutomationProperties.Name="Parser readings for this occurrence">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ResultsReadingViewModel">
+                <DockPanel Margin="0,2" LastChildFill="True">
+                  <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" FontSize="11" Text="{Binding GradeLabel}"
+                             IsVisible="{Binding HasGrade}" Margin="8,0,0,0"
+                             Foreground="{DynamicResource SemiColorText2}" />
+                  <views:CopyableTextBlock DockPanel.Dock="Left" Text="✓ stored here " FontSize="11"
+                             Foreground="{DynamicResource SemiColorSuccess}" IsVisible="{Binding IsStoredHere}" />
+                  <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+            <Button Content="Show in Words" Command="{Binding $parent[views:ResultsInTextPanel].InText.ShowInWordsCommand}"
+                    AutomationProperties.Name="Show this word in the Words view" />
+            <Button Content="Try this word" Command="{Binding $parent[views:ResultsInTextPanel].InText.TryWordCommand}"
+                    AutomationProperties.Name="Try this word" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

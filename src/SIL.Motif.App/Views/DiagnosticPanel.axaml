@@ -131,10 +131,40 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:TraceCandidateViewModel">
               <Border Classes="card" Margin="0,0,0,6" IsVisible="{Binding IsFailure}">
-                <StackPanel Spacing="4">
-                  <views:CopyableTextBlock Text="{Binding Text}" FontWeight="SemiBold" />
-                  <views:CopyableTextBlock Text="{Binding StatusText}" Classes="failed" />
-                  <views:CopyableTextBlock Text="{Binding FailureContext}" TextWrapping="Wrap" />
+                <StackPanel Spacing="6">
+                  <!-- One failed attempt as a story: what it had built, from which morphemes, and what stopped it. -->
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <views:CopyableTextBlock Text="✗" Classes="failed" FontWeight="Bold" VerticalAlignment="Center" />
+                    <views:CopyableTextBlock Text="{Binding Surface}" IsVisible="{Binding HasSurface}" FontSize="15" FontWeight="SemiBold"
+                               VerticalAlignment="Center" AutomationProperties.Name="Form the attempt had built" />
+                  </StackPanel>
+                  <ItemsControl ItemsSource="{Binding Morphs}" IsVisible="{Binding HasMorphs}"
+                                AutomationProperties.Name="Morphemes the attempt had">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                        <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,1,0"
+                                Padding="0,0,10,0" Margin="0,0,10,4">
+                          <StackPanel Spacing="0">
+                            <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
+                                             Padding="0" FontWeight="SemiBold" AutomationProperties.Name="{Binding LinkName}" />
+                            <views:CopyableTextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Text="{Binding GlossOrPlaceholder}" />
+                            <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" FontSize="11" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <views:CopyableTextBlock Classes="muted" Text="The parser recorded no morphemes for this attempt."
+                             IsVisible="{Binding !HasMorphs}" />
+                  <views:CopyableTextBlock Text="{Binding StopHeadline}" Classes="failed" FontWeight="SemiBold" TextWrapping="Wrap"
+                             AutomationProperties.Name="What stopped the attempt" />
+                  <views:CopyableTextBlock Text="{Binding StopReason}" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Text="{Binding FailureRequired, StringFormat='Required: {0}'}"
                              IsVisible="{Binding FailureRequired, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                   <views:CopyableTextBlock Text="{Binding FailureActual, StringFormat='Actual: {0}'}"
@@ -165,27 +195,45 @@
                      AutomationProperties.Name="Hidden trace count" />
           <Expander Header="Parser effort" IsExpanded="False" IsVisible="{Binding HasEffort}"
                     AutomationProperties.Name="Aggregate parser effort">
+            <!-- The header and every row share one set of fixed widths, so the columns line up; each number
+                 cell is shaded by how large it is against the rest of its column. -->
             <Grid RowDefinitions="Auto,*">
-              <Grid ColumnDefinitions="2*,Auto,Auto,Auto,Auto,3*,Auto" ColumnSpacing="8" Margin="0,0,0,4">
-                <views:CopyableTextBlock Classes="muted" Text="Category" />
-                <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="Work" />
-                <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="Uses" />
-                <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="Tried" />
-                <views:CopyableTextBlock Grid.Column="4" Classes="muted" Text="Outputs" />
-                <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="Misses" />
-                <views:CopyableTextBlock Grid.Column="6" Classes="muted" Text="Time" />
+              <Grid.Styles>
+                <Style Selector="Border.heat">
+                  <Setter Property="Background" Value="#F08C28" />
+                  <Setter Property="CornerRadius" Value="3" />
+                </Style>
+                <Style Selector="Panel.cell > :is(TextBlock)">
+                  <Setter Property="Margin" Value="6,3" />
+                  <Setter Property="HorizontalAlignment" Value="Right" />
+                </Style>
+                <Style Selector=":is(TextBlock).number">
+                  <Setter Property="HorizontalAlignment" Value="Right" />
+                </Style>
+              </Grid.Styles>
+              <Grid ColumnDefinitions="180,70,70,70,70,*,80" ColumnSpacing="4" Margin="0,0,0,4">
+                <views:CopyableTextBlock Classes="muted" Text="Kind" />
+                <views:CopyableTextBlock Grid.Column="1" Classes="muted number" Text="Work" Margin="0,0,6,0" />
+                <views:CopyableTextBlock Grid.Column="2" Classes="muted number" Text="Uses" Margin="0,0,6,0" />
+                <views:CopyableTextBlock Grid.Column="3" Classes="muted number" Text="Tried" Margin="0,0,6,0" />
+                <views:CopyableTextBlock Grid.Column="4" Classes="muted number" Text="Produced" Margin="0,0,6,0" />
+                <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="Did not succeed" Margin="6,0,0,0" />
+                <views:CopyableTextBlock Grid.Column="6" Classes="muted number" Text="Time" Margin="0,0,6,0" />
               </Grid>
-              <ItemsControl Grid.Row="1" ItemsSource="{Binding Effort}">
+              <ItemsControl Grid.Row="1" ItemsSource="{Binding Effort}" AutomationProperties.Name="Parser effort rows">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:TraceEffortViewModel">
-                    <Grid ColumnDefinitions="2*,Auto,Auto,Auto,Auto,3*,Auto" ColumnSpacing="8" Margin="0,2">
-                      <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" />
-                      <views:CopyableTextBlock Grid.Column="1" Text="{Binding Work}" />
-                      <views:CopyableTextBlock Grid.Column="2" Text="{Binding Uses}" />
-                      <views:CopyableTextBlock Grid.Column="3" Text="{Binding Tried}" />
-                      <views:CopyableTextBlock Grid.Column="4" Text="{Binding Produced}" />
-                      <views:CopyableTextBlock Grid.Column="5" Text="{Binding Missed}" TextWrapping="Wrap" />
-                      <views:CopyableTextBlock Grid.Column="6" Text="{Binding Time}" />
+                    <Grid ColumnDefinitions="180,70,70,70,70,*,80" ColumnSpacing="4" Margin="0,1">
+                      <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                      <Panel Grid.Column="1" Classes="cell"><Border Classes="heat" Opacity="{Binding WorkHeat}" /><views:CopyableTextBlock Text="{Binding Work}" /></Panel>
+                      <Panel Grid.Column="2" Classes="cell"><Border Classes="heat" Opacity="{Binding UsesHeat}" /><views:CopyableTextBlock Text="{Binding Uses}" /></Panel>
+                      <Panel Grid.Column="3" Classes="cell"><Border Classes="heat" Opacity="{Binding TriedHeat}" /><views:CopyableTextBlock Text="{Binding Tried}" /></Panel>
+                      <Panel Grid.Column="4" Classes="cell"><Border Classes="heat" Opacity="{Binding ProducedHeat}" /><views:CopyableTextBlock Text="{Binding Produced}" /></Panel>
+                      <Panel Grid.Column="5" Classes="cell">
+                        <Border Classes="heat" Opacity="{Binding MissedHeat}" />
+                        <views:CopyableTextBlock Text="{Binding Missed}" TextWrapping="Wrap" HorizontalAlignment="Left" />
+                      </Panel>
+                      <Panel Grid.Column="6" Classes="cell"><Border Classes="heat" Opacity="{Binding TimeHeat}" /><views:CopyableTextBlock Text="{Binding Time}" /></Panel>
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

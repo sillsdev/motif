@@ -26,8 +26,8 @@ public enum WordProjectStatus
     /// <summary>Every occurrence that has an analysis agrees, and the project approves it.</summary>
     Approved,
 
-    /// <summary>Two occurrences of the same form carry different chosen analyses.</summary>
-    DiffersByOccurrence,
+    /// <summary>Occurrences of the same spelling carry different analyses: usually homographs, not a problem.</summary>
+    SeveralAnalyses,
 }
 
 /// <summary>
@@ -125,6 +125,10 @@ public sealed partial class TextWordsViewModel : ObservableObject
     [ObservableProperty]
     private int _occurrenceCount;
 
+    /// <summary>The last answer read for the checked Texts, for other views of the same words.</summary>
+    [ObservableProperty]
+    private TextWordsResponse? _response;
+
     [ObservableProperty]
     private int _approvedCount;
 
@@ -136,7 +140,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     public int AllCount => _all.Count;
     public int ApprovedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Approved);
     public int NoneFilterCount => _all.Count(row => row.Status == WordProjectStatus.None);
-    public int DiffersFilterCount => _all.Count(row => row.Status == WordProjectStatus.DiffersByOccurrence);
+    public int SeveralFilterCount => _all.Count(row => row.Status == WordProjectStatus.SeveralAnalyses);
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
     partial void OnStatusFilterChanged(WordProjectStatus? value) => ApplyFilter();
@@ -155,6 +159,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         HasBaseline = true;
         OccurrenceCount = 0;
         ApprovedCount = 0;
+        Response = null;
         RaiseCounts();
         if (fwDataPath is not null) await ReloadAsync(cancellationToken).ConfigureAwait(true);
     }
@@ -180,6 +185,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
         RefusalMessage = null;
         HasBaseline = outcome.Value!.HasBaseline;
+        Response = outcome.Value;
 
         _all.Clear();
         _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word)));
@@ -226,7 +232,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         OnPropertyChanged(nameof(AllCount));
         OnPropertyChanged(nameof(ApprovedFilterCount));
         OnPropertyChanged(nameof(NoneFilterCount));
-        OnPropertyChanged(nameof(DiffersFilterCount));
+        OnPropertyChanged(nameof(SeveralFilterCount));
     }
 
     private async void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -247,19 +253,18 @@ public sealed class TextWordRowViewModel
 
         var chosenKeys = word.Occurrences.Select(occurrence => occurrence.Analysis?.Key)
             .Where(key => key is not null).Distinct().ToList();
-        Status = chosenKeys.Count > 1 ? WordProjectStatus.DiffersByOccurrence
+        Status = chosenKeys.Count > 1 ? WordProjectStatus.SeveralAnalyses
             : word.Approved.Count > 0 ? WordProjectStatus.Approved
-            : word.Disapproved.Count > 0 ? WordProjectStatus.DiffersByOccurrence
             : WordProjectStatus.None;
 
         StatusLabel = Status switch
         {
-            WordProjectStatus.DiffersByOccurrence => "Differs by occurrence",
+            WordProjectStatus.SeveralAnalyses => "Several analyses",
             WordProjectStatus.Approved => word.Approved.Count > 1 ? $"Approved ×{word.Approved.Count}" : "Approved",
             _ => "None",
         };
 
-        ProjectSummary = Status == WordProjectStatus.DiffersByOccurrence
+        ProjectSummary = Status == WordProjectStatus.SeveralAnalyses
             ? $"{chosenKeys.Count} analyses: {string.Join(", ", DistinctGlosses(word))}"
             : word.Approved.Count > 0 ? DistinctGlosses(word).FirstOrDefault() ?? string.Empty
             : "Not analysed in the project";
@@ -375,9 +380,8 @@ public sealed class ReaderTokenViewModel
 
         var chosenKeys = word.Occurrences.Select(occurrence => occurrence.Analysis?.Key)
             .Where(key => key is not null).Distinct().Count();
-        Status = chosenKeys > 1 ? WordProjectStatus.DiffersByOccurrence
+        Status = chosenKeys > 1 ? WordProjectStatus.SeveralAnalyses
             : word.Approved.Count > 0 ? WordProjectStatus.Approved
-            : word.Disapproved.Count > 0 ? WordProjectStatus.DiffersByOccurrence
             : WordProjectStatus.None;
 
         var occurrence = word.Occurrences.FirstOrDefault(candidate => candidate.TextId == textId && candidate.Line == line);
@@ -437,7 +441,7 @@ public sealed class ReaderOccurrenceViewModel
         Analysis = occurrence.Analysis is { } analysis ? new ProjectAnalysisViewModel(analysis) : null;
 
         var distinctKeys = word.Occurrences.Select(o => o.Analysis?.Key).Where(key => key is not null).Distinct().ToList();
-        Differs = distinctKeys.Count > 1;
+        HasSeveralAnalyses = distinctKeys.Count > 1;
         ApprovedAnalyses = word.Approved.Select(analysis => new ProjectAnalysisViewModel(analysis)).ToArray();
         AllOccurrences = word.Occurrences.Select(candidate => new WordOccurrenceRowViewModel(candidate)).ToArray();
     }
@@ -447,7 +451,7 @@ public sealed class ReaderOccurrenceViewModel
     public string OccurrenceLabel { get; }
     public string Status { get; }
     public ProjectAnalysisViewModel? Analysis { get; }
-    public bool Differs { get; }
+    public bool HasSeveralAnalyses { get; }
     public IReadOnlyList<ProjectAnalysisViewModel> ApprovedAnalyses { get; }
     public IReadOnlyList<WordOccurrenceRowViewModel> AllOccurrences { get; }
 }

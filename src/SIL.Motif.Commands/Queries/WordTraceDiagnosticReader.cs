@@ -149,14 +149,23 @@ internal static class TraceDiagnosticProjection
                 var attempt = attemptIndex < attempts.Count ? attempts[attemptIndex++] : null;
                 var succeeded = attempt?.Succeeded ??
                     node.OutcomeStatus is "success" or "succeeded" or "successful" || node.Type == "Successful";
-                var reason = attempt?.FailureReason ?? node.FailureReason;
+                var stopper = succeeded ? null : StoppingStep(path);
+                var reason = stopper?.FailureReason ?? attempt?.FailureReason ?? node.FailureReason;
+                var morphs = attempt is { Morphs.Count: > 0 }
+                    ? attempt.Morphs.Select(ToMorph).ToArray()
+                    : MorphsReached(path, stopper).Select(ToMorph).ToArray();
                 candidates.Add(new TraceCandidate(
-                    [],
+                    morphs.Select(ToReadingMorph).ToArray(),
                     succeeded,
                     reason,
                     reason is null ? null : HermitCrabFailureExplanations.Explain(reason),
                     path.Select(ConvertStep).ToArray())
                 {
+                    Surface = node.OutputShape ?? node.InputShape ?? stopper?.InputShape,
+                    StoppedByRule = stopper?.Source,
+                    StoppedByRuleId = stopper?.SourceIdentityId,
+                    RichMorphs = morphs,
+                    MorphAvailability = morphs.Length > 0 ? "recorded" : "unavailable",
                     AttemptId = attempt?.AttemptId,
                     ContextualFailure = attempt?.FailureContext ?? node.FailureContext,
                     FailureRequired = attempt?.FailureRequired ?? node.FailureRequired,
@@ -166,8 +175,6 @@ internal static class TraceDiagnosticProjection
                     SourceIdentityId = attempt?.SourceIdentityId ?? node.SourceIdentityId,
                     SourceIdentityQuality = attempt?.SourceIdentityQuality ?? node.SourceIdentityQuality,
                     OutcomeStatus = attempt?.Status ?? node.OutcomeStatus,
-                    MorphAvailability = attempt is { Morphs.Count: > 0 } ? "recorded" : "unavailable",
-                    RichMorphs = attempt?.Morphs.Select(ToMorph).ToArray() ?? [],
                 });
             }
 
@@ -175,6 +182,49 @@ internal static class TraceDiagnosticProjection
                 Walk(child, [.. path, child]);
         }
     }
+
+    // HermitCrab records the failing rule step beside the outcome it ended, not above it: search earlier siblings.
+    private static PanGlossTraceNode? StoppingStep(IReadOnlyList<PanGlossTraceNode> path)
+    {
+        for (var level = path.Count - 1; level > 0; level--)
+        {
+            var parent = path[level - 1];
+            var index = IndexOf(parent.Children, path[level]);
+            for (var sibling = index - 1; sibling >= 0; sibling--)
+            {
+                var candidate = parent.Children[sibling];
+                if (candidate.FailureReason is { Length: > 0 } && candidate.Type is not ("Failed" or "Successful"))
+                    return candidate;
+                if (candidate.Type is "Failed" or "Successful") break;
+            }
+        }
+        return null;
+    }
+
+    // The morphs the attempt had assembled: the outcome's, else the failing step's, else the nearest ancestor's.
+    private static IReadOnlyList<PanGlossTraceMorph> MorphsReached(IReadOnlyList<PanGlossTraceNode> path, PanGlossTraceNode? stopper)
+    {
+        if (path[^1].AttemptedMorphs.Count > 0) return path[^1].AttemptedMorphs;
+        if (stopper is { AttemptedMorphs.Count: > 0 }) return stopper.AttemptedMorphs;
+        for (var level = path.Count - 2; level >= 0; level--)
+            if (path[level].AttemptedMorphs.Count > 0) return path[level].AttemptedMorphs;
+        return [];
+    }
+
+    private static int IndexOf(IReadOnlyList<PanGlossTraceNode> nodes, PanGlossTraceNode node)
+    {
+        for (var index = 0; index < nodes.Count; index++)
+            if (ReferenceEquals(nodes[index], node)) return index;
+        return -1;
+    }
+
+    internal static ParserReadingMorph ToReadingMorph(TraceMorph morph) => new(
+        morph.Form ?? morph.GuessedString ?? "?",
+        morph.Gloss ?? string.Empty,
+        morph.CategoryAbbreviation ?? morph.Category ?? string.Empty,
+        null,
+        morph.GuessedString is not null,
+        morph.FieldWorksLink);
     private static bool IsTerminalOutcome(string? status) => status is "successful" or "succeeded" or "success" or "failed" or "failure" or "blocked";
 
     private static TraceStep ConvertTree(PanGlossTraceNode node) =>

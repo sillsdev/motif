@@ -21,11 +21,14 @@ public enum WorkflowStage
     Handoff,
 }
 
-/// <summary>The two views of a finished Assessment that share the Results stage.</summary>
+/// <summary>The three views of a finished Assessment that share the Results stage.</summary>
 public enum ResultsView
 {
     /// <summary>One row per word the parser was asked about.</summary>
     Words,
+
+    /// <summary>The chosen Texts read in place, each occurrence compared with what the project stores there.</summary>
+    InText,
 
     /// <summary>The grammar's own parts, counted and timed.</summary>
     Statistics,

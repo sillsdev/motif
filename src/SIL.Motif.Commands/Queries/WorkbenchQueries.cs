@@ -217,6 +217,18 @@ public sealed record TraceCandidate(
     public string? SourceIdentityQuality { get; init; }
     public string MorphAvailability { get; init; } = "unavailable";
     public IReadOnlyList<TraceMorph> RichMorphs { get; init; } = [];
+
+    /// <summary>The form this attempt had built when it ended, or <see langword="null"/> when none was recorded.</summary>
+    public string? Surface { get; init; }
+
+    /// <summary>
+    /// The rule whose step failed just before this attempt ended, by the name the project gives it; <see langword="null"/>
+    /// when the attempt failed on its own terms, such as leaving morphemes unused.
+    /// </summary>
+    public string? StoppedByRule { get; init; }
+
+    /// <summary>The trace's own identifier for <see cref="StoppedByRule"/>, a FieldWorks GUID for an authored rule.</summary>
+    public string? StoppedByRuleId { get; init; }
 }
 public sealed record TraceStep(
     string Type,

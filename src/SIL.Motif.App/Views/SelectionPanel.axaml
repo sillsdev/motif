@@ -22,11 +22,11 @@
     <Style Selector="Border.statusChip.approved :is(TextBlock)">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
     </Style>
-    <Style Selector="Border.statusChip.differs">
-      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
+    <Style Selector="Border.statusChip.several">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
     </Style>
-    <Style Selector="Border.statusChip.differs :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
+    <Style Selector="Border.statusChip.several :is(TextBlock)">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
     </Style>
     <Style Selector="Button.filterChip">
       <Setter Property="Padding" Value="9,3" />
@@ -57,8 +57,8 @@
     <Style Selector="Border.wordUnderline.approved">
       <Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}" />
     </Style>
-    <Style Selector="Border.wordUnderline.differs">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorWarning}" />
+    <Style Selector="Border.wordUnderline.several">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
     </Style>
     <Style Selector="Border.wordUnderline.none">
       <Setter Property="BorderBrush" Value="{DynamicResource SemiColorText3}" />
@@ -157,9 +157,9 @@
                   Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.None}}"
                   Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.None}"
                   AutomationProperties.Name="Show unanalysed words" />
-          <Button Grid.Column="4" Classes="filterChip" Content="{Binding Words.DiffersFilterCount, StringFormat='Differs {0}'}"
-                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.DiffersByOccurrence}}"
-                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.DiffersByOccurrence}"
+          <Button Grid.Column="4" Classes="filterChip" Content="{Binding Words.SeveralFilterCount, StringFormat='Several analyses {0}'}"
+                  Classes.active="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.SeveralAnalyses}}"
+                  Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.SeveralAnalyses}"
                   AutomationProperties.Name="Show words that differ by occurrence" />
         </Grid>
 
@@ -173,7 +173,7 @@
                     <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceCount}" />
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
                       <Border Classes="statusChip" Classes.approved="{Binding HasApproved}"
-                              Classes.differs="{Binding StatusLabel, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Differs by occurrence'}">
+                              Classes.several="{Binding StatusLabel, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Several analyses'}">
                         <views:CopyableTextBlock Text="{Binding StatusLabel}" />
                       </Border>
                       <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectSummary}" TextTrimming="CharacterEllipsis" />
@@ -234,7 +234,7 @@
                                     Background="Transparent" Focusable="True"
                                     PointerPressed="OnReaderTokenPressed" KeyDown="OnReaderTokenKeyDown" Tag="{Binding}"
                                     Classes.approved="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
-                                    Classes.differs="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.DiffersByOccurrence}}"
+                                    Classes.several="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.SeveralAnalyses}}"
                                     Classes.none="{Binding Status, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.None}}"
                                     ToolTip.Tip="Click for this word's analyses and every place it occurs">
                               <StackPanel Spacing="1">
@@ -309,8 +309,8 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" FontSize="12" IsVisible="{Binding Differs}"
-                         Text="This form carries different analyses in different places." />
+              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" FontSize="12" IsVisible="{Binding HasSeveralAnalyses}"
+                         Text="This spelling carries different analyses in different places, usually because it is more than one word (homographs)." />
               <views:CopyableTextBlock Classes="section-title" Text="Approved on the word form" FontSize="13"
                          IsVisible="{Binding ApprovedAnalyses.Count}" />
               <ItemsControl ItemsSource="{Binding ApprovedAnalyses}">

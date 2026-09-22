@@ -18,9 +18,19 @@ public sealed partial class MainWindow : Window
     private static readonly string PreferencesFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Motif", "window-bounds.json");
 
-    public MainWindow()
+    /// <summary>A window at the XAML's own size that neither reads nor writes the remembered bounds, as tests need.</summary>
+    public MainWindow() : this(rememberBounds: false)
+    {
+    }
+
+    /// <summary>
+    /// A window that, when <paramref name="rememberBounds"/> is true, reopens at the size and place the person
+    /// last left it and saves them again on close.
+    /// </summary>
+    public MainWindow(bool rememberBounds)
     {
         AvaloniaXamlLoader.Load(this);
+        if (!rememberBounds) return;
         RestoreBounds();
         Closing += (_, _) => SaveBounds();
     }
@@ -35,6 +45,7 @@ public sealed partial class MainWindow : Window
         Host("GrammarHost").Content = new GrammarPanel(workspace.Grammar);
         Host("SelectionHost").Content = new SelectionPanel(workspace.Selection, workspace.Words);
         Host("AssessHost").Content = new AssessPanel(workspace.Assess);
+        Host("ResultsInTextHost").Content = new ResultsInTextPanel(workspace.ResultsInText);
         Host("StatisticsHost").Content = new StatisticsPanel(workspace.Statistics);
         Host("HandoffHost").Content = new HandoffPanel(workspace.Handoff);
     }

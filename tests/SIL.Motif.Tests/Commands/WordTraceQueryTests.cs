@@ -110,11 +110,11 @@ public sealed class WordTraceQueryTests : IDisposable
 
         var failed = response.Candidates[1];
         Assert.False(failed.Succeeded);
-        Assert.Equal("PartialParse", failed.FailureReason);
-        Assert.Equal(
-            "This parse does not include all analyzed morphemes. Perhaps the missing morphemes are in an " +
-            "inflectional template that is not available at this point in the synthesis.",
-            failed.Explanation);
+        // The ed_suffix step that failed beside the Failed node is what stopped it, not the generic PartialParse.
+        Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", failed.FailureReason);
+        Assert.Equal("ed_suffix", failed.StoppedByRule);
+        Assert.Equal("sag", failed.Surface);
+        Assert.NotNull(failed.Explanation);
         Assert.Empty(failed.Morphs);
         Assert.Equal("Failed", failed.Steps[^1].Type);
         Assert.Equal(["MorphologicalRuleAnalysis", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));

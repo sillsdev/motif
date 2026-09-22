@@ -112,8 +112,10 @@ internal static class AvaloniaHeadlessPlatform
         {
             try
             {
+                // The app's own renderer and system fonts, so text measures as it does on screen, not as a stub guesses.
                 AppBuilder.Configure<SIL.Motif.App.App>()
-                    .UseHeadless(new AvaloniaHeadlessPlatformOptions())
+                    .UseSkia()
+                    .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                     .SetupWithoutStarting();
                 ready.SetResult();
             }
