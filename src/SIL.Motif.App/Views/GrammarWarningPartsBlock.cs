@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Media;
 using SIL.Motif.Contract.Responses;
 
@@ -11,7 +10,7 @@ namespace SIL.Motif.App.Views;
 /// width, each named object as a link that opens FieldWorks on it, and an identifier the project does not
 /// contain in red, since that identifier is usually the finding itself.
 /// </summary>
-public sealed class GrammarWarningPartsBlock : TextBlock
+public sealed class GrammarWarningPartsBlock : WrapPanel
 {
     public static readonly StyledProperty<IReadOnlyList<GrammarWarningPart>?> PartsProperty =
         AvaloniaProperty.Register<GrammarWarningPartsBlock, IReadOnlyList<GrammarWarningPart>?>(nameof(Parts));
@@ -27,10 +26,8 @@ public sealed class GrammarWarningPartsBlock : TextBlock
 
     public GrammarWarningPartsBlock()
     {
-        TextWrapping = TextWrapping.Wrap;
+        Orientation = Avalonia.Layout.Orientation.Horizontal;
     }
-
-    protected override Type StyleKeyOverride => typeof(TextBlock);
 
     public IReadOnlyList<GrammarWarningPart>? Parts
     {
@@ -40,34 +37,38 @@ public sealed class GrammarWarningPartsBlock : TextBlock
 
     private void Rebuild()
     {
-        var inlines = new InlineCollection();
-        var first = true;
+        Children.Clear();
         foreach (var part in Parts ?? [])
-        {
-            if (!first) inlines.Add(new Run(" "));
-            first = false;
-            inlines.Add(InlineFor(part));
-        }
-        Inlines = inlines;
+            Children.Add(ControlFor(part));
     }
 
-    private static Inline InlineFor(GrammarWarningPart part) => part.Role switch
+    private static Control ControlFor(GrammarWarningPart part)
     {
-        "object" when part.FieldWorksLink is { } link => new InlineUIContainer(LinkFor(part, link))
+        if (part.Role == "object" && part.FieldWorksLink is { } link)
+            return LinkFor(part, link);
+
+        var block = new CopyableTextBlock
         {
-            BaselineAlignment = BaselineAlignment.TextBottom,
-        },
-        "object" => new Run(part.Text) { Foreground = ObjectBrush, FontWeight = FontWeight.SemiBold },
-        "missing" => new Run($"missing object {part.Text}")
+            Text = part.Role == "missing" ? $"missing object {part.Text}" : part.Text,
+            Margin = new Thickness(0, 0, 4, 0),
+        };
+        switch (part.Role)
         {
-            Foreground = MissingBrush, FontWeight = FontWeight.SemiBold,
-        },
-        "value" => new Run(part.Text)
-        {
-            Foreground = ValueBrush, FontFamily = new FontFamily("Cascadia Mono, Consolas, monospace"),
-        },
-        _ => new Run(part.Text),
-    };
+            case "object":
+                block.Foreground = ObjectBrush;
+                block.FontWeight = FontWeight.SemiBold;
+                break;
+            case "missing":
+                block.Foreground = MissingBrush;
+                block.FontWeight = FontWeight.SemiBold;
+                break;
+            case "value":
+                block.Foreground = ValueBrush;
+                block.FontFamily = new FontFamily("Cascadia Mono, Consolas, monospace");
+                break;
+        }
+        return block;
+    }
 
     private static HyperlinkButton LinkFor(GrammarWarningPart part, string link)
     {
@@ -76,6 +77,7 @@ public sealed class GrammarWarningPartsBlock : TextBlock
             Content = part.Text,
             NavigateUri = new Uri(link),
             Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 4, 0),
             Foreground = ObjectBrush,
             FontWeight = FontWeight.SemiBold,
         };

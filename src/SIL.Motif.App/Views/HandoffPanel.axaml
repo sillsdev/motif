@@ -9,14 +9,14 @@
   <StackPanel Spacing="16" Margin="24">
 
     <StackPanel Spacing="4">
-      <TextBlock Classes="stage-title" Text="Handoff" />
-      <TextBlock Classes="muted"
+      <views:CopyableTextBlock Classes="stage-title" Text="Handoff" />
+      <views:CopyableTextBlock Classes="muted"
                  Text="Give a chat model the files it needs to help you read this Assessment."
                  TextWrapping="Wrap" />
     </StackPanel>
 
     <Border Classes="notice">
-      <TextBlock Text="{Binding Handoff.DataSensitivitySentence}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding Handoff.DataSensitivitySentence}" TextWrapping="Wrap" />
     </Border>
 
     <ProgressBar IsVisible="{Binding Handoff.IsActive}"
@@ -26,13 +26,13 @@
                  Value="{Binding Handoff.ProgressFraction}"
                  AutomationProperties.Name="Handoff progress" />
     <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding Handoff.IsActive}">
-      <TextBlock Text="{Binding Handoff.Progress.Message}" VerticalAlignment="Center" />
+      <views:CopyableTextBlock Text="{Binding Handoff.Progress.Message}" VerticalAlignment="Center" />
       <Button Content="Cancel"
               Command="{Binding Handoff.CancelCommand}"
               AutomationProperties.Name="Cancel the running Handoff" />
     </StackPanel>
 
-    <TextBlock Classes="error" Text="{Binding Handoff.Refusal.Message}"
+    <views:CopyableTextBlock Classes="error" Text="{Binding Handoff.Refusal.Message}"
                IsVisible="{Binding Handoff.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
     <Expander Header="Details"
               IsExpanded="False"
@@ -40,7 +40,7 @@
       <ItemsControl ItemsSource="{Binding Handoff.RefusalFacts}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="x:String">
-            <TextBlock Text="{Binding}" />
+            <views:CopyableTextBlock Text="{Binding}" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
@@ -51,8 +51,8 @@
       <Border Classes="card">
         <StackPanel Spacing="12">
           <StackPanel Spacing="2">
-            <TextBlock Classes="section-title" Text="{Binding Handoff.Files.Count, StringFormat='{}{0} file(s)'}" />
-            <TextBlock Classes="muted" Text="{Binding Handoff.OutputDirectory}" TextWrapping="Wrap" FontSize="12" />
+            <views:CopyableTextBlock Classes="section-title" Text="{Binding Handoff.Files.Count, StringFormat='{}{0} file(s)'}" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Handoff.OutputDirectory}" TextWrapping="Wrap" FontSize="12" />
           </StackPanel>
 
           <Button x:Name="AllFilesButton"
@@ -80,13 +80,13 @@
                             MinWidth="48"
                             Padding="6,4"
                             VerticalAlignment="Center">
-                      <TextBlock Text="{Binding KindLabel}"
+                      <views:CopyableTextBlock Text="{Binding KindLabel}"
                                  Foreground="White"
                                  FontSize="11"
                                  FontWeight="Bold"
                                  HorizontalAlignment="Center" />
                     </Border>
-                    <TextBlock Grid.Column="1"
+                    <views:CopyableTextBlock Grid.Column="1"
                                Text="{Binding RelativePath}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center" />
@@ -104,10 +104,10 @@
 
       <Border Grid.Column="1" Classes="card" VerticalAlignment="Top">
         <StackPanel Spacing="16">
-          <TextBlock Classes="section-title" Text="Next" />
+          <views:CopyableTextBlock Classes="section-title" Text="Next" />
 
           <StackPanel Spacing="8">
-            <TextBlock Text="1. Copy the starter prompt" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="1. Copy the starter prompt" FontWeight="SemiBold" />
             <Button Content="Copy starter prompt"
                     Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Click="OnCopyStarterPromptClick"
@@ -117,13 +117,13 @@
           </StackPanel>
 
           <StackPanel Spacing="2">
-            <TextBlock Text="2. Open a chat" FontWeight="SemiBold" />
-            <TextBlock Classes="muted" Text="Claude, ChatGPT or Gemini." TextWrapping="Wrap" />
+            <views:CopyableTextBlock Text="2. Open a chat" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Classes="muted" Text="Claude, ChatGPT or Gemini." TextWrapping="Wrap" />
           </StackPanel>
 
           <StackPanel Spacing="2">
-            <TextBlock Text="3. Add the files, then paste" FontWeight="SemiBold" />
-            <TextBlock Classes="muted" Text="Drag the files into the chat, then paste the prompt."
+            <views:CopyableTextBlock Text="3. Add the files, then paste" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Classes="muted" Text="Drag the files into the chat, then paste the prompt."
                        TextWrapping="Wrap" />
           </StackPanel>
         </StackPanel>

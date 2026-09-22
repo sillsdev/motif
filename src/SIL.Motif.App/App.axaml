@@ -7,20 +7,22 @@
     <semi:DataGridSemiTheme />
     <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
 
+    <!-- Styles cannot change control type; read-only markup names SelectableTextBlock explicitly. -->
+    <!-- Button content stays TextBlock so button activation owns pointer and keyboard gestures. -->
     <!-- Text roles shared by every panel, so no view names a colour of its own. -->
-    <Style Selector="TextBlock.stage-title">
+    <Style Selector=":is(TextBlock).stage-title">
       <Setter Property="FontSize" Value="22" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
-    <Style Selector="TextBlock.section-title">
+    <Style Selector=":is(TextBlock).section-title">
       <Setter Property="FontSize" Value="16" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="TextBlock.muted">
+    <Style Selector=":is(TextBlock).muted">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
     </Style>
-    <Style Selector="TextBlock.error">
+    <Style Selector=":is(TextBlock).error">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.DiagnosticPanel"
@@ -13,16 +14,16 @@
       <Setter Property="CornerRadius" Value="6" />
       <Setter Property="Padding" Value="10" />
     </Style>
-    <Style Selector="TextBlock.muted">
+    <Style Selector=":is(TextBlock).muted">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
     </Style>
-    <Style Selector="TextBlock.status">
+    <Style Selector=":is(TextBlock).status">
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
-    <Style Selector="TextBlock.failed">
+    <Style Selector=":is(TextBlock).failed">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
     </Style>
-    <Style Selector="TextBlock.succeeded">
+    <Style Selector=":is(TextBlock).succeeded">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
     </Style>
   </UserControl.Styles>
@@ -31,21 +32,21 @@
     <StackPanel Margin="16" Spacing="12">
       <StackPanel Spacing="8">
         <StackPanel Spacing="3">
-          <TextBlock Text="{Binding Result.Word}" FontSize="20" FontWeight="SemiBold"
+          <views:CopyableTextBlock Text="{Binding Result.Word}" FontSize="20" FontWeight="SemiBold"
                      IsVisible="{Binding HasResult}" AutomationProperties.Name="Diagnostic word" />
-          <TextBlock Text="{Binding SummaryText}" Classes="status" TextWrapping="Wrap"
+          <views:CopyableTextBlock Text="{Binding SummaryText}" Classes="status" TextWrapping="Wrap"
                      IsVisible="{Binding HasResult}" AutomationProperties.Name="Diagnostic result" />
-          <TextBlock Text="{Binding SearchStatusText}" Classes="status" TextWrapping="Wrap"
+          <views:CopyableTextBlock Text="{Binding SearchStatusText}" Classes="status" TextWrapping="Wrap"
                      IsVisible="{Binding HasResult}" AutomationProperties.Name="Search completeness" />
-          <TextBlock Text="{Binding WritingSystemSummary}" Classes="muted" TextWrapping="Wrap"
+          <views:CopyableTextBlock Text="{Binding WritingSystemSummary}" Classes="muted" TextWrapping="Wrap"
                      IsVisible="{Binding HasResult}" AutomationProperties.Name="Writing system direction and font" />
           <Expander Header="Capture details" IsExpanded="False" IsVisible="{Binding HasCaptureDetails}"
                     AutomationProperties.Name="Diagnostic capture details">
-            <TextBlock Text="{Binding CaptureDetails}" Classes="muted" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Text="{Binding CaptureDetails}" Classes="muted" TextWrapping="Wrap" />
           </Expander>
-          <TextBlock Text="{Binding ProvenanceWarning}" Classes="failed" TextWrapping="Wrap"
+          <views:CopyableTextBlock Text="{Binding ProvenanceWarning}" Classes="failed" TextWrapping="Wrap"
                      IsVisible="{Binding HasProvenanceWarning}" AutomationProperties.Name="Diagnostic provenance warning" />
-          <TextBlock Text="Standalone diagnostic: recorded evidence only; live FieldWorks navigation is unavailable."
+          <views:CopyableTextBlock Text="Standalone diagnostic: recorded evidence only; live FieldWorks navigation is unavailable."
                      Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsStandalone}" />
         </StackPanel>
         <WrapPanel Orientation="Horizontal">
@@ -57,28 +58,28 @@
         </WrapPanel>
       </StackPanel>
 
-      <TextBlock x:Name="ErrorText" Classes="failed" IsVisible="False" TextWrapping="Wrap"
+      <views:CopyableTextBlock x:Name="ErrorText" Classes="failed" IsVisible="False" TextWrapping="Wrap"
                  AutomationProperties.Name="Diagnostic file error" />
 
       <StackPanel Spacing="6" IsVisible="{Binding HasResult}">
-        <TextBlock Text="Analyses" FontSize="16" FontWeight="SemiBold" />
-        <TextBlock Classes="muted"
+        <views:CopyableTextBlock Text="Analyses" FontSize="16" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Classes="muted"
                    Text="Recorded analyses appear first, in parser order. Values marked not recorded were unavailable in the producer document."
                    TextWrapping="Wrap" />
-        <TextBlock Classes="muted" Text="No analyses were recorded." IsVisible="{Binding HasAnalyses, Converter={x:Static conv:BoolConverters.Not}}" />
+        <views:CopyableTextBlock Classes="muted" Text="No analyses were recorded." IsVisible="{Binding HasAnalyses, Converter={x:Static conv:BoolConverters.Not}}" />
         <ItemsControl ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:TraceAnalysisViewModel">
               <Border Classes="card" Margin="0,0,0,6">
                 <StackPanel Spacing="6">
                   <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="1" Text="{Binding Surface}" />
-                    <TextBlock Grid.Column="2" Text="{Binding Availability}" Classes="muted" />
+                    <views:CopyableTextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                    <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" />
+                    <views:CopyableTextBlock Grid.Column="2" Text="{Binding Availability}" Classes="muted" />
                   </Grid>
-                  <TextBlock Text="{Binding ProjectionError, StringFormat='Projection: {0}'}"
+                  <views:CopyableTextBlock Text="{Binding ProjectionError, StringFormat='Projection: {0}'}"
                              IsVisible="{Binding HasProjectionError}" Classes="failed" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding LegacyMorphemes, StringFormat='Parser morphology: {0}'}"
+                  <views:CopyableTextBlock Text="{Binding LegacyMorphemes, StringFormat='Parser morphology: {0}'}"
                              IsVisible="{Binding HasLegacyMorphemes}" Classes="muted" TextWrapping="Wrap" />
                   <ItemsControl ItemsSource="{Binding Morphs}">
                     <ItemsControl.ItemsPanel>
@@ -90,24 +91,24 @@
                       <DataTemplate x:DataType="vm:TraceMorphViewModel">
                         <Border Classes="card" Margin="0,0,8,0" Padding="8">
                           <StackPanel Spacing="2">
-                            <TextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Headword}" FlowDirection="{Binding HeadwordDirection}" FontFamily="{Binding HeadwordFont}" Classes="muted" />
-                            <TextBlock Text="{Binding Gloss}" FlowDirection="{Binding GlossDirection}" FontFamily="{Binding GlossFont}" />
-                            <TextBlock Text="{Binding Category}" Classes="muted" />
+                            <views:CopyableTextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Text="{Binding Headword}" FlowDirection="{Binding HeadwordDirection}" FontFamily="{Binding HeadwordFont}" Classes="muted" />
+                            <views:CopyableTextBlock Text="{Binding Gloss}" FlowDirection="{Binding GlossDirection}" FontFamily="{Binding GlossFont}" />
+                            <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" />
                             <Expander Header="Full morph details" IsExpanded="False">
                               <StackPanel Spacing="2">
-                                <TextBlock Text="{Binding Details}" TextWrapping="Wrap" />
-                                <TextBlock Text="{Binding MsaDetails}" TextWrapping="Wrap" />
+                                <views:CopyableTextBlock Text="{Binding Details}" TextWrapping="Wrap" />
+                                <views:CopyableTextBlock Text="{Binding MsaDetails}" TextWrapping="Wrap" />
                                 <Expander Header="Raw morph record">
-                                  <TextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
+                                  <views:CopyableTextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
                                 </Expander>
-                                <TextBlock Text="{Binding Identity}" Classes="muted" TextWrapping="Wrap" />
+                                <views:CopyableTextBlock Text="{Binding Identity}" Classes="muted" TextWrapping="Wrap" />
                                 <HyperlinkButton Content="Open compatible FieldWorks entry"
                                                  NavigateUri="{Binding Link}"
                                                  IsVisible="{Binding HasLink}"
                                                  Padding="0"
                                                  AutomationProperties.Name="{Binding LinkName}" />
-                                <TextBlock Classes="muted"
+                                <views:CopyableTextBlock Classes="muted"
                                            Text="Live FieldWorks navigation is unavailable for this recorded morph."
                                            IsVisible="{Binding HasNoLink}" TextWrapping="Wrap" />
                               </StackPanel>
@@ -131,16 +132,16 @@
             <DataTemplate x:DataType="vm:TraceCandidateViewModel">
               <Border Classes="card" Margin="0,0,0,6" IsVisible="{Binding IsFailure}">
                 <StackPanel Spacing="4">
-                  <TextBlock Text="{Binding Text}" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding StatusText}" Classes="failed" />
-                  <TextBlock Text="{Binding FailureContext}" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding FailureRequired, StringFormat='Required: {0}'}"
+                  <views:CopyableTextBlock Text="{Binding Text}" FontWeight="SemiBold" />
+                  <views:CopyableTextBlock Text="{Binding StatusText}" Classes="failed" />
+                  <views:CopyableTextBlock Text="{Binding FailureContext}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Text="{Binding FailureRequired, StringFormat='Required: {0}'}"
                              IsVisible="{Binding FailureRequired, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                  <TextBlock Text="{Binding FailureActual, StringFormat='Actual: {0}'}"
+                  <views:CopyableTextBlock Text="{Binding FailureActual, StringFormat='Actual: {0}'}"
                              IsVisible="{Binding FailureActual, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                  <TextBlock Text="{Binding FailureEnvironment, StringFormat='Environment: {0}'}"
+                  <views:CopyableTextBlock Text="{Binding FailureEnvironment, StringFormat='Environment: {0}'}"
                              IsVisible="{Binding FailureEnvironment, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                  <TextBlock Text="{Binding SourceIdentity}" Classes="muted" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Text="{Binding SourceIdentity}" Classes="muted" TextWrapping="Wrap" />
                 </StackPanel>
               </Border>
             </DataTemplate>
@@ -160,31 +161,31 @@
             <ComboBox Grid.Column="3" ItemsSource="{Binding OutcomeFilters}" SelectedItem="{Binding OutcomeFilter}" Width="120"
                       AutomationProperties.Name="Filter diagnostic trace by outcome" />
           </Grid>
-          <TextBlock Classes="muted" Text="{Binding SelectedFilterDescription}"
+          <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedFilterDescription}"
                      AutomationProperties.Name="Hidden trace count" />
           <Expander Header="Parser effort" IsExpanded="False" IsVisible="{Binding HasEffort}"
                     AutomationProperties.Name="Aggregate parser effort">
             <Grid RowDefinitions="Auto,*">
               <Grid ColumnDefinitions="2*,Auto,Auto,Auto,Auto,3*,Auto" ColumnSpacing="8" Margin="0,0,0,4">
-                <TextBlock Classes="muted" Text="Category" />
-                <TextBlock Grid.Column="1" Classes="muted" Text="Work" />
-                <TextBlock Grid.Column="2" Classes="muted" Text="Uses" />
-                <TextBlock Grid.Column="3" Classes="muted" Text="Tried" />
-                <TextBlock Grid.Column="4" Classes="muted" Text="Outputs" />
-                <TextBlock Grid.Column="5" Classes="muted" Text="Misses" />
-                <TextBlock Grid.Column="6" Classes="muted" Text="Time" />
+                <views:CopyableTextBlock Classes="muted" Text="Category" />
+                <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="Work" />
+                <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="Uses" />
+                <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="Tried" />
+                <views:CopyableTextBlock Grid.Column="4" Classes="muted" Text="Outputs" />
+                <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="Misses" />
+                <views:CopyableTextBlock Grid.Column="6" Classes="muted" Text="Time" />
               </Grid>
               <ItemsControl Grid.Row="1" ItemsSource="{Binding Effort}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:TraceEffortViewModel">
                     <Grid ColumnDefinitions="2*,Auto,Auto,Auto,Auto,3*,Auto" ColumnSpacing="8" Margin="0,2">
-                      <TextBlock Text="{Binding Kind}" TextWrapping="Wrap" />
-                      <TextBlock Grid.Column="1" Text="{Binding Work}" />
-                      <TextBlock Grid.Column="2" Text="{Binding Uses}" />
-                      <TextBlock Grid.Column="3" Text="{Binding Tried}" />
-                      <TextBlock Grid.Column="4" Text="{Binding Produced}" />
-                      <TextBlock Grid.Column="5" Text="{Binding Missed}" TextWrapping="Wrap" />
-                      <TextBlock Grid.Column="6" Text="{Binding Time}" />
+                      <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Grid.Column="1" Text="{Binding Work}" />
+                      <views:CopyableTextBlock Grid.Column="2" Text="{Binding Uses}" />
+                      <views:CopyableTextBlock Grid.Column="3" Text="{Binding Tried}" />
+                      <views:CopyableTextBlock Grid.Column="4" Text="{Binding Produced}" />
+                      <views:CopyableTextBlock Grid.Column="5" Text="{Binding Missed}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Grid.Column="6" Text="{Binding Time}" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -203,8 +204,8 @@
                 <TreeDataTemplate x:DataType="vm:TraceStepViewModel" ItemsSource="{Binding Children}">
 
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <TextBlock Text="{Binding StatusText}" Classes="muted" />
-                      <TextBlock Text="{Binding Label}" />
+                      <views:CopyableTextBlock Text="{Binding StatusText}" Classes="muted" />
+                      <views:CopyableTextBlock Text="{Binding Label}" />
                     </StackPanel>
 
                 </TreeDataTemplate>
@@ -213,37 +214,37 @@
             <Border x:Name="DetailHost" Grid.Column="2" Classes="card"
                     IsVisible="{Binding SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
               <StackPanel Spacing="5" DataContext="{Binding SelectedStep}">
-                <TextBlock Text="Selected step" FontSize="15" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding StatusText}" Classes="status" />
-                <TextBlock Text="{Binding Type}" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding Source, StringFormat='Rule: {0}'}"
+                <views:CopyableTextBlock Text="Selected step" FontSize="15" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="{Binding StatusText}" Classes="status" />
+                <views:CopyableTextBlock Text="{Binding Type}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="{Binding Source, StringFormat='Rule: {0}'}"
                            IsVisible="{Binding Source, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding Input, StringFormat='Input: {0}'}"
+                <views:CopyableTextBlock Text="{Binding Input, StringFormat='Input: {0}'}"
                            IsVisible="{Binding Input, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding Output, StringFormat='Output: {0}'}"
+                <views:CopyableTextBlock Text="{Binding Output, StringFormat='Output: {0}'}"
                            IsVisible="{Binding Output, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding SubruleText}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding OutcomeStatus, StringFormat='Outcome: {0}'}"
+                <views:CopyableTextBlock Text="{Binding SubruleText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding OutcomeStatus, StringFormat='Outcome: {0}'}"
                            IsVisible="{Binding OutcomeStatus, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding OutcomeEventType, StringFormat='Event: {0}'}"
+                <views:CopyableTextBlock Text="{Binding OutcomeEventType, StringFormat='Event: {0}'}"
                            IsVisible="{Binding OutcomeEventType, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding FailureReason, StringFormat='Failure: {0}'}"
+                <views:CopyableTextBlock Text="{Binding FailureReason, StringFormat='Failure: {0}'}"
                            IsVisible="{Binding HasFailureReason}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding ContextText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding ContextText}" TextWrapping="Wrap" />
                 <ItemsControl ItemsSource="{Binding AttemptedMorphs}" IsVisible="{Binding HasAttemptedMorphs}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:TraceMorphViewModel">
                       <Border Classes="card" Margin="0,2" Padding="8">
                         <StackPanel Spacing="2">
-                          <TextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                          <TextBlock Text="{Binding Headword}" FlowDirection="{Binding HeadwordDirection}" FontFamily="{Binding HeadwordFont}" Classes="muted" TextWrapping="Wrap" />
-                          <TextBlock Text="{Binding Gloss}" FlowDirection="{Binding GlossDirection}" FontFamily="{Binding GlossFont}" TextWrapping="Wrap" />
-                          <TextBlock Text="{Binding Category}" Classes="muted" TextWrapping="Wrap" />
+                          <views:CopyableTextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                          <views:CopyableTextBlock Text="{Binding Headword}" FlowDirection="{Binding HeadwordDirection}" FontFamily="{Binding HeadwordFont}" Classes="muted" TextWrapping="Wrap" />
+                          <views:CopyableTextBlock Text="{Binding Gloss}" FlowDirection="{Binding GlossDirection}" FontFamily="{Binding GlossFont}" TextWrapping="Wrap" />
+                          <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" TextWrapping="Wrap" />
                           <Expander Header="Full morph details" IsExpanded="False">
                             <StackPanel Spacing="2">
-                              <TextBlock Text="{Binding Details}" TextWrapping="Wrap" />
-                              <TextBlock Text="{Binding MsaDetails}" TextWrapping="Wrap" />
-                              <TextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
+                              <views:CopyableTextBlock Text="{Binding Details}" TextWrapping="Wrap" />
+                              <views:CopyableTextBlock Text="{Binding MsaDetails}" TextWrapping="Wrap" />
+                              <views:CopyableTextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
                             </StackPanel>
                           </Expander>
                         </StackPanel>
@@ -251,10 +252,10 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Text="{Binding SourceIdentity}"
+                <views:CopyableTextBlock Text="{Binding SourceIdentity}"
                            IsVisible="{Binding SourceIdentityId, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
                            TextWrapping="Wrap" />
-                <TextBlock Classes="muted"
+                <views:CopyableTextBlock Classes="muted"
                            Text="Category statistics are aggregate parser statistics; they are not time for this step."
                            TextWrapping="Wrap" />
 

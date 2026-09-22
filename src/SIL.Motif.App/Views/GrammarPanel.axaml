@@ -5,22 +5,22 @@
              x:Class="SIL.Motif.App.Views.GrammarPanel"
              x:DataType="views:GrammarPanel">
   <UserControl.Styles>
-    <Style Selector="TextBlock.severity">
+    <Style Selector=":is(TextBlock).severity">
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
     </Style>
-    <Style Selector="TextBlock.severity.warning">
+    <Style Selector=":is(TextBlock).severity.warning">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
     </Style>
-    <Style Selector="TextBlock.severity.capability">
+    <Style Selector=":is(TextBlock).severity.capability">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
     </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,*" Margin="24" RowSpacing="12">
 
     <StackPanel Spacing="4">
-      <TextBlock Classes="stage-title" Text="Grammar" />
-      <TextBlock Classes="muted"
+      <views:CopyableTextBlock Classes="stage-title" Text="Grammar" />
+      <views:CopyableTextBlock Classes="muted"
                  Text="Loaded with the project. Nothing here depends on which texts you choose."
                  TextWrapping="Wrap" />
     </StackPanel>
@@ -29,23 +29,23 @@
 
       <StackPanel IsVisible="{Binding Grammar.ShowLoading}" Spacing="8">
         <StackPanel Orientation="Horizontal" Spacing="10">
-          <TextBlock Text="Checking the grammar..." FontWeight="SemiBold" />
-          <TextBlock Classes="muted" Text="{Binding Grammar.ElapsedText}" />
+          <views:CopyableTextBlock Text="Checking the grammar..." FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.ElapsedText}" />
         </StackPanel>
         <ProgressBar IsIndeterminate="True" AutomationProperties.Name="Grammar loading" />
-        <TextBlock Classes="muted" TextWrapping="Wrap"
+        <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                    Text="The parser reads the whole project, so the first check of a Baseline can take a minute on a large project. Later visits are instant until the Baseline is refreshed. You can choose texts meanwhile; they do not depend on the grammar." />
       </StackPanel>
 
       <StackPanel IsVisible="{Binding Grammar.ShowRefused}" Spacing="8">
         <Border Classes="notice">
           <StackPanel Spacing="4">
-            <TextBlock Text="The parser declined this grammar" FontWeight="SemiBold" />
-            <TextBlock Classes="muted" Text="Nothing can be assessed until it loads. The Details say why." TextWrapping="Wrap" />
+            <views:CopyableTextBlock Text="The parser declined this grammar" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Classes="muted" Text="Nothing can be assessed until it loads. The Details say why." TextWrapping="Wrap" />
           </StackPanel>
         </Border>
         <Expander Header="Details" IsExpanded="False">
-          <TextBlock Text="{Binding Grammar.Refusal.Message}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{Binding Grammar.Refusal.Message}" TextWrapping="Wrap" />
         </Expander>
         <Button Content="Try again"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"
@@ -54,18 +54,18 @@
       </StackPanel>
 
       <StackPanel IsVisible="{Binding Grammar.ShowNoBaseline}" Spacing="8">
-        <TextBlock Classes="muted" Text="Capture a Baseline in Project before the grammar can be checked." TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="muted" Text="Capture a Baseline in Project before the grammar can be checked." TextWrapping="Wrap" />
       </StackPanel>
 
       <StackPanel IsVisible="{Binding Grammar.ShowNoFindings}" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Text="No findings" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Classes="muted" Text="The parser loaded the grammar without warnings." HorizontalAlignment="Center" />
+        <views:CopyableTextBlock Text="No findings" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <views:CopyableTextBlock Classes="muted" Text="The parser loaded the grammar without warnings." HorizontalAlignment="Center" />
       </StackPanel>
 
       <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8" IsVisible="{Binding Grammar.ShowFindings}">
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Classes="section-title" Text="Findings" />
-          <TextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="section-title" Text="Findings" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
           <Button Content="Reload grammar"
                   Command="{Binding Grammar.CheckCommand}"
                   AutomationProperties.Name="Check the grammar again" />
@@ -94,7 +94,7 @@
                                     ClipboardContentBinding="{ReflectionBinding Severity}">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <TextBlock Classes="severity"
+                  <views:CopyableTextBlock Classes="severity"
                              Classes.warning="{Binding IsWarning}"
                              Classes.capability="{Binding IsCapability}"
                              Text="{Binding Severity}" Margin="6,4" VerticalAlignment="Top"
@@ -102,7 +102,14 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Kind" Width="150" Binding="{ReflectionBinding Kind}" />
+            <DataGridTemplateColumn Header="Kind" Width="150" SortMemberPath="Kind"
+                                    ClipboardContentBinding="{ReflectionBinding Kind}">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                  <views:CopyableTextBlock Text="{Binding Kind}" Margin="6,4" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Where" Width="*" SortMemberPath="Where"
                                     ClipboardContentBinding="{ReflectionBinding Where}">
               <DataGridTemplateColumn.CellTemplate>

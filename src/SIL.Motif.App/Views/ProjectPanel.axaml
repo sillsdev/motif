@@ -7,7 +7,7 @@
              x:DataType="views:ProjectPanel">
   <StackPanel Spacing="8" Margin="24">
 
-    <TextBlock Classes="stage-title" Text="Project" />
+    <views:CopyableTextBlock Classes="stage-title" Text="Project" />
     <DockPanel LastChildFill="True">
       <Button Content="Browse..."
               Command="{Binding Project.BrowseCommand}"
@@ -19,37 +19,37 @@
                 HorizontalAlignment="Stretch">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="queries:KnownProjectSummary">
-            <TextBlock Text="{Binding FullFwDataPath}" />
+            <views:CopyableTextBlock Text="{Binding FullFwDataPath}" />
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
     </DockPanel>
 
-    <TextBlock Classes="section-title" Text="Baseline" Margin="0,16,0,0" />
-    <TextBlock Text="{Binding Baseline.CapturedTimeText}" />
-    <TextBlock Text="{Binding Baseline.FreshnessText}" IsVisible="{Binding Baseline.HasBaseline}" />
-    <TextBlock Text="{Binding Baseline.HeldStatusText}" />
-    <TextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}"
+    <views:CopyableTextBlock Classes="section-title" Text="Baseline" Margin="0,16,0,0" />
+    <views:CopyableTextBlock Text="{Binding Baseline.CapturedTimeText}" />
+    <views:CopyableTextBlock Text="{Binding Baseline.FreshnessText}" IsVisible="{Binding Baseline.HasBaseline}" />
+    <views:CopyableTextBlock Text="{Binding Baseline.HeldStatusText}" />
+    <views:CopyableTextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}"
                IsVisible="{Binding Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
     <Button Content="Refresh"
             Command="{Binding Baseline.RefreshCommand}"
             AutomationProperties.Name="Refresh the Baseline" />
 
-    <TextBlock Classes="section-title" Text="History" Margin="0,16,0,0" />
-    <TextBlock Classes="muted" Text="Loading history..." IsVisible="{Binding History.IsLoading}" />
-    <TextBlock Classes="error" Text="{Binding History.RefusalMessage}"
+    <views:CopyableTextBlock Classes="section-title" Text="History" Margin="0,16,0,0" />
+    <views:CopyableTextBlock Classes="muted" Text="Loading history..." IsVisible="{Binding History.IsLoading}" />
+    <views:CopyableTextBlock Classes="error" Text="{Binding History.RefusalMessage}"
                IsVisible="{Binding History.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-    <TextBlock Classes="muted" Text="Nothing recorded for this project yet."
+    <views:CopyableTextBlock Classes="muted" Text="Nothing recorded for this project yet."
                IsVisible="{Binding !History.HasEntries}" />
     <ItemsControl ItemsSource="{Binding History.Entries}" AutomationProperties.Name="Project history">
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="queries:ProjectHistoryEntry">
           <Border Classes="card" Margin="0,0,0,6">
             <DockPanel LastChildFill="True">
-              <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding At}" />
+              <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding At}" />
               <StackPanel Spacing="2">
-                <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding Kind}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
               </StackPanel>
             </DockPanel>
           </Border>

@@ -10,12 +10,12 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
-    <Style Selector="TextBlock.section-count">
+    <Style Selector=":is(TextBlock).section-count">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="Margin" Value="12,0,0,0" />
     </Style>
-    <Style Selector="TextBlock.result, Border.chip TextBlock">
+    <Style Selector=":is(TextBlock).result, Border.chip :is(TextBlock)">
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Border.chip">
@@ -23,26 +23,26 @@
       <Setter Property="Padding" Value="7,1" />
       <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
     </Style>
-    <Style Selector="Border.chip TextBlock">
+    <Style Selector="Border.chip :is(TextBlock)">
       <Setter Property="FontSize" Value="11" />
       <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
     </Style>
     <Style Selector="Border.chip.parsed, Border.chip.approved">
       <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
     </Style>
-    <Style Selector="Border.chip.parsed TextBlock, Border.chip.approved TextBlock">
+    <Style Selector="Border.chip.parsed :is(TextBlock), Border.chip.approved :is(TextBlock)">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
     </Style>
     <Style Selector="Border.chip.failed, Border.chip.disapproved">
       <Setter Property="Background" Value="{DynamicResource SemiColorDangerLight}" />
     </Style>
-    <Style Selector="Border.chip.failed TextBlock, Border.chip.disapproved TextBlock">
+    <Style Selector="Border.chip.failed :is(TextBlock), Border.chip.disapproved :is(TextBlock)">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
     </Style>
     <Style Selector="Border.chip.incomplete, Border.chip.missed">
       <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
     </Style>
-    <Style Selector="Border.chip.incomplete TextBlock, Border.chip.missed TextBlock">
+    <Style Selector="Border.chip.incomplete :is(TextBlock), Border.chip.missed :is(TextBlock)">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
     </Style>
     <Style Selector="Button.filterChip">
@@ -68,7 +68,7 @@
       <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
-    <Style Selector="TextBlock.deepest">
+    <Style Selector=":is(TextBlock).deepest">
       <Setter Property="FontWeight" Value="Bold" />
     </Style>
   </UserControl.Styles>
@@ -84,8 +84,8 @@
       </Expander.IsVisible>
       <Expander.Header>
         <StackPanel Orientation="Horizontal">
-          <TextBlock Classes="section-title" Text="Run" />
-          <TextBlock Classes="section-count" Text="{Binding Assess.Progress.Message}"
+          <views:CopyableTextBlock Classes="section-title" Text="Run" />
+          <views:CopyableTextBlock Classes="section-count" Text="{Binding Assess.Progress.Message}"
                      IsVisible="{Binding Assess.IsActive}" />
         </StackPanel>
       </Expander.Header>
@@ -101,9 +101,9 @@
                      Maximum="1"
                      Value="{Binding Assess.ProgressFraction}"
                      AutomationProperties.Name="Assessment progress" />
-        <TextBlock Text="{Binding Assess.Progress.Message}"
+        <views:CopyableTextBlock Text="{Binding Assess.Progress.Message}"
                    IsVisible="{Binding Assess.IsActive}" />
-        <TextBlock Classes="error" Text="{Binding Assess.Refusal.Message}"
+        <views:CopyableTextBlock Classes="error" Text="{Binding Assess.Refusal.Message}"
                    IsVisible="{Binding Assess.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
         <Expander Header="Details"
                   IsExpanded="False"
@@ -111,7 +111,7 @@
           <ItemsControl ItemsSource="{Binding Assess.RefusalFacts}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="x:String">
-                <TextBlock Text="{Binding}" />
+                <views:CopyableTextBlock Text="{Binding}" />
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
@@ -158,21 +158,21 @@
             <DataTemplate x:DataType="vm:AssessWordRowViewModel">
               <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="2">
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="4">
-                  <TextBlock Text="{Binding Word}" FontWeight="SemiBold" />
-                  <TextBlock Classes="muted" Text="{Binding OccurrenceCount, StringFormat='×{0}'}"
+                  <views:CopyableTextBlock Text="{Binding Word}" FontWeight="SemiBold" />
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding OccurrenceCount, StringFormat='×{0}'}"
                              IsVisible="{Binding HasOccurrenceCount}" />
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
                   <Border Classes="chip" Classes.parsed="{Binding IsParsed}" Classes.failed="{Binding IsFailed}"
                           Classes.incomplete="{Binding IsIncomplete}">
-                    <TextBlock Text="{Binding Result}" />
+                    <views:CopyableTextBlock Text="{Binding Result}" />
                   </Border>
                   <Border Classes="chip" Classes.approved="{Binding VsProject, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Approved'}"
                           Classes.disapproved="{Binding VsProject, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Disapproved'}"
                           Classes.missed="{Binding VsProject, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Missed'}">
-                    <TextBlock Text="{Binding VsProject}" />
+                    <views:CopyableTextBlock Text="{Binding VsProject}" />
                   </Border>
-                  <TextBlock Grid.Column="1" Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}"
+                  <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}"
                              HorizontalAlignment="Right" />
                 </StackPanel>
               </Grid>
@@ -186,7 +186,7 @@
         <StackPanel Spacing="12" DataContext="{Binding Assess.Words.SelectedRow}" x:DataType="vm:AssessWordRowViewModel">
 
           <StackPanel Orientation="Horizontal" Spacing="10">
-            <TextBlock Text="{Binding Word}" Classes="section-title" />
+            <views:CopyableTextBlock Text="{Binding Word}" Classes="section-title" />
             <HyperlinkButton Content="Open in FieldWorks"
                              NavigateUri="{Binding TryWordLink}"
                              IsVisible="{Binding HasTryWordLink}"
@@ -197,22 +197,22 @@
           <StackPanel Orientation="Horizontal" Spacing="10">
             <Border Classes="chip" Classes.parsed="{Binding IsParsed}" Classes.failed="{Binding IsFailed}"
                     Classes.incomplete="{Binding IsIncomplete}">
-              <TextBlock Text="{Binding Result}" />
+              <views:CopyableTextBlock Text="{Binding Result}" />
             </Border>
-            <TextBlock Classes="muted" Text="{Binding ReadingCount, StringFormat='{}{0} reading(s)'}" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding ReadingCount, StringFormat='{}{0} reading(s)'}" VerticalAlignment="Center" />
             <Border Classes="chip" Classes.approved="{Binding VsProject, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Approved'}"
                     Classes.disapproved="{Binding VsProject, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Disapproved'}"
                     Classes.missed="{Binding VsProject, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter='Missed'}">
-              <TextBlock Text="{Binding VsProject}" />
+              <views:CopyableTextBlock Text="{Binding VsProject}" />
             </Border>
-            <TextBlock Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}" VerticalAlignment="Center" />
-            <TextBlock Classes="muted" Text="{Binding Attempts, StringFormat='{}{0} attempts'}" VerticalAlignment="Center"
+            <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Attempts, StringFormat='{}{0} attempts'}" VerticalAlignment="Center"
                        IsVisible="{Binding Attempts, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-            <TextBlock Classes="muted" Text="{Binding Passes, StringFormat='{}{0} passes'}" VerticalAlignment="Center"
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Passes, StringFormat='{}{0} passes'}" VerticalAlignment="Center"
                        IsVisible="{Binding Passes, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
           </StackPanel>
 
-          <TextBlock Classes="muted" Text="No readings: the parser found no way to build this word."
+          <views:CopyableTextBlock Classes="muted" Text="No readings: the parser found no way to build this word."
                      IsVisible="{Binding !HasReadings}" />
 
           <Grid>
@@ -225,7 +225,7 @@
             <!-- Analyses: the parser's readings and the project's missed approved analyses, graded. -->
             <StackPanel Grid.Column="0" Spacing="8"
                         IsVisible="{Binding $parent[views:AssessPanel].Assess.Trace.IsFocused, Converter={x:Static BoolConverters.Not}}">
-              <TextBlock Classes="section-title" Text="Analyses" FontSize="14" />
+              <views:CopyableTextBlock Classes="section-title" Text="Analyses" FontSize="14" />
               <ItemsControl ItemsSource="{Binding Readings}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:ParserReadingViewModel">
@@ -242,18 +242,18 @@
                               <StackPanel Spacing="1" Margin="0,0,14,0">
                                 <HyperlinkButton Content="{Binding Form}" NavigateUri="{Binding Link}"
                                                  IsVisible="{Binding HasLink}" Padding="0" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontWeight="SemiBold" />
-                                <TextBlock Classes="muted" Text="{Binding Gloss}" FontSize="12" />
+                                <views:CopyableTextBlock Text="{Binding Form}" IsVisible="{Binding HasNoLink}" FontWeight="SemiBold" />
+                                <views:CopyableTextBlock Classes="muted" Text="{Binding Gloss}" FontSize="12" />
                               </StackPanel>
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                          <TextBlock Classes="muted" Text="Parser ✓" FontSize="11" IsVisible="{Binding ShowParserProduced}" />
-                          <TextBlock Classes="muted" Text="Project ✓" FontSize="11" IsVisible="{Binding ShowProjectApproved}" />
+                          <views:CopyableTextBlock Classes="muted" Text="Parser ✓" FontSize="11" IsVisible="{Binding ShowParserProduced}" />
+                          <views:CopyableTextBlock Classes="muted" Text="Project ✓" FontSize="11" IsVisible="{Binding ShowProjectApproved}" />
                           <Border Classes="chip" Classes.disapproved="{Binding IsDisapproved}" Classes.missed="{Binding IsMissed}"
                                   Classes.approved="{Binding IsApproved}">
-                            <TextBlock Text="{Binding GradeLabel}" />
+                            <views:CopyableTextBlock Text="{Binding GradeLabel}" />
                           </Border>
                         </StackPanel>
                       </StackPanel>
@@ -266,16 +266,16 @@
                   <DataTemplate x:DataType="vm:ParserReadingViewModel">
                     <Border Classes="card" Margin="0,0,0,6" Padding="10">
                       <StackPanel Spacing="4">
-                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                        <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
                         <Border Classes="chip missed" HorizontalAlignment="Left">
-                          <TextBlock Text="Missed" />
+                          <views:CopyableTextBlock Text="Missed" />
                         </Border>
                       </StackPanel>
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
+              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
                          Text="Compared by form, entry, grammatical category and inflection type. Sense is not compared." />
             </StackPanel>
 
@@ -291,7 +291,7 @@
               <DockPanel LastChildFill="True">
                 <ToggleButton DockPanel.Dock="Right" Content="{Binding FocusToggleLabel}" IsChecked="{Binding IsFocused}"
                               AutomationProperties.Name="Toggle focusing Try a Word" />
-                <TextBlock Classes="section-title" Text="Try a Word" FontSize="14" VerticalAlignment="Center" />
+                <views:CopyableTextBlock Classes="section-title" Text="Try a Word" FontSize="14" VerticalAlignment="Center" />
               </DockPanel>
               <DockPanel LastChildFill="True">
                 <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding TryCommand}"
@@ -301,11 +301,11 @@
               </DockPanel>
 
               <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsLoading}">
-                <TextBlock Classes="muted" Text="Tracing... this can take up to two minutes." VerticalAlignment="Center" />
+                <views:CopyableTextBlock Classes="muted" Text="Tracing... this can take up to two minutes." VerticalAlignment="Center" />
                 <Button Content="Cancel" Command="{Binding CancelCommand}"
                         AutomationProperties.Name="Cancel the trace" />
               </StackPanel>
-              <TextBlock Classes="error" Text="{Binding Refusal.Message}"
+              <views:CopyableTextBlock Classes="error" Text="{Binding Refusal.Message}"
                          IsVisible="{Binding Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
 
               <ContentControl x:Name="RichDiagnosticHost"

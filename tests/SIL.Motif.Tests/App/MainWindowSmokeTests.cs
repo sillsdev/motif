@@ -1,6 +1,9 @@
+using System.Text.Json;
+
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -76,6 +79,179 @@ public sealed class MainWindowSmokeTests
                 Assert.False(
                     string.IsNullOrWhiteSpace(EffectiveAccessibleName(control)),
                     $"{control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name.");
+        });
+    }
+
+    [Fact]
+    public void ReadOnlyDisplayedTextCanBeSelectedAndCopiedButButtonTextCannot()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                var inspected = 0;
+                foreach (var stage in Enum.GetValues<WorkflowStage>())
+                foreach (var view in Enum.GetValues<ResultsView>())
+                {
+                    workspace.CurrentStage = stage;
+                    workspace.ResultsView = view;
+                    window.UpdateLayout();
+
+                    var readOnlyText = window.GetVisualDescendants().OfType<TextBlock>()
+                        .Where(text => text.IsEffectivelyVisible)
+                        .Where(text => !IsWithinInteractiveControl(text))
+                        .Where(text => !string.IsNullOrEmpty(text.Text))
+                        .ToList();
+
+                    inspected += readOnlyText.Count;
+                    Assert.All(readOnlyText.Where(text => text.Classes.Contains("stage-title")),
+                        title => Assert.Equal(22, title.FontSize));
+                    Assert.All(readOnlyText, text =>
+                    {
+                        var selectable = text as SelectableTextBlock;
+                        Assert.True(selectable is not null,
+                            $"'{text.Text}' is plain text under {string.Join(" > ", text.GetVisualAncestors().Select(item => item.GetType().Name))}.");
+                        selectable.SelectAll();
+                        Assert.True(selectable.CanCopy, $"'{selectable.Text}' cannot be copied.");
+                        Assert.Equal(selectable.Text, selectable.SelectedText);
+                    });
+                }
+
+                Assert.True(inspected > 0);
+                Assert.DoesNotContain(
+                    window.GetVisualDescendants().OfType<SelectableTextBlock>(),
+                    IsWithinInteractiveControl);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ResultTablesRenderSelectableDynamicCells()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                using var statisticsDocument = JsonDocument.Parse(
+                    "{\"kind\":\"word\",\"form\":\"motifa\",\"attempts\":2,\"passes\":1,\"elapsed_ns\":5000000}");
+                workspace.Statistics.Rows.Add(new StatsRowViewModel(statisticsDocument.RootElement.Clone()));
+                workspace.HasEverAssessed = true;
+                workspace.CurrentStage = WorkflowStage.Results;
+                workspace.ResultsView = ResultsView.Statistics;
+
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var statistics = window.GetVisualDescendants().OfType<DataGrid>()
+                    .Single(grid => AutomationProperties.GetName(grid) == "Statistics rows");
+                AssertSelectableCells(statistics);
+                statistics.SelectedItem = null;
+                var statisticsCell = statistics.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .First(cell => cell.IsEffectivelyVisible && cell.Text == "word");
+                RaiseLeftPointerPress(statisticsCell, window);
+                Assert.Same(workspace.Statistics.Rows[0], statistics.SelectedItem);
+
+                workspace.Grammar.Warnings.Load([
+                    new GrammarWarning(
+                        "warning", "Entry",
+                        [new GrammarWarningPart("lex entry", "text")],
+                        [new GrammarWarningPart("dropped", "text")],
+                        "warning: lex entry: dropped")]);
+                workspace.Grammar.HasBaseline = true;
+                workspace.Grammar.HasChecked = true;
+                workspace.CurrentStage = WorkflowStage.Grammar;
+                window.UpdateLayout();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var grammar = window.GetVisualDescendants().OfType<DataGrid>()
+                    .Single(grid => AutomationProperties.GetName(grid) == "Grammar warnings");
+                AssertSelectableCells(grammar);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void CopyableTextStillLetsClickableParentsReceivePointerEvents()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var text = new CopyableTextBlock { Text = "select or click me" };
+            var parent = new Border { Child = text };
+            var window = new Window { Content = parent };
+            var presses = 0;
+            var releases = 0;
+            parent.PointerPressed += (_, _) => presses++;
+            parent.PointerReleased += (_, _) => releases++;
+
+            try
+            {
+                window.Show();
+                using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
+                var properties = new PointerPointProperties(
+                    RawInputModifiers.LeftMouseButton,
+                    PointerUpdateKind.LeftButtonPressed);
+                text.RaiseEvent(new PointerPressedEventArgs(
+                    text, pointer, window, new Point(), 0, properties, KeyModifiers.None));
+
+                Assert.Equal(1, presses);
+                var releaseProperties = new PointerPointProperties(
+                    RawInputModifiers.None,
+                    PointerUpdateKind.LeftButtonReleased);
+                text.RaiseEvent(new PointerReleasedEventArgs(
+                    text, pointer, window, new Point(), 1, releaseProperties, KeyModifiers.None, MouseButton.Left));
+                Assert.Equal(1, releases);
+                text.SelectAll();
+                Assert.Equal(text.Text, text.SelectedText);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void LinkedGrammarWarningPartsKeepLinkSemanticsWithoutReplacementCharacters()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var block = new GrammarWarningPartsBlock
+            {
+                Parts =
+                [
+                    new GrammarWarningPart("entry", "object", "id", "lex entry", "silfw://localhost/link"),
+                    new GrammarWarningPart("has", "text"),
+                    new GrammarWarningPart("value", "value"),
+                ],
+            };
+
+            var link = Assert.Single(block.Children.OfType<HyperlinkButton>());
+            Assert.Equal("entry", link.Content);
+            Assert.Equal(new Uri("silfw://localhost/link"), link.NavigateUri);
+
+            var pieces = block.Children.OfType<CopyableTextBlock>().ToList();
+            Assert.Equal(["has", "value"], pieces.Select(piece => piece.Text));
+            Assert.All(pieces, piece =>
+            {
+                piece.SelectAll();
+                Assert.Equal(piece.Text, piece.SelectedText);
+                Assert.DoesNotContain('\uFFFC', piece.SelectedText);
+            });
         });
     }
 
@@ -224,10 +400,9 @@ public sealed class MainWindowSmokeTests
 
                 var tile = tiles.Single(item =>
                     AutomationProperties.GetName(item) == "Drag assessment.json");
-                using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
-                var args = new PointerPressedEventArgs(
-                    tile, pointer, window, new Point(), 0, PointerPointProperties.None, KeyModifiers.None);
-                tile.RaiseEvent(args);
+                var tileText = tile.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Single(text => text.Text == "assessment.json");
+                RaiseLeftPointerPress(tileText, window);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
                 Assert.Equal([files[2].FullPath], dragSource.LastPaths);
@@ -273,6 +448,36 @@ public sealed class MainWindowSmokeTests
 
         Assert.Equal("pasted header text", clipboardText);
     }
+
+    private static void RaiseLeftPointerPress(Control target, Window window)
+    {
+        using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
+        var properties = new PointerPointProperties(
+            RawInputModifiers.LeftMouseButton,
+            PointerUpdateKind.LeftButtonPressed);
+        target.RaiseEvent(new PointerPressedEventArgs(
+            target, pointer, window, new Point(), 0, properties, KeyModifiers.None));
+    }
+
+    private static void AssertSelectableCells(DataGrid grid)
+    {
+        var cells = grid.GetVisualDescendants().OfType<SelectableTextBlock>()
+            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text))
+            .ToList();
+
+        Assert.NotEmpty(cells);
+        Assert.All(cells, text =>
+        {
+            text.SelectAll();
+            Assert.True(text.CanCopy, $"'{text.Text}' cannot be copied.");
+            Assert.Equal(text.Text, text.SelectedText);
+        });
+    }
+
+    private static bool IsWithinInteractiveControl(Visual visual) =>
+        visual.FindAncestorOfType<Button>(includeSelf: false) is not null
+        || visual.FindAncestorOfType<ToggleButton>(includeSelf: false) is not null
+        || visual.FindAncestorOfType<TextBox>(includeSelf: false) is not null;
 
     // A stage nobody has opened has no template applied, so its controls join the tree only once it is shown.
     private static void ShowEveryStage(MainWindow window, HandoffWorkspaceViewModel workspace)
