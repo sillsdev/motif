@@ -64,6 +64,8 @@ public sealed class RunnerSweepTests : IDisposable
         SeedJob(runtime, "slow-job", queueOrder: 1.0);
 
         var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        // An earlier sweep found nothing: the idle runner the initial busy state no longer covers.
+        activity.Set(false);
         using var shutdown = new CancellationTokenSource();
         using var clock = new ManualWorkerClock();
         var idleTimeout = TimeSpan.FromSeconds(1);
