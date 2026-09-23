@@ -63,9 +63,11 @@ function Write-Step {
 }
 
 # Only a host running from this checkout's output can lock it; one from another worktree is not ours.
-$outputRoot = Join-Path $repoRoot 'bin'
-$running = @(Get-Process -Name 'testhost' -ErrorAction SilentlyContinue |
-    Where-Object { $_.Path -and $_.Path.StartsWith($outputRoot, [StringComparison]::OrdinalIgnoreCase) })
+$outputRoot = (Join-Path $repoRoot 'bin') + [IO.Path]::DirectorySeparatorChar
+$running = @(Get-Process -Name 'testhost' -ErrorAction SilentlyContinue | Where-Object {
+    # A host this user cannot inspect is another session's, and cannot be holding this checkout's output.
+    try { $_.Path -and $_.Path.StartsWith($outputRoot, [StringComparison]::OrdinalIgnoreCase) } catch { $false }
+})
 if ($running.Count -gt 0 -and -not $AllowRunningTestHosts) {
     Write-Host ''
     Write-Host "A test host from an earlier run is still alive (PID $($running.Id -join ', '))." -ForegroundColor Red
