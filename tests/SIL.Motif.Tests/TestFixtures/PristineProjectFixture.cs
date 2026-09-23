@@ -59,7 +59,7 @@ public sealed class PristineProjectFixture : IDisposable
     /// <summary>Identity of everything <see cref="SeededProject"/> wrote, valid in every copy.</summary>
     public SeededProject Seed { get; }
 
-    // A leftover WS stash file silently adds ~1.85s to every LcmCache.Dispose() in the run (message below).
+    // A leftover WS stash file silently adds ~1.85s to every cache disposal in a launched motif process.
     private static void GuardAgainstStaleWritingSystemStashFiles()
     {
         string[] staleFiles;
@@ -69,7 +69,11 @@ public sealed class PristineProjectFixture : IDisposable
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "SIL", "WritingSystemRepository", "3");
             if (!Directory.Exists(repoDir)) return;
-            staleFiles = Directory.GetFiles(repoDir, "*.localrepoupdate");
+            // A young stash belongs to a save still in flight in another process, not to one that died.
+            var cutoff = DateTime.UtcNow - TimeSpan.FromMinutes(2);
+            staleFiles = Directory.GetFiles(repoDir, "*.localrepoupdate")
+                .Where(file => File.GetLastWriteTimeUtc(file) < cutoff)
+                .ToArray();
         }
         catch
         {
