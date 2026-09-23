@@ -24,11 +24,11 @@ public sealed class ProcessWritingSystemRepositoryTests
     [Fact]
     public void ScratchCacheRestoresTheRepositorySelectedForTheProcess()
     {
-        var repository = ProcessWritingSystemRepository.Current;
+        var repository = ProcessWritingSystemRepository.CurrentOutsideScratchLoads();
 
         using (_pristine.NewScratch()) { }
 
-        Assert.Same(repository, ProcessWritingSystemRepository.Current);
+        Assert.Same(repository, ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
     }
 
     [Fact]

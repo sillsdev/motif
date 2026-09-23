@@ -35,6 +35,27 @@ internal static class ProcessWritingSystemRepository
     internal static object? Current => SingletonsContainer.Item(
         typeof(CoreGlobalWritingSystemRepository).FullName!);
 
+    /// <summary>
+    /// <see cref="Current"/> once no scratch open anywhere in the process holds its decoy in the slot.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="SIL.Motif.Host.LcmUtils.FwDataProjectLoader.LoadScratchCache"/> swaps a discarding decoy
+    /// into the process-wide slot for the length of one load, and background work from another test may be
+    /// inside that window at the moment of reading. The decoy is always swapped back out, so waiting it out
+    /// observes the installed repository rather than a transient.
+    /// </remarks>
+    internal static object? CurrentOutsideScratchLoads()
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        var current = Current;
+        while (current is SIL.Motif.Host.LcmUtils.DiscardingGlobalWritingSystemRepository && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(10);
+            current = Current;
+        }
+        return current;
+    }
+
     static ProcessWritingSystemRepository()
     {
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>

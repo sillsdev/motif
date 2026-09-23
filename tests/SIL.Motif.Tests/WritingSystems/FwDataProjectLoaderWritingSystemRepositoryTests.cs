@@ -19,7 +19,8 @@ public sealed class FwDataProjectLoaderWritingSystemRepositoryTests
     {
         FwDataProjectLoader.Init();
 
-        var repository = Assert.IsType<CoreGlobalWritingSystemRepository>(ProcessWritingSystemRepository.Current);
+        var repository = Assert.IsType<CoreGlobalWritingSystemRepository>(
+            ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
         Assert.Equal(
             CoreGlobalWritingSystemRepository.CurrentVersionPath(ProcessWritingSystemRepository.BasePath),
             repository.PathToWritingSystems);
