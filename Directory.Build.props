@@ -16,6 +16,27 @@
     <RootNamespace>$(MSBuildProjectName)</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <MotifTestAssembly Include="SIL.Motif.Tests.Contract" />
+    <MotifTestAssembly Include="SIL.Motif.Tests.LibLcm" />
+    <MotifTestAssembly Include="SIL.Motif.Tests.Commands" />
+    <MotifTestAssembly Include="SIL.Motif.Tests.Cli" />
+    <MotifTestAssembly Include="SIL.Motif.Tests.Worker" />
+    <MotifTestAssembly Include="SIL.Motif.Tests.App" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Commands' or '$(MSBuildProjectName)' == 'SIL.Motif.Host' or '$(MSBuildProjectName)' == 'SIL.Motif.LiveHost' or '$(MSBuildProjectName)' == 'SIL.Motif.Worker'">
+    <InternalsVisibleTo Include="@(MotifTestAssembly)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Host' or '$(MSBuildProjectName)' == 'SIL.Motif.Worker'">
+    <InternalsVisibleTo Include="SIL.Motif.Tests.Support" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Support'">
+    <InternalsVisibleTo Include="@(MotifTestAssembly)" />
+  </ItemGroup>
+
   <!--
     One output directory per configuration at the repository root, rather than a bin tree under every
     project. The three executables then sit side by side, which is the layout a published Motif has:
