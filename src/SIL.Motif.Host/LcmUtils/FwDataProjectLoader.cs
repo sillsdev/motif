@@ -91,7 +91,25 @@ public class FwDataProjectLoader
     /// copy, a temp project, a read-only analysis — use <see cref="LoadScratchCache"/> instead.
     /// </remarks>
     public virtual LcmCache LoadCache(string fwDataFilePath, string? templatesFolder = null) =>
-        LoadCacheCore(fwDataFilePath, templatesFolder);
+        Serialized(() => LoadCacheCore(fwDataFilePath, templatesFolder));
+
+    // One cache opens at a time in a process: LibLCM's startup is not thread-safe, and neither is the decoy swap.
+    private static readonly object LoadGate = new();
+
+    /// <summary>
+    /// Runs <paramref name="open"/> while no other cache in this process is being opened through this type.
+    /// </summary>
+    /// <remarks>
+    /// Two overlapping opens corrupt LibLCM's own project startup, and two overlapping scratch opens leak the
+    /// writing-system decoy into the process-wide slot for good, since the second saves the first's decoy as
+    /// the repository to restore. Every later real open would then silently stop persisting writing
+    /// systems. Code that creates a cache through LibLCM directly must go through this gate too.
+    /// Pinned by <c>ConcurrentScratchLoadsLeaveTheProcessRepositoryInstalled</c>.
+    /// </remarks>
+    internal static T Serialized<T>(Func<T> open)
+    {
+        lock (LoadGate) return open();
+    }
 
     // Non-virtual, so LoadScratchCache bypasses the virtual LoadCache: overriding one never double-counts.
     private static LcmCache LoadCacheCore(string fwDataFilePath, string? templatesFolder)
@@ -130,8 +148,11 @@ public class FwDataProjectLoader
     public virtual LcmCache LoadScratchCache(string fwDataFilePath, string? templatesFolder = null)
     {
         Init();
-        using (SuppressGlobalWritingSystemPersistence())
-            return LoadCacheCore(fwDataFilePath, templatesFolder);
+        return Serialized(() =>
+        {
+            using (SuppressGlobalWritingSystemPersistence())
+                return LoadCacheCore(fwDataFilePath, templatesFolder);
+        });
     }
 
     // Key SingletonsContainer stores the shared writing-system repository under (BackendProvider.cs).

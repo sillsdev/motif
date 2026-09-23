@@ -1,3 +1,4 @@
+using SIL.Motif.Host.LcmUtils;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using SIL.Motif.Cli;
@@ -19,6 +20,20 @@ public sealed class ProcessWritingSystemRepositoryTests
     public ProcessWritingSystemRepositoryTests(PristineProjectFixture pristine)
     {
         _pristine = pristine;
+    }
+
+    [Fact]
+    public void ConcurrentScratchLoadsLeaveTheProcessRepositoryInstalled()
+    {
+        var installed = ProcessWritingSystemRepository.CurrentOutsideScratchLoads();
+        var projects = Enumerable.Range(0, 8).Select(_ => _pristine.CopyProjectFile()).ToArray();
+
+        Parallel.ForEach(projects, new ParallelOptions { MaxDegreeOfParallelism = projects.Length }, project =>
+        {
+            using var cache = new FwDataProjectLoader().LoadScratchCache(project);
+        });
+
+        Assert.Same(installed, ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
     }
 
     [Fact]

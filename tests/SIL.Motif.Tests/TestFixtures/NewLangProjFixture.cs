@@ -57,14 +57,14 @@ public static class NewLangProjFixture
         var fwDataPath = Path.Combine(projectFolder, ProjectName + ".fwdata");
         var progress = new LcmThreadedProgress();
 
-        var cache = LcmCache.CreateCacheWithNewBlankLangProj(
+        var cache = FwDataProjectLoader.Serialized(() => LcmCache.CreateCacheWithNewBlankLangProj(
             new LocalProjectId(fwDataPath),
             AnalysisTag,
             VernacularTag,
             AnalysisTag,
             new HeadlessLcmUi(progress.SynchronizeInvoke),
             new LcmDirectories(tempRoot, templatesFolder),
-            new LcmSettings());
+            new LcmSettings()));
 
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {

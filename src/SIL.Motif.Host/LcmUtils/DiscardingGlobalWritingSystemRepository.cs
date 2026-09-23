@@ -39,9 +39,9 @@ namespace SIL.Motif.Host.LcmUtils;
 /// </para>
 /// <para>
 /// <b>The swap that installs it is process-wide.</b> A cache opened on another thread during that window
-/// would also be wired here and would silently stop persisting writing systems. Every caller today is
-/// sequential — the CLI's Dry Run, and a test collection that disables parallelism outright — so this is
-/// a constraint on future callers rather than a live defect.
+/// would also be wired here and would silently stop persisting writing systems, and two overlapping swaps
+/// would leave this decoy in the slot for good. <see cref="FwDataProjectLoader"/> therefore opens every
+/// cache under one process-wide gate, pinned by <c>ConcurrentScratchLoadsLeaveTheProcessRepositoryInstalled</c>.
 /// </para>
 /// </remarks>
 internal sealed class DiscardingGlobalWritingSystemRepository : CoreGlobalWritingSystemRepository
