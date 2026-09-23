@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
@@ -10,12 +11,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>
-/// Pins <see cref="GrammarCheckQuery"/> against a fake <see cref="IPanGlossInvoker"/>: no Baseline is a
-/// successful, empty answer; a Baseline runs <c>grammar-health</c> and turns its stderr load warnings and
-/// its findings file into <see cref="SIL.Motif.Contract.Responses.GrammarWarning"/>s; a declined parser is
-/// a typed Refusal, never an exception.
-/// </summary>
+/// <summary>Pins how grammar-health report diagnostics become Motif findings.</summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class GrammarCheckQueryTests : IDisposable
 {
@@ -53,17 +49,17 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
-    public void ABaselineRunsGrammarHealth_AndMergesLoadWarningsWithFindings()
+    public void ABaselineReadsReportDiagnosticsAndIgnoresStderr()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
+        var entryGuid = _pristine.Seed.FirstEntryId.ToString("D");
+        var report = Report(entryGuid);
         var invoker = new FakeInvoker
         {
-            Respond = request => request is PanGlossRequest.GrammarHealth
-                ? new PanGlossOutcome.Completed(
-                    """[{"severity":"warning","code":"hc-partial-morpheme","message":"Entry 'foo' is partial.","subjects":[{"kind":"lex_entry","entry":1,"name":"foo"}]}]""",
-                    "warning: dropped an allomorph\n", TimeSpan.Zero)
-                : throw new InvalidOperationException("Only grammar-health should run."),
+            Respond = _ => new PanGlossOutcome.Completed(
+                report,
+                "warning: stderr-only warning\ncapability: stderr-only capability\n", TimeSpan.Zero),
         };
 
         var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
@@ -72,47 +68,68 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var response = outcome.Value!;
         Assert.True(response.HasBaseline);
         Assert.Equal(2, response.Findings.Count);
-        Assert.Contains(response.Findings, finding => finding.Text.Contains("dropped an allomorph", StringComparison.Ordinal));
-        var health = Assert.Single(response.Findings, finding => finding.Severity == "warning" && finding.Kind == "Partial morpheme");
-        Assert.Contains(health.Subject, part => part.Text == "foo");
-        Assert.Contains("Entry 'foo' is partial.", health.Problem.Single().Text, StringComparison.Ordinal);
+        Assert.Equal(2, response.Summary.Count);
+        Assert.DoesNotContain(response.Findings, finding => finding.Text.Contains("stderr-only", StringComparison.Ordinal));
+
+        var warning = response.Findings[0];
+        Assert.Equal("warning", warning.Severity);
+        Assert.Equal("import", warning.Origin);
+        Assert.Equal("linguist", warning.Audience);
+        Assert.Equal("Partial morpheme analysis", warning.Group);
+        Assert.Equal("Lexical entry 'mbo' has no grammatical category.", warning.Description);
+        Assert.Equal("In Lexicon > Lexicon Edit, set Grammatical Info. > Category.", warning.Guidance);
+        Assert.Equal(2, warning.Subject.Count);
+
+        var entry = warning.Subject[0];
+        Assert.Equal("mbo (ADD)", entry.Text);
+        Assert.Equal("mbo", entry.Title);
+        Assert.Equal("ADD", entry.Subtitle);
+        Assert.Equal("LexEntry", entry.Kind);
+        Assert.Equal(entryGuid, entry.ObjectId);
+        Assert.Equal("lex_entry#34", entry.InternalId);
+        Assert.Equal("available", entry.LinkStatus);
+        Assert.Equal("lexiconEdit", entry.FieldWorksTool);
+        Assert.StartsWith("silfw://localhost/link?database=Sena%203", entry.FieldWorksLink, StringComparison.Ordinal);
+
+        var phoneme = warning.Subject[1];
+        Assert.Equal("ng", phoneme.Text);
+        Assert.Equal("PhPhoneme", phoneme.Kind);
+        Assert.Equal("unsupported_kind", phoneme.LinkReason);
+        Assert.Null(phoneme.FieldWorksLink);
+
+        var info = response.Findings[1];
+        Assert.Equal("info", info.Severity);
+        Assert.Equal("check", info.Origin);
+        Assert.Equal("linguist", info.Audience);
+        Assert.Equal("Duplicate segment features", info.Group);
+
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(response));
+        var reportFinding = json.RootElement.GetProperty("Findings")[0];
+        Assert.Equal("import", reportFinding.GetProperty("Origin").GetString());
+        Assert.Equal("linguist", reportFinding.GetProperty("Audience").GetString());
+        Assert.Equal("lex_entry#34", reportFinding.GetProperty("Subject")[0].GetProperty("InternalId").GetString());
+        Assert.Equal("available", reportFinding.GetProperty("Subject")[0].GetProperty("LinkStatus").GetString());
 
         var request = Assert.IsType<PanGlossRequest.GrammarHealth>(Assert.Single(invoker.Requests).Request);
         Assert.EndsWith(".fwdata", request.GrammarPath, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void TheWrappedFindingsShapeCarriesTheParsersGroupNameAndLinksSubjectsByGuid()
+    public void AReportMustHaveTheCurrentV2Envelope_AndOldFindingsShapeIsRejected()
     {
         var fwDataPath = _pristine.CopyProjectFile();
-        var entryGuid = _pristine.Seed.FirstEntryId.ToString("D");
         Capture(fwDataPath);
-        // The shape a newer parser writes: an envelope, "problem" for the sentence, and titled subjects.
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
-                "{\"schema_version\":1,\"findings\":[{\"severity\":\"warning\",\"code\":\"hc-partial-morpheme\"," +
-                "\"group_name\":\"Partial morpheme analysis\",\"problem\":\"Lexical entry 'mbo - ADD' is partially analyzed.\"," +
-                "\"description\":\"The entry has no category or slot.\",\"guidance\":\"Give it one in FieldWorks.\"," +
-                "\"subjects\":[{\"kind\":\"lex_entry\",\"title\":\"mbo - ADD\",\"subtitle\":null,\"internal_id\":\"lex_entry#34\"," +
-                "\"fieldworks\":{\"guid\":\"" + entryGuid + "\",\"tool\":\"lexiconEdit\",\"url\":null," +
-                "\"url_unavailable\":\"no FieldWorks project name supplied\"}}]}]}",
+                "{\"schema_version\":2,\"summary\":[],\"findings\":[]}",
                 string.Empty, TimeSpan.Zero),
         };
 
         var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
 
-        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        var finding = Assert.Single(outcome.Value!.Findings);
-        Assert.Equal("Partial morpheme analysis", finding.Group);
-        Assert.Equal("hc-partial-morpheme", finding.Code);
-        Assert.Equal("The entry has no category or slot.", finding.Description);
-        Assert.Equal("Give it one in FieldWorks.", finding.Guidance);
-        Assert.Contains("partially analyzed", finding.Problem.Single().Text, StringComparison.Ordinal);
-        var subject = Assert.Single(finding.Subject);
-        Assert.Equal("mbo - ADD", subject.Text);
-        Assert.Equal("object", subject.Role);
-        Assert.StartsWith("silfw://", subject.FieldWorksLink, StringComparison.Ordinal);
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("grammarcheck.malformed-findings", outcome.Refusal!.Code);
     }
 
     [Fact]
@@ -123,7 +140,10 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
-                """[{"severity":"error","code":"hc-undeclared-segment","message":"Segment x is undeclared.","subjects":[]}]""",
+                "{\"schema_version\":2,\"fieldworks_project\":{\"name\":null,\"source\":null}," +
+                "\"summary\":[],\"diagnostics\":[{\"level\":\"info\",\"code\":\"hc-undeclared-segment\"," +
+                "\"group_name\":\"Undeclared segment\",\"origin\":\"check\",\"description\":\"Segment x is undeclared.\"," +
+                "\"guidance\":null,\"subjects\":[]}]}",
                 string.Empty, TimeSpan.Zero),
         };
         var request = new GrammarCheckRequest(fwDataPath);
@@ -153,6 +173,54 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.False(outcome.Succeeded);
         Assert.Equal("grammarcheck.parser-unavailable", outcome.Refusal!.Code);
     }
+
+    private static string Report(string entryGuid) => JsonSerializer.Serialize(new
+    {
+        schema_version = 2,
+        fieldworks_project = new { name = "Sena 3", source = "argument" },
+        summary = new[]
+        {
+            new { code = "hc-partial-morpheme", group_name = "Partial morpheme analysis", level = "warning", count = 1 },
+            new { code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features", level = "info", count = 1 },
+        },
+        diagnostics = new object[]
+        {
+            new
+            {
+                level = "warning",
+                code = "hc-partial-morpheme",
+                group_name = "Partial morpheme analysis",
+                origin = "import",
+                description = "Lexical entry 'mbo' has no grammatical category.",
+                guidance = "In Lexicon > Lexicon Edit, set Grammatical Info. > Category.",
+                subjects = new object[]
+                {
+                    new
+                    {
+                        kind = "LexEntry", title = "mbo", subtitle = "ADD", guid = entryGuid,
+                        internal_id = "lex_entry#34",
+                        fieldworks = new
+                        {
+                            status = "available", guid = entryGuid, tool = "lexiconEdit",
+                            url = $"silfw://localhost/link?database=Sena%203&tool=lexiconEdit&guid={entryGuid}&tag=",
+                        },
+                    },
+                    new
+                    {
+                        kind = "PhPhoneme", title = "ng", subtitle = (string?)null, guid = (string?)null,
+                        internal_id = (string?)null,
+                        fieldworks = new { status = "unavailable", reason = "unsupported_kind", guid = (string?)null },
+                    },
+                },
+            },
+            new
+            {
+                level = "info", code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features",
+                origin = "check", description = "Two phonemes share the same feature values.", guidance = (string?)null,
+                subjects = Array.Empty<object>(),
+            },
+        },
+    });
 
     private void Capture(string fwDataPath)
     {

@@ -322,15 +322,22 @@ internal static class Program
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
         if (behaviour.DelayMilliseconds > 0) Thread.Sleep(behaviour.DelayMilliseconds);
 
-        foreach (var warning in behaviour.GrammarWarnings) Console.Error.WriteLine("warning: " + warning);
-
         if (behaviour.Mode == "fail")
         {
             Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");
             return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
         }
 
-        var json = behaviour.GrammarHealthFindingsJson ?? "[]";
+        var json = behaviour.GrammarHealthReportJson ??
+            "{\"schema_version\":2,\"fieldworks_project\":{\"name\":\"Fake project\",\"source\":\"argument\"}," +
+            "\"summary\":[{\"code\":\"import.missing-form\",\"group_name\":\"Missing form\",\"level\":\"warning\",\"count\":1}," +
+            "{\"code\":\"import.unused-class\",\"group_name\":\"Unused class\",\"level\":\"info\",\"count\":1}]," +
+            "\"diagnostics\":[{\"level\":\"warning\",\"code\":\"import.missing-form\",\"group_name\":\"Missing form\"," +
+            "\"origin\":\"import\",\"description\":\"An entry has no citation form.\",\"guidance\":null," +
+            "\"subjects\":[{\"kind\":\"LexEntry\",\"title\":\"Example entry\",\"subtitle\":null,\"guid\":null," +
+            "\"internal_id\":\"lex_entry#1\",\"fieldworks\":{\"status\":\"unavailable\",\"reason\":\"guid_not_recorded\",\"guid\":null}}]}," +
+            "{\"level\":\"info\",\"code\":\"import.unused-class\",\"group_name\":\"Unused class\",\"origin\":\"import\"," +
+            "\"description\":\"A natural class is no longer referenced.\",\"guidance\":null,\"subjects\":[]}] }";
         if (outPath is not null) File.WriteAllText(outPath, json);
         else Console.Out.Write(json);
         Console.Error.WriteLine("grammar-health complete: 0 error(s), 0 warning(s)");
@@ -431,8 +438,7 @@ internal static class Program
         public string? TraceSignature { get; init; }
         public string? TraceJson { get; init; }
         public bool TraceCapped { get; init; }
-        public IReadOnlyList<string> GrammarWarnings { get; init; } = [];
-        public string? GrammarHealthFindingsJson { get; init; }
+        public string? GrammarHealthReportJson { get; init; }
 
         internal static Behaviour Read(string? directory)
         {

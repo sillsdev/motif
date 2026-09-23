@@ -13,7 +13,7 @@
     <Style Selector=":is(TextBlock).severity.warning">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
     </Style>
-    <Style Selector=":is(TextBlock).severity.capability">
+    <Style Selector=":is(TextBlock).severity.info">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
     </Style>
     <Style Selector="Button.findingGroup">
@@ -94,6 +94,12 @@
                   AutomationProperties.Name="Check the grammar again" />
           <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Margin="0,0,12,0" VerticalAlignment="Center"
                      Text="Findings never block an Assessment." />
+          <CheckBox DockPanel.Dock="Right" Margin="0,0,12,0"
+                    IsVisible="{Binding Grammar.Warnings.HasDeveloperFindings}"
+                    IsChecked="{Binding Grammar.Warnings.ShowDeveloperFindings}"
+                    AutomationProperties.Name="Show developer grammar findings">
+            Show developer findings
+          </CheckBox>
         </DockPanel>
 
         <Grid Grid.Row="1" ColumnDefinitions="320,*" ColumnSpacing="16">
@@ -190,13 +196,16 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Problem" Width="2*" SortMemberPath="Problem"
+            <DataGridTemplateColumn Header="Problem and guidance" Width="2*" SortMemberPath="Problem"
                                     ClipboardContentBinding="{ReflectionBinding Problem}">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <StackPanel Margin="6,4" Spacing="1">
-                    <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" ToolTip.Tip="{Binding Text}" />
+                  <StackPanel Spacing="4" Margin="6,4">
+                    <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}"
+                                                    ToolTip.Tip="{Binding Text}" />
                     <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding RepeatText}" IsVisible="{Binding IsRepeated}" />
+                    <TextBlock Text="{Binding Guidance, StringFormat='Guidance: {0}'}"
+                               TextWrapping="Wrap" IsVisible="{Binding HasGuidance}" />
                   </StackPanel>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>

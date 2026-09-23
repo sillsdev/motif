@@ -33,15 +33,18 @@ public sealed record ProjectHistoryEntry(DateTimeOffset At, ProjectHistoryKind K
 public sealed record GrammarCheckRequest(string ProjectPath);
 
 /// <summary>
-/// What the parser reports about a project's grammar as a whole, with no Text or word involved: the warnings
-/// it prints while loading the grammar, and its grammar-authoring health findings.
+/// What the parser reports about a project's grammar as a whole, with no Text or word involved: import
+/// diagnostics and grammar-health report findings.
 /// </summary>
 /// <param name="Findings">
-/// Load warnings and health findings together. A health finding's <see cref="GrammarWarning.Severity"/> is
-/// <c>error</c> or <c>warning</c>; a load warning's is the parser's own prefix, as for an Assessment.
+/// The import diagnostics and report v2 findings together.
 /// </param>
 /// <param name="HasBaseline">False when the project has no Baseline yet, so there was no grammar to read.</param>
-public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings, bool HasBaseline);
+public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings, bool HasBaseline)
+{
+    /// <summary>The parser's per-code summary rows, used to group findings for display.</summary>
+    public IReadOnlyList<GrammarWarningSummary> Summary { get; init; } = [];
+}
 
 /// <summary>Which Texts to read words from; empty reads none.</summary>
 public sealed record TextWordsRequest(string ProjectPath, IReadOnlyList<Guid> TextIds);

@@ -13,13 +13,23 @@ public sealed class GrammarWarningsViewModelTests
         [new("lex entry", "text"), new("kuona", "object", "e", "Entry", "silfw://localhost/link?x")],
         [new("msa", "text"), new("0c686afa-8d21-4e3b-bc0e-41812150cf4c", "missing"),
          new("does not resolve within this entry", "text")],
-        "warning: lex entry \"e\": msa \"0c686afa-8d21-4e3b-bc0e-41812150cf4c\" does not resolve within this entry");
+        "warning: hc-unresolved-morph-type: msa does not resolve within this entry")
+    {
+        Group = "Unresolved morph type",
+        Code = "hc-unresolved-morph-type",
+        Origin = "import",
+    };
 
     private static readonly GrammarWarning PhonemeWarning = new(
-        "capability", "Phoneme",
+        "info", "Phoneme",
         [new("phoneme", "text"), new("ng", "object", "p", "Phoneme")],
         [new("is not modelled", "text")],
-        "capability: phoneme \"p\": is not modelled");
+        "info: hc-unused-phoneme: is not modelled")
+    {
+        Group = "Unused phoneme",
+        Code = "hc-unused-phoneme",
+        Origin = "check",
+    };
 
     [Fact]
     public void LoadingShowsEveryRowAndCountsThem()
@@ -94,7 +104,7 @@ public sealed class GrammarWarningsViewModelTests
         table.WhereFilter = "kuona";
         Assert.Equal("Entry", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).Kind);
 
-        table.SeverityFilter = "capability";
+        table.SeverityFilter = "info";
         Assert.Empty(table.Rows);
     }
 
@@ -119,5 +129,35 @@ public sealed class GrammarWarningsViewModelTests
 
         Assert.False(table.HasAny);
         Assert.Empty(table.Rows);
+    }
+
+    [Fact]
+    public void DeveloperFindingsAreHiddenUntilRequested()
+    {
+        var linguistWarning = EntryWarning with { Guidance = "Set the grammatical category." };
+        var developerWarning = EntryWarning with { Audience = "developer" };
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([linguistWarning, developerWarning]);
+
+        Assert.Single(table.Rows);
+        Assert.Equal(1, table.DeveloperFindingCount);
+        var visible = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.Equal("Set the grammatical category.", visible.Guidance);
+
+        table.ShowDeveloperFindings = true;
+
+        Assert.Equal(2, table.Rows.Count);
+    }
+
+    [Fact]
+    public void ImportOriginIsShownAsTheSource()
+    {
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([EntryWarning, PhonemeWarning]);
+
+        var imported = Assert.Single(table.Rows.Cast<GrammarWarningRowViewModel>(), row => row.HasOrigin);
+        Assert.Equal("From import", imported.OriginLabel);
     }
 }

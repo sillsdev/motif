@@ -3,10 +3,8 @@ using System.Text.RegularExpressions;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// Groups the parser's load warnings, which carry no code or name of their own, by the shape of the sentence
-/// the parser wrote: the same words once the quoted identifiers, environments and positions are taken out.
-/// The label is the parser's own wording, so Motif invents no names; once the parser names its warnings,
-/// <see cref="SIL.Motif.Contract.Responses.GrammarWarning.Group"/> carries that name and this is not used.
+/// Groups grammar-health findings by the shape of their description when the report has no summary name.
+/// The label follows PanGloss's wording rather than inventing a new finding name.
 /// </summary>
 public static partial class GrammarFindingShapes
 {
@@ -39,7 +37,7 @@ public static partial class GrammarFindingShapes
     /// </summary>
     public static bool IsLeftOut(string text) => LeftOut().IsMatch(text);
 
-    [GeneratedRegex(@"^\s*(warning|error|capability)\s*:\s*", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^\s*(warning|error|info)\s*:\s*", RegexOptions.IgnoreCase)]
     private static partial Regex Prefix();
 
     // A kebab-case code such as hc-partial-morpheme, or a dotted grammar path such as morphology.adhocProhibitions.

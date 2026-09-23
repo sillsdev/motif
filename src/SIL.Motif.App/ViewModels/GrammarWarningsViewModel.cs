@@ -6,7 +6,7 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
-/// <summary>Which findings the Grammar stage's chips show: all, the ones to fix first, or the rest.</summary>
+/// <summary>Which findings the Warnings page shows: all, the ones to fix first, or the rest.</summary>
 public enum GrammarFindingBucket
 {
     All,
@@ -14,14 +14,7 @@ public enum GrammarFindingBucket
     WorthALook,
 }
 
-/// <summary>
-/// The grammar findings as groups of one kind each, then a table of the chosen kind: one row per finding,
-/// sortable by any column and filtered by a separate search per column, all within what is already in memory.
-/// </summary>
-/// <remarks>
-/// <see cref="Rows"/> is the grid's own collection view rather than a list rebuilt on each keystroke, so a
-/// sort the person chose by clicking a header survives every change to a filter.
-/// </remarks>
+/// <summary>The grammar findings as groups, with the selected group's diagnostics shown in a table.</summary>
 public sealed partial class GrammarWarningsViewModel : ObservableObject
 {
     private readonly List<GrammarWarningRowViewModel> _all = [];
@@ -30,24 +23,23 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     {
         Rows = new DataGridCollectionView(_all) { Filter = Matches };
         SetBucketCommand = new RelayCommand<GrammarFindingBucket>(bucket => Bucket = bucket);
-        // Choosing the group already in force clears it, so one control both narrows and widens.
         SelectGroupCommand = new RelayCommand<GrammarFindingGroupViewModel?>(group =>
             SelectedGroup = ReferenceEquals(group, SelectedGroup) ? null : group);
     }
 
-    /// <summary>Kinds of finding whose sentence says the parser left something out of the grammar, largest first.</summary>
     public ObservableCollection<GrammarFindingGroupViewModel> LeftOutGroups { get; } = [];
-
-    /// <summary>The remaining kinds, largest first.</summary>
     public ObservableCollection<GrammarFindingGroupViewModel> WorthALookGroups { get; } = [];
 
     public bool HasLeftOutGroups => LeftOutGroups.Count > 0 && Bucket != GrammarFindingBucket.WorthALook;
     public bool HasWorthALookGroups => WorthALookGroups.Count > 0 && Bucket != GrammarFindingBucket.LeftOut;
 
-    public int LeftOutCount => _all.Where(row => row.IsLeftOut).Sum(row => row.RepeatCount);
-    public int WorthALookCount => _all.Where(row => !row.IsLeftOut).Sum(row => row.RepeatCount);
+    public int LeftOutCount => VisibleFindings().Where(row => row.IsLeftOut).Sum(row => row.RepeatCount);
+    public int WorthALookCount => VisibleFindings().Where(row => !row.IsLeftOut).Sum(row => row.RepeatCount);
 
-    /// <summary>The split between the two kinds, in a sentence, for a summary outside the Grammar stage.</summary>
+    public bool HasDeveloperFindings => DeveloperFindingCount > 0;
+    public int DeveloperFindingCount => _all.Where(row => row.IsDeveloper).Sum(row => row.RepeatCount);
+
+    /// <summary>The split between findings that need attention and findings worth reviewing.</summary>
     public string BreakdownText => $"{LeftOutCount} left out of the grammar, {WorthALookCount} worth a look.";
 
     public IRelayCommand<GrammarFindingBucket> SetBucketCommand { get; }
@@ -58,7 +50,9 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasWorthALookGroups))]
     private GrammarFindingBucket _bucket = GrammarFindingBucket.All;
 
-    /// <summary>The kind of finding the table shows, or <see langword="null"/> for the whole bucket.</summary>
+    [ObservableProperty]
+    private bool _showDeveloperFindings;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedGroup))]
     [NotifyPropertyChangedFor(nameof(SelectedGroupTitle))]
@@ -67,7 +61,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     public bool HasSelectedGroup => SelectedGroup is not null;
 
-    /// <summary>The heading over the table: the chosen kind, or which findings are showing.</summary>
     public string SelectedGroupTitle => SelectedGroup?.Name ?? Bucket switch
     {
         GrammarFindingBucket.LeftOut => "Left out of the grammar",
@@ -82,9 +75,17 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         Refresh();
     }
 
+    partial void OnShowDeveloperFindingsChanged(bool value)
+    {
+        RebuildGroups();
+        Refresh();
+        OnPropertyChanged(nameof(CountSummary));
+    }
+
     partial void OnSelectedGroupChanged(GrammarFindingGroupViewModel? value)
     {
-        foreach (var group in LeftOutGroups.Concat(WorthALookGroups)) group.IsSelected = ReferenceEquals(group, value);
+        foreach (var group in LeftOutGroups.Concat(WorthALookGroups))
+            group.IsSelected = ReferenceEquals(group, value);
         Refresh();
     }
 
@@ -99,12 +100,17 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     {
         LeftOutGroups.Clear();
         WorthALookGroups.Clear();
-        foreach (var group in _all.GroupBy(row => (row.GroupName, row.IsLeftOut))
-                     .Select(group => new GrammarFindingGroupViewModel(group.Key.GroupName, group.Key.IsLeftOut,
-                         group.Sum(row => row.RepeatCount),
-                         group.Select(row => row.Description).FirstOrDefault(text => text is not null),
-                         group.Select(row => row.Guidance).FirstOrDefault(text => text is not null)))
-                     .OrderByDescending(group => group.Count).ThenBy(group => group.Name, StringComparer.CurrentCulture))
+        foreach (var group in VisibleFindings()
+                     .GroupBy(row => (row.GroupCode, row.GroupName, row.IsLeftOut))
+                     .Select(rows => new GrammarFindingGroupViewModel(
+                         rows.Key.GroupCode,
+                         rows.Key.GroupName,
+                         rows.Key.IsLeftOut,
+                         rows.Sum(row => row.RepeatCount),
+                         rows.Select(row => row.Description).FirstOrDefault(text => text.Length > 0),
+                         rows.Select(row => row.Guidance).FirstOrDefault(text => text.Length > 0)))
+                     .OrderByDescending(group => group.Count)
+                     .ThenBy(group => group.Name, StringComparer.CurrentCulture))
             (group.IsLeftOut ? LeftOutGroups : WorthALookGroups).Add(group);
         SelectedGroup = null;
         OnPropertyChanged(nameof(HasLeftOutGroups));
@@ -114,7 +120,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         OnPropertyChanged(nameof(BreakdownText));
     }
 
-    /// <summary>The rows on display: every finding that satisfies all four column filters.</summary>
     public DataGridCollectionView Rows { get; }
 
     [ObservableProperty]
@@ -140,24 +145,44 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     public bool HasAny => TotalCount > 0;
 
-    /// <summary>Whether any finding on display names where it applies; when none does, the Where column is empty.</summary>
-    public bool AnyShownWhere => _all.Any(row => row.HasWhere && Matches(row));
+    /// <summary>Whether any visible finding names a subject for the Where column.</summary>
+    public bool AnyShownWhere => VisibleFindings().Any(row => row.HasWhere && Matches(row));
 
-    public string CountSummary => ShownCount == TotalCount
-        ? (TotalCount == 1 ? "1 finding" : $"{TotalCount} findings")
-        : SelectedGroup is { } group && ShownCount == group.Count
-            ? (ShownCount == 1 ? "1 finding of this kind" : $"{ShownCount} findings of this kind")
-            : $"{ShownCount} of {TotalCount} findings match the filters";
+    public string CountSummary
+    {
+        get
+        {
+            var hiddenDeveloperCount = ShowDeveloperFindings ? 0 : DeveloperFindingCount;
+            var visibleTotal = TotalCount - hiddenDeveloperCount;
+            var shown = ShownCount == visibleTotal
+                ? (visibleTotal == 1 ? "1 finding" : $"{visibleTotal} findings")
+                : SelectedGroup is { } group && ShownCount == group.Count
+                    ? (ShownCount == 1 ? "1 finding of this kind" : $"{ShownCount} findings of this kind")
+                    : $"{ShownCount} of {visibleTotal} findings match the filters";
+            return hiddenDeveloperCount == 0
+                ? shown
+                : $"{shown}; {hiddenDeveloperCount} developer findings hidden";
+        }
+    }
 
-    /// <summary>Replaces every row with <paramref name="warnings"/>, or clears the table for <see langword="null"/>.</summary>
-    public void Load(IReadOnlyList<GrammarWarning>? warnings)
+    /// <summary>Replaces the displayed report, or clears it when <paramref name="warnings"/> is null.</summary>
+    /// <param name="warnings">The grammar-health diagnostics to display.</param>
+    /// <param name="summary">The report summary used to match diagnostics to display groups.</param>
+    public void Load(
+        IReadOnlyList<GrammarWarning>? warnings,
+        IReadOnlyList<GrammarWarningSummary>? summary = null)
     {
         _all.Clear();
-        // The parser can report the same line more than once; one row with a count reads better than repeats.
         if (warnings is not null)
-            _all.AddRange(warnings.GroupBy(warning => warning.Text, StringComparer.Ordinal)
-                .Select(same => new GrammarWarningRowViewModel(same.First(), same.Count())));
+        {
+            _all.AddRange(warnings
+                .GroupBy(warning => (warning.Text, warning.Origin, warning.Code), StringTupleComparer.Instance)
+                .Select(rows => new GrammarWarningRowViewModel(
+                    rows.First(), rows.Sum(_ => 1), summary?.FirstOrDefault(row => row.Code == rows.Key.Code))));
+        }
         TotalCount = _all.Sum(row => row.RepeatCount);
+        OnPropertyChanged(nameof(DeveloperFindingCount));
+        OnPropertyChanged(nameof(HasDeveloperFindings));
         RebuildGroups();
         Refresh();
     }
@@ -170,27 +195,53 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private void Refresh()
     {
         Rows.Refresh();
-        ShownCount = _all.Where(row => Matches(row)).Sum(row => row.RepeatCount);
+        ShownCount = VisibleFindings().Where(Matches).Sum(row => row.RepeatCount);
     }
 
     private bool Matches(object item) =>
         item is GrammarWarningRowViewModel row
         && InBucket(row.IsLeftOut)
-        && (SelectedGroup is not { } group || (group.Name == row.GroupName && group.IsLeftOut == row.IsLeftOut))
+        && (ShowDeveloperFindings || !row.IsDeveloper)
+        && (SelectedGroup is not { } group ||
+            (group.Code == row.GroupCode && group.IsLeftOut == row.IsLeftOut))
         && Contains(row.Severity, SeverityFilter)
         && Contains(row.Kind, KindFilter)
         && Contains(row.Where, WhereFilter)
-        && (Contains(row.Problem, ProblemFilter) || Contains(row.Text, ProblemFilter));
+        && (Contains(row.Problem, ProblemFilter) || Contains(row.Guidance, ProblemFilter) ||
+            Contains(row.Text, ProblemFilter));
+
+    private IEnumerable<GrammarWarningRowViewModel> VisibleFindings() => ShowDeveloperFindings
+        ? _all
+        : _all.Where(row => !row.IsDeveloper);
 
     private static bool Contains(string text, string filter) =>
         string.IsNullOrWhiteSpace(filter) || text.Contains(filter.Trim(), StringComparison.CurrentCultureIgnoreCase);
+
+    private sealed class StringTupleComparer : IEqualityComparer<(string Text, string Origin, string? Code)>
+    {
+        public static StringTupleComparer Instance { get; } = new();
+
+        public bool Equals((string Text, string Origin, string? Code) left,
+            (string Text, string Origin, string? Code) right) =>
+            string.Equals(left.Text, right.Text, StringComparison.Ordinal) &&
+            string.Equals(left.Origin, right.Origin, StringComparison.Ordinal) &&
+            string.Equals(left.Code, right.Code, StringComparison.Ordinal);
+
+        public int GetHashCode((string Text, string Origin, string? Code) value) =>
+            HashCode.Combine(
+                StringComparer.Ordinal.GetHashCode(value.Text),
+                StringComparer.Ordinal.GetHashCode(value.Origin),
+                value.Code is null ? 0 : StringComparer.Ordinal.GetHashCode(value.Code));
+    }
 }
 
-/// <summary>One kind of finding in the Grammar stage's list, with how many findings are of that kind.</summary>
+/// <summary>One kind of diagnostic in the Warnings page's group list.</summary>
 public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 {
-    public GrammarFindingGroupViewModel(string name, bool isLeftOut, int count, string? description = null, string? guidance = null)
+    public GrammarFindingGroupViewModel(
+        string code, string name, bool isLeftOut, int count, string? description = null, string? guidance = null)
     {
+        Code = code;
         Name = name;
         IsLeftOut = isLeftOut;
         Count = count;
@@ -198,40 +249,30 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
         Guidance = guidance;
     }
 
-    /// <summary>What this kind of finding means, from the parser, or <see langword="null"/> when it gave none.</summary>
+    public string Code { get; }
+    public string Name { get; }
+    public bool IsLeftOut { get; }
+    public int Count { get; }
     public string? Description { get; }
-
-    /// <summary>What usually fixes this kind of finding, from the parser, or <see langword="null"/>.</summary>
     public string? Guidance { get; }
-
     public bool HasDescription => Description is not null;
     public bool HasGuidance => Guidance is not null;
-
-    public string Name { get; }
-
-    /// <summary>Whether this kind is among the findings where the parser left something out.</summary>
-    public bool IsLeftOut { get; }
-
-    public int Count { get; }
-
     public Verdict Meaning => IsLeftOut ? Verdict.Differs : Verdict.Limit;
 
     [ObservableProperty]
     private bool _isSelected;
 }
 
-/// <summary>
-/// One finding as the grid shows it: the structured parts for display, and each column's plain text for
-/// sorting and searching.
-/// </summary>
+/// <summary>One diagnostic row with its subjects and text ready for display, search, and sorting.</summary>
 public sealed class GrammarWarningRowViewModel
 {
-    public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1)
+    public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1,
+        GrammarWarningSummary? summary = null)
     {
         ArgumentNullException.ThrowIfNull(warning);
         RepeatCount = repeatCount;
         Description = warning.Description;
-        Guidance = warning.Guidance;
+        Guidance = warning.Guidance ?? string.Empty;
         Severity = warning.Severity.Length == 0 ? "note" : warning.Severity;
         Kind = warning.Kind;
         SubjectParts = warning.Subject;
@@ -239,39 +280,43 @@ public sealed class GrammarWarningRowViewModel
         Where = PlainText(warning.Subject);
         Problem = PlainText(warning.Problem);
         Text = warning.Text;
-        GroupName = warning.Group ?? GrammarFindingShapes.LabelOf(warning.Text);
-        IsLeftOut = warning.Severity == "error" || GrammarFindingShapes.IsLeftOut(warning.Text);
+        GroupCode = summary?.Code ?? warning.Code ?? warning.Group ?? GrammarFindingShapes.LabelOf(warning.Text);
+        GroupName = summary?.GroupName ?? warning.Group ?? GrammarFindingShapes.LabelOf(warning.Text);
+        IsLeftOut = GrammarFindingShapes.IsLeftOut(warning.Text);
+        IsDeveloper = warning.Audience == "developer";
+        OriginLabel = warning.Origin switch
+        {
+            "import" => "From import",
+            "check" => "From grammar check",
+            _ => string.Empty,
+        };
     }
 
-    /// <summary>The kind of finding this is, by the parser's name for it or else by the shape of its sentence.</summary>
     public string GroupName { get; }
-
-    /// <summary>How many times the parser reported exactly this line; one row stands for them all.</summary>
-    public int RepeatCount { get; }
-
-    public string RepeatText => RepeatCount switch { 1 => string.Empty, 2 => "reported twice", _ => $"reported {RepeatCount} times" };
-
-    public bool IsRepeated => RepeatCount > 1;
-
-    /// <summary>Whether the parser named where this applies; many load notes name nothing.</summary>
-    public bool HasWhere => SubjectParts.Count > 0;
-
-    public string? Description { get; }
-    public string? Guidance { get; }
-
-    /// <summary>Whether the parser left something out of the grammar here, or called it an error.</summary>
+    public string GroupCode { get; }
     public bool IsLeftOut { get; }
-
+    public int RepeatCount { get; }
+    public string RepeatText => RepeatCount switch
+    {
+        1 => string.Empty,
+        2 => "reported twice",
+        _ => $"reported {RepeatCount} times",
+    };
+    public bool IsRepeated => RepeatCount > 1;
+    public bool HasWhere => SubjectParts.Count > 0;
+    public string Description { get; }
+    public string Guidance { get; }
+    public string OriginLabel { get; }
+    public bool HasOrigin => OriginLabel.Length > 0;
+    public bool IsDeveloper { get; }
     public string Severity { get; }
     public bool IsWarning => Severity == "warning";
-    public bool IsCapability => Severity == "capability";
+    public bool IsInfo => Severity == "info";
     public string Kind { get; }
     public string Where { get; }
     public string Problem { get; }
-
-    /// <summary>The line exactly as the parser wrote it, identifiers included, for a tooltip or a bug report.</summary>
+    public bool HasGuidance => Guidance.Length > 0;
     public string Text { get; }
-
     public IReadOnlyList<GrammarWarningPart> SubjectParts { get; }
     public IReadOnlyList<GrammarWarningPart> ProblemParts { get; }
 

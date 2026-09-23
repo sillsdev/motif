@@ -406,6 +406,26 @@ its statistics cache. Motif reads that cache directly, without starting more Pan
 the normalized rows with the ParseTime Assessment. A missing selected-word row or unreadable cache refuses
 the Assessment, so partial statistics cannot look complete. Opening Overview or Timing makes no parser call.
 
+### Grammar-stage findings
+
+The Warnings page reads PanGloss's grammar-health report for the current Baseline. This report feeds the App;
+`grammar-health` is not a catalogued `motif` CLI verb.
+
+PanGloss v2 writes an object with `schema_version: 2`, `fieldworks_project`, `summary`, and `diagnostics`.
+The summary groups by `code` and includes `group_name`, `level` (`warning` or `info`), and `count`. Each
+diagnostic includes `level`, `code`, `group_name`, `origin` (`check` or `import`), `description`, nullable
+`guidance`, and `subjects`.
+
+Subjects retain their FieldWorks class `kind`, `title`, nullable `subtitle`, `guid`, nullable `internal_id`,
+and optional `opens_in` target. Their `fieldworks` link is either available with `guid`, `tool`, and `url`, or
+unavailable with a `reason`. Available links open FieldWorks; unavailable reasons appear beside the subject.
+Import diagnostics appear as **From import**, while grammar-check diagnostics appear as **From grammar check**.
+The report has no `audience` field, so Motif does not assign one; an audience feature requires PanGloss to emit
+that information. Standard-error warning lines are not read as grammar findings.
+
+Motif reads schema version 2 only. A bare array, an earlier findings envelope, or a different version is
+refused; update PanGloss and Motif together when the report schema changes.
+
 **`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
 straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —
 the grammar path and the cache path — and forwards everything written after a standalone `--` to PanGloss

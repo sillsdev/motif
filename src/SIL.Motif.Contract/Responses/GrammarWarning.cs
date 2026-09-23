@@ -2,24 +2,12 @@ using System.Collections.Generic;
 
 namespace SIL.Motif.Contract.Responses;
 
-/// <summary>
-/// One finding the parser reported against the grammar as a whole, split into where it applies and what is
-/// wrong, with every project object it names resolved to a name a person recognises.
-/// </summary>
-/// <param name="Severity">
-/// The parser's own prefix on the line — <c>warning</c> for something it dropped or distrusted,
-/// <c>capability</c> for something it does not model — lower-cased.
-/// </param>
-/// <param name="Kind">
-/// What the finding is about, from the first object <paramref name="Subject"/> names: <c>Entry</c>,
-/// <c>Phoneme</c>, <c>Phonological rule</c> and so on. Empty when the subject names no project object.
-/// </param>
-/// <param name="Subject">
-/// Where the finding applies — the parser's context before its first colon — or empty when the line has no
-/// context.
-/// </param>
-/// <param name="Problem">What is wrong there.</param>
-/// <param name="Text">The line exactly as the parser wrote it, identifiers and all.</param>
+/// <summary>A grammar-health diagnostic with the description and subjects supplied by PanGloss.</summary>
+/// <param name="Severity">The diagnostic level: <c>warning</c> or <c>info</c>.</param>
+/// <param name="Kind">A readable name for the diagnostic code.</param>
+/// <param name="Subject">The named FieldWorks subjects, including their reported link state.</param>
+/// <param name="Problem">The report description, represented as display parts.</param>
+/// <param name="Text">A readable form of the level, code, and description.</param>
 public sealed record GrammarWarning(
     string Severity,
     string Kind,
@@ -27,41 +15,72 @@ public sealed record GrammarWarning(
     IReadOnlyList<GrammarWarningPart> Problem,
     string Text)
 {
-    /// <summary>
-    /// The parser's own plain-language name for this kind of finding, such as "Partial morpheme analysis", or
-    /// <see langword="null"/> when the parser gave it none. Findings with the same name belong together.
-    /// </summary>
+    /// <summary>The report's human-readable name for this diagnostic code.</summary>
     public string? Group { get; init; }
 
-    /// <summary>The parser's stable code for this kind of finding, or <see langword="null"/> when it gave none.</summary>
+    /// <summary>The report's stable diagnostic code.</summary>
     public string? Code { get; init; }
 
-    /// <summary>What this kind of finding means, in the parser's own plain words, or <see langword="null"/>.</summary>
-    public string? Description { get; init; }
+    /// <summary>The complete description supplied by PanGloss.</summary>
+    public string Description { get; init; } = string.Empty;
 
-    /// <summary>What usually fixes this kind of finding, in the parser's own words, or <see langword="null"/>.</summary>
+    /// <summary>What a person can do in FieldWorks to address the diagnostic.</summary>
     public string? Guidance { get; init; }
+
+    /// <summary>Whether PanGloss found the issue while checking or importing.</summary>
+    public string Origin { get; init; } = "check";
+
+    /// <summary>The intended reader when the report supplies an audience.</summary>
+    public string Audience { get; init; } = "linguist";
 }
 
-/// <summary>
-/// One run of a <see cref="GrammarWarning"/>'s text: plain prose, a quoted value the parser echoed, or a
-/// project object it named by identifier.
-/// </summary>
-/// <param name="Text">What to show: the prose, the value, or the object's name.</param>
-/// <param name="Role">
-/// <c>text</c> for prose; <c>value</c> for a quoted value that names no object; <c>object</c> for an object
-/// the project contains; <c>missing</c> for an identifier the project does not contain, which is usually
-/// the finding itself.
-/// </param>
-/// <param name="ObjectId">The identifier the parser wrote, for <c>object</c> and <c>missing</c> parts.</param>
-/// <param name="Kind">For an <c>object</c> part, what sort of object it is: <c>Sense</c>, <c>Allomorph</c>, ….</param>
-/// <param name="FieldWorksLink">
-/// A <c>silfw:</c> link that opens FieldWorks on this object's record, or <see langword="null"/> when
-/// FieldWorks has no tool that shows it.
-/// </param>
+/// <summary>One summary row grouping diagnostics by their stable code.</summary>
+/// <param name="Code">The diagnostic code used to match this row to its findings.</param>
+/// <param name="GroupName">The name shown for this kind of diagnostic.</param>
+/// <param name="Level">The report level for this kind of diagnostic.</param>
+/// <param name="Count">How many diagnostics of this kind the report contains.</param>
+public sealed record GrammarWarningSummary(string Code, string? GroupName, string Level, int Count);
+
+/// <summary>A named subject in a grammar-health diagnostic.</summary>
+/// <param name="Text">The human-readable title and subtitle shown for the subject.</param>
+/// <param name="Role">Whether the part is prose, a value, or a named FieldWorks subject.</param>
+/// <param name="ObjectId">The subject GUID or internal identity.</param>
+/// <param name="Kind">The FieldWorks class name reported by PanGloss.</param>
+/// <param name="FieldWorksLink">The report's FieldWorks URL when one is available.</param>
 public sealed record GrammarWarningPart(
     string Text,
     string Role,
     string? ObjectId = null,
     string? Kind = null,
-    string? FieldWorksLink = null);
+    string? FieldWorksLink = null)
+{
+    /// <summary>The subject's title exactly as PanGloss reported it.</summary>
+    public string? Title { get; init; }
+
+    /// <summary>The subject's subtitle exactly as PanGloss reported it.</summary>
+    public string? Subtitle { get; init; }
+
+    /// <summary>The subject's FieldWorks GUID, if PanGloss recorded one.</summary>
+    public string? SubjectGuid { get; init; }
+
+    /// <summary>The report's internal identity for the subject, when available.</summary>
+    public string? InternalId { get; init; }
+
+    /// <summary>The GUID targeted by the FieldWorks link.</summary>
+    public string? FieldWorksGuid { get; init; }
+
+    /// <summary>The FieldWorks link state reported by PanGloss.</summary>
+    public string? LinkStatus { get; init; }
+
+    /// <summary>The reason PanGloss gave when the link is unavailable.</summary>
+    public string? LinkReason { get; init; }
+
+    /// <summary>The FieldWorks tool identifier reported for an available link.</summary>
+    public string? FieldWorksTool { get; init; }
+
+    /// <summary>The explicit open target's tool, when the subject has one.</summary>
+    public string? OpenTargetTool { get; init; }
+
+    /// <summary>The explicit open target's GUID, when the subject has one.</summary>
+    public string? OpenTargetGuid { get; init; }
+}
