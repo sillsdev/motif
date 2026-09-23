@@ -34,6 +34,7 @@ is covered without editing anything. Each shard writes its console log to
 fails, open the failing shard's log first. Every test process
 gets a private writing-system repository (`ProcessWritingSystemRepository`). The machine-wide
 `%ProgramData%` store is shared across processes, and concurrent saves into it collide.
+Tests set `MOTIF_WRITING_SYSTEM_REPOSITORY_PATH` at module load, and child processes inherit it.
 
 ## Where the build lands
 

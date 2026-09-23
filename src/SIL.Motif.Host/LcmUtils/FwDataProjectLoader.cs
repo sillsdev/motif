@@ -24,7 +24,9 @@ public class FwDataProjectLoader
     /// <summary>
     /// Initializes ICU and SLDR. Idempotent — only runs once per process. Must happen before any
     /// <see cref="LcmCache"/> is created; this is the classic headless-load blocker if skipped or
-    /// ordered wrong.
+    /// ordered wrong. If <c>MOTIF_WRITING_SYSTEM_REPOSITORY_PATH</c> is set before the first call,
+    /// its directory becomes this process's global writing-system repository. When unset, this
+    /// method leaves the current repository slot untouched.
     /// </summary>
     public static void Init()
     {
@@ -41,8 +43,35 @@ public class FwDataProjectLoader
             }
 
             Sldr.Initialize();
+            InstallConfiguredGlobalWritingSystemRepository();
             _init = true;
         }
+    }
+
+    private const string WritingSystemRepositoryPathEnvironmentVariable = "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH";
+
+    // The path constructor is internal; InitInstallsTheRepositorySelectedByTheEnvironment pins this route.
+    private static void InstallConfiguredGlobalWritingSystemRepository()
+    {
+        var configuredPath = Environment.GetEnvironmentVariable(WritingSystemRepositoryPathEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(configuredPath)) return;
+
+        var repositoryPath = Path.GetFullPath(configuredPath);
+        Directory.CreateDirectory(repositoryPath);
+        var repository = (CoreGlobalWritingSystemRepository?)Activator.CreateInstance(
+            typeof(CoreGlobalWritingSystemRepository),
+            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
+            binder: null, args: [repositoryPath], culture: null);
+        if (repository is null)
+        {
+            throw new InvalidOperationException(
+                "LibLCM did not create a writing-system repository for " +
+                $"'{WritingSystemRepositoryPathEnvironmentVariable}'.");
+        }
+
+        var key = typeof(CoreGlobalWritingSystemRepository).FullName!;
+        if (SingletonsContainer.Item(key) is not null) SingletonsContainer.Remove(key);
+        SingletonsContainer.Add(key, repository);
     }
 
     /// <summary>
@@ -91,18 +120,16 @@ public class FwDataProjectLoader
 
     /// <summary>
     /// Opens an existing <c>.fwdata</c> project the same way <see cref="LoadCache"/> does, except that
-    /// disposing the returned cache cannot register a writing-system change in the machine-wide
-    /// <c>%ProgramData%\SIL\WritingSystemRepository</c> store.
+    /// disposing the returned cache cannot persist writing-system changes to the process's global repository.
     /// </summary>
     /// <remarks>
-    /// For a throwaway scratch (ADR 0016), that store is the wrong place to write to: a Dry Run scratch
-    /// is a proposal being tried and discarded, and disposing it must not touch state shared with every
-    /// other project on the machine. See <see cref="DiscardingGlobalWritingSystemRepository"/> for the
-    /// mechanism. <see cref="LoadCache"/> itself is unchanged and remains what a real, persisted project
-    /// open uses.
+    /// For a throwaway scratch (ADR 0016), persisting writing-system changes is wrong: a Dry Run scratch
+    /// is a proposal being tried and discarded. See <see cref="DiscardingGlobalWritingSystemRepository"/>
+    /// for the mechanism. <see cref="LoadCache"/> remains the method for a real, persisted project open.
     /// </remarks>
     public virtual LcmCache LoadScratchCache(string fwDataFilePath, string? templatesFolder = null)
     {
+        Init();
         using (SuppressGlobalWritingSystemPersistence())
             return LoadCacheCore(fwDataFilePath, templatesFolder);
     }
