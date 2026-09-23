@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.MiniMatrix"
+             x:DataType="vm:CompareViewModel">
+  <UserControl.Styles>
+    <!-- The Compare matrix in miniature: the same colours, one small square per cell, sharing its choice of cells. -->
+    <Style Selector="Border.miniCell">
+      <Setter Property="Width" Value="40" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill0}" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.miniCell TextBlock">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="Border.miniCell.good">
+      <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
+    </Style>
+    <Style Selector="Border.miniCell.violation">
+      <Setter Property="Background" Value="{DynamicResource SemiColorDangerLight}" />
+    </Style>
+    <Style Selector="Border.miniCell.violation TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
+    </Style>
+    <Style Selector="Border.miniCell.review">
+      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
+    </Style>
+    <Style Selector="Border.miniCell.new">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
+    </Style>
+    <Style Selector="Border.miniCell.nobody">
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
+    </Style>
+    <Style Selector="Border.miniCell.none">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+    <Style Selector="Border.miniCell.empty">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+    <Style Selector="Border.miniCell.selected, Border.miniCell:focus-visible">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Spacing="3">
+    <DockPanel>
+      <HyperlinkButton DockPanel.Dock="Right" Content="Clear" FontSize="11" Command="{Binding ClearSelectionCommand}"
+                       IsVisible="{Binding AnySelected}" AutomationProperties.Name="Clear the chosen matrix cells" />
+      <TextBlock Classes="muted" FontSize="11" Text="Filter by the matrix (click to add or remove a cell)" VerticalAlignment="Center" />
+    </DockPanel>
+    <Grid ColumnDefinitions="92,*">
+      <ItemsControl Grid.Column="1" ItemsSource="{Binding Columns}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="3" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:CompareColumnViewModel">
+            <TextBlock Classes="muted" Width="40" FontSize="9.5" TextAlignment="Center" Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Grid>
+    <ItemsControl ItemsSource="{Binding Rows}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Spacing="3" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:CompareRowViewModel">
+          <Grid ColumnDefinitions="92,*">
+            <TextBlock Classes="muted" FontSize="10.5" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="3" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CompareCellViewModel">
+                  <Border Classes="miniCell" Focusable="True" Tag="{Binding}"
+                          Classes.good="{Binding IsGood}" Classes.violation="{Binding IsViolation}" Classes.review="{Binding IsReview}"
+                          Classes.new="{Binding IsNew}" Classes.nobody="{Binding IsNobody}" Classes.none="{Binding IsNone}"
+                          Classes.empty="{Binding IsEmpty}" Classes.selected="{Binding IsSelected}"
+                          PointerPressed="OnCellPressed" KeyDown="OnCellKeyDown"
+                          AutomationProperties.Name="{Binding AccessibleName}" ToolTip.Tip="{Binding AccessibleName}">
+                    <TextBlock Text="{Binding CountText}" IsVisible="{Binding !IsEmptyImpossible}" />
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

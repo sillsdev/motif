@@ -96,7 +96,75 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             if (word is not null) OpenWord?.Invoke(word.Word);
         });
+        RerunCommand = new AsyncRelayCommand(RerunUnknownAsync, () => Rerun is not null && RerunWords.Count > 0);
+        HandOffCommand = new RelayCommand(() => HandOff?.Invoke(Words.Select(word => word.Word).ToArray()),
+            () => HandOff is not null && Words.Count > 0);
+        Changes = new ChangesViewModel();
+        ProposeCommand = new RelayCommand<string>(kind =>
+        {
+            if (kind is null) return;
+            var chosen = Words.Where(word => word.IsChecked).ToList();
+            foreach (var word in chosen)
+            {
+                Changes.Add(kind, word);
+                word.IsChecked = false;
+            }
+        });
     }
+
+    /// <summary>The changes collected so far, to become one Proposal.</summary>
+    public ChangesViewModel Changes { get; }
+
+    /// <summary>Adds a change of one kind (see <see cref="ChangeKinds"/>) for every checked word in the list.</summary>
+    public IRelayCommand<string> ProposeCommand { get; }
+
+    /// <summary>Runs words again with a longer limit and folds the answers into this Assessment; set by its owner.</summary>
+    public Func<IReadOnlyList<string>, int, Task>? Rerun { get; set; }
+
+    /// <summary>Writes a Handoff of just these words; set by the workspace.</summary>
+    public Action<IReadOnlyList<string>>? HandOff { get; set; }
+
+    /// <summary>Raised whenever the chosen cells change, so other views of the same words can follow them.</summary>
+    public event EventHandler? ChosenCellsChanged;
+
+    /// <summary>The words in the chosen cells, or <see langword="null"/> when no cell is chosen.</summary>
+    public IReadOnlySet<string>? ChosenWords { get; private set; }
+
+    public IAsyncRelayCommand RerunCommand { get; }
+    public IRelayCommand HandOffCommand { get; }
+
+    /// <summary>Seconds each word gets when run again; the project's own limit is what put it here.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RerunText))]
+    private decimal _rerunSeconds = 30;
+
+    /// <summary>
+    /// The timed-out and untried words to run again: those in the chosen cells when any Unknown cell is chosen,
+    /// otherwise every one of them.
+    /// </summary>
+    public IReadOnlyList<string> RerunWords
+    {
+        get
+        {
+            var unknown = _all.Where(word => word.Family == CompareFamily.Unknown).ToList();
+            var chosen = Cells.Where(cell => cell.IsSelected && cell.Family == CompareFamily.Unknown)
+                .Select(cell => (cell.Row, cell.Column)).ToHashSet();
+            if (chosen.Count > 0) unknown = unknown.Where(word => chosen.Contains((word.Row, word.Column))).ToList();
+            return unknown.Select(word => word.Word).ToArray();
+        }
+    }
+
+    public bool CanRerun => RerunWords.Count > 0;
+
+    public string RerunText => RerunWords.Count switch
+    {
+        0 => "Every word finished.",
+        1 => "1 word timed out or was not tried.",
+        var count => $"{count:N0} words timed out or were not tried.",
+    };
+
+    private Task RerunUnknownAsync() =>
+        Rerun?.Invoke(RerunWords, (int)Math.Round(RerunSeconds * 1000)) ?? Task.CompletedTask;
 
     /// <summary>The five rows, in reading order: nothing stored, candidate, approved, rejected, incorrect spelling.</summary>
     public IReadOnlyList<CompareRowViewModel> Rows { get; }
@@ -208,6 +276,13 @@ public sealed partial class CompareViewModel : ObservableObject
 
     private void SelectionChanged()
     {
+        var chosen = Cells.Where(cell => cell.IsSelected).Select(cell => (cell.Row, cell.Column)).ToHashSet();
+        ChosenWords = chosen.Count == 0 ? null
+            : _all.Where(word => chosen.Contains((word.Row, word.Column))).Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
+        OnPropertyChanged(nameof(RerunWords));
+        OnPropertyChanged(nameof(CanRerun));
+        OnPropertyChanged(nameof(RerunText));
+        RerunCommand.NotifyCanExecuteChanged();
         foreach (var preset in Presets)
             preset.IsActive = preset.Count > 0 && Cells.Where(cell => cell.Count > 0)
                 .All(cell => cell.IsSelected == (cell.Family == preset.Family));
@@ -232,6 +307,8 @@ public sealed partial class CompareViewModel : ObservableObject
         Words.Clear();
         foreach (var word in matches) Words.Add(word);
         OnPropertyChanged(nameof(ListSummary));
+        HandOffCommand.NotifyCanExecuteChanged();
+        ChosenCellsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -419,7 +496,7 @@ public sealed partial class ComparePresetViewModel(string label, CompareFamily f
 }
 
 /// <summary>One word in the Compare list, with the cell it sits in.</summary>
-public sealed class CompareWordViewModel
+public sealed partial class CompareWordViewModel : ObservableObject
 {
     public CompareWordViewModel(AssessWordRowViewModel word, (WordProjectStatus Row, CompareColumn Column) place)
     {
@@ -455,4 +532,8 @@ public sealed class CompareWordViewModel
 
     /// <summary>The parser's first reading, so a listed word shows what was just calculated for it.</summary>
     public string FirstReading { get; }
+
+    /// <summary>Whether the word is ticked, to receive the next change chosen for ticked words.</summary>
+    [ObservableProperty]
+    private bool _isChecked;
 }

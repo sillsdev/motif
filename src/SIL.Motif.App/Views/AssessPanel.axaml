@@ -79,11 +79,13 @@
     <Grid Grid.Row="1" ColumnDefinitions="340,*" ColumnSpacing="12" IsVisible="{Binding Assess.Words.HasAny}">
 
       <!-- Left: the word list, searched and filtered by chip. -->
-      <Grid ColumnDefinitions="1*" RowDefinitions="Auto,Auto,*" RowSpacing="6">
+      <Grid ColumnDefinitions="1*" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="6">
         <TextBox Grid.Row="0" Text="{Binding Assess.Words.WordFilter}"
                  PlaceholderText="Search words..." AutomationProperties.Name="Filter words by word" />
+        <!-- The Compare matrix in small, sharing its chosen cells, so both views list the same words. -->
+        <views:MiniMatrix Grid.Row="1" DataContext="{Binding Assess.Compare}" IsVisible="{Binding HasStandings}" />
         <!-- Two questions, two rows of chips: what the parser came to, and how that compares with the project. -->
-        <StackPanel Grid.Row="1" Spacing="4">
+        <StackPanel Grid.Row="2" Spacing="4">
           <views:CopyableTextBlock Classes="muted" FontSize="11" Text="Parser result" />
           <WrapPanel>
             <views:FilterChip Label="All" Count="{Binding Assess.Words.AllCount}"
@@ -109,7 +111,7 @@
                             Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.NoOpinion}" />
           </WrapPanel>
         </StackPanel>
-        <ListBox Grid.Row="2" ItemsSource="{Binding Assess.Words.Rows}"
+        <ListBox Grid.Row="3" ItemsSource="{Binding Assess.Words.Rows}"
                  SelectedItem="{Binding Assess.Words.SelectedRow}"
                  AutomationProperties.Name="Words">
           <ListBox.ItemTemplate>

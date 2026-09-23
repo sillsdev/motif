@@ -24,6 +24,8 @@ public sealed partial class HandoffPanel : UserControl
 
     public HandoffViewModel Handoff { get; }
 
+    private void OnUseWholeAssessmentClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Handoff.UseWholeAssessment();
+
     /// <summary>What the folder will hold, shown before the first write so its contents are no surprise.</summary>
     public IReadOnlyList<PlannedHandoffFile> PlannedFiles { get; } =
         [.. HandoffFileViewModel.KnownFiles.Select(file => new PlannedHandoffFile(file.Name, file.Purpose))];

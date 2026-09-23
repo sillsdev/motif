@@ -121,7 +121,27 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     public Task<DragDropEffects> DragAllFilesAsync(PointerPressedEventArgs trigger) =>
         _dragSource.StartDragAsync(trigger, Files.Select(file => file.FullPath).ToList(), DragDropEffects.Copy);
 
-    protected override bool CanStartCore() => ProjectPath is not null && !string.IsNullOrWhiteSpace(InvocationId);
+    protected override bool CanStartCore() =>
+        ProjectPath is not null && (ChosenWords is not null || !string.IsNullOrWhiteSpace(InvocationId));
+
+    // Words chosen in Compare to hand off, assessed afresh; null hands off the latest Assessment as it is.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasChosenWords))]
+    [NotifyPropertyChangedFor(nameof(ChosenWordsText))]
+    private IReadOnlyList<string>? _chosenWords;
+
+    public bool HasChosenWords => ChosenWords is { Count: > 0 };
+
+    public string ChosenWordsText => ChosenWords is { } words
+        ? $"Only the {words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} chosen in Compare, assessed again for these files."
+        : string.Empty;
+
+    /// <summary>Hands off <paramref name="words"/> rather than the whole Assessment.</summary>
+    public void UseWords(IReadOnlyList<string> words) => ChosenWords = words.Count > 0 ? words : null;
+
+    public void UseWholeAssessment() => ChosenWords = null;
+
+    partial void OnChosenWordsChanged(IReadOnlyList<string>? value) => RunCommand.NotifyCanExecuteChanged();
 
     protected override async Task<bool> PrepareRunAsync()
     {
@@ -140,8 +160,10 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     protected override Task<CommandOutcome<HandoffCommandResponse>> ExecuteCoreAsync(
         CancellationToken cancellationToken)
     {
-        var request = new HandoffRequest(
-            ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], [], false, null), true, InvocationId);
+        var request = ChosenWords is { } words
+            ? new HandoffRequest(ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], words, false, null), true)
+            : new HandoffRequest(
+                ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], [], false, null), true, InvocationId);
         return _commandClient.HandoffAsync(request, this, cancellationToken);
     }
 

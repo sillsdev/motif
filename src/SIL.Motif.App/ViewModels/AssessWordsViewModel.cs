@@ -142,6 +142,15 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     partial void OnWordFilterChanged(string value) => Refresh();
     partial void OnSelectedFilterChanged(ResultsWordFilter value) => Refresh();
 
+    private IReadOnlySet<string>? _onlyWords;
+
+    /// <summary>Lists only <paramref name="words"/>, the Compare matrix's chosen cells, on top of the chips and search.</summary>
+    public void ShowOnly(IReadOnlySet<string>? words)
+    {
+        _onlyWords = words;
+        Refresh();
+    }
+
     private void Refresh()
     {
         Rows.Clear();
@@ -152,6 +161,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     }
 
     private bool Matches(AssessWordRowViewModel row) =>
+        (_onlyWords is null || _onlyWords.Contains(row.Word)) &&
         (string.IsNullOrWhiteSpace(WordFilter) ||
             row.Word.Contains(WordFilter.Trim(), StringComparison.CurrentCultureIgnoreCase)) &&
         SelectedFilter switch

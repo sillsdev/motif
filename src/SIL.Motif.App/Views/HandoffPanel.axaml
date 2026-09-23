@@ -15,6 +15,14 @@
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                    Text="Give a chat model the files it needs to help you read this Assessment." />
 
+        <Border Classes="notice" IsVisible="{Binding Handoff.HasChosenWords}" AutomationProperties.Name="Words chosen in Compare">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Hand off everything instead" Click="OnUseWholeAssessmentClick"
+                    VerticalAlignment="Center" Margin="10,0,0,0" />
+            <views:CopyableTextBlock Text="{Binding Handoff.ChosenWordsText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+
         <Border Classes="notice" IsVisible="{Binding Handoff.IsOutOfDate}"
                 AutomationProperties.Name="The Handoff is out of date">
           <!-- A dock, not a horizontal stack: a stack gives the sentence unlimited width, so it never wraps. -->

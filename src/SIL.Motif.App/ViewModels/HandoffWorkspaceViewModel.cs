@@ -45,6 +45,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Handoff = handoff;
         ResultsInText = new ResultsInTextViewModel(words, assess, ShowWordInResults, TryWordInResults);
         assess.Compare.OpenWord = ShowWordInResults;
+        assess.Compare.HandOff = words =>
+        {
+            Handoff.UseWords(words);
+            CurrentStage = WorkflowStage.Handoff;
+        };
         Statistics.AssessedWord = Assess.Words.Find;
         Statistics.TryWord = TryWordInResults;
         Statistics.OpenTimeLimit = () => CurrentStage = WorkflowStage.Texts;
@@ -189,6 +194,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         Assess.Words.WordFilter = string.Empty;
         Assess.Words.SelectedFilter = ResultsWordFilter.All;
+        if (Assess.Words.Rows.All(row => row.Word != word)) Assess.Compare.ClearSelectionCommand.Execute(null);
         Assess.Words.SelectedRow = Assess.Words.Rows.FirstOrDefault(row => row.Word == word) ?? Assess.Words.SelectedRow;
         ResultsView = ResultsView.Words;
     }

@@ -27,6 +27,41 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         Trace = new TraceWordViewModel(commandClient);
         PropertyChanged += OnResultChanged;
         Words.PropertyChanged += OnWordsPropertyChanged;
+        Compare.Rerun = RerunAsync;
+        Compare.ChosenCellsChanged += (_, _) => Words.ShowOnly(Compare.ChosenWords);
+    }
+
+    private IReadOnlyList<string>? _rerunWords;
+    private int? _rerunLimitMs;
+    private AssessCommandResponse? _mergeInto;
+
+    /// <summary>
+    /// Runs <paramref name="words"/> again with <paramref name="limitMs"/> per word, and folds each fresh answer into
+    /// the current Assessment in place of the old one, so the rest of the result is kept.
+    /// </summary>
+    public Task RerunAsync(IReadOnlyList<string> words, int limitMs)
+    {
+        ArgumentNullException.ThrowIfNull(words);
+        if (words.Count == 0) return Task.CompletedTask;
+        _rerunWords = words;
+        _rerunLimitMs = limitMs;
+        return RunCommand.ExecuteAsync(null);
+    }
+
+    /// <summary>The current result with each word <paramref name="rerun"/> answered replaced by its new answer.</summary>
+    public static AssessCommandResponse Merge(AssessCommandResponse into, AssessCommandResponse rerun)
+    {
+        ArgumentNullException.ThrowIfNull(into);
+        ArgumentNullException.ThrowIfNull(rerun);
+        var fresh = rerun.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
+        return into with { Words = into.Words.Select(word => fresh.GetValueOrDefault(word.Word) ?? word).ToArray() };
+    }
+
+    // The result is cleared as a run starts, so the one a re-run folds into is kept here first.
+    protected override Task<bool> PrepareRunAsync()
+    {
+        _mergeInto = _rerunWords is not null ? Result : null;
+        return Task.FromResult(true);
     }
 
     /// <summary>The project this Assessment measures, or <c>null</c> before a project has been chosen.</summary>
@@ -54,7 +89,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// <summary>Traces one word on demand against the current Baseline's grammar, for Try a Word.</summary>
     public TraceWordViewModel Trace { get; }
 
-    protected override bool CanStartCore() => ProjectPath is not null && _selection.CanAssess;
+    protected override bool CanStartCore() => ProjectPath is not null && (_rerunWords is not null || _selection.CanAssess);
 
     /// <summary>When the last Assessment finished, so an older Handoff can say it is out of date.</summary>
     [ObservableProperty]
@@ -83,12 +118,23 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         Trace.IsFocused = !row.HasReadings && row.MissedApproved.Count == 0;
     }
 
-    protected override Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(
+    protected override async Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(
         CancellationToken cancellationToken)
     {
-        var request = new AssessRequest(ProjectPath!, _selection.BuildRequest(),
-            _selection.PerWordTimeLimitSeconds is > 0 and var seconds ? (int)(seconds * 1000) : null);
-        return _commandClient.AssessAsync(request, this, cancellationToken);
+        var (words, limitMs, into) = (_rerunWords, _rerunLimitMs, _mergeInto);
+        (_rerunWords, _rerunLimitMs, _mergeInto) = (null, null, null);
+        if (words is null)
+        {
+            var request = new AssessRequest(ProjectPath!, _selection.BuildRequest(),
+                _selection.PerWordTimeLimitSeconds is > 0 and var seconds ? (int)(seconds * 1000) : null);
+            return await _commandClient.AssessAsync(request, this, cancellationToken).ConfigureAwait(true);
+        }
+
+        var rerun = new AssessRequest(ProjectPath!, new SelectionRequest(false, [], words, false, null), limitMs);
+        var outcome = await _commandClient.AssessAsync(rerun, this, cancellationToken).ConfigureAwait(true);
+        return outcome.Succeeded && into is not null
+            ? CommandOutcome<AssessCommandResponse>.Success(Merge(into, outcome.Value!))
+            : outcome;
     }
 
     private void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)

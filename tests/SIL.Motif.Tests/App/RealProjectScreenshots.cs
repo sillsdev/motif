@@ -213,6 +213,18 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         Save(walkthrough.Window, Path.Combine(folder, "4c-results-compare-violations-light.png"));
         compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
         Save(walkthrough.Window, Path.Combine(folder, "4d-results-compare-largest-cell-light.png"));
+
+        // A few words ticked and given a change each, so the collected changes are reviewed too.
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation));
+        foreach (var (word, kind) in compare.Words.Take(3).Zip([ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.IncorrectSpelling]))
+        {
+            word.IsChecked = true;
+            compare.ProposeCommand.Execute(kind);
+        }
+        Save(walkthrough.Window, Path.Combine(folder, "4e-results-compare-changes-light.png"));
+        walkthrough.Workspace.ResultsView = ResultsView.Words;
+        Save(walkthrough.Window, Path.Combine(folder, "4f-results-words-mini-matrix-light.png"));
+        compare.Changes.ClearCommand.Execute(null);
         compare.ClearSelectionCommand.Execute(null);
     }
 

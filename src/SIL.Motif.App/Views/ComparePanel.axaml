@@ -87,7 +87,8 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8" Margin="16,10,16,16" IsVisible="{Binding Compare.HasWords}">
+  <Grid ColumnDefinitions="*,290" ColumnSpacing="14" Margin="16,10,16,16" IsVisible="{Binding Compare.HasWords}">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
 
     <!-- Shortcuts that choose every cell of one meaning; the matrix below is the filter itself. -->
     <StackPanel Orientation="Horizontal" Spacing="4">
@@ -115,7 +116,7 @@
     <!-- The matrix: rows are what the project held, columns what the parser did. -->
     <StackPanel Grid.Row="1" Spacing="5" AutomationProperties.Name="Compare matrix">
       <Grid ColumnDefinitions="170,*">
-        <views:CopyableTextBlock Classes="columnHeader" Text="IN THE PROJECT ↓   PARSER →" VerticalAlignment="Bottom" Margin="6,0" />
+        <views:CopyableTextBlock Classes="columnHeader" Text="PROJECT ↓  PARSER →" VerticalAlignment="Bottom" Margin="6,0" />
         <ItemsControl Grid.Column="1" ItemsSource="{Binding Compare.Columns}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
@@ -200,32 +201,99 @@
       </ComboBox>
     </Grid>
 
-    <Grid Grid.Row="3" ColumnDefinitions="2*,60,150,100,190,3*,70" Margin="12,0,8,0">
-      <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WORD" />
-      <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="IN TEXTS" />
-      <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="IN THE PROJECT" />
-      <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="PARSER" />
-      <views:CopyableTextBlock Grid.Column="4" Classes="columnHeader" Text="MEANING" />
-      <views:CopyableTextBlock Grid.Column="5" Classes="columnHeader" Text="FIRST READING" />
+    <Grid Grid.Row="3" ColumnDefinitions="28,2*,60,150,100,190,3*,70" Margin="12,0,8,0">
+      <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="WORD" />
+      <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="IN TEXTS" />
+      <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="IN THE PROJECT" />
+      <views:CopyableTextBlock Grid.Column="4" Classes="columnHeader" Text="PARSER" />
+      <views:CopyableTextBlock Grid.Column="5" Classes="columnHeader" Text="MEANING" />
+      <views:CopyableTextBlock Grid.Column="6" Classes="columnHeader" Text="FIRST READING" />
     </Grid>
     <ListBox Grid.Row="4" Classes="denseWords" ItemsSource="{Binding Compare.Words}" AutomationProperties.Name="Words in the chosen cells">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:CompareWordViewModel">
-          <Grid ColumnDefinitions="2*,60,150,100,190,3*,70" Margin="4,3">
-            <views:CopyableTextBlock Grid.Column="0" Text="{Binding Word}" FontWeight="SemiBold" VerticalAlignment="Center" />
-            <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
-            <views:VerdictChip Grid.Column="2" Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}" Compact="True" HorizontalAlignment="Left" />
-            <views:VerdictChip Grid.Column="3" Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}" Compact="True" HorizontalAlignment="Left" />
-            <views:CopyableTextBlock Grid.Column="4" Text="{Binding Meaning}" FontSize="12" VerticalAlignment="Center"
+          <Grid ColumnDefinitions="28,2*,60,150,100,190,3*,70" Margin="4,3">
+            <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
+                      AutomationProperties.Name="{Binding Word, StringFormat='Tick {0} for a change'}" />
+            <views:CopyableTextBlock Grid.Column="1" Text="{Binding Word}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
+            <views:VerdictChip Grid.Column="3" Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}" Compact="True" HorizontalAlignment="Left" />
+            <views:VerdictChip Grid.Column="4" Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}" Compact="True" HorizontalAlignment="Left" />
+            <views:CopyableTextBlock Grid.Column="5" Text="{Binding Meaning}" FontSize="12" VerticalAlignment="Center"
                                      Classes.error="{Binding IsViolation}" TextTrimming="CharacterEllipsis" />
-            <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="{Binding FirstReading}" FontSize="12"
+            <views:CopyableTextBlock Grid.Column="6" Classes="muted" Text="{Binding FirstReading}" FontSize="12"
                                      VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            <HyperlinkButton Grid.Column="6" Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
+            <HyperlinkButton Grid.Column="7" Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
                              Command="{Binding $parent[views:ComparePanel].Compare.OpenWordCommand}" CommandParameter="{Binding}"
                              AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Words'}" />
           </Grid>
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
+  </Grid>
+
+  <!-- Right: what to do with the words the matrix picked out. -->
+  <ScrollViewer Grid.Column="1">
+    <StackPanel Spacing="10">
+      <Border Classes="card" Padding="12" IsVisible="{Binding Compare.CanRerun}">
+        <StackPanel Spacing="6">
+          <views:CopyableTextBlock Text="Run again" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding Compare.RerunText}" TextWrapping="Wrap" FontSize="12" />
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10" Width="110"
+                           FormatString="0" AutomationProperties.Name="Seconds each word gets when run again" />
+            <views:CopyableTextBlock Classes="muted" Text="seconds each" VerticalAlignment="Center" />
+          </StackPanel>
+          <Button Content="Run them again" Command="{Binding Compare.RerunCommand}" HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="Run the timed-out and untried words again" />
+          <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                                   Text="Only these words run; their answers replace the old ones here. A step limit still applies." />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card" Padding="12">
+        <StackPanel Spacing="6">
+          <views:CopyableTextBlock Text="Hand off" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                   Text="Give a chat model just the listed words, assessed again for the files." />
+          <Button Content="{Binding Compare.ListSummary, StringFormat='Hand off these {0}'}" Command="{Binding Compare.HandOffCommand}"
+                  HorizontalAlignment="Stretch" AutomationProperties.Name="Hand off the listed words" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card" Padding="12">
+        <StackPanel Spacing="6">
+          <views:CopyableTextBlock Text="Changes" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.Summary}" />
+          <WrapPanel>
+            <Button Content="Approve" Command="{Binding Compare.ProposeCommand}" CommandParameter="approve" Margin="0,0,4,4" />
+            <Button Content="Reject" Command="{Binding Compare.ProposeCommand}" CommandParameter="reject" Margin="0,0,4,4" />
+            <Button Content="Back to candidate" Command="{Binding Compare.ProposeCommand}" CommandParameter="candidate" Margin="0,0,4,4" />
+            <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling" Margin="0,0,4,4" />
+            <Button Content="Add as candidate" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate" Margin="0,0,4,4" />
+          </WrapPanel>
+          <ItemsControl ItemsSource="{Binding Compare.Changes.Items}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ChangeViewModel">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                  <StackPanel>
+                    <views:CopyableTextBlock FontSize="12" Text="{Binding Summary}" />
+                    <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding HeldLabel, StringFormat='was {0}'}" />
+                  </StackPanel>
+                  <HyperlinkButton Grid.Column="1" Content="Remove" FontSize="11" VerticalAlignment="Center"
+                                   Command="{Binding $parent[views:ComparePanel].Compare.Changes.RemoveCommand}" CommandParameter="{Binding}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap" Text="{Binding Compare.Changes.ProposalStatus}"
+                                   IsVisible="{Binding Compare.Changes.HasItems}" />
+          <Button Content="Save as a Proposal" IsEnabled="False" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="Coming next: Motif's Proposals cannot yet approve, reject or add analyses."
+                  IsVisible="{Binding Compare.Changes.HasItems}" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
   </Grid>
 </UserControl>
