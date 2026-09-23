@@ -25,6 +25,16 @@ owner's ruling. The one external dependency that remains is the `pangloss` execu
 build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails — when
 it is not built, since "the parser is not built here" is an ordinary state of a developer's machine.
 
+**`./test.ps1` runs the suite as several concurrent processes ("shards"), split by test namespace.**
+Opening two LibLCM caches at once inside one process races, so every class that opens one shares the
+serialized `LcmCacheTestCollection`. A separate process cannot race, so the shards are what let that
+work use more than one core. The last shard is the complement of the named ones, so a new namespace
+is covered without editing anything. Each shard writes its console log to
+`bin/<Configuration>/test-results/<shard>.log` and its TRX under `test-results/<shard>/`. When a run
+fails, open the failing shard's log first. Every test process
+gets a private writing-system repository (`ProcessWritingSystemRepository`). The machine-wide
+`%ProgramData%` store is shared across processes, and concurrent saves into it collide.
+
 ## Where the build lands
 
 One directory per configuration at the repository root, not a `bin` tree under every project:
