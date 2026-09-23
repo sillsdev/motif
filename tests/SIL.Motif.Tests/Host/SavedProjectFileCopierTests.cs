@@ -1,5 +1,3 @@
-using SIL.LCModel;
-using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -11,26 +9,23 @@ public sealed class SavedProjectFileCopierTests : IDisposable
 {
     private readonly string _root =
         Path.Combine(Path.GetTempPath(), "SIL.Motif.SavedProjectFileCopierTests", Guid.NewGuid().ToString("N"));
-    private readonly LcmCache _cache;
-    private readonly FwDataProjectLoader _loader = new();
+    private readonly string _fwDataPath;
 
-    public SavedProjectFileCopierTests()
+    public SavedProjectFileCopierTests(PristineProjectFixture pristine)
     {
         Directory.CreateDirectory(_root);
-        _cache = NewLangProjFixture.CreateCache(_root);
-        _loader.Save(_cache);
+        _fwDataPath = pristine.CopyProjectFile();
     }
 
     public void Dispose()
     {
-        _cache.Dispose();
         Directory.Delete(_root, true);
     }
 
     [Fact]
     public async Task CopyAsync_SucceedsWhileFwDataLockFileIsHeldExclusively()
     {
-        var fwDataPath = _cache.ProjectId.Path;
+        var fwDataPath = _fwDataPath;
         using var lockHandle = new FileStream(
             fwDataPath + ".lock", FileMode.Create, FileAccess.ReadWrite, FileShare.None);
 
@@ -46,8 +41,8 @@ public sealed class SavedProjectFileCopierTests : IDisposable
     [Fact]
     public async Task CopyAsync_ReadsTheCompleteOldFileWhileFieldWorksRenamesConcurrently()
     {
-        var projectFolder = Path.GetDirectoryName(_cache.ProjectId.Path)!;
-        var liveFwDataPath = _cache.ProjectId.Path;
+        var projectFolder = Path.GetDirectoryName(_fwDataPath)!;
+        var liveFwDataPath = _fwDataPath;
         var originalBytes = File.ReadAllBytes(liveFwDataPath);
         var originalLastWriteUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         File.SetLastWriteTimeUtc(liveFwDataPath, originalLastWriteUtc);
@@ -88,7 +83,7 @@ public sealed class SavedProjectFileCopierTests : IDisposable
     [Fact]
     public async Task CopyAsync_ThrowsInvalidDataException_WhenSourceIsTruncatedBeforeItsClosingElement()
     {
-        var content = File.ReadAllText(_cache.ProjectId.Path);
+        var content = File.ReadAllText(_fwDataPath);
         var closingIndex = content.LastIndexOf("</languageproject>", StringComparison.Ordinal);
         Assert.True(closingIndex > 0);
 

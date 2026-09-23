@@ -23,11 +23,11 @@ public sealed class BaselineBundleTests : IDisposable
     private readonly FwDataProjectLoader _loader = new();
     private readonly SeededProject _seed;
 
-    public BaselineBundleTests()
+    public BaselineBundleTests(PristineProjectFixture pristine)
     {
         Directory.CreateDirectory(_root);
-        _cache = NewLangProjFixture.CreateCache(_root);
-        _seed = SeededProject.Seed(_cache);
+        _cache = pristine.NewScratch();
+        _seed = pristine.Seed;
 
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
         {

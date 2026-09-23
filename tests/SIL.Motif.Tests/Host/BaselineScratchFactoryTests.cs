@@ -1,11 +1,9 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
-using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Host.Baselines;
-using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Runner.Operations;
@@ -29,38 +27,30 @@ public sealed class BaselineScratchFactoryTests : IDisposable
     private readonly string _publishedFwDataPath;
     private readonly SeededProject _seed;
 
-    public BaselineScratchFactoryTests()
+    public BaselineScratchFactoryTests(PristineProjectFixture pristine)
     {
         Directory.CreateDirectory(_root);
 
-        var masterRoot = Path.Combine(_root, "master");
-        Directory.CreateDirectory(masterRoot);
-        var master = NewLangProjFixture.CreateCache(masterRoot);
-        try
-        {
-            _seed = SeededProject.Seed(master);
-            new FwDataProjectLoader().Save(master);
+        var sourceFwDataPath = pristine.CopyProjectFile();
+        var sourceProjectFolder = Path.GetDirectoryName(sourceFwDataPath)!;
+        var sourceWritingSystemPaths = Directory.GetFiles(
+            Path.Combine(sourceProjectFolder, "WritingSystemStore"), "*.ldml");
+        _seed = pristine.Seed;
 
-            _publishedRoot = Path.Combine(_root, "published");
-            Directory.CreateDirectory(_publishedRoot);
-            using (var bundle = new MemoryStream())
-            {
-                new BaselineBundleWriter().WriteAsync(master, bundle, CancellationToken.None)
-                    .GetAwaiter().GetResult();
-                using var archive = new ZipArchive(new MemoryStream(bundle.ToArray()), ZipArchiveMode.Read);
-                archive.ExtractToDirectory(_publishedRoot);
-            }
-
-            // Mirror the published layout: these are pre-created there so a project open is a pure read.
-            Directory.CreateDirectory(Path.Combine(_publishedRoot, "WritingSystemStore"));
-            Directory.CreateDirectory(Path.Combine(_publishedRoot, "SharedSettings"));
-        }
-        finally
+        _publishedRoot = Path.Combine(_root, "published");
+        Directory.CreateDirectory(_publishedRoot);
+        using (var bundle = new MemoryStream())
         {
-            master.Dispose();
+            new BaselineBundleWriter().WriteAsync(
+                    sourceFwDataPath, sourceWritingSystemPaths, bundle, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            using var archive = new ZipArchive(new MemoryStream(bundle.ToArray()), ZipArchiveMode.Read);
+            archive.ExtractToDirectory(_publishedRoot);
         }
 
-        Directory.Delete(masterRoot, recursive: true);
+        // Mirror the published layout: these are pre-created there so a project open is a pure read.
+        Directory.CreateDirectory(Path.Combine(_publishedRoot, "WritingSystemStore"));
+        Directory.CreateDirectory(Path.Combine(_publishedRoot, "SharedSettings"));
         _publishedFwDataPath = Path.Combine(_publishedRoot, NewLangProjFixture.ProjectName + ".fwdata");
     }
 

@@ -48,36 +48,26 @@ public sealed class TrialJobHandlerTests : IDisposable
     private readonly BaselineToken _token;
     private readonly SeededProject _seed;
 
-    public TrialJobHandlerTests()
+    public TrialJobHandlerTests(PristineProjectFixture pristine)
     {
         Directory.CreateDirectory(_root);
 
-        var masterRoot = Path.Combine(_root, "master");
-        Directory.CreateDirectory(masterRoot);
-        var master = NewLangProjFixture.CreateCache(masterRoot);
-        try
-        {
-            _seed = SeededProject.Seed(master);
-            SeedWordformsForSelectionTests(master);
-            _loader.Save(master);
+        using var master = pristine.NewScratch();
+        _seed = pristine.Seed;
+        SeedWordformsForSelectionTests(master);
+        _loader.Save(master);
 
-            _publishedRoot = Path.Combine(_root, "published");
-            Directory.CreateDirectory(_publishedRoot);
-            using (var bundle = new MemoryStream())
-            {
-                new BaselineBundleWriter().WriteAsync(master, bundle, CancellationToken.None)
-                    .GetAwaiter().GetResult();
-                using var archive = new ZipArchive(new MemoryStream(bundle.ToArray()), ZipArchiveMode.Read);
-                archive.ExtractToDirectory(_publishedRoot);
-            }
-            Directory.CreateDirectory(Path.Combine(_publishedRoot, "WritingSystemStore"));
-            Directory.CreateDirectory(Path.Combine(_publishedRoot, "SharedSettings"));
-        }
-        finally
+        _publishedRoot = Path.Combine(_root, "published");
+        Directory.CreateDirectory(_publishedRoot);
+        using (var bundle = new MemoryStream())
         {
-            master.Dispose();
+            new BaselineBundleWriter().WriteAsync(master, bundle, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            using var archive = new ZipArchive(new MemoryStream(bundle.ToArray()), ZipArchiveMode.Read);
+            archive.ExtractToDirectory(_publishedRoot);
         }
-        Directory.Delete(masterRoot, recursive: true);
+        Directory.CreateDirectory(Path.Combine(_publishedRoot, "WritingSystemStore"));
+        Directory.CreateDirectory(Path.Combine(_publishedRoot, "SharedSettings"));
 
         var fwDataPath = Path.Combine(_publishedRoot, NewLangProjFixture.ProjectName + ".fwdata");
         _project = new ProjectLocator(Path.Combine(_root, "live", NewLangProjFixture.ProjectName + ".fwdata"),
