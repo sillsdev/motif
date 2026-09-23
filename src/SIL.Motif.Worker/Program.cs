@@ -109,7 +109,7 @@ internal static class Program
             try
             {
                 outcome = await SweepOnceAsync(knownProjects, runtimes, lanes, options, invoker, ownerId,
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken, activity).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -123,7 +123,7 @@ internal static class Program
     }
 
     /// <summary>The sweep's own record of whether anything, anywhere, is keeping the runner alive.</summary>
-    private sealed class SweepActivity
+    internal sealed class SweepActivity
     {
         // Busy until the first sweep says otherwise: a slow first sweep must not let the idle timer expire unseen.
         private volatile bool _hasActiveWork = true;
@@ -142,10 +142,15 @@ internal static class Program
     /// The claimed job's id (or <c>null</c> when nothing across every Known project was claimable), paired
     /// with whether any Known project had queued, running, or waiting work at any point during this tick.
     /// </returns>
+    /// <param name="activity">The shared activity state observed by the runner lifetime monitor.</param>
+    /// <param name="runClaimedAsync">Runs a claimed job; the default dispatches through its project loop.</param>
     internal static async Task<SweepOutcome> SweepOnceAsync(KnownProjectRegistry knownProjects,
         Projects.ProjectRuntimeRegistry runtimes, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options,
-        IPanGlossInvoker invoker, string ownerId, CancellationToken cancellationToken)
+        IPanGlossInvoker invoker, string ownerId, CancellationToken cancellationToken,
+        SweepActivity? activity = null,
+        Func<JobRecord, CancellationToken, Task>? runClaimedAsync = null)
     {
+        activity ??= new SweepActivity();
         var opened = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop)>();
         var hasActiveWork = false;
         foreach (var known in knownProjects.List())
@@ -204,7 +209,11 @@ internal static class Program
 
         var claimed = winner.Loop.TryClaim();
         if (claimed is null) return new SweepOutcome(null, hasActiveWork);
-        await winner.Loop.RunClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
+        activity.Set(true);
+        if (runClaimedAsync is null)
+            await winner.Loop.RunClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
+        else
+            await runClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
         return new SweepOutcome(claimed.JobId, true);
     }
 

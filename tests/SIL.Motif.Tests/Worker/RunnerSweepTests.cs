@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
@@ -52,6 +53,51 @@ public sealed class RunnerSweepTests : IDisposable
         var order = await DrainAsync(known);
 
         Assert.Equal(new[] { "a1", "b1", "a2" }, order);
+    }
+
+    [Fact]
+    public async Task AClaimedJobKeepsTheRunnerAliveWhileTheJobIsRunning()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "long-job");
+        SeedJob(runtime, "slow-job", queueOrder: 1.0);
+
+        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        using var shutdown = new CancellationTokenSource();
+        using var clock = new ManualWorkerClock();
+        var idleTimeout = TimeSpan.FromSeconds(1);
+        var lifetime = new WorkerLifetime(clock).RunUntilIdleAsync(
+            idleTimeout, () => activity.HasActiveWork, shutdown.Token);
+        await clock.WaitForDelayRequestAsync();
+
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sweeping = SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None, activity, async (_, _) =>
+            {
+                started.TrySetResult(true);
+                await release.Task;
+            });
+
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            clock.AdvanceNextDelay();
+
+            var nextDelayRequested = clock.WaitForDelayRequestAsync();
+            var observed = await Task.WhenAny(lifetime, nextDelayRequested);
+
+            Assert.Same(nextDelayRequested, observed);
+            Assert.False(lifetime.IsCompleted);
+        }
+        finally
+        {
+            release.TrySetResult(true);
+            shutdown.Cancel();
+            await sweeping;
+            await lifetime;
+        }
     }
 
     [Fact]
@@ -116,6 +162,37 @@ public sealed class RunnerSweepTests : IDisposable
 
     private static string FakeWorkspaceKey(string fwDataPath) =>
         ProjectWorkspaceKey.Compute(new ProjectLocator(fwDataPath, Path.GetFileNameWithoutExtension(fwDataPath)));
+
+    private sealed class ManualWorkerClock : IWorkerClock, IDisposable
+    {
+        private readonly ConcurrentQueue<(TimeSpan Delay, TaskCompletionSource<bool> Completion)> _waiters = new();
+        private readonly SemaphoreSlim _delayRequests = new(0);
+        private long _ticks;
+
+        public DateTimeOffset UtcNow => DateTimeOffset.UnixEpoch + MonotonicNow;
+
+        public TimeSpan MonotonicNow => TimeSpan.FromTicks(Interlocked.Read(ref _ticks));
+
+        public async Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+        {
+            var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _waiters.Enqueue((delay, completion));
+            _delayRequests.Release();
+            await completion.Task.WaitAsync(cancellationToken);
+        }
+
+        public Task WaitForDelayRequestAsync() => _delayRequests.WaitAsync();
+
+        public void AdvanceNextDelay()
+        {
+            if (!_waiters.TryDequeue(out var waiter))
+                throw new InvalidOperationException("No worker delay is waiting to advance.");
+            Interlocked.Add(ref _ticks, waiter.Delay.Ticks);
+            waiter.Completion.TrySetResult(true);
+        }
+
+        public void Dispose() => _delayRequests.Dispose();
+    }
 
     /// Repeatedly ticks the sweep — exactly what the runner's own loop does — until nothing is claimable.
     private async Task<IReadOnlyList<string>> DrainAsync(KnownProjectRegistry known)
