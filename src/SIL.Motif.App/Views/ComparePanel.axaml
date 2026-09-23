@@ -1,0 +1,231 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ComparePanel"
+             x:DataType="views:ComparePanel">
+  <UserControl.Styles>
+    <!-- A cell's fill says what it means; a chosen cell also wears a heavy outline, so colour is never the only cue. -->
+    <Style Selector="Border.compareCell">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="MinHeight" Value="54" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill0}" />
+    </Style>
+    <Style Selector="Border.compareCell :is(TextBlock)">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="Border.compareCell.good">
+      <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
+    </Style>
+    <Style Selector="Border.compareCell.good :is(TextBlock), Border.compareCell.fine :is(TextBlock)">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
+    </Style>
+    <Style Selector="Border.compareCell.violation">
+      <Setter Property="Background" Value="{DynamicResource SemiColorDangerLight}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorDanger}" />
+    </Style>
+    <Style Selector="Border.compareCell.violation :is(TextBlock)">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
+    </Style>
+    <Style Selector="Border.compareCell.review">
+      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
+    </Style>
+    <Style Selector="Border.compareCell.review :is(TextBlock)">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="Border.compareCell.new">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
+    </Style>
+    <Style Selector="Border.compareCell.new :is(TextBlock)">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Border.compareCell.nobody">
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
+    </Style>
+    <Style Selector="Border.compareCell.nobody :is(TextBlock)">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorLink}" />
+    </Style>
+    <Style Selector="Border.compareCell.none">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+    <Style Selector="Border.compareCell.none :is(TextBlock)">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText3}" />
+    </Style>
+    <Style Selector="Border.compareCell.empty">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+    <Style Selector="Border.compareCell:pointerover">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimaryLightPointerover}" />
+    </Style>
+    <Style Selector="Border.compareCell.selected, Border.compareCell:focus-visible">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+      <Setter Property="BorderThickness" Value="3" />
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector=":is(TextBlock).columnHeader">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="ListBox.denseWords ListBoxItem">
+      <Setter Property="Padding" Value="8,2" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+    </Style>
+    <Style Selector="Button.header">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Padding" Value="6,2" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8" Margin="16,10,16,16" IsVisible="{Binding Compare.HasWords}">
+
+    <!-- Shortcuts that choose every cell of one meaning; the matrix below is the filter itself. -->
+    <StackPanel Orientation="Horizontal" Spacing="4">
+      <Border Classes="notice" IsVisible="{Binding Compare.ShowsNoStandingsNotice}">
+        <views:CopyableTextBlock TextWrapping="Wrap"
+                                 Text="This Assessment did not record what the project holds, so every word sits in the first row. Run it again to fill the rows." />
+      </Border>
+      <views:FilterChip Label="All words" Count="{Binding Compare.TotalCount}" IsActive="{Binding !Compare.AnySelected}"
+                        Command="{Binding Compare.ClearSelectionCommand}" />
+      <ItemsControl ItemsSource="{Binding Compare.Presets}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="4" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ComparePresetViewModel">
+            <views:FilterChip Label="{Binding Label}" Count="{Binding Count}" IsActive="{Binding IsActive}" IsVisible="{Binding Count}"
+                              Command="{Binding $parent[views:ComparePanel].Compare.SelectPresetCommand}" CommandParameter="{Binding}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <!-- The matrix: rows are what the project held, columns what the parser did. -->
+    <StackPanel Grid.Row="1" Spacing="5" AutomationProperties.Name="Compare matrix">
+      <Grid ColumnDefinitions="170,*">
+        <views:CopyableTextBlock Classes="columnHeader" Text="IN THE PROJECT ↓   PARSER →" VerticalAlignment="Bottom" Margin="6,0" />
+        <ItemsControl Grid.Column="1" ItemsSource="{Binding Compare.Columns}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="5" ColumnSpacing="5" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CompareColumnViewModel">
+              <Button Classes="header" Theme="{DynamicResource BorderlessButton}"
+                      Command="{Binding $parent[views:ComparePanel].Compare.SelectColumnCommand}" CommandParameter="{Binding}"
+                      AutomationProperties.Name="{Binding Label, StringFormat='Choose the {0} column'}">
+                <StackPanel>
+                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="13" />
+                  <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="11" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Grid>
+      <ItemsControl ItemsSource="{Binding Compare.Rows}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="5" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:CompareRowViewModel">
+            <Grid ColumnDefinitions="170,*">
+              <Button Classes="header" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Stretch"
+                      Command="{Binding $parent[views:ComparePanel].Compare.SelectRowCommand}" CommandParameter="{Binding}"
+                      AutomationProperties.Name="{Binding Label, StringFormat='Choose the {0} row'}">
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                  <views:VerdictChip Verdict="{Binding Verdict}" Text="{Binding Label}" HorizontalAlignment="Left" />
+                  <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="11" Margin="2,0" />
+                </StackPanel>
+              </Button>
+              <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="5" ColumnSpacing="5" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CompareCellViewModel">
+                    <Border Classes="compareCell" Focusable="True" Tag="{Binding}"
+                            Classes.good="{Binding IsGood}" Classes.fine="{Binding IsFine}"
+                            Classes.violation="{Binding IsViolation}" Classes.review="{Binding IsReview}"
+                            Classes.new="{Binding IsNew}" Classes.nobody="{Binding IsNobody}" Classes.none="{Binding IsNone}"
+                            Classes.empty="{Binding IsEmpty}" Classes.selected="{Binding IsSelected}"
+                            PointerPressed="OnCellPressed" KeyDown="OnCellKeyDown"
+                            AutomationProperties.Name="{Binding AccessibleName}">
+                      <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CountText}" FontSize="19" FontWeight="SemiBold" IsVisible="{Binding !IsEmptyImpossible}" />
+                        <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <!-- What is chosen, then the list's own filters, which never change the counts above. -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,220,Auto" ColumnSpacing="8" Margin="0,6,0,0">
+      <StackPanel VerticalAlignment="Center" Spacing="1">
+        <views:CopyableTextBlock Text="{Binding Compare.ListSummary}" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.SelectionText}" FontSize="12" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <TextBox Grid.Column="1" Text="{Binding Compare.SearchText}" PlaceholderText="Search these words..."
+               AutomationProperties.Name="Search the listed words" />
+      <ComboBox Grid.Column="2" ItemsSource="{Binding Compare.SortChoices}" SelectedItem="{Binding Compare.Sort}" MinWidth="150"
+                AutomationProperties.Name="Order the listed words">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CompareSort">
+            <TextBlock Text="{Binding Converter={x:Static views:ComparePanel.SortLabel}}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+    </Grid>
+
+    <Grid Grid.Row="3" ColumnDefinitions="2*,60,150,100,190,3*,70" Margin="12,0,8,0">
+      <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WORD" />
+      <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="IN TEXTS" />
+      <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="IN THE PROJECT" />
+      <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="PARSER" />
+      <views:CopyableTextBlock Grid.Column="4" Classes="columnHeader" Text="MEANING" />
+      <views:CopyableTextBlock Grid.Column="5" Classes="columnHeader" Text="FIRST READING" />
+    </Grid>
+    <ListBox Grid.Row="4" Classes="denseWords" ItemsSource="{Binding Compare.Words}" AutomationProperties.Name="Words in the chosen cells">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:CompareWordViewModel">
+          <Grid ColumnDefinitions="2*,60,150,100,190,3*,70" Margin="4,3">
+            <views:CopyableTextBlock Grid.Column="0" Text="{Binding Word}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
+            <views:VerdictChip Grid.Column="2" Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}" Compact="True" HorizontalAlignment="Left" />
+            <views:VerdictChip Grid.Column="3" Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}" Compact="True" HorizontalAlignment="Left" />
+            <views:CopyableTextBlock Grid.Column="4" Text="{Binding Meaning}" FontSize="12" VerticalAlignment="Center"
+                                     Classes.error="{Binding IsViolation}" TextTrimming="CharacterEllipsis" />
+            <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="{Binding FirstReading}" FontSize="12"
+                                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <HyperlinkButton Grid.Column="6" Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
+                             Command="{Binding $parent[views:ComparePanel].Compare.OpenWordCommand}" CommandParameter="{Binding}"
+                             AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Words'}" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </Grid>
+</UserControl>

@@ -44,6 +44,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Statistics = statistics;
         Handoff = handoff;
         ResultsInText = new ResultsInTextViewModel(words, assess, ShowWordInResults, TryWordInResults);
+        assess.Compare.OpenWord = ShowWordInResults;
         Statistics.AssessedWord = Assess.Words.Find;
         Statistics.TryWord = TryWordInResults;
         Statistics.OpenTimeLimit = () => CurrentStage = WorkflowStage.Texts;
@@ -114,10 +115,13 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     /// <summary>Which view of a finished Assessment the Results stage is showing.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowResultsCompare))]
     [NotifyPropertyChangedFor(nameof(ShowResultsWords))]
     [NotifyPropertyChangedFor(nameof(ShowResultsInText))]
     [NotifyPropertyChangedFor(nameof(ShowResultsStatistics))]
     private ResultsView _resultsView;
+
+    public bool ShowResultsCompare => ResultsView == ResultsView.Compare;
 
     public bool ShowResultsWords => ResultsView == ResultsView.Words;
 
@@ -320,7 +324,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
             if (Assess.IsActive)
             {
-                ResultsView = ResultsView.Words;
+                ResultsView = ResultsView.Compare;
                 CurrentStage = WorkflowStage.Results;
             }
         }

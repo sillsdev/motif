@@ -24,6 +24,9 @@ public enum WorkflowStage
 /// <summary>The three views of a finished Assessment that share the Results stage.</summary>
 public enum ResultsView
 {
+    /// <summary>Every word in the matrix of what the project held against what the parser did, and the list it filters.</summary>
+    Compare,
+
     /// <summary>One row per word the parser was asked about.</summary>
     Words,
 

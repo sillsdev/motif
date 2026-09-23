@@ -381,6 +381,7 @@ public sealed class ResultsReadingViewModel
         {
             "approved" => "Approved",
             "disapproved" => "Disapproved",
+            "candidate" => "Candidate",
             "no-opinion" => "No opinion",
             _ => string.Empty,
         };

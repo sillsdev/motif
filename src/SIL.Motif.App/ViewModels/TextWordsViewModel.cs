@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Texts;
 
 namespace SIL.Motif.App.ViewModels;
@@ -61,16 +62,24 @@ public static class WordProjectStatuses
         _ => Verdict.New,
     };
 
-    /// <summary>Which row <paramref name="word"/> belongs to; see <see cref="WordProjectStatus"/> for the order.</summary>
+    /// <summary>Which row <paramref name="word"/> belongs to, ranked by <see cref="ProjectStandings.Of"/>.</summary>
     public static WordProjectStatus Of(TextWord word)
     {
         ArgumentNullException.ThrowIfNull(word);
-        if (word.IncorrectSpelling) return WordProjectStatus.IncorrectSpelling;
-        if (word.Approved.Count > 0) return WordProjectStatus.Approved;
-        if (word.CandidateCount > 0 || word.Occurrences.Any(occurrence => occurrence.Status == InterlinearAnalysisStatus.Unapproved))
-            return WordProjectStatus.Candidate;
-        return word.Disapproved.Count > 0 ? WordProjectStatus.Rejected : WordProjectStatus.NotPresent;
+        var candidates = word.Occurrences.Any(occurrence => occurrence.Status == InterlinearAnalysisStatus.Unapproved)
+            ? Math.Max(word.CandidateCount, 1) : word.CandidateCount;
+        return FromStanding(ProjectStandings.Of(word.Approved.Count, candidates, word.Disapproved.Count, word.IncorrectSpelling));
     }
+
+    /// <summary>Reads a <see cref="ProjectStanding"/> wire value; anything unknown is treated as nothing stored.</summary>
+    public static WordProjectStatus FromStanding(string? standing) => standing switch
+    {
+        ProjectStanding.Approved => WordProjectStatus.Approved,
+        ProjectStanding.Candidate => WordProjectStatus.Candidate,
+        ProjectStanding.Rejected => WordProjectStatus.Rejected,
+        ProjectStanding.IncorrectSpelling => WordProjectStatus.IncorrectSpelling,
+        _ => WordProjectStatus.NotPresent,
+    };
 
     /// <summary>The short name a chip shows for <paramref name="status"/>, in the Texts stage's own words.</summary>
     public static string LabelOf(WordProjectStatus status, int approvedCount = 1) => status switch

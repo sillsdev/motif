@@ -17,6 +17,27 @@ public static class ApprovedMorphologyReader
     public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadDisapproved(LcmCache cache) =>
         ReadFrom(cache, word => word.HumanDisapprovedParses);
 
+    /// <summary>
+    /// Every candidate analysis — one no person has approved or rejected, whoever produced it — keyed the same way as
+    /// <see cref="Read"/>, for grading a produced reading against what the project holds without a human verdict.
+    /// </summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadCandidates(LcmCache cache) =>
+        ReadFrom(cache, word =>
+        {
+            var withOpinion = word.HumanApprovedAnalyses.Concat(word.HumanDisapprovedParses).ToHashSet();
+            return word.AnalysesOC.Where(analysis => !withOpinion.Contains(analysis));
+        });
+
+    /// <summary>The surface text of every wordform FieldWorks marks as incorrectly spelled.</summary>
+    public static IReadOnlySet<string> ReadIncorrectSpellings(LcmCache cache) =>
+        cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+            .Where(word => word.SpellingStatus == IncorrectSpellingStatus)
+            .Select(word => word.Form.VernacularDefaultWritingSystem?.Text ?? string.Empty)
+            .ToHashSet(StringComparer.Ordinal);
+
+    // SpellingStatus's Incorrect member (0 = Undecided, 1 = Correct, 2 = Incorrect).
+    private const int IncorrectSpellingStatus = 2;
+
     private static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadFrom(
         LcmCache cache, Func<IWfiWordform, IEnumerable<IWfiAnalysis>> select)
     {

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -334,19 +335,24 @@ public static class AssessCommand
                         grammarWarningDetails = GrammarWarningReader.Read(namingCache, projectName, grammarWarnings);
                     var approvedByWord = ApprovedMorphologyReader.Read(namingCache);
                     var disapprovedByWord = ApprovedMorphologyReader.ReadDisapproved(namingCache);
+                    var candidatesByWord = ApprovedMorphologyReader.ReadCandidates(namingCache);
+                    var misspelled = ApprovedMorphologyReader.ReadIncorrectSpellings(namingCache);
                     words = words.Select(word =>
                     {
                         var readings = word.Morphology is null
                             ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology);
                         var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : ((int?)null, (int?)null);
+                        var approved = approvedByWord.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
+                        var disapproved = disapprovedByWord.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
+                        var candidates = candidatesByWord.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
                         return word with
                         {
                             Readings = readings,
                             TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
-                            ReadingGrades = word.Morphology is null ? null : GradeReadings(
-                                word.Morphology.Analyses,
-                                approvedByWord.TryGetValue(word.Word, out var approved) ? approved : Array.Empty<ApprovedMorphology>(),
-                                disapprovedByWord.TryGetValue(word.Word, out var disapproved) ? disapproved : Array.Empty<ApprovedMorphology>()),
+                            ReadingGrades = word.Morphology is null ? null
+                                : GradeReadings(word.Morphology.Analyses, approved, disapproved, candidates),
+                            ProjectStanding = ProjectStandings.Of(
+                                approved.Count, candidates.Count, disapproved.Count, misspelled.Contains(word.Word)),
                             MissedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
                                 .Select(index => word.Correctness.Expectations[index])
                                 .Select(missed => new ParserReading(ParserReadingReader.ReadMorphs(namingCache, projectName,
@@ -424,9 +430,10 @@ public static class AssessCommand
     // One grade per produced analysis, in Readings' own order, using the same match Correctness uses.
     private static IReadOnlyList<string> GradeReadings(
         IReadOnlyList<ParseAnalysis> analyses, IReadOnlyList<ApprovedMorphology> approved,
-        IReadOnlyList<ApprovedMorphology> disapproved) =>
+        IReadOnlyList<ApprovedMorphology> disapproved, IReadOnlyList<ApprovedMorphology> candidates) =>
         analyses.Select(analysis => approved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "approved"
             : disapproved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "disapproved"
+            : candidates.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "candidate"
             : "no-opinion").ToArray();
 
     // Optional per-word attempts/passes; a line this cannot parse or make sense of is skipped, never fatal.

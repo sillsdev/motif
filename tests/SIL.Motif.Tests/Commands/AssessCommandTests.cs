@@ -340,6 +340,61 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void AReadingMatchingACandidateIsGradedCandidate()
+    {
+        using var seeded = NewSeededScratch();
+        string firstMorph, firstMsa;
+        IReadOnlyList<ApprovedMorphology> approvedExpectations;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(seeded.FwDataPath))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+                .Single(w => w.Form.VernacularDefaultWritingSystem?.Text == SeededProject.AnalysedWordForm);
+            var approved = wordform.HumanApprovedAnalyses.Single();
+            firstMorph = approved.MorphBundlesOS[0].MorphRA!.Guid.ToString("D");
+            firstMsa = approved.MorphBundlesOS[0].MsaRA!.Guid.ToString("D");
+
+            // A second analysis nobody has approved or rejected: a candidate.
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var candidate = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(candidate);
+                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                candidate.MorphBundlesOS.Add(bundle);
+                bundle.MorphRA = approved.MorphBundlesOS[0].MorphRA;
+                bundle.MsaRA = approved.MorphBundlesOS[0].MsaRA;
+            });
+            new FwDataProjectLoader().Save(cache);
+            approvedExpectations = ApprovedMorphologyReader.Read(cache)[SeededProject.AnalysedWordForm];
+            Assert.Single(ApprovedMorphologyReader.ReadCandidates(cache)[SeededProject.AnalysedWordForm]);
+        }
+
+        var morphology = new ParseWordEvidence(
+            SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0, SeededProject.AnalysedWordForm, 5, false, false, false,
+            [new ParseAnalysis([new ParseMorph(firstMorph, firstMsa, null, null)])], []);
+        var correctness = SIL.Motif.Host.Parser.MorphologyCorrectness.Compare(morphology, approvedExpectations);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig")
+                        { Morphology = morphology, Correctness = correctness }],
+                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], [SeededProject.AnalysedWordForm], false, null)),
+            NewManagedRoot(), assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var word = Assert.Single(outcome.Value!.Words);
+        Assert.Equal(["candidate"], word.ReadingGrades);
+        // The word still stands as approved: an approval outranks a candidate.
+        Assert.Equal(ProjectStanding.Approved, word.ProjectStanding);
+    }
+
+    [Fact]
     public void ReadingsAreGradedAndMissedApprovedListsWhatTheParserDidNotProduce()
     {
         using var seeded = NewSeededScratch();
@@ -396,6 +451,7 @@ public sealed class AssessCommandTests : IDisposable
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var word = Assert.Single(outcome.Value!.Words);
         Assert.Equal(["disapproved", "no-opinion"], word.ReadingGrades);
+        Assert.Equal(ProjectStanding.Approved, word.ProjectStanding);
         var missed = Assert.Single(word.MissedApproved!);
         Assert.Equal(2, missed.Morphs.Count);
         Assert.Equal(SeededProject.FirstForm, missed.Morphs[0].Form);

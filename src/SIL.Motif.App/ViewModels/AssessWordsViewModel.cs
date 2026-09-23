@@ -94,6 +94,9 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     /// </summary>
     public IReadOnlyList<OutcomeSegment> Outcomes { get; private set; } = [];
 
+    /// <summary>Every word of the Assessment, whatever the filters, for views that count the whole run.</summary>
+    public IReadOnlyList<AssessWordRowViewModel> AllRows => _all;
+
     /// <summary>
     /// The same parts as <see cref="Outcomes"/> in one line, counted in words rather than searches, such as
     /// "209 words: 130 parsed, 22 no parse, 57 stopped at a limit". Empty until an Assessment is loaded.
@@ -185,6 +188,7 @@ public sealed class AssessWordRowViewModel
         IsParsed = word.Outcome == "analysed";
         IsFailed = word.Outcome == "no-analysis";
         IsIncomplete = word.IsIncomplete;
+        Standing = word.ProjectStanding is { } standing ? WordProjectStatuses.FromStanding(standing) : null;
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
         Correctness = word.Correctness is { Expected: > 0 } correctness
             ? $"{correctness.Matched} of {correctness.Expected} approved analyses produced"
@@ -208,6 +212,7 @@ public sealed class AssessWordRowViewModel
         VsProject = MissedApproved.Count > 0 ? (Result == "Skipped" ? "Not tried" : IsIncomplete ? "Not reached" : "Missed")
             : Readings.Any(reading => reading.Grade == "disapproved") ? "Disapproved"
             : Readings.Any(reading => reading.Grade == "approved") ? "Approved"
+            : Readings.Any(reading => reading.Grade == "candidate") ? "Candidate"
             : Readings.Count > 0 && grades is not null ? "No opinion"
             : "—";
 
@@ -231,6 +236,9 @@ public sealed class AssessWordRowViewModel
     public bool IsParsed { get; }
     public bool IsFailed { get; }
     public bool IsIncomplete { get; }
+
+    /// <summary>What the project held for this word when it was assessed, or <see langword="null"/> if it was not read.</summary>
+    public WordProjectStatus? Standing { get; }
 
     /// <summary>The Assessment's own account of whether this word's search finished, and if not, what stopped it.</summary>
     public string CompletionStatus { get; }
@@ -257,7 +265,7 @@ public sealed class AssessWordRowViewModel
     /// <summary>Whether the parser needed more than its first pass; zero passes is the ordinary case and says nothing.</summary>
     public bool HasPasses => Passes is > 0;
 
-    /// <summary>Grade against the project's own analyses: Approved, Disapproved, No opinion, Missed, or none available.</summary>
+    /// <summary>Grade against the project's own analyses: Approved, Disapproved, Candidate, No opinion, Missed, or none.</summary>
     public string VsProject { get; }
 
     /// <summary>Whether there is a comparison to show; a word with no readings and nothing missed has none.</summary>
@@ -268,6 +276,7 @@ public sealed class AssessWordRowViewModel
     {
         "Approved" => Verdict.Agrees,
         "Disapproved" => Verdict.Differs,
+        "Candidate" => Verdict.Candidate,
         "No opinion" => Verdict.New,
         "Missed" => Verdict.NoResult,
         _ => Verdict.Limit,
@@ -322,6 +331,7 @@ public sealed class ParserReadingViewModel
             "missed" => "Missed",
             "not-reached" => "Not reached",
             "not-tried" => "Not tried",
+            "candidate" => "Candidate",
             "no-opinion" => "No opinion",
             _ => string.Empty,
         };
@@ -340,6 +350,7 @@ public sealed class ParserReadingViewModel
     {
         "approved" => Verdict.Agrees,
         "disapproved" => Verdict.Differs,
+        "candidate" => Verdict.Candidate,
         "missed" => Verdict.NoResult,
         "not-reached" or "not-tried" => Verdict.Limit,
         _ => Verdict.New,

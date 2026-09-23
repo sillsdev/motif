@@ -224,6 +224,12 @@
                     VerticalAlignment="Center"
                     AutomationProperties.Name="Run the Assessment from Results" />
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="4">
+              <Button Content="Compare"
+                      Classes="tab" Classes.active="{Binding ShowResultsCompare}"
+                      Theme="{DynamicResource BorderlessButton}"
+                      Command="{Binding ShowResultsViewCommand}"
+                      CommandParameter="{x:Static vm:ResultsView.Compare}"
+                      AutomationProperties.Name="Compare results view" />
               <Button Content="Words"
                       Classes="tab" Classes.active="{Binding ShowResultsWords}"
                       Theme="{DynamicResource BorderlessButton}"
@@ -252,6 +258,14 @@
         </Border>
 
         <Panel Grid.Row="1">
+          <Panel IsVisible="{Binding ShowResultsCompare}">
+            <ContentControl x:Name="CompareHost" />
+            <views:CopyableTextBlock Classes="muted"
+                       Text="No results yet. Choose what to assess in Texts, then run."
+                       IsVisible="{Binding ShowEmptyResults}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+          </Panel>
           <Panel IsVisible="{Binding ShowResultsWords}">
             <ContentControl x:Name="AssessHost" />
             <views:CopyableTextBlock Classes="muted"

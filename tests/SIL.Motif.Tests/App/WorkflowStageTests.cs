@@ -152,7 +152,7 @@ public sealed class WorkflowStageTests
     }
 
     [Fact]
-    public async Task ARunStartingReturnsResultsToItsWordsView()
+    public async Task ARunStartingReturnsResultsToItsCompareView()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
@@ -164,7 +164,7 @@ public sealed class WorkflowStageTests
 
         var running = workspace.Assess.RunCommand.ExecuteAsync(null);
 
-        Assert.True(workspace.ShowResultsWords);
+        Assert.True(workspace.ShowResultsCompare);
         workspace.Assess.CancelCommand.Execute(null);
         await running;
     }

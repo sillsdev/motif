@@ -281,6 +281,54 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
+    public void ClickingACompareCellListsOnlyItsWords()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.Assess.Result = new AssessCommandResponse(
+                    new BaselineCaptureResponse(
+                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
+                    new SelectionProjection([], []), [], "2 searches completed; 0 incomplete")
+                {
+                    Words =
+                    [
+                        new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 1, null)
+                            { ProjectStanding = ProjectStanding.Approved, MissedApproved = [] },
+                        new AssessmentWordResult("mwalimu", "no-analysis", false, "Search completed", 1, null)
+                            { ProjectStanding = ProjectStanding.NotPresent },
+                    ],
+                };
+                workspace.CurrentStage = WorkflowStage.Results;
+                window.Show();
+                window.UpdateLayout();
+
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
+                Assert.True(panel.IsEffectivelyVisible);
+                var lost = panel.GetVisualDescendants().OfType<Border>().Single(border =>
+                    border.Tag is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumn.NoParse });
+                Assert.StartsWith("Approved, No parse: 1 words", AutomationProperties.GetName(lost));
+                lost.RaiseEvent(new Avalonia.Input.PointerPressedEventArgs(lost,
+                    new Avalonia.Input.Pointer(1, Avalonia.Input.PointerType.Mouse, true), window, default, 0,
+                    new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton,
+                        Avalonia.Input.PointerUpdateKind.LeftButtonPressed), Avalonia.Input.KeyModifiers.None));
+                window.UpdateLayout();
+
+                Assert.Equal(["kitabu"], workspace.Assess.Compare.Words.Select(word => word.Word));
+                Assert.Contains("selected", lost.Classes);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void AssessmentPanelShowsCollapsibleSectionsAndWordAndWarningTablesWithoutIdentifiers()
     {
         _avalonia.Invoke(() =>
@@ -328,6 +376,7 @@ public sealed class MainWindowSmokeTests
                 };
 
                 workspace.CurrentStage = WorkflowStage.Results;
+                workspace.ResultsView = ResultsView.Words;
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();

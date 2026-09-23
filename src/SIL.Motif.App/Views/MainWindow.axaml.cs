@@ -45,6 +45,7 @@ public sealed partial class MainWindow : Window
         Host("GrammarHost").Content = new GrammarPanel(workspace.Grammar);
         Host("SelectionHost").Content = new SelectionPanel(workspace.Selection, workspace.Words);
         Host("AssessHost").Content = new AssessPanel(workspace.Assess);
+        Host("CompareHost").Content = new ComparePanel(workspace.Assess.Compare);
         Host("ResultsInTextHost").Content = new ResultsInTextPanel(workspace.ResultsInText);
         Host("StatisticsHost").Content = new StatisticsPanel(workspace.Statistics);
         Host("HandoffHost").Content = new HandoffPanel(workspace.Handoff);

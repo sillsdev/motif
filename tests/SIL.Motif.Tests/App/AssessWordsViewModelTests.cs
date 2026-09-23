@@ -42,6 +42,18 @@ public sealed class AssessWordsViewModelTests
     }
 
     [Fact]
+    public void AReadingTheProjectHoldsAsACandidateReadsCandidateNotNoOpinion()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([Word("chakula", "analysed", [Reading("food"), Reading("eat")], ["candidate", "no-opinion"])]);
+
+        var row = Assert.Single(table.Rows);
+        Assert.Equal("Candidate", row.VsProject);
+        Assert.Equal(Verdict.Candidate, row.Meaning);
+        Assert.Equal(0, table.NoOpinionCount);
+    }
+
+    [Fact]
     public void TheOutcomeSummaryIsEmptyUntilAnAssessmentIsLoaded()
     {
         var table = new AssessWordsViewModel();

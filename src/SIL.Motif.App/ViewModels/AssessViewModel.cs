@@ -48,6 +48,9 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// <summary>The last successful Assessment's words, as a sortable, searchable table.</summary>
     public AssessWordsViewModel Words { get; } = new();
 
+    /// <summary>The same words in the matrix of what the project held against what the parser did.</summary>
+    public CompareViewModel Compare { get; } = new();
+
     /// <summary>Traces one word on demand against the current Baseline's grammar, for Try a Word.</summary>
     public TraceWordViewModel Trace { get; }
 
@@ -62,6 +65,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         if (e.PropertyName != nameof(Result)) return;
         if (Result is not null) CompletedAt = DateTimeOffset.Now;
         Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null);
+        Compare.Load(Result is null ? null : Words.AllRows);
     }
 
     private static int? LookUpOccurrences(TextWordsViewModel textWords, string word) =>

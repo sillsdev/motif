@@ -148,6 +148,14 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
+                // Compare is the first view Results opens on; the others are one click away.
+                Assert.Contains("active", ButtonNamed(window, "Compare results view").Classes);
+                Assert.DoesNotContain("active", ButtonNamed(window, "Words results view").Classes);
+                Assert.False(Host(window, "AssessHost").IsEffectivelyVisible);
+
+                ButtonNamed(window, "Words results view").Command!.Execute(ResultsView.Words);
+                window.UpdateLayout();
+
                 Assert.Contains("active", ButtonNamed(window, "Words results view").Classes);
                 Assert.DoesNotContain("active", ButtonNamed(window, "Statistics results view").Classes);
                 Assert.True(Host(window, "AssessHost").IsEffectivelyVisible);

@@ -40,10 +40,16 @@ public sealed record AssessmentWordResult(
     public WordCorrectness? Correctness { get; init; }
     /// <summary>
     /// One grade per entry of <see cref="Readings"/>, in the same order: <c>approved</c> when the reading is an
-    /// analysis the project approves, <c>disapproved</c> when it is one the project rejected, and
-    /// <c>no-opinion</c> otherwise. <see langword="null"/> when the project's analyses were not read.
+    /// analysis the project approves, <c>disapproved</c> when it is one the project rejected, <c>candidate</c> when
+    /// it is one the project holds without a human verdict, and <c>no-opinion</c> when the project holds nothing
+    /// like it. <see langword="null"/> when the project's analyses were not read.
     /// </summary>
     public IReadOnlyList<string>? ReadingGrades { get; init; }
+    /// <summary>
+    /// What the project held for this word when it was assessed, as one of the <see cref="Responses.ProjectStanding"/>
+    /// values; <see langword="null"/> when the project's analyses were not read.
+    /// </summary>
+    public string? ProjectStanding { get; init; }
     /// <summary>Approved analyses of this word the parser did not produce, as morphs a person reads.</summary>
     public IReadOnlyList<ParserReading>? MissedApproved { get; init; }
     /// <summary>How many rule applications and lexical lookups the parser attempted for this word, when measured.</summary>

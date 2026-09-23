@@ -95,6 +95,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 Drive(walkthrough, original);
                 SaveEveryStage(walkthrough, folder);
                 SaveGrammarWithAKindChosen(walkthrough, folder);
+                SaveCompareWithCellsChosen(walkthrough, folder);
                 SaveInTextWithNoTextChecked(walkthrough, folder);
                 return Task.CompletedTask;
             }, TimeSpan.FromMinutes(30));
@@ -183,7 +184,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                     ("1-project", WorkflowStage.Project, ResultsView.Words),
                     ("2-grammar", WorkflowStage.Grammar, ResultsView.Words),
                     ("3-texts", WorkflowStage.Texts, ResultsView.Words),
-                    ("4-results-words", WorkflowStage.Results, ResultsView.Words),
+                    ("4-results-compare", WorkflowStage.Results, ResultsView.Compare),
+                    ("4b-results-words", WorkflowStage.Results, ResultsView.Words),
                     ("5-results-intext", WorkflowStage.Results, ResultsView.InText),
                     ("6-results-statistics", WorkflowStage.Results, ResultsView.Statistics),
                     ("7-handoff", WorkflowStage.Handoff, ResultsView.Words),
@@ -199,6 +201,19 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         {
             Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
         }
+    }
+
+    // The matrix filtering the list: the violations preset, then the single largest cell.
+    private static void SaveCompareWithCellsChosen(WalkthroughWindow walkthrough, string folder)
+    {
+        var compare = walkthrough.Workspace.Assess.Compare;
+        walkthrough.Workspace.CurrentStage = WorkflowStage.Results;
+        walkthrough.Workspace.ResultsView = ResultsView.Compare;
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation));
+        Save(walkthrough.Window, Path.Combine(folder, "4c-results-compare-violations-light.png"));
+        compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
+        Save(walkthrough.Window, Path.Combine(folder, "4d-results-compare-largest-cell-light.png"));
+        compare.ClearSelectionCommand.Execute(null);
     }
 
     // The largest kind of finding chosen, so its own view is reviewed as well as the whole list.
