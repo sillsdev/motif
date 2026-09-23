@@ -1,8 +1,11 @@
 using System;
 using System.Diagnostics;
 using SIL.Motif.Commands;
-using SIL.Motif.Contract.Ids;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Cli.Rendering;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -30,70 +33,91 @@ public sealed class DiscardDraftTests : IDisposable
 
     private string Project => Path.Combine(_root, "project.fwdata");
 
+    private CommandOutcome<DraftCreatedResponse> NewDraft(
+        string fwDataPath, string productVersion, string draftName, string? label) =>
+        ProposalCommands.New(new NewDraftRequest(fwDataPath, productVersion, draftName, label));
+
+    private CommandOutcome<SetGlossAddedResponse> AddSetGloss(
+        string fwDataPath, string productVersion, string draftName, string target, string ws, string text) =>
+        ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            fwDataPath, productVersion, draftName, target, ws, text));
+
+    private CommandOutcome<ProposalFinalizedResponse> FinalizeDraft(
+        string fwDataPath, string productVersion, string draftName) =>
+        ProposalCommands.Finalize(new FinalizeRequest(fwDataPath, productVersion, draftName));
+
+    private CommandOutcome<ReopenedResponse> ReopenDraft(
+        string fwDataPath, string productVersion, string draftName, string proposalId) =>
+        ProposalCommands.Reopen(new ReopenRequest(fwDataPath, productVersion, draftName, proposalId));
+
+    private CommandOutcome<DraftDiscardedResponse> DiscardDraft(
+        string fwDataPath, string productVersion, string draftName) =>
+        ProposalCommands.DiscardDraft(new DiscardDraftRequest(fwDataPath, productVersion, draftName));
+
+    private CommandOutcome<ProposalDetailProjection> ShowProposal(
+        string fwDataPath, string productVersion, string proposalId) =>
+        ProposalCommands.Show(new ShowProposalRequest(fwDataPath, productVersion, proposalId));
     [Fact]
     public void DiscardingANeverFinalizedDraftRemovesItAndFreesTheNameImmediately()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(Project, ProductVersion, "d", "a label").ExitCode);
+        Assert.True(NewDraft(Project, ProductVersion, "d", "a label").Succeeded);
 
-        var discarded = LegacyProposalCommands.DiscardDraft(Project, ProductVersion, "d");
+        var discarded = DiscardDraft(Project, ProductVersion, "d");
 
-        Assert.Equal(0, discarded.ExitCode);
-        Assert.Contains("Discarded draft 'd'", discarded.Output);
+        Assert.True(discarded.Succeeded);
+        Assert.Equal("d", discarded.Value!.DraftName);
+        Assert.False(discarded.Value.WasReopened);
         Assert.False(OpenRepository().DraftNameExists("d"));
 
         // Reusable immediately, not merely absent from a listing: a fresh 'new' under the same name succeeds.
-        var recreated = LegacyProposalCommands.New(Project, ProductVersion, "d", "second label");
-        Assert.Equal(0, recreated.ExitCode);
+        var recreated = NewDraft(Project, ProductVersion, "d", "second label");
+        Assert.True(recreated.Succeeded);
     }
 
     [Fact]
     public void DiscardingAnUnknownNameRefusesNotFound()
     {
-        var result = LegacyProposalCommands.DiscardDraft(Project, ProductVersion, "nope");
+        var result = DiscardDraft(Project, ProductVersion, "nope");
 
-        Assert.Equal(2, result.ExitCode);
-        Assert.Equal(FailureReason.NotFound, result.Reason);
-        Assert.Contains("not found", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.Succeeded);
+        Assert.Equal(FailureReason.NotFound, result.Refusal!.Reason);
+        Assert.Contains("not found", result.Refusal.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void DiscardingAFinalizedProposalsIdRefusesNotFoundJustLikeAnAbsentDraft()
     {
         // A finalized Proposal has no DraftName row, so this takes the same NotFound path as an unknown name.
-        Assert.Equal(0, LegacyProposalCommands.New(Project, ProductVersion, "d", null).ExitCode);
-        Assert.Equal(
-            0,
-            LegacyProposalCommands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
+        Assert.True(NewDraft(Project, ProductVersion, "d", null).Succeeded);
+        Assert.True(AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").Succeeded);
         DraftRationale.Author(Project, "d", "a label", "a comment");
-        var finalize = LegacyProposalCommands.Finalize(Project, ProductVersion, "d");
-        Assert.Equal(0, finalize.ExitCode);
-        var proposalId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(Project, ProductVersion, "d");
+        Assert.True(finalize.Succeeded);
+        var proposalId = finalize.Value!.ProposalId;
 
-        var result = LegacyProposalCommands.DiscardDraft(Project, ProductVersion, proposalId);
+        var result = DiscardDraft(Project, ProductVersion, proposalId);
 
-        Assert.Equal(2, result.ExitCode);
-        Assert.Equal(FailureReason.NotFound, result.Reason);
+        Assert.False(result.Succeeded);
+        Assert.Equal(FailureReason.NotFound, result.Refusal!.Reason);
     }
 
     [Fact]
     public void DiscardingADraftReopenedFromAFinalizedProposalRevertsToItsPriorCommittedRevision()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(Project, ProductVersion, "d", null).ExitCode);
-        Assert.Equal(
-            0,
-            LegacyProposalCommands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
+        Assert.True(NewDraft(Project, ProductVersion, "d", null).Succeeded);
+        Assert.True(AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").Succeeded);
         DraftRationale.Author(Project, "d", "a label", "a comment");
-        var finalize = LegacyProposalCommands.Finalize(Project, ProductVersion, "d");
-        Assert.Equal(0, finalize.ExitCode);
-        var proposalId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(Project, ProductVersion, "d");
+        Assert.True(finalize.Succeeded);
+        var proposalId = finalize.Value!.ProposalId;
         var before = OpenRepository().Get(CanonicalId.Parse(proposalId));
-        Assert.Equal(0, LegacyProposalCommands.Reopen(Project, ProductVersion, "reopened", proposalId).ExitCode);
+        Assert.True(ReopenDraft(Project, ProductVersion, "reopened", proposalId).Succeeded);
 
-        var result = LegacyProposalCommands.DiscardDraft(Project, ProductVersion, "reopened");
+        var result = DiscardDraft(Project, ProductVersion, "reopened");
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("Discarded draft 'reopened'", result.Output);
-        Assert.Contains("remains at its prior committed revision", result.Output);
+        Assert.True(result.Succeeded);
+        Assert.Equal("reopened", result.Value!.DraftName);
+        Assert.True(result.Value.WasReopened);
 
         // The draft name is gone, and the Proposal is listed as committed again, not as a draft.
         var repository = OpenRepository();
@@ -106,29 +130,29 @@ public sealed class DiscardDraftTests : IDisposable
         Assert.Equal(before.Status, after.Status);
 
         // The name is free again, not merely absent from a listing: a fresh 'new' under it succeeds.
-        Assert.Equal(0, LegacyProposalCommands.New(Project, ProductVersion, "reopened", null).ExitCode);
+        Assert.True(NewDraft(Project, ProductVersion, "reopened", null).Succeeded);
     }
 
     [Fact]
     public void ShowRendersTheSameProposalAfterReopenThenDiscardAsItDidBeforeTheReopen()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(Project, ProductVersion, "d", null).ExitCode);
-        Assert.Equal(
-            0,
-            LegacyProposalCommands.AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").ExitCode);
+        Assert.True(NewDraft(Project, ProductVersion, "d", null).Succeeded);
+        Assert.True(AddSetGloss(Project, ProductVersion, "d", CanonicalId.Mint().Value, "en", "hello").Succeeded);
         DraftRationale.Author(Project, "d", "a label", "a comment");
-        var finalize = LegacyProposalCommands.Finalize(Project, ProductVersion, "d");
-        Assert.Equal(0, finalize.ExitCode);
-        var proposalId = ExtractProposalId(finalize.Output);
-        var shownBefore = LegacyProposalCommands.Show(Project, ProductVersion, proposalId);
-        Assert.Equal(0, shownBefore.ExitCode);
+        var finalize = FinalizeDraft(Project, ProductVersion, "d");
+        Assert.True(finalize.Succeeded);
+        var proposalId = finalize.Value!.ProposalId;
+        var shownBefore = ShowProposal(Project, ProductVersion, proposalId);
+        Assert.True(shownBefore.Succeeded);
 
-        Assert.Equal(0, LegacyProposalCommands.Reopen(Project, ProductVersion, "reopened", proposalId).ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.DiscardDraft(Project, ProductVersion, "reopened").ExitCode);
+        Assert.True(ReopenDraft(Project, ProductVersion, "reopened", proposalId).Succeeded);
+        Assert.True(DiscardDraft(Project, ProductVersion, "reopened").Succeeded);
 
-        var shownAfter = LegacyProposalCommands.Show(Project, ProductVersion, proposalId);
-        Assert.Equal(0, shownAfter.ExitCode);
-        Assert.Equal(shownBefore.Output, shownAfter.Output);
+        var shownAfter = ShowProposal(Project, ProductVersion, proposalId);
+        Assert.True(shownAfter.Succeeded);
+        Assert.Equal(
+            ProposalCommandRenderer.Render(shownBefore, asJson: false).Output,
+            ProposalCommandRenderer.Render(shownAfter, asJson: false).Output);
     }
 
     /// <summary>Drives the real executable, since this is a new verb on the published argv surface.</summary>
@@ -165,17 +189,6 @@ public sealed class DiscardDraftTests : IDisposable
     }
 
     private IProposalRepository OpenRepository() => new ProposalRepository(ProjectMotifDatabase.Open(Project));
-
-    private static string ExtractProposalId(string output)
-    {
-        const string marker = "-> Proposal ";
-        var start = output.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {output}");
-        start += marker.Length;
-        var end = output.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from output: {output}");
-        return output.Substring(start, end - start);
-    }
 
     private static FailureEnvelope Envelope(string stderr) =>
         ProjectionJson.Deserialize<FailureEnvelope>(stderr)!;

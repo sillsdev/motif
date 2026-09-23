@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection.Usage;
@@ -27,6 +30,18 @@ public sealed class CorpusCommandDispatchTests : IDisposable
         _workerRoot = Path.Combine(_root, "worker-root");
     }
 
+    private CommandOutcome<CorpusAddedResponse> AddCorpus(
+        string fwDataPath, string productVersion, string corpusId, string description, string? uri, string? licence,
+        LicenceCapabilities capabilities, string tokeniser, string tokeniserVersion, string? tokeniserNotes) =>
+        CorpusCommands.AddCorpus(new AddCorpusRequest(
+            fwDataPath, productVersion, corpusId, description, uri, licence, capabilities, tokeniser,
+            tokeniserVersion, tokeniserNotes));
+
+    private CommandOutcome<CorpusDocumentAddedResponse> AddDocument(
+        string fwDataPath, string productVersion, string corpusId, string documentId, string fileOrUrl, string? title,
+        string? licence, LicenceCapabilities? capabilities) =>
+        CorpusCommands.AddDocument(new AddDocumentRequest(
+            fwDataPath, productVersion, corpusId, documentId, fileOrUrl, title, licence, capabilities));
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
@@ -53,17 +68,16 @@ public sealed class CorpusCommandDispatchTests : IDisposable
     {
         const string corpusId = "dispatch-corpus";
         const string description = "Private dispatch corpus";
-        var add = LegacyCorpusCommands.AddCorpus(
+        var add = AddCorpus(
             _fwDataPath, "1.0", corpusId, description, "https://private.test/corpus", "private-licence",
             LicenceCapabilities.Unknown(), "test-tokeniser", "1", "private notes");
-        Assert.Equal(0, add.ExitCode);
+        Assert.True(add.Succeeded);
         var sourcePath = Path.Combine(_root, "private-source.txt");
         File.WriteAllText(sourcePath, "private document text");
-        Assert.Equal(
-            0,
-            LegacyCorpusCommands.AddDocument(
+        Assert.True(
+            AddDocument(
                 _fwDataPath, "1.0", corpusId, "private-document", sourcePath, "Private document", null, null)
-                .ExitCode);
+                .Succeeded);
 
         var (exitCode, output, error) = Run($"show-corpus {corpusId}");
 

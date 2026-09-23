@@ -2,12 +2,14 @@ using System;
 using System.IO;
 using System.Linq;
 using SIL.Motif.Commands;
-using SIL.Motif.Contract.Projects;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Cli.Rendering;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Projection.Usage;
-using SIL.Motif.Tests.Projection;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -32,6 +34,19 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
         File.WriteAllText(_fwDataPath, string.Empty);
     }
 
+    private CommandOutcome<CorpusAddedResponse> AddCorpus(
+        string fwDataPath, string productVersion, string corpusId, string description, string? uri, string? licence,
+        LicenceCapabilities capabilities, string tokeniser, string tokeniserVersion, string? tokeniserNotes) =>
+        CorpusCommands.AddCorpus(new AddCorpusRequest(
+            fwDataPath, productVersion, corpusId, description, uri, licence, capabilities, tokeniser,
+            tokeniserVersion, tokeniserNotes));
+
+    private CommandOutcome<CorpusListProjection> ListCorpora(string fwDataPath, string productVersion, UsageLog? usage = null) =>
+        CorpusCommands.ListCorpora(new ListCorporaRequest(fwDataPath, productVersion), usage);
+
+    private CommandOutcome<CorpusDetailProjection> ShowCorpus(
+        string fwDataPath, string productVersion, string corpusId, UsageLog? usage = null) =>
+        CorpusCommands.ShowCorpus(new ShowCorpusRequest(fwDataPath, productVersion, corpusId), usage);
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
@@ -48,38 +63,46 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
             Assert.IsType<SqliteCorpusStore>(CorpusCommands.StoreFor(database));
         }
 
-        var addResult = LegacyCorpusCommands.AddCorpus(
+        var addResult = AddCorpus(
             _fwDataPath, "1.0", "tst-corpus", "Testlang corpus", uri: null, licence: "CC-BY-SA-4.0",
             capabilities: LicenceCapabilities.Unknown(), tokeniser: "whitespace-and-punctuation",
             tokeniserVersion: "1", tokeniserNotes: null);
-        Assert.Equal(0, addResult.ExitCode);
+        Assert.True(addResult.Succeeded);
+        Assert.Equal("tst-corpus", addResult.Value!.CorpusId);
 
-        var listResult = LegacyCorpusCommands.ListCorpora(_fwDataPath, "1.0");
-        Assert.Contains("tst-corpus", listResult.Output);
+        var listResult = ListCorpora(_fwDataPath, "1.0");
+        Assert.True(listResult.Succeeded);
+        Assert.Contains(listResult.Value!.Corpora, corpus => corpus.CorpusId == "tst-corpus");
 
         var usage = new UsageLog();
-        var listJson = LegacyCorpusCommands.ListCorporaJson(_fwDataPath, "1.0", usage);
-        var detailText = LegacyCorpusCommands.ShowCorpus(_fwDataPath, "1.0", "tst-corpus", usage);
-        var detailJson = LegacyCorpusCommands.ShowCorpusJson(_fwDataPath, "1.0", "tst-corpus", usage);
+        var listJson = ListCorpora(_fwDataPath, "1.0", usage);
+        var detailText = ShowCorpus(_fwDataPath, "1.0", "tst-corpus", usage);
+        var detailJson = ShowCorpus(_fwDataPath, "1.0", "tst-corpus", usage);
 
-        Assert.Equal(0, listJson.ExitCode);
-        Assert.Equal(0, detailText.ExitCode);
-        Assert.Equal(0, detailJson.ExitCode);
-        Assert.Contains("tst-corpus", listJson.Output);
-        Assert.Contains("Testlang corpus", listJson.Output);
-        FigureAudit.AssertEveryTextFigureAppearsInJson(detailText.Output, detailJson.Output);
+        Assert.True(listJson.Succeeded);
+        Assert.True(detailText.Succeeded);
+        Assert.True(detailJson.Succeeded);
+        var corpus = Assert.Single(listJson.Value!.Corpora);
+        Assert.Equal("tst-corpus", corpus.CorpusId);
+        Assert.Equal("Testlang corpus", corpus.Description);
+        Assert.Equal("tst-corpus", detailText.Value!.CorpusId);
+        Assert.Equal("tst-corpus", detailJson.Value!.CorpusId);
         Assert.Equal(new[] { "corpora", "show-corpus", "show-corpus" }, usage.Entries.Select(e => e.Command));
         Assert.All(usage.Entries, entry => Assert.DoesNotContain("tst-corpus", entry.ArgumentShape));
 
         // The human text is unchanged (no "error: " prefix); the JSON failure now carries a stable code too.
-        var missingText = LegacyCorpusCommands.ShowCorpus(_fwDataPath, "1.0", "missing");
-        var missingJson = LegacyCorpusCommands.ShowCorpusJson(_fwDataPath, "1.0", "missing");
-        Assert.Equal(2, missingText.ExitCode);
-        Assert.Equal(2, missingJson.ExitCode);
-        Assert.Equal("No corpus 'missing' in store." + Environment.NewLine, missingText.Output);
-        var envelope = ProjectionJson.Deserialize<FailureEnvelope>(missingJson.Output)!;
-        Assert.Equal("corpus.not-found", envelope.Code);
-        Assert.Equal("No corpus 'missing' in store.", envelope.Message);
+        var missingText = ShowCorpus(_fwDataPath, "1.0", "missing");
+        var missingJson = ShowCorpus(_fwDataPath, "1.0", "missing");
+        Assert.False(missingText.Succeeded);
+        Assert.False(missingJson.Succeeded);
+        Assert.Equal(FailureReason.NotFound, missingText.Refusal!.Reason);
+        Assert.Equal("corpus.not-found", missingText.Refusal.Code);
+        Assert.Equal("No corpus 'missing' in store.", missingText.Refusal.Message);
+        Assert.Equal("corpus.not-found", missingJson.Refusal!.Code);
+        Assert.Equal("No corpus 'missing' in store.", missingJson.Refusal.Message);
+        Assert.Equal(
+            "No corpus 'missing' in store." + Environment.NewLine,
+            CommandTextRenderer.Render(missingText, asJson: false).Output);
 
         // The database lives beside the project, not in a directory the caller happened to run from.
         Assert.True(File.Exists(ProjectDatabaseCatalog.DatabasePathFor(project)));

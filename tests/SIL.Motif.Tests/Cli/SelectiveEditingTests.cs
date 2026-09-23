@@ -6,6 +6,8 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -42,24 +44,61 @@ public sealed class SelectiveEditingTests : IDisposable
         catch { /* best-effort cleanup */ }
     }
 
+    private static CommandOutcome<DraftCreatedResponse> NewDraft(
+        string fwDataPath, string productVersion, string draftName, string? label) =>
+        ProposalCommands.New(new NewDraftRequest(fwDataPath, productVersion, draftName, label));
+
+    private static CommandOutcome<SetGlossAddedResponse> AddSetGloss(
+        string fwDataPath, string productVersion, string draftName, string target, string ws, string text,
+        IReadOnlyList<string>? dependsOn = null) =>
+        ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            fwDataPath, productVersion, draftName, target, ws, text, dependsOn));
+
+    private static CommandOutcome<DeleteLexemeFormAddedResponse> AddDeleteLexemeForm(
+        string fwDataPath, string productVersion, string draftName, string target) =>
+        ProposalCommands.AddDeleteLexemeForm(new AddDeleteLexemeFormRequest(
+            fwDataPath, productVersion, draftName, target));
+
+    private static CommandOutcome<ProposalFinalizedResponse> FinalizeDraft(
+        string fwDataPath, string productVersion, string draftName) =>
+        ProposalCommands.Finalize(new FinalizeRequest(fwDataPath, productVersion, draftName));
+
+    private static CommandOutcome<ReopenedResponse> ReopenDraft(
+        string fwDataPath, string productVersion, string draftName, string proposalId) =>
+        ProposalCommands.Reopen(new ReopenRequest(fwDataPath, productVersion, draftName, proposalId));
+
+    private static CommandOutcome<OperationsRemovedResponse> RemoveOperations(
+        string fwDataPath, string productVersion, string draftName, IReadOnlyList<string> operationIds,
+        bool force) =>
+        ProposalCommands.RemoveOperations(new RemoveOperationsRequest(
+            fwDataPath, productVersion, draftName, operationIds, force));
+
+    private static CommandOutcome<DuplicatedResponse> DuplicateProposal(
+        string fwDataPath, string productVersion, string sourceProposalId, string newDraftName) =>
+        ProposalCommands.Duplicate(new DuplicateRequest(
+            fwDataPath, productVersion, sourceProposalId, newDraftName));
+
+    private static CommandOutcome<ProposalSplitResponse> SplitProposal(
+        string fwDataPath, string productVersion, string sourceProposalId, IReadOnlyList<SplitGroup> groups,
+        bool force) =>
+        ProposalCommands.Split(new SplitRequest(fwDataPath, productVersion, sourceProposalId, groups, force));
+
     // ---- helpers -----------------------------------------------------------------------------
 
     private static string NewTarget() => CanonicalId.Mint().Value;
 
     private string CommitProposal(string draftName, params string[] setGlossTargets)
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, draftName, "label for " + draftName).ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, draftName, "label for " + draftName).Succeeded);
         foreach (var target in setGlossTargets)
         {
-            Assert.Equal(
-                0,
-                LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, target, "en", "gloss for " + target).ExitCode);
+            Assert.True(AddSetGloss(_fwDataPath, ProductVersion, draftName, target, "en", "gloss for " + target).Succeeded);
         }
         DraftRationale.Author(
             _fwDataPath, draftName, "Edit selected lexical entries", "Apply the authored gloss changes to the selected targets.");
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
-        Assert.Equal(0, finalize.ExitCode);
-        return ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, draftName);
+        Assert.True(finalize.Succeeded);
+        return finalize.Value!.ProposalId;
     }
 
     /// <summary>Stands in for a real dry-run anchor, without a FieldWorks project load per test.</summary>
@@ -92,17 +131,6 @@ public sealed class SelectiveEditingTests : IDisposable
             json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
     }
 
-    private static string ExtractProposalId(string output)
-    {
-        const string marker = "-> Proposal ";
-        var start = output.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {output}");
-        start += marker.Length;
-        var end = output.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from output: {output}");
-        return output.Substring(start, end - start);
-    }
-
     // ---- remove: no dependents -> just happens, and clears the anchor on amend -----------------
 
     [Fact]
@@ -110,17 +138,17 @@ public sealed class SelectiveEditingTests : IDisposable
     {
         var t1 = NewTarget();
         var t2 = NewTarget();
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", "two independent ops").ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", t1, "en", "gloss1").ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", t2, "en", "gloss2").ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "v1", "two independent ops").Succeeded);
+        Assert.True(AddSetGloss(_fwDataPath, ProductVersion, "v1", t1, "en", "gloss1").Succeeded);
+        Assert.True(AddSetGloss(_fwDataPath, ProductVersion, "v1", t2, "en", "gloss2").Succeeded);
         DraftRationale.Author(
             _fwDataPath, "v1", "Update two independent glosses", "Correct both lexical analyses in one proposal.");
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "v1");
-        Assert.Equal(0, finalize.ExitCode);
-        var proposalId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, "v1");
+        Assert.True(finalize.Succeeded);
+        var proposalId = finalize.Value!.ProposalId;
 
         // Reopen to get at the real operation ids as recorded in the committed object.
-        Assert.Equal(0, LegacyProposalCommands.Reopen(_fwDataPath, ProductVersion, "v2", proposalId).ExitCode);
+        Assert.True(ReopenDraft(_fwDataPath, ProductVersion, "v2", proposalId).Succeeded);
         var reopened = ReadDraft("v2");
         Assert.Equal(2, reopened.Operations.Count);
         var toRemove = reopened.Operations.First(o => o.Target == t2).OperationId;
@@ -128,18 +156,18 @@ public sealed class SelectiveEditingTests : IDisposable
         BindSyntheticAnchor(proposalId);
         Assert.NotNull(ReadAnchor(proposalId));
 
-        var removeResult = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v2", new[] { toRemove }, force: false);
-        Assert.Equal(0, removeResult.ExitCode);
-        Assert.DoesNotContain("orphan", removeResult.Output, StringComparison.OrdinalIgnoreCase);
+        var removeResult = RemoveOperations(_fwDataPath, ProductVersion, "v2", new[] { toRemove }, force: false);
+        Assert.True(removeResult.Succeeded);
+        Assert.Empty(removeResult.Value!.ForcedDependents);
 
         var afterRemove = ReadDraft("v2");
         Assert.Single(afterRemove.Operations);
         Assert.Equal(t1, afterRemove.Operations[0].Target);
 
-        var amend = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "v2");
-        Assert.Equal(0, amend.ExitCode);
-        Assert.Contains("Amended draft", amend.Output);
-        Assert.Equal(proposalId, ExtractProposalId(amend.Output)); // id frozen
+        var amend = FinalizeDraft(_fwDataPath, ProductVersion, "v2");
+        Assert.True(amend.Succeeded);
+        Assert.True(amend.Value!.IsAmend);
+        Assert.Equal(proposalId, amend.Value!.ProposalId); // id frozen
 
         Assert.Null(ReadAnchor(proposalId)); // stale anchor cleared by the edit
     }
@@ -151,20 +179,21 @@ public sealed class SelectiveEditingTests : IDisposable
     {
         var t1 = NewTarget();
         var t2 = NewTarget();
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", null).ExitCode);
-        var add1 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", t1, "en", "base");
-        Assert.Equal(0, add1.ExitCode);
-        var op1Id = ExtractOperationId(add1.Output);
-        var add2 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", t2, "en", "dependent", new[] { op1Id });
-        Assert.Equal(0, add2.ExitCode);
-        var op2Id = ExtractOperationId(add2.Output);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "v1", null).Succeeded);
+        var add1 = AddSetGloss(_fwDataPath, ProductVersion, "v1", t1, "en", "base");
+        Assert.True(add1.Succeeded);
+        var op1Id = add1.Value!.OperationId;
+        var add2 = AddSetGloss(_fwDataPath, ProductVersion, "v1", t2, "en", "dependent", new[] { op1Id });
+        Assert.True(add2.Succeeded);
+        var op2Id = add2.Value!.OperationId;
 
-        var result = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { op1Id }, force: false);
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("orphan", result.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(op1Id, result.Output);
-        Assert.Contains(op2Id, result.Output);
-        Assert.Contains("--force", result.Output);
+        var result = RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { op1Id }, force: false);
+        Assert.False(result.Succeeded);
+        Assert.Equal("operation.invalid-dependency", result.Refusal!.Code);
+        Assert.Contains("orphan", result.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(op1Id, result.Refusal.Message);
+        Assert.Contains(op2Id, result.Refusal.Message);
+        Assert.Contains("--force", result.Refusal.Message);
 
         // Nothing was mutated: the draft still has both operations.
         var draft = ReadDraft("v1");
@@ -179,35 +208,37 @@ public sealed class SelectiveEditingTests : IDisposable
         var t1 = NewTarget();
         var t2 = NewTarget();
         var t3 = NewTarget();
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", null).ExitCode);
-        var add1 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", t1, "en", "base");
-        var op1Id = ExtractOperationId(add1.Output);
-        var add2 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", t2, "en", "dependent", new[] { op1Id });
-        var op2Id = ExtractOperationId(add2.Output);
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", t3, "en", "independent").ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "v1", null).Succeeded);
+        var add1 = AddSetGloss(_fwDataPath, ProductVersion, "v1", t1, "en", "base");
+        Assert.True(add1.Succeeded);
+        var op1Id = add1.Value!.OperationId;
+        var add2 = AddSetGloss(_fwDataPath, ProductVersion, "v1", t2, "en", "dependent", new[] { op1Id });
+        Assert.True(add2.Succeeded);
+        var op2Id = add2.Value!.OperationId;
+        Assert.True(AddSetGloss(_fwDataPath, ProductVersion, "v1", t3, "en", "independent").Succeeded);
         DraftRationale.Author(
             _fwDataPath, "v1", "Update related glosses", "Keep dependent edits together while preserving the independent edit.");
 
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "v1");
-        Assert.Equal(0, finalize.ExitCode);
-        var proposalId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, "v1");
+        Assert.True(finalize.Succeeded);
+        var proposalId = finalize.Value!.ProposalId;
         BindSyntheticAnchor(proposalId);
 
-        Assert.Equal(0, LegacyProposalCommands.Reopen(_fwDataPath, ProductVersion, "v2", proposalId).ExitCode);
+        Assert.True(ReopenDraft(_fwDataPath, ProductVersion, "v2", proposalId).Succeeded);
 
-        var refused = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v2", new[] { op1Id }, force: false);
-        Assert.NotEqual(0, refused.ExitCode);
+        var refused = RemoveOperations(_fwDataPath, ProductVersion, "v2", new[] { op1Id }, force: false);
+        Assert.False(refused.Succeeded);
 
-        var forced = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v2", new[] { op1Id }, force: true);
-        Assert.Equal(0, forced.ExitCode);
-        Assert.Contains(op2Id, forced.Output);
+        var forced = RemoveOperations(_fwDataPath, ProductVersion, "v2", new[] { op1Id }, force: true);
+        Assert.True(forced.Succeeded);
+        Assert.Contains(forced.Value!.ForcedDependents, dependent => dependent.OperationId == op2Id);
 
         var afterRemove = ReadDraft("v2");
         Assert.Single(afterRemove.Operations);
         Assert.Equal(t3, afterRemove.Operations[0].Target);
 
-        var amend = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "v2");
-        Assert.Equal(0, amend.ExitCode);
+        var amend = FinalizeDraft(_fwDataPath, ProductVersion, "v2");
+        Assert.True(amend.Succeeded);
         Assert.Null(ReadAnchor(proposalId));
     }
 
@@ -216,21 +247,24 @@ public sealed class SelectiveEditingTests : IDisposable
     [Fact]
     public void RemoveOperations_TransitiveDependents_AllEnumerated()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", null).ExitCode);
-        var add1 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "a");
-        var op1Id = ExtractOperationId(add1.Output);
-        var add2 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "b", new[] { op1Id });
-        var op2Id = ExtractOperationId(add2.Output);
-        var add3 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "c", new[] { op2Id });
-        var op3Id = ExtractOperationId(add3.Output);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "v1", null).Succeeded);
+        var add1 = AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "a");
+        Assert.True(add1.Succeeded);
+        var op1Id = add1.Value!.OperationId;
+        var add2 = AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "b", new[] { op1Id });
+        Assert.True(add2.Succeeded);
+        var op2Id = add2.Value!.OperationId;
+        var add3 = AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "c", new[] { op2Id });
+        Assert.True(add3.Succeeded);
+        var op3Id = add3.Value!.OperationId;
 
-        var result = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { op1Id }, force: false);
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains(op2Id, result.Output);
-        Assert.Contains(op3Id, result.Output); // transitive: op3 depends on op2 depends on op1
+        var result = RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { op1Id }, force: false);
+        Assert.False(result.Succeeded);
+        Assert.Contains(op2Id, result.Refusal!.Message);
+        Assert.Contains(op3Id, result.Refusal.Message); // transitive: op3 depends on op2 depends on op1
 
-        var forced = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { op1Id }, force: true);
-        Assert.Equal(0, forced.ExitCode);
+        var forced = RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { op1Id }, force: true);
+        Assert.True(forced.Succeeded);
         Assert.Empty(ReadDraft("v1").Operations);
     }
 
@@ -240,19 +274,19 @@ public sealed class SelectiveEditingTests : IDisposable
     public void RemoveOperations_CascadingDelete_RefusedEvenWithForce()
     {
         var entryTarget = NewTarget();
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", null).ExitCode);
-        var addDelete = LegacyProposalCommands.AddDeleteLexemeForm(_fwDataPath, ProductVersion, "v1", entryTarget);
-        Assert.Equal(0, addDelete.ExitCode);
-        var deleteOpId = ExtractOperationId(addDelete.Output);
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "unrelated").ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "v1", null).Succeeded);
+        var addDelete = AddDeleteLexemeForm(_fwDataPath, ProductVersion, "v1", entryTarget);
+        Assert.True(addDelete.Succeeded);
+        var deleteOpId = addDelete.Value!.OperationId;
+        Assert.True(AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "unrelated").Succeeded);
 
-        var withoutForce = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { deleteOpId }, force: false);
-        Assert.NotEqual(0, withoutForce.ExitCode);
-        Assert.Contains("cascading delete", withoutForce.Output, StringComparison.OrdinalIgnoreCase);
+        var withoutForce = RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { deleteOpId }, force: false);
+        Assert.False(withoutForce.Succeeded);
+        Assert.Equal("operation.cascading-delete", withoutForce.Refusal!.Code);
 
-        var withForce = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { deleteOpId }, force: true);
-        Assert.NotEqual(0, withForce.ExitCode);
-        Assert.Contains("cascading delete", withForce.Output, StringComparison.OrdinalIgnoreCase);
+        var withForce = RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { deleteOpId }, force: true);
+        Assert.False(withForce.Succeeded);
+        Assert.Equal("operation.cascading-delete", withForce.Refusal!.Code);
 
         // Refused either way: nothing was mutated.
         Assert.Equal(2, ReadDraft("v1").Operations.Count);
@@ -261,23 +295,23 @@ public sealed class SelectiveEditingTests : IDisposable
     [Fact]
     public void RemoveOperations_UnknownOperationId_Fails()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", null).ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "a").ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "v1", null).Succeeded);
+        Assert.True(AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "a").Succeeded);
 
         var bogus = CanonicalId.Mint().Value;
-        var result = LegacyProposalCommands.RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { bogus }, force: false);
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains(bogus, result.Output);
+        var result = RemoveOperations(_fwDataPath, ProductVersion, "v1", new[] { bogus }, force: false);
+        Assert.False(result.Succeeded);
+        Assert.Contains(bogus, result.Refusal!.Message);
     }
 
     [Fact]
     public void AddSetGloss_DependsOnUnknownOperation_Fails()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", null).ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "v1", null).Succeeded);
         var bogus = CanonicalId.Mint().Value;
-        var result = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "a", new[] { bogus });
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains(bogus, result.Output);
+        var result = AddSetGloss(_fwDataPath, ProductVersion, "v1", NewTarget(), "en", "a", new[] { bogus });
+        Assert.False(result.Succeeded);
+        Assert.Contains(bogus, result.Refusal!.Message);
     }
 
     // ---- duplicate: fresh identity, copies content, leaves the source untouched ----------------
@@ -290,9 +324,9 @@ public sealed class SelectiveEditingTests : IDisposable
         var sourceId = CommitProposal("source", t1, t2);
         BindSyntheticAnchor(sourceId);
 
-        var duplicate = LegacyProposalCommands.Duplicate(_fwDataPath, ProductVersion, sourceId, "dup");
-        Assert.Equal(0, duplicate.ExitCode);
-        Assert.DoesNotContain(sourceId, duplicate.Output.Split('\n').First(l => l.Contains("proposalId")));
+        var duplicate = DuplicateProposal(_fwDataPath, ProductVersion, sourceId, "dup");
+        Assert.True(duplicate.Succeeded);
+        Assert.NotEqual(sourceId, duplicate.Value!.ProposalId);
 
         var dupDraft = ReadDraft("dup");
         Assert.Equal(2, dupDraft.Operations.Count);
@@ -303,10 +337,10 @@ public sealed class SelectiveEditingTests : IDisposable
         // The source Proposal's row (including its anchor) is untouched by duplicating it.
         Assert.NotNull(ReadAnchor(sourceId));
 
-        var dupFinalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "dup");
-        Assert.Equal(0, dupFinalize.ExitCode);
-        Assert.Contains("Finalized draft", dupFinalize.Output); // a first commit, not an amend
-        var dupProposalId = ExtractProposalId(dupFinalize.Output);
+        var dupFinalize = FinalizeDraft(_fwDataPath, ProductVersion, "dup");
+        Assert.True(dupFinalize.Succeeded);
+        Assert.False(dupFinalize.Value!.IsAmend); // a first commit, not an amend
+        var dupProposalId = dupFinalize.Value!.ProposalId;
         Assert.NotEqual(sourceId, dupProposalId);
         Assert.Null(ReadAnchor(dupProposalId)); // brand-new Proposal, never dry-run yet
         Assert.NotNull(ReadAnchor(sourceId)); // still untouched
@@ -316,9 +350,9 @@ public sealed class SelectiveEditingTests : IDisposable
     public void Duplicate_UnknownProposalId_Fails()
     {
         var bogus = CanonicalId.Mint().Value;
-        var result = LegacyProposalCommands.Duplicate(_fwDataPath, ProductVersion, bogus, "dup");
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found", result.Output, StringComparison.OrdinalIgnoreCase);
+        var result = DuplicateProposal(_fwDataPath, ProductVersion, bogus, "dup");
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.not-found", result.Refusal!.Code);
     }
 
     // ---- split: partitions operations into new Proposals, source untouched ---------------------
@@ -331,18 +365,21 @@ public sealed class SelectiveEditingTests : IDisposable
     [Fact]
     public void Split_PartitionsOperationsIntoNewProposals_SourceUnchanged()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "source", "three rules").ExitCode);
-        var add1 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "rule1");
-        var op1Id = ExtractOperationId(add1.Output);
-        var add2 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "rule4");
-        var op2Id = ExtractOperationId(add2.Output);
-        var add3 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "rule5");
-        var op3Id = ExtractOperationId(add3.Output);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "source", "three rules").Succeeded);
+        var add1 = AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "rule1");
+        Assert.True(add1.Succeeded);
+        var op1Id = add1.Value!.OperationId;
+        var add2 = AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "rule4");
+        Assert.True(add2.Succeeded);
+        var op2Id = add2.Value!.OperationId;
+        var add3 = AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "rule5");
+        Assert.True(add3.Succeeded);
+        var op3Id = add3.Value!.OperationId;
         DraftRationale.Author(
             _fwDataPath, "source", "Partition authored gloss rules", "Split the rules into independently reviewable proposals.");
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "source");
-        Assert.Equal(0, finalize.ExitCode);
-        var sourceId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, "source");
+        Assert.True(finalize.Succeeded);
+        var sourceId = finalize.Value!.ProposalId;
         BindSyntheticAnchor(sourceId);
 
         var groups = new[]
@@ -350,8 +387,8 @@ public sealed class SelectiveEditingTests : IDisposable
             new SplitGroup("keep", new[] { op1Id, op2Id }),
             new SplitGroup("rest", new[] { op3Id }),
         };
-        var split = LegacyProposalCommands.Split(_fwDataPath, ProductVersion, sourceId, groups, force: false);
-        Assert.Equal(0, split.ExitCode);
+        var split = SplitProposal(_fwDataPath, ProductVersion, sourceId, groups, force: false);
+        Assert.True(split.Succeeded);
 
         var keepDraft = ReadDraft("keep");
         var restDraft = ReadDraft("rest");
@@ -364,23 +401,25 @@ public sealed class SelectiveEditingTests : IDisposable
         // Source is untouched.
         Assert.NotNull(ReadAnchor(sourceId));
 
-        Assert.Equal(0, LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "keep").ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "rest").ExitCode);
+        Assert.True(FinalizeDraft(_fwDataPath, ProductVersion, "keep").Succeeded);
+        Assert.True(FinalizeDraft(_fwDataPath, ProductVersion, "rest").Succeeded);
     }
 
     [Fact]
     public void Split_SeveredDependency_WarnsAndRefusesWithoutForce_ThenForceProceeds()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "source", null).ExitCode);
-        var add1 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "a");
-        var op1Id = ExtractOperationId(add1.Output);
-        var add2 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "b", new[] { op1Id });
-        var op2Id = ExtractOperationId(add2.Output);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "source", null).Succeeded);
+        var add1 = AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "a");
+        Assert.True(add1.Succeeded);
+        var op1Id = add1.Value!.OperationId;
+        var add2 = AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "b", new[] { op1Id });
+        Assert.True(add2.Succeeded);
+        var op2Id = add2.Value!.OperationId;
         DraftRationale.Author(
             _fwDataPath, "source", "Separate dependent gloss rules", "Preserve declared dependencies while partitioning the proposal.");
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "source");
-        Assert.Equal(0, finalize.ExitCode);
-        var sourceId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, "source");
+        Assert.True(finalize.Succeeded);
+        var sourceId = finalize.Value!.ProposalId;
 
         var groups = new[]
         {
@@ -388,17 +427,18 @@ public sealed class SelectiveEditingTests : IDisposable
             new SplitGroup("groupB", new[] { op2Id }),
         };
 
-        var refused = LegacyProposalCommands.Split(_fwDataPath, ProductVersion, sourceId, groups, force: false);
-        Assert.NotEqual(0, refused.ExitCode);
-        Assert.Contains("sever", refused.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(op1Id, refused.Output);
-        Assert.Contains(op2Id, refused.Output);
+        var refused = SplitProposal(_fwDataPath, ProductVersion, sourceId, groups, force: false);
+        Assert.False(refused.Succeeded);
+        Assert.Equal("operation.invalid-dependency", refused.Refusal!.Code);
+        Assert.Contains("sever", refused.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(op1Id, refused.Refusal.Message);
+        Assert.Contains(op2Id, refused.Refusal.Message);
 
         Assert.False(DraftExists("groupA"));
         Assert.False(DraftExists("groupB"));
 
-        var forced = LegacyProposalCommands.Split(_fwDataPath, ProductVersion, sourceId, groups, force: true);
-        Assert.Equal(0, forced.ExitCode);
+        var forced = SplitProposal(_fwDataPath, ProductVersion, sourceId, groups, force: true);
+        Assert.True(forced.Succeeded);
 
         var groupBDraft = ReadDraft("groupB");
         // The severed dependency is kept exactly as authored: it names an id outside groupB's own operations.
@@ -408,40 +448,44 @@ public sealed class SelectiveEditingTests : IDisposable
     [Fact]
     public void Split_UnassignedOperation_Fails()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "source", null).ExitCode);
-        var add1 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "a");
-        var op1Id = ExtractOperationId(add1.Output);
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "b").ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "source", null).Succeeded);
+        var add1 = AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "a");
+        Assert.True(add1.Succeeded);
+        var op1Id = add1.Value!.OperationId;
+        Assert.True(AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "b").Succeeded);
         DraftRationale.Author(
             _fwDataPath, "source", "Partition independent gloss rules", "Keep every authored edit assigned to a resulting proposal.");
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "source");
-        var sourceId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, "source");
+        Assert.True(finalize.Succeeded);
+        var sourceId = finalize.Value!.ProposalId;
 
         var groups = new[] { new SplitGroup("only", new[] { op1Id }) };
-        var result = LegacyProposalCommands.Split(_fwDataPath, ProductVersion, sourceId, groups, force: false);
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not assigned", result.Output, StringComparison.OrdinalIgnoreCase);
+        var result = SplitProposal(_fwDataPath, ProductVersion, sourceId, groups, force: false);
+        Assert.False(result.Succeeded);
+        Assert.Equal("operation.invalid-id", result.Refusal!.Code);
     }
 
     [Fact]
     public void Split_DuplicateAssignedOperation_Fails()
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "source", null).ExitCode);
-        var add1 = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "a");
-        var op1Id = ExtractOperationId(add1.Output);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "source", null).Succeeded);
+        var add1 = AddSetGloss(_fwDataPath, ProductVersion, "source", NewTarget(), "en", "a");
+        Assert.True(add1.Succeeded);
+        var op1Id = add1.Value!.OperationId;
         DraftRationale.Author(
             _fwDataPath, "source", "Partition one gloss rule", "Ensure each rule is assigned to at most one resulting proposal.");
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "source");
-        var sourceId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, "source");
+        Assert.True(finalize.Succeeded);
+        var sourceId = finalize.Value!.ProposalId;
 
         var groups = new[]
         {
             new SplitGroup("groupA", new[] { op1Id }),
             new SplitGroup("groupB", new[] { op1Id }),
         };
-        var result = LegacyProposalCommands.Split(_fwDataPath, ProductVersion, sourceId, groups, force: false);
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("more than one", result.Output, StringComparison.OrdinalIgnoreCase);
+        var result = SplitProposal(_fwDataPath, ProductVersion, sourceId, groups, force: false);
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.split-duplicate-operation", result.Refusal!.Code);
     }
 
     private bool DraftExists(string draftName)
@@ -450,14 +494,4 @@ public sealed class SelectiveEditingTests : IDisposable
         return new ProposalRepository(database).DraftNameExists(draftName);
     }
 
-    private static string ExtractOperationId(string output)
-    {
-        const string marker = "Added operation '";
-        var start = output.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {output}");
-        start += marker.Length;
-        var end = output.IndexOf('\'', start);
-        Assert.True(end > start, $"Could not parse operationId from output: {output}");
-        return output.Substring(start, end - start);
-    }
 }

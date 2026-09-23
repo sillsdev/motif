@@ -1,10 +1,13 @@
 using System;
 using System.Text.Json;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -34,6 +37,23 @@ public sealed class ComposeAuthorFeatureStructureTests
         _fwDataPath = scratch.ProjectId.Path;
     }
 
+    private CommandOutcome<DraftCreatedResponse> NewDraft(
+        string fwDataPath, string productVersion, string draftName, string? label) =>
+        ProposalCommands.New(new NewDraftRequest(fwDataPath, productVersion, draftName, label));
+
+    private CommandOutcome<ProposalFinalizedResponse> FinalizeDraft(
+        string fwDataPath, string productVersion, string draftName) =>
+        ProposalCommands.Finalize(new FinalizeRequest(fwDataPath, productVersion, draftName));
+
+    private CommandOutcome<ComposedOperationsResponse> ComposeAuthorFeatureStructure(
+        string fwDataPath, string productVersion, string draftName, string intentJson) =>
+        ProposalCommands.ComposeAuthorFeatureStructure(
+            new ComposeAuthorFeatureStructureRequest(fwDataPath, productVersion, draftName, intentJson));
+
+    private CommandOutcome<ProposalDetailProjection> ShowProposal(
+        string fwDataPath, string productVersion, string proposalId) =>
+        ProposalCommands.Show(new ShowProposalRequest(fwDataPath, productVersion, proposalId));
+
     private string FirstMsaId()
     {
         using var cache = new SIL.Motif.Host.LcmUtils.FwDataProjectLoader().LoadCache(_fwDataPath);
@@ -42,73 +62,54 @@ public sealed class ComposeAuthorFeatureStructureTests
         return CanonicalId.FromGuid(msaGuid).Value;
     }
 
-    private static string ExtractProposalId(string output)
-    {
-        const string marker = "-> Proposal ";
-        var start = output.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {output}");
-        start += marker.Length;
-        var end = output.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from output: {output}");
-        return output.Substring(start, end - start);
-    }
-
-    private static string ExtractIntentDigest(string output)
-    {
-        const string marker = "intentDigest: ";
-        var start = output.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {output}");
-        start += marker.Length;
-        var end = output.IndexOfAny(new[] { '\r', '\n' }, start);
-        Assert.True(end > start, $"Could not parse intentDigest from output: {output}");
-        return output.Substring(start, end - start).Trim();
-    }
-
     [Fact]
     public void ComposeAuthorFeatureStructure_AppendsTheResolvedOperation_NotOneTheAgentEnumerated()
     {
         var msaId = FirstMsaId();
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "d", null).Succeeded);
 
         var intentJson = JsonSerializer.Serialize(new { msa = msaId });
-        var result = LegacyProposalCommands.ComposeAuthorFeatureStructure(_fwDataPath, ProductVersion, "d", intentJson);
+        var result = ComposeAuthorFeatureStructure(_fwDataPath, ProductVersion, "d", intentJson);
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("1 operation(s) added", result.Output);
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Value!.Operations);
+        Assert.Equal(1, result.Value.OperationCount);
         DraftRationale.Author(
             _fwDataPath, "d", "Author a feature structure", "Represent the selected grammatical analysis on the target MSA.");
 
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
-        Assert.Equal(0, finalize.ExitCode);
-        var proposalId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, "d");
+        Assert.True(finalize.Succeeded);
+        var proposalId = finalize.Value!.ProposalId;
 
-        var showJson = LegacyProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId);
-        Assert.Equal(0, showJson.ExitCode);
-        Assert.Contains(MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures, showJson.Output);
+        var showJson = ShowProposal(_fwDataPath, ProductVersion, proposalId);
+        Assert.True(showJson.Succeeded);
+        Assert.Contains(showJson.Value!.Operations, operation =>
+            operation.Kind == MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures);
     }
 
     [Fact]
     public void ComposeAuthorFeatureStructure_RecordsTheIntentAsNonHashedProvenance_NeverInTheDigest()
     {
         var msaId = FirstMsaId();
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "d", null).ExitCode);
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "d", null).Succeeded);
         var intentJson = JsonSerializer.Serialize(new { msa = msaId });
-        Assert.Equal(0, LegacyProposalCommands.ComposeAuthorFeatureStructure(_fwDataPath, ProductVersion, "d", intentJson).ExitCode);
+        Assert.True(ComposeAuthorFeatureStructure(_fwDataPath, ProductVersion, "d", intentJson).Succeeded);
         DraftRationale.Author(
             _fwDataPath, "d", "Author a feature structure", "Preserve the composer provenance in the finalized intent.");
 
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "d");
-        Assert.Equal(0, finalize.ExitCode);
-        var digest = ExtractIntentDigest(finalize.Output);
-        var proposalId = ExtractProposalId(finalize.Output);
+        var finalize = FinalizeDraft(_fwDataPath, ProductVersion, "d");
+        Assert.True(finalize.Succeeded);
+        var digest = finalize.Value!.IntentDigest;
+        var proposalId = finalize.Value!.ProposalId;
 
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
         var record = new ProposalRepository(database).Get(CanonicalId.Parse(proposalId));
         Assert.Equal(digest, record.IntentDigest);
         var objectJson = record.ProposalJson!;
-        Assert.Contains("\"AuthorFeatureStructure\"", objectJson);
-
         var envelope = ProposalJsonParser.Parse(objectJson);
+        Assert.NotNull(envelope.Extensions);
+        var provenance = Assert.Single(envelope.Extensions!.Value.GetProperty("composers").EnumerateArray());
+        Assert.Equal("AuthorFeatureStructure", provenance.GetProperty("composer").GetString());
         var bareProposal = new Proposal(envelope.ContractVersions, envelope.ProposalId, envelope.Requires, envelope.Operations);
         Assert.Equal(digest, IntentDigest.Compute(bareProposal));
     }
