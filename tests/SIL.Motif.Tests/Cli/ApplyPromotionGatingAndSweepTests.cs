@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
@@ -44,8 +46,8 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var candidateId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", true));
         var scratchId = RecordAssessment(proposalId, intentDigest, "ParseTime", ("alpha", true));
 
-        var result = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
-        Assert.Equal(0, result.ExitCode);
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        Assert.True(result.Succeeded);
 
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
         var assessments = new AssessmentRepository(database);
@@ -66,8 +68,8 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var candidateId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", true));
         var scratchId = RecordAssessment(proposalId, intentDigest, "ParseTime", ("alpha", true));
 
-        var result = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
-        Assert.Equal(0, result.ExitCode);
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        Assert.True(result.Succeeded);
 
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
         var assessments = new AssessmentRepository(database);
@@ -85,10 +87,12 @@ public sealed class ApplyPromotionGatingAndSweepTests
         PromotePrevious(("alpha", true));
         RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
 
-        var result = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not ready to apply", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Equal("apply.not-ready", result.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
+        Assert.Contains("not ready to apply", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
     }
 
@@ -97,13 +101,15 @@ public sealed class ApplyPromotionGatingAndSweepTests
     {
         var proposalId = FinalizeAndTrial("unmeasured", "unmeasured gloss");
 
-        var refused = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
+        var refused = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
 
-        Assert.NotEqual(0, refused.ExitCode);
-        Assert.Contains("no Assessment covers its current content", refused.Output);
+        Assert.False(refused.Succeeded);
+        Assert.Equal("apply.not-ready", refused.Refusal!.Code);
+        Assert.Contains("no Assessment covers its current content", refused.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
 
-        Assert.Equal(0, LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester", force: true).ExitCode);
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(
+            _fwDataPath, ProductVersion, proposalId, "tester", Force: true)).Succeeded);
         Assert.Equal("applied", GetRecord(proposalId).Status);
     }
 
@@ -115,14 +121,15 @@ public sealed class ApplyPromotionGatingAndSweepTests
         RecordAssessment(proposalId, intentDigest, "ParseTime", ("alpha", true));
         RecordAssessment(proposalId, intentDigest, "ObjectTiming", ("alpha", true));
 
-        var result = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Apply requires a Correctness Assessment", result.Output, StringComparison.Ordinal);
-        Assert.Contains("approved morphology comparisons", result.Output, StringComparison.Ordinal);
-        Assert.Contains("timing-only evidence cannot satisfy", result.Output, StringComparison.Ordinal);
-        Assert.DoesNotContain($"trial {proposalId}", result.Output, StringComparison.Ordinal);
-        Assert.DoesNotContain("--force", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        Assert.Equal("apply.not-ready", result.Refusal!.Code);
+        Assert.Contains("Apply requires a Correctness Assessment", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("approved morphology comparisons", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("timing-only evidence cannot satisfy", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain($"trial {proposalId}", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("--force", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
     }
 
@@ -135,10 +142,11 @@ public sealed class ApplyPromotionGatingAndSweepTests
         RecordAssessment(proposalId, intentDigest, "Correctness", baselineToken: """{"snapshot":"moved"}""",
             words: ("alpha", true));
 
-        var result = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not been re-run since the project moved", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Equal("apply.not-ready", result.Refusal!.Code);
+        Assert.Contains("not been re-run since the project moved", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
     }
 
@@ -151,11 +159,12 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var previousId = PromotePrevious(("alpha", true));
         RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
 
-        var result = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester");
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("regression", result.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("alpha", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        Assert.Equal("apply.not-ready", result.Refusal!.Code);
+        Assert.Contains("regression", result.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("alpha", result.Refusal.Message, StringComparison.Ordinal);
         // Nothing moved: the previous Assessment is still current, and the Proposal was never applied.
         Assert.Equal(previousId, GetCurrentAssessmentId());
         Assert.Equal("proposed", GetRecord(proposalId).Status);
@@ -170,9 +179,10 @@ public sealed class ApplyPromotionGatingAndSweepTests
         PromotePrevious(("alpha", true));
         var candidateId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
 
-        var result = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, "tester", force: true);
+        var result = ProposalCommands.Apply(new ApplyRequest(
+            _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
 
-        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.Succeeded);
         Assert.Equal("applied", GetRecord(proposalId).Status);
         Assert.Equal(candidateId, GetCurrentAssessmentId());
     }
@@ -185,16 +195,16 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var wsTag = NewLangProjFixture.AnalysisTag;
         var canonicalId = CanonicalId.FromGuid(senseGuid);
 
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, draftName, null).ExitCode);
-        Assert.Equal(0,
-            LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss).ExitCode);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null)).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss)).Succeeded);
         DraftRationale.Author(_fwDataPath, draftName, "Clarify the first sense gloss", "Exercise apply's promotion and sweep.");
 
-        var finalizeResult = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
-        Assert.Equal(0, finalizeResult.ExitCode);
-        var proposalId = ExtractProposalId(finalizeResult.Output);
+        var finalizeResult = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName));
+        Assert.True(finalizeResult.Succeeded);
+        var proposalId = finalizeResult.Value!.ProposalId;
 
-        Assert.Equal(0, DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId).ExitCode);
+        Assert.True(DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId).Succeeded);
         return proposalId;
     }
 
@@ -265,14 +275,4 @@ public sealed class ApplyPromotionGatingAndSweepTests
                 new[] { AssessmentScopeConfiguration.Default() }, gateOnRegression, purgeOnApply)));
     }
 
-    private static string ExtractProposalId(string finalizeOutput)
-    {
-        const string marker = "-> Proposal ";
-        var start = finalizeOutput.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in finalize output: {finalizeOutput}");
-        start += marker.Length;
-        var end = finalizeOutput.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from finalize output: {finalizeOutput}");
-        return finalizeOutput.Substring(start, end - start);
-    }
 }

@@ -1,5 +1,7 @@
 using System;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Tests.TestFixtures;
@@ -28,14 +30,15 @@ public sealed class ProposalStatusTransitionTests
 
     private string CommitFreshProposal(string draftName = "d")
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, draftName, null).ExitCode);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null)).Succeeded);
         var target = CanonicalId.Mint().Value;
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, target, "en", "a gloss").ExitCode);
+        Assert.True(ProposalCommands.AddSetGloss(
+            new AddSetGlossRequest(_fwDataPath, ProductVersion, draftName, target, "en", "a gloss")).Succeeded);
         DraftRationale.Author(
             _fwDataPath, draftName, "Clarify a lexical analysis", "Record the intended gloss so reviewers can assess the change.");
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
-        Assert.Equal(0, finalize.ExitCode);
-        return ExtractProposalId(finalize.Output);
+        var finalize = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName));
+        Assert.True(finalize.Succeeded);
+        return finalize.Value!.ProposalId;
     }
 
     private ProposalRecord GetRecord(string proposalId)
@@ -55,7 +58,9 @@ public sealed class ProposalStatusTransitionTests
     {
         var id = CommitFreshProposal();
 
-        Assert.Equal(0, LegacyProposalCommands.Defer(_fwDataPath, ProductVersion, id).ExitCode);
+        var result = ProposalCommands.Defer(new DeferRequest(_fwDataPath, ProductVersion, id));
+        Assert.True(result.Succeeded);
+        Assert.Equal(ManifestStatus.Deferred, result.Value!.Status);
 
         Assert.Equal(ManifestStatus.Deferred, GetRecord(id).Status);
     }
@@ -64,22 +69,24 @@ public sealed class ProposalStatusTransitionTests
     public void Reject_IsAllowedFromProposedAndFromDeferred()
     {
         var proposed = CommitFreshProposal("straight");
-        Assert.Equal(0, LegacyProposalCommands.Reject(_fwDataPath, ProductVersion, proposed).ExitCode);
+        Assert.True(ProposalCommands.Reject(new RejectRequest(_fwDataPath, ProductVersion, proposed)).Succeeded);
         Assert.Equal(ManifestStatus.Rejected, GetRecord(proposed).Status);
 
         var deferred = CommitFreshProposal("later");
-        Assert.Equal(0, LegacyProposalCommands.Defer(_fwDataPath, ProductVersion, deferred).ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.Reject(_fwDataPath, ProductVersion, deferred).ExitCode);
+        Assert.True(ProposalCommands.Defer(new DeferRequest(_fwDataPath, ProductVersion, deferred)).Succeeded);
+        Assert.True(ProposalCommands.Reject(new RejectRequest(_fwDataPath, ProductVersion, deferred)).Succeeded);
         Assert.Equal(ManifestStatus.Rejected, GetRecord(deferred).Status);
     }
 
     [Fact]
     public void Reject_ANotFoundProposal_Refuses()
     {
-        var result = LegacyProposalCommands.Reject(_fwDataPath, ProductVersion, CanonicalId.Mint().Value);
+        var result = ProposalCommands.Reject(
+            new RejectRequest(_fwDataPath, ProductVersion, CanonicalId.Mint().Value));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.not-found", result.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, result.Refusal.Reason);
     }
 
     [Fact]
@@ -88,11 +95,12 @@ public sealed class ProposalStatusTransitionTests
         var id = CommitFreshProposal();
         SetStatusRaw(id, ManifestStatus.Applied);
 
-        var result = LegacyProposalCommands.Reject(_fwDataPath, ProductVersion, id);
+        var result = ProposalCommands.Reject(new RejectRequest(_fwDataPath, ProductVersion, id));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("applied", result.Output);
-        Assert.Contains("rejected", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.invalid-status", result.Refusal!.Code);
+        Assert.Contains("applied", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("rejected", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal(ManifestStatus.Applied, GetRecord(id).Status); // left untouched
     }
 
@@ -102,9 +110,12 @@ public sealed class ProposalStatusTransitionTests
         var id = CommitFreshProposal("old");
         var replacementId = CommitFreshProposal("new");
 
-        var result = LegacyProposalCommands.Supersede(_fwDataPath, ProductVersion, id, replacementId);
+        var result = ProposalCommands.Supersede(new SupersedeRequest(
+            _fwDataPath, ProductVersion, id, replacementId));
 
-        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.Succeeded);
+        Assert.Equal(ManifestStatus.Superseded, result.Value!.Status);
+        Assert.Equal(replacementId, result.Value.RelatedProposalId);
         var record = GetRecord(id);
         Assert.Equal(ManifestStatus.Superseded, record.Status);
         Assert.Equal(replacementId, record.SupersededBy);
@@ -114,22 +125,13 @@ public sealed class ProposalStatusTransitionTests
     public void Supersede_IsAllowedFromRejected_SoAReplacementCanPointAtHoweverItEnded()
     {
         var id = CommitFreshProposal("old");
-        Assert.Equal(0, LegacyProposalCommands.Reject(_fwDataPath, ProductVersion, id).ExitCode);
+        Assert.True(ProposalCommands.Reject(new RejectRequest(_fwDataPath, ProductVersion, id)).Succeeded);
         var replacementId = CommitFreshProposal("new");
 
-        Assert.Equal(0, LegacyProposalCommands.Supersede(_fwDataPath, ProductVersion, id, replacementId).ExitCode);
+        Assert.True(ProposalCommands.Supersede(new SupersedeRequest(
+            _fwDataPath, ProductVersion, id, replacementId)).Succeeded);
 
         Assert.Equal(ManifestStatus.Superseded, GetRecord(id).Status);
     }
 
-    private static string ExtractProposalId(string finalizeOutput)
-    {
-        const string marker = "-> Proposal ";
-        var start = finalizeOutput.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in finalize output: {finalizeOutput}");
-        start += marker.Length;
-        var end = finalizeOutput.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from finalize output: {finalizeOutput}");
-        return finalizeOutput.Substring(start, end - start);
-    }
 }

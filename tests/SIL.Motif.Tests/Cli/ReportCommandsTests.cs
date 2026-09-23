@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
+using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
@@ -42,11 +44,13 @@ public sealed class ReportCommandsTests : IDisposable
     [Fact]
     public void ListKinds_ListsCoverageAndApprovedMorphologyCorrectness()
     {
-        var result = LegacyReportCommands.ListKinds(asJson: false);
+        var result = ReportCommands.ListKinds(new ListReportKindsRequest());
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("coverage", result.Output, StringComparison.Ordinal);
-        Assert.Contains("correctness", result.Output, StringComparison.Ordinal);
+        Assert.True(result.Succeeded);
+        Assert.Contains(result.Value!.Kinds, kind => kind.Kind == "coverage");
+        Assert.Contains(result.Value.Kinds, kind => kind.Kind == "correctness");
+        Assert.Contains("coverage  ", CommandTextRenderer.Render(result, asJson: false).Output,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -54,11 +58,12 @@ public sealed class ReportCommandsTests : IDisposable
     {
         var assessmentId = RecordAssessment("ParseTime", ("a", true), ("b", false));
 
-        var result =
-            LegacyReportCommands.Produce(_project, ProductVersion, assessmentId, "nonsense-kind", null, null, false);
+        var result = ReportCommands.Produce(
+            new ProduceReportRequest(_project, ProductVersion, assessmentId, "nonsense-kind", null, null));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("nonsense-kind", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        Assert.Equal("report.invalid-kind", result.Refusal!.Code);
+        Assert.Equal("nonsense-kind", result.Refusal.Facts["kind"]);
     }
 
     [Fact]
@@ -66,12 +71,14 @@ public sealed class ReportCommandsTests : IDisposable
     {
         var assessmentId = RecordAssessment("ParseTime", ("a", true), ("b", false));
 
-        var result =
-            LegacyReportCommands.Produce(_project, ProductVersion, assessmentId, "correctness", null, null, false);
+        var result = ReportCommands.Produce(
+            new ProduceReportRequest(_project, ProductVersion, assessmentId, "correctness", null, null));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("requires 'Correctness'", result.Output, StringComparison.Ordinal);
-        Assert.Contains("ParseTime", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        Assert.Equal("report.refused", result.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
+        Assert.Contains("requires 'Correctness'", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("ParseTime", result.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -79,9 +86,10 @@ public sealed class ReportCommandsTests : IDisposable
     {
         var assessmentId = RecordAssessment("ParseTime", ("motifa", true), ("motifb", false));
 
-        var jsonResult = LegacyReportCommands.Produce(_project, ProductVersion, assessmentId, "coverage", null, null, true);
-        Assert.Equal(0, jsonResult.ExitCode);
-        var response = ProjectionJson.Deserialize<ReportResponse>(jsonResult.Output)!;
+        var jsonResult = ReportCommands.Produce(
+            new ProduceReportRequest(_project, ProductVersion, assessmentId, "coverage", null, null));
+        Assert.True(jsonResult.Succeeded);
+        var response = jsonResult.Value!;
         Assert.Equal("coverage", response.Kind);
         Assert.Contains("50.0%", response.Text, StringComparison.Ordinal);
 

@@ -4,8 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
@@ -22,20 +23,19 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>
-/// Stands in for the real runner (ADR 0041 decision 7) inside an in-process CLI test: enqueues a Dry
-/// Run, records a Baseline pointing at the project's own saved file the first time one is needed (this
-/// is not <c>baseline-refresh</c>'s own capture path — no separate bundle is copied), drains exactly
-/// that job through the real <see cref="DryRunJobHandler"/>, then renders it exactly as
-/// <c>dry-run --wait</c> does.
+/// Enqueues a Dry Run, drains that job through <see cref="DryRunJobHandler"/>, and returns the typed
+/// outcome from <see cref="JobCommands.WaitForDryRun"/>.
 /// </summary>
 internal static class DryRunJobRunner
 {
-    public static CommandResult Run(string fwDataPath, string productVersion, string proposalId,
-        bool asJson = false, UsageLog? usage = null)
+    public static CommandOutcome<DryRunProjection> Run(string fwDataPath, string productVersion, string proposalId,
+        UsageLog? usage = null)
     {
-        var enqueued = LegacyJobCommands.EnqueueDryRun(fwDataPath, productVersion, proposalId, usage);
-        if (enqueued.ExitCode != 0) return enqueued;
-        var jobId = enqueued.Output.Trim();
+        var enqueued = JobCommands.EnqueueDryRun(
+            new EnqueueDryRunRequest(fwDataPath, productVersion, proposalId), usage);
+        if (!enqueued.Succeeded)
+            return CommandOutcome<DryRunProjection>.Refused(enqueued.Refusal!);
+        var jobId = enqueued.Value!.JobId;
 
         var full = Path.GetFullPath(fwDataPath);
         var project = new ProjectLocator(full, Path.GetFileNameWithoutExtension(full));
@@ -74,7 +74,7 @@ internal static class DryRunJobRunner
             loop.RunUntilIdleAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
 
-        return LegacyJobCommands.WaitForDryRun(
-            fwDataPath, productVersion, proposalId, jobId, asJson, TimeSpan.FromSeconds(5));
+        return JobCommands.WaitForDryRun(new WaitForDryRunRequest(
+            fwDataPath, productVersion, proposalId, jobId, TimeSpan.FromSeconds(5)));
     }
 }

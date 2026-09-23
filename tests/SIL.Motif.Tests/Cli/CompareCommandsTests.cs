@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
@@ -46,10 +47,10 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true), ("beta", true));
         var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("beta", true), ("gamma", true));
 
-        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
+        var result = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId));
 
-        Assert.Equal(0, result.ExitCode);
-        var response = ProjectionJson.Deserialize<CompareResponse>(result.Output)!;
+        Assert.True(result.Succeeded);
+        var response = result.Value!;
         Assert.Equal(2, response.FromWordCount);
         Assert.Equal(2, response.ToWordCount);
         Assert.Equal(1, response.SharedWordCount);
@@ -61,10 +62,10 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "whitespace", "1", ("alpha", true));
         var toId = RecordAssessment("pangloss", "ParseTime", "icu", "74", ("alpha", true));
 
-        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
+        var result = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId));
 
-        Assert.Equal(0, result.ExitCode);
-        var response = ProjectionJson.Deserialize<CompareResponse>(result.Output)!;
+        Assert.True(result.Succeeded);
+        var response = result.Value!;
         Assert.True(response.TokeniserMismatch);
         Assert.NotNull(response.TokeniserWarning);
         Assert.Contains("whitespace", response.TokeniserWarning, StringComparison.Ordinal);
@@ -78,11 +79,12 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true));
         var toId = RecordAssessment("pangloss", "Correctness", "none", "1", ("alpha", true));
 
-        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: false);
+        var result = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("ParseTime", result.Output, StringComparison.Ordinal);
-        Assert.Contains("Correctness", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        Assert.Equal("comparison.refused", result.Refusal!.Code);
+        Assert.Contains("ParseTime", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("Correctness", result.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -91,11 +93,12 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true));
         var toId = RecordAssessment("hermit-crab", "ParseTime", "none", "1", ("alpha", true));
 
-        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: false);
+        var result = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("pangloss", result.Output, StringComparison.Ordinal);
-        Assert.Contains("hermit-crab", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        Assert.Equal("comparison.refused", result.Refusal!.Code);
+        Assert.Contains("pangloss", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("hermit-crab", result.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -104,9 +107,9 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true), ("beta", true));
         var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", false), ("beta", true));
 
-        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
-        Assert.Equal(0, result.ExitCode);
-        var response = ProjectionJson.Deserialize<CompareResponse>(result.Output)!;
+        var result = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId));
+        Assert.True(result.Succeeded);
+        var response = result.Value!;
 
         AssessmentRecord stored = null!;
         var readResult = ProjectStoreCommand.Run<string>(_project, ProductVersion, (database, _) =>
@@ -125,9 +128,9 @@ public sealed class CompareCommandsTests : IDisposable
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", true), ("beta", true));
         var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", ("alpha", false), ("beta", true));
 
-        var result = LegacyCompareCommands.Produce(_project, ProductVersion, fromId, toId, asJson: true);
-        Assert.Equal(0, result.ExitCode);
-        var response = ProjectionJson.Deserialize<CompareResponse>(result.Output)!;
+        var result = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId));
+        Assert.True(result.Succeeded);
+        var response = result.Value!;
 
         AssessmentRecord stored = null!;
         ProjectStoreCommand.Run<string>(_project, ProductVersion, (database, _) =>

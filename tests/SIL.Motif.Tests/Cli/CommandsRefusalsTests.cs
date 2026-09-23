@@ -575,10 +575,14 @@ public sealed class CommandsRefusalsTests
     [Fact]
     public void DryRun_ProposalNotFound_Refuses()
     {
-        var result = LegacyJobCommands.EnqueueDryRun(_fwDataPath, ProductVersion, CanonicalId.Mint().Value);
+        var proposalId = CanonicalId.Mint().Value;
+        var result = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(
+            _fwDataPath, ProductVersion, proposalId));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found in store", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.not-found", result.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, result.Refusal.Reason);
+        Assert.Contains("not found in store", result.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -588,10 +592,13 @@ public sealed class CommandsRefusalsTests
         DeleteCommittedRevision(proposalId);
 
         var writeTimeBefore = File.GetLastWriteTimeUtc(_fwDataPath);
-        var result = LegacyJobCommands.EnqueueDryRun(_fwDataPath, ProductVersion, proposalId);
+        var result = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(
+            _fwDataPath, ProductVersion, proposalId));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("store inconsistency", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.inconsistent", result.Refusal!.Code);
+        Assert.Equal(FailureReason.StoreInconsistent, result.Refusal.Reason);
+        Assert.Contains("store inconsistency", result.Refusal.Message, StringComparison.Ordinal);
         // The refusal is a pure database read: the live project was never opened to reach it.
         Assert.Equal(writeTimeBefore, File.GetLastWriteTimeUtc(_fwDataPath));
     }
@@ -655,11 +662,14 @@ public sealed class CommandsRefusalsTests
         CorruptCommittedRevisionJson(proposalId, envelope => envelope["proposalId"] = wrongId);
 
         var writeTimeBefore = File.GetLastWriteTimeUtc(_fwDataPath);
-        var result = LegacyJobCommands.EnqueueDryRun(_fwDataPath, ProductVersion, proposalId);
+        var result = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(
+            _fwDataPath, ProductVersion, proposalId));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains(proposalId, result.Output, StringComparison.Ordinal);
-        Assert.Contains(wrongId, result.Output, StringComparison.Ordinal);
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.inconsistent", result.Refusal!.Code);
+        Assert.Equal(FailureReason.StoreInconsistent, result.Refusal.Reason);
+        Assert.Contains(proposalId, result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(wrongId, result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal(writeTimeBefore, File.GetLastWriteTimeUtc(_fwDataPath));
     }
 
@@ -671,11 +681,14 @@ public sealed class CommandsRefusalsTests
             proposalId, envelope => envelope["operations"]![0]!["after"]!["text"] = "content changed behind the digest");
 
         var writeTimeBefore = File.GetLastWriteTimeUtc(_fwDataPath);
-        var result = LegacyJobCommands.EnqueueDryRun(_fwDataPath, ProductVersion, proposalId);
+        var result = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(
+            _fwDataPath, ProductVersion, proposalId));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("intentDigest", result.Output, StringComparison.Ordinal);
-        Assert.Contains("store inconsistency", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.inconsistent", result.Refusal!.Code);
+        Assert.Equal(FailureReason.StoreInconsistent, result.Refusal.Reason);
+        Assert.Contains("intentDigest", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("store inconsistency", result.Refusal.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(writeTimeBefore, File.GetLastWriteTimeUtc(_fwDataPath));
     }
 

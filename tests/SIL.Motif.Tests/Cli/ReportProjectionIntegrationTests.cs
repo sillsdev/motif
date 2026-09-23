@@ -1,7 +1,9 @@
 using System;
 using System.IO;
-using System.Text.Json;
+using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Corpus;
@@ -21,10 +23,8 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// Drives the real Commands surfaces end to end (same fixtures as <see cref="EndToEndCliTests"/>) to
-/// prove two things the pure Projection tests cannot: that the <c>*Json</c> siblings really do emit
-/// real project data as structured output, and that a <see cref="UsageLog"/> wired through the same
-/// real calls genuinely never records any of it.
+/// Drives the typed command surfaces end to end to verify project data and that a <see cref="UsageLog"/>
+/// never records any of it. A single explicit renderer assertion keeps the text and JSON projection aligned.
 /// </summary>
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
 public sealed class ReportProjectionIntegrationTests
@@ -49,16 +49,15 @@ public sealed class ReportProjectionIntegrationTests
 
 
     [Fact]
-    public void OpenJson_CarriesTheSameFiguresAsTheTextReport()
+    public void OpenOutcomeReportsTheLexicalEntryCount()
     {
         var usage = new UsageLog();
-        var text = LegacyProposalCommands.Open(_fwDataPath, usage);
-        var json = LegacyProposalCommands.OpenJson(_fwDataPath, usage);
+        var text = ProposalCommands.Open(new OpenRequest(_fwDataPath), usage);
+        var json = ProposalCommands.Open(new OpenRequest(_fwDataPath), usage);
 
-        Assert.Equal(0, text.ExitCode);
-        Assert.Equal(0, json.ExitCode);
-        // Open's report is too thin for FigureAudit's id/digest sweep to find anything; checked directly.
-        Assert.Contains("2", json.Output); // SeededProject writes exactly two entries.
+        Assert.True(text.Succeeded);
+        Assert.True(json.Succeeded);
+        Assert.Equal(2, json.Value!.LexicalEntryCount);
     }
 
     [Fact]
@@ -66,15 +65,14 @@ public sealed class ReportProjectionIntegrationTests
     {
         var usage = new UsageLog();
 
-        var text = LegacyProposalCommands.Analyses(_fwDataPath, usage);
-        var json = LegacyProposalCommands.AnalysesJson(_fwDataPath, usage);
+        var text = ProposalCommands.Analyses(new ManualAnalysesRequest(_fwDataPath), usage);
+        var json = ProposalCommands.Analyses(new ManualAnalysesRequest(_fwDataPath), usage);
 
-        Assert.Equal(0, text.ExitCode);
-        Assert.Equal(0, json.ExitCode);
-        Assert.Contains("No assessment is on record", text.Output);
-        Assert.Contains("\"assessmentState\"", json.Output);
-        Assert.Contains("Word forms: 0", text.Output);
-        Assert.Contains("\"wordFormCount\": 0", json.Output);
+        Assert.True(text.Succeeded);
+        Assert.True(json.Succeeded);
+        Assert.Contains("No assessment is on record", text.Value!.AssessmentState, StringComparison.Ordinal);
+        Assert.Equal(0, json.Value!.WordFormCount);
+        Assert.Empty(json.Value.WordForms);
         Assert.Equal(2, usage.Entries.Count);
         Assert.All(usage.Entries, entry =>
         {
@@ -100,27 +98,19 @@ public sealed class ReportProjectionIntegrationTests
         var assessmentId = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
         var usage = new UsageLog();
 
-        var text = LegacyProposalCommands.Analyses(
-            _fwDataPath,
-            ProductVersion,
-            assessmentId,
-            assessment.Selection.Sha256,
-            assessment.Report.GrammarSourceSha256,
-            usage);
-        var json = LegacyProposalCommands.AnalysesJson(
-            _fwDataPath,
-            ProductVersion,
-            assessmentId,
-            Hash('b'),
-            assessment.Report.GrammarSourceSha256,
-            usage);
+        var text = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, assessmentId, assessment.Selection.Sha256,
+            assessment.Report.GrammarSourceSha256), usage);
+        var json = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, assessmentId, Hash('b'),
+            assessment.Report.GrammarSourceSha256), usage);
 
-        Assert.Equal(0, text.ExitCode);
-        Assert.Equal(0, json.ExitCode);
-        Assert.Contains("still describes the current project", text.Output);
-        Assert.Contains("selection has changed", json.Output);
-        Assert.Contains("\"unanalysedCount\": 0", json.Output);
-        Assert.Contains("\"parsedCount\": 0", json.Output);
+        Assert.True(text.Succeeded);
+        Assert.True(json.Succeeded);
+        Assert.Contains("still describes the current project", text.Value!.AssessmentState, StringComparison.Ordinal);
+        Assert.Contains("selection has changed", json.Value!.AssessmentState, StringComparison.Ordinal);
+        Assert.Equal(0, json.Value.UnanalysedReach!.UnanalysedCount);
+        Assert.Equal(0, json.Value.UnanalysedReach.ParsedCount);
         Assert.All(usage.Entries, entry => Assert.Equal(
             new[]
             {
@@ -145,17 +135,16 @@ public sealed class ReportProjectionIntegrationTests
             Selection.Create("corpus-one", [word.Word]));
         var assessmentId = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
 
-        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, assessmentId,
-            assessment.Selection.Sha256, assessment.Report.GrammarSourceSha256);
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, assessmentId, assessment.Selection.Sha256,
+            assessment.Report.GrammarSourceSha256));
 
-        Assert.Equal(0, result.ExitCode);
-        using var json = JsonDocument.Parse(result.Output);
-        var cases = json.RootElement.GetProperty("assessmentCases");
-        Assert.Equal(1, cases.GetArrayLength());
-        Assert.Equal("approved", cases[0].GetProperty("morphology").GetProperty("word").GetString());
-        Assert.Equal("covered", cases[0].GetProperty("correctness").GetProperty("status").GetString());
-        Assert.Equal(word.Morphology!.Analyses[0].Morphs[0].Form, cases[0].GetProperty("morphology")
-            .GetProperty("analyses")[0].GetProperty("morphs")[0].GetProperty("form").GetString());
+        Assert.True(result.Succeeded);
+        var analysisCase = Assert.Single(result.Value!.AssessmentCases!);
+        Assert.Equal("approved", analysisCase.Morphology.Word);
+        Assert.Equal("covered", analysisCase.Correctness!.Status);
+        Assert.Equal(word.Morphology!.Analyses[0].Morphs[0].Form,
+            analysisCase.Morphology.Analyses[0].Morphs[0].Form);
         using var database = MotifDatabase.OpenOwned(AssessmentDatabasePath(),
             new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath)),
             MotifSchema.CurrentSchema, new Version(1, 0));
@@ -178,13 +167,12 @@ public sealed class ReportProjectionIntegrationTests
                 "whitespace-and-punctuation", "1", "{}", selection, null, null, Hash('a'), null, null, null, []));
         }
 
-        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, assessmentId,
-            selection.Sha256, Hash('a'));
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, assessmentId, selection.Sha256, Hash('a')));
 
-        Assert.Equal(0, result.ExitCode);
-        using var json = JsonDocument.Parse(result.Output);
-        Assert.Equal(0, json.RootElement.GetProperty("assessmentCases").GetArrayLength());
-        Assert.Contains("still describes the current project", result.Output);
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Value!.AssessmentCases!);
+        Assert.Contains("still describes the current project", result.Value.AssessmentState, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -203,26 +191,29 @@ public sealed class ReportProjectionIntegrationTests
             Selection.Create("repeated", ["same", "same"]));
         var id = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
 
-        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id, Hash('b'), Hash('c'));
-        var text = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, id, Hash('b'), Hash('c'));
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, Hash('b'), Hash('c')));
+        var text = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, Hash('b'), Hash('c')));
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Equal(0, text.ExitCode);
-        using var json = JsonDocument.Parse(result.Output);
-        var cases = json.RootElement.GetProperty("assessmentCases");
-        Assert.Equal(2, cases.GetArrayLength());
-        Assert.Equal(0, cases[0].GetProperty("morphology").GetProperty("index").GetInt32());
-        Assert.Equal(1, cases[1].GetProperty("morphology").GetProperty("index").GetInt32());
-        Assert.Equal("incomplete", cases[0].GetProperty("correctness").GetProperty("status").GetString());
-        Assert.Equal(1, cases[0].GetProperty("correctness").GetProperty("matched").GetInt32());
-        Assert.Equal("unmatched", cases[1].GetProperty("correctness").GetProperty("status").GetString());
-        Assert.Contains("INCOMPLETE — parsing did not finish (step limit and time limit)", text.Output);
-        Assert.Contains("1/1 approved readings matched", text.Output);
-        Assert.Contains("unresolved extra reading", text.Output);
-        Assert.Contains(first.Morphology!.Analyses[0].Morphs[0].Form!, text.Output);
-        Assert.Contains("selection has changed", result.Output);
-        Assert.Contains("grammar has changed", result.Output);
-        Assert.False(json.RootElement.TryGetProperty("unanalysedReach", out _));
+        Assert.True(result.Succeeded);
+        Assert.True(text.Succeeded);
+        var cases = result.Value!.AssessmentCases!;
+        var firstCorrectness = cases[0].Correctness!;
+        Assert.Equal(2, cases.Count);
+        Assert.Equal(0, cases[0].Morphology.Index);
+        Assert.Equal(1, cases[1].Morphology.Index);
+        Assert.Equal("incomplete", firstCorrectness.Status);
+        Assert.Equal(1, firstCorrectness.Matched);
+        Assert.Equal("unmatched", cases[1].Correctness!.Status);
+        Assert.True(cases[0].Morphology.Capped);
+        Assert.True(cases[0].Morphology.TimedOut);
+        Assert.Contains("unresolved extra reading", firstCorrectness.Unavailable, StringComparer.Ordinal);
+        Assert.Equal(first.Morphology!.Analyses[0].Morphs[0].Form,
+            cases[0].Morphology.Analyses[0].Morphs[0].Form);
+        Assert.Contains("selection has changed", result.Value.AssessmentState, StringComparison.Ordinal);
+        Assert.Contains("grammar has changed", result.Value.AssessmentState, StringComparison.Ordinal);
+        Assert.Null(result.Value.UnanalysedReach);
     }
 
     [Fact]
@@ -234,18 +225,16 @@ public sealed class ReportProjectionIntegrationTests
             Selection.Create("timed", [word.Word]));
         var id = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
 
-        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id,
-            assessment.Selection.Sha256, Hash('a'));
-        var text = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, id,
-            assessment.Selection.Sha256, Hash('a'));
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, assessment.Selection.Sha256, Hash('a')));
+        var text = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, assessment.Selection.Sha256, Hash('a')));
 
-        Assert.Equal(0, result.ExitCode);
-        using var json = JsonDocument.Parse(result.Output);
-        Assert.False(json.RootElement.GetProperty("assessmentCases")[0].TryGetProperty("correctness", out _));
-        Assert.Contains("Approved expectations were not collected", text.Output);
-        Assert.DoesNotContain("Expected readings below were frozen", text.Output);
-        Assert.Contains($"Elapsed: {word.Morphology!.ElapsedMs} ms", text.Output);
-        Assert.DoesNotContain("0/0", text.Output);
+        Assert.True(result.Succeeded);
+        Assert.True(text.Succeeded);
+        var analysisCase = Assert.Single(result.Value!.AssessmentCases!);
+        Assert.Null(analysisCase.Correctness);
+        Assert.Equal(word.Morphology!.ElapsedMs, analysisCase.Morphology.ElapsedMs);
     }
 
     [Fact]
@@ -265,21 +254,19 @@ public sealed class ReportProjectionIntegrationTests
         };
         var id = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value, invocation);
 
-        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id,
-            assessment.Selection.Sha256, Hash('a'));
-        var text = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, id,
-            assessment.Selection.Sha256, Hash('a'));
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, assessment.Selection.Sha256, Hash('a')));
+        var text = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, assessment.Selection.Sha256, Hash('a')));
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Equal(0, text.ExitCode);
-        using var json = JsonDocument.Parse(result.Output);
-        var findings = json.RootElement.GetProperty("grammarWarnings");
-        Assert.Equal(2, findings.GetArrayLength());
-        Assert.Contains("cannot segment", findings[1].GetString());
-        Assert.Contains("Parser readings: 0", text.Output);
-        Assert.Contains("the parser reported 2 finding(s) against this grammar", text.Output);
-        Assert.Contains("Grammar findings reported by the parser: 2", text.Output);
-        Assert.Contains("circumfix allomorph", text.Output);
+        Assert.True(result.Succeeded);
+        Assert.True(text.Succeeded);
+        Assert.Equal(2, result.Value!.GrammarWarnings!.Count);
+        Assert.Contains("cannot segment", result.Value.GrammarWarnings[1], StringComparison.Ordinal);
+        var analysisCase = Assert.Single(result.Value.AssessmentCases!);
+        Assert.Empty(analysisCase.Morphology.Analyses);
+        Assert.Contains(result.Value.GrammarWarnings,
+            warning => warning.Contains("circumfix allomorph", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -291,17 +278,15 @@ public sealed class ReportProjectionIntegrationTests
             Selection.Create("quiet", [word.Word]));
         var id = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
 
-        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id,
-            assessment.Selection.Sha256, Hash('a'));
-        var text = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, id,
-            assessment.Selection.Sha256, Hash('a'));
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, assessment.Selection.Sha256, Hash('a')));
+        var text = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, assessment.Selection.Sha256, Hash('a')));
 
-        Assert.Equal(0, result.ExitCode);
-        using var json = JsonDocument.Parse(result.Output);
-        Assert.False(json.RootElement.TryGetProperty("grammarWarnings", out _));
-        Assert.Contains("Parser readings: 0", text.Output);
-        Assert.DoesNotContain("finding(s) against this grammar", text.Output);
-        Assert.DoesNotContain("Grammar findings reported by the parser", text.Output);
+        Assert.True(result.Succeeded);
+        Assert.True(text.Succeeded);
+        Assert.Null(result.Value!.GrammarWarnings);
+        Assert.Empty(Assert.Single(result.Value.AssessmentCases!).Morphology.Analyses);
     }
 
     [Theory]
@@ -333,10 +318,12 @@ public sealed class ReportProjectionIntegrationTests
                 "whitespace-and-punctuation", "1", "{}", selection, null, null, Hash('a'), null, null, null, [word]));
         }
 
-        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id, selection.Sha256, Hash('a'));
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, selection.Sha256, Hash('a')));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("assessment.invalid-evidence", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Equal("assessment.invalid-evidence", result.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
     }
 
     [Fact]
@@ -353,21 +340,26 @@ public sealed class ReportProjectionIntegrationTests
                 "whitespace-and-punctuation", "1", "{}", selection, "outcome", "semantic", Hash('a'), "model", "pipeline", 0, []));
         }
 
-        var result = LegacyProposalCommands.AnalysesJson(_fwDataPath, ProductVersion, id, selection.Sha256, Hash('a'));
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, id, selection.Sha256, Hash('a')));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("assessment.aggregate-unavailable", result.Output);
+        Assert.False(result.Succeeded);
+        Assert.Equal("assessment.aggregate-unavailable", result.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
     }
 
     [Fact]
     public void AnalysesReturnsClearErrorWhenNamedAssessmentDoesNotExist()
     {
         // No corpus or proposal verb has touched this scratch project, so its paired database does not exist.
-        var result = LegacyProposalCommands.Analyses(_fwDataPath, ProductVersion, Hash('0'), Hash('1'), Hash('2'));
+        var missingId = Hash('0');
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, missingId, Hash('1'), Hash('2')));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains(Hash('0'), result.Output);
-        Assert.Contains("not found", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.Succeeded);
+        Assert.Equal("assessment.not-found", result.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, result.Refusal.Reason);
+        Assert.Equal(missingId, result.Refusal.Facts["assessmentId"]);
     }
 
     [Theory]
@@ -380,16 +372,14 @@ public sealed class ReportProjectionIntegrationTests
         string currentSelectionSha256,
         string currentGrammarSha256)
     {
-        var result = LegacyProposalCommands.Analyses(
-            _fwDataPath,
-            ProductVersion,
-            assessmentId,
-            currentSelectionSha256,
-            currentGrammarSha256);
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, assessmentId, currentSelectionSha256, currentGrammarSha256));
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.False(result.Succeeded);
+        Assert.Equal("assessment.invalid-id", result.Refusal!.Code);
+        Assert.Equal(FailureReason.InvalidArgument, result.Refusal.Reason);
         // Each malformed field is rejected by name; an assessment id and a digest have different shapes.
-        Assert.Contains("is required", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("is required", result.Refusal.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -427,24 +417,18 @@ public sealed class ReportProjectionIntegrationTests
                 new[] { "zzAssessmentParsed", "zzAssessmentEmpty" }));
         var assessmentId = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
 
-        var result = LegacyProposalCommands.AnalysesJson(
-            _fwDataPath,
-            ProductVersion,
-            assessmentId,
-            assessment.Selection.Sha256,
-            assessment.Report.GrammarSourceSha256);
+        var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
+            _fwDataPath, ProductVersion, assessmentId, assessment.Selection.Sha256,
+            assessment.Report.GrammarSourceSha256));
 
-        Assert.Equal(0, result.ExitCode);
-        using var document = JsonDocument.Parse(result.Output);
-        var wordforms = document.RootElement.GetProperty("wordForms").EnumerateArray()
-            .ToDictionary(element => element.GetProperty("form").GetString()!, StringComparer.Ordinal);
-        Assert.Equal("automatic-real-join", wordforms["zzAssessmentParsed"]
-            .GetProperty("automaticAnalyses")[0].GetProperty("contentDigest").GetString());
-        Assert.Equal(1, wordforms["zzAssessmentParsed"].GetProperty("automaticAnalysisCount").GetInt32());
-        Assert.Empty(wordforms["zzAssessmentEmpty"].GetProperty("automaticAnalyses").EnumerateArray());
-        Assert.Equal(0, wordforms["zzAssessmentEmpty"].GetProperty("automaticAnalysisCount").GetInt32());
-        Assert.False(wordforms["zzAssessmentUncovered"].TryGetProperty("automaticAnalyses", out _));
-        Assert.False(wordforms["zzAssessmentUncovered"].TryGetProperty("automaticAnalysisCount", out _));
+        Assert.True(result.Succeeded);
+        var wordforms = result.Value!.WordForms.ToDictionary(wordform => wordform.Form, StringComparer.Ordinal);
+        Assert.Equal("automatic-real-join", Assert.Single(wordforms["zzAssessmentParsed"].AutomaticAnalyses!).ContentDigest);
+        Assert.Equal(1, wordforms["zzAssessmentParsed"].AutomaticAnalysisCount);
+        Assert.Empty(wordforms["zzAssessmentEmpty"].AutomaticAnalyses!);
+        Assert.Equal(0, wordforms["zzAssessmentEmpty"].AutomaticAnalysisCount);
+        Assert.Null(wordforms["zzAssessmentUncovered"].AutomaticAnalyses);
+        Assert.Null(wordforms["zzAssessmentUncovered"].AutomaticAnalysisCount);
     }
 
     private void SeedApprovedWordform(string form)
@@ -463,7 +447,7 @@ public sealed class ReportProjectionIntegrationTests
     }
 
     [Fact]
-    public void FullLoop_EveryMigratedSurfaceEmitsJsonCarryingItsTextFigures_AndUsageLogStaysDataFree()
+    public void FullLoopTypedOutcomesCarryProjectFacts_AndUsageLogStaysDataFree()
     {
         var senseGuid = _seed.FirstSenseId;
         var wsTag = NewLangProjFixture.AnalysisTag;
@@ -476,50 +460,59 @@ public sealed class ReportProjectionIntegrationTests
 
         var usage = new UsageLog();
 
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, draftName, label).ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss).ExitCode);
+        var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, label));
+        Assert.True(created.Succeeded);
+        var added = ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss));
+        Assert.True(added.Succeeded);
         DraftRationale.Author(
             _fwDataPath, draftName, label, "Explain why this lexical gloss should replace the current analysis.");
-        var finalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
-        Assert.Equal(0, finalize.ExitCode);
-        var proposalId = ExtractProposalId(finalize.Output);
+        var finalize = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName));
+        Assert.True(finalize.Succeeded);
+        var proposalId = finalize.Value!.ProposalId;
 
         // list
-        var listText = LegacyProposalCommands.List(_fwDataPath, ProductVersion, usage);
-        var listJson = LegacyProposalCommands.ListJson(_fwDataPath, ProductVersion, usage);
-        FigureAudit.AssertEveryTextFigureAppearsInJson(listText.Output, listJson.Output);
+        var listText = ProposalCommands.List(new ListProposalsRequest(_fwDataPath, ProductVersion), usage);
+        var listJson = ProposalCommands.List(new ListProposalsRequest(_fwDataPath, ProductVersion), usage);
+        Assert.True(listText.Succeeded);
+        Assert.True(listJson.Succeeded);
+        Assert.Equal(proposalId, Assert.Single(listJson.Value!.Proposals).ProposalId);
 
         // show
-        var showText = LegacyProposalCommands.Show(_fwDataPath, ProductVersion, proposalId, usage);
-        var showJson = LegacyProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId, usage);
-        FigureAudit.AssertEveryTextFigureAppearsInJson(showText.Output, showJson.Output);
-        Assert.Contains(canonicalId.Value, showJson.Output);
+        var showText = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId), usage);
+        var showJson = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId), usage);
+        Assert.True(showText.Succeeded);
+        Assert.True(showJson.Succeeded);
+        Assert.Contains(showJson.Value!.Operations, operation => operation.Target == canonicalId.Value);
+        FigureAudit.AssertEveryTextFigureAppearsInJson(
+            ProposalCommandRenderer.Render(showText, asJson: false).Output,
+            ProposalCommandRenderer.Render(showJson, asJson: true).Output);
 
-        // dry-run: a job now (ADR 0041 decision 7); DryRunJobRunner stands in for the real runner.
-        var dryRunText = DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId, asJson: false, usage);
-        var dryRunJson = DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId, asJson: true, usage);
-        Assert.Equal(0, dryRunText.ExitCode);
-        Assert.Equal(0, dryRunJson.ExitCode);
-        Assert.Contains($"\"{originalGloss}\" -> \"{newGloss}\"", dryRunText.Output);
-        Assert.Contains(originalGloss, dryRunJson.Output);
-        Assert.Contains(newGloss, dryRunJson.Output);
-        FigureAudit.AssertEveryTextFigureAppearsInJson(dryRunText.Output, dryRunJson.Output);
+        // Dry Run is a job; the helper drains it and returns the typed result.
+        var dryRunText = DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId, usage);
+        var dryRunJson = DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId, usage);
+        Assert.True(dryRunText.Succeeded);
+        Assert.True(dryRunJson.Succeeded);
+        var dryRunChange = Assert.Single(Assert.Single(dryRunJson.Value!.Effects).Changes);
+        Assert.Equal(originalGloss, dryRunChange.Before);
+        Assert.Equal(newGloss, dryRunChange.After);
 
-        // apply: mutating (one shot), so the JSON report is checked directly against ground truth.
-        var applyJson = LegacyProposalCommands.ApplyJson(_fwDataPath, ProductVersion, proposalId, applier, force: true, usage: usage);
-        Assert.Equal(0, applyJson.ExitCode);
-        Assert.Contains(originalGloss, applyJson.Output);
-        Assert.Contains(newGloss, applyJson.Output);
-        Assert.Contains(applier, applyJson.Output);
-        Assert.Contains(proposalId, applyJson.Output);
+        // Apply mutates once, so its effect and Receipt are checked against project state.
+        var applyJson = ProposalCommands.Apply(
+            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true), usage);
+        Assert.True(applyJson.Succeeded);
+        var appliedChange = Assert.Single(Assert.Single(applyJson.Value!.Effects).Changes);
+        Assert.Equal(originalGloss, appliedChange.Before);
+        Assert.Equal(newGloss, appliedChange.After);
+        Assert.Equal(applier, applyJson.Value.AppliedLogEntry.User);
+        Assert.Equal(proposalId, applyJson.Value.ProposalId);
 
         // log
-        var logText = LegacyProposalCommands.Log(_fwDataPath, usage);
-        var logJson = LegacyProposalCommands.LogJson(_fwDataPath, usage);
-        Assert.Equal(0, logText.ExitCode);
-        Assert.Equal(0, logJson.ExitCode);
-        Assert.Contains(applier, logJson.Output);
-        FigureAudit.AssertEveryTextFigureAppearsInJson(logText.Output, logJson.Output);
+        var logText = ProposalCommands.Log(new LogRequest(_fwDataPath), usage);
+        var logJson = ProposalCommands.Log(new LogRequest(_fwDataPath), usage);
+        Assert.True(logText.Succeeded);
+        Assert.True(logJson.Succeeded);
+        Assert.Equal(applier, Assert.Single(logJson.Value!.Entries).User);
 
         // usage log: recorded every real call above, but never a scrap of the real project data.
         Assert.Equal(9, usage.Entries.Count);
@@ -544,14 +537,4 @@ public sealed class ReportProjectionIntegrationTests
             Assert.DoesNotContain(secret, haystack, StringComparison.Ordinal);
     }
 
-    private static string ExtractProposalId(string finalizeOutput)
-    {
-        const string marker = "-> Proposal ";
-        var start = finalizeOutput.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in finalize output: {finalizeOutput}");
-        start += marker.Length;
-        var end = finalizeOutput.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from finalize output: {finalizeOutput}");
-        return finalizeOutput.Substring(start, end - start);
-    }
 }

@@ -1,8 +1,10 @@
 using System;
 using System.Text.Json;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -39,18 +41,18 @@ public sealed class ReopenAmendTests
         var canonicalId = CanonicalId.FromGuid(senseGuid);
 
         // --- commit v1 ---
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "v1", "first label").ExitCode);
-        Assert.Equal(
-            0,
-            LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v1", canonicalId.Value, wsTag, originalGloss + " v1").ExitCode);
+        Assert.True(ProposalCommands.New(
+            new NewDraftRequest(_fwDataPath, ProductVersion, "v1", "first label")).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(
+            new AddSetGlossRequest(_fwDataPath, ProductVersion, "v1", canonicalId.Value, wsTag,
+                originalGloss + " v1")).Succeeded);
         DraftRationale.Author(
             _fwDataPath, "v1", "Clarify the first sense gloss", "Replace the ambiguous gloss with the intended analysis.");
-        var firstFinalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "v1");
-        Assert.Equal(0, firstFinalize.ExitCode);
-        Assert.Contains("Finalized draft", firstFinalize.Output);
+        var firstFinalize = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, "v1"));
+        Assert.True(firstFinalize.Succeeded);
 
-        var proposalId = ExtractProposalId(firstFinalize.Output);
-        var firstDigest = ExtractIntentDigest(firstFinalize.Output);
+        var proposalId = firstFinalize.Value!.ProposalId;
+        var firstDigest = firstFinalize.Value.IntentDigest;
 
         Assert.Equal("proposed", GetRecord(proposalId).Status);
         Assert.Equal(1, CountRevisions(proposalId));
@@ -60,27 +62,28 @@ public sealed class ReopenAmendTests
         Assert.Equal("applied", GetRecord(proposalId).Status);
 
         // --- reopen: loads v1's content into a NEW draft carrying the SAME frozen proposalId ---
-        var reopenResult = LegacyProposalCommands.Reopen(_fwDataPath, ProductVersion, "v2", proposalId);
-        Assert.Equal(0, reopenResult.ExitCode);
-        Assert.Contains(proposalId, reopenResult.Output);
+        var reopenResult = ProposalCommands.Reopen(new ReopenRequest(_fwDataPath, ProductVersion, "v2", proposalId));
+        Assert.True(reopenResult.Succeeded);
+        Assert.Equal(proposalId, reopenResult.Value!.ProposalId);
+        Assert.Equal("v2", reopenResult.Value.DraftName);
         Assert.True(DraftExists("v2"));
         var reopenedDraft = ReadDraft("v2");
         Assert.Equal("Clarify the first sense gloss", reopenedDraft.Label);
         Assert.Equal("Replace the ambiguous gloss with the intended analysis.", reopenedDraft.Comment);
 
         // Amend the content: add a second operation so the intent digest necessarily moves.
-        Assert.Equal(
-            0,
-            LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "v2", canonicalId.Value, wsTag, originalGloss + " v2 (amended)").ExitCode);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, "v2", canonicalId.Value, wsTag,
+            originalGloss + " v2 (amended)")).Succeeded);
 
         // --- finalize the reopened draft: an amend, not a fresh commit ---
-        var amendFinalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "v2");
-        Assert.Equal(0, amendFinalize.ExitCode);
-        Assert.Contains("Amended draft", amendFinalize.Output);
+        var amendFinalize = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, "v2"));
+        Assert.True(amendFinalize.Succeeded);
+        Assert.True(amendFinalize.Value!.IsAmend);
         Assert.False(DraftExists("v2")); // draft consumed, same as a normal finalize
 
-        var amendedProposalId = ExtractProposalId(amendFinalize.Output);
-        var secondDigest = ExtractIntentDigest(amendFinalize.Output);
+        var amendedProposalId = amendFinalize.Value.ProposalId;
+        var secondDigest = amendFinalize.Value.IntentDigest;
 
         // (1) The id is unchanged.
         Assert.Equal(proposalId, amendedProposalId);
@@ -108,25 +111,31 @@ public sealed class ReopenAmendTests
     public void Show_OlderManifestWithoutRationale_RemainsReadable()
     {
         var target = CanonicalId.FromGuid(_seed.FirstSenseId).Value;
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, "legacy", null).ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, "legacy", target, "en", "a legacy gloss").ExitCode);
+        Assert.True(ProposalCommands.New(
+            new NewDraftRequest(_fwDataPath, ProductVersion, "legacy", null)).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(
+            new AddSetGlossRequest(_fwDataPath, ProductVersion, "legacy", target, "en", "a legacy gloss")).Succeeded);
         DraftRationale.Author(
             _fwDataPath, "legacy", "Clarify a legacy gloss", "Create a manifest that can model an older stored record.");
-        var finalized = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "legacy");
-        var proposalId = ExtractProposalId(finalized.Output);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, "legacy"));
+        Assert.True(finalized.Succeeded);
+        var proposalId = finalized.Value!.ProposalId;
         ClearLabelAndComment(proposalId);
 
-        Assert.Equal(0, LegacyProposalCommands.Show(_fwDataPath, ProductVersion, proposalId).ExitCode);
-        Assert.Equal(0, LegacyProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId).ExitCode);
+        Assert.True(ProposalCommands.Show(
+            new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId)).Succeeded);
+        Assert.True(ProposalCommands.Show(
+            new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId)).Succeeded);
     }
 
     [Fact]
     public void Reopen_UnknownProposalId_Fails()
     {
         var bogusId = CanonicalId.Mint().Value;
-        var result = LegacyProposalCommands.Reopen(_fwDataPath, ProductVersion, "some-draft", bogusId);
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not found", result.Output, StringComparison.OrdinalIgnoreCase);
+        var result = ProposalCommands.Reopen(new ReopenRequest(_fwDataPath, ProductVersion, "some-draft", bogusId));
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.not-found", result.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, result.Refusal.Reason);
     }
 
     private ProposalRecord GetRecord(string proposalId)
@@ -199,25 +208,4 @@ public sealed class ReopenAmendTests
         return Convert.ToInt32(command.ExecuteScalar());
     }
 
-    private static string ExtractProposalId(string output)
-    {
-        const string marker = "-> Proposal ";
-        var start = output.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {output}");
-        start += marker.Length;
-        var end = output.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from output: {output}");
-        return output.Substring(start, end - start);
-    }
-
-    private static string ExtractIntentDigest(string output)
-    {
-        const string marker = "intentDigest: ";
-        var start = output.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {output}");
-        start += marker.Length;
-        var end = output.IndexOfAny(new[] { '\r', '\n' }, start);
-        Assert.True(end > start, $"Could not parse intentDigest from output: {output}");
-        return output.Substring(start, end - start).Trim();
-    }
 }

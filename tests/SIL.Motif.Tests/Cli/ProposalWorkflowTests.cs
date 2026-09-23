@@ -1,8 +1,9 @@
 using System;
 using System.IO;
 using System.Text.Json.Nodes;
-using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
@@ -25,9 +26,7 @@ namespace SIL.Motif.Tests.Cli;
 /// A workflow test, not an end-to-end one: no process boundary is crossed here. Whether the shipped
 /// executables do this is <c>RunnerSpineTests</c>' subject. <c>dry-run</c> is a job (ADR 0041 decision 7),
 /// so <see cref="RunDryRun"/> stands in for the real runner: it records a Baseline pointing at this
-/// project's own saved file (this suite never captures a separate Baseline bundle) and drains exactly
-/// the one queued job through the real <see cref="DryRunJobHandler"/> before rendering it exactly as
-/// <c>--wait</c> does.
+/// project's own saved file and drains exactly one queued job through the real <see cref="DryRunJobHandler"/>.
 /// </remarks>
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
 public sealed class ProposalWorkflowTests
@@ -59,63 +58,81 @@ public sealed class ProposalWorkflowTests
         const string applier = "motif-cli-tests";
 
         // --- new ---
-        var newResult = LegacyProposalCommands.New(_fwDataPath, ProductVersion, draftName, label);
-        Assert.Equal(0, newResult.ExitCode);
-        Assert.Contains("Created draft", newResult.Output);
+        var newResult = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, label));
+        Assert.True(newResult.Succeeded);
+        Assert.Equal(draftName, newResult.Value!.DraftName);
+        Assert.Equal(label, newResult.Value.Label);
+        var proposalId = newResult.Value.ProposalId;
         Assert.True(DraftExists(draftName));
 
         // --- add-set-gloss ---
-        var addResult = LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss);
-        Assert.Equal(0, addResult.ExitCode);
-        Assert.Contains("lexical/lexSense/setGloss", addResult.Output);
+        var addResult = ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss));
+        Assert.True(addResult.Succeeded);
+        Assert.Equal(draftName, addResult.Value!.DraftName);
+        Assert.Equal(canonicalId.Value, addResult.Value.Target);
+        Assert.Equal(newGloss, addResult.Value.Text);
+        Assert.Equal(1, addResult.Value.OperationCount);
         DraftRationale.Author(_fwDataPath, draftName, shortDescription, extendedExplanation);
 
         // --- finalize ---
-        var finalizeResult = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
-        Assert.Equal(0, finalizeResult.ExitCode);
+        var finalizeResult = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName));
+        Assert.True(finalizeResult.Succeeded);
         Assert.False(DraftExists(draftName)); // draft cleared on finalize
 
-        var proposalId = ExtractProposalId(finalizeResult.Output);
-        var intentDigest = ExtractIntentDigest(finalizeResult.Output);
+        Assert.Equal(proposalId, finalizeResult.Value!.ProposalId);
+        var intentDigest = finalizeResult.Value.IntentDigest;
         var committed = GetRecord(proposalId);
         Assert.Equal(intentDigest, committed.IntentDigest);
         Assert.Equal("proposed", committed.Status);
 
         // --- list ---
-        var listResult = LegacyProposalCommands.List(_fwDataPath, ProductVersion);
-        Assert.Equal(0, listResult.ExitCode);
-        Assert.Contains(proposalId, listResult.Output);
-        Assert.Contains("proposed", listResult.Output);
+        var listResult = ProposalCommands.List(new ListProposalsRequest(_fwDataPath, ProductVersion));
+        Assert.True(listResult.Succeeded);
+        var listed = Assert.Single(listResult.Value!.Proposals);
+        Assert.Equal(proposalId, listed.ProposalId);
+        Assert.Equal("proposed", listed.Status);
 
         // --- show ---
-        var showResult = LegacyProposalCommands.Show(_fwDataPath, ProductVersion, proposalId);
-        Assert.Equal(0, showResult.ExitCode);
-        Assert.Contains(proposalId, showResult.Output);
-        Assert.Contains(canonicalId.Value, showResult.Output);
-        Assert.Contains(shortDescription, showResult.Output);
-        Assert.Contains(extendedExplanation, showResult.Output);
-        var showJsonResult = LegacyProposalCommands.ShowJson(_fwDataPath, ProductVersion, proposalId);
-        Assert.Equal(0, showJsonResult.ExitCode);
-        Assert.Contains(shortDescription, showJsonResult.Output);
-        Assert.Contains(extendedExplanation, showJsonResult.Output);
+        var showResult = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId));
+        Assert.True(showResult.Succeeded);
+        Assert.Equal(proposalId, showResult.Value!.ProposalId);
+        Assert.Equal(shortDescription, showResult.Value.Label);
+        Assert.Equal(extendedExplanation, showResult.Value.Comment);
+        var operation = Assert.Single(showResult.Value.Operations);
+        Assert.Equal(canonicalId.Value, operation.Target);
+        Assert.Equal("lexical/lexSense/setGloss", operation.Kind);
+        var showJsonResult = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId));
+        Assert.True(showJsonResult.Succeeded);
+        Assert.Equal(shortDescription, showJsonResult.Value!.Label);
+        Assert.Equal(extendedExplanation, showJsonResult.Value.Comment);
 
         // --- dry-run: real before/after from LibLCM, non-mutating ---
         var dryRunResult = RunDryRun(proposalId);
-        Assert.Equal(0, dryRunResult.ExitCode);
-        Assert.Contains(canonicalId.Value, dryRunResult.Output);
-        Assert.Contains($"\"{originalGloss}\" -> \"{newGloss}\"", dryRunResult.Output);
-        Assert.Contains("effectDigest: sha256:", dryRunResult.Output);
+        Assert.True(dryRunResult.Succeeded);
+        var dryRunEffect = Assert.Single(dryRunResult.Value!.Effects);
+        Assert.Equal(canonicalId.Value, dryRunEffect.CanonicalId);
+        Assert.Equal("lexical/sense/gloss", dryRunEffect.Field);
+        var dryRunChange = Assert.Single(dryRunEffect.Changes);
+        Assert.Equal(originalGloss, dryRunChange.Before);
+        Assert.Equal(newGloss, dryRunChange.After);
+        Assert.StartsWith("sha256:", dryRunResult.Value.EffectDigest, StringComparison.Ordinal);
 
         // The dry run must not have mutated the project: gloss unchanged when re-read from disk.
         AssertGlossOnDisk(senseGuid, wsTag, originalGloss);
 
         // --- apply: real commit + save ---
-        var applyResult = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, applier, force: true);
-        Assert.Equal(0, applyResult.ExitCode);
-        Assert.Contains("Applied Proposal", applyResult.Output);
-        Assert.Contains($"\"{originalGloss}\" -> \"{newGloss}\"", applyResult.Output);
-        Assert.Contains("applied-log entry:", applyResult.Output);
-        Assert.Contains(applier, applyResult.Output);
+        var applyResult = ProposalCommands.Apply(
+            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
+        Assert.True(applyResult.Succeeded);
+        Assert.False(applyResult.Value!.AlreadyApplied);
+        Assert.Equal(proposalId, applyResult.Value.ProposalId);
+        Assert.Equal(applier, applyResult.Value.AppliedLogEntry.User);
+        var appliedEffect = Assert.Single(applyResult.Value.Effects);
+        Assert.Equal(canonicalId.Value, appliedEffect.CanonicalId);
+        var appliedChange = Assert.Single(appliedEffect.Changes);
+        Assert.Equal(originalGloss, appliedChange.Before);
+        Assert.Equal(newGloss, appliedChange.After);
         var appliedRecord = GetRecord(proposalId);
         Assert.Equal("applied", appliedRecord.Status);
         Assert.Equal(shortDescription, appliedRecord.Label);
@@ -126,15 +143,16 @@ public sealed class ProposalWorkflowTests
         AssertAppliedLogEntryCount(1);
 
         // --- log ---
-        var logResult = LegacyProposalCommands.Log(_fwDataPath);
-        Assert.Equal(0, logResult.ExitCode);
-        Assert.Contains(applier, logResult.Output);
-        Assert.Contains("1 Motif entry", logResult.Output);
+        var logResult = ProposalCommands.Log(new LogRequest(_fwDataPath));
+        Assert.True(logResult.Succeeded);
+        Assert.Equal(1, logResult.Value!.EntryCount);
+        Assert.Equal(applier, Assert.Single(logResult.Value.Entries).User);
 
         // --- apply again: idempotent, no duplicate log entry, no re-mutation ---
-        var secondApplyResult = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, applier, force: true);
-        Assert.Equal(0, secondApplyResult.ExitCode);
-        Assert.Contains("already applied", secondApplyResult.Output, StringComparison.OrdinalIgnoreCase);
+        var secondApplyResult = ProposalCommands.Apply(
+            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
+        Assert.True(secondApplyResult.Succeeded);
+        Assert.True(secondApplyResult.Value!.AlreadyApplied);
 
         AssertGlossOnDisk(senseGuid, wsTag, newGloss);
         AssertAppliedLogEntryCount(1);
@@ -152,10 +170,10 @@ public sealed class ProposalWorkflowTests
 
         var result = RunDryRun(dependentId);
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains($"\"{intermediateGloss}\" -> \"{finalGloss}\"", result.Output);
-        Assert.DoesNotContain(
-            $"\"{SeededProject.FirstGloss}\" -> \"{intermediateGloss}\"", result.Output);
+        Assert.True(result.Succeeded);
+        var effect = Assert.Single(result.Value!.Effects);
+        Assert.Equal(intermediateGloss, Assert.Single(effect.Changes).Before);
+        Assert.Equal(finalGloss, effect.Changes[0].After);
         AssertGlossOnDisk(_seed.FirstSenseId, NewLangProjFixture.AnalysisTag, SeededProject.FirstGloss);
     }
 
@@ -177,26 +195,28 @@ public sealed class ProposalWorkflowTests
         const string draftName = "receipt-boundary-demo";
         const string applier = "motif-cli-tests";
 
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, draftName, null).ExitCode);
-        Assert.Equal(
-            0, LegacyProposalCommands.AddSetGloss(_fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss).ExitCode);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null)).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, draftName, canonicalId.Value, wsTag, newGloss)).Succeeded);
         DraftRationale.Author(
             _fwDataPath, draftName, "Clarify the first sense gloss", "Record the intended analysis before applying the proposal.");
-        var finalizeResult = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
-        Assert.Equal(0, finalizeResult.ExitCode);
-        var proposalId = ExtractProposalId(finalizeResult.Output);
+        var finalizeResult = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName));
+        Assert.True(finalizeResult.Succeeded);
+        var proposalId = finalizeResult.Value!.ProposalId;
 
-        Assert.Equal(0, RunDryRun(proposalId).ExitCode);
+        Assert.True(RunDryRun(proposalId).Succeeded);
 
         var dbPath = PairedDatabasePath();
         File.SetAttributes(dbPath, FileAttributes.ReadOnly);
         try
         {
-            var applyResult = LegacyProposalCommands.Apply(_fwDataPath, ProductVersion, proposalId, applier, force: true);
+            var applyResult = ProposalCommands.Apply(
+                new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
 
-            Assert.NotEqual(0, applyResult.ExitCode);
-            Assert.Contains("proposal store failed", applyResult.Output, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("rolled back", applyResult.Output, StringComparison.OrdinalIgnoreCase);
+            Assert.False(applyResult.Succeeded);
+            Assert.Equal("apply.reconciliation-needed", applyResult.Refusal!.Code);
+            Assert.Contains("proposal store failed", applyResult.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("rolled back", applyResult.Refusal.Message, StringComparison.OrdinalIgnoreCase);
 
             // The load-bearing proof: the mutation genuinely committed and saved despite the report above.
             AssertGlossOnDisk(senseGuid, wsTag, newGloss);
@@ -214,37 +234,42 @@ public sealed class ProposalWorkflowTests
     [Fact]
     public void UnknownCommands_And_MissingArguments_ReturnNonZeroWithClearErrors()
     {
-        var missingDraft = LegacyProposalCommands.AddSetGloss(
-            _fwDataPath, ProductVersion, "does-not-exist", "agent_AAECAwQFBgcICQoLDA0ODw", "en", "x");
-        Assert.NotEqual(0, missingDraft.ExitCode);
-        Assert.Contains("not found", missingDraft.Output, StringComparison.OrdinalIgnoreCase);
+        var missingDraft = ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, "does-not-exist", "agent_AAECAwQFBgcICQoLDA0ODw", "en", "x"));
+        Assert.False(missingDraft.Succeeded);
+        Assert.Equal("draft.not-found", missingDraft.Refusal!.Code);
+        Assert.Equal("does-not-exist", missingDraft.Refusal.Facts["draftName"]);
 
-        var badTarget = LegacyProposalCommands.New(_fwDataPath, ProductVersion, "bad-target-draft", null);
-        Assert.Equal(0, badTarget.ExitCode);
-        var invalidTarget = LegacyProposalCommands.AddSetGloss(
-            _fwDataPath, ProductVersion, "bad-target-draft", "not-a-canonical-id", "en", "x");
-        Assert.NotEqual(0, invalidTarget.ExitCode);
-        Assert.Contains("not a valid canonical id", invalidTarget.Output);
+        var badTarget = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, "bad-target-draft", null));
+        Assert.True(badTarget.Succeeded);
+        var invalidTarget = ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, "bad-target-draft", "not-a-canonical-id", "en", "x"));
+        Assert.False(invalidTarget.Succeeded);
+        Assert.Equal("operation.invalid-target", invalidTarget.Refusal!.Code);
+        Assert.Equal("not-a-canonical-id", invalidTarget.Refusal.Facts["target"]);
         DraftRationale.Author(
             _fwDataPath, "bad-target-draft", "Test an empty proposal", "Keep the no-operations refusal independently observable.");
 
-        var emptyFinalize = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, "bad-target-draft");
-        Assert.NotEqual(0, emptyFinalize.ExitCode);
-        Assert.Contains("no operations", emptyFinalize.Output);
+        var emptyFinalize = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, "bad-target-draft"));
+        Assert.False(emptyFinalize.Succeeded);
+        Assert.Equal("draft.invalid", emptyFinalize.Refusal!.Code);
+        Assert.Contains("no operations", emptyFinalize.Refusal.Message, StringComparison.Ordinal);
 
-        var missingProposal = LegacyProposalCommands.Show(_fwDataPath, ProductVersion, "agent_AAECAwQFBgcICQoLDA0ODw");
-        Assert.NotEqual(0, missingProposal.ExitCode);
-        Assert.Contains("not found", missingProposal.Output, StringComparison.OrdinalIgnoreCase);
+        var missingProposal = ProposalCommands.Show(new ShowProposalRequest(
+            _fwDataPath, ProductVersion, "agent_AAECAwQFBgcICQoLDA0ODw"));
+        Assert.False(missingProposal.Succeeded);
+        Assert.Equal("proposal.not-found", missingProposal.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, missingProposal.Refusal.Reason);
 
         var missingProjectPath = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "does-not-exist.fwdata");
-        var missingProject = LegacyProposalCommands.Log(missingProjectPath);
-        Assert.NotEqual(0, missingProject.ExitCode);
-        Assert.Contains("not found", missingProject.Output, StringComparison.OrdinalIgnoreCase);
+        var missingProject = ProposalCommands.Log(new LogRequest(missingProjectPath));
+        Assert.False(missingProject.Succeeded);
+        Assert.Equal("project.not-found", missingProject.Refusal!.Code);
+        Assert.Equal(FailureReason.InvalidArgument, missingProject.Refusal.Reason);
     }
 
-    /// <summary>Drives <c>dry-run</c>'s job through <see cref="DryRunJobRunner"/> — see the class remarks.</summary>
-    private CommandResult RunDryRun(string proposalId, bool asJson = false) =>
-        DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId, asJson);
+    private CommandOutcome<DryRunProjection> RunDryRun(string proposalId) =>
+        DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId);
 
     private void AssertGlossOnDisk(Guid senseGuid, string wsTag, string expectedGloss)
     {
@@ -263,11 +288,9 @@ public sealed class ProposalWorkflowTests
     private string FinalizeSetGloss(
         string draftName, string targetId, string text, params string[] prerequisiteIds)
     {
-        Assert.Equal(0, LegacyProposalCommands.New(_fwDataPath, ProductVersion, draftName, null).ExitCode);
-        Assert.Equal(
-            0,
-            LegacyProposalCommands.AddSetGloss(
-                _fwDataPath, ProductVersion, draftName, targetId, NewLangProjFixture.AnalysisTag, text).ExitCode);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null)).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, draftName, targetId, NewLangProjFixture.AnalysisTag, text)).Succeeded);
         if (prerequisiteIds.Length > 0)
         {
             using var database = ProjectMotifDatabase.Open(_fwDataPath);
@@ -281,9 +304,9 @@ public sealed class ProposalWorkflowTests
 
         DraftRationale.Author(
             _fwDataPath, draftName, "Prepare a dependent gloss", "Establish the lexical state required by later proposals.");
-        var finalized = LegacyProposalCommands.Finalize(_fwDataPath, ProductVersion, draftName);
-        Assert.Equal(0, finalized.ExitCode);
-        return ExtractProposalId(finalized.Output);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName));
+        Assert.True(finalized.Succeeded);
+        return finalized.Value!.ProposalId;
     }
 
     private bool DraftExists(string draftName)
@@ -304,27 +327,4 @@ public sealed class ProposalWorkflowTests
         return database.FullPath;
     }
 
-    private static string ExtractProposalId(string finalizeOutput)
-    {
-        // "Finalized draft 'name' -> Proposal <id> (status: proposed)."
-        const string marker = "-> Proposal ";
-        var start = finalizeOutput.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in finalize output: {finalizeOutput}");
-        start += marker.Length;
-        var end = finalizeOutput.IndexOf(' ', start);
-        Assert.True(end > start, $"Could not parse proposalId from finalize output: {finalizeOutput}");
-        return finalizeOutput.Substring(start, end - start);
-    }
-
-    private static string ExtractIntentDigest(string commandOutput)
-    {
-        // "  intentDigest: sha256:<hex>"
-        const string marker = "intentDigest: ";
-        var start = commandOutput.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"Could not find '{marker}' in output: {commandOutput}");
-        start += marker.Length;
-        var end = commandOutput.IndexOfAny(new[] { '\r', '\n' }, start);
-        Assert.True(end > start, $"Could not parse intentDigest from output: {commandOutput}");
-        return commandOutput.Substring(start, end - start).Trim();
-    }
 }
