@@ -22,7 +22,7 @@ public static class VerdictClasses
         });
     }
 
-    private static readonly string[] Names = ["agrees", "differs", "new", "noresult", "limit", "several"];
+    private static readonly string[] Names = ["agrees", "differs", "new", "noresult", "limit", "several", "approved", "candidate"];
 
     public static void SetVerdict(Control control, Verdict? value) => control.SetValue(VerdictProperty, value);
 

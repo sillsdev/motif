@@ -83,6 +83,19 @@
     <Style Selector="Border.verdictChip.several :is(TextBlock), TextBlock.verdictGlyph.several, :is(TextBlock).verdictText.several">
       <Setter Property="Foreground" Value="{DynamicResource SemiColorLink}" />
     </Style>
+    <!-- What the project holds, in FieldWorks' own cyan (approved) and tan (a guess nobody approved). -->
+    <Style Selector="Border.verdictChip.approved">
+      <Setter Property="Background" Value="{DynamicResource MotifApprovedFill}" />
+    </Style>
+    <Style Selector="Border.verdictChip.approved :is(TextBlock), TextBlock.verdictGlyph.approved, :is(TextBlock).verdictText.approved">
+      <Setter Property="Foreground" Value="{DynamicResource MotifApprovedInk}" />
+    </Style>
+    <Style Selector="Border.verdictChip.candidate">
+      <Setter Property="Background" Value="{DynamicResource MotifCandidateFill}" />
+    </Style>
+    <Style Selector="Border.verdictChip.candidate :is(TextBlock), TextBlock.verdictGlyph.candidate, :is(TextBlock).verdictText.candidate">
+      <Setter Property="Foreground" Value="{DynamicResource MotifCandidateInk}" />
+    </Style>
 
     <!-- A part of an outcome bar, filled with its meaning's colour. -->
     <Style Selector="Border.outcomeSegment">
@@ -102,6 +115,12 @@
     </Style>
     <Style Selector="Border.outcomeSegment.several">
       <Setter Property="Background" Value="{DynamicResource SemiColorLink}" />
+    </Style>
+    <Style Selector="Border.outcomeSegment.approved">
+      <Setter Property="Background" Value="{DynamicResource MotifApprovedAccent}" />
+    </Style>
+    <Style Selector="Border.outcomeSegment.candidate">
+      <Setter Property="Background" Value="{DynamicResource MotifCandidateAccent}" />
     </Style>
 
     <!-- The underline a word wears in a reader, in the same six colours. -->
@@ -125,6 +144,12 @@
     </Style>
     <Style Selector="Border.wordVerdict.several">
       <Setter Property="BorderBrush" Value="{DynamicResource SemiColorLink}" />
+    </Style>
+    <Style Selector="Border.wordVerdict.approved">
+      <Setter Property="BorderBrush" Value="{DynamicResource MotifApprovedAccent}" />
+    </Style>
+    <Style Selector="Border.wordVerdict.candidate">
+      <Setter Property="BorderBrush" Value="{DynamicResource MotifCandidateAccent}" />
     </Style>
     <Style Selector="Border.wordVerdict.dimmed">
       <Setter Property="Opacity" Value="0.35" />
@@ -165,6 +190,25 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://LiveMarkdown.Avalonia/Defaults.axaml" />
       </ResourceDictionary.MergedDictionaries>
+      <!-- FieldWorks' cyan RGB(150,255,255) and tan RGB(234,220,186), darkened for text and deepened for dark mode. -->
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="MotifApprovedFill" Color="#D2F6F7" />
+          <SolidColorBrush x:Key="MotifApprovedInk" Color="#08666C" />
+          <SolidColorBrush x:Key="MotifApprovedAccent" Color="#1DB3BA" />
+          <SolidColorBrush x:Key="MotifCandidateFill" Color="#F3EAD4" />
+          <SolidColorBrush x:Key="MotifCandidateInk" Color="#74531A" />
+          <SolidColorBrush x:Key="MotifCandidateAccent" Color="#C9A45A" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="MotifApprovedFill" Color="#123E41" />
+          <SolidColorBrush x:Key="MotifApprovedInk" Color="#8AE7EB" />
+          <SolidColorBrush x:Key="MotifApprovedAccent" Color="#3CC6CD" />
+          <SolidColorBrush x:Key="MotifCandidateFill" Color="#43381F" />
+          <SolidColorBrush x:Key="MotifCandidateInk" Color="#E8CF95" />
+          <SolidColorBrush x:Key="MotifCandidateAccent" Color="#C9A45A" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

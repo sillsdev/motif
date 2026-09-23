@@ -102,6 +102,15 @@ The set of morphologies represented by all human-approved analyses on a FieldWor
 Every distinct morphology in that set is expected; finding one reading does not cover the others.
 _Avoid_: the approved analysis, any parse
 
+**Candidate**:
+An analysis a FieldWorks project holds for a word form that no person has approved or rejected, whoever
+produced it: FieldWorks' parser, its guesser, or nobody. FieldWorks' own name for these is "Analysis
+Candidates", and it offers them in texts as guesses, coloured tan. One of the five things a project can hold
+for a word that Motif compares an Assessment against: not present, candidate, approved, rejected, or an
+incorrect spelling. FieldWorks' parser re-judges candidates whenever it runs, and deletes one it no longer
+produces unless a text uses it.
+_Avoid_: not approved, present, unapproved analysis, no-opinion analysis
+
 **Correctness**:
 An Assessment kind measuring whether the parser reproduces the morphology of a word form's approved
 analyses, without claiming agreement about sense or word-level category. Its findings are separate from

@@ -133,6 +133,31 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.Equal(word.Occurrences[0].Analysis!.Key, word.Approved[0].Key);
         Assert.Single(word.Disapproved);
         Assert.NotEqual(word.Approved[0].Key, word.Disapproved[0].Key);
+
+        // The second and third analyses carry no human opinion either way: they are candidates.
+        Assert.Equal(2, word.CandidateCount);
+        Assert.False(word.IncorrectSpelling);
+    }
+
+    [Fact]
+    public void AWordformFieldWorksMarksAsMisspelledIsReportedAsIncorrectSpelling()
+    {
+        using var cache = _pristine.NewScratch();
+        var scenario = SeedDualAnalysisText(cache, _pristine.Seed);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+                .Single(candidate => candidate.Form.VernacularDefaultWritingSystem.Text == DualForm);
+            wordform.SpellingStatus = 2;
+        });
+        new FwDataProjectLoader().Save(cache);
+        var fwDataPath = cache.ProjectId.Path;
+        Capture(fwDataPath);
+
+        var outcome = TextWordsQuery.Query(new TextWordsRequest(fwDataPath, [scenario.TextId]));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.True(Assert.Single(outcome.Value!.Words, item => item.Form == DualForm).IncorrectSpelling);
     }
 
     private const string DualForm = "dualword";

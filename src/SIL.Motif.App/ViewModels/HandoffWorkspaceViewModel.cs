@@ -299,7 +299,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         var results = Stages[(int)WorkflowStage.Results];
         results.Summary = Assess.IsActive ? "Running..." : HasEverAssessed
-            ? Assess.Result?.CompletionSummary is { Length: > 0 } summary ? summary : "Completed"
+            ? Assess.Words.OutcomeSummary is { Length: > 0 } words ? words
+            : Assess.Result?.CompletionSummary is { Length: > 0 } summary ? summary : "Completed"
             : "Not run yet";
         results.IsDone = HasEverAssessed;
 

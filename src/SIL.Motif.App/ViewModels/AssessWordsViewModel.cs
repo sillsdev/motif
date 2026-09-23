@@ -94,6 +94,14 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     /// </summary>
     public IReadOnlyList<OutcomeSegment> Outcomes { get; private set; } = [];
 
+    /// <summary>
+    /// The same parts as <see cref="Outcomes"/> in one line, counted in words rather than searches, such as
+    /// "209 words: 130 parsed, 22 no parse, 57 stopped at a limit". Empty until an Assessment is loaded.
+    /// </summary>
+    public string OutcomeSummary => TotalCount == 0
+        ? string.Empty
+        : $"{(TotalCount == 1 ? "1 word" : $"{TotalCount:N0} words")}: {string.Join(", ", Outcomes.Select(segment => $"{segment.CountText} {segment.Label}"))}";
+
     private IReadOnlyList<OutcomeSegment> CountOutcomes() =>
     [
         .. new[]
@@ -118,6 +126,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
         TotalCount = _all.Count;
         Outcomes = CountOutcomes();
         OnPropertyChanged(nameof(Outcomes));
+        OnPropertyChanged(nameof(OutcomeSummary));
         OnPropertyChanged(nameof(ManyStoppedAtALimit));
         OnPropertyChanged(nameof(AnyStoppedAtALimit));
         OnPropertyChanged(nameof(SkippedCount));

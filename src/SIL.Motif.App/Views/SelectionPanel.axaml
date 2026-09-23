@@ -119,21 +119,31 @@
 
       <!-- Words view -->
       <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="8" IsVisible="{Binding Words.ShowWords}">
-        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="6">
+        <!-- Chips for the rarer rows appear only when a word is in them. -->
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="6">
           <TextBox Grid.Column="0" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
                    AutomationProperties.Name="Search words" />
           <views:FilterChip Grid.Column="1" Label="All" Count="{Binding Words.AllCount}"
-                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.IsNull}}"
+                            IsActive="{Binding Words.IsAllFilter}"
                             Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Null}" />
-          <views:FilterChip Grid.Column="2" Label="Approved" Count="{Binding Words.ApprovedFilterCount}" Verdict="Agrees"
+          <views:FilterChip Grid.Column="2" Label="Approved" Count="{Binding Words.ApprovedFilterCount}" Verdict="Approved"
                             IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
                             Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Approved}" />
-          <views:FilterChip Grid.Column="3" Label="Not stored yet" Count="{Binding Words.NoneFilterCount}" Verdict="New"
-                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.None}}"
-                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.None}" />
-          <views:FilterChip Grid.Column="4" Label="Several analyses" Count="{Binding Words.SeveralFilterCount}" Verdict="Several"
-                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.SeveralAnalyses}}"
-                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.SeveralAnalyses}" />
+          <views:FilterChip Grid.Column="3" Label="Candidate" Count="{Binding Words.CandidateFilterCount}" Verdict="Candidate" IsVisible="{Binding Words.CandidateFilterCount}"
+                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Candidate}}"
+                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Candidate}" />
+          <views:FilterChip Grid.Column="4" Label="Rejected" Count="{Binding Words.RejectedFilterCount}" Verdict="Differs" IsVisible="{Binding Words.RejectedFilterCount}"
+                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Rejected}}"
+                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Rejected}" />
+          <views:FilterChip Grid.Column="5" Label="Not stored yet" Count="{Binding Words.NotPresentFilterCount}" Verdict="New"
+                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.NotPresent}}"
+                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.NotPresent}" />
+          <views:FilterChip Grid.Column="6" Label="Incorrect spelling" Count="{Binding Words.IncorrectSpellingFilterCount}" Verdict="Several" IsVisible="{Binding Words.IncorrectSpellingFilterCount}"
+                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.IncorrectSpelling}}"
+                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.IncorrectSpelling}" />
+          <views:FilterChip Grid.Column="7" Label="Several analyses" Count="{Binding Words.SeveralFilterCount}" Verdict="Several"
+                            IsVisible="{Binding Words.SeveralFilterCount}" IsActive="{Binding Words.SeveralOnly}"
+                            Command="{Binding Words.ShowSeveralCommand}" />
         </Grid>
 
         <!-- One dense line per word, most frequent first; the detail opens below it. -->

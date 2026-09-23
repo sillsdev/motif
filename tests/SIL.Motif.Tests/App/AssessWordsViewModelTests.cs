@@ -38,6 +38,19 @@ public sealed class AssessWordsViewModelTests
             [(Verdict.Agrees, 1), (Verdict.NoResult, 1), (Verdict.Limit, 2), (Verdict.Several, 1)],
             table.Outcomes.Select(segment => (segment.Meaning, segment.Count)));
         Assert.Equal(table.AllCount, table.Outcomes.Sum(segment => segment.Count));
+        Assert.Equal("5 words: 1 parsed, 1 no parse, 2 stopped at a limit, 1 skipped", table.OutcomeSummary);
+    }
+
+    [Fact]
+    public void TheOutcomeSummaryIsEmptyUntilAnAssessmentIsLoaded()
+    {
+        var table = new AssessWordsViewModel();
+
+        Assert.Equal(string.Empty, table.OutcomeSummary);
+
+        table.Load([Word("kitabu", "analysed", [Reading("book")], ["approved"])]);
+
+        Assert.Equal("1 word: 1 parsed", table.OutcomeSummary);
     }
 
     [Fact]

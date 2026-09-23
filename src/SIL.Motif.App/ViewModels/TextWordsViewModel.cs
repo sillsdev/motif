@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Host.Texts;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -17,28 +18,68 @@ public enum TextsView
     InText,
 }
 
-/// <summary>One bucket a word's project analyses fall into, for the Words table's filter chips.</summary>
+/// <summary>
+/// What the project holds for a word form, as one of the five rows Motif compares an Assessment against. A form
+/// with analyses of more than one standing takes the best one, in FieldWorks' own guessing order: approved, then
+/// candidates, then rejected ones. A spelling FieldWorks marks incorrect overrides them all.
+/// </summary>
 public enum WordProjectStatus
 {
-    /// <summary>No occurrence has an approved analysis, and the project approves none for this form.</summary>
-    None,
+    /// <summary>The project holds no analysis of this form.</summary>
+    NotPresent,
 
-    /// <summary>Every occurrence that has an analysis agrees, and the project approves it.</summary>
+    /// <summary>The project approves at least one analysis of this form.</summary>
     Approved,
 
-    /// <summary>Occurrences of the same spelling carry different analyses: usually homographs, not a problem.</summary>
-    SeveralAnalyses,
+    /// <summary>
+    /// The project holds analyses of this form, but a person has neither approved nor rejected any of them: they may
+    /// come from FieldWorks' parser, its guesser, or be left over, and the workflow for them is the same. FieldWorks
+    /// lists these as "Analysis Candidates".
+    /// </summary>
+    Candidate,
+
+    /// <summary>Every analysis the project holds for this form has been rejected.</summary>
+    Rejected,
+
+    /// <summary>FieldWorks marks this spelling as incorrect, so it is not a word to analyse.</summary>
+    IncorrectSpelling,
 }
 
-/// <summary>Reads a Texts status as one of the six meanings every stage shares.</summary>
+/// <summary>Reads a Texts status as a meaning, and so as a colour and glyph, like every other stage's.</summary>
 public static class WordProjectStatuses
 {
-    /// <summary>Approved agrees with the project, several analyses is neutral, and nothing stored is new.</summary>
+    /// <summary>
+    /// Approved and candidate analyses wear FieldWorks' own cyan and tan, rejected differs, an incorrect spelling is
+    /// neutral, and a form with nothing stored is new.
+    /// </summary>
     public static Verdict VerdictOf(WordProjectStatus status) => status switch
     {
-        WordProjectStatus.Approved => Verdict.Agrees,
-        WordProjectStatus.SeveralAnalyses => Verdict.Several,
+        WordProjectStatus.Approved => Verdict.Approved,
+        WordProjectStatus.Candidate => Verdict.Candidate,
+        WordProjectStatus.Rejected => Verdict.Differs,
+        WordProjectStatus.IncorrectSpelling => Verdict.Several,
         _ => Verdict.New,
+    };
+
+    /// <summary>Which row <paramref name="word"/> belongs to; see <see cref="WordProjectStatus"/> for the order.</summary>
+    public static WordProjectStatus Of(TextWord word)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        if (word.IncorrectSpelling) return WordProjectStatus.IncorrectSpelling;
+        if (word.Approved.Count > 0) return WordProjectStatus.Approved;
+        if (word.CandidateCount > 0 || word.Occurrences.Any(occurrence => occurrence.Status == InterlinearAnalysisStatus.Unapproved))
+            return WordProjectStatus.Candidate;
+        return word.Disapproved.Count > 0 ? WordProjectStatus.Rejected : WordProjectStatus.NotPresent;
+    }
+
+    /// <summary>The short name a chip shows for <paramref name="status"/>, in the Texts stage's own words.</summary>
+    public static string LabelOf(WordProjectStatus status, int approvedCount = 1) => status switch
+    {
+        WordProjectStatus.Approved => approvedCount > 1 ? $"Approved, {approvedCount} analyses" : "Approved",
+        WordProjectStatus.Candidate => "Candidate",
+        WordProjectStatus.Rejected => "Rejected",
+        WordProjectStatus.IncorrectSpelling => "Incorrect spelling",
+        _ => "Not stored yet",
     };
 }
 
@@ -65,7 +106,16 @@ public sealed partial class TextWordsViewModel : ObservableObject
         _selection = selection;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
         SetViewCommand = new RelayCommand<TextsView>(view => View = view);
-        SetStatusFilterCommand = new RelayCommand<WordProjectStatus?>(status => StatusFilter = status);
+        SetStatusFilterCommand = new RelayCommand<WordProjectStatus?>(status =>
+        {
+            SeveralOnly = false;
+            StatusFilter = status;
+        });
+        ShowSeveralCommand = new RelayCommand(() =>
+        {
+            StatusFilter = null;
+            SeveralOnly = true;
+        });
         ReaderTexts.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(ReaderMessage));
@@ -119,7 +169,17 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private string _searchText = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAllFilter))]
     private WordProjectStatus? _statusFilter;
+
+    // Replaces the status filter rather than narrowing it, so one chip is ever active.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAllFilter))]
+    private bool _severalOnly;
+
+    public bool IsAllFilter => StatusFilter is null && !SeveralOnly;
+
+    public IRelayCommand ShowSeveralCommand { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ReaderMessage))]
@@ -154,11 +214,15 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     public int AllCount => _all.Count;
     public int ApprovedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Approved);
-    public int NoneFilterCount => _all.Count(row => row.Status == WordProjectStatus.None);
-    public int SeveralFilterCount => _all.Count(row => row.Status == WordProjectStatus.SeveralAnalyses);
+    public int CandidateFilterCount => _all.Count(row => row.Status == WordProjectStatus.Candidate);
+    public int RejectedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Rejected);
+    public int NotPresentFilterCount => _all.Count(row => row.Status == WordProjectStatus.NotPresent);
+    public int IncorrectSpellingFilterCount => _all.Count(row => row.Status == WordProjectStatus.IncorrectSpelling);
+    public int SeveralFilterCount => _all.Count(row => row.HasSeveralAnalyses);
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
     partial void OnStatusFilterChanged(WordProjectStatus? value) => ApplyFilter();
+    partial void OnSeveralOnlyChanged(bool value) => ApplyFilter();
 
     /// <summary>Sets the project to read words from and immediately reloads for whatever is checked now.</summary>
     public async Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
@@ -237,6 +301,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         Rows.Clear();
         var matches = _all.AsEnumerable();
         if (StatusFilter is { } status) matches = matches.Where(row => row.Status == status);
+        if (SeveralOnly) matches = matches.Where(row => row.HasSeveralAnalyses);
         if (!string.IsNullOrWhiteSpace(SearchText))
             matches = matches.Where(row => row.Form.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
         // The most frequent words first: a fix that helps them helps the most of the text.
@@ -261,7 +326,10 @@ public sealed partial class TextWordsViewModel : ObservableObject
         OnPropertyChanged(nameof(SummaryText));
         OnPropertyChanged(nameof(AllCount));
         OnPropertyChanged(nameof(ApprovedFilterCount));
-        OnPropertyChanged(nameof(NoneFilterCount));
+        OnPropertyChanged(nameof(CandidateFilterCount));
+        OnPropertyChanged(nameof(RejectedFilterCount));
+        OnPropertyChanged(nameof(NotPresentFilterCount));
+        OnPropertyChanged(nameof(IncorrectSpellingFilterCount));
         OnPropertyChanged(nameof(SeveralFilterCount));
     }
 
@@ -297,21 +365,20 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 
         var chosenKeys = word.Occurrences.Select(occurrence => occurrence.Analysis?.Key)
             .Where(key => key is not null).Distinct().ToList();
-        Status = chosenKeys.Count > 1 ? WordProjectStatus.SeveralAnalyses
-            : word.Approved.Count > 0 ? WordProjectStatus.Approved
-            : WordProjectStatus.None;
+        Status = WordProjectStatuses.Of(word);
+        HasSeveralAnalyses = chosenKeys.Count > 1;
+        StatusLabel = WordProjectStatuses.LabelOf(Status, word.Approved.Count);
 
-        StatusLabel = Status switch
-        {
-            WordProjectStatus.SeveralAnalyses => "Several analyses",
-            WordProjectStatus.Approved => word.Approved.Count > 1 ? $"Approved ×{word.Approved.Count}" : "Approved",
-            _ => "Not stored yet",
-        };
-
-        ProjectSummary = Status == WordProjectStatus.SeveralAnalyses
+        ProjectSummary = HasSeveralAnalyses
             ? $"{chosenKeys.Count} analyses: {string.Join(", ", DistinctGlosses(word))}"
-            : word.Approved.Count > 0 ? DistinctGlosses(word).FirstOrDefault() ?? string.Empty
-            : "Not analysed in the project";
+            : Status switch
+            {
+                WordProjectStatus.Approved => DistinctGlosses(word).FirstOrDefault() ?? string.Empty,
+                WordProjectStatus.Candidate => "A candidate: stored, but nobody has approved it",
+                WordProjectStatus.Rejected => "Only rejected analyses are stored",
+                WordProjectStatus.IncorrectSpelling => "FieldWorks marks this spelling as incorrect",
+                _ => "Not analysed in the project",
+            };
 
         Occurrences = word.Occurrences.Select(occurrence => new WordOccurrenceRowViewModel(occurrence)).ToArray();
         ApprovedAnalyses = word.Approved.Select(analysis => new ProjectAnalysisViewModel(analysis)).ToArray();
@@ -321,6 +388,9 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     public int OccurrenceCount { get; }
     public bool HasApproved { get; }
     public WordProjectStatus Status { get; }
+
+    /// <summary>Whether this spelling carries different analyses in different places, usually homographs.</summary>
+    public bool HasSeveralAnalyses { get; }
 
     /// <summary>The shared meaning behind <see cref="Status"/>, so Texts is coloured like every other stage.</summary>
     public Verdict Verdict => WordProjectStatuses.VerdictOf(Status);
@@ -426,11 +496,7 @@ public sealed class ReaderTokenViewModel
             return;
         }
 
-        var chosenKeys = word.Occurrences.Select(occurrence => occurrence.Analysis?.Key)
-            .Where(key => key is not null).Distinct().Count();
-        Status = chosenKeys > 1 ? WordProjectStatus.SeveralAnalyses
-            : word.Approved.Count > 0 ? WordProjectStatus.Approved
-            : WordProjectStatus.None;
+        Status = WordProjectStatuses.Of(word);
 
         var occurrence = word.Occurrences.FirstOrDefault(candidate => candidate.TextId == textId && candidate.Line == line);
         Occurrence = occurrence is null ? null : new ReaderOccurrenceViewModel(word, occurrence);

@@ -105,12 +105,16 @@ public sealed class TextWordsViewModelTests
         await words.ReloadAsync();
 
         var row = Assert.Single(words.Rows);
-        Assert.Equal(WordProjectStatus.SeveralAnalyses, row.Status);
-        Assert.Equal("Several analyses", row.StatusLabel);
+        Assert.Equal(WordProjectStatus.Approved, row.Status);
+        Assert.True(row.HasSeveralAnalyses);
+        Assert.Equal("Approved, 2 analyses", row.StatusLabel);
+        Assert.Equal(Verdict.Approved, row.Verdict);
+        Assert.Equal(1, words.ApprovedFilterCount);
+        Assert.Equal(1, words.SeveralFilterCount);
     }
 
     [Fact]
-    public async Task AWordWithNoAnalysisAnywhereIsNone()
+    public async Task AWordWithNoAnalysisAnywhereIsNotPresent()
     {
         var (fake, selection, words) = NewViewModel();
         await words.SetProjectAsync(ProjectPath);
@@ -121,9 +125,85 @@ public sealed class TextWordsViewModelTests
         await words.ReloadAsync();
 
         var row = Assert.Single(words.Rows);
-        Assert.Equal(WordProjectStatus.None, row.Status);
+        Assert.Equal(WordProjectStatus.NotPresent, row.Status);
         Assert.Equal("Not analysed in the project", row.ProjectSummary);
         Assert.Equal("Not stored yet", row.StatusLabel);
+    }
+
+    [Theory]
+    [InlineData(2, 0, false, WordProjectStatus.Candidate, "Candidate")]
+    [InlineData(0, 1, false, WordProjectStatus.Rejected, "Rejected")]
+    [InlineData(1, 1, false, WordProjectStatus.Candidate, "Candidate")]
+    [InlineData(1, 0, true, WordProjectStatus.IncorrectSpelling, "Incorrect spelling")]
+    public async Task AWordWithoutAnApprovedAnalysisTakesTheBestStandingItHas(
+        int candidates, int rejected, bool incorrectSpelling, WordProjectStatus expected, string label)
+    {
+        var (fake, selection, words) = NewViewModel();
+        await words.SetProjectAsync(ProjectPath);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("kitanda", null, [new WordOccurrence(TextId, "Alpha", 4, "s", "unanalysed", null)], [],
+                Enumerable.Repeat(Analysis("k9", "bed"), rejected).ToArray(), candidates, incorrectSpelling)],
+            [], HasBaseline: true));
+
+        await words.ReloadAsync();
+
+        var row = Assert.Single(words.Rows);
+        Assert.Equal(expected, row.Status);
+        Assert.Equal(label, row.StatusLabel);
+        Assert.Equal(WordProjectStatuses.VerdictOf(expected), row.Verdict);
+    }
+
+    [Fact]
+    public void WhatTheProjectHoldsWearsFieldWorksColoursForApprovedAndCandidate()
+    {
+        Assert.Equal(Verdict.Approved, WordProjectStatuses.VerdictOf(WordProjectStatus.Approved));
+        Assert.Equal(Verdict.Candidate, WordProjectStatuses.VerdictOf(WordProjectStatus.Candidate));
+        Assert.Equal(Verdict.New, WordProjectStatuses.VerdictOf(WordProjectStatus.NotPresent));
+        Assert.Equal(Verdict.Differs, WordProjectStatuses.VerdictOf(WordProjectStatus.Rejected));
+    }
+
+    [Fact]
+    public async Task AnOccurrenceWithAnUnapprovedAnalysisMakesTheWordACandidate()
+    {
+        var (fake, selection, words) = NewViewModel();
+        await words.SetProjectAsync(ProjectPath);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("chakula", null, [new WordOccurrence(TextId, "Alpha", 6, "s", "unapproved", Analysis("c1", "food"))], [], [])],
+            [], HasBaseline: true));
+
+        await words.ReloadAsync();
+
+        Assert.Equal(WordProjectStatus.Candidate, Assert.Single(words.Rows).Status);
+    }
+
+    [Fact]
+    public async Task TheSeveralAnalysesChipReplacesTheStatusFilterAndAllClearsBoth()
+    {
+        var (fake, selection, words) = NewViewModel();
+        await words.SetProjectAsync(ProjectPath);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [
+                new TextWord("anapenda", null,
+                    [new WordOccurrence(TextId, "Alpha", 1, "s", "approved", Analysis("love", "love")),
+                     new WordOccurrence(TextId, "Alpha", 2, "s", "approved", Analysis("like", "like"))],
+                    [Analysis("love", "love"), Analysis("like", "like")], []),
+                new TextWord("nitakupa", null, [new WordOccurrence(TextId, "Alpha", 3, "s", "unanalysed", null)], [], []),
+            ],
+            [], HasBaseline: true));
+        await words.ReloadAsync();
+        words.SetStatusFilterCommand.Execute(WordProjectStatus.NotPresent);
+
+        words.ShowSeveralCommand.Execute(null);
+
+        Assert.Null(words.StatusFilter);
+        Assert.False(words.IsAllFilter);
+        Assert.Equal("anapenda", Assert.Single(words.Rows).Form);
+
+        words.SetStatusFilterCommand.Execute(null);
+
+        Assert.False(words.SeveralOnly);
+        Assert.True(words.IsAllFilter);
+        Assert.Equal(2, words.Rows.Count);
     }
 
     [Fact]
@@ -161,7 +241,7 @@ public sealed class TextWordsViewModelTests
             [], HasBaseline: true));
         await words.ReloadAsync();
 
-        words.SetStatusFilterCommand.Execute(WordProjectStatus.None);
+        words.SetStatusFilterCommand.Execute(WordProjectStatus.NotPresent);
 
         Assert.Single(words.Rows);
         Assert.Equal("nitakupa", words.Rows[0].Form);

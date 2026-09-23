@@ -244,7 +244,7 @@
                       AutomationProperties.Name="Statistics results view" />
             </StackPanel>
             <views:CopyableTextBlock Classes="muted"
-                       Text="{Binding Assess.Result.CompletionSummary}"
+                       Text="{Binding Assess.Words.OutcomeSummary}"
                        Margin="16,0"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis" />

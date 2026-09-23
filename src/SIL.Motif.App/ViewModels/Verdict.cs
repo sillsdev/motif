@@ -2,8 +2,9 @@ namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
 /// What a view is saying about a word, an occurrence or an attempt, as one of six meanings shared by every
-/// stage. Each view keeps its own word for a meaning — Texts says "Approved" where Results says "Matches" —
-/// but the meaning decides the colour and the glyph, so the same thing never looks different twice.
+/// stage, plus two for what the project itself holds, drawn in FieldWorks' own colours. Each view keeps its own
+/// word for a meaning — Texts says "Approved" where Results says "Matches" — but the meaning decides the colour
+/// and the glyph, so the same thing never looks different twice.
 /// </summary>
 public enum Verdict
 {
@@ -24,6 +25,18 @@ public enum Verdict
 
     /// <summary>Neutral: one spelling with several analyses, which is usually homographs.</summary>
     Several,
+
+    /// <summary>
+    /// The project approves an analysis of this word. Cyan, as FieldWorks colours a guess taken from an approved
+    /// analysis, so a word looks the same here as in a FieldWorks text.
+    /// </summary>
+    Approved,
+
+    /// <summary>
+    /// The project holds a candidate analysis of this word: one nobody has approved or rejected. Tan, as FieldWorks
+    /// colours a guess its parser offered.
+    /// </summary>
+    Candidate,
 }
 
 /// <summary>The glyph and style class each <see cref="Verdict"/> wears, so colour is never the only signal.</summary>
@@ -37,6 +50,8 @@ public static class Verdicts
         Verdict.New => "new",
         Verdict.NoResult => "noresult",
         Verdict.Limit => "limit",
+        Verdict.Approved => "approved",
+        Verdict.Candidate => "candidate",
         _ => "several",
     };
 
@@ -48,6 +63,8 @@ public static class Verdicts
         Verdict.New => "+",
         Verdict.NoResult => "∅",
         Verdict.Limit => "⏱",
+        Verdict.Approved => "✓",
+        Verdict.Candidate => "?",
         _ => "◇",
     };
 
@@ -59,6 +76,8 @@ public static class Verdicts
         Verdict.New => "not stored yet",
         Verdict.NoResult => "no parse",
         Verdict.Limit => "stopped at a limit",
+        Verdict.Approved => "approved in the project",
+        Verdict.Candidate => "candidate",
         _ => "several analyses",
     };
 }

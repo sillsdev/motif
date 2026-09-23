@@ -61,12 +61,20 @@ public sealed record TextWordsResponse(
 /// <param name="Occurrences">Every place the form occurs in the chosen Texts, in text order.</param>
 /// <param name="Approved">The analyses the project approves for this form.</param>
 /// <param name="Disapproved">The analyses the project has rejected for this form.</param>
+/// <param name="CandidateCount">
+/// How many of the wordform's candidate analyses there are: those carrying no human opinion at all, whoever made
+/// them, whether FieldWorks' parser, its guesser, or nobody. FieldWorks lists them as "Analysis Candidates" and
+/// offers them as guesses; they are neither approved nor rejected.
+/// </param>
+/// <param name="IncorrectSpelling">Whether FieldWorks marks the wordform's spelling as incorrect.</param>
 public sealed record TextWord(
     string Form,
     string? WordformGuid,
     IReadOnlyList<WordOccurrence> Occurrences,
     IReadOnlyList<ProjectAnalysis> Approved,
-    IReadOnlyList<ProjectAnalysis> Disapproved);
+    IReadOnlyList<ProjectAnalysis> Disapproved,
+    int CandidateCount = 0,
+    bool IncorrectSpelling = false);
 
 /// <summary>One place a word occurs, and the analysis chosen there.</summary>
 /// <param name="TextId">The Text's own GUID.</param>

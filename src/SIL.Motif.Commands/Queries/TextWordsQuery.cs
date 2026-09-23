@@ -56,8 +56,9 @@ public static class TextWordsQuery
             var words = order.Select(form =>
             {
                 var accumulator = accumulators[form];
-                var (approved, disapproved) = ReadProjectAnalyses(cache, projectName, accumulator.WordformGuid);
-                return new TextWord(form, accumulator.WordformGuid?.ToString("D"), accumulator.Occurrences, approved, disapproved);
+                var (approved, disapproved, candidates, incorrect) = ReadProjectAnalyses(cache, projectName, accumulator.WordformGuid);
+                return new TextWord(form, accumulator.WordformGuid?.ToString("D"), accumulator.Occurrences, approved, disapproved,
+                    candidates, incorrect);
             }).ToList();
 
             return CommandOutcome<TextWordsResponse>.Success(new TextWordsResponse(words, texts, HasBaseline: true));
@@ -163,17 +164,24 @@ public static class TextWordsQuery
         return new ProjectAnalysis(AnalysisContent.ComputeDigest(bundles), ParserReadingReader.ReadMorphs(cache, projectName, morphs));
     }
 
-    private static (IReadOnlyList<ProjectAnalysis> Approved, IReadOnlyList<ProjectAnalysis> Disapproved) ReadProjectAnalyses(
-        LcmCache cache, string projectName, Guid? wordformGuid)
+    private static (IReadOnlyList<ProjectAnalysis> Approved, IReadOnlyList<ProjectAnalysis> Disapproved, int Candidates, bool Incorrect)
+        ReadProjectAnalyses(LcmCache cache, string projectName, Guid? wordformGuid)
     {
-        if (wordformGuid is not { } guid) return (Array.Empty<ProjectAnalysis>(), Array.Empty<ProjectAnalysis>());
+        if (wordformGuid is not { } guid) return (Array.Empty<ProjectAnalysis>(), Array.Empty<ProjectAnalysis>(), 0, false);
         if (!cache.ServiceLocator.GetInstance<IWfiWordformRepository>().TryGetObject(guid, out var wordform))
-            return (Array.Empty<ProjectAnalysis>(), Array.Empty<ProjectAnalysis>());
+            return (Array.Empty<ProjectAnalysis>(), Array.Empty<ProjectAnalysis>(), 0, false);
 
-        var approved = wordform.HumanApprovedAnalyses.Select(a => BuildProjectAnalysis(cache, projectName, a)).ToArray();
-        var disapproved = wordform.HumanDisapprovedParses.Select(a => BuildProjectAnalysis(cache, projectName, a)).ToArray();
-        return (approved, disapproved);
+        var humanApproved = wordform.HumanApprovedAnalyses.ToList();
+        var humanDisapproved = wordform.HumanDisapprovedParses.ToList();
+        var approved = humanApproved.Select(a => BuildProjectAnalysis(cache, projectName, a)).ToArray();
+        var disapproved = humanDisapproved.Select(a => BuildProjectAnalysis(cache, projectName, a)).ToArray();
+        var withOpinion = humanApproved.Concat(humanDisapproved).ToHashSet();
+        var candidates = wordform.AnalysesOC.Count(a => !withOpinion.Contains(a));
+        return (approved, disapproved, candidates, wordform.SpellingStatus == IncorrectSpellingStatus);
     }
+
+    // SpellingStatus's Incorrect member (0 = Undecided, 1 = Correct, 2 = Incorrect).
+    private const int IncorrectSpellingStatus = 2;
 
     // The first non-empty alternative, analysis writing systems in id order; display text only.
     private static string? BestText(IMultiAccessorBase accessor) => accessor.AvailableWritingSystemIds.OrderBy(ws => ws)
