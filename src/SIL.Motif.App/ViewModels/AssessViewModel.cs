@@ -74,6 +74,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         Trace.Reset();
         if (Words.SelectedRow is not { } row) return;
         Trace.SetWord(row.Word);
+        Trace.SetExpected(row.Word, row.MissedApproved.FirstOrDefault()?.Morphs);
         // A word with no readings and nothing missed has no analyses to show, so Try a Word takes the width.
         Trace.IsFocused = !row.HasReadings && row.MissedApproved.Count == 0;
     }
@@ -81,7 +82,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     protected override Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(
         CancellationToken cancellationToken)
     {
-        var request = new AssessRequest(ProjectPath!, _selection.BuildRequest());
+        var request = new AssessRequest(ProjectPath!, _selection.BuildRequest(),
+            _selection.PerWordTimeLimitSeconds is > 0 and var seconds ? (int)(seconds * 1000) : null);
         return _commandClient.AssessAsync(request, this, cancellationToken);
     }
 

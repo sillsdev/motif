@@ -31,9 +31,9 @@ public sealed partial class HandoffPanel : UserControl
     /// <summary>Questions worth asking once the files are in a chat, as a starting point.</summary>
     public IReadOnlyList<string> Questions { get; } =
     [
-        "Why do the negative past forms fail?",
-        "Which affix rules stop the most words?",
-        "What changed since the previous Assessment?",
+        "Which words did not parse, and what do they have in common?",
+        "Which words took longest, and what in the grammar might slow them?",
+        "Which analyses the project stores did the parser not produce?",
     ];
 
     // The routed PointerPressed gesture is what a native drag session actually starts from.

@@ -34,6 +34,27 @@ public sealed class PanGlossExecutableTests : IDisposable
     }
 
     [Fact]
+    public void TheNewestSiblingBuildWinsBetweenAReleaseCopyAndTheCargoTarget()
+    {
+        var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
+        var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;
+        var cargo = Touch(DevelopmentParserPath(repositoryRoot));
+        var older = Touch(ReleaseCopyPath(repositoryRoot, "v0.3.2"));
+        var newest = Touch(ReleaseCopyPath(repositoryRoot, "v0.3.3"));
+        File.SetLastWriteTimeUtc(cargo, DateTime.UtcNow.AddHours(-2));
+        File.SetLastWriteTimeUtc(older, DateTime.UtcNow.AddHours(-1));
+
+        var result = PanGlossExecutable.TryLocate(
+            configuredPath: null,
+            applicationDirectory: applicationDirectory,
+            fileName: "pangloss.exe",
+            repositoryRoot: repositoryRoot);
+
+        // PanGloss's managed release build copies its binary to dist/v<version>; the last one built is the one wanted.
+        Assert.Equal(Path.GetFullPath(newest), result);
+    }
+
+    [Fact]
     public void InsideACheckoutWithNoSiblingBuildTheBundledParserIsUsed()
     {
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
@@ -131,6 +152,9 @@ public sealed class PanGlossExecutableTests : IDisposable
 
     private static string DevelopmentParserPath(string repositoryRoot) => Path.GetFullPath(Path.Combine(
         repositoryRoot, "..", "PanGloss", "rust", "target", "release", "pangloss.exe"));
+
+    private static string ReleaseCopyPath(string repositoryRoot, string version) => Path.GetFullPath(Path.Combine(
+        repositoryRoot, "..", "PanGloss", "dist", version, "pangloss.exe"));
 
     private static string Touch(string path)
     {

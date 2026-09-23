@@ -92,7 +92,7 @@ public sealed class StageScreenshots
             window.UpdateLayout();
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         }
-        var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
+        using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
         frame.Save(path);
     }
 

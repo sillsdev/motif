@@ -7,6 +7,22 @@
              x:DataType="views:SelectionPanel">
   <UserControl.Styles>
     <!-- Chips, word underlines and morpheme rows come from App.axaml; only this view's own chips live here. -->
+    <Style Selector=":is(TextBlock).columnHeader">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+    </Style>
+    <Style Selector="ListBox.denseWords ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="Expander.denseWord">
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
     <Style Selector="Button.viewChip">
       <Setter Property="Padding" Value="10,4" />
       <Setter Property="Background" Value="Transparent" />
@@ -65,6 +81,14 @@
                               Minimum="0"
                               AutomationProperties.Name="Retry slower than, in milliseconds" />
             </DockPanel>
+            <DockPanel LastChildFill="False">
+              <views:CopyableTextBlock Text="Time limit per word (seconds)" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <NumericUpDown Value="{Binding Selection.PerWordTimeLimitSeconds}"
+                              Minimum="0.1" Increment="1" FormatString="0.#" PlaceholderText="1"
+                              AutomationProperties.Name="Time limit per word, in seconds" />
+            </DockPanel>
+            <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                                     Text="Blank keeps the project's limit (1 second unless its settings say otherwise). A word that runs out of time shows as Limit." />
             <views:CopyableTextBlock Classes="error" Text="{Binding Selection.ThresholdValidationMessage}"
                        IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
           </StackPanel>
@@ -112,38 +136,54 @@
                             Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.SeveralAnalyses}" />
         </Grid>
 
-        <ListBox Grid.Row="1" ItemsSource="{Binding Words.Rows}" AutomationProperties.Name="Words to test">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:TextWordRowViewModel">
-              <Expander Margin="0,0,0,4">
-                <Expander.Header>
-                  <Grid ColumnDefinitions="2*,Auto,3*" ColumnSpacing="10">
-                    <views:CopyableTextBlock Grid.Column="0" Text="{Binding Form}" FontWeight="SemiBold" />
-                    <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceCount}" />
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-                      <views:VerdictChip Verdict="{Binding Verdict}" Text="{Binding StatusLabel}" />
-                      <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectSummary}" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                  </Grid>
-                </Expander.Header>
-                <StackPanel Spacing="4" Margin="12,4,0,4">
-                  <views:CopyableTextBlock Classes="muted" FontSize="12"
-                             Text="Where it appears, and the analysis chosen there." />
-                  <ItemsControl ItemsSource="{Binding Occurrences}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
-                        <StackPanel Margin="0,4" Spacing="1">
-                          <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" FontSize="12" />
-                          <views:CopyableTextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
-                        </StackPanel>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </Expander>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+        <!-- One dense line per word, most frequent first; the detail opens below it. -->
+        <Grid Grid.Row="1" RowDefinitions="Auto,*">
+          <Grid ColumnDefinitions="2*,70,190,190,28" Margin="12,0,8,4">
+            <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WORD" />
+            <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="IN TEXTS" />
+            <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="IN THE PROJECT" />
+            <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="LAST ASSESSMENT" />
+          </Grid>
+          <ListBox Grid.Row="1" Classes="denseWords" ItemsSource="{Binding Words.Rows}" AutomationProperties.Name="Words to test">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:TextWordRowViewModel">
+                <Expander Classes="denseWord">
+                  <Expander.Header>
+                    <Grid ColumnDefinitions="2*,70,190,190" >
+                      <views:CopyableTextBlock Grid.Column="0" Text="{Binding Form}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                      <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceCount, StringFormat='×{0}'}" VerticalAlignment="Center" />
+                      <views:VerdictChip Grid.Column="2" Verdict="{Binding Verdict}" Text="{Binding StatusLabel}" Compact="True" HorizontalAlignment="Left" />
+                      <views:VerdictChip Grid.Column="3" Verdict="{Binding LastResultMeaning}" Text="{Binding LastResultLabel}" Compact="True"
+                                         HorizontalAlignment="Left" IsVisible="{Binding HasLastResult}" />
+                      <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="—" IsVisible="{Binding !HasLastResult}" VerticalAlignment="Center" />
+                    </Grid>
+                  </Expander.Header>
+                  <StackPanel Spacing="6" Margin="4,2,0,6">
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectSummary}" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding ApprovedAnalyses}" IsVisible="{Binding HasApproved}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProjectAnalysisViewModel">
+                          <views:MorphemeRow Morphs="{Binding Morphs}" Margin="0,2" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <views:CopyableTextBlock Classes="muted" FontSize="12" Text="Where it appears:" />
+                    <ItemsControl ItemsSource="{Binding Occurrences}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
+                          <StackPanel Margin="0,2" Spacing="1">
+                            <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" FontSize="12" />
+                            <views:CopyableTextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Expander>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
       </Grid>
 
       <!-- In text view -->

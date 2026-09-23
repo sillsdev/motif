@@ -78,7 +78,7 @@ public sealed class ProjectHistoryQueryTests : IDisposable
         Assert.True(entries[0].At >= entries[1].At);
         Assert.True(entries[1].At >= entries[2].At);
         Assert.All(entries.Where(entry => entry.Kind == ProjectHistoryKind.Assessment),
-            entry => Assert.StartsWith("Assessment: ", entry.Summary, StringComparison.Ordinal));
+            entry => Assert.Contains(" completed; ", entry.Summary, StringComparison.Ordinal));
         Assert.Equal("Baseline captured.", entries.Single(entry => entry.Kind == ProjectHistoryKind.Baseline).Summary);
     }
 

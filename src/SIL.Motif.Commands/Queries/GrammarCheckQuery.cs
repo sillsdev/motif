@@ -173,6 +173,8 @@ public static class GrammarCheckQuery
         {
             Group = finding.GroupName is { Length: > 0 } group ? group : null,
             Code = finding.Code,
+            Description = finding.Description is { Length: > 0 } description ? description : null,
+            Guidance = finding.Guidance is { Length: > 0 } guidance ? guidance : null,
         };
     }
 
@@ -205,7 +207,9 @@ public static class GrammarCheckQuery
         [property: JsonPropertyName("group_name")] string? GroupName,
         string? Problem,
         string? Message,
-        IReadOnlyList<GrammarHealthSubjectJson>? Subjects);
+        IReadOnlyList<GrammarHealthSubjectJson>? Subjects,
+        string? Description = null,
+        string? Guidance = null);
 
     private sealed record GrammarHealthSubjectJson(
         string? Kind, string? Name, string? Title, string? Subtitle,

@@ -5,59 +5,125 @@
              xmlns:queries="clr-namespace:SIL.Motif.Commands.Queries;assembly=SIL.Motif.Commands"
              x:Class="SIL.Motif.App.Views.ProjectPanel"
              x:DataType="views:ProjectPanel">
-  <StackPanel Spacing="8" Margin="24">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <Grid ColumnDefinitions="*,28,340" Margin="24,20,24,24">
 
-    <DockPanel LastChildFill="True">
-      <Button Content="Browse..."
-              Command="{Binding Project.BrowseCommand}"
-              AutomationProperties.Name="Browse for a FieldWorks project file"
-              DockPanel.Dock="Right" />
-      <ComboBox ItemsSource="{Binding Project.KnownProjects}"
-                SelectedItem="{Binding Project.SelectedKnownProject}"
-                PlaceholderText="{Binding Project.OpenUnlistedPath}"
-                AutomationProperties.Name="Known projects"
-                HorizontalAlignment="Stretch">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="queries:KnownProjectSummary">
-            <views:CopyableTextBlock Text="{Binding FullFwDataPath}" />
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
-    </DockPanel>
+      <!-- Where the project stands: its Baseline, its latest Assessment and its grammar, one card each. -->
+      <StackPanel Grid.Column="0" Spacing="14">
 
-    <views:CopyableTextBlock Classes="section-title" Text="Baseline" Margin="0,16,0,0" />
-    <views:CopyableTextBlock Text="{Binding Baseline.CapturedTimeText}" />
-    <views:CopyableTextBlock Text="{Binding Baseline.FreshnessText}" IsVisible="{Binding Baseline.HasBaseline}" />
-    <views:CopyableTextBlock Text="{Binding Baseline.HeldStatusText}" />
-    <views:CopyableTextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}"
-               IsVisible="{Binding Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-    <Button Content="Refresh"
-            Command="{Binding Baseline.RefreshCommand}"
-            HorizontalAlignment="Left"
-            AutomationProperties.Name="Refresh the Baseline" />
-
-    <views:CopyableTextBlock Classes="section-title" Text="History" Margin="0,16,0,0" />
-    <views:CopyableTextBlock Classes="muted" Text="Loading history..." IsVisible="{Binding History.IsLoading}" />
-    <views:CopyableTextBlock Classes="error" Text="{Binding History.RefusalMessage}"
-               IsVisible="{Binding History.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-    <views:CopyableTextBlock Classes="muted" Text="Nothing recorded for this project yet."
-               IsVisible="{Binding !History.HasEntries}" />
-    <ItemsControl ItemsSource="{Binding History.Entries}" AutomationProperties.Name="Project history">
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="queries:ProjectHistoryEntry">
-          <Border Classes="card" Margin="0,0,0,6">
+        <Border Classes="card">
+          <StackPanel Spacing="10">
             <DockPanel LastChildFill="True">
-              <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted"
-                                       Text="{Binding At.LocalDateTime, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
+              <Button Content="Browse..."
+                      Command="{Binding Project.BrowseCommand}"
+                      AutomationProperties.Name="Browse for a FieldWorks project file"
+                      DockPanel.Dock="Right" Margin="8,0,0,0" />
+              <ComboBox ItemsSource="{Binding Project.KnownProjects}"
+                        SelectedItem="{Binding Project.SelectedKnownProject}"
+                        PlaceholderText="{Binding Project.OpenUnlistedPath}"
+                        AutomationProperties.Name="Known projects"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="queries:KnownProjectSummary">
+                    <views:CopyableTextBlock Text="{Binding FullFwDataPath}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </DockPanel>
+            <DockPanel LastChildFill="True">
+              <Button Content="Refresh Baseline"
+                      Command="{Binding Baseline.RefreshCommand}"
+                      DockPanel.Dock="Right" VerticalAlignment="Top"
+                      AutomationProperties.Name="Refresh the Baseline" />
               <StackPanel Spacing="2">
-                <views:CopyableTextBlock Text="{Binding Kind}" FontWeight="SemiBold" />
-                <views:CopyableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="Baseline" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="{Binding Baseline.CapturedTimeText}" IsVisible="{Binding !Baseline.HasBaseline}" />
+                <views:CopyableTextBlock Text="{Binding Baseline.SavedText}" IsVisible="{Binding Baseline.HasBaseline}" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.CapturedAtText}" IsVisible="{Binding Baseline.HasBaseline}" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}" TextWrapping="Wrap"
+                           IsVisible="{Binding Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
               </StackPanel>
             </DockPanel>
-          </Border>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+          </StackPanel>
+        </Border>
 
-  </StackPanel>
+        <Border Classes="card" AutomationProperties.Name="Latest Assessment">
+          <StackPanel Spacing="12">
+            <DockPanel LastChildFill="False">
+              <views:CopyableTextBlock Text="Latest Assessment" FontSize="15" FontWeight="SemiBold" DockPanel.Dock="Left" />
+              <views:CopyableTextBlock Classes="muted" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                       IsVisible="{Binding Workspace.HasEverAssessed}"
+                                       Text="{Binding Workspace.Assess.Words.CountSummary}" />
+              <views:CopyableTextBlock Classes="muted" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,12,0"
+                                       IsVisible="{Binding Workspace.HasEverAssessed}"
+                                       Text="{Binding Workspace.Assess.CompletedAt, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
+            </DockPanel>
+            <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Workspace.NotYetAssessed}"
+                                     Text="No Assessment yet. Choose Texts or paste words, then run one to see how the grammar does." />
+            <StackPanel Spacing="12" IsVisible="{Binding Workspace.HasEverAssessed}">
+              <views:OutcomeBar Segments="{Binding Workspace.Assess.Words.Outcomes}" AutomationProperties.Name="What the parser came to" />
+              <Border Height="1" Background="{DynamicResource SemiColorBorder}" />
+              <views:CopyableTextBlock Text="Against what the project stores" FontWeight="SemiBold" />
+              <WrapPanel>
+                <views:VerdictChip Verdict="NoResult" Margin="0,0,8,6"
+                                   Text="{Binding Workspace.Assess.Words.MissedCount, StringFormat='{}{0} approved analyses missed'}" />
+                <views:VerdictChip Verdict="Differs" Margin="0,0,8,6"
+                                   Text="{Binding Workspace.Assess.Words.DisapprovedCount, StringFormat='{}{0} disapproved readings produced'}" />
+                <views:VerdictChip Verdict="New" Margin="0,0,8,6"
+                                   Text="{Binding Workspace.Assess.Words.NoOpinionCount, StringFormat='{}{0} words with new readings'}" />
+              </WrapPanel>
+              <StackPanel Orientation="Horizontal" Spacing="18">
+                <HyperlinkButton Content="Open Results" Padding="0" Click="OnOpenResultsClick" />
+                <HyperlinkButton Content="Why words stopped: Statistics" Padding="0" Click="OnOpenStatisticsClick" />
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" AutomationProperties.Name="Grammar summary">
+          <DockPanel LastChildFill="True">
+            <HyperlinkButton DockPanel.Dock="Right" VerticalAlignment="Center" Content="Open Grammar" Padding="0" Click="OnOpenGrammarClick" />
+            <StackPanel Spacing="2">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <views:CopyableTextBlock Text="Grammar" FontSize="15" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="&#183;" Classes="muted" FontSize="15" />
+                <views:CopyableTextBlock Text="{Binding Workspace.Grammar.SummaryText}" FontSize="15" />
+              </StackPanel>
+              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Workspace.Grammar.ShowFindings}"
+                                       Text="{Binding Workspace.Grammar.Warnings.BreakdownText}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+      </StackPanel>
+
+      <!-- History: every Baseline and Assessment, newest first. -->
+      <StackPanel Grid.Column="2" Spacing="6">
+        <views:CopyableTextBlock Text="History" FontSize="15" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Classes="muted" Text="Loading history..." IsVisible="{Binding History.IsLoading}" />
+        <views:CopyableTextBlock Classes="error" Text="{Binding History.RefusalMessage}" TextWrapping="Wrap"
+                   IsVisible="{Binding History.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+        <views:CopyableTextBlock Classes="muted" Text="Nothing recorded for this project yet."
+                   IsVisible="{Binding !History.HasEntries}" />
+        <ItemsControl ItemsSource="{Binding History.Entries}" AutomationProperties.Name="Project history">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="queries:ProjectHistoryEntry">
+              <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,1,0,0" Padding="0,10">
+                <StackPanel Spacing="2">
+                  <DockPanel LastChildFill="False">
+                    <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Kind}" FontWeight="SemiBold" />
+                    <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted"
+                                             Text="{Binding At.LocalDateTime, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
+                  </DockPanel>
+                  <views:CopyableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+
+    </Grid>
+  </ScrollViewer>
 </UserControl>

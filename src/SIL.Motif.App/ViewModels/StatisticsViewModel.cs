@@ -39,6 +39,71 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// <summary>The six groups PanGloss's own <c>stats</c> vocabulary accepts.</summary>
     public IReadOnlyList<string> Groups => StatsCommand.StatisticsGroups;
 
+    /// <summary>The same six groups, each named the way a person would ask for it.</summary>
+    public IReadOnlyList<StatsGroupChoice> GroupChoices { get; } =
+    [
+        .. StatsCommand.StatisticsGroups.Select(group => new StatsGroupChoice(group, group switch
+        {
+            "word" => "By word",
+            "object" => "By grammar object",
+            "allomorph" => "By allomorph",
+            "morpheme" => "By morpheme",
+            "group" => "By object group",
+            "never-fires" => "Objects that never fired",
+            _ => group,
+        })),
+    ];
+
+    /// <summary>The chosen group as a <see cref="StatsGroupChoice"/>, for the picker.</summary>
+    public StatsGroupChoice SelectedGroupChoice
+    {
+        get => GroupChoices.First(choice => choice.Value == SelectedGroup);
+        set
+        {
+            if (value is not null) SelectedGroup = value.Value;
+        }
+    }
+
+    partial void OnSelectedGroupChanged(string value) => OnPropertyChanged(nameof(SelectedGroupChoice));
+
+    /// <summary>
+    /// Looks up a word in the Assessment these statistics came from, so a word's completion here is the same
+    /// answer Results gives. The statistics pass times its own parse, which can stop at a limit differently.
+    /// </summary>
+    public Func<string, AssessWordRowViewModel?>? AssessedWord { get; set; }
+
+    /// <summary>Opens wherever the per-word time limit is set, for the card that suggests raising it.</summary>
+    public Action? OpenTimeLimit { get; set; }
+
+    /// <summary>Tries a word in Try a Word, for the card that names the slowest word.</summary>
+    public Action<string>? TryWord { get; set; }
+
+    /// <summary>The word that took longest, or <see langword="null"/> when no word rows are loaded.</summary>
+    public StatsRowViewModel? SlowestWord => _allRows.Where(row => row.Word is not null && row.ElapsedMs is not null)
+        .MaxBy(row => row.ElapsedMs);
+
+    public bool HasSlowestWord => SlowestWord is not null;
+
+    /// <summary>Whether any fetched row needed more than one pass; when none did, the column says nothing.</summary>
+    public bool AnyPasses => _allRows.Any(row => row.Passes is > 0);
+
+    /// <summary>Whether the rows are words, which is when the summary cards have something to say.</summary>
+    public bool HasWordRows => _allRows.Any(row => row.Word is not null);
+
+    public string IncompleteHeadline => IncompleteCount == 1 ? "1 word stopped at a limit" : $"{IncompleteCount:N0} words stopped at a limit";
+
+    public string SlowestHeadline => SlowestWord is { } row ? $"Slowest word: {row.Word}" : string.Empty;
+
+    public string SlowestDetail => SlowestWord is { } row
+        ? $"{row.ElapsedText} ms and {row.AttemptsText} attempts{(row.IsIncomplete ? " before a limit stopped it" : string.Empty)}."
+        : string.Empty;
+
+    public string PassesHeadline => AnyPasses ? "Some words needed a second pass" : "No word needed a second pass";
+
+    public string PassesDetail => AnyPasses
+        ? "The Passes column shows how many each word needed."
+        : $"Passes are 0 for all {RowCount:N0} rows, so the column is hidden.";
+
     /// <summary>The project containing the retained Assessment, or <c>null</c> before one is chosen.</summary>
     [ObservableProperty]
     private string? _projectPath;
@@ -122,8 +187,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
         SortColumn = null;
         FilterText = string.Empty;
         OnlyIncomplete = false;
-        OnPropertyChanged(nameof(RowCount));
-        OnPropertyChanged(nameof(IncompleteCount));
+        RaiseSummary();
         IsStale = false;
         Refusal = null;
         SummaryMarkdown = null;
@@ -156,8 +220,11 @@ public sealed partial class StatisticsViewModel : ObservableObject
             var largestPasses = _allRows.Max(row => row.Passes) ?? 0;
             var largestElapsed = _allRows.Max(row => row.ElapsedMs) ?? 0;
             foreach (var row in _allRows) row.ShadeAgainst(largestAttempts, largestPasses, largestElapsed);
-            OnPropertyChanged(nameof(RowCount));
-            OnPropertyChanged(nameof(IncompleteCount));
+            if (AssessedWord is { } assessed)
+                foreach (var row in _allRows)
+                    if (row.Word is { } word && assessed(word) is { } result)
+                        row.UseAssessment(result.StoppedAtALimit, result.CompletionStatus);
+            RaiseSummary();
             IsStale = false;
             Refusal = null;
             ApplyView();
@@ -167,6 +234,21 @@ public sealed partial class StatisticsViewModel : ObservableObject
             IsStale = true;
             Refusal = outcome.Refusal;
         }
+    }
+
+    private void RaiseSummary()
+    {
+        OnPropertyChanged(nameof(RowCount));
+        OnPropertyChanged(nameof(IncompleteCount));
+        OnPropertyChanged(nameof(IncompleteHeadline));
+        OnPropertyChanged(nameof(SlowestWord));
+        OnPropertyChanged(nameof(HasSlowestWord));
+        OnPropertyChanged(nameof(SlowestHeadline));
+        OnPropertyChanged(nameof(SlowestDetail));
+        OnPropertyChanged(nameof(AnyPasses));
+        OnPropertyChanged(nameof(HasWordRows));
+        OnPropertyChanged(nameof(PassesHeadline));
+        OnPropertyChanged(nameof(PassesDetail));
     }
 
     // Reapplies the filter and sort from the fetched rows in memory; never calls the command client.
@@ -195,4 +277,10 @@ public sealed partial class StatisticsViewModel : ObservableObject
         SortDescending ? view.OrderByDescending(selector, comparer) : view.OrderBy(selector, comparer);
 
     private static bool IsNumericColumn(string column) => column is "attempts" or "passes" or "elapsedMs";
+}
+
+/// <summary>One statistics grouping: PanGloss's own name for it, and how the picker shows it.</summary>
+public sealed record StatsGroupChoice(string Value, string Label)
+{
+    public override string ToString() => Label;
 }

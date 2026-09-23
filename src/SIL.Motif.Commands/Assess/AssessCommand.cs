@@ -92,6 +92,23 @@ public static class AssessCommand
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
+            if (request.PerWordLimitMs is <= 0)
+                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                    "assess.invalid-limit", FailureReason.InvalidArgument, "A per-word time limit must be positive."));
+            AssessmentScopeConfiguration configured;
+            try
+            {
+                // The project's declared default scope sets the limits a run is held to, as `config show` reports.
+                var scopes = new ProjectConfigurationReader().Read(project).Scopes;
+                configured = scopes.FirstOrDefault(declared => declared.Name == AssessmentScopeConfiguration.DefaultName)
+                    ?? scopes[0];
+            }
+            catch (ProjectConfigurationException exception)
+            {
+                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                    "config.invalid", FailureReason.Refused, exception.Message));
+            }
+
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baselines = new BaselineRepository(database);
             var assessments = new AssessmentRepository(database);
@@ -133,7 +150,8 @@ public static class AssessCommand
                         $"The Assessor does not declare required Assessment kind '{unsupported[0]}'.",
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
                 scope = new AssessmentScope(composition.Selection.Words, collected,
-                    AssessmentScopeConfiguration.DefaultPerWordLimit);
+                    request.PerWordLimitMs is { } ms ? TimeSpan.FromMilliseconds(ms) : configured.PerWordLimit,
+                    configured.PerWordStepLimit);
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
@@ -284,13 +302,17 @@ public static class AssessCommand
                 var words = timing?.Raw is AssessmentRaw.Batch batch
                     ? batch.Analysis.Words.Select(word => new AssessmentWordResult(
                         word.Word, word.Outcome.ToStoredOutcome(),
-                        word.Outcome is WordOutcome.Capped or WordOutcome.TimedOut,
+                        // A search that found readings before a limit stopped it is still unfinished, as Statistics says.
+                        word.Outcome is WordOutcome.Capped or WordOutcome.TimedOut ||
+                            word.Morphology is { Capped: true } or { TimedOut: true },
                         word.Outcome switch
                         {
                             _ when word.Morphology is { Capped: true, TimedOut: true } =>
                                 "INCOMPLETE — parsing did not finish (step and time limits)",
                             WordOutcome.Capped => "INCOMPLETE — parsing did not finish (step limit)",
                             WordOutcome.TimedOut => "INCOMPLETE — parsing did not finish (time limit)",
+                            _ when word.Morphology is { Capped: true } => "INCOMPLETE — parsing did not finish (step limit)",
+                            _ when word.Morphology is { TimedOut: true } => "INCOMPLETE — parsing did not finish (time limit)",
                             WordOutcome.Skipped => "Not attempted",
                             _ => "Search completed",
                         }, word.ElapsedMs, word.Signature)

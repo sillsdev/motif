@@ -51,6 +51,7 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         {
             Text = part.Role == "missing" ? $"missing object {part.Text}" : part.Text,
             Margin = new Thickness(0, 0, 4, 0),
+            TextWrapping = TextWrapping.Wrap,
         };
         switch (part.Role)
         {

@@ -146,8 +146,11 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     public int WordCount => _all.Count;
 
-    public string SummaryText => WordCount == 0 ? "No words to test yet"
-        : $"{WordCount} word{(WordCount == 1 ? string.Empty : "s")} to test · {OccurrenceCount} occurrence{(OccurrenceCount == 1 ? string.Empty : "s")} · {ApprovedCount} approved";
+    public string SummaryText => WordCount == 0
+        ? _selection.PastedWordEntries.Count is var pasted and > 0
+            ? $"{pasted} pasted word{(pasted == 1 ? string.Empty : "s")} to test; check a text to see its words here"
+            : "No words to test yet"
+        : $"{WordCount} word{(WordCount == 1 ? string.Empty : "s")} to test · {OccurrenceCount} occurrence{(OccurrenceCount == 1 ? string.Empty : "s")} · {ApprovedCount} with an approved analysis";
 
     public int AllCount => _all.Count;
     public int ApprovedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Approved);
@@ -201,6 +204,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
         _all.Clear();
         _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word)));
+        if (_assessed is { } assessed)
+            foreach (var row in _all) row.ShowAssessment(assessed(row.Form));
         OccurrenceCount = _all.Sum(row => row.OccurrenceCount);
         ApprovedCount = _all.Count(row => row.HasApproved);
         RaiseCounts();
@@ -234,7 +239,20 @@ public sealed partial class TextWordsViewModel : ObservableObject
         if (StatusFilter is { } status) matches = matches.Where(row => row.Status == status);
         if (!string.IsNullOrWhiteSpace(SearchText))
             matches = matches.Where(row => row.Form.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
-        foreach (var row in matches) Rows.Add(row);
+        // The most frequent words first: a fix that helps them helps the most of the text.
+        foreach (var row in matches.OrderByDescending(row => row.OccurrenceCount)) Rows.Add(row);
+    }
+
+    private Func<string, AssessWordRowViewModel?>? _assessed;
+
+    /// <summary>
+    /// Shows, on each word, what the latest Assessment came to for it; <see langword="null"/> clears that column.
+    /// Kept across reloads, so words from a newly checked Text show their result too once it exists.
+    /// </summary>
+    public void ShowAssessment(Func<string, AssessWordRowViewModel?>? assessed)
+    {
+        _assessed = assessed;
+        foreach (var row in _all) row.ShowAssessment(assessed?.Invoke(row.Form));
     }
 
     private void RaiseCounts()
@@ -249,13 +267,27 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     private async void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(SelectionViewModel.PastedWords)) OnPropertyChanged(nameof(SummaryText));
         if (e.PropertyName == nameof(SelectionViewModel.ChosenTextIds)) await ReloadAsync().ConfigureAwait(true);
     }
 }
 
 /// <summary>One distinct word form as the Words table shows it: its occurrences and the project's own analyses.</summary>
-public sealed class TextWordRowViewModel
+public sealed partial class TextWordRowViewModel : ObservableObject
 {
+    // What the latest Assessment came to for this word; null before one, or when the word was not in it.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLastResult))]
+    [NotifyPropertyChangedFor(nameof(LastResultMeaning))]
+    [NotifyPropertyChangedFor(nameof(LastResultLabel))]
+    private AssessWordRowViewModel? _lastResult;
+
+    public bool HasLastResult => LastResult is not null;
+    public Verdict LastResultMeaning => LastResult?.ResultMeaning ?? Verdict.Limit;
+    public string LastResultLabel => LastResult?.Result ?? string.Empty;
+
+    internal void ShowAssessment(AssessWordRowViewModel? result) => LastResult = result;
+
     public TextWordRowViewModel(TextWord word)
     {
         ArgumentNullException.ThrowIfNull(word);
@@ -273,7 +305,7 @@ public sealed class TextWordRowViewModel
         {
             WordProjectStatus.SeveralAnalyses => "Several analyses",
             WordProjectStatus.Approved => word.Approved.Count > 1 ? $"Approved ×{word.Approved.Count}" : "Approved",
-            _ => "None",
+            _ => "Not stored yet",
         };
 
         ProjectSummary = Status == WordProjectStatus.SeveralAnalyses

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
@@ -19,6 +20,8 @@ public sealed partial class ResultsInTextPanel : UserControl
     }
 
     public ResultsInTextViewModel InText { get; }
+
+    private void OnGoToTextsClick(object? sender, RoutedEventArgs e) => InText.OpenTexts?.Invoke();
 
     // A press on a link in the block is the link's own; a press elsewhere on it opens the word's comparison.
     private void OnTokenPressed(object? sender, PointerPressedEventArgs e)

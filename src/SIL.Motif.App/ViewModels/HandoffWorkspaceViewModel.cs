@@ -44,6 +44,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Statistics = statistics;
         Handoff = handoff;
         ResultsInText = new ResultsInTextViewModel(words, assess, ShowWordInResults, TryWordInResults);
+        Statistics.AssessedWord = Assess.Words.Find;
+        Statistics.TryWord = TryWordInResults;
+        Statistics.OpenTimeLimit = () => CurrentStage = WorkflowStage.Texts;
+        ResultsInText.OpenTexts = () => CurrentStage = WorkflowStage.Texts;
 
         Stages =
         [
@@ -320,6 +324,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             Handoff.InvocationId = Assess.Result?.InvocationId;
             Handoff.LatestAssessmentAt = Assess.CompletedAt;
             HasEverAssessed = true;
+            // The Project stage's history lists this Assessment as soon as it is stored.
+            _ = ProjectHistory.LoadAsync();
+            Words.ShowAssessment(Assess.Words.Find);
         }
     }
 
@@ -352,6 +359,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         Assess.Reset();
         Assess.Trace.Reset();
+        Words.ShowAssessment(null);
 
         Statistics.Reset();
 

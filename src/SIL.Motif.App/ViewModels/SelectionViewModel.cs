@@ -55,6 +55,10 @@ public sealed partial class SelectionViewModel : ObservableObject
     [ObservableProperty]
     private bool _retryFailed;
 
+    // Seconds the parser may spend on one word in this run; null keeps the project's configured limit.
+    [ObservableProperty]
+    private decimal? _perWordTimeLimitSeconds;
+
     [ObservableProperty]
     private decimal? _retrySlowerThanMilliseconds;
 
@@ -101,6 +105,7 @@ public sealed partial class SelectionViewModel : ObservableObject
         AllWordforms = false;
         RetryFailed = false;
         RetrySlowerThanMilliseconds = null;
+        PerWordTimeLimitSeconds = null;
         RefusalMessage = null;
         TextsEmptyMessage = null;
         Recompute();

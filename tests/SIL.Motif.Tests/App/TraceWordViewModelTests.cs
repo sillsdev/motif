@@ -74,7 +74,7 @@ public sealed class TraceWordViewModelTests
         await trace.TryCommand.ExecuteAsync(null);
 
         Assert.True(trace.HasResult);
-        Assert.Contains("Did not parse", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("No parse", trace.SummaryText, StringComparison.Ordinal);
         Assert.Contains("12,345 parser steps", trace.SummaryText, StringComparison.Ordinal);
         Assert.Contains("0.29 ms in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
         Assert.Equal("The parser stopped at its step cap.", trace.StopReason);
@@ -114,7 +114,7 @@ public sealed class TraceWordViewModelTests
 
         await trace.TryCommand.ExecuteAsync(null);
 
-        Assert.Equal("Did not parse", trace.AnswerText);
+        Assert.Equal("No parse", trace.AnswerText);
         Assert.Equal(Verdict.NoResult, trace.AnswerVerdict);
         // The busiest rule leads, and the bar is drawn against it.
         Assert.Equal(["-a", "-ja-"], trace.StopGroups.Select(group => group.RuleText));
@@ -329,6 +329,54 @@ public sealed class TraceWordViewModelTests
         trace.IsFocused = true;
 
         Assert.Equal("Show Analyses", trace.FocusToggleLabel);
+    }
+
+    [Fact]
+    public async Task TheChosenWordsApprovedAnalysisSitsBesideTheAttemptThatGotFurthest()
+    {
+        var fake = new FakeCommandClient();
+        fake.TraceWordCompletesWith(new WordTraceResponse(
+            "hawajafika", Parsed: false, Complete: true, StopReason: null, StepCount: 3, DeepestRule: "neg-ha-",
+            ElapsedMs: 12,
+            [new TraceCandidate(
+                [new ParserReadingMorph("ha-", "neg", "infl", null, false, null)],
+                Succeeded: false, FailureReason: "mismatch", Explanation: "does not match", Steps: [])],
+            Leaf("WordSynthesis", "root")));
+        var trace = new TraceWordViewModel(fake);
+        trace.SetProjectPath(ProjectPath);
+        var approved = new ParserReadingViewModel(1, new ParserReading(
+            [new ParserReadingMorph("ha-", "NEG", "", null, false, null), new ParserReadingMorph("fik", "arrive", "v", null, false, null)]),
+            "missed");
+        trace.SetWord("hawajafika");
+        trace.SetExpected("hawajafika", approved.Morphs);
+
+        await trace.TryCommand.ExecuteAsync(null);
+
+        Assert.True(trace.HasComparison);
+        Assert.True(trace.ShowsChosenWord);
+        Assert.False(trace.ShowsOtherWord);
+        Assert.Equal("ha-", Assert.Single(trace.FurthestAttempt!.Morphs).Form);
+
+        // A word typed over the chosen one has no approved analysis to set beside it.
+        trace.SetExpected("kitabu", approved.Morphs);
+        Assert.False(trace.HasComparison);
+        Assert.True(trace.ShowsOtherWord);
+    }
+
+    [Fact]
+    public async Task TryingAWordTakesTheFullWidth()
+    {
+        var fake = new FakeCommandClient();
+        var trace = new TraceWordViewModel(fake);
+        trace.SetProjectPath(ProjectPath);
+        trace.WordToTry = "kitabu";
+        fake.TraceWordCompletesWith(new WordTraceResponse(
+            "kitabu", Parsed: false, Complete: true, StopReason: null, StepCount: 1, DeepestRule: "root", ElapsedMs: 1,
+            [], Leaf("WordSynthesis", "root")));
+
+        await trace.TryCommand.ExecuteAsync(null);
+
+        Assert.True(trace.IsFocused);
     }
 
     [Fact]

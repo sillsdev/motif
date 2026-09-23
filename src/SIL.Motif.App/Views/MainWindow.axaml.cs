@@ -41,7 +41,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(workspace);
         DataContext = workspace;
 
-        Host("ProjectHost").Content = new ProjectPanel(workspace.Project, workspace.Baseline, workspace.ProjectHistory);
+        Host("ProjectHost").Content = new ProjectPanel(workspace);
         Host("GrammarHost").Content = new GrammarPanel(workspace.Grammar);
         Host("SelectionHost").Content = new SelectionPanel(workspace.Selection, workspace.Words);
         Host("AssessHost").Content = new AssessPanel(workspace.Assess);

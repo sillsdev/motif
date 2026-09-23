@@ -124,7 +124,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     private static string Summarize(WordTraceResponse result)
     {
-        var parts = new List<string> { result.Parsed ? "Parsed" : "Did not parse" };
+        var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse" };
         if (result.Guessed) parts.Add("guessed");
         if (result.ParserSteps is { } steps) parts.Add($"{steps:N0} parser steps");
         var overall = result.HostCapture?.WallElapsedMs is { } capturedElapsed
@@ -157,7 +157,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     /// <summary>Whether the word parsed, as the one word a reader wants before anything else.</summary>
     public string AnswerText => Result is not { } result ? string.Empty
-        : result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "Did not parse";
+        : result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse";
 
     /// <summary>The colour that answer wears: the same green and amber every other stage uses.</summary>
     public Verdict AnswerVerdict => Result is { Parsed: true } ? Verdict.Agrees
@@ -211,6 +211,44 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public bool HasClosestAttempts => ClosestAttempts.Count > 0;
 
+    /// <summary>The analysis the project approves for the Results word being tried, which the parser missed.</summary>
+    public IReadOnlyList<ParserReadingMorphViewModel> ExpectedMorphs { get; private set; } = [];
+
+    private string? _expectedWord;
+
+    /// <summary>
+    /// Remembers what the project approves for <paramref name="word"/>, so a trace of that word can set it beside
+    /// the attempt that got furthest; an empty analysis clears it.
+    /// </summary>
+    public void SetExpected(string word, IReadOnlyList<ParserReadingMorphViewModel>? morphs)
+    {
+        _expectedWord = word;
+        ExpectedMorphs = morphs ?? [];
+        RaiseComparison();
+    }
+
+    /// <summary>The failed attempt that built the most, to set beside the project's analysis.</summary>
+    public TraceCandidateViewModel? FurthestAttempt => ClosestAttempts.FirstOrDefault(attempt => attempt.HasMorphs);
+
+    /// <summary>Whether the trace is of the word whose approved analysis is known, and it failed with something built.</summary>
+    public bool HasComparison => ExpectedMorphs.Count > 0 && Result is { Parsed: false } result &&
+        string.Equals(result.Word, _expectedWord, StringComparison.Ordinal) && FurthestAttempt is not null;
+
+    /// <summary>Whether this trace is of the word chosen in Results, whose header already names it.</summary>
+    public bool ShowsChosenWord => Result is { } result && string.Equals(result.Word, _expectedWord, StringComparison.Ordinal);
+
+    /// <summary>Whether the answer names its own word: a saved diagnostic, or a word typed in over the chosen one.</summary>
+    public bool ShowsOtherWord => HasResult && !ShowsChosenWord;
+
+    private void RaiseComparison()
+    {
+        OnPropertyChanged(nameof(ExpectedMorphs));
+        OnPropertyChanged(nameof(FurthestAttempt));
+        OnPropertyChanged(nameof(HasComparison));
+        OnPropertyChanged(nameof(ShowsChosenWord));
+        OnPropertyChanged(nameof(ShowsOtherWord));
+    }
+
     /// <summary>What the button under the attempts offers, or empty when they are all on screen.</summary>
     public string MoreAttemptsText
     {
@@ -263,6 +301,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(HasClosestAttempts));
         OnPropertyChanged(nameof(MoreAttemptsText));
         OnPropertyChanged(nameof(HasMoreAttempts));
+        RaiseComparison();
     }
 
     public IReadOnlyList<TraceStepViewModel> FilteredRoots => _filteredRoots;
@@ -273,11 +312,12 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public bool IsStandalone => _projectPath is null;
 
+    // A live trace of the project's own Baseline can navigate; only a trace that cannot link back needs a warning.
     public bool HasProvenanceWarning =>
-        Result is { Provenance: null } or { Provenance.IsCompatible: false };
+        Result is { Provenance: null } or { Provenance.CanNavigate: false };
 
     public string ProvenanceWarning =>
-        Result?.Provenance is { IsCompatible: false } comparison
+        Result?.Provenance is { CanNavigate: false } comparison
             ? comparison.Warning
             : "Compatibility with the current FieldWorks project is not recorded; live links are unavailable for this saved diagnostic.";
 
@@ -370,7 +410,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             if (Result is not { } result) return string.Empty;
             var incomplete = !result.Complete || !string.Equals(result.SearchStatus, "complete", StringComparison.OrdinalIgnoreCase);
             var status = result.InvalidShape
-                ? "Invalid input; no search ran"
+                ? "Nothing to parse: the word has a character the grammar's character table does not define"
                 : incomplete
                     ? $"Search incomplete: {result.StopReason ?? "the parser stopped before completion"}"
                     : "Search complete";
@@ -408,6 +448,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public void SetProjectPath(string? fwDataPath)
     {
         _projectPath = fwDataPath;
+        OnPropertyChanged(nameof(ProjectPath));
+        OnPropertyChanged(nameof(IsStandalone));
         TryCommand.NotifyCanExecuteChanged();
         if (Result is not null) OnResultChanged(Result);
     }
@@ -437,6 +479,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
         if (_projectPath is not { } path) return;
         var word = WordToTry.Trim();
         if (word.Length == 0) return;
+        // Trying a word asks to read its story, which needs the full width, not the analyses beside it.
+        IsFocused = true;
 
         CancelRunning();
         using var running = new CancellationTokenSource();

@@ -158,7 +158,7 @@ public sealed class MainWindowSmokeTests
                 AssertSelectableCells(statistics);
                 statistics.SelectedItem = null;
                 var statisticsCell = statistics.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .First(cell => cell.IsEffectivelyVisible && cell.Text == "word");
+                    .First(cell => cell.IsEffectivelyVisible && cell.Text == "motifa");
                 RaiseLeftPointerPress(statisticsCell, window);
                 Assert.Same(workspace.Statistics.Rows[0], statistics.SelectedItem);
 

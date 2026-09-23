@@ -84,6 +84,26 @@
       <Setter Property="Foreground" Value="{DynamicResource SemiColorLink}" />
     </Style>
 
+    <!-- A part of an outcome bar, filled with its meaning's colour. -->
+    <Style Selector="Border.outcomeSegment">
+      <Setter Property="Background" Value="{DynamicResource SemiColorText3}" />
+    </Style>
+    <Style Selector="Border.outcomeSegment.agrees">
+      <Setter Property="Background" Value="{DynamicResource SemiColorSuccess}" />
+    </Style>
+    <Style Selector="Border.outcomeSegment.differs">
+      <Setter Property="Background" Value="{DynamicResource SemiColorDanger}" />
+    </Style>
+    <Style Selector="Border.outcomeSegment.new">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimary}" />
+    </Style>
+    <Style Selector="Border.outcomeSegment.noresult">
+      <Setter Property="Background" Value="{DynamicResource SemiColorWarning}" />
+    </Style>
+    <Style Selector="Border.outcomeSegment.several">
+      <Setter Property="Background" Value="{DynamicResource SemiColorLink}" />
+    </Style>
+
     <!-- The underline a word wears in a reader, in the same six colours. -->
     <Style Selector="Border.wordVerdict">
       <Setter Property="BorderThickness" Value="0,0,0,3" />

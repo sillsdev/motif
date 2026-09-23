@@ -70,7 +70,7 @@ public sealed class GrammarViewModelTests
         Assert.False(grammar.ShowRefused);
         Assert.False(grammar.ShowNoBaseline);
         Assert.Equal(1, grammar.Warnings.TotalCount);
-        Assert.Equal("1 finding(s)", grammar.SummaryText);
+        Assert.Equal("1 finding", grammar.SummaryText);
         Assert.Equal(ProjectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
     }
 

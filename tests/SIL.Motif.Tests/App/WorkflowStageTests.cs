@@ -181,7 +181,7 @@ public sealed class WorkflowStageTests
 
         Assert.Equal("1", workspace.Stages[1].Badge);
         Assert.True(workspace.Stages[1].HasBadge);
-        Assert.Equal("1 finding(s)", workspace.Stages[1].Summary);
+        Assert.Equal("1 finding", workspace.Stages[1].Summary);
         Assert.True(workspace.Stages[1].IsDone);
         Assert.Single(fake.CheckGrammarRequests);
         Assert.Empty(fake.AssessRequests);

@@ -50,7 +50,7 @@ public static class ProjectHistoryQuery
         var at = DateTimeOffset.ParseExact(run.SavedUtc, "O", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         var (complete, incomplete, skipped) = Classify(run.Words ?? Array.Empty<AssessedWord>());
         return new ProjectHistoryEntry(
-            at, ProjectHistoryKind.Assessment, "Assessment: " + AssessCommand.CompletionSummary(complete, incomplete, skipped));
+            at, ProjectHistoryKind.Assessment, AssessCommand.CompletionSummary(complete, incomplete, skipped));
     }
 
     private static (int Complete, int Incomplete, int Skipped) Classify(IReadOnlyList<AssessedWord> words)

@@ -589,10 +589,17 @@ try
                 }
                 assessRetrySlowerThan = TimeSpan.FromMilliseconds(assessRetrySlowerThanMs);
             }
+            int? assessTimeLimitMs = null;
+            if (flags.TryGetValue("time-limit-ms", out var assessTimeLimitRaw))
+            {
+                if (!int.TryParse(assessTimeLimitRaw, out var parsedTimeLimitMs) || parsedTimeLimitMs <= 0)
+                    return Usage(AssessUsage(), asJson);
+                assessTimeLimitMs = parsedTimeLimitMs;
+            }
             var assessSelection = new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
                 assessWords, assessRetryFailed, assessRetrySlowerThan, assessRetrySource);
             result = RenderCommand(AssessCommand.Assess(
-                new AssessRequest(positionals[0], assessSelection),
+                new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs),
                 asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
             break;
 

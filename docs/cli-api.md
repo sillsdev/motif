@@ -55,7 +55,7 @@ that dispatches them.
 | `report --list-kinds` | Released | `Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]` |
 | `compare` | Released | `Usage: motif compare --project <fwdata> --from <assessmentId> --to <assessmentId> [--json]` |
 | `baseline capture` | Released | `baseline capture <project> [--json]` |
-| `assess` | Released | `assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] [--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--json]` |
+| `assess` | Released | `assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] [--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--time-limit-ms <ms>] [--json]` |
 | `stats` | Released | `stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]` |
 | `handoff` | Released | `handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]` |
 | `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |

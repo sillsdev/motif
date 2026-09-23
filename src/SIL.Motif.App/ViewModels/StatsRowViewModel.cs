@@ -42,8 +42,18 @@ public sealed class StatsRowViewModel
     public double? Attempts { get; }
     public double? Passes { get; }
     public double? ElapsedMs { get; }
-    public bool IsIncomplete { get; }
-    public string? CompletionStatus { get; }
+    public bool IsIncomplete { get; private set; }
+    public string? CompletionStatus { get; private set; }
+
+    /// <summary>
+    /// Takes the Assessment's own answer on whether this word finished, so Statistics and Results agree; the
+    /// statistics pass parses again under its own time limit and can stop at a limit differently.
+    /// </summary>
+    internal void UseAssessment(bool incomplete, string completionStatus)
+    {
+        IsIncomplete = incomplete;
+        CompletionStatus = completionStatus;
+    }
 
     /// <summary>The completion in a word or two for the table; <see cref="CompletionStatus"/> is its tooltip.</summary>
     public string CompletionShort => CompletionStatus is null ? string.Empty

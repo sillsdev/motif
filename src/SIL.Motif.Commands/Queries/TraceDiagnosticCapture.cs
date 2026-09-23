@@ -33,7 +33,9 @@ internal static class TraceDiagnosticCapture
         var capture = new TraceHostCapture(baseline.Token.ProjectIdentity, response.GrammarHash,
             response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow,
             response.ElapsedMs, systems);
-        var projectMatches = StringComparer.Ordinal.Equals(baseline.Token.ProjectIdentity, project.FieldWorksProjectIdentity);
+        // A token names the FieldWorks project by its GUID; the store's identity is only the file's name.
+        var projectMatches = StringComparer.OrdinalIgnoreCase.Equals(
+            baseline.Token.ProjectIdentity, cache.LangProject.Guid.ToString("D"));
         var comparison = new TraceProvenanceComparison(projectMatches ? "match" : "mismatch",
             "unknown", "unknown", false,
             projectMatches

@@ -35,6 +35,12 @@ public sealed record GrammarWarning(
 
     /// <summary>The parser's stable code for this kind of finding, or <see langword="null"/> when it gave none.</summary>
     public string? Code { get; init; }
+
+    /// <summary>What this kind of finding means, in the parser's own plain words, or <see langword="null"/>.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>What usually fixes this kind of finding, in the parser's own words, or <see langword="null"/>.</summary>
+    public string? Guidance { get; init; }
 }
 
 /// <summary>

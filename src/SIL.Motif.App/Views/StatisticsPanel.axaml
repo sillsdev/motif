@@ -1,19 +1,49 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
-             xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.StatisticsPanel"
              x:DataType="views:StatisticsPanel">
   <DockPanel Margin="24,12,24,24">
 
+    <!-- What the numbers say, before the numbers: three cards for a word grouping. -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,0,0,12"
+          IsVisible="{Binding Statistics.HasWordRows}">
+      <Border Grid.Column="0" Classes="card" Padding="14,12">
+        <StackPanel Spacing="4">
+          <views:CopyableTextBlock Text="{Binding Statistics.IncompleteHeadline}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Each was still searching when its time or step limit ran out, so it may parse with longer." />
+          <HyperlinkButton Content="Give each word longer: Texts, Options" Padding="0" Click="OnOpenTimeLimitClick" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Classes="card" Padding="14,12" IsVisible="{Binding Statistics.HasSlowestWord}">
+        <StackPanel Spacing="4">
+          <views:CopyableTextBlock Text="{Binding Statistics.SlowestHeadline}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.SlowestDetail}" />
+          <HyperlinkButton Content="Try it in Try a Word" Padding="0" Click="OnTrySlowestClick" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Classes="card" Padding="14,12">
+        <StackPanel Spacing="4">
+          <views:CopyableTextBlock Text="{Binding Statistics.PassesHeadline}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.PassesDetail}" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
     <DockPanel LastChildFill="False" DockPanel.Dock="Top" Margin="0,0,0,8">
-      <views:CopyableTextBlock Text="Group" VerticalAlignment="Center" Margin="0,0,8,0" />
-      <ComboBox ItemsSource="{Binding Statistics.Groups}"
-                SelectedItem="{Binding Statistics.SelectedGroup}"
+      <ComboBox ItemsSource="{Binding Statistics.GroupChoices}"
+                SelectedItem="{Binding Statistics.SelectedGroupChoice}"
                 AutomationProperties.Name="Statistics group"
-                Margin="0,0,16,0" />
+                Margin="0,0,16,0">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:StatsGroupChoice">
+            <TextBlock Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
       <TextBox Text="{Binding Statistics.FilterText}"
                PlaceholderText="Filter rows..."
                Width="200"
@@ -31,85 +61,76 @@
     <views:CopyableTextBlock Classes="error" Text="{Binding Statistics.Refusal.Message}"
                IsVisible="{Binding Statistics.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
                DockPanel.Dock="Top" />
+    <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+               Text="Shading: darker is larger, against the largest in its column. Attempts and time come from the parser's statistics pass; whether a word finished comes from the Assessment." />
     <views:CopyableTextBlock Text="Showing the last successful statistics; they may be out of date."
                IsVisible="{Binding Statistics.IsStale}"
                FontStyle="Italic"
                DockPanel.Dock="Top" />
 
-    <Grid ColumnDefinitions="*,12,260">
+    <DataGrid x:Name="Grid" ItemsSource="{Binding Statistics.Rows}" ColumnWidth="*"
+              IsReadOnly="True"
+              CanUserSortColumns="True"
+              ClipboardCopyMode="IncludeHeader"
+              Sorting="OnGridSorting"
+              AutomationProperties.Name="Statistics rows">
+      <DataGrid.Columns>
+        <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
+             DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
+        <DataGridTemplateColumn Header="Kind" Tag="kind" ClipboardContentBinding="{ReflectionBinding Kind}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:StatsRowViewModel">
+              <views:CopyableTextBlock Text="{Binding Kind}" Margin="6,4" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Object" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:StatsRowViewModel">
+              <views:CopyableTextBlock Text="{Binding Object}" Margin="6,4" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Word" Tag="word" ClipboardContentBinding="{ReflectionBinding Word}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:StatsRowViewModel">
+              <views:CopyableTextBlock Text="{Binding Word}" Margin="6,4" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Completion" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:StatsRowViewModel">
+              <views:VerdictChip Verdict="{Binding CompletionMeaning}" Text="{Binding CompletionShort}" Compact="True"
+                                 Margin="6,4" HorizontalAlignment="Left" IsVisible="{Binding HasCompletion}"
+                                 ToolTip.Tip="{Binding CompletionStatus}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Attempts" Tag="attempts" ClipboardContentBinding="{ReflectionBinding Attempts}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:StatsRowViewModel">
+              <views:HeatCell Text="{Binding AttemptsText}" Intensity="{Binding AttemptsHeat}" Margin="2,1" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Passes" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:StatsRowViewModel">
+              <views:HeatCell Text="{Binding PassesText}" Intensity="{Binding PassesHeat}" Margin="2,1" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Elapsed (ms)" Tag="elapsedMs" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:StatsRowViewModel">
+              <views:HeatCell Text="{Binding ElapsedText}" Intensity="{Binding ElapsedHeat}" Margin="2,1" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
 
-      <DataGrid Grid.Column="0"
-                ItemsSource="{Binding Statistics.Rows}"
-                IsReadOnly="True"
-                CanUserSortColumns="True"
-                ClipboardCopyMode="IncludeHeader"
-                Sorting="OnGridSorting"
-                AutomationProperties.Name="Statistics rows">
-        <DataGrid.Columns>
-          <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
-               DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
-          <DataGridTemplateColumn Header="Kind" Tag="kind" ClipboardContentBinding="{ReflectionBinding Kind}">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:CopyableTextBlock Text="{Binding Kind}" Margin="6,4" />
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="Object" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:CopyableTextBlock Text="{Binding Object}" Margin="6,4" />
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="Word" Tag="word" ClipboardContentBinding="{ReflectionBinding Word}">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:CopyableTextBlock Text="{Binding Word}" Margin="6,4" />
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="Completion" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:VerdictChip Verdict="{Binding CompletionMeaning}" Text="{Binding CompletionShort}" Compact="True"
-                                   Margin="6,4" HorizontalAlignment="Left" IsVisible="{Binding HasCompletion}"
-                                   ToolTip.Tip="{Binding CompletionStatus}" />
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="Attempts" Tag="attempts" ClipboardContentBinding="{ReflectionBinding Attempts}">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:HeatCell Text="{Binding AttemptsText}" Intensity="{Binding AttemptsHeat}" Margin="2,1" />
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="Passes" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:HeatCell Text="{Binding PassesText}" Intensity="{Binding PassesHeat}" Margin="2,1" />
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="Elapsed (ms)" Tag="elapsedMs" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:HeatCell Text="{Binding ElapsedText}" Intensity="{Binding ElapsedHeat}" Margin="2,1" />
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-
-        </DataGrid.Columns>
-      </DataGrid>
-
-      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
-        <md:MarkdownRenderer
-                           MarkdownBuilder="{Binding Statistics.SummaryMarkdown,
-                             Converter={x:Static md:ValueConverters.ToObservableStringBuilder}}" />
-      </ScrollViewer>
-
-    </Grid>
+      </DataGrid.Columns>
+    </DataGrid>
 
   </DockPanel>
 </UserControl>

@@ -49,9 +49,11 @@
       <!-- The answer first: did it parse, then how hard the parser worked. Tools sit behind one menu. -->
       <StackPanel Spacing="6">
         <DockPanel LastChildFill="False">
-          <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Result.Word}" FontSize="20" FontWeight="SemiBold"
-                     IsVisible="{Binding HasResult}" AutomationProperties.Name="Diagnostic word" />
-          <views:VerdictChip DockPanel.Dock="Left" Margin="10,0,0,0" Verdict="{Binding AnswerVerdict}" Text="{Binding AnswerText}"
+          <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Result.Word}" FontSize="20" FontWeight="SemiBold" Margin="0,0,10,0"
+                     IsVisible="{Binding ShowsOtherWord}" AutomationProperties.Name="Diagnostic word" />
+          <views:CopyableTextBlock DockPanel.Dock="Left" Text="Try a Word:" FontWeight="SemiBold" Margin="0,0,8,0" VerticalAlignment="Center"
+                     IsVisible="{Binding ShowsChosenWord}" />
+          <views:VerdictChip DockPanel.Dock="Left" Verdict="{Binding AnswerVerdict}" Text="{Binding AnswerText}"
                              IsVisible="{Binding HasResult}" />
           <Button DockPanel.Dock="Right" Content="&#x22ef;" FontSize="16" Padding="10,2"
                   AutomationProperties.Name="Diagnostic tools">
@@ -84,6 +86,28 @@
         <views:CopyableTextBlock Text="Standalone diagnostic: recorded evidence only; live FieldWorks navigation is unavailable."
                    Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsStandalone}" />
       </StackPanel>
+
+      <!-- The project's analysis beside the attempt that built the most, so the gap between them shows. -->
+      <Border Classes="card" IsVisible="{Binding HasComparison}" AutomationProperties.Name="Expected beside the furthest try">
+        <StackPanel Spacing="10">
+          <views:CopyableTextBlock Text="What the project expects, beside the parser's furthest try" FontSize="15" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="10">
+            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="1">
+              <views:CopyableTextBlock Classes="verdictText agrees" Text="Project approves" FontWeight="SemiBold" />
+              <views:CopyableTextBlock Classes="muted" FontSize="11" Text="the analysis the parser missed" TextWrapping="Wrap" />
+            </StackPanel>
+            <views:MorphemeRow Grid.Row="0" Grid.Column="1" Morphs="{Binding ExpectedMorphs}" Separators="True" />
+            <StackPanel Grid.Row="1" Grid.Column="0" Spacing="1">
+              <views:CopyableTextBlock Classes="verdictText differs" Text="Parser got to" FontWeight="SemiBold" />
+              <views:CopyableTextBlock Classes="muted" FontSize="11" Text="the attempt that built the most" TextWrapping="Wrap" />
+            </StackPanel>
+            <views:MorphemeRow Grid.Row="1" Grid.Column="1" Morphs="{Binding FurthestAttempt.Morphs, FallbackValue={x:Null}}" Separators="True" />
+          </Grid>
+          <views:CopyableTextBlock Classes="failed" FontWeight="SemiBold" TextWrapping="Wrap"
+                                   Text="{Binding FurthestAttempt.StopHeadline, FallbackValue=''}" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding FurthestAttempt.StopReason, FallbackValue=''}" />
+        </StackPanel>
+      </Border>
 
       <!-- Why it did not parse: every failed attempt grouped by the rule that stopped it. -->
       <Border Classes="card" IsVisible="{Binding HasStopGroups}" AutomationProperties.Name="Why it did not parse">
@@ -123,10 +147,10 @@
       <!-- The attempts that came closest, each as its own story. -->
       <StackPanel Spacing="6" IsVisible="{Binding HasClosestAttempts}">
         <StackPanel Spacing="1">
-          <views:CopyableTextBlock Text="Closest attempts" FontSize="15" FontWeight="SemiBold" />
-          <views:CopyableTextBlock Classes="muted" FontSize="12" Text="Sorted by how many morphemes they had." />
+          <views:CopyableTextBlock Text="Attempts that got furthest" FontSize="15" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" FontSize="12" Text="Sorted by how many morphemes they built before they stopped." />
         </StackPanel>
-        <ItemsControl ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Closest attempts">
+        <ItemsControl ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Attempts that got furthest">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:TraceCandidateViewModel">
               <Border Classes="card" Margin="0,0,0,6">
@@ -174,10 +198,9 @@
 
       <StackPanel Spacing="6" IsVisible="{Binding HasResult}">
         <views:CopyableTextBlock Text="Analyses" FontSize="16" FontWeight="SemiBold" />
-        <views:CopyableTextBlock Classes="muted"
-                   Text="Recorded analyses appear first, in parser order. Values marked not recorded were unavailable in the producer document."
-                   TextWrapping="Wrap" />
-        <views:CopyableTextBlock Classes="muted" Text="No analyses were recorded." IsVisible="{Binding HasAnalyses, Converter={x:Static conv:BoolConverters.Not}}" />
+        <views:CopyableTextBlock Classes="muted" Text="In the order the parser found them." TextWrapping="Wrap"
+                   IsVisible="{Binding HasAnalyses}" />
+        <views:CopyableTextBlock Classes="muted" Text="The parser found no analysis." IsVisible="{Binding HasAnalyses, Converter={x:Static conv:BoolConverters.Not}}" />
         <ItemsControl ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:TraceAnalysisViewModel">

@@ -21,6 +21,39 @@ public sealed class AssessWordsViewModelTests
         new([new ParserReadingMorph("form", gloss, "n", null, false, null)]);
 
     [Fact]
+    public void OutcomesSplitEveryWordOnceWithALimitTakingPrecedence()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load(
+        [
+            Word("kitabu", "analysed", [Reading("book")], ["approved"]),
+            Word("mtoto", "analysed", [Reading("child")]) with { IsIncomplete = true },
+            Word("hawajafika", "no-analysis"),
+            Word("alimpiga", "timed-out") with { IsIncomplete = true },
+            Word("x y", "skipped"),
+        ]);
+
+        // A word that found a reading before a limit stopped it is counted once, as stopped.
+        Assert.Equal(
+            [(Verdict.Agrees, 1), (Verdict.NoResult, 1), (Verdict.Limit, 2), (Verdict.Several, 1)],
+            table.Outcomes.Select(segment => (segment.Meaning, segment.Count)));
+        Assert.Equal(table.AllCount, table.Outcomes.Sum(segment => segment.Count));
+    }
+
+    [Fact]
+    public void ASkippedWordsApprovedAnalysisIsNotTriedRatherThanMissed()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([Word("x y", "skipped", missed: [Reading("thing")])]);
+
+        var row = Assert.Single(table.Rows);
+        Assert.Equal("Not tried", row.VsProject);
+        Assert.Equal(Verdict.Limit, row.Meaning);
+        Assert.Equal(0, table.MissedCount);
+        Assert.Equal("Not tried", Assert.Single(row.MissedApproved).GradeLabel);
+    }
+
+    [Fact]
     public void AWordWithAnApprovedReadingGradesApproved()
     {
         var table = new AssessWordsViewModel();

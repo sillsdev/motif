@@ -16,7 +16,7 @@
 
     <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="8">
       <ComboBox ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
-                MinWidth="260" AutomationProperties.Name="Results text to read">
+                IsVisible="{Binding InText.HasTexts}" MinWidth="260" AutomationProperties.Name="Results text to read">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:ResultsTextViewModel">
             <TextBlock Text="{Binding Title}" />
@@ -24,9 +24,9 @@
         </ComboBox.ItemTemplate>
       </ComboBox>
 
-      <StackPanel Grid.Row="1" Spacing="6">
+      <StackPanel Grid.Row="1" Spacing="6" IsVisible="{Binding InText.HasTexts}">
         <WrapPanel>
-          <views:FilterChip Label="All" Count="{Binding InText.AllCount}"
+          <views:FilterChip Label="All occurrences" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}" />
           <views:FilterChip Label="Differs from stored" Count="{Binding InText.DiffersCount}" Verdict="Differs"
@@ -35,12 +35,18 @@
           <views:FilterChip Label="Not stored yet" Count="{Binding InText.NewCount}" Verdict="New"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.New}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.New}" />
-          <views:FilterChip Label="No parse" Count="{Binding InText.NoParseCount}" Verdict="NoResult"
+          <views:FilterChip Label="No parse, nothing stored" Count="{Binding InText.NoParseCount}" Verdict="NoResult"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NoParse}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NoParse}" />
           <views:FilterChip Label="Matches" Count="{Binding InText.MatchesCount}" Verdict="Agrees"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Matches}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Matches}" />
+          <views:FilterChip Label="Stopped at a limit" Count="{Binding InText.LimitCount}" Verdict="Limit"
+                            IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Limit}}"
+                            Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Limit}" />
+          <views:FilterChip Label="Skipped or not assessed" Count="{Binding InText.NotAssessedCount}" IsVisible="{Binding InText.HasNotAssessed}"
+                            IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NotAssessed}}"
+                            Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NotAssessed}" />
         </WrapPanel>
         <!-- The key, so a colour in the text below never has to be guessed at. -->
         <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="6" Padding="10,4"
@@ -56,8 +62,11 @@
         </Border>
       </StackPanel>
 
-      <views:CopyableTextBlock Grid.Row="2" Classes="muted" Text="{Binding InText.Message}" TextWrapping="Wrap"
-                 IsVisible="{Binding InText.HasMessage}" Margin="0,8" />
+      <StackPanel Grid.Row="2" Spacing="10" Margin="0,8" IsVisible="{Binding InText.HasMessage}">
+        <views:CopyableTextBlock Classes="muted" Text="{Binding InText.Message}" TextWrapping="Wrap" />
+        <Button Content="Go to Texts" HorizontalAlignment="Left" IsVisible="{Binding InText.NeedsTexts}"
+                Click="OnGoToTextsClick" AutomationProperties.Name="Go to Texts to check a text" />
+      </StackPanel>
       <ScrollViewer Grid.Row="2" IsVisible="{Binding !InText.HasMessage}">
         <ItemsControl ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Results text lines">
           <ItemsControl.ItemTemplate>

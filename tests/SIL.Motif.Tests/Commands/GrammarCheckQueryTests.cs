@@ -93,6 +93,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
             Respond = _ => new PanGlossOutcome.Completed(
                 "{\"schema_version\":1,\"findings\":[{\"severity\":\"warning\",\"code\":\"hc-partial-morpheme\"," +
                 "\"group_name\":\"Partial morpheme analysis\",\"problem\":\"Lexical entry 'mbo - ADD' is partially analyzed.\"," +
+                "\"description\":\"The entry has no category or slot.\",\"guidance\":\"Give it one in FieldWorks.\"," +
                 "\"subjects\":[{\"kind\":\"lex_entry\",\"title\":\"mbo - ADD\",\"subtitle\":null,\"internal_id\":\"lex_entry#34\"," +
                 "\"fieldworks\":{\"guid\":\"" + entryGuid + "\",\"tool\":\"lexiconEdit\",\"url\":null," +
                 "\"url_unavailable\":\"no FieldWorks project name supplied\"}}]}]}",
@@ -105,6 +106,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var finding = Assert.Single(outcome.Value!.Findings);
         Assert.Equal("Partial morpheme analysis", finding.Group);
         Assert.Equal("hc-partial-morpheme", finding.Code);
+        Assert.Equal("The entry has no category or slot.", finding.Description);
+        Assert.Equal("Give it one in FieldWorks.", finding.Guidance);
         Assert.Contains("partially analyzed", finding.Problem.Single().Text, StringComparison.Ordinal);
         var subject = Assert.Single(finding.Subject);
         Assert.Equal("mbo - ADD", subject.Text);

@@ -29,7 +29,7 @@ public enum OccurrenceVerdict
     NotAssessed,
 }
 
-/// <summary>The Results In text view's filter chips; the last two verdicts show only under All.</summary>
+/// <summary>The Results In text view's filter chips, one for every verdict an occurrence can have.</summary>
 public enum ResultsInTextFilter
 {
     All,
@@ -37,6 +37,8 @@ public enum ResultsInTextFilter
     New,
     NoParse,
     Matches,
+    Limit,
+    NotAssessed,
 }
 
 /// <summary>
@@ -101,6 +103,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public int NewCount => Count(OccurrenceVerdict.New);
     public int NoParseCount => Count(OccurrenceVerdict.NoParse);
     public int MatchesCount => Count(OccurrenceVerdict.Matches);
+    public int LimitCount => Count(OccurrenceVerdict.Limit);
+    public int NotAssessedCount => Count(OccurrenceVerdict.NotAssessed);
+    public bool HasNotAssessed => NotAssessedCount > 0;
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
     public string? Message =>
@@ -113,6 +118,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         : null;
 
     public bool HasMessage => Message is not null;
+
+    /// <summary>Whether there is a text to read, so the text picker and filters have something to act on.</summary>
+    public bool HasTexts => _assess.Result is not null && Texts.Count > 0;
+
+    /// <summary>Whether the only thing missing is a checked Text, which the Texts stage can supply.</summary>
+    public bool NeedsTexts => _assess.Result is not null && Texts.Count == 0;
+
+    /// <summary>Opens the Texts stage, for the empty state that asks for a checked Text.</summary>
+    public Action? OpenTexts { get; set; }
 
     /// <summary>Shows a clicked word's comparison in the side panel.</summary>
     public void SelectToken(ResultsTokenViewModel token)
@@ -153,6 +167,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(NewCount));
         OnPropertyChanged(nameof(NoParseCount));
         OnPropertyChanged(nameof(MatchesCount));
+        OnPropertyChanged(nameof(LimitCount));
+        OnPropertyChanged(nameof(NotAssessedCount));
+        OnPropertyChanged(nameof(HasNotAssessed));
 
         var reselected = Texts.FirstOrDefault(text => text.Title == previousTitle) ?? Texts.FirstOrDefault();
         if (ReferenceEquals(reselected, SelectedText)) RefreshLines();
@@ -175,6 +192,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(Message));
         OnPropertyChanged(nameof(HasMessage));
+        OnPropertyChanged(nameof(HasTexts));
+        OnPropertyChanged(nameof(NeedsTexts));
     }
 
     private bool MatchesFilter(OccurrenceVerdict verdict) => Filter switch
@@ -182,6 +201,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         ResultsInTextFilter.Differs => verdict == OccurrenceVerdict.Differs,
         ResultsInTextFilter.New => verdict == OccurrenceVerdict.New,
         ResultsInTextFilter.NoParse => verdict == OccurrenceVerdict.NoParse,
+        ResultsInTextFilter.Limit => verdict == OccurrenceVerdict.Limit,
+        ResultsInTextFilter.NotAssessed => verdict == OccurrenceVerdict.NotAssessed,
         ResultsInTextFilter.Matches => verdict == OccurrenceVerdict.Matches,
         _ => true,
     };
@@ -261,6 +282,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             OccurrenceVerdict.New => $"parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
             OccurrenceVerdict.NoParse => "no parse",
             OccurrenceVerdict.Limit => "parser stopped at a limit",
+            _ when result?.Outcome == "skipped" => "skipped: a character the grammar does not define",
             _ => "not in this Assessment",
         };
         VerdictLabel = Verdict switch
@@ -270,6 +292,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             OccurrenceVerdict.New => "Nothing stored here; the parser proposes an analysis",
             OccurrenceVerdict.NoParse => "Nothing stored here, and the parser found no parse",
             OccurrenceVerdict.Limit => "The parser stopped at a time or step limit",
+            _ when result?.Outcome == "skipped" => "The parser skipped this word: it has a character the grammar's character table does not define",
             _ => "This word was not part of the Assessment",
         };
     }

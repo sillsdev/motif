@@ -35,12 +35,25 @@ public static class PanGlossExecutable
         if (!string.IsNullOrWhiteSpace(configuredPath))
             return ExistingFile(configuredPath);
 
-        if (repositoryRoot is not null &&
-            ExistingFile(Path.Combine(repositoryRoot, "..", "PanGloss", "rust", "target", "release", fileName))
+        if (repositoryRoot is not null && NewestSiblingBuild(Path.Combine(repositoryRoot, "..", "PanGloss"), fileName)
                 is { } beside)
             return beside;
 
         return ExistingFile(Path.Combine(applicationDirectory, fileName));
+    }
+
+    // PanGloss's managed release build copies to dist/v<version>; a plain cargo build leaves rust/target/release.
+    private static string? NewestSiblingBuild(string panGlossRoot, string fileName)
+    {
+        var dist = Path.Combine(panGlossRoot, "dist");
+        var releaseCopies = Directory.Exists(dist)
+            ? Directory.EnumerateDirectories(dist).Select(version => Path.Combine(version, fileName))
+            : [];
+        return releaseCopies.Append(Path.Combine(panGlossRoot, "rust", "target", "release", fileName))
+            .Where(File.Exists)
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .Select(Path.GetFullPath)
+            .FirstOrDefault();
     }
 
     private static string? ExistingFile(string path) =>

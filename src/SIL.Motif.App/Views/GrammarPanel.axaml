@@ -141,18 +141,35 @@
           </ScrollViewer>
 
           <!-- Right: the chosen kind's findings, each with the objects it names linked into FieldWorks. -->
-          <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+          <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <StackPanel Orientation="Horizontal" Spacing="12">
               <views:CopyableTextBlock Classes="section-title" Text="{Binding Grammar.Warnings.SelectedGroupTitle}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
             </StackPanel>
-        <Grid Grid.Row="1" ColumnDefinitions="*,2*" ColumnSpacing="6">
+        <!-- The parser's own account of the chosen kind: what it means and what usually helps. -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="12"
+              IsVisible="{Binding Grammar.Warnings.SelectedGroup.HasDescription, FallbackValue=False}">
+          <Border Grid.Column="0" Classes="card" Padding="12,10">
+            <StackPanel Spacing="4">
+              <views:CopyableTextBlock Text="What it means" FontWeight="SemiBold" />
+              <views:CopyableTextBlock Text="{Binding Grammar.Warnings.SelectedGroup.Description, FallbackValue=''}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" Classes="card" Padding="12,10"
+                  IsVisible="{Binding Grammar.Warnings.SelectedGroup.HasGuidance, FallbackValue=False}">
+            <StackPanel Spacing="4">
+              <views:CopyableTextBlock Text="What usually helps" FontWeight="SemiBold" />
+              <views:CopyableTextBlock Text="{Binding Grammar.Warnings.SelectedGroup.Guidance, FallbackValue=''}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+        </Grid>
+        <Grid Grid.Row="2" ColumnDefinitions="*,2*" ColumnSpacing="6">
           <TextBox Grid.Column="0" Text="{Binding Grammar.Warnings.WhereFilter}"
                    PlaceholderText="Where..." AutomationProperties.Name="Filter grammar warnings by where they apply" />
           <TextBox Grid.Column="1" Text="{Binding Grammar.Warnings.ProblemFilter}"
                    PlaceholderText="Problem..." AutomationProperties.Name="Filter grammar warnings by problem" />
         </Grid>
-        <DataGrid Grid.Row="2" ItemsSource="{Binding Grammar.Warnings.Rows}"
+        <DataGrid Grid.Row="3" ItemsSource="{Binding Grammar.Warnings.Rows}"
                   IsReadOnly="True"
                   CanUserSortColumns="True"
                   CanUserResizeColumns="True"
@@ -166,7 +183,11 @@
                                     ClipboardContentBinding="{ReflectionBinding Where}">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" Margin="6,4" />
+                  <StackPanel Margin="6,4" Spacing="1">
+                    <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" IsVisible="{Binding HasWhere}" />
+                    <views:CopyableTextBlock Classes="muted" Text="Not named by the parser" IsVisible="{Binding !HasWhere}" />
+                    <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding RepeatText}" IsVisible="{Binding IsRepeated}" />
+                  </StackPanel>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>

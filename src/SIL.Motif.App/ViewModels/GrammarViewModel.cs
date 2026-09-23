@@ -43,6 +43,7 @@ public sealed partial class GrammarViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowNoBaseline))]
     [NotifyPropertyChangedFor(nameof(ShowNoFindings))]
     [NotifyPropertyChangedFor(nameof(ShowFindings))]
+    [NotifyPropertyChangedFor(nameof(SummaryText))]
     private bool _isLoading;
 
     [ObservableProperty]
@@ -50,12 +51,14 @@ public sealed partial class GrammarViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowNoBaseline))]
     [NotifyPropertyChangedFor(nameof(ShowNoFindings))]
     [NotifyPropertyChangedFor(nameof(ShowFindings))]
+    [NotifyPropertyChangedFor(nameof(SummaryText))]
     private Refusal? _refusal;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowNoBaseline))]
     [NotifyPropertyChangedFor(nameof(ShowNoFindings))]
     [NotifyPropertyChangedFor(nameof(ShowFindings))]
+    [NotifyPropertyChangedFor(nameof(SummaryText))]
     private bool _hasBaseline;
 
     /// <summary>Whether a check has ever completed (successfully or not) for the current project.</summary>
@@ -64,6 +67,7 @@ public sealed partial class GrammarViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowNoBaseline))]
     [NotifyPropertyChangedFor(nameof(ShowNoFindings))]
     [NotifyPropertyChangedFor(nameof(ShowFindings))]
+    [NotifyPropertyChangedFor(nameof(SummaryText))]
     private bool _hasChecked;
 
     public IAsyncRelayCommand CheckCommand { get; }
@@ -87,7 +91,7 @@ public sealed partial class GrammarViewModel : ObservableObject
         : Refusal is { } refusal ? refusal.Message
         : !HasChecked ? "Not checked yet"
         : !HasBaseline ? "Capture a Baseline first"
-        : Warnings.HasAny ? $"{Warnings.TotalCount} finding(s)"
+        : Warnings.HasAny ? (Warnings.TotalCount == 1 ? "1 finding" : $"{Warnings.TotalCount} findings")
         : "No findings";
 
     /// <summary>Sets the project to check and immediately checks it, discarding whatever was shown before.</summary>

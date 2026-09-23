@@ -187,6 +187,79 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Empty(stored[0].Analyses);
     }
 
+    [Theory]
+    [InlineData(null, 2500)]
+    [InlineData(4000, 4000)]
+    public void TheRunIsHeldToTheProjectsConfiguredLimitsUnlessTheRequestSetsATimeLimit(
+        int? requestedMs, int expectedMs)
+    {
+        using var seeded = NewSeededScratch();
+        var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
+            [new SIL.Motif.Host.Config.AssessmentScopeConfiguration(
+                SIL.Motif.Host.Config.AssessmentScopeConfiguration.DefaultName, "all", "pangloss", [],
+                TimeSpan.FromMilliseconds(2500), perWordStepLimit: 500000)],
+            gateOnRegression: false, purgeOnApply: true);
+        File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
+            SIL.Motif.Host.Config.ProjectConfigurationFile.Render(configured));
+        AssessmentScope? seen = null;
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
+                    expectedMs, seeded.FwDataPath, []) { PerWordStepLimit = 500000 })
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) =>
+            {
+                seen = scope;
+                return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
+            }
+        };
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa"], false, null), requestedMs), NewManagedRoot(),
+            assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(TimeSpan.FromMilliseconds(expectedMs), seen!.PerWordLimit);
+        Assert.Equal(500000, seen.PerWordStepLimit);
+    }
+
+    [Fact]
+    public void AWordWithReadingsThatAlsoHitALimitCountsAsIncomplete()
+    {
+        using var seeded = NewSeededScratch();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, "motifa", 1010, SIL.Motif.Host.Parser.WordOutcome.Analysed, "found-then-stopped")
+                    {
+                        Morphology = new ParseWordEvidence(
+                            SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0, "motifa", 1010, false, true, false,
+                            [new ParseAnalysis([
+                                new("11111111-1111-1111-1111-111111111111",
+                                    "22222222-2222-2222-2222-222222222222", null, null)])], [])
+                    },
+                     new(1, "motifb", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
+                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate)
+        };
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa", "motifb"], false, null)), NewManagedRoot(),
+            assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var response = outcome.Value!;
+        // The readings it found are real, but the search stopped early, so more may exist: Statistics agrees.
+        Assert.Equal("analysed", response.Words[0].Outcome);
+        Assert.True(response.Words[0].IsIncomplete);
+        Assert.Equal("INCOMPLETE — parsing did not finish (time limit)", response.Words[0].CompletionStatus);
+        Assert.StartsWith("1 search completed; 1 incomplete", response.CompletionSummary);
+    }
+
     [Fact]
     public void ResponseRetainsOrderedReadingsPartialEvidenceAndSharedGrammarWarnings()
     {

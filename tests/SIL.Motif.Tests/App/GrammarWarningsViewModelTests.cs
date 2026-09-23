@@ -1,3 +1,4 @@
+using System.Linq;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -29,7 +30,40 @@ public sealed class GrammarWarningsViewModelTests
 
         Assert.True(table.HasAny);
         Assert.Equal(2, table.Rows.Count);
-        Assert.Equal("2 finding(s)", table.CountSummary);
+        Assert.Equal("2 findings", table.CountSummary);
+    }
+
+    [Fact]
+    public void AnExactlyRepeatedReportIsOneRowWithItsCount()
+    {
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([EntryWarning, EntryWarning, PhonemeWarning]);
+
+        // Counts stay in reports, so the stage badge and the table agree; the table shows two rows.
+        Assert.Equal(2, table.Rows.Count);
+        Assert.Equal("3 findings", table.CountSummary);
+        var repeated = table.Rows.Cast<GrammarWarningRowViewModel>().Single(row => row.IsRepeated);
+        Assert.Equal("reported twice", repeated.RepeatText);
+    }
+
+    [Fact]
+    public void AKindCarriesTheParsersDescriptionAndGuidance()
+    {
+        var named = EntryWarning with
+        {
+            Group = "Unresolved grammatical info",
+            Description = "The entry points at grammatical info it does not own.",
+            Guidance = "Choose the entry's grammatical info again in FieldWorks.",
+        };
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([named, PhonemeWarning]);
+
+        var group = table.LeftOutGroups.Concat(table.WorthALookGroups).Single(kind => kind.Name == "Unresolved grammatical info");
+        Assert.Equal("The entry points at grammatical info it does not own.", group.Description);
+        Assert.True(group.HasGuidance);
+        Assert.False(table.LeftOutGroups.Concat(table.WorthALookGroups).Single(kind => kind != group).HasDescription);
     }
 
     [Fact]
@@ -40,7 +74,7 @@ public sealed class GrammarWarningsViewModelTests
 
         table.KindFilter = "phon";
         Assert.Equal("ng", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).SubjectParts[1].Text);
-        Assert.Equal("1 of 2 finding(s) match the filters", table.CountSummary);
+        Assert.Equal("1 of 2 findings match the filters", table.CountSummary);
 
         table.KindFilter = string.Empty;
         table.WhereFilter = "kuona";

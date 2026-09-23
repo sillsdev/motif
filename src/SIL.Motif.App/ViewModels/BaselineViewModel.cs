@@ -31,10 +31,12 @@ public sealed partial class BaselineViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBaseline))]
+    [NotifyPropertyChangedFor(nameof(CapturedAtText))]
     private BaselineToken? _token;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CapturedTimeText))]
+    [NotifyPropertyChangedFor(nameof(SavedText))]
     private DateTimeOffset? _sourceLastWriteUtc;
 
     [ObservableProperty]
@@ -48,6 +50,17 @@ public sealed partial class BaselineViewModel : ObservableObject
     public string CapturedTimeText => SourceLastWriteUtc is { } savedUtc
         ? savedUtc.ToLocalTime().ToString("f", CultureInfo.CurrentCulture)
         : "No Baseline captured yet";
+
+    /// <summary>Which FieldWorks save the Baseline copies, said as such so it is not read as the capture time.</summary>
+    public string SavedText => SourceLastWriteUtc is { } savedUtc
+        ? $"From FieldWorks' save of {savedUtc.ToLocalTime().ToString("f", CultureInfo.CurrentCulture)}"
+        : string.Empty;
+
+    /// <summary>When Motif captured the Baseline, which can be long after the save it copies.</summary>
+    public string CapturedAtText => Token is { } token &&
+        DateTimeOffset.TryParse(token.CapturedUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var captured)
+            ? $"Captured {captured.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}"
+            : string.Empty;
 
     /// <summary>Instance-bindable form of <see cref="FreshnessSentence"/>, for a view's binding path.</summary>
     public string FreshnessText => FreshnessSentence;

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
@@ -240,6 +241,32 @@ public sealed class StatisticsViewModelTests
         Assert.Equal($"INCOMPLETE — parsing did not finish ({reason})", statistics.Rows[0].CompletionStatus);
         Assert.False(statistics.Rows[1].IsIncomplete);
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
+    }
+
+    [Fact]
+    public async Task AWordsCompletionComesFromTheAssessmentSoBothViewsCountTheSameWords()
+    {
+        var (fake, statistics) = NewViewModel();
+        var words = new AssessWordsViewModel();
+        words.Load(
+        [
+            new AssessmentWordResult("slow", "timed-out", true, "INCOMPLETE — parsing did not finish (time limit)", 1000, null),
+            new AssessmentWordResult("quick", "analysed", false, "Search completed", 3, null),
+        ]);
+        statistics.AssessedWord = words.Find;
+        // The statistics pass parsed again and finished "slow", then ran out of time on "quick".
+        fake.StatsCompletesWith(RowsResponse(
+            """{"form":"slow","attempts":9,"passes":0,"elapsed_ns":900000000,"capped":false,"timed_out":false}""",
+            """{"form":"quick","attempts":5,"passes":0,"elapsed_ns":1000000000,"capped":false,"timed_out":true}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.True(statistics.Rows.Single(row => row.Word == "slow").IsIncomplete);
+        Assert.False(statistics.Rows.Single(row => row.Word == "quick").IsIncomplete);
+        Assert.Equal(1, statistics.IncompleteCount);
+        Assert.Equal("1 word stopped at a limit", statistics.IncompleteHeadline);
+        Assert.False(statistics.AnyPasses);
+        Assert.Equal("Slowest word: quick", statistics.SlowestHeadline);
     }
 
     [Theory]

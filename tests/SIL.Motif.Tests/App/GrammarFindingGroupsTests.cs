@@ -21,9 +21,22 @@ public sealed class GrammarFindingGroupsTests
     [InlineData("warning: allomorph \"a1\": cannot segment \"kat\": cannot segment \"kat\": no character definition matches at position 0; skipped",
         "Cannot segment: no character definition matches at position")]
     [InlineData("warning: lex entry \"c1\" sense \"s1\": msa \"m1\" does not resolve within this entry",
-        "Msa does not resolve within this entry")]
+        "Msa … does not resolve within this entry")]
     [InlineData("warning: MSA has zero loadable allomorphs for this stratum bucket",
         "MSA has zero loadable allomorphs for this stratum bucket")]
+    [InlineData("warning: hc-partial-morpheme: Morphological rule 'meN' is partially analyzed. Supply its missing category.",
+        "Morphological rule … is partially analyzed")]
+    [InlineData("warning: circumfix entry \"ke- -an\": found 0 prefix half/halves and 0 suffix half/halves; a circumfix needs one",
+        "Found … prefix half/halves and … suffix half/halves")]
+    [InlineData("warning: morphology.adhocProhibitions: ad-hoc prohibition aea110aa-595a-40a7-bb62-d9bf95280bb4 references " +
+        "inflectional affix 8497c72c-0000-9f69-0000-564cb0a2938f, whose slot is not in any template. Remove it.",
+        "Ad-hoc prohibition … references inflectional affix …, whose slot is not in any template")]
+    [InlineData("warning: cannot segment \"sábadu\": the failure position 2 remaps to 'b', which is already a registered character; " +
+        "the true failing element is likely a standalone combining mark",
+        "Cannot segment: the failure position … remaps to …, which is already a registered character")]
+    [InlineData("warning: cannot segment \"mynoun2\": '2' at position 6 is neither a vernacular exemplar, an authored boundary, " +
+        "nor in the safe boundary table; refusing rather than guessing",
+        "Cannot segment: … at position … is neither a vernacular exemplar, an authored boundary, nor in the safe boundary table")]
     public void AWarningIsLabelledByTheParsersOwnWordsWithItsIdentifiersTakenOut(string line, string label)
     {
         Assert.Equal(label, GrammarFindingShapes.LabelOf(line));

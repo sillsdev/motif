@@ -82,26 +82,33 @@
       <Grid ColumnDefinitions="1*" RowDefinitions="Auto,Auto,*" RowSpacing="6">
         <TextBox Grid.Row="0" Text="{Binding Assess.Words.WordFilter}"
                  PlaceholderText="Search words..." AutomationProperties.Name="Filter words by word" />
-        <WrapPanel Grid.Row="1">
-          <views:FilterChip Label="All" Count="{Binding Assess.Words.AllCount}"
+        <!-- Two questions, two rows of chips: what the parser came to, and how that compares with the project. -->
+        <StackPanel Grid.Row="1" Spacing="4">
+          <views:CopyableTextBlock Classes="muted" FontSize="11" Text="Parser result" />
+          <WrapPanel>
+            <views:FilterChip Label="All" Count="{Binding Assess.Words.AllCount}"
                             IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.All}}"
                             Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.All}" />
-          <views:FilterChip Label="Missed" Count="{Binding Assess.Words.MissedCount}" Verdict="NoResult"
-                            IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.Missed}}"
-                            Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.Missed}" />
-          <views:FilterChip Label="Disapproved" Count="{Binding Assess.Words.DisapprovedCount}" Verdict="Differs"
-                            IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.Disapproved}}"
-                            Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.Disapproved}" />
-          <views:FilterChip Label="No opinion" Count="{Binding Assess.Words.NoOpinionCount}" Verdict="New"
-                            IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.NoOpinion}}"
-                            Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.NoOpinion}" />
-          <views:FilterChip Label="No parse" Count="{Binding Assess.Words.NoParseCount}" Verdict="NoResult"
+            <views:FilterChip Label="No parse" Count="{Binding Assess.Words.NoParseCount}" Verdict="NoResult"
                             IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.NoParse}}"
                             Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.NoParse}" />
-          <views:FilterChip Label="Limit" Count="{Binding Assess.Words.LimitCount}" Verdict="Limit"
+            <views:FilterChip Label="Limit" Count="{Binding Assess.Words.LimitCount}" Verdict="Limit"
                             IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.Limit}}"
                             Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.Limit}" />
-        </WrapPanel>
+          </WrapPanel>
+          <views:CopyableTextBlock Classes="muted" FontSize="11" Text="Against the project (a word can be in both rows)" />
+          <WrapPanel>
+            <views:FilterChip Label="Missed" Count="{Binding Assess.Words.MissedCount}" Verdict="NoResult"
+                            IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.Missed}}"
+                            Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.Missed}" />
+            <views:FilterChip Label="Disapproved" Count="{Binding Assess.Words.DisapprovedCount}" Verdict="Differs"
+                            IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.Disapproved}}"
+                            Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.Disapproved}" />
+            <views:FilterChip Label="No opinion" Count="{Binding Assess.Words.NoOpinionCount}" Verdict="New"
+                            IsActive="{Binding Assess.Words.SelectedFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsWordFilter.NoOpinion}}"
+                            Command="{Binding Assess.Words.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsWordFilter.NoOpinion}" />
+          </WrapPanel>
+        </StackPanel>
         <ListBox Grid.Row="2" ItemsSource="{Binding Assess.Words.Rows}"
                  SelectedItem="{Binding Assess.Words.SelectedRow}"
                  AutomationProperties.Name="Words">
@@ -116,7 +123,7 @@
                 <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
                   <views:VerdictChip Verdict="{Binding ResultMeaning}" Text="{Binding Result}" Compact="True" />
                   <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding VsProject}" IsVisible="{Binding HasVsProject}" />
-                  <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}"
+                  <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding ElapsedText}"
                              HorizontalAlignment="Right" />
                 </StackPanel>
               </Grid>
@@ -140,16 +147,19 @@
 
           <StackPanel Orientation="Horizontal" Spacing="10">
             <views:VerdictChip Verdict="{Binding ResultMeaning}" Text="{Binding Result}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding ReadingCount, StringFormat='{}{0} reading(s)'}" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding ReadingCountText}" VerticalAlignment="Center" />
             <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding VsProject}" IsVisible="{Binding HasVsProject}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}" VerticalAlignment="Center" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding Attempts, StringFormat='{}{0} attempts'}" VerticalAlignment="Center"
+            <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedText}" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Attempts, StringFormat='{}{0:N0} attempts'}" VerticalAlignment="Center"
                        IsVisible="{Binding Attempts, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding Passes, StringFormat='{}{0} passes'}" VerticalAlignment="Center"
-                       IsVisible="{Binding Passes, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Passes, StringFormat='{}{0:N0} passes'}" VerticalAlignment="Center"
+                       IsVisible="{Binding HasPasses}" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Correctness}" VerticalAlignment="Center"
+                       IsVisible="{Binding Correctness, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       ToolTip.Tip="How many of the analyses the project approves the parser produced" />
           </StackPanel>
 
-          <views:CopyableTextBlock Classes="muted" Text="No readings: the parser found no way to build this word."
+          <views:CopyableTextBlock Classes="muted" Text="{Binding NoReadingsText}"
                      IsVisible="{Binding !HasReadings}" />
 
           <Grid>
@@ -185,10 +195,13 @@
                   <DataTemplate x:DataType="vm:ParserReadingViewModel">
                     <Border Classes="card" Margin="0,0,0,6" Padding="10">
                       <StackPanel Spacing="4">
-                        <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
-                        <Border Classes="chip missed" HorizontalAlignment="Left">
-                          <views:CopyableTextBlock Text="Missed" />
-                        </Border>
+                        <views:MorphemeRow Morphs="{Binding Morphs}" />
+                        <DockPanel>
+                          <views:VerdictChip DockPanel.Dock="Left" Verdict="{Binding Meaning}" Text="{Binding GradeLabel}"
+                                             Compact="True" VerticalAlignment="Top" Margin="0,0,8,0" />
+                          <views:CopyableTextBlock Classes="muted" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                   Text="{Binding MissedExplanation}" />
+                        </DockPanel>
                       </StackPanel>
                     </Border>
                   </DataTemplate>

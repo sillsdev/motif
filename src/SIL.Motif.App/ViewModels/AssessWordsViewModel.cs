@@ -58,15 +58,35 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     public bool HasAny => TotalCount > 0;
 
     public string CountSummary => ShownCount == TotalCount
-        ? $"{TotalCount} word(s)"
-        : $"{ShownCount} of {TotalCount} word(s) match the filters";
+        ? (TotalCount == 1 ? "1 word" : $"{TotalCount} words")
+        : $"{ShownCount} of {TotalCount} words match the filters";
 
     public int AllCount => _all.Count;
+
+    /// <summary>The row for <paramref name="word"/> exactly as spelled, or <see langword="null"/> when this Assessment did not try it.</summary>
+    public AssessWordRowViewModel? Find(string word) => _all.FirstOrDefault(row => row.Word == word);
     public int MissedCount => _all.Count(row => row.VsProject == "Missed");
     public int DisapprovedCount => _all.Count(row => row.VsProject == "Disapproved");
     public int NoOpinionCount => _all.Count(row => row.VsProject == "No opinion");
     public int NoParseCount => _all.Count(row => row.Result == "No parse");
-    public int LimitCount => _all.Count(row => row.Result is "Time limit" or "Step limit");
+    public int LimitCount => _all.Count(row => row.StoppedAtALimit);
+
+    /// <summary>
+    /// What the parser came to, word by word, as parts that add up to <see cref="AllCount"/>: a word that stopped at
+    /// a limit counts there even if it found readings first, since its search did not finish.
+    /// </summary>
+    public IReadOnlyList<OutcomeSegment> Outcomes { get; private set; } = [];
+
+    private IReadOnlyList<OutcomeSegment> CountOutcomes() =>
+    [
+        .. new[]
+        {
+            new OutcomeSegment(Verdict.Agrees, _all.Count(row => row.IsParsed && !row.StoppedAtALimit), "parsed"),
+            new OutcomeSegment(Verdict.NoResult, _all.Count(row => row.IsFailed && !row.StoppedAtALimit), "no parse"),
+            new OutcomeSegment(Verdict.Limit, _all.Count(row => row.StoppedAtALimit), "stopped at a limit"),
+            new OutcomeSegment(Verdict.Several, _all.Count(row => row.Result == "Skipped" && !row.StoppedAtALimit), "skipped"),
+        }.Where(segment => segment.Count > 0),
+    ];
 
     /// <summary>
     /// Replaces every row with <paramref name="words"/>, or clears the table for <see langword="null"/>.
@@ -79,6 +99,8 @@ public sealed partial class AssessWordsViewModel : ObservableObject
         if (words is not null)
             _all.AddRange(words.Select(word => new AssessWordRowViewModel(word, occurrenceCounts?.Invoke(word.Word))));
         TotalCount = _all.Count;
+        Outcomes = CountOutcomes();
+        OnPropertyChanged(nameof(Outcomes));
         Refresh();
     }
 
@@ -103,7 +125,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
             ResultsWordFilter.Disapproved => row.VsProject == "Disapproved",
             ResultsWordFilter.NoOpinion => row.VsProject == "No opinion",
             ResultsWordFilter.NoParse => row.Result == "No parse",
-            ResultsWordFilter.Limit => row.Result is "Time limit" or "Step limit",
+            ResultsWordFilter.Limit => row.StoppedAtALimit,
             _ => true,
         };
 }
@@ -133,7 +155,7 @@ public sealed class AssessWordRowViewModel
         IsIncomplete = word.IsIncomplete;
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
         Correctness = word.Correctness is { Expected: > 0 } correctness
-            ? $"{correctness.Matched}/{correctness.Expected} approved"
+            ? $"{correctness.Matched} of {correctness.Expected} approved analyses produced"
             : string.Empty;
         ElapsedMs = word.ElapsedMs;
         Attempts = word.Attempts;
@@ -146,10 +168,12 @@ public sealed class AssessWordRowViewModel
             .ToArray();
         ReadingText = string.Join(" | ", Readings.Select(reading => reading.Text));
         MissedApproved = (word.MissedApproved ?? [])
-            .Select((reading, index) => new ParserReadingViewModel(index + 1, reading, "missed"))
+            .Select((reading, index) => new ParserReadingViewModel(index + 1, reading,
+                Result == "Skipped" ? "not-tried" : IsIncomplete ? "not-reached" : "missed"))
             .ToArray();
 
-        VsProject = MissedApproved.Count > 0 ? "Missed"
+        // A word never tried, or stopped at a limit, may still have the approved analysis: neither is a miss.
+        VsProject = MissedApproved.Count > 0 ? (Result == "Skipped" ? "Not tried" : IsIncomplete ? "Not reached" : "Missed")
             : Readings.Any(reading => reading.Grade == "disapproved") ? "Disapproved"
             : Readings.Any(reading => reading.Grade == "approved") ? "Approved"
             : Readings.Count > 0 && grades is not null ? "No opinion"
@@ -158,6 +182,7 @@ public sealed class AssessWordRowViewModel
         TryWordLink = word.TryWordLink is { } link ? new Uri(link) : null;
         Unavailable = word.Correctness?.Unavailable ?? word.Morphology?.Unavailable ?? [];
         Detail = $"{word.CompletionStatus}. {word.EvidenceStatus}";
+        CompletionStatus = word.CompletionStatus;
     }
 
     // Readings nobody resolved against the project still show, by count and guessed form, rather than vanish.
@@ -174,11 +199,31 @@ public sealed class AssessWordRowViewModel
     public bool IsParsed { get; }
     public bool IsFailed { get; }
     public bool IsIncomplete { get; }
+
+    /// <summary>The Assessment's own account of whether this word's search finished, and if not, what stopped it.</summary>
+    public string CompletionStatus { get; }
+
+    /// <summary>Whether a limit stopped the search, including a word that found readings before it stopped.</summary>
+    public bool StoppedAtALimit => IsIncomplete || Result is "Time limit" or "Step limit";
     public int ReadingCount { get; }
+
+    public string ReadingCountText => ReadingCount == 1 ? "1 reading" : $"{ReadingCount} readings";
+
+    /// <summary>Why a word has no readings: a limit or a skip is not the parser finding no way to build it.</summary>
+    public string NoReadingsText => Result switch
+    {
+        "Time limit" => "No readings: the parser stopped at its time limit before it could finish.",
+        "Step limit" => "No readings: the parser stopped at its step limit before it could finish.",
+        "Skipped" => "The parser did not try this word: it has a character the grammar's character table does not define.",
+        _ => "No readings: the parser found no way to build this word.",
+    };
     public string Correctness { get; }
     public int? ElapsedMs { get; }
     public int? Attempts { get; }
     public int? Passes { get; }
+
+    /// <summary>Whether the parser needed more than its first pass; zero passes is the ordinary case and says nothing.</summary>
+    public bool HasPasses => Passes is > 0;
 
     /// <summary>Grade against the project's own analyses: Approved, Disapproved, No opinion, Missed, or none available.</summary>
     public string VsProject { get; }
@@ -195,6 +240,10 @@ public sealed class AssessWordRowViewModel
         "Missed" => Verdict.NoResult,
         _ => Verdict.Limit,
     };
+
+    /// <summary>How long the parser took, or nothing for a word it never tried.</summary>
+    public string ElapsedText => Result == "Skipped" || ElapsedMs is not { } ms ? string.Empty
+        : ms == 0 ? "<1 ms" : $"{ms:N0} ms";
 
     /// <summary>The shared meaning behind <see cref="Result"/>: what the parser itself came to.</summary>
     public Verdict ResultMeaning => Result switch
@@ -233,12 +282,14 @@ public sealed class ParserReadingViewModel
         Grade = grade;
         IsApproved = grade == "approved";
         IsDisapproved = grade == "disapproved";
-        IsMissed = grade == "missed";
+        IsMissed = grade is "missed" or "not-reached" or "not-tried";
         GradeLabel = grade switch
         {
             "approved" => "Project ✓",
             "disapproved" => "Disapproved",
             "missed" => "Missed",
+            "not-reached" => "Not reached",
+            "not-tried" => "Not tried",
             "no-opinion" => "No opinion",
             _ => string.Empty,
         };
@@ -258,7 +309,16 @@ public sealed class ParserReadingViewModel
         "approved" => Verdict.Agrees,
         "disapproved" => Verdict.Differs,
         "missed" => Verdict.NoResult,
+        "not-reached" or "not-tried" => Verdict.Limit,
         _ => Verdict.New,
+    };
+
+    /// <summary>What a missed approved analysis means: not produced, or not reached before a limit.</summary>
+    public string MissedExplanation => Grade switch
+    {
+        "not-reached" => "The project approves this analysis; the parser stopped at its limit before reaching it.",
+        "not-tried" => "The project approves this analysis; the parser did not try this word.",
+        _ => "The project approves this analysis; the parser did not produce it.",
     };
 
     public bool IsApproved { get; }

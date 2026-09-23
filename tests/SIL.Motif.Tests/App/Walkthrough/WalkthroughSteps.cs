@@ -35,9 +35,11 @@ internal static class WalkthroughSteps
                 walkthrough.Workspace.Selection.Texts.Count == 1,
             Remaining(deadline), "refreshing the Baseline did not publish its Texts");
         Assert.NotEqual("No Baseline captured yet", walkthrough.Workspace.Baseline.CapturedTimeText);
-        var freshness = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>().Single(text =>
-            text.Text == BaselineViewModel.FreshnessSentence);
-        Assert.True(freshness.IsVisible);
+        // The Baseline names the FieldWorks save it copies, so its date is not read as the capture time.
+        var saved = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>().Single(text =>
+            text.Text == walkthrough.Workspace.Baseline.SavedText);
+        Assert.True(saved.IsVisible);
+        Assert.StartsWith("From FieldWorks' save of ", saved.Text, StringComparison.Ordinal);
         Assert.Equal("FieldWorks does not currently hold this project.",
             walkthrough.Workspace.Baseline.HeldStatusText);
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);

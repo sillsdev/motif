@@ -47,7 +47,7 @@ public sealed record HandoffFileViewModel(string RelativePath, string FullPath)
     public static IReadOnlyList<(string Name, string Purpose)> KnownFiles { get; } =
     [
         ("handoff.md", "What this Handoff is and how to read it."),
-        ("assessment.json", "Every word the parser was asked about: its readings, verdicts and timings."),
+        ("assessment.json", "Every word the parser was asked about: whether it parsed, how long it took, and its result's signature."),
         ("texts.json", "The chosen texts, word by word, with the analyses the project stores."),
         ("grammar.json", "The grammar the parser used, as it read it."),
         ("parse_grammar_texts_assessment.py", "A reader the chat model can run over the three files."),

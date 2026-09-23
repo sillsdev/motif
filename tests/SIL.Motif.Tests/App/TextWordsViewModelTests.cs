@@ -29,6 +29,29 @@ public sealed class TextWordsViewModelTests
     }
 
     [Fact]
+    public async Task WordsAreListedMostFrequentFirstWithTheLatestAssessmentsResult()
+    {
+        var (fake, _, words) = NewViewModel();
+        await words.SetProjectAsync(ProjectPath);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("mara", null, [new WordOccurrence(TextId, "Alpha", 1, "s", "unanalysed", null)], [], []),
+             new TextWord("na", null,
+                [new WordOccurrence(TextId, "Alpha", 2, "s", "unanalysed", null),
+                 new WordOccurrence(TextId, "Alpha", 3, "s", "unanalysed", null)], [], [])],
+            [], HasBaseline: true));
+        var assessed = new AssessWordsViewModel();
+        assessed.Load([new AssessmentWordResult("na", "no-analysis", false, "Search completed", 4, null)]);
+
+        await words.ReloadAsync();
+        words.ShowAssessment(assessed.Find);
+
+        Assert.Equal(["na", "mara"], words.Rows.Select(row => row.Form));
+        Assert.Equal("No parse", words.Rows[0].LastResultLabel);
+        Assert.False(words.Rows[1].HasLastResult);
+        Assert.Equal("Not stored yet", words.Rows[1].StatusLabel);
+    }
+
+    [Fact]
     public async Task CheckingATextReloadsWordsForTheNewlyChosenTexts()
     {
         var (fake, selection, words) = NewViewModel();
@@ -100,6 +123,7 @@ public sealed class TextWordsViewModelTests
         var row = Assert.Single(words.Rows);
         Assert.Equal(WordProjectStatus.None, row.Status);
         Assert.Equal("Not analysed in the project", row.ProjectSummary);
+        Assert.Equal("Not stored yet", row.StatusLabel);
     }
 
     [Fact]
@@ -119,7 +143,7 @@ public sealed class TextWordsViewModelTests
 
         await words.ReloadAsync();
 
-        Assert.Equal("2 words to test · 3 occurrences · 1 approved", words.SummaryText);
+        Assert.Equal("2 words to test · 3 occurrences · 1 with an approved analysis", words.SummaryText);
     }
 
     [Fact]
