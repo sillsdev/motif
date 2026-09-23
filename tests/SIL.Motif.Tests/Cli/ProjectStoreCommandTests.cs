@@ -94,7 +94,7 @@ public sealed class ProjectStoreCommandTests : IDisposable
         {
             ran = true;
             return CommandOutcome<string>.Success(string.Empty);
-        });
+        }, ownershipPatience: TimeSpan.FromMilliseconds(200));
 
         Assert.False(ran);
         Assert.False(result.Succeeded);

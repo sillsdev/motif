@@ -28,8 +28,13 @@ namespace SIL.Motif.Commands;
 public static class ProjectStoreCommand
 {
     /// <summary>Opens the paired store for a project, runs the verb, and translates any failure.</summary>
+    /// <param name="fwDataPath">The path to the FieldWorks project data file.</param>
+    /// <param name="productVersion">The worker version used for store compatibility checks.</param>
+    /// <param name="act">The verb to run against the open project store.</param>
+    /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
     public static CommandOutcome<T> Run<T>(string fwDataPath, string productVersion,
-        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act) where T : class
+        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act,
+        TimeSpan? ownershipPatience = null) where T : class
     {
         ArgumentNullException.ThrowIfNull(act);
 
@@ -49,7 +54,7 @@ public static class ProjectStoreCommand
         MotifDatabase database;
         try
         {
-            database = catalog.OpenOwned(project);
+            database = catalog.OpenOwned(project, ownershipPatience);
         }
         catch (MotifStoreLockException exception)
         {

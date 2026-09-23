@@ -64,6 +64,7 @@ internal sealed class MotifSqliteStoreDescriptor
 /// </remarks>
 internal sealed class MotifSqliteStore : IDisposable
 {
+    private static readonly TimeSpan DefaultOwnershipPatience = TimeSpan.FromSeconds(30);
     private readonly string _path;
     private readonly string _name;
     private readonly object _stateGate = new();
@@ -76,7 +77,12 @@ internal sealed class MotifSqliteStore : IDisposable
         _name = name;
     }
 
-    public static MotifSqliteStore Open(string path, MotifSqliteStoreDescriptor descriptor)
+    /// <summary>Opens a store, creating its schema if absent and waiting for its creation lock.</summary>
+    /// <param name="path">The database file path.</param>
+    /// <param name="descriptor">The schema and identity rules for the database.</param>
+    /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
+    public static MotifSqliteStore Open(string path, MotifSqliteStoreDescriptor descriptor,
+        TimeSpan? ownershipPatience = null)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         var fullPath = Path.GetFullPath(path);
@@ -87,7 +93,8 @@ internal sealed class MotifSqliteStore : IDisposable
         try
         {
             // Taken only when there is a fresh database to create, so readers never contend.
-            if (NeedsCreation(fullPath)) ownership = AcquireOwnership(fullPath);
+            if (NeedsCreation(fullPath))
+                ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
             using var connection = OpenInspectionConnection(fullPath);
             var applicationId = PragmaInt(connection, "application_id");
             var schema = PragmaInt(connection, "user_version");
@@ -304,9 +311,9 @@ internal sealed class MotifSqliteStore : IDisposable
     }
 
     // Waits rather than fails: two processes opening a database that needs migrating is ordinary.
-    private static FileStream AcquireOwnership(string path)
+    private static FileStream AcquireOwnership(string path, TimeSpan patience)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(30);
+        var deadline = DateTime.UtcNow.Add(patience);
         while (true)
         {
             try { return AcquireOwnershipCore(path); }

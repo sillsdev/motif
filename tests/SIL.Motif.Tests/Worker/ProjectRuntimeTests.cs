@@ -216,24 +216,47 @@ public sealed class ProjectRuntimeTests : IDisposable
     public async Task DisposalAdmissionBarrierDoesNotAllowAGetOrOpenToEscape()
     {
         var project = Project("C:/workspace/dispose-race.fwdata", "project");
+        var blockedKey = ProjectWorkspaceKey.Compute(project);
         var ownership = WorkspaceOwnership.Bootstrap(Path.Combine(_root, "dispose-race-owned"));
         var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0));
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
         using var registry = new ProjectRuntimeRegistry(catalog, (jobs, key) =>
         {
-            entered.Set();
-            release.Wait(Patience);
+            if (key == blockedKey)
+            {
+                entered.Set();
+                release.Wait(Patience);
+            }
             return new WorkerRecoveryCoordinator(new WorkerRecovery(jobs, _clock),
                 new WorkspaceCleaner(ownership));
         }, new ProjectRuntimeActivity(), () => _clock.UtcNow);
 
+        var probe = registry.GetOrOpen(Project("C:/workspace/dispose-probe.fwdata", "probe"));
+        Assert.True(registry.TryGet(probe.WorkspaceKey, out _));
         var opening = Task.Run(() => registry.GetOrOpen(project));
         Assert.True(entered.Wait(Patience));
         var disposing = Task.Run(registry.Dispose);
-        Assert.Throws<ObjectDisposedException>(() => registry.GetOrOpen(project));
+
+        var deadline = DateTime.UtcNow + Patience;
+        while (DateTime.UtcNow < deadline && registry.TryGet(probe.WorkspaceKey, out _))
+            await Task.Delay(1);
+        Assert.False(registry.TryGet(probe.WorkspaceKey, out _));
+
+        var escaping = Task.Run(() => registry.GetOrOpen(project));
+        Assert.False(escaping.IsCompleted);
         release.Set();
         var opened = await opening.WaitAsync(Patience);
+        Exception? escapeFailure = null;
+        try
+        {
+            (await escaping.WaitAsync(Patience)).Dispose();
+        }
+        catch (ObjectDisposedException exception)
+        {
+            escapeFailure = exception;
+        }
+        Assert.IsType<ObjectDisposedException>(escapeFailure);
         await disposing.WaitAsync(Patience);
         Assert.Equal(ProjectRuntimeAdmission.Disposed, opened.Admission);
         Assert.False(registry.TryGet(ProjectWorkspaceKey.Compute(project), out _));

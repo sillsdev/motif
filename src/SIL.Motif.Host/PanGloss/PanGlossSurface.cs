@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -8,11 +9,14 @@ internal sealed record PanGlossSurfaceCheck(bool IsValid, string Message);
 
 internal static class PanGlossSurface
 {
-    private static readonly TimeSpan DescriptionCap = TimeSpan.FromSeconds(15);
+    /// <summary>The parser surface probe's timeout when callers do not supply a cap.</summary>
+    internal const int DefaultDescriptionCapSeconds = 15;
 
     internal static async Task<PanGlossSurfaceCheck> CheckAsync(
-        string executable, Action<Process> contain, CancellationToken cancellationToken)
+        string executable, Action<Process> contain, CancellationToken cancellationToken,
+        TimeSpan? descriptionCap = null)
     {
+        var cap = descriptionCap ?? TimeSpan.FromSeconds(DefaultDescriptionCapSeconds);
         var startInfo = new ProcessStartInfo(executable)
         {
             RedirectStandardOutput = true,
@@ -41,7 +45,7 @@ internal static class PanGlossSurface
             var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
             var error = process.StandardError.ReadToEndAsync(CancellationToken.None);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            deadline.CancelAfter(DescriptionCap);
+            deadline.CancelAfter(cap);
             try
             {
                 await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
@@ -52,7 +56,9 @@ internal static class PanGlossSurface
                 catch (InvalidOperationException) { }
                 catch (Win32Exception) { }
                 if (cancellationToken.IsCancellationRequested) throw;
-                return Invalid(executable, "--describe did not finish within 15 seconds.");
+                var seconds = cap.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
+                var unit = cap == TimeSpan.FromSeconds(1) ? "second" : "seconds";
+                return Invalid(executable, $"--describe did not finish within {seconds} {unit}.");
             }
 
             var standardOutput = await output.ConfigureAwait(false);

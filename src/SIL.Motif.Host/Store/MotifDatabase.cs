@@ -24,6 +24,7 @@ public sealed class MotifDatabase : IDisposable
     /// <param name="project">The project locator that must match persisted metadata.</param>
     /// <param name="supportedSchema">The schema generation this worker requires; usually <see cref="MotifSchema.CurrentSchema"/>.</param>
     /// <param name="workerVersion">The worker version used for compatibility checks.</param>
+    /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
     /// <returns>An owned database boundary whose connections are configured for worker use.</returns>
     /// <exception cref="InvalidDataException">The file identity, metadata, or project binding is invalid.</exception>
     /// <exception cref="NotSupportedException">The schema or worker compatibility is unsupported.</exception>
@@ -31,7 +32,8 @@ public sealed class MotifDatabase : IDisposable
         string path,
         ProjectLocator project,
         int supportedSchema,
-        Version workerVersion)
+        Version workerVersion,
+        TimeSpan? ownershipPatience = null)
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("A database path is required.", nameof(path));
         ArgumentNullException.ThrowIfNull(project);
@@ -64,7 +66,7 @@ public sealed class MotifDatabase : IDisposable
                         $"Worker {workerVersion} is older than database minimum {metadata.MinimumWorkerVersion}.");
             }
         };
-        return new MotifDatabase(MotifSqliteStore.Open(path, descriptor));
+        return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience));
     }
 
     /// <summary>Opens a configured connection while this worker owns the database.</summary>

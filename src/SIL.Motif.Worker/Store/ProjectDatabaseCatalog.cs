@@ -21,10 +21,13 @@ public sealed class ProjectDatabaseCatalog
     }
 
     /// <summary>Opens the project sibling database through the worker-owned host boundary.</summary>
-    public MotifDatabase OpenOwned(ProjectLocator project)
+    /// <param name="project">The project locator bound to the sibling database.</param>
+    /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
+    public MotifDatabase OpenOwned(ProjectLocator project, TimeSpan? ownershipPatience = null)
     {
         ArgumentNullException.ThrowIfNull(project);
-        return MotifDatabase.OpenOwned(DatabasePathFor(project), project, _supportedSchema, _workerVersion);
+        return MotifDatabase.OpenOwned(DatabasePathFor(project), project, _supportedSchema, _workerVersion,
+            ownershipPatience);
     }
 
     /// <summary>Derives the sibling <c>.motif.db</c> path from a project data-file locator.</summary>

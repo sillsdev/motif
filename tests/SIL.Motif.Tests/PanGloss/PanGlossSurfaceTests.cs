@@ -45,10 +45,12 @@ public sealed class PanGlossSurfaceTests
         var executable = FakeParser.CopyWithSentinel(
             Path.Combine(_root, "describe-hang"), "_fake-pangloss-describe-hang");
 
-        var result = await PanGlossSurface.CheckAsync(executable, _ => { }, CancellationToken.None);
+        Assert.Equal(15, PanGlossSurface.DefaultDescriptionCapSeconds);
+        var result = await PanGlossSurface.CheckAsync(executable, _ => { }, CancellationToken.None,
+            descriptionCap: TimeSpan.FromSeconds(1));
 
         Assert.False(result.IsValid);
-        Assert.Contains("did not finish within 15 seconds", result.Message, StringComparison.Ordinal);
+        Assert.Contains("did not finish within 1 second", result.Message, StringComparison.Ordinal);
     }
 
     [Fact]
