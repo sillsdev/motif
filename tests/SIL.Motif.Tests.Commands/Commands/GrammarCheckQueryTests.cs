@@ -69,6 +69,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.True(response.HasBaseline);
         Assert.Equal(2, response.Findings.Count);
         Assert.Equal(2, response.Summary.Count);
+        Assert.Equal("Sena 3", response.FieldWorksProject!.Name);
+        Assert.Equal("argument", response.FieldWorksProject.Source);
         Assert.DoesNotContain(response.Findings, finding => finding.Text.Contains("stderr-only", StringComparison.Ordinal));
 
         var warning = response.Findings[0];

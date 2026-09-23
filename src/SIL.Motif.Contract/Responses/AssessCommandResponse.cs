@@ -21,8 +21,6 @@ public sealed record AssessCommandResponse(
     public string CompletionSummary { get; init; } = string.Empty;
     public string CorrectnessStatus { get; init; } = "Correctness unavailable: authoritative analysis identities are not supplied.";
     public IReadOnlyList<string>? GrammarWarnings { get; init; }
-    /// <summary><see cref="GrammarWarnings"/>, line for line, with each named object resolved and linked.</summary>
-    public IReadOnlyList<GrammarWarning>? GrammarWarningDetails { get; init; }
 }
 
 /// <summary>One word's completion is independent of whatever findings the parser returned.</summary>

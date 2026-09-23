@@ -5,9 +5,8 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins how the Grammar stage groups findings: load warnings by the shape of the parser's own sentence, using
-/// lines copied from a real project's load, health findings by the name the parser gives them, and the split
-/// between what the parser left out of the grammar and what is only worth a look.
+/// Pins fallback grouping when a finding has no summary row, report grouping by summary name, and the split
+/// between findings the parser says it left out of the grammar and findings worth a look.
 /// </summary>
 public sealed class GrammarFindingGroupsTests
 {

@@ -57,6 +57,32 @@ public sealed class FakePanGlossBatchTests : IDisposable
         Assert.Equal(64, exit);
     }
 
+    [Fact]
+    public void GrammarHealth_DefaultReportIncludesImportFindingsForBothAudiences()
+    {
+        var grammar = Path.Combine(_root, "grammar.json");
+        var reportPath = Path.Combine(_root, "report.json");
+        File.WriteAllText(grammar, "never read");
+
+        var exit = Run("grammar-health", grammar, reportPath);
+
+        Assert.Equal(0, exit);
+        using var report = JsonDocument.Parse(File.ReadAllText(reportPath));
+        var findings = report.RootElement.GetProperty("findings");
+        Assert.Equal(2, findings.GetArrayLength());
+        Assert.All(findings.EnumerateArray(), finding =>
+        {
+            Assert.Equal("import", finding.GetProperty("origin").GetString());
+            var subject = Assert.Single(finding.GetProperty("subjects").EnumerateArray());
+            Assert.True(subject.TryGetProperty("kind", out _));
+            Assert.True(subject.TryGetProperty("title", out _));
+            Assert.True(subject.TryGetProperty("guid", out _));
+            Assert.True(subject.GetProperty("fieldworks").TryGetProperty("status", out _));
+        });
+        Assert.Contains(findings.EnumerateArray(), finding =>
+            finding.GetProperty("audience").GetString() == "developer");
+    }
+
     private static int Run(params string[] args)
     {
         var start = new ProcessStartInfo(FakeParser.ExecutablePath)

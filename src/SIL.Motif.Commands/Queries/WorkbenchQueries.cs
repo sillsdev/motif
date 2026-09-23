@@ -33,17 +33,19 @@ public sealed record ProjectHistoryEntry(DateTimeOffset At, ProjectHistoryKind K
 public sealed record GrammarCheckRequest(string ProjectPath);
 
 /// <summary>
-/// What the parser reports about a project's grammar as a whole, with no Text or word involved: import
-/// diagnostics and grammar-health report findings.
+/// What the parser reports about a project's grammar as a whole, including findings produced during import.
 /// </summary>
 /// <param name="Findings">
-/// The import diagnostics and report v2 findings together.
+/// The grammar-health report findings.
 /// </param>
 /// <param name="HasBaseline">False when the project has no Baseline yet, so there was no grammar to read.</param>
 public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings, bool HasBaseline)
 {
     /// <summary>The parser's per-code summary rows, used to group findings for display.</summary>
     public IReadOnlyList<GrammarWarningSummary> Summary { get; init; } = [];
+
+    /// <summary>The FieldWorks project metadata reported with the grammar-health report.</summary>
+    public GrammarWarningProject? FieldWorksProject { get; init; }
 }
 
 /// <summary>Which Texts to read words from; empty reads none.</summary>

@@ -165,9 +165,9 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         }
     }
 
-    /// <summary>Replaces the displayed report, or clears it when <paramref name="warnings"/> is null.</summary>
-    /// <param name="warnings">The grammar-health diagnostics to display.</param>
-    /// <param name="summary">The report summary used to match diagnostics to display groups.</param>
+    /// <summary>Replaces the displayed report, or clears it for <see langword="null"/>.</summary>
+    /// <param name="warnings">The report findings to display.</param>
+    /// <param name="summary">The report summary used to match findings to display groups.</param>
     public void Load(
         IReadOnlyList<GrammarWarning>? warnings,
         IReadOnlyList<GrammarWarningSummary>? summary = null)
@@ -294,6 +294,12 @@ public sealed class GrammarWarningRowViewModel
 
     public string GroupName { get; }
     public string GroupCode { get; }
+    /// <summary>Where this finding came from, or empty when its source is unknown.</summary>
+    public string OriginLabel { get; }
+
+    public bool HasOrigin => OriginLabel.Length > 0;
+
+    /// <summary>Whether the parser left something out of the grammar here, or called it an error.</summary>
     public bool IsLeftOut { get; }
     public int RepeatCount { get; }
     public string RepeatText => RepeatCount switch
@@ -306,8 +312,6 @@ public sealed class GrammarWarningRowViewModel
     public bool HasWhere => SubjectParts.Count > 0;
     public string Description { get; }
     public string Guidance { get; }
-    public string OriginLabel { get; }
-    public bool HasOrigin => OriginLabel.Length > 0;
     public bool IsDeveloper { get; }
     public string Severity { get; }
     public bool IsWarning => Severity == "warning";

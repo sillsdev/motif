@@ -340,7 +340,7 @@ internal static class Program
             "\"description\":\"A natural class is no longer referenced.\",\"guidance\":null,\"subjects\":[]}] }";
         if (outPath is not null) File.WriteAllText(outPath, json);
         else Console.Out.Write(json);
-        Console.Error.WriteLine("grammar-health complete: 0 error(s), 0 warning(s)");
+        Console.Error.WriteLine("grammar-health complete: 1 warning(s), 1 info");
         return behaviour.ExitCode;
     }
 

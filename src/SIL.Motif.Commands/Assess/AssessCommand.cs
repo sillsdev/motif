@@ -363,11 +363,8 @@ public static class AssessCommand
                 summaryMarkdown = RenderSummaryMarkdown(completionSummary, summaryMarkdown);
                 var grammarWarnings = invocation?.GrammarWarningLines is { Count: > 0 } warningLines
                     ? warningLines : null;
-                IReadOnlyList<GrammarWarning>? grammarWarningDetails = null;
-                if (grammarWarnings is not null || words.Length > 0)
+                if (words.Length > 0)
                 {
-                    if (grammarWarnings is not null)
-                        grammarWarningDetails = GrammarWarningReader.Read(namingCache, projectName, grammarWarnings);
                     words = words.Select(word =>
                     {
                         var readings = word.Morphology is null
@@ -403,7 +400,6 @@ public static class AssessCommand
                         Words = words,
                         CompletionSummary = completionSummary,
                         GrammarWarnings = grammarWarnings,
-                        GrammarWarningDetails = grammarWarningDetails,
                         CorrectnessStatus = words.Any(word => word.Correctness is not null)
                             ? $"{words.Sum(word => word.Correctness?.Matched ?? 0)}/" +
                               $"{words.Sum(word => word.Correctness?.Expected ?? 0)} approved readings matched; " +

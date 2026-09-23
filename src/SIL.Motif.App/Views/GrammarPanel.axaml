@@ -201,6 +201,8 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
                   <StackPanel Spacing="4" Margin="6,4">
+                    <TextBlock Classes="muted" Text="{Binding OriginLabel}"
+                               IsVisible="{Binding HasOrigin}" />
                     <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}"
                                                     ToolTip.Tip="{Binding Text}" />
                     <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding RepeatText}" IsVisible="{Binding IsRepeated}" />

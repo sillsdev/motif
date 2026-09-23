@@ -27,8 +27,8 @@ public sealed record GrammarWarning(
     /// <summary>What a person can do in FieldWorks to address the diagnostic.</summary>
     public string? Guidance { get; init; }
 
-    /// <summary>Whether PanGloss found the issue while checking or importing.</summary>
-    public string Origin { get; init; } = "check";
+    /// <summary>Whether the finding came from checking the grammar or importing it.</summary>
+    public string Origin { get; init; } = string.Empty;
 
     /// <summary>The intended reader when the report supplies an audience.</summary>
     public string Audience { get; init; } = "linguist";
@@ -40,6 +40,11 @@ public sealed record GrammarWarning(
 /// <param name="Level">The report level for this kind of diagnostic.</param>
 /// <param name="Count">How many diagnostics of this kind the report contains.</param>
 public sealed record GrammarWarningSummary(string Code, string? GroupName, string Level, int Count);
+
+/// <summary>The project metadata attached to the grammar-health report.</summary>
+/// <param name="Name">The FieldWorks project name, or null when the report has none.</param>
+/// <param name="Source">How the report obtained the project name, or null when it has none.</param>
+public sealed record GrammarWarningProject(string? Name, string? Source);
 
 /// <summary>A named subject in a grammar-health diagnostic.</summary>
 /// <param name="Text">The human-readable title and subtitle shown for the subject.</param>

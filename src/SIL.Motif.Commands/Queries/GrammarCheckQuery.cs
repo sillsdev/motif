@@ -7,10 +7,8 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
-using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Baselines;
@@ -18,7 +16,15 @@ using SIL.Motif.Worker.Projects;
 
 namespace SIL.Motif.Commands.Queries;
 
-/// <summary>Reads a project's grammar-health report from its current Baseline.</summary>
+/// <summary>
+/// Checks a project's grammar as a whole through <c>pangloss grammar-health</c>, reading findings from the
+/// project's current Baseline. Never involves a Text, a word, or an Assessment.
+/// </summary>
+/// <remarks>
+/// The report carries its own subject names and FieldWorks links, so the check does not reopen the project
+/// through LibLCM. Its answer depends only on the Baseline and the parser, so it is cached beside the Baseline
+/// in <see cref="CacheFileName"/>, stamped with both.
+/// </remarks>
 public static class GrammarCheckQuery
 {
     /// <summary>Checks the project's current Baseline grammar with the installed PanGloss executable.</summary>
@@ -52,8 +58,9 @@ public static class GrammarCheckQuery
                     new GrammarCheckResponse(Array.Empty<GrammarWarning>(), HasBaseline: false));
 
             var cachePath = Path.Combine(Path.GetDirectoryName(baseline.FwDataPath)!, CacheFileName);
+            // This source change invalidates cached rows that included findings parsed from stderr.
             var stamp = parserStamp is null ? null
-                : "grammar-health-v2|" + baseline.Token.BundleDigest + "|" + parserStamp;
+                : "grammar-health-v2-import-findings|" + baseline.Token.BundleDigest + "|" + parserStamp;
             if (stamp is not null && ReadCache(cachePath, stamp) is { } cached)
                 return CommandOutcome<GrammarCheckResponse>.Success(cached);
 
@@ -79,19 +86,15 @@ public static class GrammarCheckQuery
                     Fact(("projectPath", request.ProjectPath))));
             }
 
-            using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
-            var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
-            var warningLines = completed.StandardError.Split('\n').Select(line => line.Trim())
-                .Where(line => line.StartsWith("warning:", StringComparison.OrdinalIgnoreCase) ||
-                    line.StartsWith("capability:", StringComparison.OrdinalIgnoreCase)).ToArray();
-            var loadWarnings = GrammarWarningReader.Read(cache, projectName, warningLines);
             var findings = report.Diagnostics
                 .Select(finding => ToGrammarWarning(finding, report.Summary))
                 .ToArray();
-            var response = new GrammarCheckResponse([.. loadWarnings, .. findings], HasBaseline: true)
+            var response = new GrammarCheckResponse(findings, HasBaseline: true)
             {
                 Summary = report.Summary.Select(row => new GrammarWarningSummary(
                     row.Code!, row.GroupName, row.Level!, row.Count!.Value)).ToArray(),
+                FieldWorksProject = new GrammarWarningProject(
+                    report.FieldWorksProject!.Name, report.FieldWorksProject.Source),
             };
             if (stamp is not null) WriteCache(cachePath, stamp, response);
             return CommandOutcome<GrammarCheckResponse>.Success(response);

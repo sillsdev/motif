@@ -163,8 +163,8 @@ public abstract record PanGlossRequest
     }
 
     /// <summary>
-    /// <c>pangloss grammar-health &lt;grammar&gt; &lt;out.json&gt;</c>: the ported HermitCrab grammar-authoring
-    /// health checks, written to a scratch file rather than read from standard output — writing to a named
+    /// <c>pangloss grammar-health &lt;grammar&gt; &lt;out.json&gt;</c>: the grammar-health report, written to a
+    /// scratch file rather than read from standard output — writing to a named
     /// file keeps this request's positional shape identical to the binary's own <c>--describe</c> declaration
     /// (<c>grammar</c> plus an optional <c>out.json</c>), where reading standard output instead would supply
     /// only the first of the two and fail that conformance check on every invocation, not only this one's own.

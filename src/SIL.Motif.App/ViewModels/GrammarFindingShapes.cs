@@ -8,7 +8,7 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public static partial class GrammarFindingShapes
 {
-    /// <summary>The shared label for every warning written the same way as <paramref name="text"/>.</summary>
+    /// <summary>A fallback group label derived from <paramref name="text"/>.</summary>
     public static string LabelOf(string text)
     {
         var shape = Prefix().Replace(text, string.Empty);
