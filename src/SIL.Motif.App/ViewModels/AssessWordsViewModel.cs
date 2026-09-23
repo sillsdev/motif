@@ -71,6 +71,23 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     public int NoParseCount => _all.Count(row => row.Result == "No parse");
     public int LimitCount => _all.Count(row => row.StoppedAtALimit);
 
+    /// <summary>Whether enough words stopped at a limit that the limit, not the grammar, may be what failed them.</summary>
+    public bool ManyStoppedAtALimit => AllCount > 0 && LimitCount >= 10 && LimitCount * 10 >= AllCount;
+
+    public int SkippedCount => _all.Count(row => row.Result == "Skipped");
+
+    public bool AnySkipped => SkippedCount > 0;
+
+    public string SkippedHint => SkippedCount == 1
+        ? "1 word was skipped: it has a character the grammar's character table does not define."
+        : $"{SkippedCount:N0} words were skipped: each has a character the grammar's character table does not define.";
+
+    public bool AnyStoppedAtALimit => LimitCount > 0;
+
+    public string LimitHint => LimitCount == 1
+        ? "1 word stopped at a limit before it finished. Given longer, it may parse."
+        : $"{LimitCount:N0} words stopped at a limit before they finished. Given longer, some may parse.";
+
     /// <summary>
     /// What the parser came to, word by word, as parts that add up to <see cref="AllCount"/>: a word that stopped at
     /// a limit counts there even if it found readings first, since its search did not finish.
@@ -101,6 +118,12 @@ public sealed partial class AssessWordsViewModel : ObservableObject
         TotalCount = _all.Count;
         Outcomes = CountOutcomes();
         OnPropertyChanged(nameof(Outcomes));
+        OnPropertyChanged(nameof(ManyStoppedAtALimit));
+        OnPropertyChanged(nameof(AnyStoppedAtALimit));
+        OnPropertyChanged(nameof(SkippedCount));
+        OnPropertyChanged(nameof(AnySkipped));
+        OnPropertyChanged(nameof(SkippedHint));
+        OnPropertyChanged(nameof(LimitHint));
         Refresh();
     }
 

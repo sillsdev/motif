@@ -168,6 +168,18 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>The Results stage's In text view: the chosen Texts, each occurrence against the Assessment.</summary>
     public ResultsInTextViewModel ResultsInText { get; }
 
+    // What a Handoff written now would cover, so the reader knows which run the chat model will see.
+    private static string CoverageOf(DateTimeOffset? at, string words, int texts, int pasted)
+    {
+        var sources = new List<string>();
+        if (texts > 0) sources.Add(texts == 1 ? "1 text" : $"{texts} texts");
+        if (pasted > 0) sources.Add(pasted == 1 ? "1 pasted word" : $"{pasted} pasted words");
+        var from = sources.Count > 0 ? " from " + string.Join(" and ", sources) : string.Empty;
+        return at is { } when
+            ? $"Covers the Assessment of {when.ToLocalTime():ddd d MMM, h:mm tt}: {words}{from}."
+            : $"Covers the latest Assessment: {words}{from}.";
+    }
+
     // Opens a word in the Words view with every filter cleared, so the word is certain to be listed.
     private void ShowWordInResults(string word)
     {
@@ -323,6 +335,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
                 .SingleOrDefault(measurement => measurement.Kind == "ObjectTiming")?.AssessmentId;
             Handoff.InvocationId = Assess.Result?.InvocationId;
             Handoff.LatestAssessmentAt = Assess.CompletedAt;
+            Handoff.CoverageText = CoverageOf(Assess.CompletedAt, Assess.Words.CountSummary,
+                Selection.ChosenTextIds.Count, Selection.PastedWordEntries.Count);
             HasEverAssessed = true;
             // The Project stage's history lists this Assessment as soon as it is stored.
             _ = ProjectHistory.LoadAsync();

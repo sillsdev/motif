@@ -69,6 +69,10 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         ? $"Last written {written.ToLocalTime():t}"
         : "Not written yet";
 
+    // What the next write covers: the Assessment's time, words and texts; set by the workspace.
+    [ObservableProperty]
+    private string? _coverageText;
+
     /// <summary>When the last Assessment finished, set by the workspace; newer than the files means stale.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsOutOfDate))]

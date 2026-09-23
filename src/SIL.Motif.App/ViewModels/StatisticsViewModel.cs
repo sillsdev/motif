@@ -90,7 +90,18 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// <summary>Whether the rows are words, which is when the summary cards have something to say.</summary>
     public bool HasWordRows => _allRows.Any(row => row.Word is not null);
 
-    public string IncompleteHeadline => IncompleteCount == 1 ? "1 word stopped at a limit" : $"{IncompleteCount:N0} words stopped at a limit";
+    public bool AnyIncomplete => IncompleteCount > 0;
+
+    public string IncompleteHeadline => IncompleteCount switch
+    {
+        0 => "Every word finished its search",
+        1 => "1 word stopped at a limit",
+        _ => $"{IncompleteCount:N0} words stopped at a limit",
+    };
+
+    public string IncompleteDetail => IncompleteCount == 0
+        ? "No word reached the time or step limit, so every No parse is the grammar's answer."
+        : "Each was still searching when its time or step limit ran out, so it may parse with longer.";
 
     public string SlowestHeadline => SlowestWord is { } row ? $"Slowest word: {row.Word}" : string.Empty;
 
@@ -98,11 +109,19 @@ public sealed partial class StatisticsViewModel : ObservableObject
         ? $"{row.ElapsedText} ms and {row.AttemptsText} attempts{(row.IsIncomplete ? " before a limit stopped it" : string.Empty)}."
         : string.Empty;
 
-    public string PassesHeadline => AnyPasses ? "Some words needed a second pass" : "No word needed a second pass";
+    // PanGloss's "passes" column counts the analyses a word produced, so it is shown as readings.
+    public int SeveralReadingsCount => _allRows.Count(row => row.Word is not null && row.Passes is > 1);
 
-    public string PassesDetail => AnyPasses
-        ? "The Passes column shows how many each word needed."
-        : $"Passes are 0 for all {RowCount:N0} rows, so the column is hidden.";
+    public string PassesHeadline => SeveralReadingsCount switch
+    {
+        0 => "No word has more than one reading",
+        1 => "1 word has more than one reading",
+        _ => $"{SeveralReadingsCount:N0} words have more than one reading",
+    };
+
+    public string PassesDetail => SeveralReadingsCount == 0
+        ? "Each word the parser built, it built one way."
+        : "Homographs, or a grammar that allows more than it should. Sort by Readings to see them.";
 
     /// <summary>The project containing the retained Assessment, or <c>null</c> before one is chosen.</summary>
     [ObservableProperty]
@@ -241,6 +260,9 @@ public sealed partial class StatisticsViewModel : ObservableObject
         OnPropertyChanged(nameof(RowCount));
         OnPropertyChanged(nameof(IncompleteCount));
         OnPropertyChanged(nameof(IncompleteHeadline));
+        OnPropertyChanged(nameof(IncompleteDetail));
+        OnPropertyChanged(nameof(AnyIncomplete));
+        OnPropertyChanged(nameof(SeveralReadingsCount));
         OnPropertyChanged(nameof(SlowestWord));
         OnPropertyChanged(nameof(HasSlowestWord));
         OnPropertyChanged(nameof(SlowestHeadline));

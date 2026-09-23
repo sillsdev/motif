@@ -94,6 +94,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 walkthrough.Show();
                 Drive(walkthrough, original);
                 SaveEveryStage(walkthrough, folder);
+                SaveGrammarWithAKindChosen(walkthrough, folder);
                 SaveInTextWithNoTextChecked(walkthrough, folder);
                 return Task.CompletedTask;
             }, TimeSpan.FromMinutes(30));
@@ -198,6 +199,18 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         {
             Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
         }
+    }
+
+    // The largest kind of finding chosen, so its own view is reviewed as well as the whole list.
+    private static void SaveGrammarWithAKindChosen(WalkthroughWindow walkthrough, string folder)
+    {
+        var warnings = walkthrough.Workspace.Grammar.Warnings;
+        var kind = warnings.LeftOutGroups.Concat(warnings.WorthALookGroups).MaxBy(group => group.Count);
+        if (kind is null) return;
+        warnings.SelectGroupCommand.Execute(kind);
+        walkthrough.Workspace.CurrentStage = WorkflowStage.Grammar;
+        Save(walkthrough.Window, Path.Combine(folder, "2b-grammar-kind-light.png"));
+        warnings.SelectGroupCommand.Execute(kind);
     }
 
     // The empty state a person meets after unchecking every Text, which a run over Texts never shows.

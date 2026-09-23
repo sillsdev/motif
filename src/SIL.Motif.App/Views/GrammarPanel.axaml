@@ -169,7 +169,7 @@
           <TextBox Grid.Column="1" Text="{Binding Grammar.Warnings.ProblemFilter}"
                    PlaceholderText="Problem..." AutomationProperties.Name="Filter grammar warnings by problem" />
         </Grid>
-        <DataGrid Grid.Row="3" ItemsSource="{Binding Grammar.Warnings.Rows}"
+        <DataGrid x:Name="FindingsGrid" Grid.Row="3" ItemsSource="{Binding Grammar.Warnings.Rows}"
                   IsReadOnly="True"
                   CanUserSortColumns="True"
                   CanUserResizeColumns="True"
@@ -186,7 +186,6 @@
                   <StackPanel Margin="6,4" Spacing="1">
                     <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" IsVisible="{Binding HasWhere}" />
                     <views:CopyableTextBlock Classes="muted" Text="Not named by the parser" IsVisible="{Binding !HasWhere}" />
-                    <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding RepeatText}" IsVisible="{Binding IsRepeated}" />
                   </StackPanel>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
@@ -195,8 +194,10 @@
                                     ClipboardContentBinding="{ReflectionBinding Problem}">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" Margin="6,4"
-                                                  ToolTip.Tip="{Binding Text}" />
+                  <StackPanel Margin="6,4" Spacing="1">
+                    <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" ToolTip.Tip="{Binding Text}" />
+                    <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding RepeatText}" IsVisible="{Binding IsRepeated}" />
+                  </StackPanel>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>

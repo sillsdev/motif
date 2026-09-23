@@ -73,6 +73,8 @@
             <StackPanel Spacing="2">
               <views:CopyableTextBlock Classes="section-title"
                          Text="{Binding Handoff.WrittenAtText}" />
+              <views:CopyableTextBlock Text="{Binding Handoff.CoverageText}" TextWrapping="Wrap"
+                         IsVisible="{Binding Handoff.CoverageText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <views:CopyableTextBlock Classes="muted" Text="{Binding Handoff.OutputDirectory}" TextWrapping="Wrap" FontSize="12" />
             </StackPanel>
 
@@ -155,10 +157,15 @@
         <Border Classes="card" Margin="0,16,0,0">
           <StackPanel Spacing="6">
             <views:CopyableTextBlock Text="Try asking" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Classes="muted" FontSize="11" Text="Click a question to copy it." />
             <ItemsControl ItemsSource="{Binding Questions}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
-                  <views:CopyableTextBlock Classes="muted" Text="{Binding}" TextWrapping="Wrap" Margin="0,2" />
+                  <Button Classes="question" Click="OnCopyQuestionClick" Tag="{Binding}" Margin="0,2"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                          ToolTip.Tip="Copy this question" AutomationProperties.Name="{Binding}">
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                  </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -169,6 +176,14 @@
   </Grid>
 
   <UserControl.Styles>
+    <!-- A suggested question reads as a link: one click copies it for the chat. -->
+    <Style Selector="Button.question">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0,2" />
+    </Style>
+    <Style Selector="Button.question TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorLink}" />
+    </Style>
     <Style Selector="Border.stepMark">
       <Setter Property="Width" Value="24" />
       <Setter Property="Height" Value="24" />

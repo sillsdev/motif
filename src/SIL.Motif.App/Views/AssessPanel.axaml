@@ -152,8 +152,6 @@
             <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedText}" VerticalAlignment="Center" />
             <views:CopyableTextBlock Classes="muted" Text="{Binding Attempts, StringFormat='{}{0:N0} attempts'}" VerticalAlignment="Center"
                        IsVisible="{Binding Attempts, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding Passes, StringFormat='{}{0:N0} passes'}" VerticalAlignment="Center"
-                       IsVisible="{Binding HasPasses}" />
             <views:CopyableTextBlock Classes="muted" Text="{Binding Correctness}" VerticalAlignment="Center"
                        IsVisible="{Binding Correctness, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                        ToolTip.Tip="How many of the analyses the project approves the parser produced" />

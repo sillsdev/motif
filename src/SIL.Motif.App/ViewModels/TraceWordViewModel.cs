@@ -169,6 +169,9 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public bool HasStopGroups => _stopGroups.Count > 0;
 
+    /// <summary>Whether the word failed before any attempt got far enough to record, so there is no story to tell.</summary>
+    public bool NoAttemptRecorded => Result is { Parsed: false, InvalidShape: false } && !HasStopGroups;
+
     /// <summary>Over the groups: why the word failed, or, for a word that parsed, why its other attempts did.</summary>
     public string StopGroupsHeading => Result is { Parsed: true } ? "Why the other attempts stopped" : "Why it did not parse";
 
@@ -290,6 +293,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         SelectedStopGroup = null;
         OnPropertyChanged(nameof(StopGroups));
         OnPropertyChanged(nameof(HasStopGroups));
+        OnPropertyChanged(nameof(NoAttemptRecorded));
         OnPropertyChanged(nameof(StopGroupsHeading));
         OnPropertyChanged(nameof(StopGroupsSummary));
         RaiseAttempts();

@@ -62,6 +62,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedGroup))]
     [NotifyPropertyChangedFor(nameof(SelectedGroupTitle))]
+    [NotifyPropertyChangedFor(nameof(CountSummary))]
     private GrammarFindingGroupViewModel? _selectedGroup;
 
     public bool HasSelectedGroup => SelectedGroup is not null;
@@ -139,9 +140,14 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     public bool HasAny => TotalCount > 0;
 
+    /// <summary>Whether any finding on display names where it applies; when none does, the Where column is empty.</summary>
+    public bool AnyShownWhere => _all.Any(row => row.HasWhere && Matches(row));
+
     public string CountSummary => ShownCount == TotalCount
         ? (TotalCount == 1 ? "1 finding" : $"{TotalCount} findings")
-        : $"{ShownCount} of {TotalCount} findings match the filters";
+        : SelectedGroup is { } group && ShownCount == group.Count
+            ? (ShownCount == 1 ? "1 finding of this kind" : $"{ShownCount} findings of this kind")
+            : $"{ShownCount} of {TotalCount} findings match the filters";
 
     /// <summary>Replaces every row with <paramref name="warnings"/>, or clears the table for <see langword="null"/>.</summary>
     public void Load(IReadOnlyList<GrammarWarning>? warnings)

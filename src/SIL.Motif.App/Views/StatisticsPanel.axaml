@@ -13,9 +13,9 @@
       <Border Grid.Column="0" Classes="card" Padding="14,12">
         <StackPanel Spacing="4">
           <views:CopyableTextBlock Text="{Binding Statistics.IncompleteHeadline}" FontWeight="SemiBold" />
-          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                   Text="Each was still searching when its time or step limit ran out, so it may parse with longer." />
-          <HyperlinkButton Content="Give each word longer: Texts, Options" Padding="0" Click="OnOpenTimeLimitClick" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.IncompleteDetail}" />
+          <HyperlinkButton Content="Give each word longer: Texts, Options" Padding="0" Click="OnOpenTimeLimitClick"
+                           IsVisible="{Binding Statistics.AnyIncomplete}" />
         </StackPanel>
       </Border>
       <Border Grid.Column="1" Classes="card" Padding="14,12" IsVisible="{Binding Statistics.HasSlowestWord}">
@@ -114,7 +114,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Passes" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
+        <DataGridTemplateColumn Header="Readings" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:HeatCell Text="{Binding PassesText}" Intensity="{Binding PassesHeat}" Margin="2,1" />

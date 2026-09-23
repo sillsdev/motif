@@ -48,6 +48,20 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
+    public void ChoosingAKindCountsThatKindRatherThanAFilterMatch()
+    {
+        var table = new GrammarWarningsViewModel();
+        table.Load([EntryWarning, EntryWarning, PhonemeWarning]);
+
+        var kind = table.LeftOutGroups.Concat(table.WorthALookGroups).MaxBy(group => group.Count)!;
+        table.SelectGroupCommand.Execute(kind);
+
+        Assert.Equal("2 findings of this kind", table.CountSummary);
+        table.WhereFilter = "nothing matches this";
+        Assert.Equal("0 of 3 findings match the filters", table.CountSummary);
+    }
+
+    [Fact]
     public void AKindCarriesTheParsersDescriptionAndGuidance()
     {
         var named = EntryWarning with

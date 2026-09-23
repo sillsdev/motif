@@ -63,6 +63,16 @@
                                      Text="No Assessment yet. Choose Texts or paste words, then run one to see how the grammar does." />
             <StackPanel Spacing="12" IsVisible="{Binding Workspace.HasEverAssessed}">
               <views:OutcomeBar Segments="{Binding Workspace.Assess.Words.Outcomes}" AutomationProperties.Name="What the parser came to" />
+              <Border Classes="notice" IsVisible="{Binding Workspace.Assess.Words.ManyStoppedAtALimit}">
+                <DockPanel LastChildFill="True">
+                  <HyperlinkButton DockPanel.Dock="Right" VerticalAlignment="Center" Padding="0" Margin="12,0,0,0"
+                                   Content="Give each word longer" Click="OnOpenTimeLimitClick" />
+                  <views:CopyableTextBlock Text="{Binding Workspace.Assess.Words.LimitHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+              </Border>
+              <Border Classes="notice" IsVisible="{Binding Workspace.Assess.Words.AnySkipped}">
+                <views:CopyableTextBlock Text="{Binding Workspace.Assess.Words.SkippedHint}" TextWrapping="Wrap" />
+              </Border>
               <Border Height="1" Background="{DynamicResource SemiColorBorder}" />
               <views:CopyableTextBlock Text="Against what the project stores" FontWeight="SemiBold" />
               <WrapPanel>
@@ -75,7 +85,8 @@
               </WrapPanel>
               <StackPanel Orientation="Horizontal" Spacing="18">
                 <HyperlinkButton Content="Open Results" Padding="0" Click="OnOpenResultsClick" />
-                <HyperlinkButton Content="Why words stopped: Statistics" Padding="0" Click="OnOpenStatisticsClick" />
+                <HyperlinkButton Content="Why words stopped: Statistics" Padding="0" Click="OnOpenStatisticsClick"
+                                 IsVisible="{Binding Workspace.Assess.Words.AnyStoppedAtALimit}" />
               </StackPanel>
             </StackPanel>
           </StackPanel>

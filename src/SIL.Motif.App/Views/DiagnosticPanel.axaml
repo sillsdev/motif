@@ -51,8 +51,6 @@
         <DockPanel LastChildFill="False">
           <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Result.Word}" FontSize="20" FontWeight="SemiBold" Margin="0,0,10,0"
                      IsVisible="{Binding ShowsOtherWord}" AutomationProperties.Name="Diagnostic word" />
-          <views:CopyableTextBlock DockPanel.Dock="Left" Text="Try a Word:" FontWeight="SemiBold" Margin="0,0,8,0" VerticalAlignment="Center"
-                     IsVisible="{Binding ShowsChosenWord}" />
           <views:VerdictChip DockPanel.Dock="Left" Verdict="{Binding AnswerVerdict}" Text="{Binding AnswerText}"
                              IsVisible="{Binding HasResult}" />
           <Button DockPanel.Dock="Right" Content="&#x22ef;" FontSize="16" Padding="10,2"
@@ -107,6 +105,11 @@
                                    Text="{Binding FurthestAttempt.StopHeadline, FallbackValue=''}" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding FurthestAttempt.StopReason, FallbackValue=''}" />
         </StackPanel>
+      </Border>
+
+      <Border Classes="notice" IsVisible="{Binding NoAttemptRecorded}">
+        <views:CopyableTextBlock TextWrapping="Wrap"
+                                 Text="No attempt got far enough to record, which usually means no lexicon entry matched a part of this word. The full derivation below lists every step the parser took." />
       </Border>
 
       <!-- Why it did not parse: every failed attempt grouped by the rule that stopped it. -->

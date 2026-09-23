@@ -31,6 +31,8 @@ public sealed partial class ProjectPanel : UserControl
 
     private void OnOpenStatisticsClick(object? sender, RoutedEventArgs e) => Open(WorkflowStage.Results, ResultsView.Statistics);
 
+    private void OnOpenTimeLimitClick(object? sender, RoutedEventArgs e) => Open(WorkflowStage.Texts, Workspace.ResultsView);
+
     private void OnOpenGrammarClick(object? sender, RoutedEventArgs e) => Open(WorkflowStage.Grammar, Workspace.ResultsView);
 
     private void Open(WorkflowStage stage, ResultsView view)

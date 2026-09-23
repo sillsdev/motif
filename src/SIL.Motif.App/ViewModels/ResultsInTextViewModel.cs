@@ -288,6 +288,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         VerdictLabel = Verdict switch
         {
             OccurrenceVerdict.Matches => "Parser agrees with what is stored here",
+            OccurrenceVerdict.Differs when Readings.Count == 0 => "An analysis is stored here, and the parser found no parse",
             OccurrenceVerdict.Differs => "Parser differs from what is stored here",
             OccurrenceVerdict.New => "Nothing stored here; the parser proposes an analysis",
             OccurrenceVerdict.NoParse => "Nothing stored here, and the parser found no parse",
