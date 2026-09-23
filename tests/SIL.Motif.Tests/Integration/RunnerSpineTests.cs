@@ -65,16 +65,18 @@ public sealed class RunnerSpineTests : IDisposable
         var second = _projects.CopyProjectFile();
 
         // Registered in this order, but nothing here says the sweep must visit them in this order.
-        var secondJobId = Cli($"baseline-refresh --project \"{second}\"").Output.Trim();
-        var firstJobId = Cli($"baseline-refresh --project \"{first}\"").Output.Trim();
+        var secondRun = Cli($"baseline-refresh --project \"{second}\"");
+        var firstRun = Cli($"baseline-refresh --project \"{first}\"");
+        var secondJobId = secondRun.Output.Trim();
+        var firstJobId = firstRun.Output.Trim();
         Assert.False(string.IsNullOrWhiteSpace(firstJobId));
         Assert.False(string.IsNullOrWhiteSpace(secondJobId));
 
         RunRunnerToCompletion();
 
-        Assert.NotEqual("queued", StatusOf(first, firstJobId));
+        Assert.True(StatusOf(first, firstJobId) != "queued" && StatusOf(second, secondJobId) != "queued",
+            "A job was never claimed. CLI said: " + firstRun.Error + secondRun.Error + " Runner said: " + string.Join(" | ", _log));
         Assert.NotEqual("running", StatusOf(first, firstJobId));
-        Assert.NotEqual("queued", StatusOf(second, secondJobId));
         Assert.NotEqual("running", StatusOf(second, secondJobId));
         Assert.True(PublishedBaselineCount(first) == 1,
             $"Project 1 expected one published Baseline, found {PublishedBaselineCount(first)}. " +

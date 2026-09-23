@@ -125,7 +125,8 @@ internal static class Program
     /// <summary>The sweep's own record of whether anything, anywhere, is keeping the runner alive.</summary>
     private sealed class SweepActivity
     {
-        private volatile bool _hasActiveWork;
+        // Busy until the first sweep says otherwise: a slow first sweep must not let the idle timer expire unseen.
+        private volatile bool _hasActiveWork = true;
 
         public bool HasActiveWork => _hasActiveWork;
 
