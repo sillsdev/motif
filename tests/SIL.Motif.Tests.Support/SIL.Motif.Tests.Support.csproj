@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" Version="2.9.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Host\SIL.Motif.Host.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.LiveHost\SIL.Motif.LiveHost.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Projection\SIL.Motif.Projection.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Runner\SIL.Motif.Runner.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Worker\SIL.Motif.Worker.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="TestFixtures\Conformance\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

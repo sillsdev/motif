@@ -9,5 +9,18 @@
   -->
   <PropertyGroup>
     <OutputPath>$(MotifBinRoot)tests\</OutputPath>
+    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests'">true</MotifTestProject>
+    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Contract'">true</MotifTestProject>
+    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.LibLcm'">true</MotifTestProject>
+    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Commands'">true</MotifTestProject>
+    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Cli'">true</MotifTestProject>
+    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Worker'">true</MotifTestProject>
+    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.App'">true</MotifTestProject>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(MotifTestProject)' == 'true'">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\LcmCacheTestCollection.cs" Link="LcmCacheTestCollection.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\NoCrashDialogs.cs" Link="NoCrashDialogs.cs" />
+  </ItemGroup>
 </Project>

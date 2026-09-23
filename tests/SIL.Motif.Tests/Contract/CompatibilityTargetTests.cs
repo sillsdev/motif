@@ -35,6 +35,34 @@ public sealed class CompatibilityTargetTests
         Assert.DoesNotContain("SIL.LCModel", text, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EveryTestProjectUnderTestsIsListedInMotifSolution()
+    {
+        var root = RepoPaths.FindRepoRoot();
+        var solution = Path.Combine(root, "Motif.sln");
+        var listedProjects = File.ReadLines(solution)
+            .Where(line => line.StartsWith("Project(", StringComparison.Ordinal))
+            .Select(line => line.Split('"'))
+            .Where(parts => parts.Length > 5 && parts[5].EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+            .Select(parts => Path.GetFullPath(Path.Combine(root, parts[5])))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var testProjects = Directory.EnumerateFiles(
+                Path.Combine(root, "tests"), "*.csproj", SearchOption.AllDirectories)
+            .Where(IsTestProject)
+            .Select(Path.GetFullPath)
+            .ToArray();
+        var missing = testProjects
+            .Where(project => !listedProjects.Contains(project))
+            .Select(project => Path.GetRelativePath(root, project))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.NotEmpty(testProjects);
+        Assert.True(
+            missing.Length == 0,
+            $"Test projects missing from Motif.sln: {string.Join(", ", missing)}");
+    }
+
     private static IEnumerable<string> ProductProjects()
     {
         var source = Path.Combine(RepoPaths.FindRepoRoot(), "src");
@@ -43,4 +71,16 @@ public sealed class CompatibilityTargetTests
 
     private static string Project(string name) =>
         ProductProjects().Single(project => Path.GetFileNameWithoutExtension(project) == name);
+
+    private static bool IsTestProject(string project)
+    {
+        var document = XDocument.Load(project);
+        return document.Descendants().Any(element =>
+                   element.Name.LocalName == "IsTestProject"
+                   && bool.TryParse(element.Value, out var isTestProject)
+                   && isTestProject)
+               || document.Descendants().Any(element =>
+                   element.Name.LocalName == "PackageReference"
+                   && element.Attribute("Include")?.Value == "Microsoft.NET.Test.Sdk");
+    }
 }

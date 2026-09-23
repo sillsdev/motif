@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using SIL.LCModel.Core.WritingSystems;
 using SIL.LCModel.Utils;
 
@@ -65,7 +64,6 @@ internal static class ProcessWritingSystemRepository
         };
     }
 
-    [ModuleInitializer]
     internal static void Install()
     {
         Environment.SetEnvironmentVariable(RepositoryPathVariable, BasePath);
