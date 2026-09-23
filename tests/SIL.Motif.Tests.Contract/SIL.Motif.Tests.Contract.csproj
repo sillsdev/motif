@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="windows" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Generator\SIL.Motif.Generator.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Host\SIL.Motif.Host.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Model\SIL.Motif.Model.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Tests.Support\SIL.Motif.Tests.Support.csproj" />
+    <ProjectReference Include="..\..\spikes\SIL.Motif.Spikes.LabelHarvest\SIL.Motif.Spikes.LabelHarvest.csproj" />
+  </ItemGroup>
+</Project>

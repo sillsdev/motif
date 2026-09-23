@@ -9,7 +9,6 @@
   -->
   <PropertyGroup>
     <OutputPath>$(MotifBinRoot)tests\</OutputPath>
-    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests'">true</MotifTestProject>
     <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Contract'">true</MotifTestProject>
     <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.LibLcm'">true</MotifTestProject>
     <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Commands'">true</MotifTestProject>
@@ -22,5 +21,22 @@
     <Compile Include="$(MSBuildThisFileDirectory)Shared\LcmCacheTestCollection.cs" Link="LcmCacheTestCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\NoCrashDialogs.cs" Link="NoCrashDialogs.cs" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)FakePanGloss\FakePanGloss.csproj"
+                      ReferenceOutputAssembly="false"
+                      Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Commands' or '$(MSBuildProjectName)' == 'SIL.Motif.Tests.Cli' or '$(MSBuildProjectName)' == 'SIL.Motif.Tests.Worker'">
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.App'">
+    <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
   </ItemGroup>
 </Project>
