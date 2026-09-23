@@ -35,6 +35,9 @@ parallelism lets that serialized work use more than one core. Each project write
 first. Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). The machine-wide
 `%ProgramData%` store is shared across processes, and concurrent saves into it collide.
 Tests set `MOTIF_WRITING_SYSTEM_REPOSITORY_PATH` at module load, and child processes inherit it.
+No test run may show a Windows crash dialog: `test.ps1` suppresses it for its whole process tree, every
+test assembly does so again at load (`tests/Shared/NoCrashDialogs.cs`), and the runner and CLI do so at
+startup. `CrashDialogsTests` proves it by crashing a child on purpose and requiring it to exit promptly.
 
 ## Where the build lands
 

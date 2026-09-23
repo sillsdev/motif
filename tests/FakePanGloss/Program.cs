@@ -54,6 +54,8 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        // Dies from an unhandled exception on purpose: the suite proves no crash dialog holds such a process.
+        if (args is ["--crash-unhandled"]) throw new InvalidOperationException("The fake parser was told to crash.");
         if (args.Length == 0)
         {
             Console.Error.WriteLine("usage: pangloss <batch|import|stats> ...");

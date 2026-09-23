@@ -23,6 +23,11 @@
   so running projects concurrently lets the suite use more than one core. Projects are discovered
   from Motif.sln and their IsTestProject declarations, so a new test project is included automatically.
 
+  No process the run starts can show a Windows crash dialog. The script sets the error mode that suppresses
+  it before anything else starts, and Windows hands that mode to every child: dotnet, the test hosts, and
+  every motif, runner and parser process they launch, whatever build they come from. A crash is still
+  reported, through the exit code, standard error and the Windows event log.
+
   .PARAMETER Configuration
   MSBuild configuration. Must match what build.ps1 produced, since the suite runs with --no-build.
 
@@ -47,6 +52,16 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Windows hands this error mode to every process started from here, so no crash in the run shows a dialog.
+if ($IsWindows) {
+    Add-Type -Namespace Motif -Name ErrorMode -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("kernel32.dll")] public static extern uint SetErrorMode(uint mode);
+[System.Runtime.InteropServices.DllImport("kernel32.dll")] public static extern uint GetErrorMode();
+'@
+    # SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX, as CrashDialogs.Suppress sets.
+    [void][Motif.ErrorMode]::SetErrorMode([Motif.ErrorMode]::GetErrorMode() -bor 0x8003)
+}
 
 $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
