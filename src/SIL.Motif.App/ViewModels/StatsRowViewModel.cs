@@ -44,6 +44,44 @@ public sealed class StatsRowViewModel
     public double? ElapsedMs { get; }
     public bool IsIncomplete { get; }
     public string? CompletionStatus { get; }
+
+    /// <summary>The completion in a word or two for the table; <see cref="CompletionStatus"/> is its tooltip.</summary>
+    public string CompletionShort => CompletionStatus is null ? string.Empty
+        : !IsIncomplete ? (CompletionStatus == "Search completed" ? "Completed" : "Unknown")
+        : CompletionStatus.Contains("step and time", StringComparison.Ordinal) ? "Step and time limits"
+        : CompletionStatus.Contains("step", StringComparison.Ordinal) ? "Step limit" : "Time limit";
+
+    public bool HasCompletion => CompletionShort.Length > 0;
+
+    /// <summary>The shared meaning of the completion: finished, or stopped at a limit.</summary>
+    public Verdict CompletionMeaning => IsIncomplete ? Verdict.Limit : CompletionShort == "Completed" ? Verdict.Agrees : Verdict.New;
+
+    /// <summary>The numbers as the table shows them, grouped for reading; empty where the parser gave none.</summary>
+    public string AttemptsText => Format(Attempts, "N0");
+    public string PassesText => Format(Passes, "N0");
+    public string ElapsedText => Format(ElapsedMs, ElapsedMs is < 10 ? "N2" : "N0");
+
+    /// <summary>How strongly each number is shaded against the largest in its column, set by the grid's owner.</summary>
+    public double AttemptsHeat { get; private set; }
+    public double PassesHeat { get; private set; }
+    public double ElapsedHeat { get; private set; }
+
+    internal void ShadeAgainst(double largestAttempts, double largestPasses, double largestElapsed)
+    {
+        AttemptsHeat = HeatOf(Attempts, largestAttempts);
+        PassesHeat = HeatOf(Passes, largestPasses);
+        ElapsedHeat = HeatOf(ElapsedMs, largestElapsed);
+    }
+
+    // The same scale Try a Word's effort table uses, so a shade means the same thing in both.
+    private static double HeatOf(double? value, double largest)
+    {
+        var intensity = TraceEffortViewModel.Intensity(value ?? 0, largest);
+        return intensity == 0 ? 0 : 0.12 + 0.58 * intensity;
+    }
+
+    private static string Format(double? value, string format) =>
+        value is { } number ? number.ToString(format, CultureInfo.CurrentCulture) : string.Empty;
     public IReadOnlyDictionary<string, JsonElement> Details { get; }
 
     public bool MatchesFilter(string filterText) =>

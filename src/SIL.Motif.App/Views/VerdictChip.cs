@@ -36,6 +36,9 @@ public sealed class VerdictChip : Border
         Rebuild();
     }
 
+    // Styled as a Border: Avalonia matches a style's type against this, not the subclass.
+    protected override Type StyleKeyOverride => typeof(Border);
+
     /// <summary>Which of the six meanings this chip shows.</summary>
     public Verdict Verdict
     {

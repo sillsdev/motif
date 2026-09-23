@@ -15,49 +15,6 @@
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="Margin" Value="12,0,0,0" />
     </Style>
-    <Style Selector=":is(TextBlock).result, Border.chip :is(TextBlock)">
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector="Border.chip">
-      <Setter Property="CornerRadius" Value="9" />
-      <Setter Property="Padding" Value="7,1" />
-      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
-    </Style>
-    <Style Selector="Border.chip :is(TextBlock)">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-    </Style>
-    <Style Selector="Border.chip.parsed, Border.chip.approved">
-      <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
-    </Style>
-    <Style Selector="Border.chip.parsed :is(TextBlock), Border.chip.approved :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
-    </Style>
-    <Style Selector="Border.chip.failed, Border.chip.disapproved">
-      <Setter Property="Background" Value="{DynamicResource SemiColorDangerLight}" />
-    </Style>
-    <Style Selector="Border.chip.failed :is(TextBlock), Border.chip.disapproved :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
-    </Style>
-    <Style Selector="Border.chip.incomplete, Border.chip.missed">
-      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
-    </Style>
-    <Style Selector="Border.chip.incomplete :is(TextBlock), Border.chip.missed :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
-    </Style>
-    <Style Selector="Button.filterChip">
-      <Setter Property="Padding" Value="9,3" />
-      <Setter Property="CornerRadius" Value="12" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-      <Setter Property="BorderThickness" Value="1" />
-    </Style>
-    <Style Selector="Button.filterChip.active">
-      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
     <Style Selector="Button.viewChip">
       <Setter Property="Padding" Value="10,4" />
       <Setter Property="Background" Value="Transparent" />
@@ -158,7 +115,7 @@
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
                   <views:VerdictChip Verdict="{Binding ResultMeaning}" Text="{Binding Result}" Compact="True" />
-                  <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding VsProject}" />
+                  <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding VsProject}" IsVisible="{Binding HasVsProject}" />
                   <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}"
                              HorizontalAlignment="Right" />
                 </StackPanel>
@@ -184,7 +141,7 @@
           <StackPanel Orientation="Horizontal" Spacing="10">
             <views:VerdictChip Verdict="{Binding ResultMeaning}" Text="{Binding Result}" />
             <views:CopyableTextBlock Classes="muted" Text="{Binding ReadingCount, StringFormat='{}{0} reading(s)'}" VerticalAlignment="Center" />
-            <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding VsProject}" />
+            <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding VsProject}" IsVisible="{Binding HasVsProject}" />
             <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}" VerticalAlignment="Center" />
             <views:CopyableTextBlock Classes="muted" Text="{Binding Attempts, StringFormat='{}{0} attempts'}" VerticalAlignment="Center"
                        IsVisible="{Binding Attempts, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />

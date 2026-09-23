@@ -72,7 +72,10 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     {
         if (e.PropertyName != nameof(AssessWordsViewModel.SelectedRow)) return;
         Trace.Reset();
-        if (Words.SelectedRow is { } row) Trace.SetWord(row.Word);
+        if (Words.SelectedRow is not { } row) return;
+        Trace.SetWord(row.Word);
+        // A word with no readings and nothing missed has no analyses to show, so Try a Word takes the width.
+        Trace.IsFocused = !row.HasReadings && row.MissedApproved.Count == 0;
     }
 
     protected override Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(

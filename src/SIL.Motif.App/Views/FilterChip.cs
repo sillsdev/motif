@@ -39,6 +39,9 @@ public sealed class FilterChip : Button
         Rebuild();
     }
 
+    // Styled and templated as a Button: Avalonia matches a style's type against this, not the subclass.
+    protected override Type StyleKeyOverride => typeof(Button);
+
     /// <summary>What the chip filters to, in the view's own words.</summary>
     public string? Label
     {

@@ -7,7 +7,6 @@
              x:DataType="views:ProjectPanel">
   <StackPanel Spacing="8" Margin="24">
 
-    <views:CopyableTextBlock Classes="stage-title" Text="Project" />
     <DockPanel LastChildFill="True">
       <Button Content="Browse..."
               Command="{Binding Project.BrowseCommand}"
@@ -15,6 +14,7 @@
               DockPanel.Dock="Right" />
       <ComboBox ItemsSource="{Binding Project.KnownProjects}"
                 SelectedItem="{Binding Project.SelectedKnownProject}"
+                PlaceholderText="{Binding Project.OpenUnlistedPath}"
                 AutomationProperties.Name="Known projects"
                 HorizontalAlignment="Stretch">
         <ComboBox.ItemTemplate>
@@ -33,6 +33,7 @@
                IsVisible="{Binding Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
     <Button Content="Refresh"
             Command="{Binding Baseline.RefreshCommand}"
+            HorizontalAlignment="Left"
             AutomationProperties.Name="Refresh the Baseline" />
 
     <views:CopyableTextBlock Classes="section-title" Text="History" Margin="0,16,0,0" />
@@ -46,7 +47,8 @@
         <DataTemplate x:DataType="queries:ProjectHistoryEntry">
           <Border Classes="card" Margin="0,0,0,6">
             <DockPanel LastChildFill="True">
-              <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding At}" />
+              <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted"
+                                       Text="{Binding At.LocalDateTime, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
               <StackPanel Spacing="2">
                 <views:CopyableTextBlock Text="{Binding Kind}" FontWeight="SemiBold" />
                 <views:CopyableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />

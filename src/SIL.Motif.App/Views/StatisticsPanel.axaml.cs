@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
 
@@ -18,6 +19,10 @@ public sealed partial class StatisticsPanel : UserControl
     public StatisticsViewModel Statistics { get; }
 
     // Handled so the grid does not also reorder items itself; the view model owns sort state.
+    private void OnAllRowsClick(object? sender, RoutedEventArgs e) => Statistics.OnlyIncomplete = false;
+
+    private void OnOnlyIncompleteClick(object? sender, RoutedEventArgs e) => Statistics.OnlyIncomplete = true;
+
     private void OnGridSorting(object? sender, DataGridColumnEventArgs e)
     {
         e.Handled = true;

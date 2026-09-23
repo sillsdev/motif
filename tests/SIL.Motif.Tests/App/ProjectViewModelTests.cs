@@ -59,6 +59,29 @@ public sealed class ProjectViewModelTests
     }
 
     [Fact]
+    public async Task AnOpenProjectIsShownAsThePickersChoiceWithoutBeingChosenAgain()
+    {
+        var fake = new FakeCommandClient();
+        var listed = new KnownProjectSummary(@"C:\projects\listed.fwdata", DateTimeOffset.UtcNow);
+        fake.KnownProjectsListIs([listed]);
+        var viewModel = new ProjectViewModel(fake, new FakeProjectPicker());
+        await viewModel.LoadKnownProjectsAsync();
+        var raised = 0;
+        viewModel.ProjectChosen += (_, _) => raised++;
+
+        viewModel.ShowChosen(@"C:\PROJECTS\listed.fwdata");
+        Assert.Same(listed, viewModel.SelectedKnownProject);
+        Assert.Null(viewModel.OpenUnlistedPath);
+
+        // A browsed project is named but not added, so picking it from the list later still opens it.
+        viewModel.ShowChosen(@"C:\projects\browsed.fwdata");
+        Assert.Null(viewModel.SelectedKnownProject);
+        Assert.Equal(@"C:\projects\browsed.fwdata", viewModel.OpenUnlistedPath);
+        Assert.Single(viewModel.KnownProjects);
+        Assert.Equal(0, raised);
+    }
+
+    [Fact]
     public async Task BrowseCommandRaisesNothingWhenTheCallerCancels()
     {
         var picker = new FakeProjectPicker { PathToReturn = null };

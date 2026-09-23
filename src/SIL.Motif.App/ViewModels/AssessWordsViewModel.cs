@@ -183,6 +183,9 @@ public sealed class AssessWordRowViewModel
     /// <summary>Grade against the project's own analyses: Approved, Disapproved, No opinion, Missed, or none available.</summary>
     public string VsProject { get; }
 
+    /// <summary>Whether there is a comparison to show; a word with no readings and nothing missed has none.</summary>
+    public bool HasVsProject => VsProject != "—";
+
     /// <summary>The shared meaning behind <see cref="VsProject"/>: a missed approved analysis is a no result.</summary>
     public Verdict Meaning => VsProject switch
     {

@@ -8,9 +8,7 @@
              x:DataType="views:StatisticsPanel">
   <DockPanel Margin="24,12,24,24">
 
-    <views:CopyableTextBlock Classes="section-title" Text="Statistics" DockPanel.Dock="Top" />
-
-    <DockPanel LastChildFill="False" DockPanel.Dock="Top" Margin="0,8,0,8">
+    <DockPanel LastChildFill="False" DockPanel.Dock="Top" Margin="0,0,0,8">
       <views:CopyableTextBlock Text="Group" VerticalAlignment="Center" Margin="0,0,8,0" />
       <ComboBox ItemsSource="{Binding Statistics.Groups}"
                 SelectedItem="{Binding Statistics.SelectedGroup}"
@@ -21,6 +19,10 @@
                Width="200"
                AutomationProperties.Name="Filter statistics rows"
                Margin="0,0,16,0" />
+      <views:FilterChip Label="All rows" Count="{Binding Statistics.RowCount}" Margin="0,0,4,0"
+                        IsActive="{Binding !Statistics.OnlyIncomplete}" Click="OnAllRowsClick" />
+      <views:FilterChip Label="Did not finish" Count="{Binding Statistics.IncompleteCount}" Verdict="Limit" Margin="0,0,16,0"
+                        IsActive="{Binding Statistics.OnlyIncomplete}" Click="OnOnlyIncompleteClick" />
       <Button Content="Refresh"
               Command="{Binding Statistics.LoadCommand}"
               AutomationProperties.Name="Refresh statistics" />
@@ -34,7 +36,7 @@
                FontStyle="Italic"
                DockPanel.Dock="Top" />
 
-    <Grid ColumnDefinitions="2*,8,1*">
+    <Grid ColumnDefinitions="*,12,260">
 
       <DataGrid Grid.Column="0"
                 ItemsSource="{Binding Statistics.Rows}"
@@ -70,28 +72,30 @@
           <DataGridTemplateColumn Header="Completion" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:CopyableTextBlock Text="{Binding CompletionStatus}" Margin="6,4" TextWrapping="Wrap" />
+                <views:VerdictChip Verdict="{Binding CompletionMeaning}" Text="{Binding CompletionShort}" Compact="True"
+                                   Margin="6,4" HorizontalAlignment="Left" IsVisible="{Binding HasCompletion}"
+                                   ToolTip.Tip="{Binding CompletionStatus}" />
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTemplateColumn Header="Attempts" Tag="attempts" ClipboardContentBinding="{ReflectionBinding Attempts}">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:CopyableTextBlock Text="{Binding Attempts}" Margin="6,4" />
+                <views:HeatCell Text="{Binding AttemptsText}" Intensity="{Binding AttemptsHeat}" Margin="2,1" />
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTemplateColumn Header="Passes" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:CopyableTextBlock Text="{Binding Passes}" Margin="6,4" />
+                <views:HeatCell Text="{Binding PassesText}" Intensity="{Binding PassesHeat}" Margin="2,1" />
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTemplateColumn Header="Elapsed (ms)" Tag="elapsedMs" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:StatsRowViewModel">
-                <views:CopyableTextBlock Text="{Binding ElapsedMs}" Margin="6,4" />
+                <views:HeatCell Text="{Binding ElapsedText}" Intensity="{Binding ElapsedHeat}" Margin="2,1" />
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>

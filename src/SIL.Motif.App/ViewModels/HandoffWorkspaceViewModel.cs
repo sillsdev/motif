@@ -225,6 +225,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         _projectPath = fwDataPath;
         OnPropertyChanged(nameof(ProjectName));
         OnPropertyChanged(nameof(HasProject));
+        Project.ShowChosen(fwDataPath);
         CurrentStage = WorkflowStage.Project;
         RefreshStages();
 

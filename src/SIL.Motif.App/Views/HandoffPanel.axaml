@@ -17,10 +17,11 @@
 
         <Border Classes="notice" IsVisible="{Binding Handoff.IsOutOfDate}"
                 AutomationProperties.Name="The Handoff is out of date">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <views:CopyableTextBlock Text="&#x26a0;" FontWeight="Bold" VerticalAlignment="Center" />
+          <!-- A dock, not a horizontal stack: a stack gives the sentence unlimited width, so it never wraps. -->
+          <DockPanel>
+            <views:CopyableTextBlock DockPanel.Dock="Left" Text="&#x26a0;" FontWeight="Bold" Margin="0,0,10,0" />
             <views:CopyableTextBlock Text="{Binding Handoff.OutOfDateText}" TextWrapping="Wrap" />
-          </StackPanel>
+          </DockPanel>
         </Border>
 
         <ProgressBar IsVisible="{Binding Handoff.IsActive}"
@@ -94,8 +95,11 @@
                         <views:CopyableTextBlock Text="{Binding KindLabel}" Foreground="White" FontSize="11"
                                    FontWeight="Bold" HorizontalAlignment="Center" />
                       </Border>
-                      <views:CopyableTextBlock Grid.Column="1" Text="{Binding RelativePath}" TextWrapping="Wrap"
-                                 VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                        <views:CopyableTextBlock Text="{Binding RelativePath}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding Purpose}" FontSize="12" TextWrapping="Wrap"
+                                   IsVisible="{Binding HasPurpose}" />
+                      </StackPanel>
                       <Button Grid.Column="2" Content="Copy path" Click="OnCopyPathClick"
                               AutomationProperties.Name="{Binding CopyPathAccessibleName}" />
                     </Grid>

@@ -77,6 +77,18 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     public IAsyncRelayCommand LoadCommand { get; }
 
+    /// <summary>How many rows were fetched, before any filter.</summary>
+    public int RowCount => _allRows.Count;
+
+    /// <summary>How many fetched words stopped at a time or step limit.</summary>
+    public int IncompleteCount => _allRows.Count(row => row.IsIncomplete);
+
+    /// <summary>Whether the grid shows only the words that did not finish.</summary>
+    [ObservableProperty]
+    private bool _onlyIncomplete;
+
+    partial void OnOnlyIncompleteChanged(bool value) => ApplyView();
+
     partial void OnProjectPathChanged(string? value) => LoadCommand.NotifyCanExecuteChanged();
 
     partial void OnFilterTextChanged(string value) => ApplyView();
@@ -109,6 +121,9 @@ public sealed partial class StatisticsViewModel : ObservableObject
         Rows.Clear();
         SortColumn = null;
         FilterText = string.Empty;
+        OnlyIncomplete = false;
+        OnPropertyChanged(nameof(RowCount));
+        OnPropertyChanged(nameof(IncompleteCount));
         IsStale = false;
         Refusal = null;
         SummaryMarkdown = null;
@@ -136,6 +151,13 @@ public sealed partial class StatisticsViewModel : ObservableObject
                 else
                     _allRows.Add(new StatsRowViewModel(row));
             }
+            // Shaded against every fetched row, so filtering never changes what a shade means.
+            var largestAttempts = _allRows.Max(row => row.Attempts) ?? 0;
+            var largestPasses = _allRows.Max(row => row.Passes) ?? 0;
+            var largestElapsed = _allRows.Max(row => row.ElapsedMs) ?? 0;
+            foreach (var row in _allRows) row.ShadeAgainst(largestAttempts, largestPasses, largestElapsed);
+            OnPropertyChanged(nameof(RowCount));
+            OnPropertyChanged(nameof(IncompleteCount));
             IsStale = false;
             Refusal = null;
             ApplyView();
@@ -154,6 +176,8 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
         if (!string.IsNullOrEmpty(FilterText))
             view = view.Where(row => row.MatchesFilter(FilterText));
+        if (OnlyIncomplete)
+            view = view.Where(row => row.IsIncomplete);
 
         if (SortColumn is { } column)
         {

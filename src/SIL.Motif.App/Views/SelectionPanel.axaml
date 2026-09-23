@@ -24,7 +24,6 @@
     <!-- Left: choose which Texts feed the Words view and the assessment. -->
     <ScrollViewer Grid.Column="0">
       <StackPanel Spacing="8">
-        <views:CopyableTextBlock Classes="stage-title" Text="Texts" />
         <views:CopyableTextBlock Text="{Binding Selection.SummaryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
 
         <TextBox PlaceholderText="Search texts..."

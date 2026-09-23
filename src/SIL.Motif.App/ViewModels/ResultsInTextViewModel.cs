@@ -330,9 +330,18 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDimmed;
 
+    // Forms already carry their own hyphens ("a-", "-a"), so they join as written; glosses join with one.
     private static string ReadingText(ParserReading? reading) => reading is null ? "?"
-        : string.Join("-", reading.Morphs.Select(morph => morph.Form)) + " ‘" +
+        : JoinForms(reading.Morphs.Select(morph => morph.Form)) + " ‘" +
           string.Join("-", reading.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)) + "’";
+
+    private static string JoinForms(IEnumerable<string> forms)
+    {
+        var parts = forms.ToArray();
+        return parts.Any(form => form.StartsWith('-') || form.EndsWith('-'))
+            ? string.Concat(parts).Replace("--", "-", StringComparison.Ordinal)
+            : string.Join("-", parts);
+    }
 
     private static string Plural(int count) => count == 1 ? string.Empty : "s";
 }

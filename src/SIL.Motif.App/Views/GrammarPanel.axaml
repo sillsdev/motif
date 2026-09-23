@@ -27,15 +27,17 @@
     <Style Selector="Button.findingGroup.chosen">
       <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
     </Style>
+    <Style Selector="Button.findingGroup TextBlock.groupName">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,*" Margin="24" RowSpacing="12">
 
-    <StackPanel Spacing="4">
-      <views:CopyableTextBlock Classes="stage-title" Text="Grammar" />
-      <views:CopyableTextBlock Classes="muted"
-                 Text="Loaded with the project. Nothing here depends on which texts you choose."
-                 TextWrapping="Wrap" />
-    </StackPanel>
+    <!-- The stage bar already names the stage, so the page starts with what it knows. -->
+    <views:CopyableTextBlock Classes="muted"
+               Text="Loaded with the project. Nothing here depends on which texts you choose."
+               TextWrapping="Wrap" />
 
     <Panel Grid.Row="1">
 
@@ -111,7 +113,7 @@
                             CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
                       <DockPanel>
                         <views:VerdictChip DockPanel.Dock="Right" Verdict="{Binding Meaning}" Text="{Binding Count}" Compact="True" />
-                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Classes="groupName" Text="{Binding Name}" TextWrapping="Wrap" Margin="0,0,8,0" VerticalAlignment="Center" />
                       </DockPanel>
                     </Button>
                   </DataTemplate>
@@ -129,7 +131,7 @@
                             CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
                       <DockPanel>
                         <views:VerdictChip DockPanel.Dock="Right" Verdict="{Binding Meaning}" Text="{Binding Count}" Compact="True" />
-                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Classes="groupName" Text="{Binding Name}" TextWrapping="Wrap" Margin="0,0,8,0" VerticalAlignment="Center" />
                       </DockPanel>
                     </Button>
                   </DataTemplate>
@@ -144,14 +146,10 @@
               <views:CopyableTextBlock Classes="section-title" Text="{Binding Grammar.Warnings.SelectedGroupTitle}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
             </StackPanel>
-        <Grid Grid.Row="1" ColumnDefinitions="110,150,*,2*" ColumnSpacing="6">
-          <TextBox Grid.Column="0" Text="{Binding Grammar.Warnings.SeverityFilter}"
-                   PlaceholderText="Severity..." AutomationProperties.Name="Filter grammar warnings by severity" />
-          <TextBox Grid.Column="1" Text="{Binding Grammar.Warnings.KindFilter}"
-                   PlaceholderText="Kind..." AutomationProperties.Name="Filter grammar warnings by kind" />
-          <TextBox Grid.Column="2" Text="{Binding Grammar.Warnings.WhereFilter}"
+        <Grid Grid.Row="1" ColumnDefinitions="*,2*" ColumnSpacing="6">
+          <TextBox Grid.Column="0" Text="{Binding Grammar.Warnings.WhereFilter}"
                    PlaceholderText="Where..." AutomationProperties.Name="Filter grammar warnings by where they apply" />
-          <TextBox Grid.Column="3" Text="{Binding Grammar.Warnings.ProblemFilter}"
+          <TextBox Grid.Column="1" Text="{Binding Grammar.Warnings.ProblemFilter}"
                    PlaceholderText="Problem..." AutomationProperties.Name="Filter grammar warnings by problem" />
         </Grid>
         <DataGrid Grid.Row="2" ItemsSource="{Binding Grammar.Warnings.Rows}"
@@ -164,26 +162,6 @@
           <DataGrid.Columns>
             <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
                  DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
-            <DataGridTemplateColumn Header="Severity" Width="110" SortMemberPath="Severity"
-                                    ClipboardContentBinding="{ReflectionBinding Severity}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <views:CopyableTextBlock Classes="severity"
-                             Classes.warning="{Binding IsWarning}"
-                             Classes.capability="{Binding IsCapability}"
-                             Text="{Binding Severity}" Margin="6,4" VerticalAlignment="Top"
-                             ToolTip.Tip="{Binding Text}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Kind" Width="150" SortMemberPath="Kind"
-                                    ClipboardContentBinding="{ReflectionBinding Kind}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <views:CopyableTextBlock Text="{Binding Kind}" Margin="6,4" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Where" Width="*" SortMemberPath="Where"
                                     ClipboardContentBinding="{ReflectionBinding Where}">
               <DataGridTemplateColumn.CellTemplate>

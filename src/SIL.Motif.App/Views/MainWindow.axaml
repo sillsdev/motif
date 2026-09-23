@@ -61,22 +61,24 @@
                  BorderThickness="0"
                  Padding="0"
                  HorizontalAlignment="Stretch"
-                 MaxWidth="720"
+                 MaxWidth="860"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  AutomationProperties.Name="Stages">
-          <!-- Equal shares of the bar, so a narrow window shortens titles instead of hiding a stage. -->
+          <!-- Shares of the bar sized to each title (Grammar carries a count, Texts is short), so a narrow
+               window shortens titles only once every stage is as small as it can usefully be. -->
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate>
-              <UniformGrid Rows="1" />
+              <Grid ColumnDefinitions="1*,1.3*,0.8*,1*,1*" />
             </ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.Styles>
             <Style Selector="ListBoxItem" x:DataType="vm:StageViewModel">
+              <Setter Property="Grid.Column" Value="{Binding ColumnIndex}" />
               <Setter Property="Padding" Value="8,4" />
               <Setter Property="Margin" Value="0,0,2,0" />
               <Setter Property="MinHeight" Value="32" />
               <Setter Property="CornerRadius" Value="6" />
-              <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+              <Setter Property="HorizontalContentAlignment" Value="Left" />
               <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
               <Setter Property="ToolTip.Tip" Value="{Binding Summary}" />
             </Style>

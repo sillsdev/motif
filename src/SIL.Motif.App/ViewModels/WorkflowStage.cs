@@ -51,6 +51,9 @@ public sealed partial class StageViewModel : ObservableObject
     /// <summary>The position shown in the stage's marker, counting from one.</summary>
     public int Number => (int)Stage + 1;
 
+    /// <summary>The stage bar column this entry sits in, counting from zero.</summary>
+    public int ColumnIndex => (int)Stage;
+
     /// <summary>The accessible name of the stepper entry that opens this stage.</summary>
     public string AutomationName => $"{Title} stage";
 

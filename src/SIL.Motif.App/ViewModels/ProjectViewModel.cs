@@ -46,7 +46,27 @@ public sealed partial class ProjectViewModel : ObservableObject
 
     partial void OnSelectedKnownProjectChanged(KnownProjectSummary? value)
     {
-        if (value is not null) ProjectChosen?.Invoke(this, value.FullFwDataPath);
+        if (value is not null && !_showingChosen) ProjectChosen?.Invoke(this, value.FullFwDataPath);
+    }
+
+    private bool _showingChosen;
+
+    /// <summary>The open project's path when no Known project holds it, for the picker to name.</summary>
+    [ObservableProperty]
+    private string? _openUnlistedPath;
+
+    /// <summary>
+    /// Shows <paramref name="fwDataPath"/> as the picker's choice without choosing it again. A listed project is
+    /// selected; an unlisted one is named by <see cref="OpenUnlistedPath"/> so it can still be picked afresh.
+    /// </summary>
+    public void ShowChosen(string fwDataPath)
+    {
+        var known = KnownProjects.FirstOrDefault(project =>
+            string.Equals(project.FullFwDataPath, fwDataPath, StringComparison.OrdinalIgnoreCase));
+        OpenUnlistedPath = known is null ? fwDataPath : null;
+        _showingChosen = true;
+        try { SelectedKnownProject = known; }
+        finally { _showingChosen = false; }
     }
 
     private async Task BrowseAsync()
