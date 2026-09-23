@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
 using SIL.Motif.Contract.Ids;
@@ -38,20 +37,8 @@ public sealed class BaselineScratchFactoryTests : IDisposable
         _seed = pristine.Seed;
 
         _publishedRoot = Path.Combine(_root, "published");
-        Directory.CreateDirectory(_publishedRoot);
-        using (var bundle = new MemoryStream())
-        {
-            new BaselineBundleWriter().WriteAsync(
-                    sourceFwDataPath, sourceWritingSystemPaths, bundle, CancellationToken.None)
-                .GetAwaiter().GetResult();
-            using var archive = new ZipArchive(new MemoryStream(bundle.ToArray()), ZipArchiveMode.Read);
-            archive.ExtractToDirectory(_publishedRoot);
-        }
-
-        // Mirror the published layout: these are pre-created there so a project open is a pure read.
-        Directory.CreateDirectory(Path.Combine(_publishedRoot, "WritingSystemStore"));
-        Directory.CreateDirectory(Path.Combine(_publishedRoot, "SharedSettings"));
-        _publishedFwDataPath = Path.Combine(_publishedRoot, NewLangProjFixture.ProjectName + ".fwdata");
+        _publishedFwDataPath = PublishedBaselineFixture.PublishAsync(
+            sourceFwDataPath, sourceWritingSystemPaths, _publishedRoot).GetAwaiter().GetResult();
     }
 
     public void Dispose()

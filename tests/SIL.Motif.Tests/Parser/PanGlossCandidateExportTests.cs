@@ -131,24 +131,16 @@ public sealed class PanGlossCandidateExportTests : IDisposable
     public async Task ExportAsync_RefusesACandidateBackedByAPublishedBaselineDirectory_AndLeavesItByteForByteUnchanged()
     {
         var publishedRoot = Path.Combine(_root, "published");
-        Directory.CreateDirectory(publishedRoot);
         var masterRoot = Path.Combine(_root, "master");
         Directory.CreateDirectory(masterRoot);
         var master = NewLangProjFixture.CreateCache(masterRoot);
+        string publishedFwData;
         try
         {
             SeededProject.Seed(master);
             new FwDataProjectLoader().Save(master);
 
-            using (var bundle = new MemoryStream())
-            {
-                await new BaselineBundleWriter().WriteAsync(master, bundle, CancellationToken.None);
-                using var archive = new ZipArchive(new MemoryStream(bundle.ToArray()), ZipArchiveMode.Read);
-                archive.ExtractToDirectory(publishedRoot);
-            }
-            // Mirrors what a real Baseline publication pre-creates, so this fixture is shaped like one.
-            Directory.CreateDirectory(Path.Combine(publishedRoot, "WritingSystemStore"));
-            Directory.CreateDirectory(Path.Combine(publishedRoot, "SharedSettings"));
+            publishedFwData = await PublishedBaselineFixture.PublishAsync(master, publishedRoot);
         }
         finally
         {
@@ -156,7 +148,6 @@ public sealed class PanGlossCandidateExportTests : IDisposable
         }
         Directory.Delete(masterRoot, recursive: true);
 
-        var publishedFwData = Path.Combine(publishedRoot, NewLangProjFixture.ProjectName + ".fwdata");
         var directoriesBefore = DirectoriesUnder(publishedRoot);
         var manifestBefore = ManifestOf(publishedRoot);
 
