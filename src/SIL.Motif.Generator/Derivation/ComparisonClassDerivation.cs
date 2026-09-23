@@ -13,7 +13,7 @@ namespace SIL.Motif.Generator.Derivation;
 /// <b>There are seven exceptions, in two categories that mean opposite things</b> — not the "exactly
 /// five" ADR 0022's prose states (pinned by
 /// <c>ManifestConsistencyCheckerTests.CheckVerbsAndComparisonClass_RealInScopeRows_AllAgreeWithDerivation</c>
-/// in <c>tests/SIL.Motif.Tests/Generator</c>, which checks this derivation against the real, current
+/// in <c>tests/SIL.Motif.Tests.Contract/Generator</c>, which checks this derivation against the real, current
 /// manifest). The check that enforces agreement with this table is fail-closed rather than advisory
 /// for exactly this reason: a specification's stated count is not proof against the data disagreeing
 /// with it, and an "informational" version would have logged a warning nobody reads.

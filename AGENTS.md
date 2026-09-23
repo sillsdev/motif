@@ -17,22 +17,22 @@ rejected there too — and anything they let through is not a CI surprise.
 
 **`./test.ps1` needs no project or checkout from outside this repo.** Every LibLCM project the suite
 exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture` and seeded by
-`SeededProject` (`tests/SIL.Motif.Tests/TestFixtures/`) — no vendored sample project, no sibling
-FieldWorks checkout. The conformance fixture under `tests/SIL.Motif.Tests/TestFixtures/Conformance/**`
+`SeededProject` (`tests/SIL.Motif.Tests.Support/TestFixtures/`) — no vendored sample project, no sibling
+FieldWorks checkout. The conformance fixture under `tests/SIL.Motif.Tests.Support/TestFixtures/Conformance/**`
 is a synthetic FieldWorks project copied from Machine's conformance suite; the `SOURCE.md` beside it
 records its provenance. The `.gitignore` carves that fixture out of the project-data rules by the
 owner's ruling. The one external dependency that remains is the `pangloss` executable, a separate Rust
 build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails — when
 it is not built, since "the parser is not built here" is an ordinary state of a developer's machine.
 
-**`./test.ps1` runs the suite as several concurrent processes ("shards"), split by test namespace.**
-Opening two LibLCM caches at once inside one process races, so every class that opens one shares the
-serialized `LcmCacheTestCollection`. A separate process cannot race, so the shards are what let that
-work use more than one core. The last shard is the complement of the named ones, so a new namespace
-is covered without editing anything. Each shard writes its console log to
-`bin/<Configuration>/test-results/<shard>.log` and its TRX under `test-results/<shard>/`. When a run
-fails, open the failing shard's log first. Every test process
-gets a private writing-system repository (`ProcessWritingSystemRepository`). The machine-wide
+**`./test.ps1` runs one process per test project, concurrently.** It discovers test projects listed in
+`Motif.sln` under `tests/`, so adding a project includes it automatically. Opening two LibLCM caches at
+once inside one process races, so every class that opens one shares the serialized
+`LcmCacheTestCollection` in its test assembly. Separate test processes cannot race, so project-level
+parallelism lets that serialized work use more than one core. Each project writes its console log to
+`bin/<Configuration>/test-results/<project>.log` and its TRX to
+`bin/<Configuration>/test-results/<project>/<project>.trx`. When a run fails, open that project's log
+first. Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). The machine-wide
 `%ProgramData%` store is shared across processes, and concurrent saves into it collide.
 Tests set `MOTIF_WRITING_SYSTEM_REPOSITORY_PATH` at module load, and child processes inherit it.
 
@@ -44,7 +44,13 @@ One directory per configuration at the repository root, not a `bin` tree under e
 bin/Debug/motif.exe                 the CLI
 bin/Debug/SIL.Motif.App.exe         the window
 bin/Debug/SIL.Motif.Worker.exe      the job runner
-bin/Debug/tests/                    the suite
+bin/Debug/tests/SIL.Motif.Tests.Support.dll
+bin/Debug/tests/SIL.Motif.Tests.Contract.dll
+bin/Debug/tests/SIL.Motif.Tests.LibLcm.dll
+bin/Debug/tests/SIL.Motif.Tests.Commands.dll
+bin/Debug/tests/SIL.Motif.Tests.Cli.dll
+bin/Debug/tests/SIL.Motif.Tests.Worker.dll
+bin/Debug/tests/SIL.Motif.Tests.App.dll
 bin/Debug/tests/fake-pangloss/      the suite's fake parser
 bin/Debug/spikes/                   the throwaway harnesses
 ```
@@ -56,7 +62,7 @@ subdirectory because a test host that outlives its run holds a lock on the direc
 from, and that must not be the product's; the fake parser gets one below that because parser discovery
 prefers an executable sitting beside the application, and the fake must never be that executable.
 
-A test names an executable through `BuildOutput` (`tests/SIL.Motif.Tests/TestFixtures/`), which
+A test names an executable through `BuildOutput` (`tests/SIL.Motif.Tests.Support/TestFixtures/`), which
 resolves from the test binaries' own directory. Do not spell a configuration into a test path: a
 hard-coded `Debug` makes a `Release` run drive the wrong build, or none at all.
 

@@ -5,7 +5,7 @@
 
     It exists to answer two questions with measurements instead of inference: how much a scratch cache
     costs by each candidate strategy, and whether either strategy produces a cache that is actually
-    equivalent to the live one. It is referenced by SIL.Motif.Tests so the equivalence checks can also run
+    equivalent to the live one. It is referenced by SIL.Motif.Tests.LibLcm so the equivalence checks can also run
     as ordinary assertions against the small fixture.
   -->
   <PropertyGroup>

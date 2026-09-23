@@ -6,7 +6,7 @@
       Exe, not the implicit Library default: `emit` (Program.cs) is the console-command half of the
       "checked-in files, produced by running a console command" emission mechanism, and that file's
       own doc comment records the alternatives considered. Still referenced as a library by
-      tests/SIL.Motif.Tests, which is unaffected by OutputType.
+      tests/SIL.Motif.Tests.Contract, which is unaffected by OutputType.
     -->
     <OutputType>Exe</OutputType>
     <!--

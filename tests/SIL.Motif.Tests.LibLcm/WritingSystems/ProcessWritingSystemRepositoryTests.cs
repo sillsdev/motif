@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.WritingSystems;
 
 /// <summary>
 /// Pins that caches opened by this test process save their shared writing systems into the process's
-/// own repository and never into the machine-wide one, which concurrent shards would contend on.
+/// own repository and never into the machine-wide one, which concurrent test processes would contend on.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class ProcessWritingSystemRepositoryTests

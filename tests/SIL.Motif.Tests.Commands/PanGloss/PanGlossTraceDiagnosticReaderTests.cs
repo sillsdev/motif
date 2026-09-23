@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using SIL.Motif.Host.PanGloss;
 using Xunit;
@@ -173,9 +172,6 @@ public sealed class PanGlossTraceDiagnosticReaderTests
         Assert.Contains("JSON", malformed.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string ReadFixture(string name, [CallerFilePath] string sourceFile = "")
-    {
-        var testDirectory = Path.GetDirectoryName(sourceFile)!;
-        return File.ReadAllText(Path.GetFullPath(Path.Combine(testDirectory, "..", "TestFixtures", name)));
-    }
+    private static string ReadFixture(string name) =>
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", name));
 }

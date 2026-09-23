@@ -20,6 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="TestFixtures\Conformance\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestFixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
