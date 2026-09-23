@@ -10,6 +10,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
@@ -41,6 +42,21 @@ internal static class Program
     private static readonly TimeSpan OwnershipRetryPoll = TimeSpan.FromMilliseconds(50);
 
     private static async Task<int> Main(string[] args)
+    {
+        CrashDialogs.Suppress();
+        try
+        {
+            return await RunAsync(args).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            // Escaped everything: reported and exited, the way the CLI treats an escaped exception.
+            Console.Error.WriteLine("error: " + exception.Message);
+            return FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent);
+        }
+    }
+
+    private static async Task<int> RunAsync(string[] args)
     {
         var options = RunnerOptions.Read(args);
         using var host = options.OwnerNamespace is { } isolated
@@ -76,9 +92,12 @@ internal static class Program
         var sweeping = SweepUntilCancelledAsync(knownProjects, runtimes, host.ProjectLanes, options, invoker,
             ownerId, activity, shutdown.Token);
 
-        await new WorkerLifetime().RunUntilIdleAsync(options.IdleTimeout, () => activity.HasActiveWork,
-            shutdown.Token).ConfigureAwait(false);
+        var lifetime = new WorkerLifetime().RunUntilIdleAsync(options.IdleTimeout, () => activity.HasActiveWork,
+            shutdown.Token);
+        // A sweep that fails, e.g. because the machine database went away, ends the runner now, not at idle.
+        await Task.WhenAny(lifetime, sweeping).ConfigureAwait(false);
         shutdown.Cancel();
+        await lifetime.ConfigureAwait(false);
         await sweeping.ConfigureAwait(false);
         return 0;
     }

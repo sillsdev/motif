@@ -23,6 +23,8 @@ using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
 
+CrashDialogs.Suppress();
+
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
     Environment.GetEnvironmentVariable(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
 
