@@ -9,12 +9,8 @@
   -->
   <PropertyGroup>
     <OutputPath>$(MotifBinRoot)tests\</OutputPath>
-    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Contract'">true</MotifTestProject>
-    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.LibLcm'">true</MotifTestProject>
-    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Commands'">true</MotifTestProject>
-    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Cli'">true</MotifTestProject>
-    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Worker'">true</MotifTestProject>
-    <MotifTestProject Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.App'">true</MotifTestProject>
+    <!-- Same rule as MotifTestAssembly in the root props: every SIL.Motif.Tests.* project except Support. -->
+    <MotifTestProject Condition="$(MSBuildProjectName.StartsWith('SIL.Motif.Tests.')) and '$(MSBuildProjectName)' != 'SIL.Motif.Tests.Support'">true</MotifTestProject>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(MotifTestProject)' == 'true'">

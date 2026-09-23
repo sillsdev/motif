@@ -16,13 +16,15 @@
     <RootNamespace>$(MSBuildProjectName)</RootNamespace>
   </PropertyGroup>
 
+  <!--
+    The test assemblies are the tests/SIL.Motif.Tests.* project folders, Support excepted, read from disk
+    so a new test project needs no edit here. Solution membership is enforced by
+    CompatibilityTargetTests.EveryTestProjectUnderTestsIsListedInMotifSolution.
+  -->
   <ItemGroup>
-    <MotifTestAssembly Include="SIL.Motif.Tests.Contract" />
-    <MotifTestAssembly Include="SIL.Motif.Tests.LibLcm" />
-    <MotifTestAssembly Include="SIL.Motif.Tests.Commands" />
-    <MotifTestAssembly Include="SIL.Motif.Tests.Cli" />
-    <MotifTestAssembly Include="SIL.Motif.Tests.Worker" />
-    <MotifTestAssembly Include="SIL.Motif.Tests.App" />
+    <_MotifTestProjectFile Include="$(MSBuildThisFileDirectory)tests\SIL.Motif.Tests.*\SIL.Motif.Tests.*.csproj"
+                           Exclude="$(MSBuildThisFileDirectory)tests\SIL.Motif.Tests.Support\**" />
+    <MotifTestAssembly Include="@(_MotifTestProjectFile->'%(Filename)')" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Commands' or '$(MSBuildProjectName)' == 'SIL.Motif.Host' or '$(MSBuildProjectName)' == 'SIL.Motif.LiveHost' or '$(MSBuildProjectName)' == 'SIL.Motif.Worker'">
