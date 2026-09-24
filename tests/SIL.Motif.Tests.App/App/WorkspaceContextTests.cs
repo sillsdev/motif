@@ -1,6 +1,7 @@
 using System.Reflection;
 using Avalonia.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Baselines;
@@ -169,15 +170,21 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
-    public void APageDefinedOutsideTheAppIsBuiltAndOpenedThroughARegistryEntryAndTheContextAlone()
+    public async Task APageDefinedOutsideTheAppRunsItsOwnQueryAndIsOpenedThroughARegistryEntryAndTheContextAlone()
     {
-        var context = NewContext();
+        var (fake, context) = NewContextWithFake();
+        fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
         var entry = PageEntry.Of(WorkspacePage.Warnings, "Elsewhere", "M0 0h1", c => new ElsewherePageModel(c),
             _ => new Avalonia.Controls.Border());
         var model = (ElsewherePageModel)entry.CreateModel(context);
 
-        context.Open(new ElsewhereRequest("note"));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        Assert.Equal(1, model.Queried);
 
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        Assert.Equal("invocation/one", model.Shown);
+
+        context.Open(new ElsewhereRequest("note"));
         Assert.Equal(WorkspacePage.Warnings, context.CurrentPage);
         Assert.Equal("note", model.Received);
     }
@@ -267,6 +274,16 @@ public sealed class WorkspaceContextTests
     private sealed class ElsewherePageModel(WorkspaceContext context) : PageModel(context)
     {
         public string? Received { get; private set; }
+
+        public int? Queried { get; private set; }
+
+        public string? Shown { get; private set; }
+
+        protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
+            Queried = (await Context.Commands.ListKnownProjectsAsync(cancellationToken)).Count;
+
+        protected override void OnEvidencePublished(WorkspaceEvidence evidence) =>
+            Shown = evidence.Assessment.InvocationId;
 
         protected override void OnRequested(PageRequest request)
         {
