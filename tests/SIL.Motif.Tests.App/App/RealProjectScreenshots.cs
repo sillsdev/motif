@@ -146,22 +146,11 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         workspace.Assess.RunCommand.Execute(null);
         walkthrough.WaitUntil(() => workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
             TimeSpan.FromMinutes(20), "the Assessment did not finish");
-        Assert.Equal(RunState.Completed, workspace.Assess.State);
+        Assert.True(workspace.Assess.State == RunState.Completed,
+            $"The Assessment ended {workspace.Assess.State}: {workspace.Assess.Refusal?.Message}");
 
         workspace.Statistics.LoadCommand.Execute(null);
         walkthrough.WaitUntil(() => !workspace.Statistics.LoadCommand.IsRunning, TimeSpan.FromMinutes(2), "Statistics did not load");
-
-        // Try a Word on a word that did not parse, since that is where its failure story shows.
-        var rows = workspace.Assess.Words.Rows;
-        var tried = rows.FirstOrDefault(row => row.IsFailed && row.MissedApproved.Count > 0)
-            ?? rows.FirstOrDefault(row => row.IsFailed) ?? rows.FirstOrDefault();
-        if (tried is not null)
-        {
-            workspace.Assess.Words.SelectedRow = tried;
-            workspace.Assess.Trace.TryCommand.Execute(null);
-            walkthrough.WaitUntil(() => !workspace.Assess.Trace.TryCommand.IsRunning, TimeSpan.FromMinutes(3), "Try a Word did not finish");
-            output.WriteLine($"Tried '{tried.Word}': {workspace.Assess.Trace.AnswerText}");
-        }
 
         var tokens = workspace.ResultsInText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord).ToList();
         var inText = tokens.FirstOrDefault(token => token.Verdict == OccurrenceVerdict.Differs) ?? tokens.FirstOrDefault();
@@ -180,6 +169,18 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         workspace.Handoff.RunCommand.Execute(null);
         walkthrough.WaitUntil(() => workspace.Handoff.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
             TimeSpan.FromMinutes(5), "the Handoff did not finish");
+
+        // Try a Word on a word that did not parse, since that is where its failure story shows.
+        var rows = workspace.Assess.Words.Rows;
+        var tried = rows.FirstOrDefault(row => row.IsFailed && row.MissedApproved.Count > 0)
+            ?? rows.FirstOrDefault(row => row.IsFailed) ?? rows.FirstOrDefault();
+        if (tried is not null)
+        {
+            // Last, the way a person gets there, so no later choice of word clears the trace on screen.
+            workspace.Assess.OpenTryWord!(tried.Word);
+            walkthrough.WaitUntil(() => !workspace.Assess.Trace.TryCommand.IsRunning, TimeSpan.FromMinutes(3), "Try a Word did not finish");
+            output.WriteLine($"Tried '{tried.Word}': {workspace.Assess.Trace.AnswerText}");
+        }
     }
 
     private static void SaveEveryPage(WalkthroughWindow walkthrough, string folder)

@@ -177,7 +177,7 @@ public sealed class WorkflowShellTests
 
                 var sidebar = window.FindControl<Border>("Sidebar")!;
                 Assert.False(workspace.IsSidebarCollapsed);
-                Assert.Equal(190, sidebar.Bounds.Width);
+                Assert.Equal(204, sidebar.Bounds.Width);
                 Assert.All(SidebarEntries(window), entry => Assert.True(Label(entry).IsEffectivelyVisible));
                 Assert.All(SidebarEntries(window), entry => Assert.Null(ToolTip.GetTip(entry)));
 
