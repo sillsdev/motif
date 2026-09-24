@@ -14,13 +14,16 @@ internal sealed class FakeAssessor : IAssessor
 
     private readonly IReadOnlyList<AssessmentKind> _declaredKinds;
     private readonly Func<AssessmentKind, AssessmentRaw>? _rawFor;
+    private readonly Func<AssessmentScope, string, AssessmentKind, AssessmentRaw>? _rawForScope;
 
     public FakeAssessor(
-        string name, IReadOnlyList<AssessmentKind> declaredKinds, Func<AssessmentKind, AssessmentRaw>? rawFor = null)
+        string name, IReadOnlyList<AssessmentKind> declaredKinds, Func<AssessmentKind, AssessmentRaw>? rawFor = null,
+        Func<AssessmentScope, string, AssessmentKind, AssessmentRaw>? rawForScope = null)
     {
         Name = name;
         _declaredKinds = declaredKinds;
         _rawFor = rawFor;
+        _rawForScope = rawForScope;
     }
 
     public string Name { get; }
@@ -44,7 +47,8 @@ internal sealed class FakeAssessor : IAssessor
         IReadOnlyList<ProducedAssessment> produced = wanted
             .Select(kind => new ProducedAssessment(kind, grammarSourceSha256, "sha256:" + new string('0', 64),
                 "sha256:" + new string('0', 64), "fake-model", "fake-pipeline", 0,
-                _rawFor?.Invoke(kind) ?? new AssessmentRaw.WordMeasurements([])) { Invocation = evidence })
+                _rawForScope?.Invoke(scope, exportedCandidate, kind) ?? _rawFor?.Invoke(kind)
+                    ?? new AssessmentRaw.WordMeasurements([])) { Invocation = evidence })
             .ToList();
         return Task.FromResult(produced);
     }

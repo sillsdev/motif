@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -246,15 +247,29 @@ public sealed class HandoffWriterTests : IDisposable
         using var realInvoker = NewInvoker();
         var destination = Path.Combine(_root, "handoff-source");
         var cachePath = Path.Combine(_root, "retained-statistics.sqlite");
-        File.WriteAllText(cachePath, "statistics");
         BatchInvocationEvidence? evidence = null;
         string? baselinePath = null;
         string? importedDigest = null;
         string? importedPath = null;
-        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
-            kind == AssessmentKind.ObjectTiming
-                ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
-                : new AssessmentRaw.WordMeasurements([]))
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds,
+            rawForScope: (scope, candidate, kind) =>
+            {
+                if (kind == AssessmentKind.ObjectTiming)
+                {
+                    WriteStatsCache(cachePath, scope.Words);
+                    return new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath));
+                }
+                if (kind == AssessmentKind.ParseTime)
+                {
+                    var projectPath = Directory.GetFiles(candidate, "*.fwdata", SearchOption.AllDirectories).Single();
+                    var words = scope.Words.Select((word, index) => new WordAnalysis(
+                        index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray();
+                    return new AssessmentRaw.Batch(new BatchAnalysis(words,
+                        (int)scope.PerWordLimit.TotalMilliseconds, projectPath, [])
+                    { PerWordStepLimit = scope.PerWordStepLimit });
+                }
+                return new AssessmentRaw.WordMeasurements([]);
+            })
         {
             CaptureEvidence = (scope, candidate) =>
             {
@@ -369,13 +384,7 @@ public sealed class HandoffWriterTests : IDisposable
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
         var selection = new SelectionRequest(false, [], ["mirusi"], false, null);
-        var cachePath = WriteFakeCache();
-        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ObjectTiming
-            ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
-            : new AssessmentRaw.WordMeasurements([new AssessedWord("mirusi", "analysed", [], 42, "sig")]))
-        {
-            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_root, scope, candidate),
-        };
+        var assessor = NewAssessor();
         using var assessmentInvoker = NewInvoker();
         var assessment = RunAssessment(seeded, managedRoot, assessor, assessmentInvoker, selection);
         using var invoker = NewInvoker();
@@ -400,13 +409,7 @@ public sealed class HandoffWriterTests : IDisposable
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
         var selection = new SelectionRequest(false, [], ["mirusi"], false, null);
-        var cachePath = WriteFakeCache();
-        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ObjectTiming
-            ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
-            : new AssessmentRaw.WordMeasurements([new AssessedWord("mirusi", "analysed", [], 42, "sig")]))
-        {
-            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_root, scope, candidate),
-        };
+        var assessor = NewAssessor();
         using var assessmentInvoker = NewInvoker();
         var assessment = RunAssessment(seeded, managedRoot, assessor, assessmentInvoker, selection);
         using var invoker = NewInvoker();
@@ -449,13 +452,6 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.True(process.WaitForExit(15000), "The python helper did not exit within 15 seconds.");
         Assert.True(process.ExitCode == 0, $"python exited {process.ExitCode}: {stderr}");
         return stdout;
-    }
-
-    private string WriteFakeCache()
-    {
-        var cachePath = Path.Combine(_root, "fake-stats-cache-" + Guid.NewGuid().ToString("N") + ".bin");
-        File.WriteAllText(cachePath, "fake per-object stats cache");
-        return cachePath;
     }
 
     [Fact]
@@ -605,14 +601,60 @@ public sealed class HandoffWriterTests : IDisposable
 
     private FakeAssessor NewAssessor()
     {
-        var cachePath = Path.Combine(_root, "fake-stats-cache-" + Guid.NewGuid().ToString("N") + ".bin");
-        File.WriteAllText(cachePath, "fake per-object stats cache");
-        return new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ObjectTiming
-            ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
-            : new AssessmentRaw.WordMeasurements([]))
+        return new FakeAssessor("fake-assessor", CollectedKinds, rawForScope: (scope, candidate, kind) =>
+        {
+            if (kind == AssessmentKind.ObjectTiming)
+            {
+                var cachePath = Path.Combine(_root, "fake-stats-cache-" + Guid.NewGuid().ToString("N") + ".sqlite");
+                WriteStatsCache(cachePath, scope.Words);
+                return new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath));
+            }
+            if (kind == AssessmentKind.ParseTime)
+            {
+                var projectPath = Directory.GetFiles(candidate, "*.fwdata", SearchOption.AllDirectories).Single();
+                var words = scope.Words.Select((word, index) => new WordAnalysis(
+                    index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray();
+                return new AssessmentRaw.Batch(new BatchAnalysis(words,
+                    (int)scope.PerWordLimit.TotalMilliseconds, projectPath, [])
+                { PerWordStepLimit = scope.PerWordStepLimit });
+            }
+            return new AssessmentRaw.WordMeasurements([]);
+        })
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_root, scope, candidate),
         };
+    }
+
+    private static void WriteStatsCache(string path, IReadOnlyList<string> words)
+    {
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE word (
+                word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
+                attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,
+                timed_out INTEGER NOT NULL, invalid_shape INTEGER NOT NULL);
+            CREATE TABLE object (object_id INTEGER PRIMARY KEY, kind TEXT NOT NULL, label TEXT NOT NULL);
+            CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
+                attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+            """;
+        command.ExecuteNonQuery();
+        foreach (var word in words)
+        {
+            using var insert = connection.CreateCommand();
+            insert.CommandText = """
+                INSERT INTO word (form, elapsed_ns, attempts, passes, capped, timed_out, invalid_shape)
+                VALUES ($form, 0, 1, 0, 0, 0, 0);
+                """;
+            insert.Parameters.AddWithValue("$form", word);
+            insert.ExecuteNonQuery();
+        }
     }
 
     // The real module against the fake executable: the Handoff's grammar and statistics files come from it.

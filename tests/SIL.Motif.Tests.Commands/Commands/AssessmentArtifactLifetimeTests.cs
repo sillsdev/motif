@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
@@ -31,30 +32,33 @@ public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture prist
         var run = Path.Combine(root, "invocation");
         using var cancellation = new CancellationTokenSource();
         var assessor = new ArtifactAssessor(run,
-            mode == "cancelled-after-producer" ? () => cancellation.Cancel() : null);
+            mode == "cancelled-after-producer" ? () => cancellation.Cancel() : null,
+            mode == "summary-refused");
         var project = new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath));
         var databasePath = ProjectDatabaseCatalog.DatabasePathFor(project);
-        var invoker = new FakeInvoker { Respond = _ =>
-        {
-            if (mode == "summary-refused") return new PanGlossOutcome.Unavailable("summary refused");
-            if (mode == "cancelled-after-summary") cancellation.Cancel();
-            if (mode == "database-refused")
+        var invoker = new FakeInvoker();
+        Action<AssessmentProgress>? progress = mode is "cancelled-after-summary" or "database-refused"
+            ? update =>
             {
-                using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
-                connection.Open();
-                using var command = connection.CreateCommand();
-                command.CommandText = "CREATE TRIGGER reject_statistics BEFORE INSERT ON Assessments " +
-                    "WHEN NEW.Kind = 'ObjectTiming' BEGIN SELECT RAISE(ABORT, 'record refused'); END;";
-                command.ExecuteNonQuery();
+                if (update.Stage != AssessmentStage.ReadingStatistics) return;
+                if (mode == "cancelled-after-summary") cancellation.Cancel();
+                else
+                {
+                    using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
+                    connection.Open();
+                    using var command = connection.CreateCommand();
+                    command.CommandText = "CREATE TRIGGER reject_statistics BEFORE INSERT ON Assessments " +
+                        "BEGIN SELECT RAISE(ABORT, 'record refused'); END;";
+                    command.ExecuteNonQuery();
+                }
             }
-            return new PanGlossOutcome.Completed("statistics", string.Empty, TimeSpan.Zero);
-        }};
+            : null;
         try
         {
             var failure = Record.Exception(() =>
             {
                 var result = AssessCommand.Run(new AssessRequest(projectPath, new SelectionRequest(true, [], [], false, null)),
-                    Path.Combine(root, "managed"), assessor, invoker, null, cancellation.Token);
+                    Path.Combine(root, "managed"), assessor, invoker, progress, cancellation.Token);
                 Assert.Equal(mode == "completed", result.Succeeded);
             });
             if (mode == "database-refused") Assert.IsType<SqliteException>(failure);
@@ -91,7 +95,7 @@ public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture prist
         finally { Directory.Delete(root, recursive: true); }
     }
 
-    private sealed class ArtifactAssessor(string directory, Action? afterProduction) : IAssessor
+    private sealed class ArtifactAssessor(string directory, Action? afterProduction, bool omitStatisticsRows) : IAssessor
     {
         public string Name => "artifact-assessor";
         public IReadOnlyList<AssessmentKind> SupportedKinds => [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming];
@@ -102,7 +106,10 @@ public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture prist
             var source = Path.Combine(directory, "source.fwdata");
             var statistics = Path.Combine(directory, "stats.sqlite");
             File.Copy(Directory.GetFiles(exportedCandidate, "*.fwdata", SearchOption.AllDirectories).Single(), source);
-            File.WriteAllText(statistics, "stats");
+            WriteStatsCache(statistics, omitStatisticsRows ? Array.Empty<string>() : scope.Words);
+            var projectPath = Directory.GetFiles(exportedCandidate, "*.fwdata", SearchOption.AllDirectories).Single();
+            var words = scope.Words.Select((word, index) => new WordAnalysis(
+                index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray();
             var evidence = new BatchInvocationEvidence("invocation", source, BatchInvocationEvidence.DigestFile(source),
                 "sha256:executable", "words", "sha256:words", "tsv", "sha256:tsv", "stderr", "sha256:stderr",
                 1000, 200000, 1, true);
@@ -110,11 +117,44 @@ public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture prist
             afterProduction?.Invoke();
             return Task.FromResult<IReadOnlyList<ProducedAssessment>>([
                 new(AssessmentKind.ParseTime, evidence.SourceBytesSha256, null, null, null, null, null,
-                    new AssessmentRaw.WordMeasurements([])) { Invocation = evidence, ArtifactLease = lease },
+                    new AssessmentRaw.Batch(new BatchAnalysis(words, 1000, projectPath, [])
+                    { PerWordStepLimit = scope.PerWordStepLimit })) { Invocation = evidence, ArtifactLease = lease },
                 new(AssessmentKind.ObjectTiming, evidence.SourceBytesSha256, null, null, null, null, null,
                     new AssessmentRaw.FileCache(statistics, BatchInvocationEvidence.DigestFile(statistics)))
                     { Invocation = evidence, ArtifactLease = lease }
             ]);
+        }
+
+        private static void WriteStatsCache(string path, IReadOnlyList<string> words)
+        {
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = path,
+                Mode = SqliteOpenMode.ReadWriteCreate,
+                Pooling = false,
+            }.ToString());
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE word (
+                    word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
+                    attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,
+                    timed_out INTEGER NOT NULL, invalid_shape INTEGER NOT NULL);
+                CREATE TABLE object (object_id INTEGER PRIMARY KEY, kind TEXT NOT NULL, label TEXT NOT NULL);
+                CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
+                    attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+                """;
+            command.ExecuteNonQuery();
+            foreach (var word in words)
+            {
+                using var insert = connection.CreateCommand();
+                insert.CommandText = """
+                    INSERT INTO word (form, elapsed_ns, attempts, passes, capped, timed_out, invalid_shape)
+                    VALUES ($form, 0, 1, 0, 0, 0, 0);
+                    """;
+                insert.Parameters.AddWithValue("$form", word);
+                insert.ExecuteNonQuery();
+            }
         }
     }
 }
