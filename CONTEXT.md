@@ -147,6 +147,10 @@ _Avoid_: run, attempt, test, experiment, evaluation
 **Preflight**:
 The final non-mutating comparison against the live model immediately before Apply. It proves that the
 measured evidence still matches the project; it is not the earlier, reusable Dry Run.
+It runs per change as well as per Proposal: each change carries the wordform and analysis identities it
+touches and the Baseline token it was made against, and a change whose inputs are gone or different fails
+and blocks Apply ([ADR 0046](docs/adr/0046-pages-not-stages.md)). The CLI verb is `preflight`; the window
+never shows the word.
 _Avoid_: dry run, assessment, validation pass
 
 **Readiness**:
@@ -158,6 +162,8 @@ _Avoid_: approval, sign-off, review, gate
 **Drift**:
 The condition where the project has moved since a Dry Run was computed, so the Dry Run no longer
 describes what applying the Proposal would do.
+A single change drifts too, when FieldWorks has saved since and something it was made against is gone or
+different. The window says such a change "no longer fits".
 _Avoid_: staleness, conflict, merge failure
 
 **Apply Authorization**:
@@ -194,6 +200,28 @@ A word may be typed rather than found: it need not occur anywhere in the languag
 and measured like any other. A list can be exported from an Assessment, but what is kept is the words, so
 nothing has to be re-derived.
 _Avoid_: query, sample, filter, scope, subset, test set, corpus descriptor
+
+**Default Selection**:
+The Selection a project measures when nobody names another: chosen Texts plus any added words, stored in
+the Motif store with the project and resolved to an exact word list and digest on every run. Chosen in the
+setup dialog the first time a project opens, and changed from Configure. Each Assessment keeps the list it
+resolved, so changing the Default Selection never rewrites what an earlier run measured.
+_Avoid_: default corpus, word set, profile, preset
+
+**Overview**:
+Where a project stands, read from what the last run stored: the project's counts, Text Coverage, accuracy
+against the manual analyses, timing and warnings. The window's first page and the `overview` command show the
+same numbers, computed once. A projection of stored evidence, never a trigger to rerun.
+_Avoid_: dashboard, summary, health, status, to-do list
+
+**Review changes**:
+The window's page where a person reads, together, what applying their pending changes would write (the Dry
+Run), what it would do to the numbers (an Assessment of the touched words) and whether each change still fits
+(Preflight). A page, not a lifecycle step: reading it is not recorded, grants nothing and gates nothing, and
+the CLI has no `review` verb ([ADR 0046](docs/adr/0046-pages-not-stages.md)). Its button is "Apply to
+FieldWorks project", which is Apply. The pending changes are a Draft Proposal in the Motif store, shown to
+the linguist only as "N changes not applied yet".
+_Avoid_: approval, sign-off, review decision, save
 
 **Trace**:
 The parser's own account of what it tried on one word: each step's rule, stratum or template, which subrule
@@ -307,12 +335,13 @@ _Avoid_: HC XML, export, projection
 ## Coverage and generation
 
 > **"Coverage" is ambiguous in this project and must always be qualified.** An unqualified "coverage" is
-> never acceptable in prose, a report, or an API name. There are five senses:
+> never acceptable in prose, a report, or an API name. There are six senses:
 >
 > | Term | What it measures | Whose |
 > | --- | --- | --- |
 > | **parse coverage** | What share of a word list parsed. The raw figure | PanGloss |
 > | **grammar coverage** | How much of a language the grammar reaches — parse coverage reported over a named Corpus, with provenance | Motif |
+> | **Text Coverage** | What share of the Default Selection's words, and of their occurrences in the chosen Texts, parse. Measured over the project's own Texts; the same share over a Corpus is grammar coverage | Motif |
 > | **feature coverage** | Which declared grammar features, and which combinations of them, the analysed words actually exercise. What a Hole is an absence in | Motif |
 > | **test coverage** | What the manual analyses assert. Always qualified in prose and API names — this repo has literal unit tests | Motif |
 > | **model coverage** | Whether the generator accounts for every field in LibLCM's model. The terms in this section concern this one | Motif |

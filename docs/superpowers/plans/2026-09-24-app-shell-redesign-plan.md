@@ -330,3 +330,21 @@ Where a path says `fill="currentColor"`, that one shape is filled.
 
 Avalonia draws these with `PathIcon`/`Path` geometry; convert `rect` and `circle` to path figures or use
 `RectangleGeometry`/`EllipseGeometry` inside a `GeometryGroup`.
+
+## 2026-09-24 — corrections from the owner, before implementation
+
+**In plain terms:** Review is a page a linguist reads, not a sign-off anybody records, and the window uses
+plainer words than the CLI. [ADR 0046](../../adr/0046-pages-not-stages.md) records all of this.
+
+- **Ruling 2 is withdrawn.** A person's review is not recorded as a Decision and gates nothing; the
+  2026-08-31 amendment to `docs/proposal-lifecycle.md` stands, and Readiness is what Apply requires. The
+  page is **Review changes**. Workstream 8's "Record the person's review as a Decision" does not apply.
+- **The window and the CLI name things differently.** On screen: "Review changes", "Apply to FieldWorks
+  project" (never "Save"), "N changes not applied yet", "No longer fits". In the CLI and code: `preflight`
+  (per-change fit; there is no `review` command), `apply`, Draft Proposal, drift. The words Proposal, Draft
+  and Preflight do not appear on screen.
+- **Pending changes are stored.** They are a Draft Proposal in `Project.motif.db` from the moment the
+  analysis operations exist, so they survive closing the window, though the window never calls them that.
+- **Ruling 4's open question is answered:** "Corpus" keeps its name and meaning.
+- **Warnings are built on PanGloss's new grammar report** (the `feat/grammar-health-v2` branch), which lands
+  before this work finishes; workstream 7's storage and `warnings` command wait for it.
