@@ -185,7 +185,7 @@ public static class CommandTextRenderer
                     projection.GrammarWarnings is { Count: > 0 } findings)
                 {
                     sb.AppendLine($"    The search finished without readings, and the parser reported " +
-                        $"{findings.Count} finding(s) against this grammar (below). Parts of the grammar it could not " +
+                        $"{findings.Count} load message(s) for this grammar (below). Parts of the grammar it could not " +
                         $"read were dropped, so this may be a grammar it could not load rather than a word it rejects.");
                 }
                 foreach (var analysis in evidence.Analyses)
@@ -198,7 +198,7 @@ public static class CommandTextRenderer
         if (projection.GrammarWarnings is { Count: > 0 } warnings)
         {
             sb.AppendLine();
-            sb.AppendLine($"Grammar findings reported by the parser: {warnings.Count}");
+            sb.AppendLine($"Parser load messages: {warnings.Count}");
             sb.AppendLine("The parser drops what it cannot read and parses on, so these can explain an empty result.");
             foreach (var warning in warnings)
                 sb.AppendLine($"  {warning}");

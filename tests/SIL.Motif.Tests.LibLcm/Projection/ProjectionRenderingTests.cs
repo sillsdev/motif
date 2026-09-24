@@ -15,6 +15,23 @@ namespace SIL.Motif.Tests.Projection;
 public sealed class ProjectionRenderingTests
 {
     [Fact]
+    public void AssessmentTextLabelsParserDiagnosticsAsLoadMessages()
+    {
+        var projection = new AnalysisAggregateProjection(
+            "Assessment complete", System.Array.Empty<WordFormAnalysisView>())
+        {
+            GrammarWarnings = ["warning: dropped rule", "capability: ignored feature"],
+        };
+
+        var text = CommandTextRenderer.Render(projection);
+
+        Assert.Contains("Parser load messages: 2", text);
+        Assert.DoesNotContain("Grammar findings reported by the parser", text);
+        Assert.Contains("warning: dropped rule", text);
+        Assert.Contains("capability: ignored feature", text);
+    }
+
+    [Fact]
     public void ProposalList_TextFiguresAllAppearInJson()
     {
         var projection = new ProposalListProjection(new[]
