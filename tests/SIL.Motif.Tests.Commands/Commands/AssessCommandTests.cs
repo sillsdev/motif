@@ -124,8 +124,18 @@ public sealed class AssessCommandTests : IDisposable
         Assert.StartsWith("1 search completed; 1 incomplete", assessed.Value.CompletionSummary, StringComparison.Ordinal);
         Assert.Contains("2 words; 1 object timing rows", assessed.Value.SummaryMarkdown, StringComparison.Ordinal);
 
+        var renamed = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Renamed default", [seeded.Seeded.TextId], []));
+        Assert.True(renamed.Succeeded, renamed.Refusal?.Message);
+        File.SetLastWriteTimeUtc(seeded.FwDataPath,
+            assessed.Value.Baseline.SourceLastWriteUtc.AddMinutes(5).UtcDateTime);
+        var fieldWorksSave = new DateTimeOffset(File.GetLastWriteTimeUtc(seeded.FwDataPath), TimeSpan.Zero);
         var overview = OverviewCommand.Overview(new OverviewRequest(seeded.FwDataPath));
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Equal(fieldWorksSave, overview.Value!.LastFieldWorksSaveUtc);
+        Assert.Equal(assessed.Value.Baseline.SourceLastWriteUtc, overview.Value.BaselineSourceLastWriteUtc);
+        Assert.True(overview.Value.IsStale);
+        Assert.Equal(parseAssessment.AssessmentId, overview.Value.AssessmentId);
         Assert.Equal(2, overview.Value!.SelectionWordCount);
         Assert.Equal(1, overview.Value.SelectionTextCount);
         Assert.Equal(0, overview.Value.SelectionAddedWordCount);

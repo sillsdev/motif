@@ -53,7 +53,7 @@ public static class TimingCommand
                         JsonSerializer.Serialize(baseline.Token, SIL.Motif.Contract.MotifJson.CreateOptions()));
                     if (composed.Succeeded)
                         assessment = OverviewCommand.FindMatchingAssessment(
-                            assessments, baseline.Token, composed.Value!.Selection, saved.Name);
+                            assessments, baseline.Token, composed.Value!.Selection);
                 }
             }
 

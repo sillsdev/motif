@@ -55,6 +55,10 @@ public interface IAssessmentRepository
     /// </summary>
     IReadOnlyList<AssessmentRecord> ListBaselineAssessments(string kind);
 
+    /// <summary>Gets the newest complete Baseline Assessment matching a token and exact Selection content.</summary>
+    AssessmentRecord? FindLatestBaselineAssessment(
+        string kind, string baselineToken, string selectionSha256, IReadOnlyList<string> selectionWords);
+
     /// <summary>
     /// Promotes one Assessment to be the project's current Assessment (ADR 0042 decision 2): a pointer
     /// the project holds, not a state the Assessment carries.
@@ -311,6 +315,38 @@ public sealed class AssessmentRepository : IAssessmentRepository
             Words = ReadWords(connection, header.AssessmentId),
             ObjectTimings = ReadObjectTimings(connection, header.AssessmentId)
         }).ToList();
+    }
+
+    /// <inheritdoc />
+    public AssessmentRecord? FindLatestBaselineAssessment(
+        string kind, string baselineToken, string selectionSha256, IReadOnlyList<string> selectionWords)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(kind);
+        ArgumentException.ThrowIfNullOrWhiteSpace(baselineToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectionSha256);
+        ArgumentNullException.ThrowIfNull(selectionWords);
+        using var connection = _database.OpenConnection();
+        AssessmentRecord? header;
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = HeaderSelectSql + """
+                 WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline
+                   AND SelectionSha256 = $selectionSha AND SelectionWordsJson = $selectionWords
+                 ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;
+                """;
+            command.Parameters.AddWithValue("$kind", kind);
+            command.Parameters.AddWithValue("$baseline", baselineToken);
+            command.Parameters.AddWithValue("$selectionSha", selectionSha256);
+            command.Parameters.AddWithValue("$selectionWords", JsonSerializer.Serialize(selectionWords));
+            using var reader = command.ExecuteReader();
+            header = reader.Read() ? ReadHeader(reader) : null;
+        }
+        if (header is null) return null;
+        return header with
+        {
+            Words = ReadWords(connection, header.AssessmentId),
+            ObjectTimings = ReadObjectTimings(connection, header.AssessmentId)
+        };
     }
 
     /// <inheritdoc />

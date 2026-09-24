@@ -3,7 +3,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The project header and metrics shown by the Overview page and <c>motif overview</c>.</summary>
 public sealed record OverviewResponse(
     string ProjectName,
-    DateTimeOffset OpenedUtc,
+    DateTimeOffset MotifStoreCreatedUtc,
     DateTimeOffset? LastFieldWorksSaveUtc,
     int SelectionWordCount,
     int SelectionTextCount,
@@ -20,7 +20,20 @@ public sealed record OverviewResponse(
     OverviewTextCoverage TextCoverage,
     OverviewAccuracy Accuracy,
     OverviewTiming Timing,
-    OverviewWarningsSummary? Warnings);
+    OverviewWarningsSummary? Warnings)
+{
+    /// <summary>The file name of the FieldWorks project.</summary>
+    public string ProjectFileName { get; init; } = string.Empty;
+
+    /// <summary>When the current Baseline was captured.</summary>
+    public DateTimeOffset? BaselineCapturedUtc { get; init; }
+
+    /// <summary>The FieldWorks file's last-write time when the Baseline was captured.</summary>
+    public DateTimeOffset? BaselineSourceLastWriteUtc { get; init; }
+
+    /// <summary>Whether the FieldWorks file has changed since the current Baseline.</summary>
+    public bool IsStale { get; init; }
+}
 
 /// <summary>How many words and Text occurrences in the Selection produced a completed parse.</summary>
 public sealed record OverviewTextCoverage(
@@ -52,5 +65,5 @@ public sealed record OverviewTiming(
 /// <summary>A word among the slowest measured words.</summary>
 public sealed record SlowWordTiming(string Word, int ElapsedMs);
 
-/// <summary>A reserved typed location for a future summary; warning details are not stored yet.</summary>
+/// <summary>Counts of grammar warning findings and the largest warning category.</summary>
 public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? LargestKind, int? LargestKindCount);

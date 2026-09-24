@@ -26,12 +26,14 @@ public static class OverviewCommand
     public static CommandOutcome<OverviewResponse> Overview(OverviewRequest request) =>
         ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var opened = ReadOpenedUtc(database);
+            var storeCreated = ReadStoreCreatedUtc(database);
             DateTimeOffset? lastSave = File.Exists(project.FullFwDataPath)
                 ? new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero) : null;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
-            if (baseline is not null) lastSave = baseline.SourceLastWriteUtc;
+            DateTimeOffset? baselineCaptured = baseline is null ? null : ParseUtc(baseline.Token.CapturedUtc);
+            var isStale = baseline is not null && lastSave is DateTimeOffset savedUtc &&
+                savedUtc > baseline.SourceLastWriteUtc;
             var savedSelection = new NamedSelectionRepository(database).GetDefault();
             Selection? selection = null;
             TextOccurrenceSnapshot? occurrenceSnapshot = null;
@@ -61,8 +63,7 @@ public static class OverviewCommand
                         return CommandOutcome<OverviewResponse>.Refused(composed.Refusal!);
                     selection = composed.Value!.Selection with { Name = savedSelection.Name };
                     occurrenceSnapshot = TextOccurrenceReader.Read(cache, savedSelection.TextIds);
-                    assessment = FindMatchingAssessment(new AssessmentRepository(database), baseline.Token,
-                        selection, savedSelection.Name);
+                    assessment = FindMatchingAssessment(new AssessmentRepository(database), baseline.Token, selection);
                 }
             }
 
@@ -74,7 +75,7 @@ public static class OverviewCommand
             var metrics = OverviewMetrics.Build(words, occurrenceSnapshot, assessedWords);
             var elapsedMs = assessment?.Words?.Where(word => word.ElapsedMs is not null).Sum(word => word.ElapsedMs!.Value);
             return CommandOutcome<OverviewResponse>.Success(new OverviewResponse(
-                Path.GetFileNameWithoutExtension(project.FullFwDataPath), opened, lastSave,
+                Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave,
                 words.Count, savedSelection?.TextIds.Count ?? 0, savedSelection?.AddedWords.Count ?? 0,
                 occurrenceCounts, wordformCount, ruleCount, lexemeCount,
                 assessment?.AssessmentId, assessment is null ? null : ParseUtc(assessment.SavedUtc),
@@ -83,25 +84,25 @@ public static class OverviewCommand
                 metrics.TextCoverage, metrics.Accuracy,
                 assessment is null ? TimingAggregation.SummarizeWords(Array.Empty<AssessedWord>())
                     : TimingAggregation.SummarizeWords(assessedWords),
-                Warnings: null));
+                Warnings: null)
+            {
+                ProjectFileName = Path.GetFileName(project.FullFwDataPath),
+                BaselineCapturedUtc = baselineCaptured,
+                BaselineSourceLastWriteUtc = baseline?.SourceLastWriteUtc,
+                IsStale = isStale,
+            });
         });
 
     internal static AssessmentRecord? FindMatchingAssessment(
-        AssessmentRepository repository, object baselineToken, Selection selection, string selectionName)
+        AssessmentRepository repository, object baselineToken, Selection selection)
     {
         var baselineJson = System.Text.Json.JsonSerializer.Serialize(
             baselineToken, SIL.Motif.Contract.MotifJson.CreateOptions());
-        return repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind())
-            .Where(record => StringComparer.Ordinal.Equals(record.BaselineToken, baselineJson) &&
-                StringComparer.Ordinal.Equals(record.Selection.Sha256, selection.Sha256) &&
-                record.Selection.Words.SequenceEqual(selection.Words, StringComparer.Ordinal) &&
-                (StringComparer.Ordinal.Equals(record.Selection.Name, selectionName) ||
-                 StringComparer.Ordinal.Equals(record.Selection.Name, selection.Name)))
-            .OrderBy(record => record.SavedUtc, StringComparer.Ordinal)
-            .LastOrDefault();
+        return repository.FindLatestBaselineAssessment(AssessmentKind.ParseTime.ToStoredKind(), baselineJson,
+            selection.Sha256, selection.Words);
     }
 
-    private static DateTimeOffset ReadOpenedUtc(MotifDatabase database)
+    private static DateTimeOffset ReadStoreCreatedUtc(MotifDatabase database)
     {
         using var connection = database.OpenConnection();
         using var command = connection.CreateCommand();

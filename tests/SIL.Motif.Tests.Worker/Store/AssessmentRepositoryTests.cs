@@ -53,6 +53,35 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void FindLatestBaselineAssessmentDoesNotReadUnmatchedHistory()
+    {
+        var repository = NewRepository("matching-baseline.fwdata", out var database);
+        using var ownedDatabase = database;
+        var selected = Selection.Create("selection-1", ["bo", "za"]);
+        var matching = NewAssessment("matching", null, null, "ParseTime",
+            [new AssessedWord("bo", "analysed", []), new AssessedWord("za", "no-analysis", [])],
+            "2026-09-24T10:00:00.0000000+00:00") with { Selection = selected };
+        var unrelated = NewAssessment("unrelated", null, null, "ParseTime",
+            [new AssessedWord("bo", "analysed", []), new AssessedWord("za", "no-analysis", [])],
+            "2026-09-24T11:00:00.0000000+00:00") with { BaselineToken = "{\"baseline\":false}" };
+        repository.RecordBatch([matching, unrelated]);
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE AssessedWords SET OrdinalIndex = OrdinalIndex + 5 " +
+                "WHERE AssessmentId = 'unrelated';";
+            command.ExecuteNonQuery();
+        }
+
+        var result = repository.FindLatestBaselineAssessment(
+            matching.Kind, matching.BaselineToken, selected.Sha256, selected.Words);
+
+        Assert.NotNull(result);
+        Assert.Equal("matching", result.AssessmentId);
+        Assert.Equal(["bo", "za"], result.Words!.Select(word => word.Word));
+    }
+
+    [Fact]
     public void RecordsAnAssessmentWithWordsAndAnalysesAndReadsItBackById()
     {
         var repository = NewRepository("record.fwdata", out _);

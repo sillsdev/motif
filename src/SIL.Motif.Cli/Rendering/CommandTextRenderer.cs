@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
@@ -231,8 +232,18 @@ public static class CommandTextRenderer
     private static string RenderOverview(OverviewResponse response)
     {
         var text = new StringBuilder();
-        text.AppendLine($"{response.ProjectName}  opened {response.OpenedUtc.ToLocalTime():t}");
-        text.AppendLine($"  Last FieldWorks save: {response.LastFieldWorksSaveUtc?.ToLocalTime().ToString("t") ?? "unknown"}");
+        var fileName = string.IsNullOrWhiteSpace(response.ProjectFileName)
+            ? response.ProjectName
+            : response.ProjectFileName;
+        var freshness = response.BaselineCapturedUtc is null
+            ? "No Baseline"
+            : response.IsStale ? "Saved since Baseline" : "Current";
+        var baselineTime = response.BaselineCapturedUtc?.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture);
+        var savedTime = response.LastFieldWorksSaveUtc?.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture)
+            ?? "unknown";
+        var timestamps = baselineTime is null ? string.Empty
+            : $" (Baseline {baselineTime}, FieldWorks saved {savedTime})";
+        text.AppendLine($"{response.ProjectName}  {fileName}  {freshness}{timestamps}");
         text.AppendLine($"Selection default: {response.SelectionTextCount:N0} text + " +
             $"{response.SelectionAddedWordCount:N0} words = {response.SelectionWordCount:N0} words, " +
             $"{response.TextOccurrenceCount:N0} occurrences");
@@ -241,7 +252,7 @@ public static class CommandTextRenderer
         var coverage = Percent(response.TextCoverage.ParsedWords, response.SelectionWordCount);
         var occurrenceCoverage = Percent(response.TextCoverage.ParsedOccurrences, response.TextCoverage.TotalOccurrences);
         text.AppendLine($"Coverage   {response.TextCoverage.ParsedWords:N0}/{response.SelectionWordCount:N0} parse ({coverage})  " +
-            $"{response.TextCoverage.NoParseWords:N0} no parse  {response.TextCoverage.UnknownWords:N0} unknown  " +
+            $"{response.TextCoverage.NoParseWords:N0} no parse  {response.TextCoverage.UnknownWords:N0} limit  " +
             $"{response.TextCoverage.SkippedWords:N0} skipped");
         text.AppendLine($"           {response.TextCoverage.ParsedOccurrences:N0}/{response.TextCoverage.TotalOccurrences:N0} occurrences covered ({occurrenceCoverage})");
         text.AppendLine($"Accuracy   {response.Accuracy.ApprovedWordsKept:N0}/{response.Accuracy.ApprovedWordCount:N0} approved kept  " +
@@ -251,13 +262,8 @@ public static class CommandTextRenderer
         var slowest = response.Timing.SlowestWords.FirstOrDefault();
         text.AppendLine($"Timing     median {FormatMs(response.Timing.MedianMs)}  p95 {FormatMs(response.Timing.Percentile95Ms)}  " +
             (slowest is null ? "slowest (none)" : $"slowest {slowest.Word} {slowest.ElapsedMs:N0} ms"));
-        text.AppendLine($"           {response.Timing.StepLimitedWordCount:N0} words hit the step limit");
-        text.AppendLine(response.Warnings is null
-            ? "Warnings   not stored"
-            : $"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings");
-        if (response.AssessmentId is not null)
-            text.AppendLine($"Assessed   {response.AssessmentId} at {response.AssessedUtc?.ToLocalTime():t} " +
-                $"in {response.AssessmentElapsedSeconds?.ToString("N1") ?? "unknown"} s");
+        if (response.Warnings is not null)
+            text.AppendLine($"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings");
         return text.ToString();
     }
 
