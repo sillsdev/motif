@@ -71,7 +71,8 @@ hard-coded `Debug` makes a `Release` run drive the wrong build, or none at all.
 
 ## Building against a local libpalaso (opt-in, off by default)
 
-`SIL.WritingSystems`/`SIL.Core` are pinned transitively via `SIL.LCModel` (`SilVersions.props`).
+`SIL.WritingSystems`/`SIL.Core` are pinned directly (`SilVersions.props`), above the 17.x that `SIL.LCModel`
+asks for: 18.0.0-beta0042 is the first to recover from an abandoned machine-wide SLDR mutex.
 To build against a local libpalaso checkout instead — e.g. to pick up a fix before it ships in a
 package — pack it and point motif at the result:
 
