@@ -65,9 +65,17 @@ public static class PendingChanges
                 var words = cache.ServiceLocator.GetInstance<IWfiWordformRepository>();
                 if (string.IsNullOrWhiteSpace(change.WordformId))
                 {
-                    wordform = words.AllInstances().Single(item =>
+                    var matches = words.AllInstances().Where(item =>
                         (item.Form.VernacularDefaultWritingSystem?.Text ?? "")
-                            .Normalize(NormalizationForm.FormD) == change.Word.Normalize(NormalizationForm.FormD));
+                            .Normalize(NormalizationForm.FormD) == change.Word.Normalize(NormalizationForm.FormD))
+                        .Take(2).ToArray();
+                    if (matches.Length == 0)
+                        return Refuse("change.wordform-missing", "The selected wordform is no longer in the project.",
+                            ("changeId", change.ChangeId), ("word", change.Word));
+                    if (matches.Length > 1)
+                        return Refuse("change.wordform-ambiguous", "More than one wordform has this form.",
+                            ("changeId", change.ChangeId), ("word", change.Word));
+                    wordform = matches[0];
                     change = change with { WordformId = CanonicalId.FromGuid(wordform.Guid).Value };
                 }
                 else wordform = words.GetObject(CanonicalId.Parse(change.WordformId).ToGuid());

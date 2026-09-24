@@ -115,4 +115,31 @@ public sealed class PendingChangesTests
         Assert.True(removedOrphan.Succeeded, removedOrphan.Refusal?.Message);
         Assert.Single(removedOrphan.Value!.Changes);
     }
+
+    [Fact]
+    public void AWordWithoutUniqueWordformIdentityIsRefusedWithFacts()
+    {
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var factory = cache.ServiceLocator.GetInstance<IWfiWordformFactory>();
+                factory.Create(TsStringUtils.MakeString("same-form", cache.DefaultVernWs));
+                factory.Create(TsStringUtils.MakeString("same-form", cache.DefaultVernWs));
+            });
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path),
+            Path.Combine(Path.GetDirectoryName(_path)!, "ambiguous-managed")).Succeeded);
+        var initial = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var changeId = CanonicalId.Mint().Value;
+
+        var outcome = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0",
+            initial.Value!.Revision, new ChangeIntent(changeId, "incorrect-spelling", "", "same-form")));
+
+        Assert.Equal("change.wordform-ambiguous", outcome.Refusal?.Code);
+        Assert.Equal(changeId, outcome.Refusal?.Facts["changeId"]);
+        Assert.Equal("same-form", outcome.Refusal?.Facts["word"]);
+    }
 }
