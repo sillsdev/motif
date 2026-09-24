@@ -29,7 +29,8 @@
                     </StackPanel>
                     <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Reading}"
                                              IsVisible="{Binding Reading, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                    <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding FitStatus}" />
+                    <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}"
+                                             TextWrapping="Wrap" Text="{Binding FitStatus}" />
                   </StackPanel>
                 </DockPanel>
               </Border>
@@ -47,7 +48,8 @@
           <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Changes.Summary}" />
           <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Changes.ApplyStatus}"
                                    IsVisible="{Binding Changes.HasItems}" />
-          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Changes.ErrorText}" />
+          <views:CopyableTextBlock Classes="error" FontSize="{DynamicResource Intent.Type.Small}"
+                                   TextWrapping="Wrap" Text="{Binding Changes.ErrorText}" />
           <Button Content="Apply to FieldWorks project" IsEnabled="False" HorizontalAlignment="Stretch"
                   ToolTip.Tip="Motif cannot yet write approvals, rejections or new analyses to FieldWorks."
                   AutomationProperties.Name="Apply the changes to the FieldWorks project" />
