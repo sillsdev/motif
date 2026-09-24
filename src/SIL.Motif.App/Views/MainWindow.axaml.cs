@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
@@ -34,23 +35,21 @@ public sealed partial class MainWindow : Window
         Closing += (_, _) => SaveBounds();
     }
 
-    /// <summary>Builds each page's panel from <paramref name="workspace"/> and binds the window to it.</summary>
+    /// <summary>Builds each page's view from <see cref="PageRegistry"/> and binds the window to <paramref name="workspace"/>.</summary>
     public void Compose(HandoffWorkspaceViewModel workspace)
     {
         ArgumentNullException.ThrowIfNull(workspace);
         DataContext = workspace;
 
-        Host("ProjectHost").Content = new ProjectPanel(workspace);
-        Host("GrammarHost").Content = new GrammarPanel(workspace.Grammar);
-        Host("SelectionHost").Content = new SelectionPanel(workspace.Selection, workspace.Words);
-        Host("AssessHost").Content = new AssessPanel(workspace.Assess);
-        Host("CompareHost").Content = new ComparePanel(workspace.Assess.Compare);
-        Host("DifferenceHost").Content = new DifferencePanel(workspace.Assess.Difference);
-        Host("ResultsInTextHost").Content = new ResultsInTextPanel(workspace.ResultsInText);
-        Host("TryWordHost").Content = new TryWordPanel(workspace.Assess.Trace);
-        Host("StatisticsHost").Content = new StatisticsPanel(workspace.Statistics);
-        Host("ReviewHost").Content = new ReviewPanel(workspace);
-        Host("HandoffHost").Content = new HandoffPanel(workspace.Handoff);
+        var host = this.FindControl<Panel>("PageHost")
+            ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");
+        foreach (var entry in workspace.Pages)
+        {
+            var view = PageRegistry.Create(entry.Page, workspace);
+            view.Name = $"{entry.Page}Page";
+            view.Bind(IsVisibleProperty, new Binding(nameof(PageViewModel.IsCurrent)) { Source = entry });
+            host.Children.Add(view);
+        }
 
         workspace.UpdateWindowWidth(Width);
         SizeChanged += (_, e) => workspace.UpdateWindowWidth(e.NewSize.Width);
@@ -88,11 +87,6 @@ public sealed partial class MainWindow : Window
     private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => HideProjectMenu();
 
     private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
-
-    // Looked up by name rather than a generated field, so this never depends on the compiler's own codegen.
-    private ContentControl Host(string name) =>
-        this.FindControl<ContentControl>(name)
-        ?? throw new InvalidOperationException($"MainWindow.axaml has no element named '{name}'.");
 
     // A preferences read failure must not block startup; an unreadable or absent file just keeps defaults.
     private void RestoreBounds()

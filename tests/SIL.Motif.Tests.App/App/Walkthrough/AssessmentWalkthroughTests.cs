@@ -53,11 +53,11 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Assert.All(rows.Where(row => row.IsParsed), row => Assert.All(row.Readings.SelectMany(r => r.Morphs),
                 morph => Assert.DoesNotContain("(missing", morph.Form, StringComparison.Ordinal)));
             Assert.All(rows.Where(row => row.IsParsed), row => Assert.NotEmpty(row.Readings));
-            Assert.True(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
-            Assert.True(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
+            Assert.True(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
 
             Assert.True(walkthrough.Workspace.HasEverAssessed);
-            Assert.True(walkthrough.Window.FindControl<ContentControl>("StatisticsHost")!.IsVisible);
+            Assert.True(walkthrough.Named<ContentControl>("StatisticsHost").IsVisible);
             Assert.NotNull(walkthrough.Workspace.Statistics.AssessmentId);
             Assert.Equal(walkthrough.Workspace.Statistics.Groups[0],
                 walkthrough.Workspace.Statistics.SelectedGroup);

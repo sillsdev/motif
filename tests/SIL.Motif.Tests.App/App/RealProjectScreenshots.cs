@@ -193,7 +193,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 Application.Current!.RequestedThemeVariant = variant;
                 foreach (var (name, page, tab) in PageScreenshots.Views())
                 {
-                    workspace.TextsTab = tab;
+                    workspace.TextsPage.Tab = tab;
                     workspace.CurrentPage = page;
                     Save(walkthrough.Window, Path.Combine(folder, $"{name}-{theme}.png"));
                 }
@@ -202,7 +202,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 walkthrough.Window.Width = 960;
                 foreach (var (name, page, tab) in PageScreenshots.Views().Take(2))
                 {
-                    workspace.TextsTab = tab;
+                    workspace.TextsPage.Tab = tab;
                     workspace.CurrentPage = page;
                     Save(walkthrough.Window, Path.Combine(folder, $"{name}-narrow-{theme}.png"));
                 }
@@ -224,7 +224,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         Save(walkthrough.Window, Path.Combine(folder, "2f-texts-matrix-violations-light.png"));
         compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
         Save(walkthrough.Window, Path.Combine(folder, "2g-texts-matrix-largest-cell-light.png"));
-        walkthrough.Workspace.TextsTab = TextsTab.Words;
+        walkthrough.Workspace.TextsPage.Tab = TextsTab.Words;
         Save(walkthrough.Window, Path.Combine(folder, "2h-texts-words-mini-matrix-light.png"));
         compare.ClearSelectionCommand.Execute(null);
     }

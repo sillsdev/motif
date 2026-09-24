@@ -27,6 +27,23 @@ public enum WorkspacePage
     AiHandoff,
 }
 
+/// <summary>The sidebar label of each <see cref="WorkspacePage"/>.</summary>
+public static class WorkspacePages
+{
+    /// <summary>What the sidebar calls <paramref name="page"/>.</summary>
+    public static string TitleOf(WorkspacePage page) => page switch
+    {
+        WorkspacePage.Overview => "Overview",
+        WorkspacePage.Texts => "Texts",
+        WorkspacePage.TryAWord => "Try a Word",
+        WorkspacePage.Timing => "Timing",
+        WorkspacePage.Warnings => "Warnings",
+        WorkspacePage.Review => "Review changes",
+        WorkspacePage.AiHandoff => "AI Handoff",
+        _ => throw new ArgumentOutOfRangeException(nameof(page), page, null),
+    };
+}
+
 /// <summary>The views of the words that share the Texts page, each one a tab.</summary>
 public enum TextsTab
 {

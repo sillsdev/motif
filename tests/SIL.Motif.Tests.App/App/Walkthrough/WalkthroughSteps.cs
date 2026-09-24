@@ -26,8 +26,8 @@ internal static class WalkthroughSteps
         Assert.True(walkthrough.Find<Button>("Refresh the Baseline").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
-        Assert.True(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
-        Assert.True(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
+        Assert.True(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
+        Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
 
         walkthrough.Click("Refresh the Baseline");
         walkthrough.WaitUntil(
@@ -91,8 +91,8 @@ internal static class WalkthroughSteps
         Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
         walkthrough.Click("Run the Assessment");
-        Assert.False(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
-        Assert.False(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
+        Assert.False(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
+        Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Assess.State == RunState.Running &&
                 walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled,
@@ -112,8 +112,8 @@ internal static class WalkthroughSteps
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Running,
                 Remaining(deadline), "the held Assessment did not reach Running");
-            Assert.False(walkthrough.Window.FindControl<ContentControl>("ProjectHost")!.IsEffectivelyEnabled);
-            Assert.False(walkthrough.Window.FindControl<ContentControl>("SelectionHost")!.IsEffectivelyEnabled);
+            Assert.False(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
+            Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
             Assert.True(walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled);
             holdingClient.ReleaseAssess();
         }

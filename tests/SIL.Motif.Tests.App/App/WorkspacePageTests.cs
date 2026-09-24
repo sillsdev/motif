@@ -80,7 +80,6 @@ public sealed class WorkspacePageTests
             ["Overview", "Texts", "Try a Word", "Timing", "Warnings", "Review changes", "AI Handoff"],
             workspace.Pages.Select(page => page.Title));
         Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
-        Assert.True(workspace.IsOverviewPage);
         Assert.All(workspace.Pages, page => Assert.False(page.HasBadge));
     }
 
@@ -92,7 +91,7 @@ public sealed class WorkspacePageTests
     [InlineData(WorkspacePage.Warnings)]
     [InlineData(WorkspacePage.Review)]
     [InlineData(WorkspacePage.AiHandoff)]
-    public void ShowingAPageMovesTheCurrentMarkerAndRaisesOnlyThatPagesFlag(WorkspacePage page)
+    public void ShowingAPageMovesTheCurrentMarkerToThatPageAlone(WorkspacePage page)
     {
         var (_, _, workspace) = NewWorkspace();
 
@@ -102,12 +101,6 @@ public sealed class WorkspacePageTests
         Assert.Same(workspace.Pages[(int)page], workspace.SelectedPage);
         Assert.Equal(Enum.GetValues<WorkspacePage>().Select(each => each == page),
             workspace.Pages.Select(entry => entry.IsCurrent));
-        bool[] flags =
-        [
-            workspace.IsOverviewPage, workspace.IsTextsPage, workspace.IsTryAWordPage, workspace.IsTimingPage,
-            workspace.IsWarningsPage, workspace.IsReviewPage, workspace.IsAiHandoffPage,
-        ];
-        Assert.Equal(Enum.GetValues<WorkspacePage>().Select(each => each == page), flags);
     }
 
     [Fact]
@@ -125,17 +118,14 @@ public sealed class WorkspacePageTests
     public void TheTextsPageOpensOnTheMatrixAndEachTabRaisesOnlyItsOwnFlag()
     {
         var (_, _, workspace) = NewWorkspace();
-        Assert.Equal(TextsTab.Matrix, workspace.TextsTab);
+        Assert.Equal(TextsTab.Matrix, workspace.TextsPage.Tab);
 
-        workspace.ShowTextsTabCommand.Execute(TextsTab.InText);
+        workspace.TextsPage.ShowTabCommand.Execute(TextsTab.InText);
 
+        var texts = workspace.TextsPage;
         Assert.Equal(
             [false, false, false, false, true],
-            new[]
-            {
-                workspace.ShowMatrixTab, workspace.ShowWhatChangedTab, workspace.ShowWordsTab,
-                workspace.ShowTextsReaderTab, workspace.ShowInTextTab,
-            });
+            new[] { texts.ShowMatrix, texts.ShowWhatChanged, texts.ShowWords, texts.ShowTexts, texts.ShowInText });
     }
 
     [Fact]
@@ -157,13 +147,13 @@ public sealed class WorkspacePageTests
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
         workspace.Selection.AllWordforms = true;
-        workspace.ShowTextsTabCommand.Execute(TextsTab.InText);
+        workspace.TextsPage.ShowTabCommand.Execute(TextsTab.InText);
         fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
 
         var running = workspace.Assess.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.True(workspace.ShowMatrixTab);
+        Assert.True(workspace.TextsPage.ShowMatrix);
         workspace.Assess.CancelCommand.Execute(null);
         await running;
     }
@@ -178,18 +168,18 @@ public sealed class WorkspacePageTests
             new("alimpiga", outcome, incomplete, "Search completed", 10, null) { ProjectStanding = ProjectStanding.NotPresent };
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("timed-out", true)] });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        Assert.True(workspace.ShowMatrixTab);
+        Assert.True(workspace.TextsPage.ShowMatrix);
 
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RerunAsync(["alimpiga"], 30_000);
 
-        Assert.True(workspace.ShowWhatChangedTab);
+        Assert.True(workspace.TextsPage.ShowWhatChanged);
         Assert.Equal(MoveKind.Settled, workspace.Assess.Difference.SelectedMove!.Kind);
 
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
 
-        Assert.True(workspace.ShowMatrixTab);
+        Assert.True(workspace.TextsPage.ShowMatrix);
     }
 
     [Fact]
@@ -299,7 +289,7 @@ public sealed class WorkspacePageTests
         workspace.ConfigureCommand.Execute(null);
 
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.True(workspace.ShowTextsReaderTab);
+        Assert.True(workspace.TextsPage.ShowTexts);
 
         var opened = 0;
         workspace.ShowPageCommand.Execute(WorkspacePage.Overview);
@@ -402,7 +392,7 @@ public sealed class WorkspacePageTests
         workspace.SeeWhatChangedCommand.Execute(null);
 
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.True(workspace.ShowWhatChangedTab);
+        Assert.True(workspace.TextsPage.ShowWhatChanged);
     }
 
     [Fact]

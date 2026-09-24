@@ -81,6 +81,29 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
+    public void EveryPageIsBuiltFromTheRegistryAndTheWindowHostsEachOnce()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window) = NewComposedWindow();
+            try
+            {
+                var host = window.FindControl<Panel>("PageHost")!;
+                Assert.Equal(PageHosts, host.Children.Select(child => child.Name));
+                foreach (var page in Enum.GetValues<WorkspacePage>())
+                {
+                    var built = PageRegistry.Create(page, workspace);
+                    Assert.IsType(built.GetType(), host.Children[(int)page]);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void OnlyTheCurrentPagesHostIsVisible()
     {
         _avalonia.Invoke(() =>
@@ -350,7 +373,7 @@ public sealed class WorkflowShellTests
                 Assert.Single(window.GetLogicalDescendants().OfType<DiagnosticPanel>());
                 var assess = Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>());
                 Assert.Empty(assess.GetLogicalDescendants().OfType<DiagnosticPanel>());
-                Assert.Contains(tryWord.GetLogicalAncestors().OfType<Control>(), control => control.Name == "TryAWordPage");
+                Assert.Equal("TryAWordPage", tryWord.Name);
             }
             finally
             {
@@ -402,7 +425,8 @@ public sealed class WorkflowShellTests
     private static readonly RecordingDragSource DragSource = new();
 
     private static Control Host(MainWindow window, string name) =>
-        window.FindControl<Control>(name) ?? throw new InvalidOperationException($"No page host named '{name}'.");
+        window.GetLogicalDescendants().OfType<Control>().SingleOrDefault(control => control.Name == name)
+        ?? throw new InvalidOperationException($"No control named '{name}'.");
 
     private static List<ListBoxItem> SidebarEntries(MainWindow window) =>
         window.FindControl<ListBox>("PageList")!.GetLogicalDescendants().OfType<ListBoxItem>().ToList();

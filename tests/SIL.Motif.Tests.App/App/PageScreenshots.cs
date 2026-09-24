@@ -58,7 +58,7 @@ public sealed class PageScreenshots
                         window.Height = 780;
                         foreach (var (name, page, tab) in Views())
                         {
-                            workspace.TextsTab = tab;
+                            workspace.TextsPage.Tab = tab;
                             workspace.CurrentPage = page;
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
                         }

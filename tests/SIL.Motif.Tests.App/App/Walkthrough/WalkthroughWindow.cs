@@ -71,6 +71,10 @@ public sealed class WalkthroughWindow : IDisposable
         loading.GetAwaiter().GetResult();
     }
 
+    /// <summary>The one control named <paramref name="name"/>, wherever it sits: each page's view has names of its own.</summary>
+    public T Named<T>(string name) where T : Control =>
+        Window.GetLogicalDescendants().OfType<T>().Single(control => control.Name == name);
+
     public T Find<T>(string accessibleName) where T : Control
     {
         var control = Window.GetLogicalDescendants().OfType<T>().Single(candidate =>
@@ -110,7 +114,7 @@ public sealed class WalkthroughWindow : IDisposable
     /// <summary>Opens a Texts page tab the way a person does, by its tab above the page.</summary>
     public void ShowTextsTab(TextsTab tab)
     {
-        if (Workspace.TextsTab == tab) return;
+        if (Workspace.TextsPage.Tab == tab) return;
 
         var name = tab switch
         {
@@ -119,7 +123,7 @@ public sealed class WalkthroughWindow : IDisposable
             _ => $"{tab} tab",
         };
         ClickControl(Find<Button>(name), name);
-        Assert.Equal(tab, Workspace.TextsTab);
+        Assert.Equal(tab, Workspace.TextsPage.Tab);
     }
 
     /// <summary>Opens a page the way a person does, by its entry in the sidebar.</summary>
@@ -143,13 +147,13 @@ public sealed class WalkthroughWindow : IDisposable
             Workspace.CurrentPage = page;
             foreach (var tab in Enum.GetValues<TextsTab>())
             {
-                Workspace.TextsTab = tab;
+                Workspace.TextsPage.Tab = tab;
                 Window.UpdateLayout();
                 Pump();
             }
         }
 
-        Workspace.TextsTab = TextsTab.Matrix;
+        Workspace.TextsPage.Tab = TextsTab.Matrix;
         Workspace.CurrentPage = opening;
         Window.UpdateLayout();
     }

@@ -74,18 +74,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         ResultsInText.OpenTexts = () => ShowTexts(TextsTab.Texts);
         OpenConfiguration = () => ShowTexts(TextsTab.Texts);
 
-        Pages =
-        [
-            new PageViewModel(WorkspacePage.Overview, "Overview"),
-            new PageViewModel(WorkspacePage.Texts, "Texts"),
-            new PageViewModel(WorkspacePage.TryAWord, "Try a Word"),
-            new PageViewModel(WorkspacePage.Timing, "Timing"),
-            new PageViewModel(WorkspacePage.Warnings, "Warnings"),
-            new PageViewModel(WorkspacePage.Review, "Review changes"),
-            new PageViewModel(WorkspacePage.AiHandoff, "AI Handoff"),
-        ];
+        Pages = Enum.GetValues<WorkspacePage>().Select(page => new PageViewModel(page, WorkspacePages.TitleOf(page))).ToArray();
         ShowPageCommand = new RelayCommand<WorkspacePage>(page => CurrentPage = page);
-        ShowTextsTabCommand = new RelayCommand<TextsTab>(tab => TextsTab = tab);
 
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(recent =>
@@ -120,13 +110,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>The page the window is showing.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedPage))]
-    [NotifyPropertyChangedFor(nameof(IsOverviewPage))]
-    [NotifyPropertyChangedFor(nameof(IsTextsPage))]
-    [NotifyPropertyChangedFor(nameof(IsTryAWordPage))]
-    [NotifyPropertyChangedFor(nameof(IsTimingPage))]
-    [NotifyPropertyChangedFor(nameof(IsWarningsPage))]
-    [NotifyPropertyChangedFor(nameof(IsReviewPage))]
-    [NotifyPropertyChangedFor(nameof(IsAiHandoffPage))]
     private WorkspacePage _currentPage;
 
     /// <summary>The sidebar entry for <see cref="CurrentPage"/>; setting it opens that page.</summary>
@@ -139,49 +122,16 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         }
     }
 
-    public bool IsOverviewPage => CurrentPage == WorkspacePage.Overview;
-
-    public bool IsTextsPage => CurrentPage == WorkspacePage.Texts;
-
-    public bool IsTryAWordPage => CurrentPage == WorkspacePage.TryAWord;
-
-    public bool IsTimingPage => CurrentPage == WorkspacePage.Timing;
-
-    public bool IsWarningsPage => CurrentPage == WorkspacePage.Warnings;
-
-    public bool IsReviewPage => CurrentPage == WorkspacePage.Review;
-
-    public bool IsAiHandoffPage => CurrentPage == WorkspacePage.AiHandoff;
-
     /// <summary>Opens the page passed as the command parameter.</summary>
     public IRelayCommand<WorkspacePage> ShowPageCommand { get; }
 
-    /// <summary>Which view of the words the Texts page is showing.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowMatrixTab))]
-    [NotifyPropertyChangedFor(nameof(ShowWhatChangedTab))]
-    [NotifyPropertyChangedFor(nameof(ShowWordsTab))]
-    [NotifyPropertyChangedFor(nameof(ShowTextsReaderTab))]
-    [NotifyPropertyChangedFor(nameof(ShowInTextTab))]
-    private TextsTab _textsTab;
-
-    public bool ShowMatrixTab => TextsTab == TextsTab.Matrix;
-
-    public bool ShowWhatChangedTab => TextsTab == TextsTab.WhatChanged;
-
-    public bool ShowWordsTab => TextsTab == TextsTab.Words;
-
-    public bool ShowTextsReaderTab => TextsTab == TextsTab.Texts;
-
-    public bool ShowInTextTab => TextsTab == TextsTab.InText;
-
-    /// <summary>Opens the Texts page tab passed as the command parameter.</summary>
-    public IRelayCommand<TextsTab> ShowTextsTabCommand { get; }
+    /// <summary>The Texts page's own state, such as which tab it shows.</summary>
+    public TextsPageViewModel TextsPage { get; } = new();
 
     /// <summary>Opens the Texts page on <paramref name="tab"/>.</summary>
     public void ShowTexts(TextsTab tab)
     {
-        TextsTab = tab;
+        TextsPage.Tab = tab;
         CurrentPage = WorkspacePage.Texts;
     }
 
@@ -545,7 +495,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             RefreshCommand.NotifyCanExecuteChanged();
             // A run started from Refresh leaves the person where they are; the top bar says how it is going.
             if (Assess.IsActive && !_isRefreshing) ShowTexts(TextsTab.Matrix);
-            else if (Assess.IsActive) TextsTab = TextsTab.Matrix;
+            else if (Assess.IsActive) TextsPage.Tab = TextsTab.Matrix;
         }
 
         if (_isRefreshing) RaiseFreshness();
@@ -564,7 +514,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
                 Selection.ChosenTextIds.Count, Selection.PastedWordEntries.Count);
             HasEverAssessed = true;
             // A re-run exists to settle words, so what it settled is the first thing to see.
-            if (Assess.LastRunWasRerun && Assess.Difference.HasDifference) TextsTab = TextsTab.WhatChanged;
+            if (Assess.LastRunWasRerun && Assess.Difference.HasDifference) TextsPage.Tab = TextsTab.WhatChanged;
             // The Overview's history lists this Assessment as soon as it is stored.
             _ = ProjectHistory.LoadAsync();
             Words.ShowAssessment(Assess.Words.Find);

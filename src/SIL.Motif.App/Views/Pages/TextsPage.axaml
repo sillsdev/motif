@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.TextsPage"
+             x:DataType="vm:HandoffWorkspaceViewModel">
+  <UserControl.Styles>
+    <!-- Tabs on a page: the active one underlined in the accent colour. -->
+    <Style Selector="Button.tab">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+      <Setter Property="Padding" Value="0,8" />
+      <Setter Property="Margin" Value="0,0,20,0" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.tab.active">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource MotifTabActive}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource MotifTabActive}" />
+    </Style>
+    <Style Selector="Button.pendingStrip">
+      <Setter Property="CornerRadius" Value="99" />
+      <Setter Property="Padding" Value="12,4" />
+      <Setter Property="Background" Value="{DynamicResource MotifCandidateFill}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource MotifCandidateAccent}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="20,4,20,0">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Classes="pendingStrip" Margin="0,0,10,4" VerticalAlignment="Center"
+                IsVisible="{Binding Changes.HasItems}"
+                Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
+                AutomationProperties.Name="Review the changes not applied yet">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse Width="7" Height="7" Fill="{DynamicResource MotifFreshStale}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Changes.CountText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource MotifTabActive}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button DockPanel.Dock="Right"
+                Content="Run assessment"
+                Command="{Binding Assess.RunCommand}"
+                VerticalAlignment="Center" Margin="0,0,0,4"
+                AutomationProperties.Name="Run the Assessment" />
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+          <Button Content="Matrix"
+                  Classes="tab" Classes.active="{Binding TextsPage.ShowMatrix}"
+                  Theme="{DynamicResource BorderlessButton}"
+                  Command="{Binding TextsPage.ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.Matrix}"
+                  AutomationProperties.Name="Matrix tab" />
+          <Button Content="What changed"
+                  Classes="tab" Classes.active="{Binding TextsPage.ShowWhatChanged}"
+                  Theme="{DynamicResource BorderlessButton}"
+                  IsVisible="{Binding Assess.Difference.HasDifference}"
+                  Command="{Binding TextsPage.ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.WhatChanged}"
+                  AutomationProperties.Name="What changed tab" />
+          <Button Content="Words"
+                  Classes="tab" Classes.active="{Binding TextsPage.ShowWords}"
+                  Theme="{DynamicResource BorderlessButton}"
+                  Command="{Binding TextsPage.ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.Words}"
+                  AutomationProperties.Name="Words tab" />
+          <Button Content="Texts"
+                  Classes="tab" Classes.active="{Binding TextsPage.ShowTexts}"
+                  Theme="{DynamicResource BorderlessButton}"
+                  Command="{Binding TextsPage.ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.Texts}"
+                  AutomationProperties.Name="Texts tab" />
+          <Button Content="In text"
+                  Classes="tab" Classes.active="{Binding TextsPage.ShowInText}"
+                  Theme="{DynamicResource BorderlessButton}"
+                  Command="{Binding TextsPage.ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.InText}"
+                  AutomationProperties.Name="In text tab" />
+        </StackPanel>
+        <views:CopyableTextBlock Classes="muted"
+                   Text="{Binding Assess.Words.OutcomeSummary}"
+                   Margin="16,0"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+  
+    <Panel Grid.Row="1">
+      <Panel IsVisible="{Binding TextsPage.ShowMatrix}">
+        <ContentControl x:Name="CompareHost" />
+        <views:CopyableTextBlock Classes="muted"
+                   Text="No results yet. Choose what to assess on the Texts tab, then run."
+                   IsVisible="{Binding ShowEmptyResults}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+      </Panel>
+      <ContentControl x:Name="DifferenceHost" IsVisible="{Binding TextsPage.ShowWhatChanged}" />
+      <Panel IsVisible="{Binding TextsPage.ShowWords}">
+        <ContentControl x:Name="AssessHost" />
+        <views:CopyableTextBlock Classes="muted"
+                   Text="No results yet. Choose what to assess on the Texts tab, then run."
+                   IsVisible="{Binding ShowEmptyResults}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+      </Panel>
+      <ScrollViewer x:Name="TextsReader" IsVisible="{Binding TextsPage.ShowTexts}">
+        <ContentControl x:Name="SelectionHost" IsEnabled="{Binding ProjectAndSelectionEnabled}" />
+      </ScrollViewer>
+      <ContentControl x:Name="ResultsInTextHost" IsVisible="{Binding TextsPage.ShowInText}" />
+    </Panel>
+  </Grid>
+</UserControl>

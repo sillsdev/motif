@@ -97,7 +97,7 @@ public sealed class MainWindowSmokeTests
                 foreach (var tab in Enum.GetValues<TextsTab>())
                 {
                     workspace.CurrentPage = page;
-                    workspace.TextsTab = tab;
+                    workspace.TextsPage.Tab = tab;
                     window.UpdateLayout();
 
                     var readOnlyText = window.GetVisualDescendants().OfType<TextBlock>()
@@ -534,7 +534,7 @@ public sealed class MainWindowSmokeTests
         foreach (var tab in Enum.GetValues<TextsTab>())
         {
             workspace.CurrentPage = page;
-            workspace.TextsTab = tab;
+            workspace.TextsPage.Tab = tab;
             window.UpdateLayout();
         }
     }
