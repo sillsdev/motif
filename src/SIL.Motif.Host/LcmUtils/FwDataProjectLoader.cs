@@ -42,6 +42,7 @@ public class FwDataProjectLoader
                 Debug.Assert(Icu.Wrapper.IcuVersion == "72.1.0.3");
             }
 
+            SldrCacheMutex.ReclaimIfAbandoned();
             Sldr.Initialize();
             InstallConfiguredGlobalWritingSystemRepository();
             _init = true;
