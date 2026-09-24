@@ -69,7 +69,7 @@ public sealed class HandoffViewModelTests
 
         handoff.LatestAssessmentAt = handoff.WrittenAt!.Value.AddMinutes(35);
         Assert.True(handoff.IsOutOfDate);
-        Assert.Contains("Write the Handoff again", handoff.OutOfDateText, StringComparison.Ordinal);
+        Assert.Contains("Write the AI Handoff again", handoff.OutOfDateText, StringComparison.Ordinal);
     }
 
     [Fact]

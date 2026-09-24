@@ -418,6 +418,7 @@ public sealed class WorkspacePageTests
 
         Assert.Equal(ProjectFreshness.Refreshing, workspace.Freshness);
         Assert.Equal("Refreshing", workspace.FreshnessLabel);
+        Assert.False(workspace.RerunOffered);
         Assert.True(workspace.CancelRefreshCommand.CanExecute(null));
         Assert.False(workspace.RefreshCommand.CanExecute(null));
 

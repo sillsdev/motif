@@ -98,10 +98,10 @@
       <Setter Property="Background" Value="{DynamicResource MotifCountFill}" />
       <Setter Property="Padding" Value="4,0" />
       <Setter Property="VerticalAlignment" Value="Top" />
-      <Setter Property="Margin" Value="0,-6,-8,0" />
+      <Setter Property="Margin" Value="0,-4,-6,0" />
     </Style>
     <Style Selector="ListBox.collapsed Border.pageBadge :is(TextBlock)">
-      <Setter Property="FontSize" Value="9.5" />
+      <Setter Property="FontSize" Value="10.5" />
       <Setter Property="FontWeight" Value="Bold" />
       <Setter Property="Foreground" Value="{DynamicResource MotifCountInk}" />
     </Style>

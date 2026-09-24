@@ -285,7 +285,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="Not parsed yet. After the run, the Results stage adds the parser's readings, their cost and the trace." />
+                         Text="Not parsed yet. After the run, the Words tab adds the parser's readings, their cost and the trace." />
             </StackPanel>
           </ScrollViewer>
         </Border>

@@ -46,7 +46,7 @@ public sealed record HandoffFileViewModel(string RelativePath, string FullPath)
     /// <summary>What a Handoff's files are for, by name, in the order a reader would open them.</summary>
     public static IReadOnlyList<(string Name, string Purpose)> KnownFiles { get; } =
     [
-        ("handoff.md", "What this Handoff is and how to read it."),
+        ("handoff.md", "What this AI Handoff is and how to read it."),
         ("assessment.json", "Every word the parser was asked about: whether it parsed, how long it took, and its result's signature."),
         ("texts.json", "The chosen texts, word by word, with the analyses the project stores."),
         ("grammar.json", "The grammar the parser used, as it read it."),

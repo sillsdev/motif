@@ -469,11 +469,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             await _reloadAfterRefresh.ConfigureAwait(true);
             if (_refreshCancelled || !Assess.RunCommand.CanExecute(null)) return;
 
-            await Assess.RunCommand.ExecuteAsync(null).ConfigureAwait(true);
-            if (Assess.State != RunState.Completed) return;
-            // The run this Refresh started is the rerun a fresh Baseline would otherwise offer.
+            // The run this Refresh starts is the rerun a fresh Baseline would otherwise offer.
             RerunOffered = false;
-            _refreshed = true;
+            await Assess.RunCommand.ExecuteAsync(null).ConfigureAwait(true);
+            _refreshed = Assess.State == RunState.Completed;
         }
         finally
         {
