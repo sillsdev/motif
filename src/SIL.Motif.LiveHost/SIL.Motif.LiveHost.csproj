@@ -14,7 +14,7 @@
     <PackageReference Include="SIL.LCModel" Version="11.0.0-beta0150" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(MotifLocalPalasoActive)' == 'true'">
+  <ItemGroup>
     <PackageReference Include="SIL.WritingSystems" Version="$(SilLibPalasoVersion)" />
     <PackageReference Include="SIL.Core" Version="$(SilLibPalasoVersion)" />
   </ItemGroup>

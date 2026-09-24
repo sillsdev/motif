@@ -16,8 +16,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
   </ItemGroup>
 
-  <!-- Pins the otherwise-transitive libpalaso packages so a local override (see AGENTS.md) applies here too. -->
-  <ItemGroup Condition="'$(MotifLocalPalasoActive)' == 'true'">
+  <!-- Pins libpalaso above what SIL.LCModel asks for (SilVersions.props), and lets a local override apply. -->
+  <ItemGroup>
     <PackageReference Include="SIL.WritingSystems" Version="$(SilLibPalasoVersion)" />
     <PackageReference Include="SIL.Core" Version="$(SilLibPalasoVersion)" />
   </ItemGroup>
