@@ -12,7 +12,11 @@ namespace SIL.Motif.App.ViewModels;
 /// <param name="Assessment">The completed Assessment's result.</param>
 /// <param name="CompletedAt">When it completed, or <see langword="null"/> when that is not known.</param>
 /// <param name="WasRerun">Whether it gave some words more time rather than measuring the whole Selection.</param>
-public sealed record WorkspaceEvidence(AssessCommandResponse Assessment, DateTimeOffset? CompletedAt, bool WasRerun);
+public sealed record WorkspaceEvidence(AssessCommandResponse Assessment, DateTimeOffset? CompletedAt, bool WasRerun)
+{
+    /// <summary>The FieldWorks save the Assessment's numbers were measured against.</summary>
+    public DateTimeOffset MeasuredSaveUtc => Assessment.Baseline.SourceLastWriteUtc;
+}
 
 /// <summary>
 /// A request to open a page, carrying whatever that page should show when it opens. Each page declares the

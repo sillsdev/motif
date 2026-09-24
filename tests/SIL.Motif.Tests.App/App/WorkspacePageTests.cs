@@ -546,6 +546,22 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
+    public async Task EvidencePublishedFromAnOlderSaveThanTheBaselineIsNotCurrent()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        Assert.Equal(ProjectFreshness.Current, workspace.Freshness);
+
+        var stored = NewAssessResponse(Saved.AddHours(-3));
+        workspace.Context.PublishEvidence(new WorkspaceEvidence(stored, Saved.AddHours(-2), WasRerun: false));
+
+        Assert.Equal(Saved.AddHours(-3), workspace.Context.Evidence!.MeasuredSaveUtc);
+        Assert.True(workspace.Baseline.HasAssessment);
+        Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
+        Assert.Contains("the numbers still describe", workspace.FreshnessDetail);
+    }
+
+    [Fact]
     public async Task RecapturingTheSameSaveUnderAnAssessmentStaysCurrent()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();

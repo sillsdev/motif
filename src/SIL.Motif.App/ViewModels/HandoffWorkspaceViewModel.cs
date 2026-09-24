@@ -28,8 +28,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public const double SidebarCollapseWidth = 1100;
 
     private readonly ICommandClient _commandClient;
-    // The FieldWorks save the numbers on screen were measured against, once an Assessment has completed.
-    private DateTimeOffset? _assessedSaveUtc;
     private Task _reloadAfterRefresh = Task.CompletedTask;
     private bool _isRefreshing;
     private bool _refreshCancelled;
@@ -230,8 +228,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         RaiseFreshness();
     }
 
-    // What the numbers on screen were measured against: the last completed Assessment's save, else the Baseline's.
-    private DateTimeOffset? NumbersSavedUtc => _assessedSaveUtc ?? Baseline.SourceLastWriteUtc;
+    // What the numbers on screen were measured against: the published evidence's save, else the Baseline's.
+    private DateTimeOffset? NumbersSavedUtc => Context.Evidence?.MeasuredSaveUtc ?? Baseline.SourceLastWriteUtc;
 
     // The latest save known: the project file as last read, or a Baseline captured from a later save.
     private DateTimeOffset? LatestSaveUtc =>
@@ -426,6 +424,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
                 OnPropertyChanged(nameof(ProjectName));
                 OnPropertyChanged(nameof(HasProject));
                 break;
+            case nameof(WorkspaceContext.Evidence):
+                // Freshness describes the evidence on screen, whether a run just produced it or the store held it.
+                if (Context.HasEvidence) Baseline.HasAssessment = true;
+                RaiseFreshness();
+                break;
         }
     }
 
@@ -448,10 +451,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Completed &&
             Assess.Result is { } result)
         {
-            Baseline.HasAssessment = true;
-            _assessedSaveUtc = result.Baseline.SourceLastWriteUtc;
             Context.PublishEvidence(new WorkspaceEvidence(result, Assess.CompletedAt, Assess.LastRunWasRerun));
-            RaiseFreshness();
         }
     }
 
@@ -481,7 +481,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         RerunOffered = false;
         _refreshed = false;
-        _assessedSaveUtc = null;
 
         Assess.Reset();
         Context.ClearProject();
