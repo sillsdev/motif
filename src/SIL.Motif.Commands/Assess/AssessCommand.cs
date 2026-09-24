@@ -174,7 +174,7 @@ public static class AssessCommand
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
                 scope = new AssessmentScope(composition.Selection.Words, collected,
                     request.PerWordLimitMs is { } ms ? TimeSpan.FromMilliseconds(ms) : configured.PerWordLimit,
-                    request.PerWordStepLimit ?? configured.PerWordStepLimit);
+                    request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ?? configured.PerWordStepLimit);
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)

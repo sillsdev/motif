@@ -89,6 +89,16 @@
             </DockPanel>
             <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
                                      Text="Blank keeps the project's limit (1 second unless its settings say otherwise). A word that runs out of time shows as Limit." />
+            <DockPanel LastChildFill="False">
+              <views:CopyableTextBlock Text="Step limit per word" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <NumericUpDown Value="{Binding Selection.PerWordStepLimit}"
+                              Minimum="1" Increment="100000" FormatString="N0"
+                              AutomationProperties.Name="Step limit per word" />
+            </DockPanel>
+            <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                                     Text="Blank keeps the project's step limit. A word that uses all allowed steps shows as Limit." />
+            <views:CopyableTextBlock Classes="error" Text="{Binding Selection.StepLimitValidationMessage}"
+                       IsVisible="{Binding Selection.StepLimitValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
             <views:CopyableTextBlock Classes="error" Text="{Binding Selection.ThresholdValidationMessage}"
                        IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
           </StackPanel>

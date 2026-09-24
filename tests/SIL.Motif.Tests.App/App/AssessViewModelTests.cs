@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -75,6 +76,19 @@ public sealed class AssessViewModelTests
         foreach (var step in observed) Assert.True(step.Total is null || step.Completed <= step.Total);
         Assert.Equal(RunState.Completed, assess.State);
         Assert.Same(response, assess.Result);
+    }
+
+    [Fact]
+    public async Task RerunningPreservesTheSelectionStepCap()
+    {
+        var (fake, selection, assess) = NewViewModel();
+        selection.PerWordStepLimit = 250000;
+        fake.AssessCompletesWith(NewResponse());
+
+        await assess.RunCommand.ExecuteAsync(null);
+        await assess.RerunAsync(["kitabu"], 45000);
+
+        Assert.Equal(new StepCap(250000), fake.AssessRequests[1].Selection!.PerWordStepLimit);
     }
 
     [Fact]

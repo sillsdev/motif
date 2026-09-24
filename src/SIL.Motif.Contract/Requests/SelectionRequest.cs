@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Contract.Requests;
 
@@ -23,10 +24,12 @@ namespace SIL.Motif.Contract.Requests;
 /// The exact Baseline ParseTime Assessment to use for retry. It is required when either retry option is set
 /// and must be omitted otherwise.
 /// </param>
+/// <param name="PerWordStepLimit">A per-run step cap; null keeps the project's configured cap.</param>
 public sealed record SelectionRequest(
     bool AllWordforms,
     IReadOnlyList<Guid> TextIds,
     IReadOnlyList<string> Words,
     bool RetryFailed,
     TimeSpan? RetrySlowerThan,
-    string? RetrySourceAssessmentId = null);
+    string? RetrySourceAssessmentId = null,
+    StepCap? PerWordStepLimit = null);

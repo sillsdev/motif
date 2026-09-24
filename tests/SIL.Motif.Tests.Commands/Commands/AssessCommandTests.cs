@@ -199,6 +199,11 @@ public sealed class AssessCommandTests : IDisposable
             By: "rule", Rule: "Verb template", Top: 5));
         Assert.False(missingText.Succeeded);
         Assert.Equal("selection.text-not-found", missingText.Refusal!.Code);
+        var namedSelectionWithExplicitAssessment = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            parseAssessment.AssessmentId, "Renamed default", "rule", "Verb template", 5));
+        Assert.True(namedSelectionWithExplicitAssessment.Succeeded,
+            namedSelectionWithExplicitAssessment.Refusal?.Message);
+        Assert.Equal(2, namedSelectionWithExplicitAssessment.Value!.WordCount);
         Assert.Empty(invoker.Requests);
     }
 
@@ -353,10 +358,11 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Theory]
-    [InlineData(null, 2500)]
-    [InlineData(4000, 4000)]
-    public void TheRunIsHeldToTheProjectsConfiguredLimitsUnlessTheRequestSetsATimeLimit(
-        int? requestedMs, int expectedMs)
+    [InlineData(null, null, null, 500000)]
+    [InlineData(4000, 150000, null, 150000)]
+    [InlineData(4000, 150000, 750000, 750000)]
+    public void TheRunUsesRequestLimitsBeforeProjectConfiguredLimits(
+        int? requestedMs, int? selectionStepLimit, int? requestStepLimit, int expectedStepLimit)
     {
         using var seeded = NewSeededScratch();
         var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
@@ -371,7 +377,7 @@ public sealed class AssessCommandTests : IDisposable
             kind == AssessmentKind.ParseTime
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
-                    expectedMs, seeded.FwDataPath, []) { PerWordStepLimit = 500000 })
+                    requestedMs ?? 2500, seeded.FwDataPath, []) { PerWordStepLimit = expectedStepLimit })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) =>
@@ -382,12 +388,15 @@ public sealed class AssessCommandTests : IDisposable
         };
 
         var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
-            new SelectionRequest(false, [], ["motifa"], false, null), requestedMs), NewManagedRoot(),
+            new SelectionRequest(false, [], ["motifa"], false, null,
+                PerWordStepLimit: selectionStepLimit is { } selectionSteps ? new StepCap(selectionSteps) : null),
+            requestedMs,
+            requestStepLimit is { } requestSteps ? new StepCap(requestSteps) : null), NewManagedRoot(),
             assessor, NewInvoker(), null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        Assert.Equal(TimeSpan.FromMilliseconds(expectedMs), seen!.PerWordLimit);
-        Assert.Equal(500000, seen.PerWordStepLimit);
+        Assert.Equal(TimeSpan.FromMilliseconds(requestedMs ?? 2500), seen!.PerWordLimit);
+        Assert.Equal(expectedStepLimit, seen.PerWordStepLimit);
     }
 
     [Fact]

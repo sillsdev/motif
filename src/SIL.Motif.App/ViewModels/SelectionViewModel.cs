@@ -3,6 +3,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 
 namespace SIL.Motif.App.ViewModels;
@@ -18,6 +19,7 @@ public sealed partial class SelectionViewModel : ObservableObject
 {
     private const string NothingSelectedYet = "Nothing selected yet.";
     private const string NegativeThresholdMessage = "The retry-slower-than threshold must not be negative.";
+    private const string InvalidStepLimitMessage = "The per-word step limit must be a positive whole number.";
 
     private readonly ICommandClient _commandClient;
     private readonly List<TextChoiceViewModel> _allTexts = [];
@@ -60,6 +62,9 @@ public sealed partial class SelectionViewModel : ObservableObject
     private decimal? _perWordTimeLimitSeconds;
 
     [ObservableProperty]
+    private decimal? _perWordStepLimit;
+
+    [ObservableProperty]
     private decimal? _retrySlowerThanMilliseconds;
 
     [ObservableProperty]
@@ -67,6 +72,9 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _thresholdValidationMessage;
+
+    [ObservableProperty]
+    private string? _stepLimitValidationMessage;
 
     [ObservableProperty]
     private bool _canAssess;
@@ -84,13 +92,19 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     partial void OnRetrySlowerThanMillisecondsChanged(decimal? value) => Recompute();
 
+    partial void OnPerWordStepLimitChanged(decimal? value) => Recompute();
+
     /// <summary>Composes the current state into the one request every source agrees to combine into.</summary>
     public SelectionRequest BuildRequest()
     {
         var threshold = ThresholdValidationMessage is null && RetrySlowerThanMilliseconds is { } ms
             ? TimeSpan.FromMilliseconds((double)ms)
             : (TimeSpan?)null;
-        return new SelectionRequest(AllWordforms, ChosenTextIds, PastedWordEntries, RetryFailed, threshold);
+        var stepLimit = StepLimitValidationMessage is null && PerWordStepLimit is { } steps
+            ? new StepCap(decimal.ToInt64(steps))
+            : null;
+        return new SelectionRequest(AllWordforms, ChosenTextIds, PastedWordEntries, RetryFailed, threshold,
+            PerWordStepLimit: stepLimit);
     }
 
     /// <summary>Loads the Texts of a newly chosen project's current Baseline, discarding whatever was shown before.</summary>
@@ -106,6 +120,7 @@ public sealed partial class SelectionViewModel : ObservableObject
         RetryFailed = false;
         RetrySlowerThanMilliseconds = null;
         PerWordTimeLimitSeconds = null;
+        PerWordStepLimit = null;
         RefusalMessage = null;
         TextsEmptyMessage = null;
         Recompute();
@@ -197,11 +212,14 @@ public sealed partial class SelectionViewModel : ObservableObject
         var hasThreshold = RetrySlowerThanMilliseconds is not null;
         var thresholdValid = !hasThreshold || RetrySlowerThanMilliseconds >= 0;
         ThresholdValidationMessage = thresholdValid ? null : NegativeThresholdMessage;
+        var stepLimitValid = PerWordStepLimit is null ||
+            PerWordStepLimit is > 0 and <= long.MaxValue && decimal.Truncate(PerWordStepLimit.Value) == PerWordStepLimit;
+        StepLimitValidationMessage = stepLimitValid ? null : InvalidStepLimitMessage;
 
         var hasAnySource = AllWordforms || ChosenTextIds.Count > 0 || PastedWordEntries.Count > 0
             || RetryFailed || (hasThreshold && thresholdValid);
 
-        CanAssess = hasAnySource && thresholdValid;
+        CanAssess = hasAnySource && thresholdValid && stepLimitValid;
         SummaryText = BuildSummary(hasAnySource, hasThreshold && thresholdValid);
     }
 
@@ -215,6 +233,8 @@ public sealed partial class SelectionViewModel : ObservableObject
         if (PastedWordEntries.Count > 0) parts.Add(Pluralize(PastedWordEntries.Count, "pasted word"));
         if (RetryFailed) parts.Add("retry failed");
         if (includeThreshold) parts.Add($"retry slower than {RetrySlowerThanMilliseconds} ms");
+        if (StepLimitValidationMessage is null && PerWordStepLimit is { } steps)
+            parts.Add($"step cap {steps:N0}");
         return string.Join(", ", parts);
     }
 
