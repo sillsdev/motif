@@ -384,7 +384,7 @@ public sealed class HandoffWriterTests : IDisposable
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
         var selection = new SelectionRequest(false, [], ["mirusi"], false, null);
-        var assessor = NewAssessor();
+        var assessor = NewAssessor("mirusi");
         using var assessmentInvoker = NewInvoker();
         var assessment = RunAssessment(seeded, managedRoot, assessor, assessmentInvoker, selection);
         using var invoker = NewInvoker();
@@ -409,7 +409,7 @@ public sealed class HandoffWriterTests : IDisposable
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
         var selection = new SelectionRequest(false, [], ["mirusi"], false, null);
-        var assessor = NewAssessor();
+        var assessor = NewAssessor("mirusi");
         using var assessmentInvoker = NewInvoker();
         var assessment = RunAssessment(seeded, managedRoot, assessor, assessmentInvoker, selection);
         using var invoker = NewInvoker();
@@ -599,7 +599,7 @@ public sealed class HandoffWriterTests : IDisposable
     private static void AssertFile(string root, string relativePath) =>
         Assert.True(File.Exists(Path.Combine(root, relativePath)), $"Missing '{relativePath}'.");
 
-    private FakeAssessor NewAssessor()
+    private FakeAssessor NewAssessor(string? analyzedWord = null)
     {
         return new FakeAssessor("fake-assessor", CollectedKinds, rawForScope: (scope, candidate, kind) =>
         {
@@ -612,8 +612,12 @@ public sealed class HandoffWriterTests : IDisposable
             if (kind == AssessmentKind.ParseTime)
             {
                 var projectPath = Directory.GetFiles(candidate, "*.fwdata", SearchOption.AllDirectories).Single();
-                var words = scope.Words.Select((word, index) => new WordAnalysis(
-                    index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray();
+                var words = scope.Words.Select((word, index) =>
+                {
+                    var analyzed = StringComparer.Ordinal.Equals(word, analyzedWord);
+                    return new WordAnalysis(index, word, analyzed ? 42 : 1,
+                        analyzed ? WordOutcome.Analysed : WordOutcome.NoAnalysis, analyzed ? "sig" : "none");
+                }).ToArray();
                 return new AssessmentRaw.Batch(new BatchAnalysis(words,
                     (int)scope.PerWordLimit.TotalMilliseconds, projectPath, [])
                 { PerWordStepLimit = scope.PerWordStepLimit });
