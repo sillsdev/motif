@@ -8,6 +8,14 @@ namespace SIL.Motif.Tests.App;
 // Each defaults to an empty success, so a test that never mentions these queries is not failed by them.
 public sealed partial class FakeCommandClient
 {
+    private Func<OverviewRequest, CancellationToken, Task<CommandOutcome<OverviewResponse>>>
+        _overview = (_, _) => Refused<OverviewResponse>(
+            new Refusal("overview.not-configured", FailureReason.Refused, "No Overview configured."));
+
+    private Func<TimingRequest, CancellationToken, Task<CommandOutcome<TimingResponse>>>
+        _timing = (_, _) => Refused<TimingResponse>(
+            new Refusal("timing.not-configured", FailureReason.Refused, "No Timing configured."));
+
     private Func<ProjectHistoryRequest, CancellationToken, Task<CommandOutcome<ProjectHistoryResponse>>>
         _projectHistory = (_, _) => Completed(new ProjectHistoryResponse([]));
 
@@ -28,6 +36,8 @@ public sealed partial class FakeCommandClient
             new Refusal("timing.not-configured", FailureReason.Refused, "No timing configured."));
 
     public List<ProjectHistoryRequest> ProjectHistoryRequests { get; } = [];
+    public List<OverviewRequest> OverviewRequests { get; } = [];
+    public List<TimingRequest> TimingRequests { get; } = [];
     public List<GrammarCheckRequest> CheckGrammarRequests { get; } = [];
     public List<GrammarCheckRequest> StoredGrammarCheckRequests { get; } = [];
     public List<TextWordsRequest> ListTextWordsRequests { get; } = [];
@@ -37,6 +47,18 @@ public sealed partial class FakeCommandClient
     public void OnProjectHistory(
         Func<ProjectHistoryRequest, CancellationToken, Task<CommandOutcome<ProjectHistoryResponse>>> behavior) =>
         _projectHistory = behavior;
+
+    public void OnOverview(
+        Func<OverviewRequest, CancellationToken, Task<CommandOutcome<OverviewResponse>>> behavior) =>
+        _overview = behavior;
+
+    public void OverviewCompletesWith(OverviewResponse response) => OnOverview((_, _) => Completed(response));
+
+    public void OnTiming(
+        Func<TimingRequest, CancellationToken, Task<CommandOutcome<TimingResponse>>> behavior) =>
+        _timing = behavior;
+
+    public void TimingCompletesWith(TimingResponse response) => OnTiming((_, _) => Completed(response));
 
     public void ProjectHistoryIs(ProjectHistoryResponse response) => OnProjectHistory((_, _) => Completed(response));
 
@@ -80,6 +102,20 @@ public sealed partial class FakeCommandClient
     {
         ProjectHistoryRequests.Add(request);
         return _projectHistory(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<OverviewResponse>> OverviewAsync(
+        OverviewRequest request, CancellationToken cancellationToken)
+    {
+        OverviewRequests.Add(request);
+        return _overview(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<TimingResponse>> TimingAsync(
+        TimingRequest request, CancellationToken cancellationToken)
+    {
+        TimingRequests.Add(request);
+        return _timing(request, cancellationToken);
     }
 
     public Task<CommandOutcome<GrammarCheckResponse>> CheckGrammarAsync(

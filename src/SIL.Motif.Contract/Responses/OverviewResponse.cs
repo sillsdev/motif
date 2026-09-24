@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.Baselines;
+
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>The project header and metrics shown by the Overview page and <c>motif overview</c>.</summary>
@@ -33,6 +35,9 @@ public sealed record OverviewResponse(
 
     /// <summary>Whether the FieldWorks file has changed since the current Baseline.</summary>
     public bool IsStale { get; init; }
+
+    /// <summary>The current Baseline fingerprints, or <see langword="null"/> before the first capture.</summary>
+    public BaselineToken? BaselineToken { get; init; }
 }
 
 /// <summary>How many words and Text occurrences in the Selection produced a completed parse.</summary>
@@ -53,7 +58,11 @@ public sealed record OverviewAccuracy(
     int RejectedAnalysesRebuilt,
     int RejectedWordCount,
     int CandidatesConfirmed,
-    int CandidateWordCount);
+    int CandidateWordCount)
+{
+    /// <summary>Rejected-standing words placed in the Compare matrix's Match column.</summary>
+    public int RejectedWordsInMatchCell { get; init; }
+}
 
 /// <summary>Per-word parse-time percentiles, slowest words, and step-limited count.</summary>
 public sealed record OverviewTiming(

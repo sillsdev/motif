@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Projects;
 
 namespace SIL.Motif.Worker.Baselines;
@@ -51,7 +52,8 @@ public sealed class BaselineCapturePublisher
         string bundlePath,
         BaselineToken declaredToken,
         DateTimeOffset sourceLastWriteUtc,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ProjectSummarySnapshot? projectSummary = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(declaredToken);
@@ -65,7 +67,7 @@ public sealed class BaselineCapturePublisher
 
         var baselines = new BaselineRepository(_database);
         baselines.Record(
-            ProjectWorkspaceKey.Compute(project), outcome.Publication, _now(), sourceLastWriteUtc);
+            ProjectWorkspaceKey.Compute(project), outcome.Publication, _now(), sourceLastWriteUtc, projectSummary);
 
         return new BaselineCapturePublication(
             outcome.Publication.Token, outcome.Publication.FwDataPath, !outcome.Created);

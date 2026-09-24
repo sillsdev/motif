@@ -1,20 +1,11 @@
-using System.Globalization;
-using Microsoft.Data.Sqlite;
-using SIL.LCModel;
-using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Assess;
-using SIL.Motif.Host.Corpus;
-using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
-using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
-using SIL.Motif.Worker.Baselines;
-using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Catalog;
@@ -26,92 +17,41 @@ public static class OverviewCommand
     public static CommandOutcome<OverviewResponse> Overview(OverviewRequest request) =>
         ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var storeCreated = ReadStoreCreatedUtc(database);
-            DateTimeOffset? lastSave = File.Exists(project.FullFwDataPath)
-                ? new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero) : null;
-            var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
-            DateTimeOffset? baselineCaptured = baseline is null ? null : ParseUtc(baseline.Token.CapturedUtc);
-            var isStale = baseline is not null && lastSave is DateTimeOffset savedUtc &&
-                savedUtc > baseline.SourceLastWriteUtc;
-            var savedSelection = new NamedSelectionRepository(database).GetDefault();
-            Selection? selection = null;
-            TextOccurrenceSnapshot? occurrenceSnapshot = null;
-            AssessmentRecord? assessment = null;
-            var wordformCount = 0;
-            var lexemeCount = 0;
-            var ruleCount = 0;
-            if (baseline is not null)
-            {
-                using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
-                wordformCount = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().Count;
-                var entries = cache.ServiceLocator.GetInstance<ILexEntryRepository>();
-                lexemeCount = entries.Count;
-                var affixRules = entries.AllInstances()
-                    .SelectMany(entry => entry.AlternateFormsOS.OfType<IMoAffixAllomorph>()
-                        .Concat(entry.LexemeFormOA is IMoAffixAllomorph allomorph ? [allomorph] : []))
-                    .Select(form => form.Guid).Distinct().Count();
-                ruleCount = affixRules + cache.LangProject.MorphologicalDataOA.CompoundRulesOS.Count +
-                    cache.LangProject.PhonologicalDataOA.PhonRulesOS.Count;
-                if (savedSelection is not null)
-                {
-                    var requestSelection = new SelectionRequest(false, savedSelection.TextIds,
-                        savedSelection.AddedWords, false, null);
-                    var composed = SelectionComposer.Compose(cache, requestSelection, new AssessmentRepository(database),
-                        System.Text.Json.JsonSerializer.Serialize(baseline.Token, SIL.Motif.Contract.MotifJson.CreateOptions()));
-                    if (!composed.Succeeded)
-                        return CommandOutcome<OverviewResponse>.Refused(composed.Refusal!);
-                    selection = composed.Value!.Selection with { Name = savedSelection.Name };
-                    occurrenceSnapshot = TextOccurrenceReader.Read(cache, savedSelection.TextIds);
-                    assessment = FindMatchingAssessment(new AssessmentRepository(database), baseline.Token, selection);
-                }
-            }
-
-            var occurrenceCounts = selection is null || occurrenceSnapshot is null
-                ? 0
-                : selection.Words.Sum(word => occurrenceSnapshot.OccurrencesByWord.GetValueOrDefault(word));
-            var words = selection?.Words ?? savedSelection?.AddedWords ?? Array.Empty<string>();
+            var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project);
+            if (!current.Succeeded)
+                return CommandOutcome<OverviewResponse>.Refused(current.Refusal!);
+            var evidence = current.Value!;
+            var summary = evidence.ProjectSummary;
+            var selection = evidence.Selection;
+            TextOccurrenceSnapshot? occurrenceSnapshot = selection is null ? null :
+                new TextOccurrenceSnapshot(selection.OccurrencesByWord,
+                    new Dictionary<string, int>(StringComparer.Ordinal), selection.TotalOccurrences, 0);
+            var words = selection?.Selection.Words ?? evidence.DefaultSelection?.AddedWords ?? Array.Empty<string>();
+            var assessment = evidence.MatchingAssessment;
             var assessedWords = assessment?.Words ?? Array.Empty<AssessedWord>();
             var metrics = OverviewMetrics.Build(words, occurrenceSnapshot, assessedWords);
             var elapsedMs = assessment?.Words?.Where(word => word.ElapsedMs is not null).Sum(word => word.ElapsedMs!.Value);
             return CommandOutcome<OverviewResponse>.Success(new OverviewResponse(
-                Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave,
-                words.Count, savedSelection?.TextIds.Count ?? 0, savedSelection?.AddedWords.Count ?? 0,
-                occurrenceCounts, wordformCount, ruleCount, lexemeCount,
-                assessment?.AssessmentId, assessment is null ? null : ParseUtc(assessment.SavedUtc),
+                evidence.ProjectName, evidence.MotifStoreCreatedUtc, evidence.LastFieldWorksSaveUtc,
+                words.Count, selection?.TextCount ?? 0, selection?.AddedWordCount ?? 0,
+                selection?.TotalOccurrences ?? 0, summary?.WordformCount ?? 0, summary?.RuleCount ?? 0,
+                summary?.LexemeCount ?? 0,
+                assessment?.AssessmentId, assessment is null ? null : DateTimeOffset.Parse(assessment.SavedUtc),
                 elapsedMs is null ? null : elapsedMs.Value / 1000d,
-                assessment?.GrammarSourceSha256, selection?.Sha256,
+                assessment?.GrammarSourceSha256, selection?.Selection.Sha256,
                 metrics.TextCoverage, metrics.Accuracy,
                 assessment is null ? TimingAggregation.SummarizeWords(Array.Empty<AssessedWord>())
                     : TimingAggregation.SummarizeWords(assessedWords),
                 Warnings: null)
             {
                 ProjectFileName = Path.GetFileName(project.FullFwDataPath),
-                BaselineCapturedUtc = baselineCaptured,
-                BaselineSourceLastWriteUtc = baseline?.SourceLastWriteUtc,
-                IsStale = isStale,
+                BaselineCapturedUtc = evidence.Baseline is null
+                    ? null : DateTimeOffset.Parse(evidence.Baseline.Token.CapturedUtc),
+                BaselineSourceLastWriteUtc = evidence.Baseline?.SourceLastWriteUtc,
+                IsStale = evidence.Freshness == EvidenceFreshness.Stale,
+                BaselineToken = evidence.Baseline?.Token,
             });
         });
-
-    internal static AssessmentRecord? FindMatchingAssessment(
-        AssessmentRepository repository, object baselineToken, Selection selection)
-    {
-        var baselineJson = System.Text.Json.JsonSerializer.Serialize(
-            baselineToken, SIL.Motif.Contract.MotifJson.CreateOptions());
-        return repository.FindLatestBaselineAssessment(AssessmentKind.ParseTime.ToStoredKind(), baselineJson,
-            selection.Sha256, selection.Words);
-    }
-
-    private static DateTimeOffset ReadStoreCreatedUtc(MotifDatabase database)
-    {
-        using var connection = database.OpenConnection();
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT CreatedUtc FROM MotifMetadata WHERE Id = 1;";
-        return ParseUtc((string)command.ExecuteScalar()!);
-    }
-
-    private static DateTimeOffset ParseUtc(string value) =>
-        DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 }
 
 internal static class OverviewMetrics
@@ -131,7 +71,8 @@ internal static class OverviewMetrics
         var approved = 0;
         var violations = 0;
         var accuracyUnknown = 0;
-        var rejectedRebuilt = 0;
+        var rejectedAnalysesRebuilt = 0;
+        var rejectedWordsInMatchCell = 0;
         var rejected = 0;
         var candidatesConfirmed = 0;
         var candidates = 0;
@@ -147,6 +88,8 @@ internal static class OverviewMetrics
                 word.ProjectStanding, word.Outcome,
                 word.IsIncomplete, word.Morphology,
                 word.ReadingGrades, word.MissedApprovedCount ?? 0));
+            rejectedAnalysesRebuilt += word.ReadingGrades?.Count(grade =>
+                StringComparer.Ordinal.Equals(grade, "disapproved")) ?? 0;
             switch (placement.Column)
             {
                 case CompareColumnKind.Match:
@@ -175,7 +118,7 @@ internal static class OverviewMetrics
             if (StringComparer.Ordinal.Equals(placement.Standing, SIL.Motif.Contract.Responses.ProjectStanding.Rejected))
             {
                 rejected++;
-                if (placement.Column == CompareColumnKind.Match) rejectedRebuilt++;
+                if (placement.Column == CompareColumnKind.Match) rejectedWordsInMatchCell++;
             }
             if (StringComparer.Ordinal.Equals(placement.Standing, SIL.Motif.Contract.Responses.ProjectStanding.Candidate))
             {
@@ -188,6 +131,9 @@ internal static class OverviewMetrics
         return (
             new OverviewTextCoverage(parsed, noParse, unknown, skipped, totalOccurrences, parsedOccurrences),
             new OverviewAccuracy(approvedKept, approved, violations, accuracyUnknown,
-                rejectedRebuilt, rejected, candidatesConfirmed, candidates));
+                rejectedAnalysesRebuilt, rejected, candidatesConfirmed, candidates)
+            {
+                RejectedWordsInMatchCell = rejectedWordsInMatchCell,
+            });
     }
 }

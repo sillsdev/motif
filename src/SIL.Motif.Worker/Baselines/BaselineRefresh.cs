@@ -7,6 +7,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.LiveHost.Baselines;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Projects;
 
 namespace SIL.Motif.Worker.Baselines;
@@ -76,7 +77,8 @@ public sealed class BaselineRefresh
                 cancellationToken).ConfigureAwait(false);
             // The caller saved the project before calling, so the file's own stamp is that save's time.
             var savedUtc = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
-            _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, _now(), savedUtc);
+            _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, _now(), savedUtc,
+                ProjectSummaryReader.Read(savedCache));
             return publication.Token;
         }
         finally

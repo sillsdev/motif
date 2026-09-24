@@ -7,6 +7,14 @@ namespace SIL.Motif.App.Services;
 
 public partial interface ICommandClient
 {
+    /// <summary>Reads the stored project Overview without opening a LibLCM project cache.</summary>
+    Task<CommandOutcome<OverviewResponse>> OverviewAsync(
+        OverviewRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Reads stored Assessment timings without opening a LibLCM project cache.</summary>
+    Task<CommandOutcome<TimingResponse>> TimingAsync(
+        TimingRequest request, CancellationToken cancellationToken);
+
     /// <summary>Reads what Motif has done with a project: Baselines captured, Assessments run, Handoffs written.</summary>
     Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken);

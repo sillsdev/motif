@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -8,6 +9,14 @@ namespace SIL.Motif.App.Services;
 
 public sealed partial class CommandClient
 {
+    public Task<CommandOutcome<OverviewResponse>> OverviewAsync(
+        OverviewRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => OverviewCommand.Overview(request));
+
+    public Task<CommandOutcome<TimingResponse>> TimingAsync(
+        TimingRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => TimingCommand.Timing(request));
+
     public Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => ProjectHistoryQuery.Query(request));

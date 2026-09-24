@@ -1,17 +1,11 @@
-using System.Text.Json;
-using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
-using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Assess;
-using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
-using SIL.Motif.Worker.Baselines;
-using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Catalog;
@@ -32,6 +26,15 @@ public static class TimingCommand
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var assessments = new AssessmentRepository(database);
+            CurrentEvidenceSnapshot? currentEvidence = null;
+            if (request.AssessmentId is null || UsesSavedSelection(request))
+            {
+                var current = CurrentEvidenceQuery.ReadCurrentEvidence(
+                    database, project, includeDefaultSelection: request.AssessmentId is null);
+                if (!current.Succeeded)
+                    return CommandOutcome<TimingResponse>.Refused(current.Refusal!);
+                currentEvidence = current.Value!;
+            }
             AssessmentRecord? assessment = null;
             if (request.AssessmentId is not null)
             {
@@ -42,27 +45,14 @@ public static class TimingCommand
             }
             else
             {
-                var workspaceKey = ProjectWorkspaceKey.Compute(project);
-                var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
-                var saved = new NamedSelectionRepository(database).GetDefault();
-                if (baseline is not null && saved is not null)
-                {
-                    using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
-                    var composed = SelectionComposer.Compose(cache,
-                        new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null), assessments,
-                        JsonSerializer.Serialize(baseline.Token, SIL.Motif.Contract.MotifJson.CreateOptions()));
-                    if (!composed.Succeeded)
-                        return CommandOutcome<TimingResponse>.Refused(composed.Refusal!);
-                    assessment = OverviewCommand.FindMatchingAssessment(
-                        assessments, baseline.Token, composed.Value!.Selection);
-                }
+                assessment = currentEvidence?.MatchingAssessment;
             }
 
             if (assessment is null || !assessment.Kind.IsStoredKind(AssessmentKind.ParseTime))
                 return RefusedTiming("timing.no-assessment", "No matching stored ParseTime Assessment is available.");
 
             var words = assessment.Words ?? Array.Empty<AssessedWord>();
-            var selected = ResolveWords(request, words, database, project, assessments);
+            var selected = ResolveWords(request, words, database, currentEvidence);
             if (!selected.Succeeded) return CommandOutcome<TimingResponse>.Refused(selected.Refusal!);
             var selectedWords = selected.Value!;
             var selectedNames = selectedWords.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
@@ -80,8 +70,7 @@ public static class TimingCommand
         TimingRequest request,
         IReadOnlyList<AssessedWord> allWords,
         MotifDatabase database,
-        ProjectLocator project,
-        AssessmentRepository assessments)
+        CurrentEvidenceSnapshot? currentEvidence)
     {
         if (request.ExplicitWords is { Count: > 0 } explicitWords)
         {
@@ -115,17 +104,22 @@ public static class TimingCommand
         var saved = repository.Get(name);
         if (saved is null)
             return RefusedWords("timing.word-set-not-found", $"No saved Selection named '{name}' exists.");
-        var current = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
-        if (current is null)
+        if (currentEvidence?.ProjectSummary is not { } summary)
             return RefusedWords("timing.no-baseline", "A Baseline is required to resolve a saved Selection.");
-        using var cache = new FwDataProjectLoader().LoadScratchCache(current.FwDataPath);
-        var composed = SelectionComposer.Compose(cache,
-            new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null), assessments,
-            JsonSerializer.Serialize(current.Token, SIL.Motif.Contract.MotifJson.CreateOptions()));
-        if (!composed.Succeeded) return CommandOutcome<IReadOnlyList<AssessedWord>>.Refused(composed.Refusal!);
-        var selectedNames = composed.Value!.Selection.Words.ToHashSet(StringComparer.Ordinal);
+        var resolved = CurrentEvidenceQuery.ResolveSelection(summary, saved);
+        if (!resolved.Succeeded)
+            return CommandOutcome<IReadOnlyList<AssessedWord>>.Refused(resolved.Refusal!);
+        var selectedNames = resolved.Value!.Selection.Words.ToHashSet(StringComparer.Ordinal);
         return Success(allWords.Where(word => selectedNames.Contains(word.Word)).ToArray());
     }
+
+    private static bool UsesSavedSelection(TimingRequest request) =>
+        request.ExplicitWords is not { Count: > 0 } && (request.WordSet.Trim() switch
+        {
+            "all" or "step-limit" or "steps" or "slowest" => false,
+            var value when value.StartsWith("cell:", StringComparison.Ordinal) => false,
+            _ => true,
+        });
 
     private static ComparePlacement Place(AssessedWord word) => CompareSemantics.Place(new CompareWordFacts(
         word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,

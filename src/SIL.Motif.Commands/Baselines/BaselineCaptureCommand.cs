@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Worker;
@@ -73,11 +74,13 @@ public static class BaselineCaptureCommand
 
                 string projectIdentity;
                 string semanticDigest;
+                ProjectSummarySnapshot projectSummary;
                 try
                 {
                     using var cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
                     projectIdentity = cache.LangProject.Guid.ToString("D");
                     semanticDigest = BaselineSemanticDigest.Compute(cache, CancellationToken.None);
+                    projectSummary = ProjectSummaryReader.Read(cache);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -103,7 +106,8 @@ public static class BaselineCaptureCommand
                         DateTime.UtcNow.ToString("O"), bundleDigest);
 
                     publication = new BaselineCapturePublisher(database, managedRoot)
-                        .PublishAsync(project, bundlePath, declaredToken, copy.SourceLastWriteUtc, CancellationToken.None)
+                        .PublishAsync(project, bundlePath, declaredToken, copy.SourceLastWriteUtc,
+                            CancellationToken.None, projectSummary)
                         .GetAwaiter().GetResult();
                 }
                 catch (InvalidDataException ex)

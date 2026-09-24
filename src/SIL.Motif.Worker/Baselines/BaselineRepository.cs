@@ -1,7 +1,10 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Texts;
 
 namespace SIL.Motif.Worker.Baselines;
 
@@ -13,6 +16,9 @@ public sealed record BaselineRecord(
     string FwDataPath,
     DateTimeOffset SourceLastWriteUtc,
     DateTimeOffset PublishedUtc);
+
+/// <summary>A current Baseline and the project inventory captured from the same saved state.</summary>
+public sealed record CurrentBaselineEvidence(BaselineRecord Baseline, ProjectSummarySnapshot Summary);
 
 /// <summary>Reads and writes the project's single current-Baseline pointer and its recorded metadata.</summary>
 public sealed class BaselineRepository
@@ -33,10 +39,39 @@ public sealed class BaselineRepository
         return reader.Read() ? Read(reader) : null;
     }
 
+    /// <summary>Reads the current Baseline and its saved project summary in one SQLite read.</summary>
+    public CurrentBaselineEvidence? GetCurrentEvidence(string projectKey)
+    {
+        RequireProjectKey(projectKey);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = EvidenceSelectSql + " WHERE b.ProjectKey = $project;";
+        command.Parameters.AddWithValue("$project", projectKey);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+        var baseline = Read(reader);
+        if (reader.IsDBNull(12))
+            throw new InvalidDataException("The current Baseline has no stored project summary.");
+        try
+        {
+            var summary = JsonSerializer.Deserialize<ProjectSummarySnapshot>(
+                reader.GetString(12), MotifJson.CreateOptions());
+            if (summary is null || summary.WordCount < 0 || summary.OccurrenceCount < 0 ||
+                summary.WordformCount < 0 || summary.RuleCount < 0 || summary.LexemeCount < 0 ||
+                summary.Wordforms is null || summary.Texts is null)
+                throw new JsonException("The stored project summary has invalid counts or collections.");
+            return new CurrentBaselineEvidence(baseline, summary);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("The stored Baseline project summary is malformed.", exception);
+        }
+    }
+
     // BaselinePublication is internal: every caller (BaselineCapturePublisher, BaselineRefresh) lives here too.
     internal BaselineRecord Record(
         string projectKey, BaselinePublication publication, DateTimeOffset publishedUtc,
-        DateTimeOffset sourceLastWriteUtc)
+        DateTimeOffset sourceLastWriteUtc, ProjectSummarySnapshot? projectSummary = null)
     {
         RequireProjectKey(projectKey);
         ArgumentNullException.ThrowIfNull(publication);
@@ -72,6 +107,18 @@ public sealed class BaselineRepository
             """;
         AddParameters(command, projectKey, publication, publishedUtc, sourceLastWriteUtc);
         command.ExecuteNonQuery();
+        using (var summaryCommand = connection.CreateCommand())
+        {
+            summaryCommand.Transaction = transaction;
+            summaryCommand.CommandText = """
+                INSERT INTO BaselineSummaries (ProjectKey, SummaryJson) VALUES ($project, $summary)
+                ON CONFLICT(ProjectKey) DO UPDATE SET SummaryJson = excluded.SummaryJson;
+                """;
+            summaryCommand.Parameters.AddWithValue("$project", projectKey);
+            summaryCommand.Parameters.AddWithValue("$summary", JsonSerializer.Serialize(
+                projectSummary ?? ProjectSummarySnapshot.Empty, MotifJson.CreateOptions()));
+            summaryCommand.ExecuteNonQuery();
+        }
         command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
         using var reader = command.ExecuteReader();
         if (!reader.Read()) throw new InvalidOperationException("The Baseline publication was not recorded.");
@@ -135,4 +182,9 @@ public sealed class BaselineRepository
     private const string SelectSql = "SELECT ProjectKey, ProjectIdentity, SemanticSnapshotDigest, " +
         "ProjectionVersion, CapturedUtc, BundleDigest, CapturedHostSessionId, CapturedEditGeneration, " +
         "RootDirectory, FwDataPath, PublishedUtc, SourceLastWriteUtc FROM Baselines";
+
+    private const string EvidenceSelectSql = "SELECT b.ProjectKey, b.ProjectIdentity, b.SemanticSnapshotDigest, " +
+        "b.ProjectionVersion, b.CapturedUtc, b.BundleDigest, b.CapturedHostSessionId, b.CapturedEditGeneration, " +
+        "b.RootDirectory, b.FwDataPath, b.PublishedUtc, b.SourceLastWriteUtc, s.SummaryJson " +
+        "FROM Baselines b LEFT JOIN BaselineSummaries s ON s.ProjectKey = b.ProjectKey";
 }

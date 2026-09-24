@@ -248,7 +248,8 @@ public static class CommandTextRenderer
             $"{response.SelectionAddedWordCount:N0} words = {response.SelectionWordCount:N0} words, " +
             $"{response.TextOccurrenceCount:N0} occurrences");
         text.AppendLine($"Project    {response.WordformCount:N0} wordforms  {response.RuleCount:N0} rules  {response.LexemeCount:N0} lexemes");
-        text.AppendLine($"Fingerprints grammar {ShortHash(response.GrammarFingerprint)}  Selection {ShortHash(response.SelectionFingerprint)}");
+        text.AppendLine($"Fingerprints baseline {ShortHash(response.BaselineToken?.SemanticSnapshotDigest)}  " +
+            $"grammar {ShortHash(response.GrammarFingerprint)}  Selection {ShortHash(response.SelectionFingerprint)}");
         var coverage = Percent(response.TextCoverage.ParsedWords, response.SelectionWordCount);
         var occurrenceCoverage = Percent(response.TextCoverage.ParsedOccurrences, response.TextCoverage.TotalOccurrences);
         text.AppendLine($"Coverage   {response.TextCoverage.ParsedWords:N0}/{response.SelectionWordCount:N0} parse ({coverage})  " +
@@ -257,7 +258,8 @@ public static class CommandTextRenderer
         text.AppendLine($"           {response.TextCoverage.ParsedOccurrences:N0}/{response.TextCoverage.TotalOccurrences:N0} occurrences covered ({occurrenceCoverage})");
         text.AppendLine($"Accuracy   {response.Accuracy.ApprovedWordsKept:N0}/{response.Accuracy.ApprovedWordCount:N0} approved kept  " +
             $"{response.Accuracy.Violations:N0} violations  {response.Accuracy.UnknownWords:N0} unknown");
-        text.AppendLine($"           rejected rebuilt {response.Accuracy.RejectedAnalysesRebuilt:N0}/{response.Accuracy.RejectedWordCount:N0}  " +
+        text.AppendLine($"           rejected analyses rebuilt {response.Accuracy.RejectedAnalysesRebuilt:N0}  " +
+            $"rejected words matched {response.Accuracy.RejectedWordsInMatchCell:N0}/{response.Accuracy.RejectedWordCount:N0}  " +
             $"candidates confirmed {response.Accuracy.CandidatesConfirmed:N0}/{response.Accuracy.CandidateWordCount:N0}");
         var slowest = response.Timing.SlowestWords.FirstOrDefault();
         text.AppendLine($"Timing     median {FormatMs(response.Timing.MedianMs)}  p95 {FormatMs(response.Timing.Percentile95Ms)}  " +

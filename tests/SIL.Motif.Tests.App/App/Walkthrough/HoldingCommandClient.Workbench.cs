@@ -7,6 +7,14 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal sealed partial class HoldingCommandClient
 {
+    public Task<CommandOutcome<OverviewResponse>> OverviewAsync(
+        OverviewRequest request, CancellationToken cancellationToken) =>
+        _inner.OverviewAsync(request, cancellationToken);
+
+    public Task<CommandOutcome<TimingResponse>> TimingAsync(
+        TimingRequest request, CancellationToken cancellationToken) =>
+        _inner.TimingAsync(request, cancellationToken);
+
     public Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken) =>
         _inner.GetProjectHistoryAsync(request, cancellationToken);
