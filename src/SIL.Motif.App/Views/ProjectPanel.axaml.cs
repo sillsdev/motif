@@ -21,10 +21,6 @@ public sealed partial class ProjectPanel : UserControl
 
     public OverviewPageModel Page { get; }
 
-    public ProjectViewModel Project => Page.Project;
-
-    public BaselineViewModel Baseline => Page.Baseline;
-
     public ProjectHistoryViewModel History => Page.History;
 
     private void OnOpenResultsClick(object? sender, RoutedEventArgs e) => Page.Context.OpenTexts(TextsTab.Words);

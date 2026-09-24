@@ -33,13 +33,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private bool _refreshed;
 
     public HandoffWorkspaceViewModel(
-        ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
-        SelectionViewModel selection,
-        AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
+        ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient)
     {
         ArgumentNullException.ThrowIfNull(project);
-        ArgumentNullException.ThrowIfNull(projectHistory);
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -47,8 +44,17 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         ArgumentNullException.ThrowIfNull(dragSource);
         ArgumentNullException.ThrowIfNull(commandClient);
 
-        Context = new WorkspaceContext(project, projectHistory, baseline, selection, assess,
-            new ChangesViewModel(), commandClient, folderPicker, dragSource);
+        Project = project;
+        Baseline = baseline;
+        Context = new WorkspaceContext(selection, assess, new ChangesViewModel(), commandClient, folderPicker, dragSource)
+        {
+            KnownProjects = project.KnownProjects,
+            BrowseForProjectCommand = project.BrowseCommand,
+            OpenProjectCommand = new AsyncRelayCommand<string>(path =>
+                path is null ? Task.CompletedTask : SetProjectAsync(path)),
+            RefreshBaselineCommand = baseline.RefreshCommand,
+        };
+        PublishBaseline();
         OpenConfiguration = () => Context.OpenTexts(TextsTab.Texts);
 
         Pages = PageRegistry.Entries
@@ -258,11 +264,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
     }
 
-    public ProjectViewModel Project => Context.Project;
+    /// <summary>The project picker behind the project menu.</summary>
+    public ProjectViewModel Project { get; }
 
-    public ProjectHistoryViewModel ProjectHistory => Context.ProjectHistory;
-
-    public BaselineViewModel Baseline => Context.Baseline;
+    /// <summary>The open project's Baseline, which the freshness line and Refresh read.</summary>
+    public BaselineViewModel Baseline { get; }
 
     public SelectionViewModel Selection => Context.Selection;
 
@@ -299,7 +305,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         RefreshRecentProjects();
         RaiseFreshness();
 
-        await ProjectHistory.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
 
@@ -318,7 +323,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         if (Context.ProjectPath is not { } path) return;
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
-        await ProjectHistory.LoadAsync().ConfigureAwait(true);
         await Context.PublishBaselineCapturedAsync().ConfigureAwait(true);
     }
 
@@ -382,7 +386,15 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         OnPropertyChanged(nameof(HasRecentProjects));
     }
 
-    private void OnBaselinePropertyChanged(object? sender, PropertyChangedEventArgs e) => RaiseFreshness();
+    private void OnBaselinePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        PublishBaseline();
+        RaiseFreshness();
+    }
+
+    private void PublishBaseline() => Context.Baseline = new WorkspaceBaseline(
+        Baseline.HasBaseline, Baseline.CapturedTimeText, Baseline.SavedText, Baseline.CapturedAtText,
+        Baseline.HeldStatusText, Baseline.RefusalMessage);
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

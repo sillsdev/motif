@@ -48,7 +48,6 @@ public sealed class HandoffWorkspaceViewModelTests
         var selection = new SelectionViewModel(fake);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, projectPicker),
-            new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),

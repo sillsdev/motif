@@ -127,7 +127,7 @@ public sealed class PageScreenshots
 
         var selection = new SelectionViewModel(fake);
         var workspace = new HandoffWorkspaceViewModel(
-            new ProjectViewModel(fake, new Picker()), new ProjectHistoryViewModel(fake), new BaselineViewModel(fake),
+            new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
             fake);

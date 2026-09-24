@@ -49,10 +49,8 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
 
             Assert.Same(workspace, window.DataContext);
-            Assert.Same(workspace.Project, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).Project);
-            Assert.Same(workspace.Baseline, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).Baseline);
             Assert.Same(
-                workspace.ProjectHistory, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).History);
+                workspace.PageModel<OverviewPageModel>(), Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).Page);
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
             Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
             Assert.Same(workspace.PageModel<TextsPageModel>().Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
@@ -625,7 +623,6 @@ public sealed class MainWindowSmokeTests
         var dragSource = new FakeDragSource();
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new FakeProjectPicker()),
-            new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),

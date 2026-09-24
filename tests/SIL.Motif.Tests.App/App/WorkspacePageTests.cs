@@ -31,7 +31,6 @@ public sealed class WorkspacePageTests
         var selection = new SelectionViewModel(fake);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, projectPicker),
-            new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),
@@ -279,6 +278,28 @@ public sealed class WorkspacePageTests
 
         Assert.Equal("two.fwdata", workspace.ProjectName);
         Assert.Equal(["one"], workspace.RecentProjects.Select(project => project.Name));
+    }
+
+    [Fact]
+    public async Task TheOverviewPickerShowsTheOpenProjectAndChoosingAnotherOpensIt()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        const string other = @"C:\projects\two.fwdata";
+        fake.KnownProjectsListIs([new KnownProjectSummary(other, Saved)]);
+        await workspace.Project.LoadKnownProjectsAsync();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        var overview = workspace.PageModel<OverviewPageModel>();
+
+        Assert.Null(overview.SelectedKnownProject);
+        Assert.Equal(ProjectPath, overview.OpenUnlistedPath);
+        Assert.True(overview.Baseline!.HasBaseline);
+
+        overview.SelectedKnownProject = overview.KnownProjects[0];
+        await workspace.Context.OpenProjectCommand!.ExecutionTask!;
+
+        Assert.Equal("two.fwdata", workspace.ProjectName);
+        Assert.Equal(other, overview.SelectedKnownProject!.FullFwDataPath);
+        Assert.Null(overview.OpenUnlistedPath);
     }
 
     [Fact]

@@ -36,7 +36,6 @@ public sealed partial class App : Application
 
         return new HandoffWorkspaceViewModel(
             new ProjectViewModel(commandClient, pickers),
-            new ProjectHistoryViewModel(commandClient),
             new BaselineViewModel(commandClient),
             selection,
             new AssessViewModel(commandClient, selection),

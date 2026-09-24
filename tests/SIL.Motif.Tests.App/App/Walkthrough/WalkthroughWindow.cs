@@ -29,7 +29,6 @@ public sealed class WalkthroughWindow : IDisposable
         var selection = new SelectionViewModel(commandClient);
         Workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(commandClient, _projectPicker),
-            new ProjectHistoryViewModel(commandClient),
             new BaselineViewModel(commandClient),
             selection,
             new AssessViewModel(commandClient, selection),

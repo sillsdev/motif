@@ -15,12 +15,12 @@
           <StackPanel Spacing="10">
             <DockPanel LastChildFill="True">
               <Button Content="Browse..."
-                      Command="{Binding Project.BrowseCommand}"
+                      Command="{Binding Page.BrowseCommand}"
                       AutomationProperties.Name="Browse for a FieldWorks project file"
                       DockPanel.Dock="Right" Margin="8,0,0,0" />
-              <ComboBox ItemsSource="{Binding Project.KnownProjects}"
-                        SelectedItem="{Binding Project.SelectedKnownProject}"
-                        PlaceholderText="{Binding Project.OpenUnlistedPath}"
+              <ComboBox ItemsSource="{Binding Page.KnownProjects}"
+                        SelectedItem="{Binding Page.SelectedKnownProject}"
+                        PlaceholderText="{Binding Page.OpenUnlistedPath}"
                         AutomationProperties.Name="Known projects"
                         HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate>
@@ -32,17 +32,17 @@
             </DockPanel>
             <DockPanel LastChildFill="True">
               <Button Content="Refresh Baseline"
-                      Command="{Binding Baseline.RefreshCommand}"
+                      Command="{Binding Page.RefreshBaselineCommand}"
                       DockPanel.Dock="Right" VerticalAlignment="Top"
                       AutomationProperties.Name="Refresh the Baseline" />
               <StackPanel Spacing="2">
                 <views:CopyableTextBlock Text="Baseline" FontWeight="SemiBold" />
-                <views:CopyableTextBlock Text="{Binding Baseline.CapturedTimeText}" IsVisible="{Binding !Baseline.HasBaseline}" />
-                <views:CopyableTextBlock Text="{Binding Baseline.SavedText}" IsVisible="{Binding Baseline.HasBaseline}" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.CapturedAtText}" IsVisible="{Binding Baseline.HasBaseline}" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
-                <views:CopyableTextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}" TextWrapping="Wrap"
-                           IsVisible="{Binding Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+                <views:CopyableTextBlock Text="{Binding Page.Baseline.CapturedTimeText}" IsVisible="{Binding !Page.Baseline.HasBaseline}" />
+                <views:CopyableTextBlock Text="{Binding Page.Baseline.SavedText}" IsVisible="{Binding Page.Baseline.HasBaseline}" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding Page.Baseline.CapturedAtText}" IsVisible="{Binding Page.Baseline.HasBaseline}" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding Page.Baseline.HeldStatusText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Classes="error" Text="{Binding Page.Baseline.RefusalMessage}" TextWrapping="Wrap"
+                           IsVisible="{Binding Page.Baseline.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
               </StackPanel>
             </DockPanel>
           </StackPanel>
@@ -54,39 +54,39 @@
               <views:CopyableTextBlock Text="Latest Assessment" FontSize="15" FontWeight="SemiBold" DockPanel.Dock="Left" />
               <views:CopyableTextBlock Classes="muted" DockPanel.Dock="Right" VerticalAlignment="Center"
                                        IsVisible="{Binding Page.Context.HasEvidence}"
-                                       Text="{Binding Page.Assess.Words.CountSummary}" />
+                                       Text="{Binding Page.Words.CountSummary}" />
               <views:CopyableTextBlock Classes="muted" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,12,0"
                                        IsVisible="{Binding Page.Context.HasEvidence}"
-                                       Text="{Binding Page.Assess.CompletedAt, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
+                                       Text="{Binding Page.CompletedAt, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
             </DockPanel>
             <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Page.Context.HasNoEvidence}"
                                      Text="No Assessment yet. Choose Texts or paste words, then run one to see how the grammar does." />
             <StackPanel Spacing="12" IsVisible="{Binding Page.Context.HasEvidence}">
-              <views:OutcomeBar Segments="{Binding Page.Assess.Words.Outcomes}" AutomationProperties.Name="What the parser came to" />
-              <Border Classes="notice" IsVisible="{Binding Page.Assess.Words.ManyStoppedAtALimit}">
+              <views:OutcomeBar Segments="{Binding Page.Words.Outcomes}" AutomationProperties.Name="What the parser came to" />
+              <Border Classes="notice" IsVisible="{Binding Page.Words.ManyStoppedAtALimit}">
                 <DockPanel LastChildFill="True">
                   <HyperlinkButton DockPanel.Dock="Right" VerticalAlignment="Center" Padding="0" Margin="12,0,0,0"
                                    Content="Give each word longer" Click="OnOpenTimeLimitClick" />
-                  <views:CopyableTextBlock Text="{Binding Page.Assess.Words.LimitHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                  <views:CopyableTextBlock Text="{Binding Page.Words.LimitHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
                 </DockPanel>
               </Border>
-              <Border Classes="notice" IsVisible="{Binding Page.Assess.Words.AnySkipped}">
-                <views:CopyableTextBlock Text="{Binding Page.Assess.Words.SkippedHint}" TextWrapping="Wrap" />
+              <Border Classes="notice" IsVisible="{Binding Page.Words.AnySkipped}">
+                <views:CopyableTextBlock Text="{Binding Page.Words.SkippedHint}" TextWrapping="Wrap" />
               </Border>
               <Border Height="1" Background="{DynamicResource SemiColorBorder}" />
               <views:CopyableTextBlock Text="Against what the project stores" FontWeight="SemiBold" />
               <WrapPanel>
                 <views:VerdictChip Verdict="NoResult" Margin="0,0,8,6"
-                                   Text="{Binding Page.Assess.Words.MissedCount, StringFormat='{}{0} approved analyses missed'}" />
+                                   Text="{Binding Page.Words.MissedCount, StringFormat='{}{0} approved analyses missed'}" />
                 <views:VerdictChip Verdict="Differs" Margin="0,0,8,6"
-                                   Text="{Binding Page.Assess.Words.DisapprovedCount, StringFormat='{}{0} disapproved readings produced'}" />
+                                   Text="{Binding Page.Words.DisapprovedCount, StringFormat='{}{0} disapproved readings produced'}" />
                 <views:VerdictChip Verdict="New" Margin="0,0,8,6"
-                                   Text="{Binding Page.Assess.Words.NoOpinionCount, StringFormat='{}{0} words with new readings'}" />
+                                   Text="{Binding Page.Words.NoOpinionCount, StringFormat='{}{0} words with new readings'}" />
               </WrapPanel>
               <StackPanel Orientation="Horizontal" Spacing="18">
                 <HyperlinkButton Content="Open the words" Padding="0" Click="OnOpenResultsClick" />
                 <HyperlinkButton Content="Why words stopped: Timing" Padding="0" Click="OnOpenStatisticsClick"
-                                 IsVisible="{Binding Page.Assess.Words.AnyStoppedAtALimit}" />
+                                 IsVisible="{Binding Page.Words.AnyStoppedAtALimit}" />
               </StackPanel>
             </StackPanel>
           </StackPanel>

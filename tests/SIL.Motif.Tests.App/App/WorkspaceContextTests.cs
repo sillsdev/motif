@@ -254,9 +254,6 @@ public sealed class WorkspaceContextTests
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         return (fake, new WorkspaceContext(
-            new ProjectViewModel(fake, new NoProjectPicker()),
-            new ProjectHistoryViewModel(fake),
-            new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),
             new ChangesViewModel(),
@@ -294,12 +291,6 @@ public sealed class WorkspaceContextTests
             await Task.Yield();
             Captures++;
         }
-    }
-
-    private sealed class NoProjectPicker : IProjectPicker
-    {
-        public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<string?>(null);
     }
 
     private sealed class NoFolderPicker : IHandoffFolderPicker

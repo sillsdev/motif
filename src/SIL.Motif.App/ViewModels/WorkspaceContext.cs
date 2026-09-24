@@ -1,6 +1,9 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -55,23 +58,15 @@ public abstract record PageRequest(WorkspacePage Page);
 public sealed partial class WorkspaceContext : ObservableObject
 {
     public WorkspaceContext(
-        ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
-        SelectionViewModel selection, AssessViewModel assess,
-        ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
+        SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
         IFileDragSource dragSource)
     {
-        ArgumentNullException.ThrowIfNull(project);
-        ArgumentNullException.ThrowIfNull(projectHistory);
-        ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(commands);
         ArgumentNullException.ThrowIfNull(folderPicker);
         ArgumentNullException.ThrowIfNull(dragSource);
-        Project = project;
-        ProjectHistory = projectHistory;
-        Baseline = baseline;
         Selection = selection;
         Assess = assess;
         Changes = changes;
@@ -81,15 +76,26 @@ public sealed partial class WorkspaceContext : ObservableObject
         Assess.PropertyChanged += OnAssessPropertyChanged;
     }
 
-    public ProjectViewModel Project { get; }
-
-    public ProjectHistoryViewModel ProjectHistory { get; }
-
-    public BaselineViewModel Baseline { get; }
-
+    /// <summary>What the one Assessment run measures; the Texts page edits it and the shell summarises it.</summary>
     public SelectionViewModel Selection { get; }
 
+    /// <summary>
+    /// The one Assessment run. It is shared on purpose: the shell's Refresh starts it and shows its progress, the
+    /// Texts page starts and renders it, and a completed run is what <see cref="PublishEvidence"/> announces.
+    /// </summary>
     public AssessViewModel Assess { get; }
+
+    /// <summary>The machine's Known projects, which the shell keeps current.</summary>
+    public ObservableCollection<KnownProjectSummary> KnownProjects { get; init; } = [];
+
+    /// <summary>The shell's action that browses for a project and opens it.</summary>
+    public IAsyncRelayCommand? BrowseForProjectCommand { get; init; }
+
+    /// <summary>The shell's action that opens the project at the path given as the parameter.</summary>
+    public IAsyncRelayCommand<string>? OpenProjectCommand { get; init; }
+
+    /// <summary>The shell's action that captures a new Baseline from FieldWorks' last save.</summary>
+    public IAsyncRelayCommand? RefreshBaselineCommand { get; init; }
 
     /// <summary>Where a page asks a person to choose a folder.</summary>
     public IHandoffFolderPicker FolderPicker { get; }
@@ -114,6 +120,10 @@ public sealed partial class WorkspaceContext : ObservableObject
 
     /// <summary>The open project's file name, or a prompt before one is chosen.</summary>
     public string ProjectName => ProjectPath is null ? "Choose a project" : Path.GetFileName(ProjectPath);
+
+    /// <summary>The open project's Baseline, as the shell last published it.</summary>
+    [ObservableProperty]
+    private WorkspaceBaseline? _baseline;
 
     /// <summary>The grammar check in one line, as the page that owns the check last published it.</summary>
     [ObservableProperty]

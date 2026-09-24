@@ -536,7 +536,6 @@ public sealed class WorkflowShellTests
         var selection = new SelectionViewModel(fake);
         return new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new NoProjectPicker()),
-            new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),
@@ -552,7 +551,6 @@ public sealed class WorkflowShellTests
         var selection = new SelectionViewModel(fake);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new NoProjectPicker()),
-            new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),
