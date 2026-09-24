@@ -18,11 +18,14 @@ public static class SldrCacheMutex
     /// machine, until something takes it and releases it. Taking it here is that something. A holder that is
     /// still alive keeps it: this does not wait.
     /// </remarks>
-    public static void ReclaimIfAbandoned()
+    public static void ReclaimIfAbandoned() => ReclaimIfAbandoned(Name);
+
+    /// <summary>Clears an abandoned named mutex, for a caller that has its exact name.</summary>
+    public static void ReclaimIfAbandoned(string name)
     {
         if (!OperatingSystem.IsWindows()) return;
 
-        using var mutex = new Mutex(false, Name);
+        using var mutex = new Mutex(false, name);
         bool acquired;
         try
         {
