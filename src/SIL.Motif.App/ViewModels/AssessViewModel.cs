@@ -112,6 +112,18 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// <summary>Opens Try a Word on a word and traces it; set by whoever hosts Try a Word.</summary>
     public Action<string>? OpenTryWord { get; set; }
 
+    /// <summary>
+    /// Selects <paramref name="word"/> in <see cref="Words"/> with every filter cleared, so the word is certain to
+    /// be listed; a word the Assessment did not answer also clears the matrix's chosen cells.
+    /// </summary>
+    public void SelectWord(string word)
+    {
+        Words.WordFilter = string.Empty;
+        Words.SelectedFilter = ResultsWordFilter.All;
+        if (Words.Rows.All(row => row.Word != word)) Compare.ClearSelectionCommand.Execute(null);
+        Words.SelectedRow = Words.Rows.FirstOrDefault(row => row.Word == word) ?? Words.SelectedRow;
+    }
+
     protected override bool CanStartCore() => ProjectPath is not null && (_rerunWords is not null || _selection.CanAssess);
 
     /// <summary>When the last Assessment finished, so an older Handoff can say it is out of date.</summary>

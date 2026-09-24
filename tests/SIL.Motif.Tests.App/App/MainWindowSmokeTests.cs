@@ -98,7 +98,7 @@ public sealed class MainWindowSmokeTests
                 foreach (var tab in Enum.GetValues<TextsTab>())
                 {
                     workspace.CurrentPage = page;
-                    workspace.TextsPage.Tab = tab;
+                    workspace.PageModel<TextsPageModel>().Tab = tab;
                     window.UpdateLayout();
 
                     var readOnlyText = window.GetVisualDescendants().OfType<TextBlock>()
@@ -143,8 +143,13 @@ public sealed class MainWindowSmokeTests
             {
                 using var statisticsDocument = JsonDocument.Parse(
                     "{\"kind\":\"word\",\"form\":\"motifa\",\"attempts\":2,\"passes\":1,\"elapsed_ns\":5000000}");
+                workspace.Context.PublishEvidence(new WorkspaceEvidence(new AssessCommandResponse(
+                    new BaselineCaptureResponse(
+                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
+                    new SelectionProjection([], []), [], "summary"), DateTimeOffset.Now, WasRerun: false));
                 workspace.Statistics.Rows.Add(new StatsRowViewModel(statisticsDocument.RootElement.Clone()));
-                workspace.HasEverAssessed = true;
                 workspace.CurrentPage = WorkspacePage.Timing;
 
                 window.Show();
@@ -335,7 +340,7 @@ public sealed class MainWindowSmokeTests
                             { ProjectStanding = ProjectStanding.NotPresent },
                     ],
                 };
-                workspace.ShowTexts(TextsTab.Matrix);
+                workspace.Context.OpenTexts(TextsTab.Matrix);
                 window.Show();
                 window.UpdateLayout();
 
@@ -407,7 +412,7 @@ public sealed class MainWindowSmokeTests
                     ],
                 };
 
-                workspace.ShowTexts(TextsTab.Words);
+                workspace.Context.OpenTexts(TextsTab.Words);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
@@ -567,7 +572,7 @@ public sealed class MainWindowSmokeTests
         foreach (var tab in Enum.GetValues<TextsTab>())
         {
             workspace.CurrentPage = page;
-            workspace.TextsPage.Tab = tab;
+            workspace.PageModel<TextsPageModel>().Tab = tab;
             window.UpdateLayout();
         }
     }

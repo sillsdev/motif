@@ -7,11 +7,11 @@ namespace SIL.Motif.App.Views;
 /// <summary>The Overview page: where the project stands, shown today by the project summary panel.</summary>
 public sealed partial class OverviewPage : UserControl
 {
-    public OverviewPage(HandoffWorkspaceViewModel workspace)
+    public OverviewPage(OverviewPageModel page)
     {
-        ArgumentNullException.ThrowIfNull(workspace);
-        DataContext = workspace;
+        ArgumentNullException.ThrowIfNull(page);
+        DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        this.FindControl<ContentControl>("ProjectHost")!.Content = new ProjectPanel(workspace);
+        this.FindControl<ContentControl>("ProjectHost")!.Content = new ProjectPanel(page);
     }
 }

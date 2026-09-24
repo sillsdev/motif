@@ -10,11 +10,11 @@ namespace SIL.Motif.App.Views;
 /// </summary>
 public sealed partial class WarningsPage : UserControl
 {
-    public WarningsPage(HandoffWorkspaceViewModel workspace)
+    public WarningsPage(WarningsPageModel page)
     {
-        ArgumentNullException.ThrowIfNull(workspace);
-        DataContext = workspace;
+        ArgumentNullException.ThrowIfNull(page);
+        DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        this.FindControl<ContentControl>("GrammarHost")!.Content = new GrammarPanel(workspace.Grammar);
+        this.FindControl<ContentControl>("GrammarHost")!.Content = new GrammarPanel(page.Grammar);
     }
 }

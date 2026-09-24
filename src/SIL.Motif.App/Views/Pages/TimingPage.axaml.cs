@@ -7,11 +7,11 @@ namespace SIL.Motif.App.Views;
 /// <summary>The Timing page: where an Assessment's parse time went, once there is an Assessment.</summary>
 public sealed partial class TimingPage : UserControl
 {
-    public TimingPage(HandoffWorkspaceViewModel workspace)
+    public TimingPage(TimingPageModel page)
     {
-        ArgumentNullException.ThrowIfNull(workspace);
-        DataContext = workspace;
+        ArgumentNullException.ThrowIfNull(page);
+        DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        this.FindControl<ContentControl>("StatisticsHost")!.Content = new StatisticsPanel(workspace.Statistics);
+        this.FindControl<ContentControl>("StatisticsHost")!.Content = new StatisticsPanel(page.Statistics);
     }
 }

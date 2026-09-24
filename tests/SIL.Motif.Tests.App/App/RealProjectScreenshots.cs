@@ -153,9 +153,9 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         workspace.Statistics.LoadCommand.Execute(null);
         walkthrough.WaitUntil(() => !workspace.Statistics.LoadCommand.IsRunning, TimeSpan.FromMinutes(2), "Statistics did not load");
 
-        var tokens = workspace.ResultsInText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord).ToList();
+        var tokens = workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord).ToList();
         var inText = tokens.FirstOrDefault(token => token.Verdict == OccurrenceVerdict.Differs) ?? tokens.FirstOrDefault();
-        if (inText is not null) workspace.ResultsInText.SelectToken(inText);
+        if (inText is not null) workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(inText);
 
         // A few words given a change each, so the Review page and its badge have something to show.
         var compare = workspace.Assess.Compare;
@@ -194,7 +194,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 Application.Current!.RequestedThemeVariant = variant;
                 foreach (var (name, page, tab) in PageScreenshots.Views())
                 {
-                    workspace.TextsPage.Tab = tab;
+                    workspace.PageModel<TextsPageModel>().Tab = tab;
                     workspace.CurrentPage = page;
                     Save(walkthrough.Window, Path.Combine(folder, $"{name}-{theme}.png"));
                 }
@@ -203,7 +203,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 walkthrough.Window.Width = 960;
                 foreach (var (name, page, tab) in PageScreenshots.Views().Take(2))
                 {
-                    workspace.TextsPage.Tab = tab;
+                    workspace.PageModel<TextsPageModel>().Tab = tab;
                     workspace.CurrentPage = page;
                     Save(walkthrough.Window, Path.Combine(folder, $"{name}-narrow-{theme}.png"));
                 }
@@ -220,12 +220,12 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     private static void SaveCompareWithCellsChosen(WalkthroughWindow walkthrough, string folder)
     {
         var compare = walkthrough.Workspace.Assess.Compare;
-        walkthrough.Workspace.ShowTexts(TextsTab.Matrix);
+        walkthrough.Workspace.Context.OpenTexts(TextsTab.Matrix);
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation));
         Save(walkthrough.Window, Path.Combine(folder, "2f-texts-matrix-violations-light.png"));
         compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
         Save(walkthrough.Window, Path.Combine(folder, "2g-texts-matrix-largest-cell-light.png"));
-        walkthrough.Workspace.TextsPage.Tab = TextsTab.Words;
+        walkthrough.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Words;
         Save(walkthrough.Window, Path.Combine(folder, "2h-texts-words-mini-matrix-light.png"));
         compare.ClearSelectionCommand.Execute(null);
     }
@@ -243,7 +243,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
         {
             Application.Current!.RequestedThemeVariant = variant;
-            workspace.ShowTexts(TextsTab.WhatChanged);
+            workspace.Context.OpenTexts(TextsTab.WhatChanged);
             Save(walkthrough.Window, Path.Combine(folder, $"2b-texts-what-changed-after-rerun-{theme}.png"));
         }
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
@@ -273,7 +273,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var settle = DateTime.Now.AddMilliseconds(500);
         walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.Words.IsLoading,
             TimeSpan.FromMinutes(1), "unchecking the Texts did not settle");
-        workspace.ShowTexts(TextsTab.InText);
+        workspace.Context.OpenTexts(TextsTab.InText);
         Save(walkthrough.Window, Path.Combine(folder, "2i-texts-in-text-no-text-light.png"));
     }
 

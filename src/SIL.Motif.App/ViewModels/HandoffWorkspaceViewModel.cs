@@ -11,18 +11,16 @@ using SIL.Motif.App.Views;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// Composes the child view models of the Motif window into one project workspace: choosing a project cancels
-/// whatever Assessment or AI Handoff run is active, clears the state the previous project displayed, and loads
-/// the new project's Baseline, grammar findings, history, and Text state. It owns which of the
-/// <see cref="WorkspacePage"/>s the window shows and what each sidebar entry counts, the project menu, the
-/// freshness line in the top bar, and the one <see cref="ChangesViewModel"/> every page adds to.
+/// The Motif window's shell: choosing a project cancels whatever Assessment or AI Handoff run is active, clears
+/// the state the previous project displayed, and loads the new project's Baseline, grammar findings, history, and
+/// Text state. It owns the sidebar, the project menu, and the freshness line in the top bar, and it publishes each
+/// project change and each completed Assessment once, through <see cref="Context"/>, to the page models the page
+/// registry builds from that context.
 /// </summary>
 /// <remarks>
-/// This is also where the loose ends the child view models leave for composition get wired:
-/// <see cref="ViewModels.BaselineViewModel.HasAssessment"/> is set once an Assessment actually completes, and
-/// <see cref="ViewModels.StatisticsViewModel.SummaryMarkdown"/> is fed from that same completed Assessment's own
-/// rendered summary. Nothing here reruns anything on its own: <see cref="RefreshCommand"/> is the only way a new
-/// Baseline and a new run start together, and only a person presses it.
+/// What a page does with a published project or Assessment, and how one page opens another, belongs to the pages'
+/// own models; the shell names none of them. Nothing here reruns anything on its own: <see cref="RefreshCommand"/>
+/// is the only way a new Baseline and a new run start together, and only a person presses it.
 /// </remarks>
 public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
@@ -30,7 +28,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public const double SidebarCollapseWidth = 1100;
 
     private readonly ICommandClient _commandClient;
-    private string? _projectPath;
     // The FieldWorks save the numbers on screen were measured against, once an Assessment has completed.
     private DateTimeOffset? _assessedSaveUtc;
     private Task _reloadAfterRefresh = Task.CompletedTask;
@@ -55,71 +52,54 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
 
-        Project = project;
-        ProjectHistory = projectHistory;
-        Baseline = baseline;
-        Grammar = grammar;
-        Selection = selection;
-        Words = words;
-        Assess = assess;
-        Assess.TextWords = words;
-        Statistics = statistics;
-        Handoff = handoff;
-        Changes = new ChangesViewModel();
-        Assess.Compare.Changes = Changes;
-        ResultsInText = new ResultsInTextViewModel(words, assess, ShowWordInWords, OpenTryWord);
-        assess.Compare.OpenWord = ShowWordInWords;
-        assess.Difference.OpenWord = ShowWordInWords;
-        assess.Compare.HandOff = chosen =>
-        {
-            Handoff.UseWords(chosen);
-            CurrentPage = WorkspacePage.AiHandoff;
-        };
-        assess.OpenTryWord = OpenTryWord;
-        Statistics.AssessedWord = Assess.Words.Find;
-        Statistics.TryWord = OpenTryWord;
-        Statistics.OpenTimeLimit = () => ShowTexts(TextsTab.Texts);
-        ResultsInText.OpenTexts = () => ShowTexts(TextsTab.Texts);
-        OpenConfiguration = () => ShowTexts(TextsTab.Texts);
+        assess.TextWords = words;
+        Context = new WorkspaceContext(project, projectHistory, baseline, grammar, selection, words, assess, statistics,
+            handoff, new ChangesViewModel(), commandClient);
+        OpenConfiguration = () => Context.OpenTexts(TextsTab.Texts);
 
-        Pages = PageRegistry.Entries.Select(entry => new PageViewModel(entry.Page, entry.Title, entry.Icon)).ToArray();
-        ShowPageCommand = new RelayCommand<WorkspacePage>(page => CurrentPage = page);
+        Pages = PageRegistry.Entries
+            .Select(entry => new PageViewModel(entry.Page, entry.Title, entry.Icon, entry.CreateModel(Context)))
+            .ToArray();
+        ShowPageCommand = new RelayCommand<WorkspacePage>(Context.OpenPage);
 
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(recent =>
             recent is null ? Task.CompletedTask : SetProjectAsync(recent.FullFwDataPath));
         ConfigureCommand = new RelayCommand(() => OpenConfiguration?.Invoke());
-        CheckGrammarCommand = new AsyncRelayCommand(CheckGrammarAsync, () => HasProject && !Grammar.IsLoading);
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         CancelRefreshCommand = new RelayCommand(CancelRefresh, () => _isRefreshing);
-        SeeWhatChangedCommand = new RelayCommand(() => ShowTexts(TextsTab.WhatChanged), () => ShowsSeeWhatChanged);
+        SeeWhatChangedCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.WhatChanged), () => ShowsSeeWhatChanged);
 
         Project.ProjectChosen += OnProjectChosen;
         Project.KnownProjects.CollectionChanged += OnKnownProjectsChanged;
         Baseline.Refreshed += OnBaselineRefreshed;
         Baseline.OfferRerun += OnOfferRerun;
-        Baseline.PropertyChanged += OnChildPropertyChanged;
-        Selection.PropertyChanged += OnChildPropertyChanged;
-        Words.PropertyChanged += OnChildPropertyChanged;
-        Handoff.PropertyChanged += OnChildPropertyChanged;
+        Baseline.PropertyChanged += OnBaselinePropertyChanged;
         Assess.PropertyChanged += OnAssessPropertyChanged;
-        Grammar.PropertyChanged += OnChildPropertyChanged;
-        Grammar.Warnings.PropertyChanged += OnChildPropertyChanged;
-        Changes.Items.CollectionChanged += OnChangesChanged;
+        Context.PropertyChanged += OnContextPropertyChanged;
 
         AcceptRerunCommand = new AsyncRelayCommand(AcceptRerunAsync, () => RerunOffered);
         DismissRerunCommand = new RelayCommand(() => RerunOffered = false, () => RerunOffered);
         RefreshPages();
     }
 
+    /// <summary>What every page is built from: the project, its evidence, and the pages' navigation actions.</summary>
+    public WorkspaceContext Context { get; }
+
     /// <summary>The sidebar's entries, in the order <see cref="WorkspacePage"/> declares them.</summary>
     public IReadOnlyList<PageViewModel> Pages { get; }
 
+    /// <summary>The model of type <typeparamref name="TModel"/> the page registry built for this window.</summary>
+    public TModel PageModel<TModel>() where TModel : PageModel =>
+        Pages.Select(page => page.Model).OfType<TModel>().Single();
+
     /// <summary>The page the window is showing.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SelectedPage))]
-    private WorkspacePage _currentPage;
+    public WorkspacePage CurrentPage
+    {
+        get => Context.CurrentPage;
+        set => Context.OpenPage(value);
+    }
 
     /// <summary>The sidebar entry for <see cref="CurrentPage"/>; setting it opens that page.</summary>
     public PageViewModel SelectedPage
@@ -133,16 +113,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     /// <summary>Opens the page passed as the command parameter.</summary>
     public IRelayCommand<WorkspacePage> ShowPageCommand { get; }
-
-    /// <summary>The Texts page's own state, such as which tab it shows.</summary>
-    public TextsPageViewModel TextsPage { get; } = new();
-
-    /// <summary>Opens the Texts page on <paramref name="tab"/>.</summary>
-    public void ShowTexts(TextsTab tab)
-    {
-        TextsPage.Tab = tab;
-        CurrentPage = WorkspacePage.Texts;
-    }
 
     /// <summary>Whether the window is too narrow for labels, so the sidebar shows icons alone.</summary>
     [ObservableProperty]
@@ -158,14 +128,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Collapses or expands the sidebar for a window <paramref name="width"/> pixels wide.</summary>
     public void UpdateWindowWidth(double width) => IsSidebarCollapsed = width < SidebarCollapseWidth;
 
-    /// <summary>The changes collected on any page, to become one Proposal; the Review page lists them.</summary>
-    public ChangesViewModel Changes { get; }
-
     /// <summary>The chosen project's file name for the top bar, or a prompt before one is chosen.</summary>
-    public string ProjectName => _projectPath is null ? "Choose a project" : Path.GetFileName(_projectPath);
+    public string ProjectName => Context.ProjectName;
 
     /// <summary>Whether a project has been chosen in this window.</summary>
-    public bool HasProject => _projectPath is not null;
+    public bool HasProject => Context.HasProject;
 
     /// <summary>Browses for a <c>.fwdata</c> file and opens it: the project menu's Select new.</summary>
     public IAsyncRelayCommand SelectNewProjectCommand { get; }
@@ -276,14 +243,14 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private string SavedSinceText()
     {
-        var stem = Path.GetFileNameWithoutExtension(_projectPath);
+        var stem = Path.GetFileNameWithoutExtension(Context.ProjectPath);
         return $"{stem} saved {When(LatestSaveUtc!.Value)}; the numbers still describe {When(NumbersSavedUtc!.Value)} " +
             "until you refresh.";
     }
 
     private string BaselineAndSaveText()
     {
-        var stem = Path.GetFileNameWithoutExtension(_projectPath);
+        var stem = Path.GetFileNameWithoutExtension(Context.ProjectPath);
         var baseline = Baseline.CapturedUtc is { } captured ? $"Baseline of {When(captured)}" : "Baseline";
         var written = Baseline.ProjectLastWriteUtc ?? Baseline.SourceLastWriteUtc;
         return written is { } at ? $"{baseline} · {stem} saved {When(at)}" : baseline;
@@ -297,117 +264,43 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
     }
 
-    /// <summary>Whether the open project's grammar has no check to show, so the Warnings page offers one.</summary>
-    public bool IsGrammarNotChecked => HasProject && !Grammar.HasChecked && !Grammar.IsLoading;
-
-    /// <summary>Checks the open project's grammar: started only by a person, since it can take a minute.</summary>
-    public IAsyncRelayCommand CheckGrammarCommand { get; }
-
-    private Task CheckGrammarAsync() => _projectPath is { } path ? Grammar.SetProjectAsync(path) : Task.CompletedTask;
-
     // Opening shows the check stored for this Baseline, and never starts one of its own.
     private async Task LoadStoredGrammarAsync(string path, CancellationToken cancellationToken)
     {
         await Grammar.SetProjectAsync(null, cancellationToken).ConfigureAwait(true);
         var stored = await _commandClient.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), cancellationToken)
             .ConfigureAwait(true);
-        if (!string.Equals(path, _projectPath, StringComparison.Ordinal)) return;
+        if (!string.Equals(path, Context.ProjectPath, StringComparison.Ordinal)) return;
         // A stored hit is read, not rerun: pinned by `TheStoredReadStampsTheParserExactlyAsTheCheckDoes`.
         if (stored.Succeeded && stored.Value?.Check is not null)
             await Grammar.SetProjectAsync(path, cancellationToken).ConfigureAwait(true);
-        RaiseGrammarState();
     }
 
-    private void RaiseGrammarState()
-    {
-        OnPropertyChanged(nameof(IsGrammarNotChecked));
-        CheckGrammarCommand.NotifyCanExecuteChanged();
-    }
+    public ProjectViewModel Project => Context.Project;
 
-    /// <summary>What the AI Handoff page's action reads: the first write, or a rewrite.</summary>
-    public string HandoffActionText => Handoff.HasCompletedFiles ? "Write the AI Handoff again" : "Write the AI Handoff";
+    public ProjectHistoryViewModel ProjectHistory => Context.ProjectHistory;
 
-    partial void OnCurrentPageChanged(WorkspacePage value) => RefreshPages();
+    public BaselineViewModel Baseline => Context.Baseline;
 
-    public ProjectViewModel Project { get; }
+    public GrammarViewModel Grammar => Context.Grammar;
 
-    public ProjectHistoryViewModel ProjectHistory { get; }
+    public SelectionViewModel Selection => Context.Selection;
 
-    public BaselineViewModel Baseline { get; }
+    public TextWordsViewModel Words => Context.Words;
 
-    public GrammarViewModel Grammar { get; }
+    public AssessViewModel Assess => Context.Assess;
 
-    public SelectionViewModel Selection { get; }
+    public StatisticsViewModel Statistics => Context.Statistics;
 
-    public TextWordsViewModel Words { get; }
-
-    public AssessViewModel Assess { get; }
-
-    public StatisticsViewModel Statistics { get; }
-
-    public HandoffViewModel Handoff { get; }
-
-    /// <summary>The Texts page's In text view: the chosen Texts, each occurrence against the Assessment.</summary>
-    public ResultsInTextViewModel ResultsInText { get; }
-
-    // What an AI Handoff written now would cover, so the reader knows which run the chat model will see.
-    private static string CoverageOf(DateTimeOffset? at, string words, int texts, int pasted)
-    {
-        var sources = new List<string>();
-        if (texts > 0) sources.Add(texts == 1 ? "1 text" : $"{texts} texts");
-        if (pasted > 0) sources.Add(pasted == 1 ? "1 pasted word" : $"{pasted} pasted words");
-        var from = sources.Count > 0 ? " from " + string.Join(" and ", sources) : string.Empty;
-        return at is { } when
-            ? $"Covers the Assessment of {when.ToLocalTime():ddd d MMM, h:mm tt}: {words}{from}."
-            : $"Covers the latest Assessment: {words}{from}.";
-    }
-
-    // Opens a word in the Words tab with every filter cleared, so the word is certain to be listed.
-    private void ShowWordInWords(string word)
-    {
-        SelectWord(word);
-        ShowTexts(TextsTab.Words);
-    }
-
-    private void SelectWord(string word)
-    {
-        Assess.Words.WordFilter = string.Empty;
-        Assess.Words.SelectedFilter = ResultsWordFilter.All;
-        if (Assess.Words.Rows.All(row => row.Word != word)) Assess.Compare.ClearSelectionCommand.Execute(null);
-        Assess.Words.SelectedRow = Assess.Words.Rows.FirstOrDefault(row => row.Word == word) ?? Assess.Words.SelectedRow;
-    }
-
-    // Asked for by a click, so this traces straight away rather than only priming the box.
-    private void OpenTryWord(string word)
-    {
-        SelectWord(word);
-        Assess.Trace.SetWord(word);
-        CurrentPage = WorkspacePage.TryAWord;
-        if (Assess.Trace.TryCommand.CanExecute(null)) _ = Assess.Trace.TryCommand.ExecuteAsync(null);
-    }
+    public HandoffViewModel Handoff => Context.Handoff;
 
     /// <summary>Whether a successful Baseline capture replaced a Baseline an Assessment already covered.</summary>
     [ObservableProperty]
     private bool _rerunOffered;
 
-    /// <summary>Whether the current project has completed at least one Assessment since it was chosen.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(NotYetAssessed))]
-    [NotifyPropertyChangedFor(nameof(ShowEmptyResults))]
-    private bool _hasEverAssessed;
-
-    /// <summary>The negation <see cref="HasEverAssessed"/> binds against, so a view never composes <c>!</c> itself.</summary>
-    public bool NotYetAssessed => !HasEverAssessed;
-
-    /// <summary>Whether the word views have nothing to show and nothing to explain yet: no run, no refusal.</summary>
-    public bool ShowEmptyResults => NotYetAssessed && !Assess.IsActive && Assess.Refusal is null;
-
     public IAsyncRelayCommand AcceptRerunCommand { get; }
 
     public IRelayCommand DismissRerunCommand { get; }
-
-    /// <summary>Whether Project and Selection controls should accept input right now.</summary>
-    public bool ProjectAndSelectionEnabled => !Assess.IsActive;
 
     partial void OnRerunOfferedChanged(bool value)
     {
@@ -425,10 +318,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         await CancelActiveWorkAsync().ConfigureAwait(true);
         ClearProjectBoundState();
-        _projectPath = fwDataPath;
-        OnPropertyChanged(nameof(ProjectName));
-        OnPropertyChanged(nameof(HasProject));
-        RaiseGrammarState();
+        Context.ProjectPath = fwDataPath;
         Project.ShowChosen(fwDataPath);
         CurrentPage = WorkspacePage.Overview;
         RefreshRecentProjects();
@@ -442,8 +332,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         await grammar.ConfigureAwait(true);
 
         Assess.ProjectPath = fwDataPath;
-        Statistics.ProjectPath = fwDataPath;
-        Handoff.ProjectPath = fwDataPath;
+        Context.PublishProjectLoaded(fwDataPath);
         RaiseFreshness();
     }
 
@@ -455,7 +344,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     // The Text list and grammar findings belong to the Baseline just captured, not the one shown before Refresh.
     private async Task ReloadAfterRefreshAsync()
     {
-        if (_projectPath is not { } path) return;
+        if (Context.ProjectPath is not { } path) return;
         var grammar = Grammar.SetProjectAsync(path);
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
         await ProjectHistory.LoadAsync().ConfigureAwait(true);
@@ -516,69 +405,53 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         RecentProjects.Clear();
         foreach (var known in Project.KnownProjects.Where(known =>
-                     !string.Equals(known.FullFwDataPath, _projectPath, StringComparison.OrdinalIgnoreCase)))
+                     !string.Equals(known.FullFwDataPath, Context.ProjectPath, StringComparison.OrdinalIgnoreCase)))
             RecentProjects.Add(new RecentProjectViewModel(known.FullFwDataPath));
         OnPropertyChanged(nameof(RecentProjectsText));
         OnPropertyChanged(nameof(HasRecentProjects));
     }
 
-    private void OnChangesChanged(object? sender, NotifyCollectionChangedEventArgs e) => RefreshPages();
+    private void OnBaselinePropertyChanged(object? sender, PropertyChangedEventArgs e) => RaiseFreshness();
 
-    private void OnChildPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        OnPropertyChanged(nameof(HandoffActionText));
-        if (ReferenceEquals(sender, Baseline)) RaiseFreshness();
-        if (ReferenceEquals(sender, Grammar)) RaiseGrammarState();
-        RefreshPages();
+        switch (e.PropertyName)
+        {
+            case nameof(WorkspaceContext.CurrentPage):
+                OnPropertyChanged(nameof(CurrentPage));
+                OnPropertyChanged(nameof(SelectedPage));
+                RefreshPages();
+                break;
+            case nameof(WorkspaceContext.ProjectPath):
+                OnPropertyChanged(nameof(ProjectName));
+                OnPropertyChanged(nameof(HasProject));
+                break;
+        }
     }
 
     private void RefreshPages()
     {
-        PageOf(WorkspacePage.Warnings).Badge = Grammar.ShowFindings
-            ? Grammar.Warnings.TotalCount.ToString(CultureInfo.CurrentCulture)
-            : string.Empty;
-        PageOf(WorkspacePage.Review).Badge = Changes.Items.Count > 0
-            ? Changes.Items.Count.ToString(CultureInfo.CurrentCulture)
-            : string.Empty;
-
         foreach (var page in Pages) page.IsCurrent = page.Page == CurrentPage;
     }
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        OnPropertyChanged(nameof(ShowEmptyResults));
-
         if (e.PropertyName == nameof(AssessViewModel.IsActive))
         {
-            OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
             RefreshCommand.NotifyCanExecuteChanged();
             // A run started from Refresh leaves the person where they are; the top bar says how it is going.
-            if (Assess.IsActive && !_isRefreshing) ShowTexts(TextsTab.Matrix);
-            else if (Assess.IsActive) TextsPage.Tab = TextsTab.Matrix;
+            if (Assess.IsActive && !_isRefreshing) Context.OpenPage(WorkspacePage.Texts);
         }
 
         if (_isRefreshing) RaiseFreshness();
-        RefreshPages();
 
-        if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Completed)
+        if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Completed &&
+            Assess.Result is { } result)
         {
             Baseline.HasAssessment = true;
-            _assessedSaveUtc = Assess.Result?.Baseline.SourceLastWriteUtc;
+            _assessedSaveUtc = result.Baseline.SourceLastWriteUtc;
+            Context.PublishEvidence(new WorkspaceEvidence(result, Assess.CompletedAt, Assess.LastRunWasRerun));
             RaiseFreshness();
-            Statistics.Reset();
-            Statistics.SummaryMarkdown = Assess.Result?.SummaryMarkdown;
-            Statistics.AssessmentId = Assess.Result?.Measurements
-                .SingleOrDefault(measurement => measurement.Kind == "ObjectTiming")?.AssessmentId;
-            Handoff.InvocationId = Assess.Result?.InvocationId;
-            Handoff.LatestAssessmentAt = Assess.CompletedAt;
-            Handoff.CoverageText = CoverageOf(Assess.CompletedAt, Assess.Words.CountSummary,
-                Selection.ChosenTextIds.Count, Selection.PastedWordEntries.Count);
-            HasEverAssessed = true;
-            // A re-run exists to settle words, so what it settled is the first thing to see.
-            if (Assess.LastRunWasRerun && Assess.Difference.HasDifference) TextsPage.Tab = TextsTab.WhatChanged;
-            // The Overview's history lists this Assessment as soon as it is stored.
-            _ = ProjectHistory.LoadAsync();
-            Words.ShowAssessment(Assess.Words.Find);
         }
     }
 
@@ -607,18 +480,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private void ClearProjectBoundState()
     {
         RerunOffered = false;
-        HasEverAssessed = false;
         _refreshed = false;
         _assessedSaveUtc = null;
 
         Assess.Reset();
-        Assess.Trace.Reset();
-        Words.ShowAssessment(null);
-
-        Statistics.Reset();
-
-        Handoff.Reset();
-        Changes.ClearCommand.Execute(null);
+        Context.ClearProject();
     }
 
     /// <summary>Cancels and awaits any active run, so nothing keeps running past this workspace's lifetime.</summary>

@@ -48,7 +48,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 return walkthrough.Workspace.Assess.State == RunState.Idle &&
                     walkthrough.Workspace.Assess.Result is null &&
                     walkthrough.Workspace.Assess.Refusal is null &&
-                    !walkthrough.Workspace.HasEverAssessed &&
+                    !walkthrough.Workspace.Context.HasEvidence &&
                     walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                     walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.";
             }, WalkthroughSteps.Remaining(deadline), "browsing to the second project did not clear the first run");

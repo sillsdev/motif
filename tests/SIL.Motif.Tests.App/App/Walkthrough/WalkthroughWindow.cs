@@ -106,7 +106,7 @@ public sealed class WalkthroughWindow : IDisposable
     /// <summary>Opens a Texts page tab the way a person does, by its tab above the page.</summary>
     public void ShowTextsTab(TextsTab tab)
     {
-        if (Workspace.TextsPage.Tab == tab) return;
+        if (Workspace.PageModel<TextsPageModel>().Tab == tab) return;
 
         var name = tab switch
         {
@@ -115,7 +115,7 @@ public sealed class WalkthroughWindow : IDisposable
             _ => $"{tab} tab",
         };
         ClickControl(Find<Button>(name), name);
-        Assert.Equal(tab, Workspace.TextsPage.Tab);
+        Assert.Equal(tab, Workspace.PageModel<TextsPageModel>().Tab);
     }
 
     /// <summary>Opens a page the way a person does, by its entry in the sidebar.</summary>
@@ -139,13 +139,13 @@ public sealed class WalkthroughWindow : IDisposable
             Workspace.CurrentPage = page;
             foreach (var tab in Enum.GetValues<TextsTab>())
             {
-                Workspace.TextsPage.Tab = tab;
+                Workspace.PageModel<TextsPageModel>().Tab = tab;
                 Window.UpdateLayout();
                 Pump();
             }
         }
 
-        Workspace.TextsPage.Tab = TextsTab.Matrix;
+        Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
         Workspace.CurrentPage = opening;
         Window.UpdateLayout();
     }

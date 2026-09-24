@@ -49,19 +49,32 @@ public enum TextsTab
     InText,
 }
 
-/// <summary>One sidebar entry: a page's label, an optional count, and whether it is the page on screen.</summary>
+/// <summary>
+/// One sidebar entry: a page's label, the count its <see cref="Model"/> keeps beside it, and whether it is the page
+/// on screen.
+/// </summary>
 public sealed partial class PageViewModel : ObservableObject
 {
-    public PageViewModel(WorkspacePage page, string title, string icon)
+    public PageViewModel(WorkspacePage page, string title, string icon, PageModel model)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentException.ThrowIfNullOrWhiteSpace(icon);
+        ArgumentNullException.ThrowIfNull(model);
         Page = page;
         Title = title;
         Icon = icon;
+        Model = model;
+        _badge = model.Badge;
+        model.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PageModel.Badge)) Badge = model.Badge;
+        };
     }
 
     public WorkspacePage Page { get; }
+
+    /// <summary>The page's own model, which its view is built from.</summary>
+    public PageModel Model { get; }
 
     public string Title { get; }
 
@@ -71,7 +84,7 @@ public sealed partial class PageViewModel : ObservableObject
     /// <summary>The accessible name of the sidebar entry that opens this page.</summary>
     public string AutomationName => $"{Title} page";
 
-    /// <summary>A short count beside the label, or empty when the page has nothing to count.</summary>
+    /// <summary>The count <see cref="Model"/> keeps beside the label, or empty when it has none.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBadge))]
     private string _badge = string.Empty;

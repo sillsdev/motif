@@ -166,8 +166,8 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.Equal("(summary)", workspace.Statistics.SummaryMarkdown);
         Assert.Equal("assessment/one", workspace.Statistics.AssessmentId);
         Assert.Equal("invocation/one", workspace.Handoff.InvocationId);
-        Assert.True(workspace.HasEverAssessed);
-        Assert.False(workspace.NotYetAssessed);
+        Assert.True(workspace.Context.HasEvidence);
+        Assert.False(workspace.Context.HasNoEvidence);
     }
 
     [Fact]
@@ -226,8 +226,8 @@ public sealed class HandoffWorkspaceViewModelTests
 
         await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata");
 
-        Assert.False(workspace.HasEverAssessed);
-        Assert.True(workspace.NotYetAssessed);
+        Assert.False(workspace.Context.HasEvidence);
+        Assert.True(workspace.Context.HasNoEvidence);
         Assert.Null(workspace.Statistics.SummaryMarkdown);
         Assert.Null(workspace.Statistics.AssessmentId);
         Assert.Null(workspace.Handoff.InvocationId);

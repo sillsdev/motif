@@ -60,7 +60,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                 "Capture a Baseline to choose Texts.",
                 restartedWalkthrough.Workspace.Selection.TextsEmptyMessage);
             Assert.False(restartedWalkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
-            Assert.False(restartedWalkthrough.Workspace.HasEverAssessed);
+            Assert.False(restartedWalkthrough.Workspace.Context.HasEvidence);
             Assert.Equal("Nothing selected yet.", restartedWalkthrough.Workspace.Selection.SummaryText);
 
             var lockPath = secondProject.FwDataPath + ".lock";

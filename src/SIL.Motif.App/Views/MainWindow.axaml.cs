@@ -35,7 +35,7 @@ public sealed partial class MainWindow : Window
         Closing += (_, _) => SaveBounds();
     }
 
-    /// <summary>Builds each page's view from <see cref="PageRegistry"/> and binds the window to <paramref name="workspace"/>.</summary>
+    /// <summary>Builds each page's view from its model with <see cref="PageRegistry"/>, and binds the window to <paramref name="workspace"/>.</summary>
     public void Compose(HandoffWorkspaceViewModel workspace)
     {
         ArgumentNullException.ThrowIfNull(workspace);
@@ -45,7 +45,7 @@ public sealed partial class MainWindow : Window
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");
         foreach (var entry in workspace.Pages)
         {
-            var view = PageRegistry.For(entry.Page).Create(workspace);
+            var view = PageRegistry.For(entry.Page).CreateView(entry.Model);
             view.Name = $"{entry.Page}Page";
             view.Bind(IsVisibleProperty, new Binding(nameof(PageViewModel.IsCurrent)) { Source = entry });
             host.Children.Add(view);

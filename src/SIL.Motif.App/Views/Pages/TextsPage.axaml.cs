@@ -10,17 +10,17 @@ namespace SIL.Motif.App.Views;
 /// </summary>
 public sealed partial class TextsPage : UserControl
 {
-    public TextsPage(HandoffWorkspaceViewModel workspace)
+    public TextsPage(TextsPageModel page)
     {
-        ArgumentNullException.ThrowIfNull(workspace);
-        DataContext = workspace;
+        ArgumentNullException.ThrowIfNull(page);
+        DataContext = page;
         AvaloniaXamlLoader.Load(this);
 
-        Host("CompareHost").Content = new ComparePanel(workspace.Assess.Compare);
-        Host("DifferenceHost").Content = new DifferencePanel(workspace.Assess.Difference);
-        Host("AssessHost").Content = new AssessPanel(workspace.Assess);
-        Host("SelectionHost").Content = new SelectionPanel(workspace.Selection, workspace.Words);
-        Host("ResultsInTextHost").Content = new ResultsInTextPanel(workspace.ResultsInText);
+        Host("CompareHost").Content = new ComparePanel(page.Assess.Compare);
+        Host("DifferenceHost").Content = new DifferencePanel(page.Assess.Difference);
+        Host("AssessHost").Content = new AssessPanel(page.Assess);
+        Host("SelectionHost").Content = new SelectionPanel(page.Selection, page.Words);
+        Host("ResultsInTextHost").Content = new ResultsInTextPanel(page.ResultsInText);
     }
 
     private ContentControl Host(string name) =>

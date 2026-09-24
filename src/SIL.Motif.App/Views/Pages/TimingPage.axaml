@@ -3,13 +3,13 @@
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TimingPage"
-             x:DataType="vm:HandoffWorkspaceViewModel">
+             x:DataType="vm:TimingPageModel">
   <Panel>
     <views:CopyableTextBlock Classes="muted"
                Text="Run an Assessment to see where the parse time went."
-               IsVisible="{Binding NotYetAssessed}"
+               IsVisible="{Binding Context.HasNoEvidence}"
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
-    <ContentControl x:Name="StatisticsHost" IsVisible="{Binding HasEverAssessed}" />
+    <ContentControl x:Name="StatisticsHost" IsVisible="{Binding Context.HasEvidence}" />
   </Panel>
 </UserControl>

@@ -53,40 +53,40 @@
             <DockPanel LastChildFill="False">
               <views:CopyableTextBlock Text="Latest Assessment" FontSize="15" FontWeight="SemiBold" DockPanel.Dock="Left" />
               <views:CopyableTextBlock Classes="muted" DockPanel.Dock="Right" VerticalAlignment="Center"
-                                       IsVisible="{Binding Workspace.HasEverAssessed}"
-                                       Text="{Binding Workspace.Assess.Words.CountSummary}" />
+                                       IsVisible="{Binding Page.Context.HasEvidence}"
+                                       Text="{Binding Page.Assess.Words.CountSummary}" />
               <views:CopyableTextBlock Classes="muted" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,12,0"
-                                       IsVisible="{Binding Workspace.HasEverAssessed}"
-                                       Text="{Binding Workspace.Assess.CompletedAt, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
+                                       IsVisible="{Binding Page.Context.HasEvidence}"
+                                       Text="{Binding Page.Assess.CompletedAt, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
             </DockPanel>
-            <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Workspace.NotYetAssessed}"
+            <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Page.Context.HasNoEvidence}"
                                      Text="No Assessment yet. Choose Texts or paste words, then run one to see how the grammar does." />
-            <StackPanel Spacing="12" IsVisible="{Binding Workspace.HasEverAssessed}">
-              <views:OutcomeBar Segments="{Binding Workspace.Assess.Words.Outcomes}" AutomationProperties.Name="What the parser came to" />
-              <Border Classes="notice" IsVisible="{Binding Workspace.Assess.Words.ManyStoppedAtALimit}">
+            <StackPanel Spacing="12" IsVisible="{Binding Page.Context.HasEvidence}">
+              <views:OutcomeBar Segments="{Binding Page.Assess.Words.Outcomes}" AutomationProperties.Name="What the parser came to" />
+              <Border Classes="notice" IsVisible="{Binding Page.Assess.Words.ManyStoppedAtALimit}">
                 <DockPanel LastChildFill="True">
                   <HyperlinkButton DockPanel.Dock="Right" VerticalAlignment="Center" Padding="0" Margin="12,0,0,0"
                                    Content="Give each word longer" Click="OnOpenTimeLimitClick" />
-                  <views:CopyableTextBlock Text="{Binding Workspace.Assess.Words.LimitHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                  <views:CopyableTextBlock Text="{Binding Page.Assess.Words.LimitHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
                 </DockPanel>
               </Border>
-              <Border Classes="notice" IsVisible="{Binding Workspace.Assess.Words.AnySkipped}">
-                <views:CopyableTextBlock Text="{Binding Workspace.Assess.Words.SkippedHint}" TextWrapping="Wrap" />
+              <Border Classes="notice" IsVisible="{Binding Page.Assess.Words.AnySkipped}">
+                <views:CopyableTextBlock Text="{Binding Page.Assess.Words.SkippedHint}" TextWrapping="Wrap" />
               </Border>
               <Border Height="1" Background="{DynamicResource SemiColorBorder}" />
               <views:CopyableTextBlock Text="Against what the project stores" FontWeight="SemiBold" />
               <WrapPanel>
                 <views:VerdictChip Verdict="NoResult" Margin="0,0,8,6"
-                                   Text="{Binding Workspace.Assess.Words.MissedCount, StringFormat='{}{0} approved analyses missed'}" />
+                                   Text="{Binding Page.Assess.Words.MissedCount, StringFormat='{}{0} approved analyses missed'}" />
                 <views:VerdictChip Verdict="Differs" Margin="0,0,8,6"
-                                   Text="{Binding Workspace.Assess.Words.DisapprovedCount, StringFormat='{}{0} disapproved readings produced'}" />
+                                   Text="{Binding Page.Assess.Words.DisapprovedCount, StringFormat='{}{0} disapproved readings produced'}" />
                 <views:VerdictChip Verdict="New" Margin="0,0,8,6"
-                                   Text="{Binding Workspace.Assess.Words.NoOpinionCount, StringFormat='{}{0} words with new readings'}" />
+                                   Text="{Binding Page.Assess.Words.NoOpinionCount, StringFormat='{}{0} words with new readings'}" />
               </WrapPanel>
               <StackPanel Orientation="Horizontal" Spacing="18">
                 <HyperlinkButton Content="Open the words" Padding="0" Click="OnOpenResultsClick" />
                 <HyperlinkButton Content="Why words stopped: Timing" Padding="0" Click="OnOpenStatisticsClick"
-                                 IsVisible="{Binding Workspace.Assess.Words.AnyStoppedAtALimit}" />
+                                 IsVisible="{Binding Page.Assess.Words.AnyStoppedAtALimit}" />
               </StackPanel>
             </StackPanel>
           </StackPanel>
@@ -99,10 +99,10 @@
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <views:CopyableTextBlock Text="Grammar" FontSize="15" FontWeight="SemiBold" />
                 <views:CopyableTextBlock Text="&#183;" Classes="muted" FontSize="15" />
-                <views:CopyableTextBlock Text="{Binding Workspace.Grammar.SummaryText}" FontSize="15" />
+                <views:CopyableTextBlock Text="{Binding Page.Grammar.SummaryText}" FontSize="15" />
               </StackPanel>
-              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Workspace.Grammar.ShowFindings}"
-                                       Text="{Binding Workspace.Grammar.Warnings.BreakdownText}" />
+              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Page.Grammar.ShowFindings}"
+                                       Text="{Binding Page.Grammar.Warnings.BreakdownText}" />
             </StackPanel>
           </DockPanel>
         </Border>

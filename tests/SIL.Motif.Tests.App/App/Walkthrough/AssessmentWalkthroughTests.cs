@@ -56,7 +56,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Assert.True(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
             Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
 
-            Assert.True(walkthrough.Workspace.HasEverAssessed);
+            Assert.True(walkthrough.Workspace.Context.HasEvidence);
             Assert.True(walkthrough.Named<ContentControl>("StatisticsHost").IsVisible);
             Assert.NotNull(walkthrough.Workspace.Statistics.AssessmentId);
             Assert.Equal(walkthrough.Workspace.Statistics.Groups[0],

@@ -10,13 +10,13 @@ namespace SIL.Motif.App.Views;
 /// </summary>
 public sealed partial class ReviewPanel : UserControl
 {
-    public ReviewPanel(HandoffWorkspaceViewModel workspace)
+    public ReviewPanel(ReviewPageModel page)
     {
-        ArgumentNullException.ThrowIfNull(workspace);
-        Workspace = workspace;
-        DataContext = workspace;
+        ArgumentNullException.ThrowIfNull(page);
+        Page = page;
+        DataContext = page;
         AvaloniaXamlLoader.Load(this);
     }
 
-    public HandoffWorkspaceViewModel Workspace { get; }
+    public ReviewPageModel Page { get; }
 }

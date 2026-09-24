@@ -58,7 +58,7 @@ public sealed class PageScreenshots
                         window.Height = 780;
                         foreach (var (name, page, tab) in Views())
                         {
-                            workspace.TextsPage.Tab = tab;
+                            workspace.PageModel<TextsPageModel>().Tab = tab;
                             workspace.CurrentPage = page;
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
                         }
@@ -145,7 +145,7 @@ public sealed class PageScreenshots
         await workspace.Statistics.LoadCommand.ExecuteAsync(null);
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
         workspace.Assess.Trace.Result = WordTraceQuery.LoadDiagnostic(TraceFixture()).Value;
-        workspace.ResultsInText.SelectToken(workspace.ResultsInText.VisibleLines[0].Tokens[1]);
+        workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines[0].Tokens[1]);
         await workspace.Handoff.RunCommand.ExecuteAsync(null);
         workspace.Handoff.LatestAssessmentAt = workspace.Handoff.WrittenAt!.Value.AddMinutes(35);
         return (workspace, window);

@@ -98,7 +98,7 @@ public sealed class WorkflowShellTests
                 Assert.Equal(PageHosts, host.Children.Select(child => child.Name));
                 foreach (var page in Enum.GetValues<WorkspacePage>())
                 {
-                    var built = PageRegistry.For(page).Create(workspace);
+                    var built = PageRegistry.For(page).CreateView(workspace.PageOf(page).Model);
                     Assert.IsType(built.GetType(), host.Children.Single(child => child.Name == $"{page}Page"));
                 }
             }
@@ -235,7 +235,7 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
-                workspace.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Approve, "kitabu", "Candidate", "kitabu"));
+                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Approve, "kitabu", "Candidate", "kitabu"));
                 window.Width = 1240;
                 window.Show();
                 window.UpdateLayout();
@@ -375,10 +375,10 @@ public sealed class WorkflowShellTests
                 var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
                 var list = review.GetLogicalDescendants().OfType<ItemsControl>()
                     .Single(control => AutomationProperties.GetName(control) == "Changes to review");
-                Assert.Same(workspace.Changes, workspace.Assess.Compare.Changes);
-                Assert.Same(workspace.Changes.Items, list.ItemsSource);
+                Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
+                Assert.Same(workspace.Context.Changes.Items, list.ItemsSource);
 
-                workspace.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "Approved", "kitabu"));
+                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "Approved", "kitabu"));
                 window.UpdateLayout();
 
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "kitabu");

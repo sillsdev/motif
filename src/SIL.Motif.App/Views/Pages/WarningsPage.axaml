@@ -3,7 +3,7 @@
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.WarningsPage"
-             x:DataType="vm:HandoffWorkspaceViewModel">
+             x:DataType="vm:WarningsPageModel">
   <Grid RowDefinitions="Auto,*">
     <!-- Opening a project never checks the grammar; until someone asks, the page says so and offers the check. -->
     <Border Classes="card" Margin="20,16,20,0" IsVisible="{Binding IsGrammarNotChecked}"
