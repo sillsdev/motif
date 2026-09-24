@@ -7,8 +7,9 @@ namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
 /// Pins <see cref="CurrentBaselineQuery"/> over a real, file-backed seeded project: the absent-Baseline
-/// state before any capture, the recorded token and source last-save time after one, the live lock-file
-/// observation either way, and that reading never captures, publishes, or otherwise changes anything.
+/// state before any capture, the recorded token and source last-save time after one, the project file's own
+/// last-write time beside it, the live lock-file observation either way, and that reading never captures,
+/// publishes, or otherwise changes anything.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class CurrentBaselineQueryTests : IDisposable
@@ -67,6 +68,22 @@ public sealed class CurrentBaselineQueryTests : IDisposable
         Assert.True(outcome.Succeeded);
         Assert.Equal(captured.Value!.Token.BundleDigest, outcome.Value!.Token!.BundleDigest);
         Assert.Equal(captured.Value.SourceLastWriteUtc, outcome.Value.SourceLastWriteUtc);
+    }
+
+    [Fact]
+    public void TheProjectFilesWriteTimeMatchesTheBaselineUntilTheFileIsSavedAgain()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());
+        Assert.True(captured.Succeeded);
+
+        var before = CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath)).Value!;
+        File.SetLastWriteTimeUtc(fwDataPath, before.SourceLastWriteUtc!.Value.UtcDateTime.AddMinutes(5));
+        var after = CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath)).Value!;
+
+        Assert.Equal(before.SourceLastWriteUtc, before.ProjectLastWriteUtc);
+        Assert.Equal(before.SourceLastWriteUtc!.Value.AddMinutes(5), after.ProjectLastWriteUtc);
+        Assert.Equal(before.SourceLastWriteUtc, after.SourceLastWriteUtc);
     }
 
     [Fact]
