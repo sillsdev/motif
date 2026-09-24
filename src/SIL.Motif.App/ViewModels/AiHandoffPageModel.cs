@@ -19,7 +19,11 @@ public sealed class AiHandoffPageModel : PageModel
 
     protected override void OnProjectCleared() => Handoff.Reset();
 
-    protected override void OnProjectLoaded(string projectPath) => Handoff.ProjectPath = projectPath;
+    protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
+    {
+        Handoff.ProjectPath = projectPath;
+        return Task.CompletedTask;
+    }
 
     protected override void OnEvidencePublished(WorkspaceEvidence evidence)
     {

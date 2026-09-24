@@ -26,7 +26,11 @@ public sealed class TimingPageModel : PageModel
         Statistics.Reset();
     }
 
-    protected override void OnProjectLoaded(string projectPath) => Statistics.ProjectPath = projectPath;
+    protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
+    {
+        Statistics.ProjectPath = projectPath;
+        return Task.CompletedTask;
+    }
 
     protected override void OnEvidencePublished(WorkspaceEvidence evidence)
     {

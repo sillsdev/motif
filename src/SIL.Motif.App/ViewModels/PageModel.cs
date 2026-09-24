@@ -15,10 +15,7 @@ public abstract partial class PageModel : ObservableObject
         ArgumentNullException.ThrowIfNull(context);
         Context = context;
         ShowPageCommand = new RelayCommand<WorkspacePage>(context.OpenPage);
-        context.ProjectCleared += (_, _) => OnProjectCleared();
-        context.ProjectLoaded += (_, path) => OnProjectLoaded(path);
-        context.EvidencePublished += (_, evidence) => OnEvidencePublished(evidence);
-        context.Requested += (_, request) => OnRequested(request);
+        context.Attach(this);
     }
 
     /// <summary>What the page is built from.</summary>
@@ -36,10 +33,12 @@ public abstract partial class PageModel : ObservableObject
     {
     }
 
-    /// <summary>Binds the page to the project at <paramref name="projectPath"/>, now loaded.</summary>
-    protected virtual void OnProjectLoaded(string projectPath)
-    {
-    }
+    /// <summary>Loads what the page shows for the project at <paramref name="projectPath"/>, now open.</summary>
+    protected virtual Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
+    /// <summary>Reloads what the page shows now that a new Baseline has been captured.</summary>
+    protected virtual Task OnBaselineCapturedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>Shows <paramref name="evidence"/>, just published.</summary>
     protected virtual void OnEvidencePublished(WorkspaceEvidence evidence)
@@ -50,4 +49,15 @@ public abstract partial class PageModel : ObservableObject
     protected virtual void OnRequested(PageRequest request)
     {
     }
+
+    internal void ProjectCleared() => OnProjectCleared();
+
+    internal Task ProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
+        OnProjectOpenedAsync(projectPath, cancellationToken);
+
+    internal Task BaselineCapturedAsync(CancellationToken cancellationToken) => OnBaselineCapturedAsync(cancellationToken);
+
+    internal void EvidencePublished(WorkspaceEvidence evidence) => OnEvidencePublished(evidence);
+
+    internal void Requested(PageRequest request) => OnRequested(request);
 }

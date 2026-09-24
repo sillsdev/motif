@@ -122,31 +122,32 @@ public sealed partial class WorkspaceContext : ObservableObject
     [ObservableProperty]
     private WorkspacePage _currentPage;
 
-    /// <summary>Raised when the previous project's state must go: before a new project loads.</summary>
-    public event EventHandler? ProjectCleared;
+    private readonly List<PageModel> _pages = [];
 
-    /// <summary>Raised with the project's path once its Baseline, Selection and Text state have loaded.</summary>
-    public event EventHandler<string>? ProjectLoaded;
-
-    /// <summary>Raised once for each evidence published, after <see cref="Evidence"/> holds it.</summary>
-    public event EventHandler<WorkspaceEvidence>? EvidencePublished;
-
-    /// <summary>Raised for each <see cref="PageRequest"/>, before <see cref="CurrentPage"/> changes to its page.</summary>
-    public event EventHandler<PageRequest>? Requested;
+    // Called by each page model's constructor, so the context reaches a page only through its hooks.
+    internal void Attach(PageModel page) => _pages.Add(page);
 
     /// <summary>Forgets the evidence and tells every page to drop what it showed for the previous project.</summary>
     public void ClearProject()
     {
         Evidence = null;
-        ProjectCleared?.Invoke(this, EventArgs.Empty);
+        foreach (var page in _pages) page.ProjectCleared();
     }
 
-    /// <summary>Tells every page that <paramref name="projectPath"/> has loaded.</summary>
-    public void PublishProjectLoaded(string projectPath)
+    /// <summary>Opens <paramref name="projectPath"/> on every page, and returns once each has loaded it.</summary>
+    public async Task PublishProjectOpenedAsync(string projectPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         ProjectPath = projectPath;
-        ProjectLoaded?.Invoke(this, projectPath);
+        foreach (var page in _pages.ToArray())
+            await page.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Tells every page a new Baseline was captured, and returns once each has reloaded.</summary>
+    public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var page in _pages.ToArray())
+            await page.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>Publishes <paramref name="evidence"/> as what every page now shows.</summary>
@@ -154,7 +155,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(evidence);
         Evidence = evidence;
-        EvidencePublished?.Invoke(this, evidence);
+        foreach (var page in _pages.ToArray()) page.EvidencePublished(evidence);
     }
 
     /// <summary>Opens <paramref name="page"/> as it stands.</summary>
@@ -164,7 +165,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     public void Open(PageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        Requested?.Invoke(this, request);
+        foreach (var page in _pages.ToArray()) page.Requested(request);
         CurrentPage = request.Page;
     }
 

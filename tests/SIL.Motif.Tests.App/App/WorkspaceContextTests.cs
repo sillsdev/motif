@@ -24,13 +24,13 @@ public sealed class WorkspaceContextTests
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
     [Fact]
-    public void ATimingPageModelBuiltFromAContextAloneTakesTheEvidenceTheContextPublishes()
+    public async Task ATimingPageModelBuiltFromAContextAloneTakesTheEvidenceTheContextPublishes()
     {
         var context = NewContext();
         var timing = new TimingPageModel(context);
         Assert.False(timing.Context.HasEvidence);
 
-        context.PublishProjectLoaded(ProjectPath);
+        await context.PublishProjectOpenedAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         Assert.True(timing.Context.HasEvidence);
@@ -40,13 +40,13 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
-    public void AnAiHandoffPageModelBuiltFromAContextAloneCoversThePublishedAssessmentAndForgetsItOnClear()
+    public async Task AnAiHandoffPageModelBuiltFromAContextAloneCoversThePublishedAssessmentAndForgetsItOnClear()
     {
         var context = NewContext();
         var handoff = new AiHandoffPageModel(context);
         Assert.Equal("Write the AI Handoff", handoff.HandoffActionText);
 
-        context.PublishProjectLoaded(ProjectPath);
+        await context.PublishProjectOpenedAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         Assert.Equal("invocation/one", handoff.Handoff.InvocationId);
         Assert.StartsWith("Covers the Assessment of ", handoff.Handoff.CoverageText);
@@ -151,6 +151,20 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
+    public async Task OpeningAProjectAndCapturingABaselineAwaitEveryPagesOwnLoad()
+    {
+        var context = NewContext();
+        var page = new LoadingPageModel(context);
+
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        Assert.Equal(ProjectPath, page.Opened);
+        Assert.Equal(ProjectPath, context.ProjectPath);
+
+        await context.PublishBaselineCapturedAsync();
+        Assert.Equal(1, page.Captures);
+    }
+
+    [Fact]
     public void NoPageModelIsNamedByTheWorkspaceTheContextOrAnotherPage()
     {
         var pageModels = typeof(PageModel).Assembly.GetTypes()
@@ -225,6 +239,25 @@ public sealed class WorkspaceContextTests
         protected override void OnRequested(PageRequest request)
         {
             if (request is ElsewhereRequest elsewhere) Received = elsewhere.Note;
+        }
+    }
+
+    private sealed class LoadingPageModel(WorkspaceContext context) : PageModel(context)
+    {
+        public string? Opened { get; private set; }
+
+        public int Captures { get; private set; }
+
+        protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
+        {
+            await Task.Yield();
+            Opened = projectPath;
+        }
+
+        protected override async Task OnBaselineCapturedAsync(CancellationToken cancellationToken)
+        {
+            await Task.Yield();
+            Captures++;
         }
     }
 

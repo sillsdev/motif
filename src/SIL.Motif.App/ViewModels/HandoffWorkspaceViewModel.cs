@@ -330,7 +330,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         await grammar.ConfigureAwait(true);
 
         Assess.ProjectPath = fwDataPath;
-        Context.PublishProjectLoaded(fwDataPath);
+        await Context.PublishProjectOpenedAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         RaiseFreshness();
     }
 
@@ -347,6 +347,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
         await ProjectHistory.LoadAsync().ConfigureAwait(true);
         await grammar.ConfigureAwait(true);
+        await Context.PublishBaselineCapturedAsync().ConfigureAwait(true);
     }
 
     private void OnOfferRerun(object? sender, EventArgs e) => RerunOffered = true;
