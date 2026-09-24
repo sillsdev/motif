@@ -20,6 +20,8 @@ public sealed partial class TextsPageModel : PageModel
 {
     public TextsPageModel(WorkspaceContext context) : base(context)
     {
+        Words = new TextWordsViewModel(context.Commands, context.Selection);
+        Assess.TextWords = Words;
         ShowTabCommand = new RelayCommand<TextsTab>(tab => Tab = tab);
         ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord)
         {
@@ -38,7 +40,8 @@ public sealed partial class TextsPageModel : PageModel
 
     public SelectionViewModel Selection => Context.Selection;
 
-    public TextWordsViewModel Words => Context.Words;
+    /// <summary>The chosen Texts' words and lines, which the page loads for itself.</summary>
+    public TextWordsViewModel Words { get; }
 
     /// <summary>The changes not applied yet, which the page's header offers to review.</summary>
     public ChangesViewModel Changes => Context.Changes;
@@ -72,6 +75,9 @@ public sealed partial class TextsPageModel : PageModel
     public bool ShowEmptyResults => Context.HasNoEvidence && !Assess.IsActive && Assess.Refusal is null;
 
     protected override void OnProjectCleared() => Words.ShowAssessment(null);
+
+    protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
+        Words.SetProjectAsync(projectPath, cancellationToken);
 
     protected override void OnEvidencePublished(WorkspaceEvidence evidence)
     {

@@ -253,13 +253,11 @@ public sealed class WorkspaceContextTests
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
-        var words = new TextWordsViewModel(fake, selection);
         return (fake, new WorkspaceContext(
             new ProjectViewModel(fake, new NoProjectPicker()),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
-            words,
             new AssessViewModel(fake, selection),
             new ChangesViewModel(),
             fake,

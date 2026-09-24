@@ -46,13 +46,11 @@ public sealed class HandoffWorkspaceViewModelTests
         var folderPicker = new FakeFolderPicker();
         var dragSource = new FakeDragSource();
         var selection = new SelectionViewModel(fake);
-        var words = new TextWordsViewModel(fake, selection);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, projectPicker),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
-            words,
             new AssessViewModel(fake, selection),
             folderPicker, dragSource,
             fake);

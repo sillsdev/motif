@@ -129,9 +129,9 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         {
             text.IsChecked = true;
             var settle = DateTime.Now.AddMilliseconds(500);
-            walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.Words.IsLoading,
+            walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.PageModel<TextsPageModel>().Words.IsLoading,
                 TimeSpan.FromMinutes(2), "the Texts' words did not load");
-            if (workspace.Words.Rows.Count >= WordBudget) break;
+            if (workspace.PageModel<TextsPageModel>().Words.Rows.Count >= WordBudget) break;
         }
         if (workspace.Selection.Texts.Count == 0)
         {
@@ -141,7 +141,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                     .Select(line => line.Trim()).Where(line => line.Length > 0 && !line.StartsWith('#')).Take(WordBudget));
         }
         output.WriteLine($"{Path.GetFileName(original)}: {workspace.Selection.Texts.Count(text => text.IsChecked)} texts, " +
-            $"{workspace.Words.Rows.Count} text words, {workspace.Selection.PastedWordEntries.Count} pasted words, " +
+            $"{workspace.PageModel<TextsPageModel>().Words.Rows.Count} text words, {workspace.Selection.PastedWordEntries.Count} pasted words, " +
             $"{workspace.PageModel<WarningsPageModel>().Grammar.Warnings.TotalCount} grammar findings");
 
         workspace.Assess.RunCommand.Execute(null);
@@ -271,7 +271,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var workspace = walkthrough.Workspace;
         foreach (var text in workspace.Selection.Texts) text.IsChecked = false;
         var settle = DateTime.Now.AddMilliseconds(500);
-        walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.Words.IsLoading,
+        walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.PageModel<TextsPageModel>().Words.IsLoading,
             TimeSpan.FromMinutes(1), "unchecking the Texts did not settle");
         workspace.Context.OpenTexts(TextsTab.InText);
         Save(walkthrough.Window, Path.Combine(folder, "2i-texts-in-text-no-text-light.png"));

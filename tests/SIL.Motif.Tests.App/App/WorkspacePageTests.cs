@@ -29,13 +29,11 @@ public sealed class WorkspacePageTests
         var fake = new FakeCommandClient();
         var projectPicker = new FakeProjectPicker();
         var selection = new SelectionViewModel(fake);
-        var words = new TextWordsViewModel(fake, selection);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, projectPicker),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
-            words,
             new AssessViewModel(fake, selection),
             new FakeFolderPicker(), new FakeDragSource(),
             fake);

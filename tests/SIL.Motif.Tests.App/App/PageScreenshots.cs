@@ -126,10 +126,9 @@ public sealed class PageScreenshots
         });
 
         var selection = new SelectionViewModel(fake);
-        var words = new TextWordsViewModel(fake, selection);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new Picker()), new ProjectHistoryViewModel(fake), new BaselineViewModel(fake),
-            selection, words, new AssessViewModel(fake, selection),
+            selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
             fake);
         var window = new MainWindow();
@@ -139,7 +138,7 @@ public sealed class PageScreenshots
         await workspace.SetProjectAsync(ProjectPath);
         foreach (var text in selection.Texts) text.IsChecked = true;
         await Task.Yield();
-        await words.ReloadAsync();
+        await workspace.PageModel<TextsPageModel>().Words.ReloadAsync();
         await workspace.Assess.RunCommand.ExecuteAsync(null);
         workspace.PageModel<TimingPageModel>().Statistics.AssessmentId = "assessment/one";
         await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);

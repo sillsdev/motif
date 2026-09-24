@@ -27,13 +27,11 @@ public sealed class WalkthroughWindow : IDisposable
 
         commandClient ??= new CommandClient(managedRoot);
         var selection = new SelectionViewModel(commandClient);
-        var words = new TextWordsViewModel(commandClient, selection);
         Workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(commandClient, _projectPicker),
             new ProjectHistoryViewModel(commandClient),
             new BaselineViewModel(commandClient),
             selection,
-            words,
             new AssessViewModel(commandClient, selection),
             _folderPicker, _dragSource,
             commandClient);

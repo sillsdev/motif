@@ -534,13 +534,11 @@ public sealed class WorkflowShellTests
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
-        var words = new TextWordsViewModel(fake, selection);
         return new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new NoProjectPicker()),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
-            words,
             new AssessViewModel(fake, selection),
             new NoFolderPicker(), DragSource,
             fake);
@@ -552,13 +550,11 @@ public sealed class WorkflowShellTests
     private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow(FakeCommandClient fake)
     {
         var selection = new SelectionViewModel(fake);
-        var words = new TextWordsViewModel(fake, selection);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new NoProjectPicker()),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
             selection,
-            words,
             new AssessViewModel(fake, selection),
             new NoFolderPicker(), DragSource,
             fake);

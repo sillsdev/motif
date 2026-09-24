@@ -34,7 +34,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
-        SelectionViewModel selection, TextWordsViewModel words,
+        SelectionViewModel selection,
         AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient)
     {
@@ -42,14 +42,12 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         ArgumentNullException.ThrowIfNull(projectHistory);
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(selection);
-        ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
         ArgumentNullException.ThrowIfNull(folderPicker);
         ArgumentNullException.ThrowIfNull(dragSource);
         ArgumentNullException.ThrowIfNull(commandClient);
 
-        assess.TextWords = words;
-        Context = new WorkspaceContext(project, projectHistory, baseline, selection, words, assess,
+        Context = new WorkspaceContext(project, projectHistory, baseline, selection, assess,
             new ChangesViewModel(), commandClient, folderPicker, dragSource);
         OpenConfiguration = () => Context.OpenTexts(TextsTab.Texts);
 
@@ -268,8 +266,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     public SelectionViewModel Selection => Context.Selection;
 
-    public TextWordsViewModel Words => Context.Words;
-
     public AssessViewModel Assess => Context.Assess;
 
 
@@ -306,7 +302,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         await ProjectHistory.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
-        await Words.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
 
         Assess.ProjectPath = fwDataPath;
         await Context.PublishProjectOpenedAsync(fwDataPath, cancellationToken).ConfigureAwait(true);

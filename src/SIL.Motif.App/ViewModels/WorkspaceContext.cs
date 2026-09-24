@@ -56,7 +56,7 @@ public sealed partial class WorkspaceContext : ObservableObject
 {
     public WorkspaceContext(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
-        SelectionViewModel selection, TextWordsViewModel words, AssessViewModel assess,
+        SelectionViewModel selection, AssessViewModel assess,
         ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
         IFileDragSource dragSource)
     {
@@ -64,7 +64,6 @@ public sealed partial class WorkspaceContext : ObservableObject
         ArgumentNullException.ThrowIfNull(projectHistory);
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(selection);
-        ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(commands);
@@ -74,7 +73,6 @@ public sealed partial class WorkspaceContext : ObservableObject
         ProjectHistory = projectHistory;
         Baseline = baseline;
         Selection = selection;
-        Words = words;
         Assess = assess;
         Changes = changes;
         Commands = commands;
@@ -90,8 +88,6 @@ public sealed partial class WorkspaceContext : ObservableObject
     public BaselineViewModel Baseline { get; }
 
     public SelectionViewModel Selection { get; }
-
-    public TextWordsViewModel Words { get; }
 
     public AssessViewModel Assess { get; }
 
