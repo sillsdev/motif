@@ -312,7 +312,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         var stored = await _commandClient.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), cancellationToken)
             .ConfigureAwait(true);
         if (!string.Equals(path, _projectPath, StringComparison.Ordinal)) return;
-        // A stored hit reads the same store the check does, pinned by `TheStoredReadStampsTheParserExactlyAsTheCheckDoes`.
+        // A stored hit is read, not rerun: pinned by `TheStoredReadStampsTheParserExactlyAsTheCheckDoes`.
         if (stored.Succeeded && stored.Value?.Check is not null)
             await Grammar.SetProjectAsync(path, cancellationToken).ConfigureAwait(true);
         RaiseGrammarState();
