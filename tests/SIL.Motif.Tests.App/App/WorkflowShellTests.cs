@@ -271,6 +271,36 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
+    public void TheShellTakesItsSizesAndMenuLookFromTheTokens()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (_, window) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                Assert.Equal((1240d, 780d, 820d, 600d), (window.Width, window.Height, window.MinWidth, window.MinHeight));
+                var banner = window.GetLogicalDescendants().OfType<Border>().Single(border => border.Classes.Contains("banner"));
+                Assert.Equal(new Thickness(16, 12, 16, 0), banner.Margin);
+
+                var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
+                var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
+                flyout.ShowAt(menuButton);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                var texts = Assert.IsAssignableFrom<Panel>(flyout.Content).GetLogicalDescendants().OfType<TextBlock>().ToList();
+                Assert.All(texts.Where(text => text.Classes.Contains("menuTitle")), text => Assert.Equal(13.5, text.FontSize));
+                Assert.True(Application.Current!.TryGetResource("SemiColorText2", window.ActualThemeVariant, out var muted));
+                Assert.All(texts.Where(text => text.Classes.Contains("menuDetail")), text => Assert.Same(muted, text.Foreground));
+                flyout.Hide();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void TheProjectMenuOffersSelectNewOpenRecentAndConfigure()
     {
         _avalonia.Invoke(() =>
