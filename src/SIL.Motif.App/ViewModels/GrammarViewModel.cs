@@ -97,7 +97,16 @@ public sealed partial class GrammarViewModel : ObservableObject
     /// <summary>Sets the project to check and immediately checks it, discarding whatever was shown before.</summary>
     public async Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
     {
-        _projectPath = fwDataPath;
+        ResetProject(fwDataPath);
+        if (fwDataPath is not null) await CheckAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Forgets the previous project's grammar while the next project opens.</summary>
+    public void Clear() => ResetProject(null);
+
+    private void ResetProject(string? projectPath)
+    {
+        _projectPath = projectPath;
         _generation++;
         IsLoading = false;
         Refusal = null;
@@ -105,7 +114,6 @@ public sealed partial class GrammarViewModel : ObservableObject
         HasChecked = false;
         Warnings.Load(null);
         CheckCommand.NotifyCanExecuteChanged();
-        if (fwDataPath is not null) await CheckAsync(cancellationToken).ConfigureAwait(true);
     }
 
     private async Task CheckAsync(CancellationToken cancellationToken = default)

@@ -510,6 +510,26 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
+    public async Task ClearingAProjectImmediatelyRemovesItsGrammarFindings()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        var stored = new GrammarCheckResponse(
+            [new GrammarWarning(GrammarDiagnosticLevel.Warning, "Entry", [],
+                [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)], "warning: dropped")],
+            HasBaseline: true);
+        fake.StoredGrammarCheckIs(stored);
+        fake.CheckGrammarCompletesWith(stored);
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        Assert.Equal("1", workspace.PageModel<WarningsPageModel>().Badge);
+
+        workspace.Context.ClearProject();
+
+        Assert.Equal(string.Empty, workspace.PageModel<WarningsPageModel>().Badge);
+        Assert.Equal("Not checked yet", workspace.Context.GrammarSummary?.SummaryText);
+        Assert.False(workspace.PageModel<WarningsPageModel>().Grammar.HasChecked);
+    }
+
+    [Fact]
     public async Task ABaselineRefreshThatLeavesAnOlderAssessmentShowingIsNotCurrent()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();

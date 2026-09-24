@@ -31,6 +31,8 @@ public sealed class WarningsPageModel : PageModel
     /// <summary>Checks the open project's grammar: started only by a person, since it can take a minute.</summary>
     public IAsyncRelayCommand CheckGrammarCommand { get; }
 
+    protected override void OnProjectCleared() => Grammar.Clear();
+
     // Opening shows the check stored for this Baseline, and never starts one of its own.
     protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
