@@ -1456,7 +1456,7 @@ public static partial class ProposalCommands
 
                 try
                 {
-                    repository.MarkApplied(canonicalId);
+                    repository.RecordAppliedReceipt(receipt);
                 }
                 catch (Exception ex)
                 {

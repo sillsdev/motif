@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Ids;
@@ -8,6 +9,7 @@ using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.DryRun;
+using SIL.Motif.Model.Receipts;
 
 namespace SIL.Motif.Worker.Store;
 
@@ -72,8 +74,8 @@ public interface IProposalRepository
     ProposalRecord GetForTransition(CanonicalId proposalId);
     /// <summary>Moves a Proposal to a new status, naming the replacement when it is superseded.</summary>
     void SetStatus(CanonicalId proposalId, string status, string? supersededBy);
-    /// <summary>Sets a Proposal's status to <c>applied</c>, touching nothing else on the row.</summary>
-    void MarkApplied(CanonicalId proposalId);
+    /// <summary>Records the Apply Receipt and marks its Proposal applied in one store transaction.</summary>
+    void RecordAppliedReceipt(Receipt receipt);
     /// <summary>Whether a Draft is currently registered under this name.</summary>
     bool DraftNameExists(string draftName);
     /// <summary>
@@ -533,13 +535,36 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     /// <inheritdoc />
-    public void MarkApplied(CanonicalId proposalId)
+    public void RecordAppliedReceipt(Receipt receipt)
     {
+        ArgumentNullException.ThrowIfNull(receipt);
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using var existing = connection.CreateCommand();
+        existing.Transaction = transaction;
+        existing.CommandText = "SELECT 1 FROM Receipts WHERE ProposalId = $id;";
+        existing.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
+        if (existing.ExecuteScalar() is null)
+        {
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = """
+                INSERT INTO Receipts (ReceiptId, ProposalId, IntentDigest, ReceiptJson, RecordedUtc)
+                VALUES ($receiptId, $proposalId, $digest, $json, $recordedUtc);
+                """;
+            insert.Parameters.AddWithValue("$receiptId", CanonicalId.Mint().Value);
+            insert.Parameters.AddWithValue("$proposalId", receipt.ProposalId.Value);
+            insert.Parameters.AddWithValue("$digest", receipt.IntentDigest);
+            insert.Parameters.AddWithValue("$json", JsonSerializer.Serialize(receipt));
+            insert.Parameters.AddWithValue("$recordedUtc", _clock.UtcNow.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+            insert.ExecuteNonQuery();
+        }
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "UPDATE Proposals SET Status = 'applied' WHERE ProposalId = $id;";
-        command.Parameters.AddWithValue("$id", proposalId.Value);
+        command.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
         command.ExecuteNonQuery();
+        transaction.Commit();
     }
 
     // On the caller's own transaction: a second connection cannot see uncommitted rows, leaving a window.

@@ -137,10 +137,12 @@ public sealed class ProposalWorkflowTests
         Assert.Equal("applied", appliedRecord.Status);
         Assert.Equal(shortDescription, appliedRecord.Label);
         Assert.Equal(extendedExplanation, appliedRecord.Comment);
+        AssertReceiptCount(proposalId, intentDigest, 1);
 
         // Apply persists: re-open the saved project from disk and check the gloss + one applied-log entry.
         AssertGlossOnDisk(senseGuid, wsTag, newGloss);
         AssertAppliedLogEntryCount(1);
+        AssertReceiptCount(proposalId, intentDigest, 1);
 
         // --- log ---
         var logResult = ProposalCommands.Log(new LogRequest(_fwDataPath));
@@ -325,6 +327,17 @@ public sealed class ProposalWorkflowTests
     {
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
         return database.FullPath;
+    }
+
+    private void AssertReceiptCount(string proposalId, string intentDigest, long expectedCount)
+    {
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $id AND IntentDigest = $digest;";
+        command.Parameters.AddWithValue("$id", proposalId);
+        command.Parameters.AddWithValue("$digest", intentDigest);
+        Assert.Equal(expectedCount, (long)command.ExecuteScalar()!);
     }
 
 }
