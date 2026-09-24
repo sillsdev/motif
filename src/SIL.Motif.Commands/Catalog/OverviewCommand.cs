@@ -1,3 +1,4 @@
+using System.Globalization;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -33,10 +34,12 @@ public static class OverviewCommand
             var elapsedMs = assessment?.Words?.Where(word => word.ElapsedMs is not null).Sum(word => word.ElapsedMs!.Value);
             return CommandOutcome<OverviewResponse>.Success(new OverviewResponse(
                 evidence.ProjectName, evidence.MotifStoreCreatedUtc, evidence.LastFieldWorksSaveUtc,
-                words.Count, selection?.TextCount ?? 0, selection?.AddedWordCount ?? 0,
+                words.Count, selection?.TextCount ?? evidence.DefaultSelection?.TextIds.Count ?? 0,
+                selection?.AddedWordCount ?? evidence.DefaultSelection?.AddedWords.Count ?? 0,
                 selection?.TotalOccurrences ?? 0, summary?.WordformCount ?? 0, summary?.RuleCount ?? 0,
-                summary?.LexemeCount ?? 0,
-                assessment?.AssessmentId, assessment is null ? null : DateTimeOffset.Parse(assessment.SavedUtc),
+                summary?.LexemeCount ?? 0, assessment?.AssessmentId,
+                assessment is null ? null : DateTimeOffset.Parse(
+                    assessment.SavedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
                 elapsedMs is null ? null : elapsedMs.Value / 1000d,
                 assessment?.GrammarSourceSha256, selection?.Selection.Sha256,
                 metrics.TextCoverage, metrics.Accuracy,
@@ -46,7 +49,8 @@ public static class OverviewCommand
             {
                 ProjectFileName = Path.GetFileName(project.FullFwDataPath),
                 BaselineCapturedUtc = evidence.Baseline is null
-                    ? null : DateTimeOffset.Parse(evidence.Baseline.Token.CapturedUtc),
+                    ? null : DateTimeOffset.Parse(evidence.Baseline.Token.CapturedUtc,
+                        CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
                 BaselineSourceLastWriteUtc = evidence.Baseline?.SourceLastWriteUtc,
                 IsStale = evidence.Freshness == EvidenceFreshness.Stale,
                 BaselineToken = evidence.Baseline?.Token,

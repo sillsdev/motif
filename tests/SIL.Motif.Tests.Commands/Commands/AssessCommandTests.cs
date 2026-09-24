@@ -75,6 +75,24 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void OverviewReportsSavedSelectionCountsBeforeTheFirstBaseline()
+    {
+        using var seeded = NewSeededScratch();
+        var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Pasted words", [], ["motifa"]));
+
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+        var overview = OverviewCommand.Overview(new OverviewRequest(seeded.FwDataPath));
+
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Null(overview.Value!.BaselineToken);
+        Assert.Equal(1, overview.Value.SelectionWordCount);
+        Assert.Equal(0, overview.Value.SelectionTextCount);
+        Assert.Equal(1, overview.Value.SelectionAddedWordCount);
+        Assert.Equal(0, overview.Value.TextOccurrenceCount);
+    }
+
+    [Fact]
     public void DefaultSelectionFeedsAssessOverviewAndStoredTiming()
     {
         using var seeded = NewSeededScratch();

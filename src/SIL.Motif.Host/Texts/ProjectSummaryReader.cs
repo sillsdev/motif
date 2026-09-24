@@ -30,9 +30,10 @@ public static class ProjectSummaryReader
             .Select(form => form.Guid).Distinct().Count();
         var ruleCount = affixRules + cache.LangProject.MorphologicalDataOA.CompoundRulesOS.Count +
             cache.LangProject.PhonologicalDataOA.PhonRulesOS.Count;
+        var wordformCount = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().Count;
         var wordforms = LcmWordformCorpus.ExtractForms(cache)
             .Distinct(StringComparer.Ordinal).OrderBy(word => word, StringComparer.Ordinal).ToArray();
-        return new ProjectSummarySnapshot(words, texts.Sum(text => text.OccurrenceCount), wordforms.Length,
+        return new ProjectSummarySnapshot(words, texts.Sum(text => text.OccurrenceCount), wordformCount,
             ruleCount, entries.Count, wordforms, texts);
     }
 
