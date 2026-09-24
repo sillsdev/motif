@@ -105,7 +105,8 @@ public sealed partial class ChangesViewModel : ObservableObject
             ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision, change),
             cancellationToken).ConfigureAwait(true);
         Accept(outcome);
-        if (outcome.Refusal?.Code == "change.revision-conflict") await ReloadAsync(cancellationToken);
+        if (outcome.Refusal?.Code == "change.revision-conflict")
+            await ReloadAfterConflictAsync(outcome.Refusal, cancellationToken);
     }
 
     public async Task AddAsync(string kind, CompareWordViewModel word)
@@ -132,7 +133,17 @@ public sealed partial class ChangesViewModel : ObservableObject
             ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId),
             CancellationToken.None).ConfigureAwait(true);
         Accept(outcome);
-        if (outcome.Refusal?.Code == "change.revision-conflict") await ReloadAsync();
+        if (outcome.Refusal?.Code == "change.revision-conflict")
+            await ReloadAfterConflictAsync(outcome.Refusal, CancellationToken.None);
+    }
+
+    private async Task ReloadAfterConflictAsync(Refusal conflict, CancellationToken cancellationToken)
+    {
+        await ReloadAsync(cancellationToken);
+        if (LastRefusal is not null) return;
+        LastRefusal = conflict;
+        OnPropertyChanged(nameof(LastRefusal));
+        OnPropertyChanged(nameof(ErrorText));
     }
 
     private async Task ClearAsync()

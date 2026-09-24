@@ -1,4 +1,6 @@
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -36,5 +38,25 @@ public sealed class PendingChangesViewModelTests
 
         Assert.Contains("no longer fits", changes.ApplyStatus);
         Assert.Contains("deleted", Assert.Single(changes.Items).FitStatus);
+    }
+
+    [Fact]
+    public async Task RevisionConflictReloadsTheDraftAndKeepsTheRefusalVisible()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+        var changes = new ChangesViewModel(fake);
+        await changes.SetProjectAsync("project.fwdata");
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
+            [new PendingChange("change/other", "wordform/one", "word", "approve", null, null,
+                ["operation/other"])], [new ChangeFit("change/other", true, [])]));
+        fake.PendingPutRefusal = new Refusal("change.revision-conflict", FailureReason.Refused,
+            "The pending Draft changed.");
+
+        await changes.PutAsync(new ChangeIntent("change/mine", "incorrect-spelling", "", "word"));
+
+        Assert.Equal("revision/two", changes.Snapshot.Revision);
+        Assert.Equal("change/other", Assert.Single(changes.Items).ChangeId);
+        Assert.Equal("change.revision-conflict", changes.LastRefusal?.Code);
     }
 }

@@ -8,6 +8,8 @@ public sealed partial class FakeCommandClient
 {
     private PendingChangesSnapshot _pending = new(null, "none", [], []);
 
+    public Refusal? PendingPutRefusal { get; set; }
+
     public void PendingChangesIs(PendingChangesSnapshot snapshot) => _pending = snapshot;
 
     public Task<CommandOutcome<PendingChangesSnapshot>> LoadPendingChangesAsync(
@@ -16,6 +18,8 @@ public sealed partial class FakeCommandClient
     public Task<CommandOutcome<PendingChangesSnapshot>> PutPendingChangeAsync(
         PutPendingChangeRequest request, CancellationToken cancellationToken)
     {
+        if (PendingPutRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));
         var change = request.Change;
         var changes = _pending.Changes.Where(item => item.ChangeId != change.ChangeId).ToList();
         changes.Add(new PendingChange(change.ChangeId, change.WordformId, change.Word, change.Kind,
