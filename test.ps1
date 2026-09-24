@@ -169,9 +169,6 @@ $jobs = foreach ($project in $testProjects) {
             if ($null -ne $summarySeenAt -and ([datetime]::UtcNow - $summarySeenAt).TotalSeconds -ge 30) {
                 $stopReason = 'the test summary was written but dotnet did not exit within 30 seconds'
             }
-            elseif ($projectClock.Elapsed.TotalMinutes -ge 10) {
-                $stopReason = 'the test process exceeded the 10-minute limit'
-            }
             if ($stopReason) {
                 try { $process.Kill($true); $process.WaitForExit() } catch { }
                 break
