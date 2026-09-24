@@ -5,6 +5,7 @@ using System.Linq;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 
@@ -17,7 +18,17 @@ public sealed record TextInventoryRequest(string ProjectPath);
 /// One Text available to add to a Selection. <see cref="Id"/> is the Text's own GUID and the only thing a
 /// caller may match it by (AGENTS.md rule 12); <see cref="Title"/> is display text only.
 /// </summary>
-public sealed record TextChoiceSummary(Guid Id, string Title);
+public sealed record TextChoiceSummary(
+    Guid Id,
+    string Title,
+    int WordCount = 0,
+    int InterlinearizedWordCount = 0,
+    int OccurrenceCount = 0,
+    int InterlinearizedOccurrenceCount = 0)
+{
+    public double WordCoveragePercent => WordCount == 0 ? 0 : 100d * InterlinearizedWordCount / WordCount;
+    public double OccurrenceCoveragePercent => OccurrenceCount == 0 ? 0 : 100d * InterlinearizedOccurrenceCount / OccurrenceCount;
+}
 
 /// <summary>The current Baseline's Texts, and whether there was a Baseline to read them from.</summary>
 /// <param name="HasBaseline">
@@ -51,8 +62,9 @@ public static class TextInventoryQuery
             using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
             var repository = cache.ServiceLocator.GetInstance<ITextRepository>();
             var texts = repository.AllInstances()
-                .Select(text => new TextChoiceSummary(text.Guid, ReadTitle(text)))
-                .OrderBy(choice => choice.Title, StringComparer.CurrentCultureIgnoreCase)
+                .Select(text => ReadChoice(cache, text))
+                .OrderByDescending(choice => choice.OccurrenceCoveragePercent)
+                .ThenBy(choice => choice.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
             return CommandOutcome<TextInventoryResponse>.Success(new TextInventoryResponse(texts, HasBaseline: true));
         });
@@ -66,6 +78,18 @@ public static class TextInventoryQuery
             if (!string.IsNullOrEmpty(value)) return value;
         }
         return string.Empty;
+    }
+
+    private static TextChoiceSummary ReadChoice(LcmCache cache, IText text)
+    {
+        var projection = InterlinearTextReader.Read(cache, text);
+        var words = projection.Paragraphs.SelectMany(paragraph => paragraph.Phrases)
+            .SelectMany(phrase => phrase.Words).Where(word => word.WordformGuid is not null).ToArray();
+        var interlinearized = words.Where(word => word.AnalysisStatus != InterlinearAnalysisStatus.Unanalysed).ToArray();
+        return new TextChoiceSummary(text.Guid, ReadTitle(text),
+            words.Select(word => word.WordformGuid!.Value).Distinct().Count(),
+            interlinearized.Select(word => word.WordformGuid!.Value).Distinct().Count(),
+            words.Length, interlinearized.Length);
     }
 
     private static string ResolveProductVersion() => MotifProductVersion.CurrentText;

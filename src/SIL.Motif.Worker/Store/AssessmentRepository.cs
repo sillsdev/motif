@@ -106,6 +106,7 @@ public sealed record NewAssessmentRecord(
     string? SavedUtc = null)
 {
     public BatchInvocationEvidence? Invocation { get; init; }
+    public IReadOnlyList<AssessmentObjectTiming> ObjectTimings { get; init; } = Array.Empty<AssessmentObjectTiming>();
 }
 
 /// <summary>
@@ -137,6 +138,7 @@ public sealed record AssessmentRecord(
     IReadOnlyList<AssessedWord>? Words = null)
 {
     public BatchInvocationEvidence? Invocation { get; init; }
+    public IReadOnlyList<AssessmentObjectTiming> ObjectTimings { get; init; } = Array.Empty<AssessmentObjectTiming>();
 }
 
 /// <summary>
@@ -222,6 +224,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             if (assessment.Invocation is { } invocation) InsertInvocation(connection, transaction, invocation);
             InsertHeader(connection, transaction, assessment);
             InsertWordsAndAnalyses(connection, transaction, assessment.AssessmentId, assessment.Words);
+            InsertObjectTimings(connection, transaction, assessment.AssessmentId, assessment.ObjectTimings);
         }
     }
 
@@ -247,7 +250,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var connection = _database.OpenConnection();
         var header = GetHeader(connection, assessmentId) ??
             throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
-        return header with { Words = ReadWords(connection, assessmentId) };
+        return header with
+        {
+            Words = ReadWords(connection, assessmentId),
+            ObjectTimings = ReadObjectTimings(connection, assessmentId)
+        };
     }
 
     internal AssessmentRecord? GetHeader(string assessmentId)
@@ -299,7 +306,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
             while (reader.Read()) headers.Add(ReadHeader(reader));
         }
 
-        return headers.Select(header => header with { Words = ReadWords(connection, header.AssessmentId) }).ToList();
+        return headers.Select(header => header with
+        {
+            Words = ReadWords(connection, header.AssessmentId),
+            ObjectTimings = ReadObjectTimings(connection, header.AssessmentId)
+        }).ToList();
     }
 
     /// <inheritdoc />
@@ -340,7 +351,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var header = ReadHeader(connection, null, currentId) ?? throw new InvalidDataException(
             $"MotifMetadata points at current Assessment '{currentId}', which is not recorded " +
             "(store inconsistency).");
-        return header with { Words = ReadWords(connection, currentId) };
+        return header with
+        {
+            Words = ReadWords(connection, currentId),
+            ObjectTimings = ReadObjectTimings(connection, currentId)
+        };
     }
 
     /// <inheritdoc />
@@ -351,6 +366,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
         foreach (var sql in new[]
         {
+            """
+            DELETE FROM AssessmentObjectTimings WHERE AssessmentId IN (
+                SELECT AssessmentId FROM Assessments
+                WHERE ProposalId = $proposalId AND ($exceptId IS NULL OR AssessmentId != $exceptId));
+            """,
             """
             DELETE FROM ParsedAnalyses WHERE AssessedWordId IN (
                 SELECT AssessedWordId FROM AssessedWords WHERE AssessmentId IN (
@@ -454,8 +474,12 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var insertWord = connection.CreateCommand();
         insertWord.Transaction = transaction;
         insertWord.CommandText = """
-            INSERT INTO AssessedWords (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, RawSignature, MorphologyJson, CorrectnessJson)
-            VALUES ($id, $ordinal, $word, $outcome, $elapsed, $signature, $morphology, $correctness);
+            INSERT INTO AssessedWords
+                (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, RawSignature, MorphologyJson, CorrectnessJson,
+                 ProjectStanding, OccurrenceCount, ReadingGradesJson, MissedApprovedCount, IsIncomplete)
+            VALUES
+                ($id, $ordinal, $word, $outcome, $elapsed, $signature, $morphology, $correctness,
+                 $standing, $occurrences, $grades, $missed, $incomplete);
             """;
         var assessmentIdParam = insertWord.Parameters.Add("$id", SqliteType.Text);
         var wordOrdinalParam = insertWord.Parameters.Add("$ordinal", SqliteType.Integer);
@@ -465,6 +489,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var wordSignatureParam = insertWord.Parameters.Add("$signature", SqliteType.Text);
         var morphologyParam = insertWord.Parameters.Add("$morphology", SqliteType.Text);
         var correctnessParam = insertWord.Parameters.Add("$correctness", SqliteType.Text);
+        var standingParam = insertWord.Parameters.Add("$standing", SqliteType.Text);
+        var occurrenceParam = insertWord.Parameters.Add("$occurrences", SqliteType.Integer);
+        var gradesParam = insertWord.Parameters.Add("$grades", SqliteType.Text);
+        var missedParam = insertWord.Parameters.Add("$missed", SqliteType.Integer);
+        var incompleteParam = insertWord.Parameters.Add("$incomplete", SqliteType.Integer);
 
         using var lastRowId = connection.CreateCommand();
         lastRowId.Transaction = transaction;
@@ -496,6 +525,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 : JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions);
             correctnessParam.Value = word.Correctness is null ? DBNull.Value
                 : JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions);
+            standingParam.Value = (object?)word.ProjectStanding ?? DBNull.Value;
+            occurrenceParam.Value = (object?)word.OccurrenceCount ?? DBNull.Value;
+            gradesParam.Value = word.ReadingGrades is null ? DBNull.Value : JsonSerializer.Serialize(word.ReadingGrades);
+            missedParam.Value = (object?)word.MissedApprovedCount ?? DBNull.Value;
+            incompleteParam.Value = word.IsIncomplete ? 1 : 0;
             insertWord.ExecuteNonQuery();
 
             var assessedWordId = (long)lastRowId.ExecuteScalar()!;
@@ -512,6 +546,57 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 insertAnalysis.ExecuteNonQuery();
             }
         }
+    }
+
+    private static void InsertObjectTimings(
+        SqliteConnection connection, SqliteTransaction transaction, string assessmentId,
+        IReadOnlyList<AssessmentObjectTiming> rows)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO AssessmentObjectTimings
+                (AssessmentId, OrdinalIndex, Kind, Object, Word, Attempts, Passes, ElapsedMs)
+            VALUES ($assessment, $ordinal, $kind, $object, $word, $attempts, $passes, $elapsed);
+            """;
+        var assessment = command.Parameters.Add("$assessment", SqliteType.Text);
+        var ordinal = command.Parameters.Add("$ordinal", SqliteType.Integer);
+        var kind = command.Parameters.Add("$kind", SqliteType.Text);
+        var item = command.Parameters.Add("$object", SqliteType.Text);
+        var word = command.Parameters.Add("$word", SqliteType.Text);
+        var attempts = command.Parameters.Add("$attempts", SqliteType.Integer);
+        var passes = command.Parameters.Add("$passes", SqliteType.Integer);
+        var elapsed = command.Parameters.Add("$elapsed", SqliteType.Real);
+        for (var index = 0; index < rows.Count; index++)
+        {
+            var row = rows[index];
+            assessment.Value = assessmentId;
+            ordinal.Value = index;
+            kind.Value = row.Kind;
+            item.Value = row.Object;
+            word.Value = row.Word;
+            attempts.Value = (object?)row.Attempts ?? DBNull.Value;
+            passes.Value = (object?)row.Passes ?? DBNull.Value;
+            elapsed.Value = row.ElapsedMs;
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private static IReadOnlyList<AssessmentObjectTiming> ReadObjectTimings(SqliteConnection connection, string assessmentId)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT Kind, Object, Word, Attempts, Passes, ElapsedMs
+            FROM AssessmentObjectTimings WHERE AssessmentId = $id ORDER BY OrdinalIndex;
+            """;
+        command.Parameters.AddWithValue("$id", assessmentId);
+        using var reader = command.ExecuteReader();
+        var rows = new List<AssessmentObjectTiming>();
+        while (reader.Read())
+            rows.Add(new AssessmentObjectTiming(reader.GetString(0), reader.GetString(1), reader.GetString(2),
+                reader.IsDBNull(3) ? null : reader.GetInt32(3), reader.IsDBNull(4) ? null : reader.GetInt32(4),
+                reader.GetDouble(5)));
+        return rows;
     }
 
     private const string HeaderSelectSql = """
@@ -591,7 +676,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.CommandText = """
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
-                   aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex
+                   aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
+                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -607,6 +693,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
         string? currentSignature = null;
         ParseWordEvidence? currentMorphology = null;
         WordCorrectness? currentCorrectness = null;
+        string? currentStanding = null;
+        int? currentOccurrenceCount = null;
+        IReadOnlyList<string>? currentReadingGrades = null;
+        int? currentMissedApprovedCount = null;
+        bool currentIncomplete = false;
         List<ParsedAnalysis> currentAnalyses = [];
 
         using var reader = command.ExecuteReader();
@@ -617,7 +708,10 @@ public sealed class AssessmentRepository : IAssessmentRepository
             {
                 if (currentWordId is not null)
                     words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
-                    { Morphology = currentMorphology, Correctness = currentCorrectness });
+                    { Morphology = currentMorphology, Correctness = currentCorrectness,
+                        ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
+                        ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
+                        IsIncomplete = currentIncomplete });
                 if (reader.GetInt32(11) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
                 currentWordId = wordId;
@@ -629,6 +723,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
                     : JsonSerializer.Deserialize<ParseWordEvidence>(reader.GetString(9), ParseMorphEvidence.JsonOptions);
                 currentCorrectness = reader.IsDBNull(10) ? null
                     : JsonSerializer.Deserialize<WordCorrectness>(reader.GetString(10), ParseMorphEvidence.JsonOptions);
+                currentStanding = reader.IsDBNull(12) ? null : reader.GetString(12);
+                currentOccurrenceCount = reader.IsDBNull(13) ? null : reader.GetInt32(13);
+                currentReadingGrades = reader.IsDBNull(14) ? null : JsonSerializer.Deserialize<string[]>(reader.GetString(14));
+                currentMissedApprovedCount = reader.IsDBNull(15) ? null : reader.GetInt32(15);
+                currentIncomplete = reader.GetInt32(16) != 0;
                 currentAnalyses = [];
             }
 
@@ -644,7 +743,10 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
         if (currentWordId is not null)
             words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
-            { Morphology = currentMorphology, Correctness = currentCorrectness });
+            { Morphology = currentMorphology, Correctness = currentCorrectness,
+                ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
+                ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
+                IsIncomplete = currentIncomplete });
         return words;
     }
 }

@@ -23,6 +23,8 @@ public static class AssessmentMaterial
             {
                 Morphology = word.Morphology,
                 Correctness = word.Correctness,
+                IsIncomplete = word.Outcome is WordOutcome.Capped or WordOutcome.TimedOut ||
+                    word.Morphology is { Capped: true } or { TimedOut: true },
             })
             .ToArray(), null, null),
         AssessmentRaw.FileCache fileCache => (Array.Empty<AssessedWord>(), fileCache.Path, fileCache.Digest),

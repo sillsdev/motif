@@ -6,7 +6,10 @@ using System.Threading;
 using SIL.LCModel;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
+using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -68,6 +71,90 @@ public sealed class AssessCommandTests : IDisposable
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
+    [Fact]
+    public void DefaultSelectionFeedsAssessOverviewAndStoredTiming()
+    {
+        using var seeded = NewSeededScratch();
+        var set = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], []));
+
+        Assert.True(set.Succeeded, set.Refusal?.Message);
+        var read = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(seeded.FwDataPath));
+        Assert.Equal("Default", read.Value!.Selection!.Name);
+        Assert.Equal([seeded.Seeded.TextId], read.Value.Selection.TextIds);
+
+        var cachePath = Path.Combine(_managedRootsParent, "stats.sqlite");
+        File.WriteAllText(cachePath, "fake stats cache");
+        var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, SeededProject.AnalysedWordForm, 99, SIL.Motif.Host.Parser.WordOutcome.TimedOut, "partial"),
+                 new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
+                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+            AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate),
+        };
+        var invoker = new FakeInvoker
+        {
+            Respond = request =>
+            {
+                if (request is not PanGlossRequest.Stats stats)
+                    return new PanGlossOutcome.Completed("", "", TimeSpan.Zero);
+                if (stats.ForwardedArguments.Contains("--word"))
+                    return new PanGlossOutcome.Completed(
+                        "{\"kind\":\"morph_rule\",\"label\":\"Verb template\",\"time_ns\":2000000,\"attempts\":2}\n",
+                        "", TimeSpan.Zero);
+                if (stats.ForwardedArguments.Contains("word"))
+                    return new PanGlossOutcome.Completed(
+                        "{\"form\":\"motifanalysed\",\"attempts\":4,\"passes\":1}\n" +
+                        "{\"form\":\"motifunanalysed\",\"attempts\":3,\"passes\":0}\n", "", TimeSpan.Zero);
+                return new PanGlossOutcome.Completed("stats summary", "", TimeSpan.Zero);
+            },
+        };
+
+        var assessed = AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
+            invoker, null, CancellationToken.None);
+
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        Assert.Equal([SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm], assessed.Value!.Selection.Words);
+        var parseAssessment = assessed.Value.AssessmentIds
+            .Select(OpenRepository(seeded.FwDataPath).Get)
+            .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
+        Assert.Equal(2, parseAssessment.ObjectTimings.Count);
+        Assert.Equal(1, parseAssessment.ObjectTimings.Single(row =>
+            row.Word == SeededProject.AnalysedWordForm).Passes);
+        Assert.Equal(0, parseAssessment.ObjectTimings.Single(row =>
+            row.Word == SeededProject.UnanalysedWordForm).Passes);
+
+        var overview = OverviewCommand.Overview(new OverviewRequest(seeded.FwDataPath));
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Equal(2, overview.Value!.SelectionWordCount);
+        Assert.Equal(1, overview.Value.SelectionTextCount);
+        Assert.Equal(0, overview.Value.SelectionAddedWordCount);
+        Assert.Equal(2, overview.Value.TextOccurrenceCount);
+        Assert.Equal(0, overview.Value.RuleCount);
+        Assert.Equal(1, overview.Value.TextCoverage.UnknownWords);
+        Assert.Equal(1, overview.Value.Accuracy.UnknownWords);
+        Assert.Equal(0, overview.Value.Accuracy.Violations);
+        Assert.Null(overview.Value.Warnings);
+        Assert.Equal(99, overview.Value.Timing.Percentile95Ms);
+
+        var timing = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            parseAssessment.AssessmentId, "all", "rule", "Verb template", 5));
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Equal(2, timing.Value!.WordCount);
+        Assert.Equal("Verb template", Assert.Single(timing.Value.Aggregates).Name);
+        Assert.Equal(4, Assert.Single(timing.Value.Aggregates).Attempts);
+        Assert.Equal(2, timing.Value.CostliestWords.Count);
+        Assert.Equal(2, invoker.Requests.Count(item => item.Request is PanGlossRequest.Stats request &&
+            request.ForwardedArguments.Contains("--word")));
     }
 
     [Fact]
@@ -677,16 +764,20 @@ public sealed class AssessCommandTests : IDisposable
             new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, invoker,
             onProgress: null, CancellationToken.None);
 
-        // Only "completed" reaches the follow-up per-word stats call; every other case returns first.
+        // Only "completed" reaches per-word and per-object stats calls; every other case returns first.
         var request = Assert.IsType<PanGlossRequest.Stats>(invoker.Requests[0].Request);
         Assert.NotEqual(cachePath, request.CachePath);
         Assert.False(File.Exists(request.CachePath));
         Assert.Empty(request.ForwardedArguments);
         if (result == "completed")
         {
-            Assert.Equal(2, invoker.Requests.Count);
+            Assert.Equal(4, invoker.Requests.Count);
             var wordRequest = Assert.IsType<PanGlossRequest.Stats>(invoker.Requests[1].Request);
             Assert.Equal(["--group", "word", "--format", "jsonl"], wordRequest.ForwardedArguments);
+            var objectRequests = invoker.Requests.Skip(2)
+                .Select(request => Assert.IsType<PanGlossRequest.Stats>(request.Request)).ToArray();
+            Assert.Equal(2, objectRequests.Length);
+            Assert.All(objectRequests, request => Assert.Equal("object", request.ForwardedArguments[1]));
         }
         else
         {
@@ -739,14 +830,15 @@ public sealed class AssessCommandTests : IDisposable
     private SeededScratch NewSeededScratch()
     {
         var cache = _pristine.NewScratch();
-        SeededProject.SeedText(cache, _pristine.Seed);
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
         new FwDataProjectLoader().Save(cache);
-        return new SeededScratch(cache);
+        return new SeededScratch(cache, text);
     }
 
-    private sealed class SeededScratch(LcmCache cache) : IDisposable
+    private sealed class SeededScratch(LcmCache cache, SeededText seeded) : IDisposable
     {
         public string FwDataPath => cache.ProjectId.Path;
+        public SeededText Seeded => seeded;
 
         public void Dispose() => cache.Dispose();
     }

@@ -111,6 +111,24 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void ProjectStandingAndTextOccurrenceCountSurviveReadBack()
+    {
+        var repository = NewRepository("standing.fwdata", out var database);
+        using var owned = database;
+        var word = new AssessedWord("motifa", "analysed", [])
+        {
+            ProjectStanding = SIL.Motif.Contract.Responses.ProjectStanding.Approved,
+            OccurrenceCount = 7,
+        };
+
+        repository.Record(NewAssessment("standing", null, null, "ParseTime", [word]));
+
+        var stored = Assert.Single(repository.Get("standing").Words!);
+        Assert.Equal(SIL.Motif.Contract.Responses.ProjectStanding.Approved, stored.ProjectStanding);
+        Assert.Equal(7, stored.OccurrenceCount);
+    }
+
+    [Fact]
     public void BatchSignaturesSurviveStorageWithoutChangingCompletionOrInventingAnalyses()
     {
         var repository = NewRepository("batch-signatures.fwdata", out var database);

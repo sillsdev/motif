@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 16;
+    public const int CurrentSchema = 17;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -29,7 +29,7 @@ public static class MotifSchema
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + AssessmentDdl + JobDdl +
+            command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + RetainedInvocationDdl;
             command.ExecuteNonQuery();
         }
@@ -56,7 +56,7 @@ public static class MotifSchema
             "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
-            "RetainedInvocationMembers"
+            "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -174,7 +174,7 @@ public static class MotifSchema
     {
         var requiredSql = table switch
         {
-            "MotifMetadata" => "CHECK (Id = 1)",
+            "MotifMetadata" or "DefaultSelection" => "CHECK (Id = 1)",
             "AssessedWords" => "AUTOINCREMENT",
             "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
             _ => null
@@ -193,6 +193,8 @@ public static class MotifSchema
                 if (sql.IndexOf(invariant, StringComparison.OrdinalIgnoreCase) < 0)
                     throw new InvalidDataException($"Motif table {table} is missing a required invariant.");
         }
+        if (table == "AssessedWords" && sql.IndexOf("CHECK (IsIncomplete IN (0, 1))", StringComparison.OrdinalIgnoreCase) < 0)
+            throw new InvalidDataException($"Motif table {table} is missing a required invariant.");
     }
 
     private static void ValidateIndex(
@@ -292,6 +294,8 @@ public static class MotifSchema
         "RetainedInvocations" => [new("AssessmentInvocations", "ArtifactInvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
         "RetainedInvocationMembers" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
             new("RetainedInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
+        "DefaultSelection" => [new("NamedSelections", "SelectionName", "SelectionName", "NO ACTION", "NO ACTION", "NONE")],
+        "AssessmentObjectTimings" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -309,6 +313,10 @@ public static class MotifSchema
         [C("Id", "INTEGER", false, 1), C("FullFwDataPath", "TEXT", true),
             C("FieldWorksProjectIdentity", "TEXT", true), C("MinimumWorkerVersion", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("CurrentAssessmentId", "TEXT")],
+        "NamedSelections" =>
+        [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
+            C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
+        "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true)],
         "CorpusDocuments" =>
         [C("CorpusId", "TEXT", true, 1), C("DocumentId", "TEXT", true, 2), C("OrdinalIndex", "INTEGER", true),
@@ -328,7 +336,13 @@ public static class MotifSchema
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
             C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("RawSignature", "TEXT"),
-            C("MorphologyJson", "TEXT"), C("CorrectnessJson", "TEXT")],
+            C("MorphologyJson", "TEXT"), C("CorrectnessJson", "TEXT"), C("ProjectStanding", "TEXT"),
+            C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "TEXT"), C("MissedApprovedCount", "INTEGER"),
+            C("IsIncomplete", "INTEGER", true, defaultValue: "0")],
+        "AssessmentObjectTimings" =>
+        [C("AssessmentId", "TEXT", true, 1), C("OrdinalIndex", "INTEGER", true, 2), C("Kind", "TEXT", true),
+            C("Object", "TEXT", true), C("Word", "TEXT", true), C("Attempts", "INTEGER"), C("Passes", "INTEGER"),
+            C("ElapsedMs", "REAL", true)],
         "ParsedAnalyses" =>
         [C("AssessedWordId", "INTEGER", true), C("OrdinalIndex", "INTEGER", true), C("CategoryGuid", "TEXT"),
             C("MorphemeGuidsJson", "TEXT", true), C("RootIndex", "INTEGER", true), C("IdentityDigest", "TEXT", true)],
@@ -499,6 +513,22 @@ public static class MotifSchema
 
         """;
 
+    private const string SelectionDdl = """
+        CREATE TABLE NamedSelections (
+            SelectionName TEXT PRIMARY KEY,
+            TextIdsJson TEXT NOT NULL,
+            AddedWordsJson TEXT NOT NULL,
+            CreatedUtc TEXT NOT NULL,
+            UpdatedUtc TEXT NOT NULL
+        );
+
+        CREATE TABLE DefaultSelection (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            SelectionName TEXT NOT NULL REFERENCES NamedSelections(SelectionName)
+        );
+
+        """;
+
     private const string AssessmentDdl = """
         CREATE TABLE AssessmentInvocations (
             InvocationId TEXT PRIMARY KEY,
@@ -542,7 +572,12 @@ public static class MotifSchema
             ElapsedMs INTEGER NULL,
             RawSignature TEXT NULL,
             MorphologyJson TEXT NULL,
-            CorrectnessJson TEXT NULL
+            CorrectnessJson TEXT NULL,
+            ProjectStanding TEXT NULL,
+            OccurrenceCount INTEGER NULL,
+            ReadingGradesJson TEXT NULL,
+            MissedApprovedCount INTEGER NULL,
+            IsIncomplete INTEGER NOT NULL DEFAULT 0 CHECK (IsIncomplete IN (0, 1))
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);
         CREATE INDEX IX_AssessedWords_Word ON AssessedWords(AssessmentId, Word);
@@ -556,6 +591,18 @@ public static class MotifSchema
             IdentityDigest TEXT NOT NULL
         );
         CREATE INDEX IX_ParsedAnalyses_Word ON ParsedAnalyses(AssessedWordId);
+
+        CREATE TABLE AssessmentObjectTimings (
+            AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
+            OrdinalIndex INTEGER NOT NULL,
+            Kind TEXT NOT NULL,
+            Object TEXT NOT NULL,
+            Word TEXT NOT NULL,
+            Attempts INTEGER NULL,
+            Passes INTEGER NULL,
+            ElapsedMs REAL NOT NULL,
+            PRIMARY KEY (AssessmentId, OrdinalIndex)
+        );
 
         CREATE TABLE AssessmentPins (
             AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),

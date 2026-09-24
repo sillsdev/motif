@@ -23,6 +23,7 @@ using SIL.Motif.Worker;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
@@ -114,6 +115,7 @@ public static class AssessCommand
             var baselines = new BaselineRepository(database);
             var assessments = new AssessmentRepository(database);
             var retainedInvocations = new RetainedInvocationRepository(database);
+            var namedSelections = new NamedSelectionRepository(database);
 
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.Capturing, 0, null, "Ensuring a current Baseline exists..."));
@@ -122,16 +124,35 @@ public static class AssessCommand
                 return CommandOutcome<AssessCommandResponse>.Refused(baselineOutcome.Refusal!);
             var baseline = baselineOutcome.Value!;
 
+            SelectionRequest selectionRequest;
+            string? namedSelection = null;
+            if (request.Selection is null)
+            {
+                var saved = namedSelections.GetDefault();
+                if (saved is null)
+                    return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                        "selection.default-missing", FailureReason.Refused,
+                        "No default Selection is saved for this project. Save one with `motif selection set-default` first."));
+                namedSelection = saved.Name;
+                selectionRequest = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null);
+            }
+            else
+            {
+                selectionRequest = request.Selection;
+            }
+
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.SelectingWords, 0, null, "Composing the Selection..."));
             SelectionComposition composition;
             using (var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath))
             {
                 var composed = SelectionComposer.Compose(
-                    cache, request.Selection, assessments, JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions()));
+                    cache, selectionRequest, assessments, JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions()));
                 if (!composed.Succeeded)
                     return CommandOutcome<AssessCommandResponse>.Refused(composed.Refusal!);
                 composition = composed.Value!;
+                if (namedSelection is not null)
+                    composition = composition with { Selection = composition.Selection with { Name = namedSelection } };
             }
 
             AssessmentScope scope;
@@ -152,7 +173,7 @@ public static class AssessCommand
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
                 scope = new AssessmentScope(composition.Selection.Words, collected,
                     request.PerWordLimitMs is { } ms ? TimeSpan.FromMilliseconds(ms) : configured.PerWordLimit,
-                    configured.PerWordStepLimit);
+                    request.PerWordStepLimit ?? configured.PerWordStepLimit);
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
@@ -235,6 +256,7 @@ public static class AssessCommand
                 string summaryMarkdown;
                 // Null, or a missing word, always leaves that word's Attempts/Passes null (never faked).
                 Dictionary<string, (int? Attempts, int? Passes)>? wordStats = null;
+                var objectTimings = new List<AssessmentObjectTiming>();
                 if (statsCachePath is null)
                 {
                     summaryMarkdown = "(no per-object statistics were collected)" + Environment.NewLine;
@@ -278,10 +300,50 @@ public static class AssessCommand
                         .GetAwaiter().GetResult();
                     if (perWord is PanGlossOutcome.Completed perWordCompleted)
                         wordStats = ReadWordStats(perWordCompleted.Output);
+                    foreach (var word in composition.Selection.Words)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                            return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                        var objectOutcome = invoker.RunAsync(
+                                new PanGlossRequest.Stats(replay.GrammarPath, replay.CachePath,
+                                    ["--group", "object", "--word", word, "--format", "jsonl"]),
+                                "assess:stats:object:" + workspaceKey, cancellationToken)
+                            .GetAwaiter().GetResult();
+                        if (objectOutcome is PanGlossOutcome.Completed objectCompleted)
+                        {
+                            var passes = wordStats is not null && wordStats.TryGetValue(word, out var found)
+                                ? found.Passes : null;
+                            objectTimings.AddRange(PanGlossObjectTimingReader.ReadJsonl(objectCompleted.Output, word, passes)
+                                .Select(row => new AssessmentObjectTiming(
+                                    row.Kind, row.Object, row.Word, row.Attempts, row.Passes, row.ElapsedMs)));
+                        }
+                        else if (objectOutcome is PanGlossOutcome.Cancelled)
+                        {
+                            return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                        }
+                    }
                 }
 
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                var wordContext = ReadProjectWordContext(baseline.FwDataPath, composition.Selection.Words,
+                    composition.Descriptor.TextIds);
+                pendingRecords = pendingRecords.Select(record => record with
+                {
+                    Words = record.Words.Select(word => word with
+                    {
+                        ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
+                        OccurrenceCount = wordContext.HasTextSelection
+                            ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
+                        ReadingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
+                            wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
+                            wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
+                            wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>()),
+                        MissedApprovedCount = word.Correctness?.Unmatched.Count,
+                    }).ToArray(),
+                    ObjectTimings = record.Kind == AssessmentKind.ParseTime.ToStoredKind()
+                        ? objectTimings : record.ObjectTimings,
+                }).ToList();
                 var currentBaseline = baselines.GetCurrent(workspaceKey);
                 if (currentBaseline is null || currentBaseline.Token != baseline.Token)
                     return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
@@ -353,6 +415,8 @@ public static class AssessCommand
                                 : GradeReadings(word.Morphology.Analyses, approved, disapproved, candidates),
                             ProjectStanding = ProjectStandings.Of(
                                 approved.Count, candidates.Count, disapproved.Count, misspelled.Contains(word.Word)),
+                            OccurrenceCount = wordContext.HasTextSelection
+                                ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
                             MissedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
                                 .Select(index => word.Correctness.Expectations[index])
                                 .Select(missed => new ParserReading(ParserReadingReader.ReadMorphs(namingCache, projectName,
@@ -417,6 +481,25 @@ public static class AssessCommand
         "The Assessment run was cancelled; no Assessments were recorded.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
+    private static ProjectWordContext ReadProjectWordContext(
+        string baselinePath, IReadOnlyList<string> words, IReadOnlyList<Guid> textIds)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(baselinePath);
+        var approved = ApprovedMorphologyReader.Read(cache);
+        var rejected = ApprovedMorphologyReader.ReadDisapproved(cache);
+        var candidates = ApprovedMorphologyReader.ReadCandidates(cache);
+        var misspelled = ApprovedMorphologyReader.ReadIncorrectSpellings(cache);
+        var standings = words.ToDictionary(word => word, word => ProjectStandings.Of(
+            approved.GetValueOrDefault(word)?.Count ?? 0,
+            candidates.GetValueOrDefault(word)?.Count ?? 0,
+            rejected.GetValueOrDefault(word)?.Count ?? 0,
+            misspelled.Contains(word)), StringComparer.Ordinal);
+        var occurrences = textIds.Count == 0
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
+            : TextOccurrenceReader.Read(cache, textIds).OccurrencesByWord;
+        return new ProjectWordContext(standings, occurrences, textIds.Count > 0, approved, rejected, candidates);
+    }
+
     internal static string RenderSummaryMarkdown(string completionSummary, string statisticsOutput) =>
         completionSummary + Environment.NewLine + Environment.NewLine +
         "```" + Environment.NewLine + statisticsOutput + "```" + Environment.NewLine;
@@ -462,6 +545,14 @@ public static class AssessCommand
     }
 
     private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
+
+    private sealed record ProjectWordContext(
+        IReadOnlyDictionary<string, string> Standings,
+        IReadOnlyDictionary<string, int> OccurrencesByWord,
+        bool HasTextSelection,
+        IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> Approved,
+        IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> Rejected,
+        IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> Candidates);
 }
 
 /// <summary>
