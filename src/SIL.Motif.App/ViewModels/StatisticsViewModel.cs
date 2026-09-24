@@ -205,6 +205,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
         Rows.Clear();
         SortColumn = null;
         FilterText = string.Empty;
+        _wordScope = null;
         OnlyIncomplete = false;
         RaiseSummary();
         IsStale = false;
@@ -274,9 +275,28 @@ public sealed partial class StatisticsViewModel : ObservableObject
     }
 
     // Reapplies the filter and sort from the fetched rows in memory; never calls the command client.
+    /// <summary>
+    /// The words the rows are restricted to, or <see langword="null"/> for every row fetched. PanGloss's
+    /// <c>stats</c> cannot select words itself, so the restriction is applied here to the rows already fetched.
+    /// </summary>
+    public IReadOnlyList<string>? WordScope
+    {
+        get => _wordScope;
+        set
+        {
+            _wordScope = value;
+            ApplyView();
+        }
+    }
+
+    private IReadOnlyList<string>? _wordScope;
+
     private void ApplyView()
     {
         IEnumerable<StatsRowViewModel> view = _allRows;
+
+        if (WordScope is { } scope)
+            view = view.Where(row => row.Word is { } word && scope.Contains(word, StringComparer.Ordinal));
 
         if (!string.IsNullOrEmpty(FilterText))
             view = view.Where(row => row.MatchesFilter(FilterText));

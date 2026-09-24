@@ -116,17 +116,41 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
-    public void OpeningTimingThroughTheContextShowsTheTimingPageFocusedOnTheRule()
+    public async Task OpeningTimingOnWordsLoadsTheWordRowsAndShowsOnlyThoseWords()
     {
-        var context = NewContext();
+        var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
+        fake.StatsCompletesWith(new StatsCommandResponse("assessment-1", ProjectPath, "cache", null,
+            [StatsRow("dogs"), StatsRow("cats")]));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
-        context.OpenTiming(["dogs"], "Plural");
+        context.OpenTiming(["dogs"], null);
+        await timing.Statistics.LoadCommand.ExecutionTask!;
 
         Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
+        var request = Assert.Single(fake.StatsRequests);
+        Assert.Equal("assessment-1", request.AssessmentId);
+        Assert.Equal(["--group", "word"], request.ForwardedArguments);
+        Assert.Equal(["dogs"], timing.Statistics.Rows.Select(row => row.Word));
+    }
+
+    [Fact]
+    public async Task OpeningTimingOnARuleLoadsTheGrammarObjectRowsFilteredToThatRule()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.StatsCompletesWith(new StatsCommandResponse("assessment-1", ProjectPath, "cache", null, []));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        context.OpenTiming(["dogs"], "Plural");
+        await timing.Statistics.LoadCommand.ExecutionTask!;
+
         Assert.Equal(["dogs"], timing.Focus!.Words);
-        Assert.Equal("object", timing.Statistics.SelectedGroup);
+        Assert.Equal(["--group", "object"], Assert.Single(fake.StatsRequests).ForwardedArguments);
         Assert.Equal("Plural", timing.Statistics.FilterText);
+        Assert.Null(timing.Statistics.WordScope);
     }
 
     [Fact]
@@ -219,12 +243,18 @@ public sealed class WorkspaceContextTests
         Measurements = [new ProducedAssessmentReference("assessment-1", "ObjectTiming", "invocation/one")],
     };
 
-    internal static WorkspaceContext NewContext()
+    internal static WorkspaceContext NewContext() => NewContextWithFake().Context;
+
+    private static System.Text.Json.JsonElement StatsRow(string word) => System.Text.Json.JsonDocument.Parse(
+        $"{{\"kind\":\"word\",\"form\":\"{word}\",\"attempts\":2,\"passes\":1,\"elapsed_ns\":5000000}}")
+        .RootElement.Clone();
+
+    private static (FakeCommandClient Fake, WorkspaceContext Context) NewContextWithFake()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var words = new TextWordsViewModel(fake, selection);
-        return new WorkspaceContext(
+        return (fake, new WorkspaceContext(
             new ProjectViewModel(fake, new NoProjectPicker()),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
@@ -234,7 +264,7 @@ public sealed class WorkspaceContextTests
             new AssessViewModel(fake, selection),
             new HandoffViewModel(fake, selection, new NoFolderPicker(), new NoDragSource()),
             new ChangesViewModel(),
-            fake);
+            fake));
     }
 
     private sealed record ElsewhereRequest(string Note) : PageRequest(WorkspacePage.Warnings);

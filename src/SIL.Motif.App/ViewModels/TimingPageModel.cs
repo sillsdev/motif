@@ -46,8 +46,20 @@ public sealed class TimingPageModel : PageModel
     {
         if (request is not OpenTimingRequest timing) return;
         Focus = timing;
-        if (timing.Rule is not { } rule) return;
-        Statistics.SelectedGroup = "object";
-        Statistics.FilterText = rule;
+        if (timing.Rule is { } rule)
+        {
+            // Grammar-object rows are totals over the whole Assessment, so a rule cannot also be narrowed to words.
+            Statistics.SelectedGroup = "object";
+            Statistics.WordScope = null;
+            Statistics.FilterText = rule;
+        }
+        else
+        {
+            Statistics.SelectedGroup = "word";
+            Statistics.FilterText = string.Empty;
+            Statistics.WordScope = timing.Words.Count > 0 ? timing.Words : null;
+        }
+
+        if (Statistics.LoadCommand.CanExecute(null)) _ = Statistics.LoadCommand.ExecuteAsync(null);
     }
 }
