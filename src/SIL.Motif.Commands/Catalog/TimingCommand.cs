@@ -127,8 +127,7 @@ public static class TimingCommand
     }
 
     private static ComparePlacement Place(AssessedWord word) => CompareSemantics.Place(new CompareWordFacts(
-        word.ProjectStanding, word.Outcome,
-        word.IsIncomplete || word.Morphology is { Capped: true } or { TimedOut: true },
+        word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
         word.ReadingGrades, word.MissedApprovedCount ?? 0));
 
     private static bool IsStepLimited(AssessedWord word) =>

@@ -1,6 +1,7 @@
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.Tests.App;
 
@@ -20,48 +21,48 @@ public sealed class CompareViewModelTests
     private static ParserReading Reading(string gloss) =>
         new([new ParserReadingMorph("form", gloss, "n", null, false, null)]);
 
-    private static (WordProjectStatus, CompareColumn) PlaceOne(AssessmentWordResult word) =>
+    private static (WordProjectStatus, CompareColumnKind) PlaceOne(AssessmentWordResult word) =>
         CompareViewModel.Place(new AssessWordRowViewModel(word));
 
     [Fact]
     public void AnApprovedWordIsKeptOnlyWhenEveryApprovedAnalysisWasRebuilt()
     {
-        Assert.Equal((WordProjectStatus.Approved, CompareColumn.Match),
+        Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.Match),
             PlaceOne(Word("kitabu", "analysed", ProjectStanding.Approved, ["approved"])));
         // One approved analysis rebuilt and another missed is not Kept: every approved morphology is expected.
-        Assert.Equal((WordProjectStatus.Approved, CompareColumn.NoMatch),
+        Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.NoMatch),
             PlaceOne(Word("walikula", "analysed", ProjectStanding.Approved, ["approved"], missedApproved: 1)));
-        Assert.Equal((WordProjectStatus.Approved, CompareColumn.NoParse),
+        Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.NoParse),
             PlaceOne(Word("hawajafika", "no-analysis", ProjectStanding.Approved, missedApproved: 1)));
     }
 
     [Fact]
     public void ALimitIsATimeoutEvenAfterReadingsAndASkippedWordIsNotTested()
     {
-        Assert.Equal((WordProjectStatus.Approved, CompareColumn.Timeout),
+        Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.Timeout),
             PlaceOne(Word("alimpiga", "analysed", ProjectStanding.Approved, ["approved"], incomplete: true)));
-        Assert.Equal((WordProjectStatus.NotPresent, CompareColumn.Skipped),
+        Assert.Equal((WordProjectStatus.NotPresent, CompareColumnKind.Skipped),
             PlaceOne(Word("x y", "skipped", ProjectStanding.NotPresent)));
     }
 
     [Theory]
-    [InlineData(ProjectStanding.Candidate, "candidate", CompareColumn.Match)]
-    [InlineData(ProjectStanding.Candidate, "no-opinion", CompareColumn.NoMatch)]
-    [InlineData(ProjectStanding.Rejected, "disapproved", CompareColumn.Match)]
-    [InlineData(ProjectStanding.Rejected, "no-opinion", CompareColumn.NoMatch)]
-    [InlineData(ProjectStanding.NotPresent, "no-opinion", CompareColumn.NoMatch)]
-    [InlineData(ProjectStanding.IncorrectSpelling, "approved", CompareColumn.Match)]
-    public void AParsedWordMatchesWhenTheParserBuiltWhatItsRowHolds(string standing, string grade, CompareColumn expected) =>
+    [InlineData(ProjectStanding.Candidate, "candidate", CompareColumnKind.Match)]
+    [InlineData(ProjectStanding.Candidate, "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.Rejected, "disapproved", CompareColumnKind.Match)]
+    [InlineData(ProjectStanding.Rejected, "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.NotPresent, "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.IncorrectSpelling, "approved", CompareColumnKind.Match)]
+    public void AParsedWordMatchesWhenTheParserBuiltWhatItsRowHolds(string standing, string grade, CompareColumnKind expected) =>
         Assert.Equal(expected, PlaceOne(Word("w", "analysed", standing, [grade])).Item2);
 
     [Fact]
     public void EveryCellMeansWhatTheGridSaysAndTimeoutsAreNeverViolations()
     {
-        Assert.Equal(CompareFamily.Violation, CompareViewModel.MeaningOf(WordProjectStatus.Approved, CompareColumn.NoParse).Family);
-        Assert.Equal(CompareFamily.Violation, CompareViewModel.MeaningOf(WordProjectStatus.Rejected, CompareColumn.Match).Family);
-        Assert.Equal(CompareFamily.New, CompareViewModel.MeaningOf(WordProjectStatus.NotPresent, CompareColumn.NoMatch).Family);
+        Assert.Equal(CompareFamilyKind.Violation, CompareViewModel.MeaningOf(WordProjectStatus.Approved, CompareColumnKind.NoParse).Family);
+        Assert.Equal(CompareFamilyKind.Violation, CompareViewModel.MeaningOf(WordProjectStatus.Rejected, CompareColumnKind.Match).Family);
+        Assert.Equal(CompareFamilyKind.New, CompareViewModel.MeaningOf(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch).Family);
         foreach (var row in Enum.GetValues<WordProjectStatus>())
-            Assert.Equal(CompareFamily.Unknown, CompareViewModel.MeaningOf(row, CompareColumn.Timeout).Family);
+            Assert.Equal(CompareFamilyKind.Unknown, CompareViewModel.MeaningOf(row, CompareColumnKind.Timeout).Family);
     }
 
     private static readonly AssessmentWordResult[] Sample =
@@ -93,12 +94,12 @@ public sealed class CompareViewModelTests
 
         Assert.Equal(Sample.Length, compare.Cells.Sum(cell => cell.Count));
         Assert.Equal(Sample.Length, compare.Words.Count);
-        int Column(CompareColumn column) => compare.Columns.Single(item => item.Column == column).Count;
+        int Column(CompareColumnKind column) => compare.Columns.Single(item => item.Column == column).Count;
         int Outcome(Verdict meaning) => table.Outcomes.Where(segment => segment.Meaning == meaning).Sum(segment => segment.Count);
-        Assert.Equal(Outcome(Verdict.Agrees), Column(CompareColumn.Match) + Column(CompareColumn.NoMatch));
-        Assert.Equal(Outcome(Verdict.NoResult), Column(CompareColumn.NoParse));
-        Assert.Equal(Outcome(Verdict.Limit), Column(CompareColumn.Timeout));
-        Assert.Equal(Outcome(Verdict.Several), Column(CompareColumn.Skipped));
+        Assert.Equal(Outcome(Verdict.Agrees), Column(CompareColumnKind.Match) + Column(CompareColumnKind.NoMatch));
+        Assert.Equal(Outcome(Verdict.NoResult), Column(CompareColumnKind.NoParse));
+        Assert.Equal(Outcome(Verdict.Limit), Column(CompareColumnKind.Timeout));
+        Assert.Equal(Outcome(Verdict.Several), Column(CompareColumnKind.Skipped));
     }
 
     [Fact]
@@ -106,10 +107,10 @@ public sealed class CompareViewModelTests
     {
         var (_, compare) = Loaded();
 
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation));
 
         Assert.Equal(["hawajafika", "kitanda", "walikula"], compare.Words.Select(word => word.Word).Order());
-        Assert.True(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation).IsActive);
+        Assert.True(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation).IsActive);
         Assert.Equal("3 of 9 words", compare.ListSummary);
     }
 
@@ -117,8 +118,8 @@ public sealed class CompareViewModelTests
     public void AClickChoosesOneCellCtrlClickAddsAndClickingTheOnlyChoiceClearsIt()
     {
         var (_, compare) = Loaded();
-        var kept = compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumn.Match);
-        var proposes = compare.Cells.Single(cell => cell.Row == WordProjectStatus.NotPresent && cell.Column == CompareColumn.NoMatch);
+        var kept = compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.Match);
+        var proposes = compare.Cells.Single(cell => cell.Row == WordProjectStatus.NotPresent && cell.Column == CompareColumnKind.NoMatch);
 
         compare.Toggle(kept, additive: false);
         Assert.Equal(["kitabu"], compare.Words.Select(word => word.Word));

@@ -12,7 +12,8 @@ public enum CompareFamilyKind { Good, Fine, Violation, Review, New, Nobody, Unkn
 public sealed record CompareWordFacts(
     string? Standing,
     string Outcome,
-    bool StoppedAtLimit,
+    bool IsIncomplete,
+    ParseWordEvidence? Morphology,
     IReadOnlyList<string>? ReadingGrades,
     int MissedApprovedCount);
 
@@ -27,7 +28,8 @@ public static class CompareSemantics
     {
         ArgumentNullException.ThrowIfNull(word);
         var standing = NormalizeStanding(word.Standing);
-        if (word.StoppedAtLimit) return new ComparePlacement(standing, CompareColumnKind.Timeout);
+        if (StoppedAtLimit(word.Outcome, word.IsIncomplete, word.Morphology))
+            return new ComparePlacement(standing, CompareColumnKind.Timeout);
         if (StringComparer.Ordinal.Equals(word.Outcome, "skipped"))
             return new ComparePlacement(standing, CompareColumnKind.Skipped);
         if (!StringComparer.Ordinal.Equals(word.Outcome, "analysed"))
@@ -44,6 +46,11 @@ public static class CompareSemantics
         };
         return new ComparePlacement(standing, matched ? CompareColumnKind.Match : CompareColumnKind.NoMatch);
     }
+
+    /// <summary>Whether the search stopped at a time or step limit, including when it returned partial readings.</summary>
+    public static bool StoppedAtLimit(string outcome, bool isIncomplete, ParseWordEvidence? morphology) =>
+        isIncomplete || outcome is "timed-out" or "capped" ||
+        morphology is { Capped: true } or { TimedOut: true };
 
     /// <summary>Returns the label and category the Compare matrix assigns to one cell.</summary>
     public static (string Label, CompareFamilyKind Family) MeaningOf(string? standing, CompareColumnKind column)

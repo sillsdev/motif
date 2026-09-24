@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -168,17 +169,17 @@ public sealed partial class DifferenceViewModel : ObservableObject
     /// one settles a word and entering one only loses certainty; otherwise violations and coverage decide, and any
     /// other move is better or worse by how much the cell keeps of what a person decided.
     /// </summary>
-    public static MoveKind KindOf((WordProjectStatus Row, CompareColumn Column) from, (WordProjectStatus Row, CompareColumn Column) to)
+    public static MoveKind KindOf((WordProjectStatus Row, CompareColumnKind Column) from, (WordProjectStatus Row, CompareColumnKind Column) to)
     {
         if (from == to) return MoveKind.Unchanged;
         var before = CompareViewModel.MeaningOf(from.Row, from.Column).Family;
         var after = CompareViewModel.MeaningOf(to.Row, to.Column).Family;
-        if (after == CompareFamily.Violation && before != CompareFamily.Violation) return MoveKind.Regressed;
-        if (before == CompareFamily.New && after == CompareFamily.Nobody) return MoveKind.Regressed;
-        if (after == CompareFamily.Unknown && before != CompareFamily.Unknown) return MoveKind.NowUnknown;
-        if (before == CompareFamily.Unknown) return after == CompareFamily.Unknown ? MoveKind.Changed : MoveKind.Settled;
-        if (before == CompareFamily.Violation) return MoveKind.Fixed;
-        if (before == CompareFamily.Nobody && after == CompareFamily.New) return MoveKind.NewCoverage;
+        if (after == CompareFamilyKind.Violation && before != CompareFamilyKind.Violation) return MoveKind.Regressed;
+        if (before == CompareFamilyKind.New && after == CompareFamilyKind.Nobody) return MoveKind.Regressed;
+        if (after == CompareFamilyKind.Unknown && before != CompareFamilyKind.Unknown) return MoveKind.NowUnknown;
+        if (before == CompareFamilyKind.Unknown) return after == CompareFamilyKind.Unknown ? MoveKind.Changed : MoveKind.Settled;
+        if (before == CompareFamilyKind.Violation) return MoveKind.Fixed;
+        if (before == CompareFamilyKind.Nobody && after == CompareFamilyKind.New) return MoveKind.NewCoverage;
         if (from.Row != to.Row && to.Row is WordProjectStatus.Approved or WordProjectStatus.Rejected or WordProjectStatus.IncorrectSpelling)
             return MoveKind.Decided;
         // Within the Candidate row nobody has decided anything, so a different answer there is a change, not a loss.
@@ -187,12 +188,12 @@ public sealed partial class DifferenceViewModel : ObservableObject
         return gain > 0 ? MoveKind.Improved : gain < 0 ? MoveKind.Regressed : MoveKind.Changed;
     }
 
-    private static int Worth(CompareFamily family) => family switch
+    private static int Worth(CompareFamilyKind family) => family switch
     {
-        CompareFamily.Good or CompareFamily.Fine => 4,
-        CompareFamily.New => 3,
-        CompareFamily.Review => 2,
-        CompareFamily.Nobody => 1,
+        CompareFamilyKind.Good or CompareFamilyKind.Fine => 4,
+        CompareFamilyKind.New => 3,
+        CompareFamilyKind.Review => 2,
+        CompareFamilyKind.Nobody => 1,
         _ => 0,
     };
 
@@ -224,7 +225,7 @@ public sealed partial class DifferenceViewModel : ObservableObject
 /// <summary>All the words that went from one cell to the same other cell between two Assessments.</summary>
 public sealed class MoveViewModel
 {
-    public MoveViewModel((WordProjectStatus Row, CompareColumn Column) from, (WordProjectStatus Row, CompareColumn Column) to,
+    public MoveViewModel((WordProjectStatus Row, CompareColumnKind Column) from, (WordProjectStatus Row, CompareColumnKind Column) to,
         IReadOnlyList<MovedWordViewModel> words)
     {
         From = from;
@@ -235,8 +236,8 @@ public sealed class MoveViewModel
         ToLabel = CompareViewModel.MeaningOf(to.Row, to.Column).Label;
     }
 
-    public (WordProjectStatus Row, CompareColumn Column) From { get; }
-    public (WordProjectStatus Row, CompareColumn Column) To { get; }
+    public (WordProjectStatus Row, CompareColumnKind Column) From { get; }
+    public (WordProjectStatus Row, CompareColumnKind Column) To { get; }
     public IReadOnlyList<MovedWordViewModel> Words { get; }
     public int Count => Words.Count;
     public string CountText => Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
@@ -273,8 +274,8 @@ public sealed class MovedWordViewModel
     public string Word { get; }
     public int? Occurrences { get; }
     public string OccurrenceText => Occurrences is { } count ? $"×{count}" : "—";
-    public (WordProjectStatus Row, CompareColumn Column) From { get; }
-    public (WordProjectStatus Row, CompareColumn Column) To { get; }
+    public (WordProjectStatus Row, CompareColumnKind Column) From { get; }
+    public (WordProjectStatus Row, CompareColumnKind Column) To { get; }
 
     /// <summary>What the parser came to in the earlier run: its result, and its readings when it has any.</summary>
     public string BeforeText { get; }

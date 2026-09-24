@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SIL.Motif.Commands.Queries;
 
 using Avalonia;
 using Avalonia.Automation;
@@ -309,7 +310,7 @@ public sealed class MainWindowSmokeTests
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
                 Assert.True(panel.IsEffectivelyVisible);
                 var lost = panel.GetVisualDescendants().OfType<Border>().Single(border =>
-                    border.Tag is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumn.NoParse });
+                    border.Tag is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.NoParse });
                 Assert.StartsWith("Approved, No parse: 1 words", AutomationProperties.GetName(lost));
                 lost.RaiseEvent(new Avalonia.Input.PointerPressedEventArgs(lost,
                     new Avalonia.Input.Pointer(1, Avalonia.Input.PointerType.Mouse, true), window, default, 0,

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -185,6 +186,8 @@ public sealed class AssessWordRowViewModel
     {
         ArgumentNullException.ThrowIfNull(word);
         Word = word.Word;
+        Outcome = word.Outcome;
+        Morphology = word.Morphology;
         OccurrenceCount = occurrenceCount ?? word.OccurrenceCount;
         Result = word.Outcome switch
         {
@@ -240,6 +243,8 @@ public sealed class AssessWordRowViewModel
             .ToArray())).ToArray();
 
     public string Word { get; }
+    public string Outcome { get; }
+    public ParseWordEvidence? Morphology { get; }
     public int? OccurrenceCount { get; }
     public bool HasOccurrenceCount => OccurrenceCount is not null;
     public string Result { get; }
@@ -254,7 +259,7 @@ public sealed class AssessWordRowViewModel
     public string CompletionStatus { get; }
 
     /// <summary>Whether a limit stopped the search, including a word that found readings before it stopped.</summary>
-    public bool StoppedAtALimit => IsIncomplete || Result is "Time limit" or "Step limit";
+    public bool StoppedAtALimit => CompareSemantics.StoppedAtLimit(Outcome, IsIncomplete, Morphology);
     public int ReadingCount { get; }
 
     public string ReadingCountText => ReadingCount == 1 ? "1 reading" : $"{ReadingCount} readings";

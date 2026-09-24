@@ -2,6 +2,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.Tests.App;
 
@@ -22,23 +23,23 @@ public sealed class DifferenceViewModelTests
     private static AssessWordRowViewModel[] Rows(params AssessmentWordResult[] words) =>
         words.Select(word => new AssessWordRowViewModel(word)).ToArray();
 
-    private static (WordProjectStatus, CompareColumn) Cell(WordProjectStatus row, CompareColumn column) => (row, column);
+    private static (WordProjectStatus, CompareColumnKind) Cell(WordProjectStatus row, CompareColumnKind column) => (row, column);
 
     [Theory]
-    [InlineData(WordProjectStatus.Approved, CompareColumn.NoParse, WordProjectStatus.Approved, CompareColumn.Match, MoveKind.Fixed)]
-    [InlineData(WordProjectStatus.Approved, CompareColumn.Match, WordProjectStatus.Approved, CompareColumn.NoMatch, MoveKind.Regressed)]
-    [InlineData(WordProjectStatus.NotPresent, CompareColumn.NoParse, WordProjectStatus.NotPresent, CompareColumn.NoMatch, MoveKind.NewCoverage)]
-    [InlineData(WordProjectStatus.NotPresent, CompareColumn.NoMatch, WordProjectStatus.NotPresent, CompareColumn.NoParse, MoveKind.Regressed)]
-    [InlineData(WordProjectStatus.Approved, CompareColumn.Timeout, WordProjectStatus.Approved, CompareColumn.Match, MoveKind.Settled)]
-    [InlineData(WordProjectStatus.Approved, CompareColumn.Timeout, WordProjectStatus.Approved, CompareColumn.NoParse, MoveKind.Regressed)]
-    [InlineData(WordProjectStatus.Approved, CompareColumn.Match, WordProjectStatus.Approved, CompareColumn.Timeout, MoveKind.NowUnknown)]
-    [InlineData(WordProjectStatus.Candidate, CompareColumn.Match, WordProjectStatus.Candidate, CompareColumn.NoMatch, MoveKind.Changed)]
-    [InlineData(WordProjectStatus.Candidate, CompareColumn.Match, WordProjectStatus.Approved, CompareColumn.Match, MoveKind.Decided)]
-    [InlineData(WordProjectStatus.NotPresent, CompareColumn.NoMatch, WordProjectStatus.Candidate, CompareColumn.Match, MoveKind.Improved)]
-    [InlineData(WordProjectStatus.Rejected, CompareColumn.Match, WordProjectStatus.Rejected, CompareColumn.NoMatch, MoveKind.Fixed)]
-    [InlineData(WordProjectStatus.Approved, CompareColumn.Match, WordProjectStatus.Approved, CompareColumn.Match, MoveKind.Unchanged)]
+    [InlineData(WordProjectStatus.Approved, CompareColumnKind.NoParse, WordProjectStatus.Approved, CompareColumnKind.Match, MoveKind.Fixed)]
+    [InlineData(WordProjectStatus.Approved, CompareColumnKind.Match, WordProjectStatus.Approved, CompareColumnKind.NoMatch, MoveKind.Regressed)]
+    [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.NoParse, WordProjectStatus.NotPresent, CompareColumnKind.NoMatch, MoveKind.NewCoverage)]
+    [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch, WordProjectStatus.NotPresent, CompareColumnKind.NoParse, MoveKind.Regressed)]
+    [InlineData(WordProjectStatus.Approved, CompareColumnKind.Timeout, WordProjectStatus.Approved, CompareColumnKind.Match, MoveKind.Settled)]
+    [InlineData(WordProjectStatus.Approved, CompareColumnKind.Timeout, WordProjectStatus.Approved, CompareColumnKind.NoParse, MoveKind.Regressed)]
+    [InlineData(WordProjectStatus.Approved, CompareColumnKind.Match, WordProjectStatus.Approved, CompareColumnKind.Timeout, MoveKind.NowUnknown)]
+    [InlineData(WordProjectStatus.Candidate, CompareColumnKind.Match, WordProjectStatus.Candidate, CompareColumnKind.NoMatch, MoveKind.Changed)]
+    [InlineData(WordProjectStatus.Candidate, CompareColumnKind.Match, WordProjectStatus.Approved, CompareColumnKind.Match, MoveKind.Decided)]
+    [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch, WordProjectStatus.Candidate, CompareColumnKind.Match, MoveKind.Improved)]
+    [InlineData(WordProjectStatus.Rejected, CompareColumnKind.Match, WordProjectStatus.Rejected, CompareColumnKind.NoMatch, MoveKind.Fixed)]
+    [InlineData(WordProjectStatus.Approved, CompareColumnKind.Match, WordProjectStatus.Approved, CompareColumnKind.Match, MoveKind.Unchanged)]
     public void EachMoveIsNamedByWhatItMeansAndATimeoutIsNeverAVerdict(
-        WordProjectStatus fromRow, CompareColumn fromColumn, WordProjectStatus toRow, CompareColumn toColumn, MoveKind expected) =>
+        WordProjectStatus fromRow, CompareColumnKind fromColumn, WordProjectStatus toRow, CompareColumnKind toColumn, MoveKind expected) =>
         Assert.Equal(expected, DifferenceViewModel.KindOf(Cell(fromRow, fromColumn), Cell(toRow, toColumn)));
 
     [Fact]
@@ -83,8 +84,8 @@ public sealed class DifferenceViewModelTests
 
         var from = Assert.Single(difference.Before.Cells, cell => cell.IsSelected);
         var to = Assert.Single(difference.After.Cells, cell => cell.IsSelected);
-        Assert.Equal(Cell(WordProjectStatus.Approved, CompareColumn.NoParse), (from.Row, from.Column));
-        Assert.Equal(Cell(WordProjectStatus.Approved, CompareColumn.Match), (to.Row, to.Column));
+        Assert.Equal(Cell(WordProjectStatus.Approved, CompareColumnKind.NoParse), (from.Row, from.Column));
+        Assert.Equal(Cell(WordProjectStatus.Approved, CompareColumnKind.Match), (to.Row, to.Column));
     }
 
     private static AssessCommandResponse Response(params AssessmentWordResult[] words) => new(

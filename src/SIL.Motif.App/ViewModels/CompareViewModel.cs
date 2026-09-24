@@ -6,57 +6,6 @@ using SIL.Motif.Commands.Queries;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// What the parser did with a word, as one column of the Compare matrix. A word that stopped at a limit is a
-/// Timeout even if it found readings first, exactly as the outcome bar counts it, so the column totals and the bar
-/// always agree.
-/// </summary>
-public enum CompareColumn
-{
-    /// <summary>The parser rebuilt what the project holds: every approved analysis, or a candidate or rejected one.</summary>
-    Match,
-
-    /// <summary>The parser produced readings, but not the ones the project holds.</summary>
-    NoMatch,
-
-    /// <summary>The parser finished and found no reading at all.</summary>
-    NoParse,
-
-    /// <summary>A time or step limit stopped the search, so nothing can be said either way.</summary>
-    Timeout,
-
-    /// <summary>The word was never tried.</summary>
-    Skipped,
-}
-
-/// <summary>What a matrix cell means for the grammar, which decides its colour.</summary>
-public enum CompareFamily
-{
-    /// <summary>The grammar keeps what a person decided.</summary>
-    Good,
-
-    /// <summary>Nothing to do: the grammar agrees with a rejection or a misspelling.</summary>
-    Fine,
-
-    /// <summary>A person's decision is broken: an approved analysis lost or replaced, or a rejected one built.</summary>
-    Violation,
-
-    /// <summary>The grammar and the project disagree about something no person has ruled on.</summary>
-    Review,
-
-    /// <summary>The grammar offers an analysis the project does not have yet.</summary>
-    New,
-
-    /// <summary>Neither the project nor the grammar can analyse the word.</summary>
-    Nobody,
-
-    /// <summary>A timeout or an untried word: unknown, never a violation.</summary>
-    Unknown,
-
-    /// <summary>A combination that the data never produces, shown empty.</summary>
-    None,
-}
-
-/// <summary>
 /// The Results stage's Compare view: every assessed word placed in a five-by-five matrix by what the project held
 /// for it and what the parser did, with the matrix as the filter for the word list beneath it. The matrix always
 /// counts the whole Assessment; choosing cells, searching and sorting only change which words are listed.
@@ -68,17 +17,17 @@ public sealed partial class CompareViewModel : ObservableObject
     public CompareViewModel()
     {
         Rows = Enum.GetValues<WordProjectStatus>().OrderBy(RowOrder)
-            .Select(status => new CompareRowViewModel(status, Enum.GetValues<CompareColumn>()
+            .Select(status => new CompareRowViewModel(status, Enum.GetValues<CompareColumnKind>()
                 .Select(column => new CompareCellViewModel(status, column)).ToArray()))
             .ToArray();
-        Columns = Enum.GetValues<CompareColumn>().Select(column => new CompareColumnViewModel(column)).ToArray();
+        Columns = Enum.GetValues<CompareColumnKind>().Select(column => new CompareColumnViewModel(column)).ToArray();
         Presets =
         [
-            new ComparePresetViewModel("Violations", CompareFamily.Violation),
-            new ComparePresetViewModel("Review", CompareFamily.Review),
-            new ComparePresetViewModel("New", CompareFamily.New),
-            new ComparePresetViewModel("Nobody can analyse", CompareFamily.Nobody),
-            new ComparePresetViewModel("Unknown", CompareFamily.Unknown),
+            new ComparePresetViewModel("Violations", CompareFamilyKind.Violation),
+            new ComparePresetViewModel("Review", CompareFamilyKind.Review),
+            new ComparePresetViewModel("New", CompareFamilyKind.New),
+            new ComparePresetViewModel("Nobody can analyse", CompareFamilyKind.Nobody),
+            new ComparePresetViewModel("Unknown", CompareFamilyKind.Unknown),
         ];
         ClearSelectionCommand = new RelayCommand(() => Select([], additive: false));
         SelectPresetCommand = new RelayCommand<ComparePresetViewModel>(preset =>
@@ -149,8 +98,8 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         get
         {
-            var unknown = _all.Where(word => word.Family == CompareFamily.Unknown).ToList();
-            var chosen = Cells.Where(cell => cell.IsSelected && cell.Family == CompareFamily.Unknown)
+            var unknown = _all.Where(word => word.Family == CompareFamilyKind.Unknown).ToList();
+            var chosen = Cells.Where(cell => cell.IsSelected && cell.Family == CompareFamilyKind.Unknown)
                 .Select(cell => (cell.Row, cell.Column)).ToHashSet();
             if (chosen.Count > 0) unknown = unknown.Where(word => chosen.Contains((word.Row, word.Column))).ToList();
             return unknown.Select(word => word.Word).ToArray();
@@ -319,40 +268,22 @@ public sealed partial class CompareViewModel : ObservableObject
     /// the parser rebuilt what the project holds — for an approved word, every approved analysis, as the Approved
     /// expectation requires, so a word that kept only some of them is not Kept.
     /// </summary>
-    public static (WordProjectStatus Row, CompareColumn Column) Place(AssessWordRowViewModel word)
+    public static (WordProjectStatus Row, CompareColumnKind Column) Place(AssessWordRowViewModel word)
     {
         ArgumentNullException.ThrowIfNull(word);
         var result = CompareSemantics.Place(new CompareWordFacts(
             StandingWire(word.Standing),
-            word.Result switch { "Parsed" => "analysed", "Skipped" => "skipped", _ => "no-analysis" },
-            word.StoppedAtALimit,
+            word.Outcome, word.IsIncomplete, word.Morphology,
             word.Readings.Select(reading => reading.Grade).Where(grade => grade is not null).Cast<string>().ToArray(),
             word.MissedApproved.Count));
         var row = WordProjectStatuses.FromStanding(result.Standing);
-        var column = result.Column switch
-        {
-            CompareColumnKind.Match => CompareColumn.Match,
-            CompareColumnKind.NoMatch => CompareColumn.NoMatch,
-            CompareColumnKind.NoParse => CompareColumn.NoParse,
-            CompareColumnKind.Timeout => CompareColumn.Timeout,
-            _ => CompareColumn.Skipped,
-        };
-        return (row, column);
+        return (row, result.Column);
     }
 
     /// <summary>What a cell means and how it is coloured, one entry per combination.</summary>
-    public static (string Label, CompareFamily Family) MeaningOf(WordProjectStatus row, CompareColumn column)
+    public static (string Label, CompareFamilyKind Family) MeaningOf(WordProjectStatus row, CompareColumnKind column)
     {
-        var kind = column switch
-        {
-            CompareColumn.Match => CompareColumnKind.Match,
-            CompareColumn.NoMatch => CompareColumnKind.NoMatch,
-            CompareColumn.NoParse => CompareColumnKind.NoParse,
-            CompareColumn.Timeout => CompareColumnKind.Timeout,
-            _ => CompareColumnKind.Skipped,
-        };
-        var result = CompareSemantics.MeaningOf(StandingWire(row), kind);
-        return (result.Label, Enum.Parse<CompareFamily>(result.Family.ToString()));
+        return CompareSemantics.MeaningOf(StandingWire(row), column);
     }
 
     private static string StandingWire(WordProjectStatus? status) => status switch
@@ -371,21 +302,21 @@ public sealed partial class CompareViewModel : ObservableObject
         _ => WordProjectStatuses.LabelOf(row),
     };
 
-    public static string ColumnLabelOf(CompareColumn column) => column switch
+    public static string ColumnLabelOf(CompareColumnKind column) => column switch
     {
-        CompareColumn.Match => "Match",
-        CompareColumn.NoMatch => "No match",
-        CompareColumn.NoParse => "No parse",
-        CompareColumn.Timeout => "Timeout",
+        CompareColumnKind.Match => "Match",
+        CompareColumnKind.NoMatch => "No match",
+        CompareColumnKind.NoParse => "No parse",
+        CompareColumnKind.Timeout => "Timeout",
         _ => "Skipped",
     };
 
     /// <summary>The verdict a parse column is drawn with in the word list, so it reads like every other stage.</summary>
-    public static Verdict VerdictOf(CompareColumn column) => column switch
+    public static Verdict VerdictOf(CompareColumnKind column) => column switch
     {
-        CompareColumn.Match => Verdict.Agrees,
-        CompareColumn.NoMatch => Verdict.Differs,
-        CompareColumn.NoParse => Verdict.NoResult,
+        CompareColumnKind.Match => Verdict.Agrees,
+        CompareColumnKind.NoMatch => Verdict.Differs,
+        CompareColumnKind.NoParse => Verdict.NoResult,
         _ => Verdict.Limit,
     };
 
@@ -427,9 +358,9 @@ public sealed partial class CompareRowViewModel(WordProjectStatus row, IReadOnly
 }
 
 /// <summary>One column header of the matrix, with how many words the parser handled that way.</summary>
-public sealed partial class CompareColumnViewModel(CompareColumn column) : ObservableObject
+public sealed partial class CompareColumnViewModel(CompareColumnKind column) : ObservableObject
 {
-    public CompareColumn Column { get; } = column;
+    public CompareColumnKind Column { get; } = column;
     public string Label { get; } = CompareViewModel.ColumnLabelOf(column);
 
     [ObservableProperty]
@@ -442,7 +373,7 @@ public sealed partial class CompareColumnViewModel(CompareColumn column) : Obser
 /// <summary>One combination of what the project held and what the parser did, and how many words fell there.</summary>
 public sealed partial class CompareCellViewModel : ObservableObject
 {
-    public CompareCellViewModel(WordProjectStatus row, CompareColumn column)
+    public CompareCellViewModel(WordProjectStatus row, CompareColumnKind column)
     {
         Row = row;
         Column = column;
@@ -452,19 +383,19 @@ public sealed partial class CompareCellViewModel : ObservableObject
     }
 
     public WordProjectStatus Row { get; }
-    public CompareColumn Column { get; }
+    public CompareColumnKind Column { get; }
     public string Label { get; }
-    public CompareFamily Family { get; }
+    public CompareFamilyKind Family { get; }
     public string RowLabel { get; }
     public string ColumnLabel { get; }
 
-    public bool IsGood => Family == CompareFamily.Good;
-    public bool IsFine => Family == CompareFamily.Fine;
-    public bool IsViolation => Family == CompareFamily.Violation;
-    public bool IsReview => Family == CompareFamily.Review;
-    public bool IsNew => Family == CompareFamily.New;
-    public bool IsNobody => Family == CompareFamily.Nobody;
-    public bool IsNone => Family == CompareFamily.None;
+    public bool IsGood => Family == CompareFamilyKind.Good;
+    public bool IsFine => Family == CompareFamilyKind.Fine;
+    public bool IsViolation => Family == CompareFamilyKind.Violation;
+    public bool IsReview => Family == CompareFamilyKind.Review;
+    public bool IsNew => Family == CompareFamilyKind.New;
+    public bool IsNobody => Family == CompareFamilyKind.Nobody;
+    public bool IsNone => Family == CompareFamilyKind.None;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CountText))]
@@ -482,16 +413,16 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string CountText => Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
 
     /// <summary>A combination the data cannot produce, and did not: drawn hatched rather than as a zero.</summary>
-    public bool IsEmptyImpossible => Family == CompareFamily.None && Count == 0;
+    public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
 
     public string AccessibleName => $"{RowLabel}, {ColumnLabel}: {Count} words, {Label}";
 }
 
 /// <summary>A shortcut that chooses every cell of one meaning.</summary>
-public sealed partial class ComparePresetViewModel(string label, CompareFamily family) : ObservableObject
+public sealed partial class ComparePresetViewModel(string label, CompareFamilyKind family) : ObservableObject
 {
     public string Label { get; } = label;
-    public CompareFamily Family { get; } = family;
+    public CompareFamilyKind Family { get; } = family;
 
     [ObservableProperty]
     private int _count;
@@ -503,7 +434,7 @@ public sealed partial class ComparePresetViewModel(string label, CompareFamily f
 /// <summary>One word in the Compare list, with the cell it sits in.</summary>
 public sealed partial class CompareWordViewModel : ObservableObject
 {
-    public CompareWordViewModel(AssessWordRowViewModel word, (WordProjectStatus Row, CompareColumn Column) place)
+    public CompareWordViewModel(AssessWordRowViewModel word, (WordProjectStatus Row, CompareColumnKind Column) place)
     {
         ArgumentNullException.ThrowIfNull(word);
         Word = word.Word;
@@ -523,13 +454,13 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public string Word { get; }
     public WordProjectStatus? Standing { get; }
     public WordProjectStatus Row { get; }
-    public CompareColumn Column { get; }
+    public CompareColumnKind Column { get; }
     public int? Occurrences { get; }
     public string OccurrenceText => Occurrences is { } count ? $"×{count}" : "—";
     public int? ElapsedMs { get; }
     public string Meaning { get; }
-    public CompareFamily Family { get; }
-    public bool IsViolation => Family == CompareFamily.Violation;
+    public CompareFamilyKind Family { get; }
+    public bool IsViolation => Family == CompareFamilyKind.Violation;
     public string RowLabel { get; }
     public Verdict RowVerdict { get; }
     public string ColumnLabel { get; }

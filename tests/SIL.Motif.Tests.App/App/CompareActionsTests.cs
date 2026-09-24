@@ -1,6 +1,7 @@
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.Tests.App;
 
@@ -39,7 +40,7 @@ public sealed class CompareActionsTests
 
         Assert.Equal(["alimpiga", "walipiga", "x y"], compare.RerunWords.Order());
 
-        compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumn.Timeout), false);
+        compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.Timeout), false);
 
         Assert.Equal(["walipiga"], compare.RerunWords);
     }
@@ -87,7 +88,7 @@ public sealed class CompareActionsTests
     {
         var (table, compare) = Loaded();
 
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.New));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.New));
 
         Assert.Equal(["mwalimu"], table.Rows.Select(row => row.Word));
 
@@ -131,7 +132,7 @@ public sealed class CompareActionsTests
         var (_, compare) = Loaded();
         IReadOnlyList<string>? handed = null;
         compare.HandOff = words => handed = words;
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Unknown));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Unknown));
 
         compare.HandOffCommand.Execute(null);
 

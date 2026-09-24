@@ -145,7 +145,7 @@ internal static class OverviewMetrics
             }
             var placement = CompareSemantics.Place(new CompareWordFacts(
                 word.ProjectStanding, word.Outcome,
-                word.IsIncomplete || word.Morphology is { Capped: true } or { TimedOut: true },
+                word.IsIncomplete, word.Morphology,
                 word.ReadingGrades, word.MissedApprovedCount ?? 0));
             switch (placement.Column)
             {

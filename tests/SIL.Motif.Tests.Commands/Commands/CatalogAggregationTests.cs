@@ -74,11 +74,11 @@ public sealed class CatalogAggregationTests
     public void ComparePlacementRequiresEveryApprovedAnalysisAndUsesTimeoutAsUnknown()
     {
         var complete = CompareSemantics.Place(new CompareWordFacts(
-            ProjectStanding.Approved, "analysed", false, ["approved"], MissedApprovedCount: 0));
+            ProjectStanding.Approved, "analysed", false, null, ["approved"], MissedApprovedCount: 0));
         var partial = CompareSemantics.Place(new CompareWordFacts(
-            ProjectStanding.Approved, "analysed", false, ["approved"], MissedApprovedCount: 1));
+            ProjectStanding.Approved, "analysed", false, null, ["approved"], MissedApprovedCount: 1));
         var timeout = CompareSemantics.Place(new CompareWordFacts(
-            ProjectStanding.Approved, "analysed", true, ["approved"], MissedApprovedCount: 1));
+            ProjectStanding.Approved, "analysed", true, null, ["approved"], MissedApprovedCount: 1));
 
         Assert.Equal(CompareColumnKind.Match, complete.Column);
         Assert.Equal(CompareColumnKind.NoMatch, partial.Column);

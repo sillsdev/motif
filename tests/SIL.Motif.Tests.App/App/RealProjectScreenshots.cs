@@ -7,6 +7,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.Tests.App;
 
@@ -158,7 +159,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
 
         // A few words given a change each, so the Review page and its badge have something to show.
         var compare = workspace.Assess.Compare;
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation));
         foreach (var (word, kind) in compare.Words.Take(3).Zip([ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.IncorrectSpelling]))
         {
             word.IsChecked = true;
@@ -220,7 +221,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     {
         var compare = walkthrough.Workspace.Assess.Compare;
         walkthrough.Workspace.ShowTexts(TextsTab.Matrix);
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation));
         Save(walkthrough.Window, Path.Combine(folder, "2f-texts-matrix-violations-light.png"));
         compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
         Save(walkthrough.Window, Path.Combine(folder, "2g-texts-matrix-largest-cell-light.png"));
