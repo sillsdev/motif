@@ -29,6 +29,9 @@ public sealed record RemoveCollectedChangeRequest(
 public sealed record RemoveNonFittingChangesRequest(
     string FwDataPath, string ProductVersion, string DraftName);
 
+/// <summary>Reads one persistent Draft's change fit against the live project.</summary>
+public sealed record PreflightDraftRequest(string FwDataPath, string ProductVersion, string DraftName);
+
 /// <summary>The saved Draft after one change was added, replaced, or removed.</summary>
 public sealed record CollectedChangeResponse(string DraftName, string ProposalId, int OperationCount);
 
@@ -58,7 +61,8 @@ public static class AnalysisDraftChanges
                 using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
                 var matches = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
                     .Where(wordform => string.Equals(
-                        wordform.Form.VernacularDefaultWritingSystem?.Text, request.Word, StringComparison.Ordinal))
+                        NormalizeWord(wordform.Form.VernacularDefaultWritingSystem?.Text),
+                        NormalizeWord(request.Word), StringComparison.Ordinal))
                     .Take(2).ToArray();
                 if (matches.Length != 1)
                     throw new InvalidOperationException($"Expected one wordform for '{request.Word}', found {matches.Length}.");
@@ -79,7 +83,7 @@ public static class AnalysisDraftChanges
                         CanonicalId.FromGuid(item.Guid).Value == analysisId);
                     var readingDigest = reading is null ? null : ChangeFitPreflight.ReadingDigest(reading);
                     var fingerprint = new ChangeFitFingerprint(
-                        wordformId.Value, analysisId, request.Word, baselineToken,
+                        wordformId.Value, analysisId, NormalizeWord(request.Word)!, baselineToken,
                         analysis is null ? null : ChangeFitPreflight.ContentDigest(analysis), readingDigest, reading);
                     draft.Operations.Add(ToDraft(operation, fingerprint));
                     draft.ContractVersions[OperationKind.GetGroup(operation.Kind)] = "1.0";
@@ -92,6 +96,7 @@ public static class AnalysisDraftChanges
                         word = request.Word,
                         kind = request.Kind,
                         assessmentId = request.AssessmentId,
+                        displayReading = request.Reading,
                         reading,
                     }, JsonOptions));
                 if (exists) repository.SaveDraft(request.DraftName, JsonSerializer.Serialize(draft, JsonOptions));
@@ -150,7 +155,8 @@ public static class AnalysisDraftChanges
                     .Select(FingerprintWord).Where(word => word is not null).ToHashSet(StringComparer.Ordinal);
                 draft.Operations.RemoveAll(operation => failing.Contains(operation.OperationId));
                 draft.ComposerProvenance.RemoveAll(entry =>
-                    entry.TryGetProperty("word", out var word) && removedWords.Contains(word.GetString()));
+                    entry.TryGetProperty("word", out var word) &&
+                    removedWords.Contains(NormalizeWord(word.GetString())));
                 repository.SaveDraft(request.DraftName, JsonSerializer.Serialize(draft, JsonOptions));
                 return CommandOutcome<CollectedChangeResponse>.Success(new CollectedChangeResponse(
                     request.DraftName, draft.ProposalId, draft.Operations.Count));
@@ -162,7 +168,7 @@ public static class AnalysisDraftChanges
             }
         });
 
-    public static CommandOutcome<PreflightResponse> PreflightDraft(RemoveNonFittingChangesRequest request) =>
+    public static CommandOutcome<PreflightResponse> PreflightDraft(PreflightDraftRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             try
@@ -190,7 +196,8 @@ public static class AnalysisDraftChanges
     {
         if (operation.Extensions is not { } extensions ||
             !extensions.TryGetProperty("changeFit", out var fit)) return false;
-        return fit.TryGetProperty("wordformForm", out var form) && form.GetString() == word;
+        return fit.TryGetProperty("wordformForm", out var form) &&
+            NormalizeWord(form.GetString()) == NormalizeWord(word);
     }
 
     private static string? FingerprintWord(DraftOperation operation)
@@ -198,21 +205,23 @@ public static class AnalysisDraftChanges
         if (operation.Extensions is not { } extensions ||
             !extensions.TryGetProperty("changeFit", out var fit) ||
             !fit.TryGetProperty("wordformForm", out var form)) return null;
-        return form.GetString();
+        return NormalizeWord(form.GetString());
     }
 
     private static bool ProvenanceFitsWord(JsonElement provenance, string word) =>
         provenance.ValueKind == JsonValueKind.Object &&
-        provenance.TryGetProperty("word", out var value) && value.GetString() == word;
+        provenance.TryGetProperty("word", out var value) &&
+        NormalizeWord(value.GetString()) == NormalizeWord(word);
 
     private static (ParseAnalysis? Reading, string? BaselineToken) ReadFirstReading(
         MotifDatabase database, CollectedChangeRequest request)
     {
-        if (request.Kind == "incorrect-spelling") return (null, null);
+        if (request.Kind == AnalysisChangeKinds.IncorrectSpelling) return (null, null);
         if (request.AssessmentId is null)
             throw new InvalidOperationException("An Assessment is required to identify the parser reading.");
         var assessment = new AssessmentRepository(database).Get(request.AssessmentId);
-        var matches = assessment.Words?.Where(word => word.Word == request.Word).Take(2).ToArray() ?? [];
+        var matches = assessment.Words?.Where(word =>
+            NormalizeWord(word.Word) == NormalizeWord(request.Word)).Take(2).ToArray() ?? [];
         if (matches.Length != 1)
             throw new InvalidOperationException($"Assessment has no unique reading for '{request.Word}'.");
         var reading = matches[0].Morphology?.Analyses.FirstOrDefault()
@@ -234,4 +243,6 @@ public static class AnalysisDraftChanges
             Extensions = JsonSerializer.SerializeToElement(new { changeFit = fingerprint }, JsonOptions),
         };
     }
+
+    private static string? NormalizeWord(string? value) => value?.Normalize(System.Text.NormalizationForm.FormD);
 }

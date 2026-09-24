@@ -403,6 +403,30 @@ public sealed class ProposalWorkflowTests
     }
 
     [Fact]
+    public void HeldProject_ApplyIsBusyAndProposalRemainsPendingForRetry()
+    {
+        var proposalId = FinalizeSetGloss("held-project",
+            CanonicalId.FromGuid(_seed.FirstSenseId).Value, "gloss after release");
+        Assert.True(RunDryRun(proposalId).Succeeded);
+
+        using (var held = new FileStream(_fwDataPath + ".lock", FileMode.OpenOrCreate,
+            FileAccess.ReadWrite, FileShare.None))
+        {
+            var refused = ProposalCommands.Apply(new ApplyRequest(
+                _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
+            Assert.False(refused.Succeeded);
+            Assert.Equal("apply.project-in-use", refused.Refusal!.Code);
+            Assert.Equal(FailureReason.Busy, refused.Refusal.Reason);
+            Assert.Equal("proposed", GetRecord(proposalId).Status);
+        }
+
+        var retried = ProposalCommands.Apply(new ApplyRequest(
+            _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
+        Assert.True(retried.Succeeded);
+        Assert.Equal("applied", GetRecord(proposalId).Status);
+    }
+
+    [Fact]
     public void CollectedChanges_AreAddedReplacedAndRemovedIncrementallyInOneDurableDraft()
     {
         var loader = new FwDataProjectLoader();
@@ -455,7 +479,7 @@ public sealed class ProposalWorkflowTests
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => firstWordform.Delete());
             loader.Save(cache);
         }
-        var draftPreflight = AnalysisDraftChanges.PreflightDraft(new RemoveNonFittingChangesRequest(
+        var draftPreflight = AnalysisDraftChanges.PreflightDraft(new PreflightDraftRequest(
             _fwDataPath, ProductVersion, draftName));
         Assert.True(draftPreflight.Succeeded);
         Assert.Equal(2, draftPreflight.Value!.Changes.Count);
@@ -472,6 +496,75 @@ public sealed class ProposalWorkflowTests
             Assert.Single(draft["composerProvenance"]!.AsArray());
             Assert.Equal("second-change", draft["operations"]![0]!["extensions"]!["changeFit"]!["wordformForm"]!.GetValue<string>());
         }
+    }
+
+    [Fact]
+    public void CliCollectsPreflightsAndRemovesChangesInOneDraft()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid firstId;
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            IWfiWordform first = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var factory = cache.ServiceLocator.GetInstance<IWfiWordformFactory>();
+                first = factory.Create(TsStringUtils.MakeString("cli-first", cache.DefaultVernWs));
+                factory.Create(TsStringUtils.MakeString("cli-second", cache.DefaultVernWs));
+            });
+            firstId = first.Guid;
+            loader.Save(cache);
+        }
+        var managedRoot = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "managed-cli-changes");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), managedRoot).Succeeded);
+        const string draft = "cli-collected";
+        Assert.Contains("1 operation", RunCli("collect-change", "--project", _fwDataPath,
+            "--draft", draft, "--kind", "incorrect-spelling", "--word", "cli-first"));
+        RunCli("collect-change", "--project", _fwDataPath,
+            "--draft", draft, "--kind", "incorrect-spelling", "--word", "cli-second");
+        var before = JsonNode.Parse(RunCli("preflight", "--project", _fwDataPath,
+            "--draft", draft, "--json"))!;
+        Assert.Equal(2, before["changes"]!.AsArray().Count);
+
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            var first = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(firstId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => first.Delete());
+            loader.Save(cache);
+        }
+        var drift = JsonNode.Parse(RunCli("preflight", "--project", _fwDataPath,
+            "--draft", draft, "--json"))!;
+        Assert.Single(drift["changes"]!.AsArray(), change => !change!["stillFits"]!.GetValue<bool>());
+        RunCli("remove-nonfitting-changes", "--project", _fwDataPath, "--draft", draft);
+        Assert.Single(JsonNode.Parse(RunCli("preflight", "--project", _fwDataPath,
+            "--draft", draft, "--json"))!["changes"]!.AsArray());
+        RunCli("remove-collected-change", "--project", _fwDataPath,
+            "--draft", draft, "--word", "cli-second");
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var stored = JsonNode.Parse(new ProposalRepository(database).GetDraft(draft).ProposalJson!)!;
+        Assert.Empty(stored["operations"]!.AsArray());
+    }
+
+    [Fact]
+    public void CollectedWordLookupAcceptsCanonicallyEquivalentUnicode()
+    {
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("a\u0301", cache.DefaultVernWs)));
+            loader.Save(cache);
+        }
+        var managedRoot = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "managed-unicode-change");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), managedRoot).Succeeded);
+
+        var collected = AnalysisDraftChanges.AddOrReplace(new CollectedChangeRequest(
+            _fwDataPath, ProductVersion, "unicode-change", "incorrect-spelling", "\u00e1", "", null));
+
+        Assert.True(collected.Succeeded, collected.Refusal?.Message);
+        Assert.True(Assert.Single(AnalysisDraftChanges.PreflightDraft(new PreflightDraftRequest(
+            _fwDataPath, ProductVersion, "unicode-change")).Value!.Changes).StillFits);
     }
 
     [Fact]
@@ -580,6 +673,26 @@ public sealed class ProposalWorkflowTests
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        Assert.True(process.WaitForExit(60000));
+        Assert.Equal(0, process.ExitCode);
+        _ = error.GetAwaiter().GetResult();
+        return output.GetAwaiter().GetResult();
+    }
+
+    private string RunCli(params string[] arguments)
+    {
+        var start = new ProcessStartInfo(BuildOutput.Cli)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (var argument in arguments) start.ArgumentList.Add(argument);
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         using var process = Process.Start(start)!;
         var output = process.StandardOutput.ReadToEndAsync();

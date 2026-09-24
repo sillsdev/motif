@@ -38,6 +38,13 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "new", "new",
             new[] { "new --project <fwdata> --draft <name> [--label <text>]" }),
+        new CliVerbDescriptor("Commands", "collect-change", "collect-change",
+            new[] { "collect-change --project <fwdata> --draft <name> --kind <kind> --word <word> " +
+                "[--assessment <assessmentId>] [--reading <text>]" }),
+        new CliVerbDescriptor("Commands", "remove-collected-change", "remove-collected-change",
+            new[] { "remove-collected-change --project <fwdata> --draft <name> --word <word>" }),
+        new CliVerbDescriptor("Commands", "remove-nonfitting-changes", "remove-nonfitting-changes",
+            new[] { "remove-nonfitting-changes --project <fwdata> --draft <name>" }),
         new CliVerbDescriptor(
             "Commands", "add-set-gloss", "add-set-gloss",
             new[]
@@ -110,6 +117,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "preflight", "preflight",
             new[] { "preflight --project <fwdata> <proposalId> [--json]" }),
+        new CliVerbDescriptor("Commands", "preflight", "preflight --draft",
+            new[] { "preflight --project <fwdata> --draft <name> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "dry-run", "dry-run",
             new[] { "dry-run --project <fwdata> <proposalId> [--wait] [--json]" }),

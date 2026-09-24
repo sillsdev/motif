@@ -10,13 +10,23 @@ namespace SIL.Motif.Runner.Composers;
 /// <summary>One action a person collected for a word's first parser reading.</summary>
 public sealed record AnalysisChangeIntent(string Kind, CanonicalId WordformId, ParseAnalysis? Reading);
 
+/// <summary>Actions that a collected word change can request.</summary>
+public static class AnalysisChangeKinds
+{
+    public const string Approve = "approve";
+    public const string Reject = "reject";
+    public const string Candidate = "candidate";
+    public const string AddCandidate = "add-candidate";
+    public const string IncorrectSpelling = "incorrect-spelling";
+}
+
 /// <summary>Composes a collected word change into closed analysis operations against a live project.</summary>
 public static class AnalysisChangeComposer
 {
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, AnalysisChangeIntent intent)
     {
         var wordform = ReferenceFieldLowering.Resolve<IWfiWordform>(cache, intent.WordformId, nameof(AnalysisChangeComposer));
-        if (intent.Kind == "incorrect-spelling")
+        if (intent.Kind == AnalysisChangeKinds.IncorrectSpelling)
             return [new OperationEnvelope(CanonicalId.Mint(), WfiWordformSpellingStatusOperationKinds.SetSpellingStatus,
                 target: intent.WordformId, after: JsonSerializer.SerializeToElement(new { value = 2 }))];
 
@@ -26,7 +36,7 @@ public static class AnalysisChangeComposer
             throw new InvalidOperationException("A parser reading requires at least one morph.");
         var existing = wordform.AnalysesOC.Where(analysis => Matches(analysis, reading)).ToArray();
 
-        if (intent.Kind == "candidate")
+        if (intent.Kind == AnalysisChangeKinds.Candidate)
         {
             if (existing.Length == 0)
                 throw new InvalidOperationException("The parser reading has no stored analysis to return to candidate.");
@@ -37,9 +47,9 @@ public static class AnalysisChangeComposer
                 .ToArray();
         }
 
-        if (intent.Kind == "add-candidate" && existing.Length > 0)
+        if (intent.Kind == AnalysisChangeKinds.AddCandidate && existing.Length > 0)
             throw new InvalidOperationException("The parser reading already has a stored analysis.");
-        if (intent.Kind is not ("approve" or "reject" or "add-candidate"))
+        if (intent.Kind is not (AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.AddCandidate))
             throw new InvalidOperationException($"Unknown collected change kind '{intent.Kind}'.");
 
         var operations = new List<OperationEnvelope>();
@@ -64,7 +74,7 @@ public static class AnalysisChangeComposer
         else
             analysisId = CanonicalId.FromGuid(existing[0].Guid);
 
-        if (intent.Kind != "add-candidate")
+        if (intent.Kind != AnalysisChangeKinds.AddCandidate)
         {
             IEnumerable<CanonicalId> targets = creationId is null ? existing.Select(analysis => CanonicalId.FromGuid(analysis.Guid)) :
                 [analysisId];
@@ -73,7 +83,7 @@ public static class AnalysisChangeComposer
                     target: target,
                     after: JsonSerializer.SerializeToElement(new
                 {
-                    member = intent.Kind == "approve" ? HumanEvaluationPayload.Approves : HumanEvaluationPayload.Disapproves,
+                    member = intent.Kind == AnalysisChangeKinds.Approve ? HumanEvaluationPayload.Approves : HumanEvaluationPayload.Disapproves,
                 }),
                 dependsOn: creationId is { } prerequisite ? [new OperationDependency(prerequisite)] : []));
         }

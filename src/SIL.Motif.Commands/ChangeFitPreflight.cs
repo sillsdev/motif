@@ -43,7 +43,8 @@ public static class ChangeFitPreflight
                 continue;
             }
             var currentForm = wordform.Form.VernacularDefaultWritingSystem?.Text ?? "";
-            if (!string.Equals(currentForm, fingerprint.WordformForm, StringComparison.Ordinal))
+            if (!string.Equals(currentForm.Normalize(System.Text.NormalizationForm.FormD),
+                fingerprint.WordformForm.Normalize(System.Text.NormalizationForm.FormD), StringComparison.Ordinal))
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
                     $"Wordform {wordId.Value} changed form.", fingerprint.BaselineToken));

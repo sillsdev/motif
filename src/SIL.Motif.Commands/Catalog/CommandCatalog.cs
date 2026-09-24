@@ -10,18 +10,21 @@ namespace SIL.Motif.Commands.Catalog;
 
 /// <summary>
 /// The sole enumeration of Motif's command handlers (ADR 0043 decision 3): one entry per public
-/// handler in <see cref="ProposalCommands"/>, <see cref="CorpusCommands"/>, <see cref="ConfigCommands"/>,
+/// handler in <see cref="ProposalCommands"/>, <see cref="AnalysisDraftChanges"/>,
+/// <see cref="CorpusCommands"/>, <see cref="ConfigCommands"/>,
 /// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, <see cref="BaselineCaptureCommand"/>,
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="HandoffCommand"/>,
 /// and <see cref="JobCommands"/>.
 /// </summary>
 /// <remarks>
-/// Three names each cover two entries because one CLI verb reaches two distinct handlers under
+/// Four names each cover two entries because one CLI verb reaches two distinct handlers under
 /// different flags: <c>report</c> reaches <see cref="ReportCommands.Produce"/> by default and
 /// <see cref="ReportCommands.ListKinds"/> under <c>--list-kinds</c>; <c>dry-run</c> reaches
 /// <see cref="JobCommands.EnqueueDryRun"/> and then, under <c>--wait</c>,
 /// <see cref="JobCommands.WaitForDryRun"/>; <c>trial</c> reaches <see cref="JobCommands.EnqueueTrial"/>
-/// and then, under <c>--wait</c>, <see cref="JobCommands.WaitForJob"/>. Every other name is the literal
+/// and then, under <c>--wait</c>, <see cref="JobCommands.WaitForJob"/>; <c>preflight</c> reaches
+/// <see cref="ProposalCommands.Preflight"/> or <see cref="AnalysisDraftChanges.PreflightDraft"/>
+/// under <c>--draft</c>. Every other name is the literal
 /// CLI verb (or, for a nested subcommand, its complete space-separated form, e.g. <c>"jobs show"</c>)
 /// that reaches exactly the one handler it names — pinned equal to the CLI's own <c>CliVerbCatalog.All</c>,
 /// by <c>CommandCatalogParityTests.EveryCataloguedCommandHasExactlyOneCliVerb</c>.
@@ -34,6 +37,12 @@ public static class CommandCatalog
         new CommandDescriptor("open", typeof(OpenRequest), typeof(ProjectSummaryProjection), CommandSurface.Released),
         new CommandDescriptor("analyses", typeof(ManualAnalysesRequest), typeof(AnalysisAggregateProjection), CommandSurface.Released),
         new CommandDescriptor("new", typeof(NewDraftRequest), typeof(DraftCreatedResponse), CommandSurface.Developer),
+        new CommandDescriptor("collect-change", typeof(CollectedChangeRequest),
+            typeof(CollectedChangeResponse), CommandSurface.Developer),
+        new CommandDescriptor("remove-collected-change", typeof(RemoveCollectedChangeRequest),
+            typeof(CollectedChangeResponse), CommandSurface.Developer),
+        new CommandDescriptor("remove-nonfitting-changes", typeof(RemoveNonFittingChangesRequest),
+            typeof(CollectedChangeResponse), CommandSurface.Developer),
         new CommandDescriptor("add-set-gloss", typeof(AddSetGlossRequest), typeof(SetGlossAddedResponse), CommandSurface.Developer),
         new CommandDescriptor(
             "add-delete-lexeme-form", typeof(AddDeleteLexemeFormRequest), typeof(DeleteLexemeFormAddedResponse), CommandSurface.Developer),
@@ -59,6 +68,8 @@ public static class CommandCatalog
         new CommandDescriptor("list", typeof(ListProposalsRequest), typeof(ProposalListProjection), CommandSurface.Developer),
         new CommandDescriptor("show", typeof(ShowProposalRequest), typeof(ProposalDetailProjection), CommandSurface.Developer),
         new CommandDescriptor("preflight", typeof(PreflightRequest), typeof(PreflightResponse), CommandSurface.Developer),
+        new CommandDescriptor("preflight --draft", typeof(PreflightDraftRequest),
+            typeof(PreflightResponse), CommandSurface.Developer),
         new CommandDescriptor("apply", typeof(ApplyRequest), typeof(ApplyProjection), CommandSurface.Developer),
         new CommandDescriptor("log", typeof(LogRequest), typeof(AppliedLogProjection), CommandSurface.Developer),
 

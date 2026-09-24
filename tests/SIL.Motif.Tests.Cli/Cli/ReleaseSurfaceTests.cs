@@ -27,10 +27,12 @@ public sealed class ReleaseSurfaceTests : IDisposable
 
     private static readonly string[] DeveloperNames =
     [
-        "new", "add-set-gloss", "add-delete-lexeme-form", "compose-author-lexeme-form",
+        "new", "collect-change", "remove-collected-change", "remove-nonfitting-changes",
+        "add-set-gloss", "add-delete-lexeme-form", "compose-author-lexeme-form",
         "compose-author-feature-structure", "promote-gloss", "label", "comment", "finalize",
         "discard-draft", "reopen", "duplicate", "remove-operations", "split", "defer", "reject",
-        "supersede", "list", "show", "preflight", "dry-run", "dry-run --wait", "trial", "trial --wait", "apply", "log",
+        "supersede", "list", "show", "preflight", "preflight --draft", "dry-run", "dry-run --wait",
+        "trial", "trial --wait", "apply", "log",
     ];
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-release-surface-" + Guid.NewGuid().ToString("N"));
