@@ -33,6 +33,12 @@ public static partial class SnapshotFields
     /// </summary>
     public const string FsFeatStrucFeatureSpecs = "grammar/fsFeatStruc/featureSpecs";
 
+    /// <summary>A <c>WfiAnalysis</c>'s evaluation references.</summary>
+    public const string WfiAnalysisEvaluations = "analysis/wfiAnalysis/evaluations";
+
+    /// <summary>A <c>WfiWordform</c>'s owned analyses.</summary>
+    public const string WfiWordformAnalyses = "analysis/wfiWordform/analyses";
+
     /// <summary>
     /// The Canonical Semantic Snapshot / expected-effect projection shape version, recorded on
     /// <see cref="SIL.Motif.Model.DryRun.BoundDryRunAnchor.ProjectionVersion"/>. Bump this
