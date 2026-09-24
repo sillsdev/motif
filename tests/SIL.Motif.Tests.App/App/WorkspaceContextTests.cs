@@ -262,9 +262,10 @@ public sealed class WorkspaceContextTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new HandoffViewModel(fake, selection, new NoFolderPicker(), new NoDragSource()),
             new ChangesViewModel(),
-            fake));
+            fake,
+            new NoFolderPicker(),
+            new NoDragSource()));
     }
 
     private sealed record ElsewhereRequest(string Note) : PageRequest(WorkspacePage.Warnings);

@@ -40,6 +40,9 @@ public abstract partial class PageModel : ObservableObject
     /// <summary>Reloads what the page shows now that a new Baseline has been captured.</summary>
     protected virtual Task OnBaselineCapturedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
+    /// <summary>Stops whatever work the page has running, and returns once it has stopped.</summary>
+    protected virtual Task OnStopWorkAsync() => Task.CompletedTask;
+
     /// <summary>Shows <paramref name="evidence"/>, just published.</summary>
     protected virtual void OnEvidencePublished(WorkspaceEvidence evidence)
     {
@@ -56,6 +59,8 @@ public abstract partial class PageModel : ObservableObject
         OnProjectOpenedAsync(projectPath, cancellationToken);
 
     internal Task BaselineCapturedAsync(CancellationToken cancellationToken) => OnBaselineCapturedAsync(cancellationToken);
+
+    internal Task StopWorkAsync() => OnStopWorkAsync();
 
     internal void EvidencePublished(WorkspaceEvidence evidence) => OnEvidencePublished(evidence);
 

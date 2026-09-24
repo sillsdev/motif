@@ -59,7 +59,7 @@ public sealed class MainWindowSmokeTests
             Assert.Same(workspace.Assess, Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>()).Assess);
             Assert.Same(
                 workspace.PageModel<TimingPageModel>().Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
-            Assert.Same(workspace.Handoff, Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>()).Handoff);
+            Assert.Same(workspace.PageModel<AiHandoffPageModel>().Handoff, Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>()).Handoff);
         });
     }
 
@@ -303,7 +303,7 @@ public sealed class MainWindowSmokeTests
                 new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing the Selection..."));
             workspace.Assess.Refusal = new Refusal(
                 "assess.parser-unavailable", FailureReason.Refused, "PanGloss is not built.");
-            workspace.Handoff.Refusal = new Refusal(
+            workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal = new Refusal(
                 "handoff.cancelled", FailureReason.Cancelled, "The Handoff run was cancelled.");
 
             var application = Application.Current!;
@@ -464,8 +464,8 @@ public sealed class MainWindowSmokeTests
                     new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"),
                     new HandoffFileViewModel("assessment.json", @"C:\handoff\assessment.json"),
                 };
-                foreach (var file in files) workspace.Handoff.Files.Add(file);
-                workspace.Handoff.State = RunState.Completed;
+                foreach (var file in files) workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(file);
+                workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
                 workspace.CurrentPage = WorkspacePage.AiHandoff;
 
                 window.Show();
@@ -509,9 +509,9 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
             try
             {
-                workspace.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
-                workspace.Handoff.PastedHeader = "pasted header text";
-                workspace.Handoff.State = RunState.Completed;
+                workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
+                workspace.PageModel<AiHandoffPageModel>().Handoff.PastedHeader = "pasted header text";
+                workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
                 workspace.CurrentPage = WorkspacePage.AiHandoff;
 
                 window.Show();
@@ -632,7 +632,7 @@ public sealed class MainWindowSmokeTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new HandoffViewModel(fake, selection, new FakeFolderPicker(), dragSource),
+            new FakeFolderPicker(), dragSource,
             fake);
 
         var window = new MainWindow();

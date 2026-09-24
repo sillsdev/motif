@@ -463,10 +463,10 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
-                workspace.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
-                workspace.Handoff.Files.Add(new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"));
-                workspace.Handoff.OutputDirectory = @"C:\handoff";
-                workspace.Handoff.State = RunState.Completed;
+                workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
+                workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"));
+                workspace.PageModel<AiHandoffPageModel>().Handoff.OutputDirectory = @"C:\handoff";
+                workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
                 workspace.CurrentPage = WorkspacePage.AiHandoff;
                 window.Show();
                 window.UpdateLayout();
@@ -543,7 +543,7 @@ public sealed class WorkflowShellTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new HandoffViewModel(fake, selection, new NoFolderPicker(), DragSource),
+            new NoFolderPicker(), DragSource,
             fake);
     }
 
@@ -562,7 +562,7 @@ public sealed class WorkflowShellTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new HandoffViewModel(fake, selection, new NoFolderPicker(), DragSource),
+            new NoFolderPicker(), DragSource,
             fake);
 
         var window = new MainWindow();

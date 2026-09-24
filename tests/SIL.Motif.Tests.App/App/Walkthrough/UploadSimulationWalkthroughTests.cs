@@ -36,7 +36,7 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 walkthrough.Click("Write the Handoff folder");
                 var handoffDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == RunState.Completed,
+                    () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(handoffDeadline), "the Handoff did not complete");
 
                 var receiver = new FakeChatReceiver(output);
@@ -51,7 +51,7 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
 
                 var validation = receiver.Validate();
                 Assert.Empty(validation.Failures);
-                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.Handoff.Result!.InvocationId);
+                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Result!.InvocationId);
                 Assert.Equal(retainedBeforeHandoff.Count,
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));

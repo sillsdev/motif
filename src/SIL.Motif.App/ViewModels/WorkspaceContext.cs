@@ -57,7 +57,8 @@ public sealed partial class WorkspaceContext : ObservableObject
     public WorkspaceContext(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
         GrammarViewModel grammar, SelectionViewModel selection, TextWordsViewModel words, AssessViewModel assess,
-        HandoffViewModel handoff, ChangesViewModel changes, ICommandClient commands)
+        ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
+        IFileDragSource dragSource)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(projectHistory);
@@ -66,9 +67,10 @@ public sealed partial class WorkspaceContext : ObservableObject
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
-        ArgumentNullException.ThrowIfNull(handoff);
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(commands);
+        ArgumentNullException.ThrowIfNull(folderPicker);
+        ArgumentNullException.ThrowIfNull(dragSource);
         Project = project;
         ProjectHistory = projectHistory;
         Baseline = baseline;
@@ -76,9 +78,10 @@ public sealed partial class WorkspaceContext : ObservableObject
         Selection = selection;
         Words = words;
         Assess = assess;
-        Handoff = handoff;
         Changes = changes;
         Commands = commands;
+        FolderPicker = folderPicker;
+        DragSource = dragSource;
         Assess.PropertyChanged += OnAssessPropertyChanged;
     }
 
@@ -96,7 +99,11 @@ public sealed partial class WorkspaceContext : ObservableObject
 
     public AssessViewModel Assess { get; }
 
-    public HandoffViewModel Handoff { get; }
+    /// <summary>Where a page asks a person to choose a folder.</summary>
+    public IHandoffFolderPicker FolderPicker { get; }
+
+    /// <summary>How a page lets a person drag files out of the window.</summary>
+    public IFileDragSource DragSource { get; }
 
     /// <summary>The changes collected on any page and not applied yet; the Review changes page lists them.</summary>
     public ChangesViewModel Changes { get; }
@@ -162,6 +169,12 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         foreach (var page in _pages.ToArray())
             await page.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Stops whatever work any page has running, and returns once each has stopped.</summary>
+    public async Task StopPageWorkAsync()
+    {
+        foreach (var page in _pages.ToArray()) await page.StopWorkAsync().ConfigureAwait(true);
     }
 
     /// <summary>Publishes <paramref name="evidence"/> as what every page now shows.</summary>

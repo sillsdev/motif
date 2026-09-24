@@ -130,7 +130,7 @@ public sealed class PageScreenshots
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new Picker()), new ProjectHistoryViewModel(fake), new BaselineViewModel(fake),
             new GrammarViewModel(fake), selection, words, new AssessViewModel(fake, selection),
-            new HandoffViewModel(fake, selection, new Folder(), new Drag()),
+            new Folder(), new Drag(),
             fake);
         var window = new MainWindow();
         window.Compose(workspace);
@@ -146,8 +146,8 @@ public sealed class PageScreenshots
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
         workspace.Assess.Trace.Result = WordTraceQuery.LoadDiagnostic(TraceFixture()).Value;
         workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines[0].Tokens[1]);
-        await workspace.Handoff.RunCommand.ExecuteAsync(null);
-        workspace.Handoff.LatestAssessmentAt = workspace.Handoff.WrittenAt!.Value.AddMinutes(35);
+        await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
+        workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = workspace.PageModel<AiHandoffPageModel>().Handoff.WrittenAt!.Value.AddMinutes(35);
         return (workspace, window);
     }
 

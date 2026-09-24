@@ -99,7 +99,7 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
 
                 walkthrough.Click("Write the Handoff folder");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == RunState.Completed,
+                    () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
                     TimeSpan.FromSeconds(300), "the conformance Handoff did not complete");
 
                 var grammarPath = Path.Combine(outputDirectory, "grammar.json");
@@ -107,7 +107,7 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 using var grammar = JsonDocument.Parse(File.ReadAllText(grammarPath));
                 var entries = grammar.RootElement.GetProperty("lexicon").GetProperty("entries");
                 Assert.Equal(13, entries.GetArrayLength());
-                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.Handoff.Result!.InvocationId);
+                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Result!.InvocationId);
                 Assert.Equal(retainedBeforeHandoff.Count,
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 output.WriteLine("grammar.json lexical entry count JSON path: $.lexicon.entries.");

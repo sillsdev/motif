@@ -38,7 +38,7 @@ public sealed class WorkspacePageTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new HandoffViewModel(fake, selection, new FakeFolderPicker(), new FakeDragSource()),
+            new FakeFolderPicker(), new FakeDragSource(),
             fake);
         return (fake, projectPicker, workspace);
     }
@@ -594,8 +594,8 @@ public sealed class WorkspacePageTests
         var (_, _, workspace) = NewWorkspace();
         Assert.Equal("Write the AI Handoff", workspace.PageModel<AiHandoffPageModel>().HandoffActionText);
 
-        workspace.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
-        workspace.Handoff.State = RunState.Completed;
+        workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
+        workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
 
         Assert.Equal("Write the AI Handoff again", workspace.PageModel<AiHandoffPageModel>().HandoffActionText);
     }

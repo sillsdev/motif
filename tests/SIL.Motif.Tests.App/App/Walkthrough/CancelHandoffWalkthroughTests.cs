@@ -48,17 +48,17 @@ public sealed class CancelHandoffWalkthroughTests
 
                 walkthrough.Click("Write the Handoff folder");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == RunState.Running,
+                    () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Running,
                     WalkthroughSteps.Remaining(deadline), "the Handoff did not reach Running");
                 Assert.True(walkthrough.Find<Avalonia.Controls.Button>(
                     "Cancel the running Handoff").IsEffectivelyEnabled);
                 walkthrough.Click("Cancel the running Handoff");
                 holdingClient.ReleaseHandoff();
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == RunState.Cancelled,
+                    () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Cancelled,
                     WalkthroughSteps.Remaining(deadline), "the Handoff cancellation did not unwind");
-                Assert.Equal("handoff.cancelled", walkthrough.Workspace.Handoff.Refusal?.Code);
-                Assert.Equal(FailureReason.Cancelled, walkthrough.Workspace.Handoff.Refusal?.Reason);
+                Assert.Equal("handoff.cancelled", walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Code);
+                Assert.Equal(FailureReason.Cancelled, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Reason);
                 Assert.False(Directory.Exists(outputDirectory));
                 AssertNoGrammarFiles(handoffParent);
                 Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
@@ -66,13 +66,13 @@ public sealed class CancelHandoffWalkthroughTests
 
                 walkthrough.Click("Write the Handoff folder");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Handoff.State == RunState.Completed,
+                    () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(deadline), "the retried Handoff did not complete");
 
-                Assert.Equal(RunState.Completed, walkthrough.Workspace.Handoff.State);
+                Assert.Equal(RunState.Completed, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State);
                 Assert.True(File.Exists(Path.Combine(outputDirectory, "grammar.json")));
-                Assert.NotEmpty(walkthrough.Workspace.Handoff.Files);
-                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.Handoff.Result!.InvocationId);
+                Assert.NotEmpty(walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Files);
+                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Result!.InvocationId);
                 Assert.Equal(retainedBeforeHandoff.Count,
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 return Task.CompletedTask;

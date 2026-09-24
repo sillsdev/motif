@@ -9,15 +9,27 @@ public sealed record HandOffRequest(IReadOnlyList<string> Words) : PageRequest(W
 /// <summary>The AI Handoff page's model: the action that writes the files, and which Assessment they cover.</summary>
 public sealed class AiHandoffPageModel : PageModel
 {
-    public AiHandoffPageModel(WorkspaceContext context) : base(context) =>
+    public AiHandoffPageModel(WorkspaceContext context) : base(context)
+    {
+        Handoff = new HandoffViewModel(context.Commands, context.Selection, context.FolderPicker, context.DragSource);
         Handoff.PropertyChanged += OnHandoffPropertyChanged;
+    }
 
-    public HandoffViewModel Handoff => Context.Handoff;
+    /// <summary>The page's own AI Handoff run.</summary>
+    public HandoffViewModel Handoff { get; }
 
     /// <summary>What the page's action reads: the first write, or a rewrite.</summary>
     public string HandoffActionText => Handoff.HasCompletedFiles ? "Write the AI Handoff again" : "Write the AI Handoff";
 
     protected override void OnProjectCleared() => Handoff.Reset();
+
+    // Awaits the run's own unwind rather than disposing it: the page outlives one project.
+    protected override async Task OnStopWorkAsync()
+    {
+        if (!Handoff.IsActive) return;
+        Handoff.CancelCommand.Execute(null);
+        if (Handoff.RunCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
+    }
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {

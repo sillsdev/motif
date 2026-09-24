@@ -36,7 +36,7 @@ public sealed class WalkthroughWindow : IDisposable
             selection,
             words,
             new AssessViewModel(commandClient, selection),
-            new HandoffViewModel(commandClient, selection, _folderPicker, _dragSource),
+            _folderPicker, _dragSource,
             commandClient);
 
         Window = new MainWindow();
@@ -227,9 +227,9 @@ public sealed class WalkthroughWindow : IDisposable
             $"Assess.State='{Workspace.Assess.State}', " +
             $"Assess.Refusal?.Message='{Workspace.Assess.Refusal?.Message}', " +
             $"Assess.Progress='{Workspace.Assess.Progress}', " +
-            $"Handoff.State='{Workspace.Handoff.State}', " +
-            $"Handoff.Refusal?.Message='{Workspace.Handoff.Refusal?.Message}', " +
-            $"Handoff.Progress='{Workspace.Handoff.Progress}', " +
+            $"Handoff.State='{Workspace.PageModel<AiHandoffPageModel>().Handoff.State}', " +
+            $"Handoff.Refusal?.Message='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Message}', " +
+            $"Handoff.Progress='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Progress}', " +
             $"project='{Workspace.Project.KnownProjects.Count}' known projects");
     }
 

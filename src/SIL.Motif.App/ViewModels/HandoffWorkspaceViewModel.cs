@@ -36,7 +36,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
         GrammarViewModel grammar, SelectionViewModel selection, TextWordsViewModel words,
-        AssessViewModel assess, HandoffViewModel handoff, ICommandClient commandClient)
+        AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
+        ICommandClient commandClient)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(projectHistory);
@@ -45,13 +46,14 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
-        ArgumentNullException.ThrowIfNull(handoff);
+        ArgumentNullException.ThrowIfNull(folderPicker);
+        ArgumentNullException.ThrowIfNull(dragSource);
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
 
         assess.TextWords = words;
         Context = new WorkspaceContext(project, projectHistory, baseline, grammar, selection, words, assess,
-            handoff, new ChangesViewModel(), commandClient);
+            new ChangesViewModel(), commandClient, folderPicker, dragSource);
         OpenConfiguration = () => Context.OpenTexts(TextsTab.Texts);
 
         Pages = PageRegistry.Entries
@@ -287,7 +289,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     public AssessViewModel Assess => Context.Assess;
 
-    public HandoffViewModel Handoff => Context.Handoff;
 
     /// <summary>Whether a successful Baseline capture replaced a Baseline an Assessment already covered.</summary>
     [ObservableProperty]
@@ -468,11 +469,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             if (Assess.RunCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
         }
 
-        if (Handoff.IsActive)
-        {
-            Handoff.CancelCommand.Execute(null);
-            if (Handoff.RunCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
-        }
+        await Context.StopPageWorkAsync().ConfigureAwait(true);
     }
 
     private void ClearProjectBoundState()
@@ -488,6 +485,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public async ValueTask DisposeAsync()
     {
         await Assess.DisposeAsync().ConfigureAwait(true);
-        await Handoff.DisposeAsync().ConfigureAwait(true);
+        await Context.StopPageWorkAsync().ConfigureAwait(true);
     }
 }

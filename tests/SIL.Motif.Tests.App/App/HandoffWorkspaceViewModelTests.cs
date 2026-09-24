@@ -55,7 +55,7 @@ public sealed class HandoffWorkspaceViewModelTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new HandoffViewModel(fake, selection, folderPicker, dragSource),
+            folderPicker, dragSource,
             fake);
         return (fake, projectPicker, folderPicker, dragSource, workspace);
     }
@@ -102,7 +102,7 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.Single(workspace.Selection.Texts);
         Assert.Equal(ProjectPath, workspace.Assess.ProjectPath);
         Assert.Equal(ProjectPath, workspace.PageModel<TimingPageModel>().Statistics.ProjectPath);
-        Assert.Equal(ProjectPath, workspace.Handoff.ProjectPath);
+        Assert.Equal(ProjectPath, workspace.PageModel<AiHandoffPageModel>().Handoff.ProjectPath);
     }
 
     // The owner's first run: a project chosen before any capture showed no Texts even after Refresh succeeded.
@@ -164,7 +164,7 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.True(workspace.Baseline.HasAssessment);
         Assert.Equal("(summary)", workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
         Assert.Equal("assessment/one", workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
-        Assert.Equal("invocation/one", workspace.Handoff.InvocationId);
+        Assert.Equal("invocation/one", workspace.PageModel<AiHandoffPageModel>().Handoff.InvocationId);
         Assert.True(workspace.Context.HasEvidence);
         Assert.False(workspace.Context.HasNoEvidence);
     }
@@ -229,11 +229,11 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.True(workspace.Context.HasNoEvidence);
         Assert.Null(workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
         Assert.Null(workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
-        Assert.Null(workspace.Handoff.InvocationId);
+        Assert.Null(workspace.PageModel<AiHandoffPageModel>().Handoff.InvocationId);
         Assert.Empty(workspace.PageModel<TimingPageModel>().Statistics.Rows);
         Assert.Equal(RunState.Idle, workspace.Assess.State);
         Assert.Null(workspace.Assess.Result);
-        Assert.Empty(workspace.Handoff.Files);
+        Assert.Empty(workspace.PageModel<AiHandoffPageModel>().Handoff.Files);
     }
 
     [Fact]
@@ -280,11 +280,11 @@ public sealed class HandoffWorkspaceViewModelTests
         {
             InvocationId = "invocation/one",
         });
-        await workspace.Handoff.RunCommand.ExecuteAsync(null);
+        await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(RunState.Completed, workspace.Handoff.State);
-        var file = Assert.Single(workspace.Handoff.Files);
-        await workspace.Handoff.DragFileAsync(null!, file);
+        Assert.Equal(RunState.Completed, workspace.PageModel<AiHandoffPageModel>().Handoff.State);
+        var file = Assert.Single(workspace.PageModel<AiHandoffPageModel>().Handoff.Files);
+        await workspace.PageModel<AiHandoffPageModel>().Handoff.DragFileAsync(null!, file);
         Assert.Equal([file.FullPath], dragSource.LastPaths);
     }
 

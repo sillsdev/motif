@@ -78,7 +78,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             var invocations = new RetainedInvocationRepository(database).List(
                 ProjectWorkspaceKey.Compute(projectLocator));
             Assert.Single(invocations);
-            Assert.Equal(result.InvocationId, walkthrough.Workspace.Handoff.InvocationId);
+            Assert.Equal(result.InvocationId, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.InvocationId);
             Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
 
             return Task.CompletedTask;

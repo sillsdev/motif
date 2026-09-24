@@ -167,8 +167,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         }
         compare.ClearSelectionCommand.Execute(null);
 
-        workspace.Handoff.RunCommand.Execute(null);
-        walkthrough.WaitUntil(() => workspace.Handoff.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
+        workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.Execute(null);
+        walkthrough.WaitUntil(() => workspace.PageModel<AiHandoffPageModel>().Handoff.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
             TimeSpan.FromMinutes(5), "the Handoff did not finish");
 
         // Try a Word on a word that did not parse, since that is where its failure story shows.
