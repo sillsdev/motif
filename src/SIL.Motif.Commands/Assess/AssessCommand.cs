@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
@@ -32,8 +33,7 @@ namespace SIL.Motif.Commands.Assess;
 /// <summary>
 /// Measures the current Baseline synchronously (design decision 4): ensures a Baseline exists, composes a
 /// Selection from whichever of the four agreed sources were asked for, runs the Assessor over it through the
-/// PanGloss invocation for batch and statistics requests, records every produced Assessment,
-/// and renders PanGloss's default statistics view as a text summary.
+/// PanGloss batch invocation, records every produced Assessment, and reads its statistics cache as a text summary.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -254,7 +254,7 @@ public static class AssessCommand
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
                 string summaryMarkdown;
-                // Null, or a missing word, always leaves that word's Attempts/Passes null (never faked).
+                // Require one batch statistics row for each resolved word before recording.
                 Dictionary<string, (int? Attempts, int? Passes)>? wordStats = null;
                 var objectTimings = new List<AssessmentObjectTiming>();
                 if (statsCachePath is null)
@@ -277,51 +277,24 @@ public static class AssessCommand
                         return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, exception.Message));
                     }
                     using var replayLease = replay;
-                    var summary = invoker.RunAsync(
-                            new PanGlossRequest.Stats(replay.GrammarPath, replay.CachePath, Array.Empty<string>()),
-                            "assess:stats:" + workspaceKey, cancellationToken)
-                        .GetAwaiter().GetResult();
-                    switch (summary)
+                    PanGlossBatchStatistics batchStatistics;
+                    try
                     {
-                        case PanGlossOutcome.Completed completed:
-                            summaryMarkdown = completed.Output;
-                            break;
-                        case PanGlossOutcome.Cancelled:
-                            return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                        default:
-                            return CommandOutcome<AssessCommandResponse>.Refused(
-                                ParserUnavailable(request.ProjectPath, summary.Message));
+                        batchStatistics = PanGlossBatchStatisticsReader.Read(
+                            replay.CachePath, composition.Selection.Words);
                     }
-                    // Best effort: per-word attempts/passes are a cheap extra, never a reason to fail the run.
-                    var perWord = invoker.RunAsync(
-                            new PanGlossRequest.Stats(
-                                replay.GrammarPath, replay.CachePath, ["--group", "word", "--format", "jsonl"]),
-                            "assess:stats:word:" + workspaceKey, cancellationToken)
-                        .GetAwaiter().GetResult();
-                    if (perWord is PanGlossOutcome.Completed perWordCompleted)
-                        wordStats = ReadWordStats(perWordCompleted.Output);
-                    foreach (var word in composition.Selection.Words)
+                    catch (Exception exception) when (exception is IOException or InvalidDataException or
+                        UnauthorizedAccessException or SqliteException)
                     {
-                        if (cancellationToken.IsCancellationRequested)
-                            return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                        var objectOutcome = invoker.RunAsync(
-                                new PanGlossRequest.Stats(replay.GrammarPath, replay.CachePath,
-                                    ["--group", "object", "--word", word, "--format", "jsonl"]),
-                                "assess:stats:object:" + workspaceKey, cancellationToken)
-                            .GetAwaiter().GetResult();
-                        if (objectOutcome is PanGlossOutcome.Completed objectCompleted)
-                        {
-                            var passes = wordStats is not null && wordStats.TryGetValue(word, out var found)
-                                ? found.Passes : null;
-                            objectTimings.AddRange(PanGlossObjectTimingReader.ReadJsonl(objectCompleted.Output, word, passes)
-                                .Select(row => new AssessmentObjectTiming(
-                                    row.Kind, row.Object, row.Word, row.Attempts, row.Passes, row.ElapsedMs)));
-                        }
-                        else if (objectOutcome is PanGlossOutcome.Cancelled)
-                        {
-                            return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                        }
+                        return CommandOutcome<AssessCommandResponse>.Refused(
+                            ParserUnavailable(request.ProjectPath, exception.Message));
                     }
+                    wordStats = batchStatistics.Words.ToDictionary(pair => pair.Key,
+                        pair => ((int?)pair.Value.Attempts, (int?)pair.Value.Passes), StringComparer.Ordinal);
+                    objectTimings.AddRange(batchStatistics.ObjectTimings.Select(row => new AssessmentObjectTiming(
+                        row.Kind, row.Object, row.Word, row.Attempts, row.Passes, row.ElapsedMs)));
+                    summaryMarkdown = $"Batch statistics: {batchStatistics.Words.Count} words; " +
+                        $"{batchStatistics.ObjectTimings.Count} object timing rows.";
                 }
 
                 if (cancellationToken.IsCancellationRequested)
@@ -518,31 +491,6 @@ public static class AssessCommand
             : disapproved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "disapproved"
             : candidates.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "candidate"
             : "no-opinion").ToArray();
-
-    // Optional per-word attempts/passes; a line this cannot parse or make sense of is skipped, never fatal.
-    private static Dictionary<string, (int? Attempts, int? Passes)> ReadWordStats(string jsonl)
-    {
-        var stats = new Dictionary<string, (int? Attempts, int? Passes)>(StringComparer.Ordinal);
-        foreach (var line in jsonl.Split('\n'))
-        {
-            if (string.IsNullOrWhiteSpace(line)) continue;
-            JsonDocument document;
-            try { document = JsonDocument.Parse(line); }
-            catch (JsonException) { continue; }
-            using (document)
-            {
-                var root = document.RootElement;
-                if (root.ValueKind != JsonValueKind.Object || root.TryGetProperty("meta", out _)) continue;
-                if (!root.TryGetProperty("form", out var formElement) || formElement.GetString() is not { } form) continue;
-                var attempts = root.TryGetProperty("attempts", out var attemptsElement) && attemptsElement.ValueKind == JsonValueKind.Number
-                    ? attemptsElement.GetInt32() : (int?)null;
-                var passes = root.TryGetProperty("passes", out var passesElement) && passesElement.ValueKind == JsonValueKind.Number
-                    ? passesElement.GetInt32() : (int?)null;
-                stats[form] = (attempts, passes);
-            }
-        }
-        return stats;
-    }
 
     private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 

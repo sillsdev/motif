@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Microsoft.Data.Sqlite;
 using SIL.LCModel;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
@@ -86,7 +87,9 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal([seeded.Seeded.TextId], read.Value.Selection.TextIds);
 
         var cachePath = Path.Combine(_managedRootsParent, "stats.sqlite");
-        File.WriteAllText(cachePath, "fake stats cache");
+        WriteStatsCache(cachePath,
+            (SeededProject.AnalysedWordForm, 4, 1, 2, 2_000_000L),
+            (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
@@ -103,20 +106,8 @@ public sealed class AssessCommandTests : IDisposable
         };
         var invoker = new FakeInvoker
         {
-            Respond = request =>
-            {
-                if (request is not PanGlossRequest.Stats stats)
-                    return new PanGlossOutcome.Completed("", "", TimeSpan.Zero);
-                if (stats.ForwardedArguments.Contains("--word"))
-                    return new PanGlossOutcome.Completed(
-                        "{\"kind\":\"morph_rule\",\"label\":\"Verb template\",\"time_ns\":2000000,\"attempts\":2}\n",
-                        "", TimeSpan.Zero);
-                if (stats.ForwardedArguments.Contains("word"))
-                    return new PanGlossOutcome.Completed(
-                        "{\"form\":\"motifanalysed\",\"attempts\":4,\"passes\":1}\n" +
-                        "{\"form\":\"motifunanalysed\",\"attempts\":3,\"passes\":0}\n", "", TimeSpan.Zero);
-                return new PanGlossOutcome.Completed("stats summary", "", TimeSpan.Zero);
-            },
+            Respond = request => throw new InvalidOperationException(
+                $"Assessment must not launch a second PanGloss invocation ({request.Subcommand})."),
         };
 
         var assessed = AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
@@ -127,11 +118,11 @@ public sealed class AssessCommandTests : IDisposable
         var parseAssessment = assessed.Value.AssessmentIds
             .Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
-        Assert.Equal(2, parseAssessment.ObjectTimings.Count);
+        Assert.Single(parseAssessment.ObjectTimings);
         Assert.Equal(1, parseAssessment.ObjectTimings.Single(row =>
             row.Word == SeededProject.AnalysedWordForm).Passes);
-        Assert.Equal(0, parseAssessment.ObjectTimings.Single(row =>
-            row.Word == SeededProject.UnanalysedWordForm).Passes);
+        Assert.StartsWith("1 search completed; 1 incomplete", assessed.Value.CompletionSummary, StringComparison.Ordinal);
+        Assert.Contains("2 words; 1 object timing rows", assessed.Value.SummaryMarkdown, StringComparison.Ordinal);
 
         var overview = OverviewCommand.Overview(new OverviewRequest(seeded.FwDataPath));
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
@@ -151,10 +142,42 @@ public sealed class AssessCommandTests : IDisposable
         Assert.True(timing.Succeeded, timing.Refusal?.Message);
         Assert.Equal(2, timing.Value!.WordCount);
         Assert.Equal("Verb template", Assert.Single(timing.Value.Aggregates).Name);
-        Assert.Equal(4, Assert.Single(timing.Value.Aggregates).Attempts);
-        Assert.Equal(2, timing.Value.CostliestWords.Count);
-        Assert.Equal(2, invoker.Requests.Count(item => item.Request is PanGlossRequest.Stats request &&
-            request.ForwardedArguments.Contains("--word")));
+        Assert.Equal(2, Assert.Single(timing.Value.Aggregates).Attempts);
+        Assert.Single(timing.Value.CostliestWords);
+        Assert.Empty(invoker.Requests);
+    }
+
+    [Fact]
+    public void MissingBatchStatisticsForASelectedWordRefusesTheAssessment()
+    {
+        using var seeded = NewSeededScratch();
+        var cachePath = Path.Combine(_managedRootsParent, "missing-word-stats.sqlite");
+        WriteStatsCache(cachePath, (SeededProject.AnalysedWordForm, 4, 1, 2, 2_000_000L));
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ObjectTiming
+                ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
+                : new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig"),
+                     new(1, SeededProject.UnanalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "-")],
+                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 }))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate),
+        };
+        var request = new SelectionRequest(false, [],
+            [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm], false, null);
+        var invoker = NewInvoker();
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath, request), NewManagedRoot(),
+            assessor, invoker, null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
+        Assert.Contains(SeededProject.UnanalysedWordForm, outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.Empty(invoker.Requests);
+        var repository = OpenRepository(seeded.FwDataPath);
+        Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+        Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
     }
 
     [Fact]
@@ -548,12 +571,13 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void AttemptsAndPassesComeFromPerWordStatistics_AndStayNullWhenAWordIsMissingFromThem()
+    public void AttemptsAndPassesComeFromBatchStatisticsForEverySelectedWord()
     {
         using var seeded = NewSeededScratch();
-        // ObjectTiming must produce a real cache file: only then does AssessCommand ask for word stats at all.
         var cachePath = Path.Combine(_managedRootsParent, "attempts-passes.bin");
-        File.WriteAllText(cachePath, "statistics artifact");
+        WriteStatsCache(cachePath,
+            (SeededProject.AnalysedWordForm, 42, 7, 4, 3_000_000L),
+            (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L));
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
             kind == AssessmentKind.ParseTime
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
@@ -564,15 +588,7 @@ public sealed class AssessCommandTests : IDisposable
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
         };
-        var invoker = new FakeInvoker
-        {
-            Respond = request => request is PanGlossRequest.Stats stats && stats.ForwardedArguments.Contains("--group")
-                ? new PanGlossOutcome.Completed(
-                    "{\"meta\":true}\n{\"form\":\"" + SeededProject.AnalysedWordForm +
-                    "\",\"elapsed_ns\":3000000,\"attempts\":42,\"passes\":7,\"capped\":false,\"timed_out\":false}\n",
-                    string.Empty, TimeSpan.Zero)
-                : new PanGlossOutcome.Completed("default stats view", string.Empty, TimeSpan.Zero),
-        };
+        var invoker = NewInvoker();
 
         var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
             new SelectionRequest(false, [], [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm], false, null)),
@@ -583,8 +599,9 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(42, analysed.Attempts);
         Assert.Equal(7, analysed.Passes);
         var unanalysed = outcome.Value.Words.Single(word => word.Word == SeededProject.UnanalysedWordForm);
-        Assert.Null(unanalysed.Attempts);
-        Assert.Null(unanalysed.Passes);
+        Assert.Equal(3, unanalysed.Attempts);
+        Assert.Equal(0, unanalysed.Passes);
+        Assert.Empty(invoker.Requests);
     }
 
     [Fact]
@@ -729,72 +746,6 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal("project.not-found", outcome.Refusal!.Code);
     }
 
-    [Theory]
-    [InlineData("completed", null)]
-    [InlineData("unavailable", "assess.parser-unavailable")]
-    [InlineData("refused", "assess.parser-unavailable")]
-    [InlineData("timed-out", "assess.parser-unavailable")]
-    [InlineData("cancelled", "assessment.cancelled")]
-    public void StatisticsSummaryMapsTheInvocationOutcome(string result, string? refusalCode)
-    {
-        using var seeded = NewSeededScratch();
-        var cachePath = Path.Combine(_managedRootsParent, "statistics.bin");
-        File.WriteAllText(cachePath, "statistics artifact");
-        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
-            kind == AssessmentKind.ObjectTiming
-                ? new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath))
-                : new AssessmentRaw.WordMeasurements([]))
-        {
-            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
-        };
-        var invoker = new FakeInvoker
-        {
-            Respond = _ => result switch
-            {
-                "completed" => new PanGlossOutcome.Completed("statistics rows", string.Empty, TimeSpan.Zero),
-                "unavailable" => new PanGlossOutcome.Unavailable("parser absent"),
-                "refused" => new PanGlossOutcome.Refused(2, "cache refused", string.Empty, "cache refused"),
-                "timed-out" => new PanGlossOutcome.TimedOut(TimeSpan.FromMinutes(10), "query timed out"),
-                "cancelled" => new PanGlossOutcome.Cancelled(),
-                _ => throw new ArgumentOutOfRangeException(nameof(result)),
-            },
-        };
-
-        var outcome = AssessCommand.Run(
-            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, invoker,
-            onProgress: null, CancellationToken.None);
-
-        // Only "completed" reaches per-word and per-object stats calls; every other case returns first.
-        var request = Assert.IsType<PanGlossRequest.Stats>(invoker.Requests[0].Request);
-        Assert.NotEqual(cachePath, request.CachePath);
-        Assert.False(File.Exists(request.CachePath));
-        Assert.Empty(request.ForwardedArguments);
-        if (result == "completed")
-        {
-            Assert.Equal(4, invoker.Requests.Count);
-            var wordRequest = Assert.IsType<PanGlossRequest.Stats>(invoker.Requests[1].Request);
-            Assert.Equal(["--group", "word", "--format", "jsonl"], wordRequest.ForwardedArguments);
-            var objectRequests = invoker.Requests.Skip(2)
-                .Select(request => Assert.IsType<PanGlossRequest.Stats>(request.Request)).ToArray();
-            Assert.Equal(2, objectRequests.Length);
-            Assert.All(objectRequests, request => Assert.Equal("object", request.ForwardedArguments[1]));
-        }
-        else
-        {
-            Assert.Single(invoker.Requests);
-        }
-        Assert.Equal(refusalCode is null, outcome.Succeeded);
-        if (refusalCode is not null) Assert.Equal(refusalCode, outcome.Refusal!.Code);
-        else Assert.Contains("statistics rows", outcome.Value!.SummaryMarkdown, StringComparison.Ordinal);
-        var repository = OpenRepository(seeded.FwDataPath);
-        foreach (var kind in CollectedKinds)
-        {
-            var records = repository.ListBaselineAssessments(kind.ToStoredKind());
-            if (refusalCode is null) Assert.Single(records);
-            else Assert.Empty(records);
-        }
-    }
-
     [Fact]
     public void ParserDiscoveryFailureIsRefusedThroughTheLazyAssessor()
     {
@@ -825,6 +776,52 @@ public sealed class AssessCommandTests : IDisposable
     {
         Respond = _ => new PanGlossOutcome.Completed("fake stats", string.Empty, TimeSpan.Zero),
     };
+
+    private static void WriteStatsCache(string path,
+        params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words)
+    {
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE word (
+                word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
+                attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,
+                timed_out INTEGER NOT NULL, invalid_shape INTEGER NOT NULL);
+            CREATE TABLE object (object_id INTEGER PRIMARY KEY, kind TEXT NOT NULL, label TEXT NOT NULL);
+            CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
+                attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+            INSERT INTO object VALUES (1, 'morph_rule', 'Verb template');
+            """;
+        command.ExecuteNonQuery();
+        foreach (var (word, attempts, passes, objectAttempts, selfTimeNs) in words)
+        {
+            using var insert = connection.CreateCommand();
+            insert.CommandText = """
+                INSERT INTO word (form, elapsed_ns, attempts, passes, capped, timed_out, invalid_shape)
+                VALUES ($form, 0, $attempts, $passes, 0, 0, 0);
+                """;
+            insert.Parameters.AddWithValue("$form", word);
+            insert.Parameters.AddWithValue("$attempts", attempts);
+            insert.Parameters.AddWithValue("$passes", passes);
+            insert.ExecuteNonQuery();
+            if (objectAttempts == 0 && selfTimeNs == 0) continue;
+            using var fact = connection.CreateCommand();
+            fact.CommandText = """
+                INSERT INTO fact (word_id, object_id, attempts, self_time_ns)
+                SELECT word_id, 1, $attempts, $self_time_ns FROM word WHERE form = $form;
+                """;
+            fact.Parameters.AddWithValue("$form", word);
+            fact.Parameters.AddWithValue("$attempts", objectAttempts);
+            fact.Parameters.AddWithValue("$self_time_ns", selfTimeNs);
+            fact.ExecuteNonQuery();
+        }
+    }
 
     // SeedText's wordforms must be saved to disk for AssessCommand's own scratch load to see them.
     private SeededScratch NewSeededScratch()

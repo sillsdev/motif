@@ -344,21 +344,21 @@ per-word search cap, whose default is 50,000,000 steps; `unbounded` asks PanGlos
 A search that hits either limit is stored as incomplete and appears as Unknown in Compare and Overview.
 
 **Cancellation records nothing.** A cancelled run refuses as `assessment.cancelled`; no partial Assessment
-is ever left behind: recording waits for both Assessment production and the statistics summary to succeed.
-Pinned by `CancellationWhileTheAssessorIsRunningRecordsNoAssessments` and
-`StatisticsSummaryMapsTheInvocationOutcome`.
+is ever left behind: recording waits for Assessment production and validates every selected word in the
+batch statistics cache. Pinned by `CancellationWhileTheAssessorIsRunningRecordsNoAssessments` and
+`MissingBatchStatisticsForASelectedWordRefusesTheAssessment`.
 
 In human mode, progress lines ("Ensuring a current Baseline exists...", "Composing the Selection...",
 "Parsing the Selection...", "Reading PanGloss's statistics...", "Assessment complete.") print to stderr as
 the run proceeds; `--json` suppresses them. The final human rendering names the `.fwdata` path, the
 Baseline's last-save timestamp with the same "(as of FieldWorks' last save)" wording, the Selection's word
-count and its per-source provenance counts, the recorded Assessment ids, and PanGloss's own statistics
-summary as a fenced code block. `--json` binds to `AssessCommandResponse`: `baseline` (a full
+count and its per-source provenance counts, the recorded Assessment ids, and a summary of statistics collected
+during the batch as a fenced code block. `--json` binds to `AssessCommandResponse`: `baseline` (a full
 `BaselineCaptureResponse`, as above), `selection` (a `SelectionProjection` — `words` and a `provenance`
 array of `{source, count}`), `assessmentIds`, `summaryMarkdown`.
 
-Refusals of its own: `assess.parser-unavailable` (parser discovery, Assessment production, or the
-statistics-summary invocation failed), `assessment.cancelled`, `selection.empty`, `selection.text-not-found`
+Refusals of its own: `assess.parser-unavailable` (parser discovery, Assessment production, or batch statistics
+validation failed), `assessment.cancelled`, `selection.empty`, `selection.text-not-found`
 — plus every
 `baseline capture` refusal above, since `assess` captures a Baseline the same way when it needs to. A
 mistyped project path is refused as `project.not-found` even when the parser is entirely unavailable,
@@ -396,10 +396,10 @@ word list. `--by kind` groups time by rule kind, and `--by rule` groups by rule 
 the most costly words for that rule. The response includes the word-time percentiles, slowest words, totals,
 time share, attempts, and number of words touched. `--top` defaults to 10. `--json` emits `TimingResponse`.
 
-Per-object rows are not emitted by the Assessment batch itself. After the batch writes its statistics cache,
-Motif makes a separate PanGloss `stats --group word` query and one `stats --group object --word FORM` query
-per selected word, then stores the normalized rows with the ParseTime Assessment. Each query remains one
-PanGloss process invocation; opening Overview or Timing makes no parser call.
+The Assessment's one `pangloss batch --stats` invocation writes per-word counters and per-object fact rows to
+its statistics cache. Motif reads that cache directly, without starting more PanGloss processes, and stores
+the normalized rows with the ParseTime Assessment. A missing selected-word row or unreadable cache refuses
+the Assessment, so partial statistics cannot look complete. Opening Overview or Timing makes no parser call.
 
 **`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
 straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —
