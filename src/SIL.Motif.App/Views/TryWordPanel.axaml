@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.TryWordPanel"
+             x:DataType="vm:TraceWordViewModel">
+  <!-- Try a Word: trace any typed word against the current Baseline's grammar, in the texts or not. -->
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="10" Margin="20,12,20,16">
+      <DockPanel LastChildFill="True">
+        <Button DockPanel.Dock="Right" Content="Open a saved diagnostic..." Click="OnOpenDiagnosticClick"
+                Margin="8,0,0,0" AutomationProperties.Name="Open a saved diagnostic" />
+        <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding TryCommand}"
+                Classes="Primary" Theme="{DynamicResource SolidButton}"
+                AutomationProperties.Name="Try the word" Margin="8,0,0,0" />
+        <TextBox Text="{Binding WordToTry}" PlaceholderText="Type any word..." MaxWidth="420"
+                 HorizontalAlignment="Left" MinWidth="260"
+                 AutomationProperties.Name="Word to try" />
+      </DockPanel>
+
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !HasResult}"
+                               Text="Type a word to see how the grammar parses it, where it stops, and the rules on its way. Choosing a word on the Texts page brings it here." />
+
+      <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsLoading}">
+        <views:CopyableTextBlock Classes="muted" Text="Tracing... this can take up to two minutes." VerticalAlignment="Center" />
+        <Button Content="Cancel" Command="{Binding CancelCommand}"
+                AutomationProperties.Name="Cancel the trace" />
+      </StackPanel>
+      <views:CopyableTextBlock Classes="error" Text="{Binding Refusal.Message}"
+                               IsVisible="{Binding Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+
+      <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding HasResult}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

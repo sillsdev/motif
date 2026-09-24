@@ -67,6 +67,9 @@ public sealed partial class ChangesViewModel : ObservableObject
 
     public bool HasItems => Items.Count > 0;
 
+    /// <summary>How many changes wait, as the Texts page's strip says it.</summary>
+    public string CountText => Items.Count == 1 ? "1 change not applied yet" : $"{Items.Count:N0} changes not applied yet";
+
     public string Summary => Items.Count switch
     {
         0 => "No changes collected yet. Tick words below, then choose what should happen to them.",
@@ -74,16 +77,16 @@ public sealed partial class ChangesViewModel : ObservableObject
         var count => $"{count:N0} changes collected",
     };
 
-    /// <summary>What a Proposal made now could hold, and what has to wait for Motif to learn it.</summary>
-    public string ProposalStatus
+    /// <summary>What applying now could write to FieldWorks, and what has to wait for Motif to learn it.</summary>
+    public string ApplyStatus
     {
         get
         {
             var ready = Items.Count(item => item.CanBeProposedToday);
             var waiting = Items.Count - ready;
             return waiting == 0
-                ? "All of these can become a Proposal."
-                : $"{ready:N0} can become a Proposal today; {waiting:N0} wait for Motif's approval and new-analysis operations.";
+                ? "All of these can be applied to the FieldWorks project."
+                : $"{ready:N0} can be applied today; {waiting:N0} wait until Motif can apply approvals and new analyses.";
         }
     }
 
@@ -100,7 +103,8 @@ public sealed partial class ChangesViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasItems));
         OnPropertyChanged(nameof(Summary));
-        OnPropertyChanged(nameof(ProposalStatus));
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(ApplyStatus));
     }
 }
 

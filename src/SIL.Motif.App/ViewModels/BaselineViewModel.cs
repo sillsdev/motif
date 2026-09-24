@@ -32,12 +32,19 @@ public sealed partial class BaselineViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBaseline))]
     [NotifyPropertyChangedFor(nameof(CapturedAtText))]
+    [NotifyPropertyChangedFor(nameof(CapturedUtc))]
     private BaselineToken? _token;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CapturedTimeText))]
     [NotifyPropertyChangedFor(nameof(SavedText))]
+    [NotifyPropertyChangedFor(nameof(IsSavedSince))]
     private DateTimeOffset? _sourceLastWriteUtc;
+
+    /// <summary>The project file's last-write time as last read.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSavedSince))]
+    private DateTimeOffset? _projectLastWriteUtc;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HeldStatusText))]
@@ -61,6 +68,15 @@ public sealed partial class BaselineViewModel : ObservableObject
         DateTimeOffset.TryParse(token.CapturedUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var captured)
             ? $"Captured {captured.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}"
             : string.Empty;
+
+    /// <summary>When Motif captured the Baseline, or <c>null</c> before any capture.</summary>
+    public DateTimeOffset? CapturedUtc => Token is { } token &&
+        DateTimeOffset.TryParse(token.CapturedUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var captured)
+            ? captured
+            : null;
+
+    /// <summary>Whether FieldWorks has written the project since the save the Baseline copies.</summary>
+    public bool IsSavedSince => SourceLastWriteUtc is { } source && ProjectLastWriteUtc is { } written && written > source;
 
     /// <summary>Instance-bindable form of <see cref="FreshnessSentence"/>, for a view's binding path.</summary>
     public string FreshnessText => FreshnessSentence;
@@ -99,15 +115,31 @@ public sealed partial class BaselineViewModel : ObservableObject
         _projectPath = fwDataPath;
         Token = null;
         SourceLastWriteUtc = null;
+        ProjectLastWriteUtc = null;
         FieldWorksHeldProject = false;
         RefusalMessage = null;
         HasAssessment = false;
         RefreshCommand.NotifyCanExecuteChanged();
 
-        var outcome = await _commandClient.GetCurrentBaselineAsync(
-            new CurrentBaselineRequest(fwDataPath), cancellationToken);
+        await CheckAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads the recorded Baseline and the project file's last-write time again, so a save FieldWorks made since
+    /// shows as such. Reads only: it never captures and never starts a run.
+    /// </summary>
+    public async Task CheckAsync(CancellationToken cancellationToken = default)
+    {
+        if (_projectPath is not { } path) return;
+        var hadAssessment = HasAssessment;
+        var outcome = await _commandClient.GetCurrentBaselineAsync(new CurrentBaselineRequest(path), cancellationToken);
+        if (!ReferenceEquals(path, _projectPath)) return;
+        var sameBaseline = outcome.Value?.Token is { } token && token == Token;
         ApplySuccessOnly(outcome.Succeeded, outcome.Refusal?.Message,
             outcome.Value?.Token, outcome.Value?.SourceLastWriteUtc, outcome.Value?.FieldWorksHeldProject ?? false);
+        if (outcome.Succeeded) ProjectLastWriteUtc = outcome.Value?.ProjectLastWriteUtc;
+        // Re-reading the same Baseline leaves the Assessment that covers it on record.
+        if (sameBaseline) HasAssessment = hadAssessment;
     }
 
     private async Task RefreshAsync()
@@ -121,6 +153,7 @@ public sealed partial class BaselineViewModel : ObservableObject
         var applied = ApplySuccessOnly(outcome.Succeeded, outcome.Refusal?.Message,
             outcome.Value?.Token, outcome.Value?.SourceLastWriteUtc, outcome.Value?.FieldWorksHeldProject ?? false);
         if (!applied) return;
+        ProjectLastWriteUtc = SourceLastWriteUtc;
         Refreshed?.Invoke(this, EventArgs.Empty);
         if (hadAssessment) OfferRerun?.Invoke(this, EventArgs.Empty);
     }

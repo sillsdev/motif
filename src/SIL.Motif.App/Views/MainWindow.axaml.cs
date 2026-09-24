@@ -3,15 +3,14 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Avalonia.Platform.Storage;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
 /// <summary>
-/// The single-window shell: a minimal frame until <see cref="Compose"/> supplies its workspace and
-/// builds the panels, so a caller can construct and inspect the bare shell (<c>AppSmokeTests</c>) without
-/// standing up any command client or desktop adapter.
+/// The single-window shell — a top bar, a sidebar of pages, and the page on screen — as a minimal frame
+/// until <see cref="Compose"/> supplies its workspace and builds the panels, so a caller can construct and
+/// inspect the bare shell (<c>AppSmokeTests</c>) without standing up any command client or desktop adapter.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -35,7 +34,7 @@ public sealed partial class MainWindow : Window
         Closing += (_, _) => SaveBounds();
     }
 
-    /// <summary>Builds the workflow's panels from <paramref name="workspace"/> and binds the window to it.</summary>
+    /// <summary>Builds each page's panel from <paramref name="workspace"/> and binds the window to it.</summary>
     public void Compose(HandoffWorkspaceViewModel workspace)
     {
         ArgumentNullException.ThrowIfNull(workspace);
@@ -48,37 +47,47 @@ public sealed partial class MainWindow : Window
         Host("CompareHost").Content = new ComparePanel(workspace.Assess.Compare);
         Host("DifferenceHost").Content = new DifferencePanel(workspace.Assess.Difference);
         Host("ResultsInTextHost").Content = new ResultsInTextPanel(workspace.ResultsInText);
+        Host("TryWordHost").Content = new TryWordPanel(workspace.Assess.Trace);
         Host("StatisticsHost").Content = new StatisticsPanel(workspace.Statistics);
+        Host("ReviewHost").Content = new ReviewPanel(workspace);
         Host("HandoffHost").Content = new HandoffPanel(workspace.Handoff);
+
+        workspace.UpdateWindowWidth(Width);
+        SizeChanged += (_, e) => workspace.UpdateWindowWidth(e.NewSize.Width);
+        // Coming back from FieldWorks is when a save it made is news; this reads, it never reruns.
+        Activated += (_, _) => _ = workspace.CheckFreshnessAsync();
+        workspace.RecentProjects.CollectionChanged += (_, _) => RebuildRecentProjects(workspace);
+        RebuildRecentProjects(workspace);
     }
 
-    private void OnChangeProjectClick(object? sender, RoutedEventArgs e) =>
-        this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
-    private async void OnOpenDiagnosticClick(object? sender, RoutedEventArgs e)
+    /// <summary>The project menu's Open recent entries, one per recent project, as the menu shows them.</summary>
+    public IReadOnlyList<MenuItem> RecentProjectItems =>
+        this.FindControl<Button>("OpenRecentButton")?.Flyout is MenuFlyout menu
+            ? menu.Items.OfType<MenuItem>().ToList()
+            : [];
+
+    private void RebuildRecentProjects(HandoffWorkspaceViewModel workspace)
     {
-        this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
-        try
+        if (this.FindControl<Button>("OpenRecentButton")?.Flyout is not MenuFlyout menu) return;
+        menu.Items.Clear();
+        foreach (var recent in workspace.RecentProjects)
         {
-            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            var item = new MenuItem
             {
-                Title = "Open diagnostic JSON",
-                AllowMultiple = false,
-                FileTypeFilter = [new FilePickerFileType("Motif diagnostic JSON") { Patterns = ["*.json"] }],
-            });
-            if (files.Count == 0) return;
-
-            await using var stream = await files[0].OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            var trace = TraceWordViewModel.FromDiagnosticJson(await reader.ReadToEndAsync());
-            new DiagnosticWindow(trace).Show(this);
-        }
-        catch (Exception exception)
-        {
-            var window = new DiagnosticWindow(new TraceWordViewModel());
-            window.Show(this);
-            window.ShowDiagnosticError($"Unable to open diagnostic: {exception.Message}");
+                Header = recent.Name,
+                Command = workspace.OpenRecentProjectCommand,
+                CommandParameter = recent,
+            };
+            ToolTip.SetTip(item, recent.FullFwDataPath);
+            Avalonia.Automation.AutomationProperties.SetName(item, recent.AutomationName);
+            item.Click += (_, _) => HideProjectMenu();
+            menu.Items.Add(item);
         }
     }
+
+    private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => HideProjectMenu();
+
+    private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
 
     // Looked up by name rather than a generated field, so this never depends on the compiler's own codegen.
     private ContentControl Host(string name) =>

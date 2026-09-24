@@ -27,7 +27,7 @@ public sealed class RealProjectScreenshotFactAttribute : FactAttribute
 
 /// <summary>
 /// Walks each <c>.fwdata</c> in <c>MOTIF_SCREENSHOT_PROJECTS</c> through the real window, host and parser —
-/// Baseline, grammar check, Texts, Assessment, Try a Word, Statistics and Handoff — and saves every stage.
+/// Baseline, grammar check, Texts, Assessment, Try a Word, Timing and AI Handoff — and saves every page.
 /// Each project is copied first, so the originals are never opened for writing.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
@@ -36,7 +36,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     private const int WordBudget = 150;
 
     [RealProjectScreenshotFact]
-    public void CaptureEveryStageOfEachRealProject()
+    public void CaptureEveryPageOfEachRealProject()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         var source = Environment.GetEnvironmentVariable(RealProjectScreenshotFactAttribute.ProjectsVariable)!;
@@ -93,7 +93,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 walkthrough.Window.Height = 780;
                 walkthrough.Show();
                 Drive(walkthrough, original);
-                SaveEveryStage(walkthrough, folder);
+                SaveEveryPage(walkthrough, folder);
                 SaveGrammarWithAKindChosen(walkthrough, folder);
                 SaveCompareWithCellsChosen(walkthrough, folder);
                 SaveWhatChangedAfterARerun(walkthrough, folder);
@@ -167,12 +167,22 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var inText = tokens.FirstOrDefault(token => token.Verdict == OccurrenceVerdict.Differs) ?? tokens.FirstOrDefault();
         if (inText is not null) workspace.ResultsInText.SelectToken(inText);
 
+        // A few words given a change each, so the Review page and its badge have something to show.
+        var compare = workspace.Assess.Compare;
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation));
+        foreach (var (word, kind) in compare.Words.Take(3).Zip([ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.IncorrectSpelling]))
+        {
+            word.IsChecked = true;
+            compare.ProposeCommand.Execute(kind);
+        }
+        compare.ClearSelectionCommand.Execute(null);
+
         workspace.Handoff.RunCommand.Execute(null);
         walkthrough.WaitUntil(() => workspace.Handoff.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
             TimeSpan.FromMinutes(5), "the Handoff did not finish");
     }
 
-    private static void SaveEveryStage(WalkthroughWindow walkthrough, string folder)
+    private static void SaveEveryPage(WalkthroughWindow walkthrough, string folder)
     {
         var workspace = walkthrough.Workspace;
         try
@@ -180,22 +190,22 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
             foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
             {
                 Application.Current!.RequestedThemeVariant = variant;
-                foreach (var (name, stage, view) in new[]
+                foreach (var (name, page, tab) in PageScreenshots.Views())
                 {
-                    ("1-project", WorkflowStage.Project, ResultsView.Words),
-                    ("2-grammar", WorkflowStage.Grammar, ResultsView.Words),
-                    ("3-texts", WorkflowStage.Texts, ResultsView.Words),
-                    ("4-results-compare", WorkflowStage.Results, ResultsView.Compare),
-                    ("4b-results-words", WorkflowStage.Results, ResultsView.Words),
-                    ("5-results-intext", WorkflowStage.Results, ResultsView.InText),
-                    ("6-results-statistics", WorkflowStage.Results, ResultsView.Statistics),
-                    ("7-handoff", WorkflowStage.Handoff, ResultsView.Words),
-                })
-                {
-                    workspace.CurrentStage = stage;
-                    workspace.ResultsView = view;
+                    workspace.TextsTab = tab;
+                    workspace.CurrentPage = page;
                     Save(walkthrough.Window, Path.Combine(folder, $"{name}-{theme}.png"));
                 }
+
+                // A narrow window: the sidebar collapses to icons, and the badges stay.
+                walkthrough.Window.Width = 960;
+                foreach (var (name, page, tab) in PageScreenshots.Views().Take(2))
+                {
+                    workspace.TextsTab = tab;
+                    workspace.CurrentPage = page;
+                    Save(walkthrough.Window, Path.Combine(folder, $"{name}-narrow-{theme}.png"));
+                }
+                walkthrough.Window.Width = 1240;
             }
         }
         finally
@@ -208,24 +218,13 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     private static void SaveCompareWithCellsChosen(WalkthroughWindow walkthrough, string folder)
     {
         var compare = walkthrough.Workspace.Assess.Compare;
-        walkthrough.Workspace.CurrentStage = WorkflowStage.Results;
-        walkthrough.Workspace.ResultsView = ResultsView.Compare;
+        walkthrough.Workspace.ShowTexts(TextsTab.Matrix);
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation));
-        Save(walkthrough.Window, Path.Combine(folder, "4c-results-compare-violations-light.png"));
+        Save(walkthrough.Window, Path.Combine(folder, "2f-texts-matrix-violations-light.png"));
         compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
-        Save(walkthrough.Window, Path.Combine(folder, "4d-results-compare-largest-cell-light.png"));
-
-        // A few words ticked and given a change each, so the collected changes are reviewed too.
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamily.Violation));
-        foreach (var (word, kind) in compare.Words.Take(3).Zip([ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.IncorrectSpelling]))
-        {
-            word.IsChecked = true;
-            compare.ProposeCommand.Execute(kind);
-        }
-        Save(walkthrough.Window, Path.Combine(folder, "4e-results-compare-changes-light.png"));
-        walkthrough.Workspace.ResultsView = ResultsView.Words;
-        Save(walkthrough.Window, Path.Combine(folder, "4f-results-words-mini-matrix-light.png"));
-        compare.Changes.ClearCommand.Execute(null);
+        Save(walkthrough.Window, Path.Combine(folder, "2g-texts-matrix-largest-cell-light.png"));
+        walkthrough.Workspace.TextsTab = TextsTab.Words;
+        Save(walkthrough.Window, Path.Combine(folder, "2h-texts-words-mini-matrix-light.png"));
         compare.ClearSelectionCommand.Execute(null);
     }
 
@@ -242,9 +241,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
         {
             Application.Current!.RequestedThemeVariant = variant;
-            workspace.CurrentStage = WorkflowStage.Results;
-            workspace.ResultsView = ResultsView.Difference;
-            Save(walkthrough.Window, Path.Combine(folder, $"4g-results-what-changed-{theme}.png"));
+            workspace.ShowTexts(TextsTab.WhatChanged);
+            Save(walkthrough.Window, Path.Combine(folder, $"2b-texts-what-changed-after-rerun-{theme}.png"));
         }
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
     }
@@ -260,8 +258,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var kind = warnings.LeftOutGroups.Concat(warnings.WorthALookGroups).MaxBy(group => group.Count);
         if (kind is null) return;
         warnings.SelectGroupCommand.Execute(kind);
-        walkthrough.Workspace.CurrentStage = WorkflowStage.Grammar;
-        Save(walkthrough.Window, Path.Combine(folder, "2b-grammar-kind-light.png"));
+        walkthrough.Workspace.CurrentPage = WorkspacePage.Warnings;
+        Save(walkthrough.Window, Path.Combine(folder, "5b-warnings-kind-light.png"));
         warnings.SelectGroupCommand.Execute(kind);
     }
 
@@ -273,9 +271,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var settle = DateTime.Now.AddMilliseconds(500);
         walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.Words.IsLoading,
             TimeSpan.FromMinutes(1), "unchecking the Texts did not settle");
-        workspace.CurrentStage = WorkflowStage.Results;
-        workspace.ResultsView = ResultsView.InText;
-        Save(walkthrough.Window, Path.Combine(folder, "8-results-intext-no-text-light.png"));
+        workspace.ShowTexts(TextsTab.InText);
+        Save(walkthrough.Window, Path.Combine(folder, "2i-texts-in-text-no-text-light.png"));
     }
 
     private static void Save(MainWindow window, string path)

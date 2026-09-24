@@ -134,12 +134,14 @@
         </ListBox>
       </Grid>
 
-      <!-- Right: the selected word's story, then Analyses and Try a Word side by side. -->
+      <!-- Right: the selected word's story, then its Analyses; Try a Word has a page of its own. -->
       <ScrollViewer Grid.Column="1" IsVisible="{Binding Assess.Words.SelectedRow, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
         <StackPanel Spacing="12" DataContext="{Binding Assess.Words.SelectedRow}" x:DataType="vm:AssessWordRowViewModel">
 
           <StackPanel Orientation="Horizontal" Spacing="10">
             <views:CopyableTextBlock Text="{Binding Word}" Classes="section-title" />
+            <Button Content="Try a Word" Click="OnTryWordClick" VerticalAlignment="Center"
+                    AutomationProperties.Name="Try the selected word" />
             <HyperlinkButton Content="Open in FieldWorks"
                              NavigateUri="{Binding TryWordLink}"
                              IsVisible="{Binding HasTryWordLink}"
@@ -162,88 +164,46 @@
           <views:CopyableTextBlock Classes="muted" Text="{Binding NoReadingsText}"
                      IsVisible="{Binding !HasReadings}" />
 
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="1*" />
-              <ColumnDefinition Width="10" />
-              <ColumnDefinition Width="1*" />
-            </Grid.ColumnDefinitions>
-
-            <!-- Analyses: the parser's readings and the project's missed approved analyses, graded. -->
-            <StackPanel Grid.Column="0" Spacing="8"
-                        IsVisible="{Binding $parent[views:AssessPanel].Assess.Trace.IsFocused, Converter={x:Static BoolConverters.Not}}">
-              <views:CopyableTextBlock Classes="section-title" Text="Analyses" FontSize="14" />
-              <ItemsControl ItemsSource="{Binding Readings}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ParserReadingViewModel">
-                    <Border Classes="card" Margin="0,0,0,6" Padding="10">
-                      <StackPanel Spacing="4">
-                        <views:MorphemeRow Morphs="{Binding Morphs}" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <views:CopyableTextBlock Classes="muted" Text="Parser ✓" FontSize="11" IsVisible="{Binding ShowParserProduced}" />
-                          <views:CopyableTextBlock Classes="muted" Text="Project ✓" FontSize="11" IsVisible="{Binding ShowProjectApproved}" />
-                          <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding GradeLabel}" Compact="True"
-                                             IsVisible="{Binding GradeLabel, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                        </StackPanel>
+          <!-- Analyses: the parser's readings and the project's missed approved analyses, graded. -->
+          <StackPanel Spacing="8">
+            <views:CopyableTextBlock Classes="section-title" Text="Analyses" FontSize="14" />
+            <ItemsControl ItemsSource="{Binding Readings}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ParserReadingViewModel">
+                  <Border Classes="card" Margin="0,0,0,6" Padding="10">
+                    <StackPanel Spacing="4">
+                      <views:MorphemeRow Morphs="{Binding Morphs}" />
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <views:CopyableTextBlock Classes="muted" Text="Parser ✓" FontSize="11" IsVisible="{Binding ShowParserProduced}" />
+                        <views:CopyableTextBlock Classes="muted" Text="Project ✓" FontSize="11" IsVisible="{Binding ShowProjectApproved}" />
+                        <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding GradeLabel}" Compact="True"
+                                           IsVisible="{Binding GradeLabel, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                       </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <ItemsControl ItemsSource="{Binding MissedApproved}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ParserReadingViewModel">
-                    <Border Classes="card" Margin="0,0,0,6" Padding="10">
-                      <StackPanel Spacing="4">
-                        <views:MorphemeRow Morphs="{Binding Morphs}" />
-                        <DockPanel>
-                          <views:VerdictChip DockPanel.Dock="Left" Verdict="{Binding Meaning}" Text="{Binding GradeLabel}"
-                                             Compact="True" VerticalAlignment="Top" Margin="0,0,8,0" />
-                          <views:CopyableTextBlock Classes="muted" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"
-                                                   Text="{Binding MissedExplanation}" />
-                        </DockPanel>
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
-                         Text="Compared by form, entry, grammatical category and inflection type. Sense is not compared." />
-            </StackPanel>
-
-            <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="Transparent"
-                          IsVisible="{Binding $parent[views:AssessPanel].Assess.Trace.IsFocused, Converter={x:Static BoolConverters.Not}}" />
-
-            <!-- Try a Word: trace any word on demand against the current Baseline's grammar. Focus mode
-                 widens this to the full row for an in-depth look at one path's steps. -->
-            <StackPanel Grid.Column="{Binding $parent[views:AssessPanel].Assess.Trace.IsFocused, Converter={x:Static views:AssessPanel.FocusedColumn}}"
-                        Grid.ColumnSpan="{Binding $parent[views:AssessPanel].Assess.Trace.IsFocused, Converter={x:Static views:AssessPanel.FocusedSpan}}"
-                        Spacing="8" DataContext="{Binding $parent[views:AssessPanel].Assess.Trace}"
-                        x:DataType="vm:TraceWordViewModel">
-              <DockPanel LastChildFill="True">
-                <ToggleButton DockPanel.Dock="Right" Content="{Binding FocusToggleLabel}" IsChecked="{Binding IsFocused}"
-                              AutomationProperties.Name="Toggle focusing Try a Word" />
-                <views:CopyableTextBlock Classes="section-title" Text="Try a Word" FontSize="14" VerticalAlignment="Center" />
-              </DockPanel>
-              <DockPanel LastChildFill="True">
-                <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding TryCommand}"
-                        AutomationProperties.Name="Try the word" Margin="6,0,0,0" />
-                <TextBox Text="{Binding WordToTry}" PlaceholderText="Try another word..."
-                         AutomationProperties.Name="Word to try" />
-              </DockPanel>
-
-              <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsLoading}">
-                <views:CopyableTextBlock Classes="muted" Text="Tracing... this can take up to two minutes." VerticalAlignment="Center" />
-                <Button Content="Cancel" Command="{Binding CancelCommand}"
-                        AutomationProperties.Name="Cancel the trace" />
-              </StackPanel>
-              <views:CopyableTextBlock Classes="error" Text="{Binding Refusal.Message}"
-                         IsVisible="{Binding Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
-
-              <ContentControl x:Name="RichDiagnosticHost"
-                              IsVisible="{Binding HasResult}" />
-            </StackPanel>
-          </Grid>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl ItemsSource="{Binding MissedApproved}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ParserReadingViewModel">
+                  <Border Classes="card" Margin="0,0,0,6" Padding="10">
+                    <StackPanel Spacing="4">
+                      <views:MorphemeRow Morphs="{Binding Morphs}" />
+                      <DockPanel>
+                        <views:VerdictChip DockPanel.Dock="Left" Verdict="{Binding Meaning}" Text="{Binding GradeLabel}"
+                                           Compact="True" VerticalAlignment="Top" Margin="0,0,8,0" />
+                        <views:CopyableTextBlock Classes="muted" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                 Text="{Binding MissedExplanation}" />
+                      </DockPanel>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
+                       Text="Compared by form, entry, grammatical category and inflection type. Sense is not compared." />
+          </StackPanel>
         </StackPanel>
       </ScrollViewer>
     </Grid>

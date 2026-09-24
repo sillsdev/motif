@@ -109,6 +109,9 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// <summary>Traces one word on demand against the current Baseline's grammar, for Try a Word.</summary>
     public TraceWordViewModel Trace { get; }
 
+    /// <summary>Opens Try a Word on a word and traces it; set by whoever hosts Try a Word.</summary>
+    public Action<string>? OpenTryWord { get; set; }
+
     protected override bool CanStartCore() => ProjectPath is not null && (_rerunWords is not null || _selection.CanAssess);
 
     /// <summary>When the last Assessment finished, so an older Handoff can say it is out of date.</summary>

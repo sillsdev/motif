@@ -84,8 +84,8 @@
                                    Text="{Binding Workspace.Assess.Words.NoOpinionCount, StringFormat='{}{0} words with new readings'}" />
               </WrapPanel>
               <StackPanel Orientation="Horizontal" Spacing="18">
-                <HyperlinkButton Content="Open Results" Padding="0" Click="OnOpenResultsClick" />
-                <HyperlinkButton Content="Why words stopped: Statistics" Padding="0" Click="OnOpenStatisticsClick"
+                <HyperlinkButton Content="Open the words" Padding="0" Click="OnOpenResultsClick" />
+                <HyperlinkButton Content="Why words stopped: Timing" Padding="0" Click="OnOpenStatisticsClick"
                                  IsVisible="{Binding Workspace.Assess.Words.AnyStoppedAtALimit}" />
               </StackPanel>
             </StackPanel>
@@ -94,7 +94,7 @@
 
         <Border Classes="card" AutomationProperties.Name="Grammar summary">
           <DockPanel LastChildFill="True">
-            <HyperlinkButton DockPanel.Dock="Right" VerticalAlignment="Center" Content="Open Grammar" Padding="0" Click="OnOpenGrammarClick" />
+            <HyperlinkButton DockPanel.Dock="Right" VerticalAlignment="Center" Content="Open Warnings" Padding="0" Click="OnOpenGrammarClick" />
             <StackPanel Spacing="2">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <views:CopyableTextBlock Text="Grammar" FontSize="15" FontWeight="SemiBold" />

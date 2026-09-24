@@ -844,7 +844,7 @@ static void PrintUsage(TextWriter writer, CommandSurfacePolicy policy)
         "Assess (a synchronous PanGloss run over a Selection, stored as Assessments; no queue):", policy);
     PrintSection(
         writer, "Handoff",
-        "Handoff (the self-explaining AI Handoff folder, written atomically):", policy);
+        "AI Handoff (the self-explaining folder a chat model reads, written atomically):", policy);
     PrintSection(
         writer, "Jobs", "Jobs (the durable queue; --project selects which project's queue, except list --all):", policy);
     var jsonVerbs = CliVerbCatalog.All

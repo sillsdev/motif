@@ -80,73 +80,77 @@ public sealed class WalkthroughWindow : IDisposable
         return control;
     }
 
-    // A person reaches a control in another stage through the rail, so the walkthrough does the same.
+    // A person reaches a control on another page through the sidebar, and one on another tab by its tab.
     private void ShowStageOwning(Control control)
     {
-        var stage = control.GetLogicalAncestors().OfType<Control>().Select(ancestor => ancestor.Name switch
-        {
-            "ProjectStage" => WorkflowStage.Project,
-            "ProjectActions" => WorkflowStage.Project,
-            "GrammarStage" => WorkflowStage.Grammar,
-            "GrammarActions" => WorkflowStage.Grammar,
-            "TextsStage" => WorkflowStage.Texts,
-            "TextsActions" => WorkflowStage.Texts,
-            "ResultsStage" => WorkflowStage.Results,
-            "ResultsActions" => WorkflowStage.Results,
-            "HandoffStage" => WorkflowStage.Handoff,
-            "HandoffActions" => WorkflowStage.Handoff,
-            _ => (WorkflowStage?)null,
-        }).FirstOrDefault(candidate => candidate is not null);
-        if (stage is not { } owning) return;
-
-        ShowStage(owning);
-        if (owning != WorkflowStage.Results) return;
-
         var owners = control.GetLogicalAncestors().OfType<Control>().Select(ancestor => ancestor.Name).ToList();
-        if (owners.Contains("StatisticsHost")) ShowResultsView(ResultsView.Statistics);
-        else if (owners.Contains("ResultsInTextHost")) ShowResultsView(ResultsView.InText);
-        else if (owners.Contains("AssessHost")) ShowResultsView(ResultsView.Words);
+        var page = owners.Select(name => name switch
+        {
+            "OverviewPage" => WorkspacePage.Overview,
+            "TextsPage" => WorkspacePage.Texts,
+            "TryAWordPage" => WorkspacePage.TryAWord,
+            "TimingPage" => WorkspacePage.Timing,
+            "WarningsPage" => WorkspacePage.Warnings,
+            "ReviewPage" => WorkspacePage.Review,
+            "AiHandoffPage" => WorkspacePage.AiHandoff,
+            _ => (WorkspacePage?)null,
+        }).FirstOrDefault(candidate => candidate is not null);
+        if (page is not { } owning) return;
+
+        ShowPage(owning);
+        if (owning != WorkspacePage.Texts) return;
+
+        if (owners.Contains("CompareHost")) ShowTextsTab(TextsTab.Matrix);
+        else if (owners.Contains("DifferenceHost")) ShowTextsTab(TextsTab.WhatChanged);
+        else if (owners.Contains("AssessHost")) ShowTextsTab(TextsTab.Words);
+        else if (owners.Contains("SelectionHost")) ShowTextsTab(TextsTab.Texts);
+        else if (owners.Contains("ResultsInTextHost")) ShowTextsTab(TextsTab.InText);
     }
 
-    /// <summary>Opens a Results view the way a person does, by its tab in the Results toolbar.</summary>
-    public void ShowResultsView(ResultsView view)
+    /// <summary>Opens a Texts page tab the way a person does, by its tab above the page.</summary>
+    public void ShowTextsTab(TextsTab tab)
     {
-        if (Workspace.ResultsView == view) return;
+        if (Workspace.TextsTab == tab) return;
 
-        var name = view == ResultsView.InText ? "In text results view" : $"{view} results view";
+        var name = tab switch
+        {
+            TextsTab.WhatChanged => "What changed tab",
+            TextsTab.InText => "In text tab",
+            _ => $"{tab} tab",
+        };
         ClickControl(Find<Button>(name), name);
-        Assert.Equal(view, Workspace.ResultsView);
+        Assert.Equal(tab, Workspace.TextsTab);
     }
 
-    /// <summary>Opens a stage the way a person does, by its entry in the rail.</summary>
-    public void ShowStage(WorkflowStage stage)
+    /// <summary>Opens a page the way a person does, by its entry in the sidebar.</summary>
+    public void ShowPage(WorkspacePage page)
     {
-        if (Workspace.CurrentStage == stage) return;
+        if (Workspace.CurrentPage == page) return;
 
-        var name = $"{stage} stage";
-        var railEntry = Window.GetLogicalDescendants().OfType<ListBoxItem>().Single(item =>
+        var name = Workspace.Pages[(int)page].AutomationName;
+        var entry = Window.GetLogicalDescendants().OfType<ListBoxItem>().Single(item =>
             string.Equals(Avalonia.Automation.AutomationProperties.GetName(item), name, StringComparison.Ordinal));
-        ClickControl(railEntry, name);
-        Assert.Equal(stage, Workspace.CurrentStage);
+        ClickControl(entry, name);
+        Assert.Equal(page, Workspace.CurrentPage);
     }
 
-    // A stage nobody has opened has no template applied, so its controls are not in the tree until it is.
+    // A page nobody has opened has no template applied, so its controls are not in the tree until it is.
     private void RealizeEveryStage()
     {
-        var opening = Workspace.CurrentStage;
-        foreach (var stage in Enum.GetValues<WorkflowStage>())
+        var opening = Workspace.CurrentPage;
+        foreach (var page in Enum.GetValues<WorkspacePage>())
         {
-            Workspace.CurrentStage = stage;
-            foreach (var view in Enum.GetValues<ResultsView>())
+            Workspace.CurrentPage = page;
+            foreach (var tab in Enum.GetValues<TextsTab>())
             {
-                Workspace.ResultsView = view;
+                Workspace.TextsTab = tab;
                 Window.UpdateLayout();
                 Pump();
             }
         }
 
-        Workspace.ResultsView = ResultsView.Words;
-        Workspace.CurrentStage = opening;
+        Workspace.TextsTab = TextsTab.Matrix;
+        Workspace.CurrentPage = opening;
         Window.UpdateLayout();
     }
 
@@ -158,7 +162,8 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void Check(string content)
     {
-        ShowStage(WorkflowStage.Texts);
+        ShowPage(WorkspacePage.Texts);
+        ShowTextsTab(TextsTab.Texts);
         var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
             Equals(control.Content, content));
         ShowStageOwning(checkBox);

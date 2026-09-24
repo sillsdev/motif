@@ -93,11 +93,11 @@ public sealed class MainWindowSmokeTests
             {
                 window.Show();
                 var inspected = 0;
-                foreach (var stage in Enum.GetValues<WorkflowStage>())
-                foreach (var view in Enum.GetValues<ResultsView>())
+                foreach (var page in Enum.GetValues<WorkspacePage>())
+                foreach (var tab in Enum.GetValues<TextsTab>())
                 {
-                    workspace.CurrentStage = stage;
-                    workspace.ResultsView = view;
+                    workspace.CurrentPage = page;
+                    workspace.TextsTab = tab;
                     window.UpdateLayout();
 
                     var readOnlyText = window.GetVisualDescendants().OfType<TextBlock>()
@@ -144,8 +144,7 @@ public sealed class MainWindowSmokeTests
                     "{\"kind\":\"word\",\"form\":\"motifa\",\"attempts\":2,\"passes\":1,\"elapsed_ns\":5000000}");
                 workspace.Statistics.Rows.Add(new StatsRowViewModel(statisticsDocument.RootElement.Clone()));
                 workspace.HasEverAssessed = true;
-                workspace.CurrentStage = WorkflowStage.Results;
-                workspace.ResultsView = ResultsView.Statistics;
+                workspace.CurrentPage = WorkspacePage.Timing;
 
                 window.Show();
                 window.ApplyTemplate();
@@ -170,7 +169,7 @@ public sealed class MainWindowSmokeTests
                         "warning: lex entry: dropped")]);
                 workspace.Grammar.HasBaseline = true;
                 workspace.Grammar.HasChecked = true;
-                workspace.CurrentStage = WorkflowStage.Grammar;
+                workspace.CurrentPage = WorkspacePage.Warnings;
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
@@ -303,7 +302,7 @@ public sealed class MainWindowSmokeTests
                             { ProjectStanding = ProjectStanding.NotPresent },
                     ],
                 };
-                workspace.CurrentStage = WorkflowStage.Results;
+                workspace.ShowTexts(TextsTab.Matrix);
                 window.Show();
                 window.UpdateLayout();
 
@@ -375,8 +374,7 @@ public sealed class MainWindowSmokeTests
                     ],
                 };
 
-                workspace.CurrentStage = WorkflowStage.Results;
-                workspace.ResultsView = ResultsView.Words;
+                workspace.ShowTexts(TextsTab.Words);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
@@ -430,7 +428,7 @@ public sealed class MainWindowSmokeTests
                 };
                 foreach (var file in files) workspace.Handoff.Files.Add(file);
                 workspace.Handoff.State = RunState.Completed;
-                workspace.CurrentStage = WorkflowStage.Handoff;
+                workspace.CurrentPage = WorkspacePage.AiHandoff;
 
                 window.Show();
                 window.ApplyTemplate();
@@ -476,7 +474,7 @@ public sealed class MainWindowSmokeTests
                 workspace.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
                 workspace.Handoff.PastedHeader = "pasted header text";
                 workspace.Handoff.State = RunState.Completed;
-                workspace.CurrentStage = WorkflowStage.Handoff;
+                workspace.CurrentPage = WorkspacePage.AiHandoff;
 
                 window.Show();
                 window.ApplyTemplate();
@@ -529,21 +527,20 @@ public sealed class MainWindowSmokeTests
         || visual.FindAncestorOfType<ToggleButton>(includeSelf: false) is not null
         || visual.FindAncestorOfType<TextBox>(includeSelf: false) is not null;
 
-    // A stage nobody has opened has no template applied, so its controls join the tree only once it is shown.
+    // A page nobody has opened has no template applied, so its controls join the tree only once it is shown.
     private static void ShowEveryStage(MainWindow window, HandoffWorkspaceViewModel workspace)
     {
-        foreach (var stage in Enum.GetValues<WorkflowStage>())
-        foreach (var view in Enum.GetValues<ResultsView>())
+        foreach (var page in Enum.GetValues<WorkspacePage>())
+        foreach (var tab in Enum.GetValues<TextsTab>())
         {
-            workspace.CurrentStage = stage;
-            workspace.ResultsView = view;
+            workspace.CurrentPage = page;
+            workspace.TextsTab = tab;
             window.UpdateLayout();
         }
     }
 
-    // The explicit AutomationProperties.Name, or the plain-text Content a Button/CheckBox falls back to.
     [Fact]
-    public void AtTheNarrowestWindowEveryStageStaysClearOfTheMenuAndOpensOnAClick()
+    public void AtTheNarrowestWindowEveryPageOpensOnAClickInTheCollapsedSidebar()
     {
         _avalonia.Invoke(() =>
         {
@@ -553,20 +550,18 @@ public sealed class MainWindowSmokeTests
             window.Show();
             try
             {
-                foreach (var stage in Enum.GetValues<WorkflowStage>().Reverse())
+                Assert.True(workspace.IsSidebarCollapsed);
+                foreach (var page in Enum.GetValues<WorkspacePage>().Reverse())
                 {
                     var entry = window.GetLogicalDescendants().OfType<ListBoxItem>()
-                        .Single(item => item.DataContext is StageViewModel model && model.Stage == stage);
-                    var menuLeft = window.FindControl<Button>("ProjectMenuButton")!.TranslatePoint(new Point(0, 0), window)!.Value.X;
-                    var right = entry.TranslatePoint(new Point(entry.Bounds.Width, 0), window)!.Value.X;
-                    Assert.True(right <= menuLeft, $"'{stage}' ends at {right:0}, under the project menu at {menuLeft:0}.");
+                        .Single(item => item.DataContext is PageViewModel model && model.Page == page);
 
                     var centre = entry.TranslatePoint(new Point(entry.Bounds.Width / 2, entry.Bounds.Height / 2), window)!.Value;
                     window.MouseDown(centre, MouseButton.Left);
                     window.MouseUp(centre, MouseButton.Left);
                     window.UpdateLayout();
 
-                    Assert.Equal(stage, workspace.CurrentStage);
+                    Assert.Equal(page, workspace.CurrentPage);
                 }
             }
             finally
@@ -576,6 +571,7 @@ public sealed class MainWindowSmokeTests
         });
     }
 
+    // The explicit AutomationProperties.Name, or the plain-text Content a Button/CheckBox falls back to.
     private static string? EffectiveAccessibleName(Control control)
     {
         var explicitName = AutomationProperties.GetName(control);

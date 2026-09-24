@@ -99,7 +99,6 @@ public sealed partial class CompareViewModel : ObservableObject
         RerunCommand = new AsyncRelayCommand(RerunUnknownAsync, () => Rerun is not null && RerunWords.Count > 0);
         HandOffCommand = new RelayCommand(() => HandOff?.Invoke(Words.Select(word => word.Word).ToArray()),
             () => HandOff is not null && Words.Count > 0);
-        Changes = new ChangesViewModel();
         ProposeCommand = new RelayCommand<string>(kind =>
         {
             if (kind is null) return;
@@ -112,8 +111,11 @@ public sealed partial class CompareViewModel : ObservableObject
         });
     }
 
-    /// <summary>The changes collected so far, to become one Proposal.</summary>
-    public ChangesViewModel Changes { get; }
+    /// <summary>
+    /// The changes collected so far, to become one Proposal. A list of its own until an owner hands it the one every
+    /// page of the window shares.
+    /// </summary>
+    public ChangesViewModel Changes { get; set; } = new();
 
     /// <summary>Adds a change of one kind (see <see cref="ChangeKinds"/>) for every checked word in the list.</summary>
     public IRelayCommand<string> ProposeCommand { get; }

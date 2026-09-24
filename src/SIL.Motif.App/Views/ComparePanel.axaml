@@ -253,11 +253,11 @@
 
       <Border Classes="card" Padding="12">
         <StackPanel Spacing="6">
-          <views:CopyableTextBlock Text="Hand off" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="AI Handoff" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                                    Text="Give a chat model just the listed words, assessed again for the files." />
-          <Button Content="{Binding Compare.ListSummary, StringFormat='Hand off these {0}'}" Command="{Binding Compare.HandOffCommand}"
-                  HorizontalAlignment="Stretch" AutomationProperties.Name="Hand off the listed words" />
+          <Button Content="{Binding Compare.ListSummary, StringFormat='AI Handoff for these {0}'}" Command="{Binding Compare.HandOffCommand}"
+                  HorizontalAlignment="Stretch" AutomationProperties.Name="AI Handoff for the listed words" />
         </StackPanel>
       </Border>
 
@@ -286,11 +286,8 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap" Text="{Binding Compare.Changes.ProposalStatus}"
+          <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap" Text="{Binding Compare.Changes.ApplyStatus}"
                                    IsVisible="{Binding Compare.Changes.HasItems}" />
-          <Button Content="Save as a Proposal" IsEnabled="False" HorizontalAlignment="Stretch"
-                  ToolTip.Tip="Coming next: Motif's Proposals cannot yet approve, reject or add analyses."
-                  IsVisible="{Binding Compare.Changes.HasItems}" />
         </StackPanel>
       </Border>
     </StackPanel>

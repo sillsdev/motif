@@ -22,24 +22,24 @@ public sealed class ScreenshotFactAttribute : FactAttribute
     public ScreenshotFactAttribute()
     {
         if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(FolderVariable)))
-            Skip = $"Set {FolderVariable} to a folder to capture every stage as images.";
+            Skip = $"Set {FolderVariable} to a folder to capture every page as images.";
     }
 }
 
 /// <summary>
-/// Opens the real window over realistic data, then saves every stage and Results view as an image, at the
-/// narrowest and the default width, in the light and the dark theme. The window renders with Skia and the
+/// Opens the real window over realistic data, then saves every page and Texts tab as an image, at a
+/// collapsed-sidebar and the default width, in the light and the dark theme. The window renders with Skia and the
 /// system's fonts, as the app does, so these show what a person would see, not a stub's layout.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed class StageScreenshots
+public sealed class PageScreenshots
 {
     private const string ProjectPath = @"C:\Users\linguist\FieldWorks\Projects\Sample\Sample.fwdata";
     private static readonly Guid Story = Guid.Parse("11111111-0000-0000-0000-000000000001");
     private static readonly Guid Letter = Guid.Parse("11111111-0000-0000-0000-000000000002");
 
     [ScreenshotFact]
-    public void CaptureEveryStage()
+    public void CaptureEveryPage()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
@@ -56,10 +56,10 @@ public sealed class StageScreenshots
                     {
                         window.Width = width;
                         window.Height = 780;
-                        foreach (var (name, stage, view) in Views())
+                        foreach (var (name, page, tab) in Views())
                         {
-                            workspace.CurrentStage = stage;
-                            workspace.ResultsView = view;
+                            workspace.TextsTab = tab;
+                            workspace.CurrentPage = page;
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
                         }
                     }
@@ -73,15 +73,20 @@ public sealed class StageScreenshots
         }, TimeSpan.FromMinutes(3));
     }
 
-    private static IEnumerable<(string Name, WorkflowStage Stage, ResultsView View)> Views() =>
+    /// <summary>Every page, and every tab of the Texts page, with the file name each is saved under.</summary>
+    internal static IEnumerable<(string Name, WorkspacePage Page, TextsTab Tab)> Views() =>
     [
-        ("1-project", WorkflowStage.Project, ResultsView.Words),
-        ("2-grammar", WorkflowStage.Grammar, ResultsView.Words),
-        ("3-texts", WorkflowStage.Texts, ResultsView.Words),
-        ("4-results-words", WorkflowStage.Results, ResultsView.Words),
-        ("5-results-intext", WorkflowStage.Results, ResultsView.InText),
-        ("6-results-statistics", WorkflowStage.Results, ResultsView.Statistics),
-        ("7-handoff", WorkflowStage.Handoff, ResultsView.Words),
+        ("1-overview", WorkspacePage.Overview, TextsTab.Matrix),
+        ("2a-texts-matrix", WorkspacePage.Texts, TextsTab.Matrix),
+        ("2b-texts-what-changed", WorkspacePage.Texts, TextsTab.WhatChanged),
+        ("2c-texts-words", WorkspacePage.Texts, TextsTab.Words),
+        ("2d-texts-texts", WorkspacePage.Texts, TextsTab.Texts),
+        ("2e-texts-in-text", WorkspacePage.Texts, TextsTab.InText),
+        ("3-try-a-word", WorkspacePage.TryAWord, TextsTab.Matrix),
+        ("4-timing", WorkspacePage.Timing, TextsTab.Matrix),
+        ("5-warnings", WorkspacePage.Warnings, TextsTab.Matrix),
+        ("6-review", WorkspacePage.Review, TextsTab.Matrix),
+        ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
     ];
 
     private static void Save(MainWindow window, string path)

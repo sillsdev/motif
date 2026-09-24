@@ -17,7 +17,7 @@
 
         <Border Classes="notice" IsVisible="{Binding Handoff.HasChosenWords}" AutomationProperties.Name="Words chosen in Compare">
           <DockPanel>
-            <Button DockPanel.Dock="Right" Content="Hand off everything instead" Click="OnUseWholeAssessmentClick"
+            <Button DockPanel.Dock="Right" Content="Hand off the whole Assessment instead" Click="OnUseWholeAssessmentClick"
                     VerticalAlignment="Center" Margin="10,0,0,0" />
             <views:CopyableTextBlock Text="{Binding Handoff.ChosenWordsText}" TextWrapping="Wrap" VerticalAlignment="Center" />
           </DockPanel>

@@ -7,7 +7,7 @@ namespace SIL.Motif.App.Views;
 
 /// <summary>
 /// Where the project stands: its Baseline, its latest Assessment, its grammar and its history, bound to the
-/// workspace so the summary follows every stage.
+/// workspace so the summary follows every page.
 /// </summary>
 public sealed partial class ProjectPanel : UserControl
 {
@@ -27,17 +27,11 @@ public sealed partial class ProjectPanel : UserControl
 
     public ProjectHistoryViewModel History => Workspace.ProjectHistory;
 
-    private void OnOpenResultsClick(object? sender, RoutedEventArgs e) => Open(WorkflowStage.Results, ResultsView.Words);
+    private void OnOpenResultsClick(object? sender, RoutedEventArgs e) => Workspace.ShowTexts(TextsTab.Words);
 
-    private void OnOpenStatisticsClick(object? sender, RoutedEventArgs e) => Open(WorkflowStage.Results, ResultsView.Statistics);
+    private void OnOpenStatisticsClick(object? sender, RoutedEventArgs e) => Workspace.CurrentPage = WorkspacePage.Timing;
 
-    private void OnOpenTimeLimitClick(object? sender, RoutedEventArgs e) => Open(WorkflowStage.Texts, Workspace.ResultsView);
+    private void OnOpenTimeLimitClick(object? sender, RoutedEventArgs e) => Workspace.ShowTexts(TextsTab.Texts);
 
-    private void OnOpenGrammarClick(object? sender, RoutedEventArgs e) => Open(WorkflowStage.Grammar, Workspace.ResultsView);
-
-    private void Open(WorkflowStage stage, ResultsView view)
-    {
-        Workspace.ResultsView = view;
-        Workspace.CurrentStage = stage;
-    }
+    private void OnOpenGrammarClick(object? sender, RoutedEventArgs e) => Workspace.CurrentPage = WorkspacePage.Warnings;
 }

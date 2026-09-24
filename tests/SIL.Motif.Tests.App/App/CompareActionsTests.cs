@@ -111,7 +111,7 @@ public sealed class CompareActionsTests
         Assert.Equal("mwalimu: Incorrect spelling", change.Summary);
         Assert.True(change.CanBeProposedToday);
         Assert.False(mwalimu.IsChecked);
-        Assert.Equal("All of these can become a Proposal.", compare.Changes.ProposalStatus);
+        Assert.Equal("All of these can be applied to the FieldWorks project.", compare.Changes.ApplyStatus);
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class CompareActionsTests
 
         compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
 
-        Assert.StartsWith("0 can become a Proposal today; 1 wait", compare.Changes.ProposalStatus);
+        Assert.StartsWith("0 can be applied today; 1 wait", compare.Changes.ApplyStatus);
     }
 
     [Fact]

@@ -199,6 +199,18 @@
           <SolidColorBrush x:Key="MotifCandidateFill" Color="#F3EAD4" />
           <SolidColorBrush x:Key="MotifCandidateInk" Color="#74531A" />
           <SolidColorBrush x:Key="MotifCandidateAccent" Color="#C9A45A" />
+          <SolidColorBrush x:Key="MotifSidebarFill" Color="#FBFCFD" />
+          <SolidColorBrush x:Key="MotifSidebarInk" Color="#454C57" />
+          <SolidColorBrush x:Key="MotifSidebarSelectedFill" Color="#E8F1FF" />
+          <SolidColorBrush x:Key="MotifSidebarSelectedInk" Color="#0B4FC4" />
+          <SolidColorBrush x:Key="MotifBadgeFill" Color="#ECEEF2" />
+          <SolidColorBrush x:Key="MotifBadgeInk" Color="#454C57" />
+          <SolidColorBrush x:Key="MotifCountFill" Color="#0064FA" />
+          <SolidColorBrush x:Key="MotifCountInk" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="MotifFreshCurrent" Color="#1A6B2C" />
+          <SolidColorBrush x:Key="MotifFreshStale" Color="#8A5A00" />
+          <SolidColorBrush x:Key="MotifFreshBusy" Color="#0B4FC4" />
+          <SolidColorBrush x:Key="MotifTabActive" Color="#0B4FC4" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="MotifApprovedFill" Color="#123E41" />
@@ -207,6 +219,18 @@
           <SolidColorBrush x:Key="MotifCandidateFill" Color="#43381F" />
           <SolidColorBrush x:Key="MotifCandidateInk" Color="#E8CF95" />
           <SolidColorBrush x:Key="MotifCandidateAccent" Color="#C9A45A" />
+          <SolidColorBrush x:Key="MotifSidebarFill" Color="#1B1E23" />
+          <SolidColorBrush x:Key="MotifSidebarInk" Color="#C3C8D0" />
+          <SolidColorBrush x:Key="MotifSidebarSelectedFill" Color="#1D3354" />
+          <SolidColorBrush x:Key="MotifSidebarSelectedInk" Color="#8DB8FF" />
+          <SolidColorBrush x:Key="MotifBadgeFill" Color="#30353D" />
+          <SolidColorBrush x:Key="MotifBadgeInk" Color="#C3C8D0" />
+          <SolidColorBrush x:Key="MotifCountFill" Color="#3D8BFF" />
+          <SolidColorBrush x:Key="MotifCountInk" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="MotifFreshCurrent" Color="#6FCF87" />
+          <SolidColorBrush x:Key="MotifFreshStale" Color="#E3B55E" />
+          <SolidColorBrush x:Key="MotifFreshBusy" Color="#8DB8FF" />
+          <SolidColorBrush x:Key="MotifTabActive" Color="#8DB8FF" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
