@@ -51,9 +51,10 @@ public static class TimingCommand
                     var composed = SelectionComposer.Compose(cache,
                         new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null), assessments,
                         JsonSerializer.Serialize(baseline.Token, SIL.Motif.Contract.MotifJson.CreateOptions()));
-                    if (composed.Succeeded)
-                        assessment = OverviewCommand.FindMatchingAssessment(
-                            assessments, baseline.Token, composed.Value!.Selection);
+                    if (!composed.Succeeded)
+                        return CommandOutcome<TimingResponse>.Refused(composed.Refusal!);
+                    assessment = OverviewCommand.FindMatchingAssessment(
+                        assessments, baseline.Token, composed.Value!.Selection);
                 }
             }
 
@@ -100,9 +101,9 @@ public static class TimingCommand
         {
             var cell = name[5..].Split(':', 2);
             if (cell.Length != 2 || !TryColumn(cell[1], out var column))
-                return RefusedWords("timing.invalid-word-set", "A matrix cell must use cell:<standing>:<column>.");
+                return RefusedInvalidWordSet("A matrix cell must use cell:<standing>:<column>.");
             var standing = NormalizeStanding(cell[0]);
-            if (standing is null) return RefusedWords("timing.invalid-word-set", "The matrix cell has an unknown standing.");
+            if (standing is null) return RefusedInvalidWordSet("The matrix cell has an unknown standing.");
             return Success(allWords.Where(word =>
             {
                 var placement = Place(word);
@@ -167,6 +168,10 @@ public static class TimingCommand
 
     private static CommandOutcome<IReadOnlyList<AssessedWord>> RefusedWords(string code, string message) =>
         CommandOutcome<IReadOnlyList<AssessedWord>>.Refused(new Refusal(code, FailureReason.NotFound, message));
+
+    private static CommandOutcome<IReadOnlyList<AssessedWord>> RefusedInvalidWordSet(string message) =>
+        CommandOutcome<IReadOnlyList<AssessedWord>>.Refused(new Refusal(
+            "timing.invalid-word-set", FailureReason.InvalidArgument, message));
 
     private static CommandOutcome<TimingResponse> RefusedTiming(string code, string message) =>
         CommandOutcome<TimingResponse>.Refused(new Refusal(code, FailureReason.NotFound, message));

@@ -94,7 +94,7 @@ public sealed class AssessCommandTests : IDisposable
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
-                [new(0, SeededProject.AnalysedWordForm, 99, SIL.Motif.Host.Parser.WordOutcome.TimedOut, "partial"),
+                [new(0, SeededProject.AnalysedWordForm, 99, SIL.Motif.Host.Parser.WordOutcome.Capped, "partial"),
                  new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
                 1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
             AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
@@ -154,6 +154,47 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal("Verb template", Assert.Single(timing.Value.Aggregates).Name);
         Assert.Equal(2, Assert.Single(timing.Value.Aggregates).Attempts);
         Assert.Single(timing.Value.CostliestWords);
+
+        var stepLimited = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            parseAssessment.AssessmentId, "step-limit", "rule", "Verb template", 5));
+        Assert.True(stepLimited.Succeeded, stepLimited.Refusal?.Message);
+        Assert.Equal(1, stepLimited.Value!.WordCount);
+        Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(stepLimited.Value.SlowestWords).Word);
+
+        var slowest = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            parseAssessment.AssessmentId, "slowest", "rule", "Verb template", 1));
+        Assert.True(slowest.Succeeded, slowest.Refusal?.Message);
+        Assert.Equal(1, slowest.Value!.WordCount);
+        Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(slowest.Value.SlowestWords).Word);
+
+        var cell = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            parseAssessment.AssessmentId, "cell:approved:unknown", "rule", "Verb template", 5));
+        Assert.True(cell.Succeeded, cell.Refusal?.Message);
+        Assert.Equal(1, cell.Value!.WordCount);
+
+        var namedSelection = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            WordSet: "Renamed default", By: "rule", Rule: "Verb template", Top: 5));
+        Assert.True(namedSelection.Succeeded, namedSelection.Refusal?.Message);
+        Assert.Equal(2, namedSelection.Value!.WordCount);
+
+        var explicitWord = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            parseAssessment.AssessmentId, "all", "rule", "Verb template", 5,
+            [SeededProject.UnanalysedWordForm]));
+        Assert.True(explicitWord.Succeeded, explicitWord.Refusal?.Message);
+        Assert.Equal(1, explicitWord.Value!.WordCount);
+        Assert.Equal(SeededProject.UnanalysedWordForm, Assert.Single(explicitWord.Value.SlowestWords).Word);
+
+        var invalidCell = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            parseAssessment.AssessmentId, "cell:not-present:misspelled", "rule", "Verb template", 5));
+        Assert.False(invalidCell.Succeeded);
+        Assert.Equal(FailureReason.InvalidArgument, invalidCell.Refusal!.Reason);
+
+        using (var database = OpenDatabase(seeded.FwDataPath))
+            new NamedSelectionRepository(database).SetDefault("Deleted Text", [Guid.NewGuid()], []);
+        var missingText = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            By: "rule", Rule: "Verb template", Top: 5));
+        Assert.False(missingText.Succeeded);
+        Assert.Equal("selection.text-not-found", missingText.Refusal!.Code);
         Assert.Empty(invoker.Requests);
     }
 
@@ -852,10 +893,15 @@ public sealed class AssessCommandTests : IDisposable
 
     private static IAssessmentRepository OpenRepository(string fwDataPath)
     {
+        var database = OpenDatabase(fwDataPath);
+        return new AssessmentRepository(database);
+    }
+
+    private static MotifDatabase OpenDatabase(string fwDataPath)
+    {
         var project = new ProjectLocator(Path.GetFullPath(fwDataPath), Path.GetFileNameWithoutExtension(fwDataPath));
         var databasePath = ProjectDatabaseCatalog.DatabasePathFor(project);
-        var database = MotifDatabase.OpenOwned(databasePath, project, MotifSchema.CurrentSchema, new Version(1, 0));
-        return new AssessmentRepository(database);
+        return MotifDatabase.OpenOwned(databasePath, project, MotifSchema.CurrentSchema, new Version(1, 0));
     }
 
     private string NewManagedRoot()
