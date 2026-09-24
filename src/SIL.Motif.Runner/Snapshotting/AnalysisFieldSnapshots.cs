@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Model.Snapshot;
@@ -20,8 +21,20 @@ public static class AnalysisFieldSnapshots
         CanonicalId.FromGuid(wordform.Guid),
         new Dictionary<string, IReadOnlyDictionary<string, string>>
         {
-            [SnapshotFields.WfiWordformAnalyses] =
-                ReferenceCollectionFieldSnapshotting.ReadAlternatives(wordform.AnalysesOC),
+            [SnapshotFields.WfiWordformAnalyses] = wordform.AnalysesOC.ToDictionary(
+                analysis => CanonicalId.FromGuid(analysis.Guid).Value,
+                analysis => JsonSerializer.Serialize(new
+                {
+                    morphs = analysis.MorphBundlesOS.Select(bundle => new
+                    {
+                        form = bundle.MorphRA is null ? null : CanonicalId.FromGuid(bundle.MorphRA.Guid).Value,
+                        msa = bundle.MsaRA is null ? null : CanonicalId.FromGuid(bundle.MsaRA.Guid).Value,
+                        inflType = bundle.InflTypeRA is null ? null : CanonicalId.FromGuid(bundle.InflTypeRA.Guid).Value,
+                        formText = bundle.Form.VernacularDefaultWritingSystem?.Text,
+                    }).ToArray(),
+                    evaluations = ReferenceCollectionFieldSnapshotting.ReadAlternatives(analysis.EvaluationsRC)
+                        .Keys.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+                })),
         });
 
     /// <summary>Compares the canonical snapshots of one analysis object before and after a mutation.</summary>

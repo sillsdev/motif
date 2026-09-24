@@ -15,7 +15,7 @@ public static class WfiAnalysisOperationKinds
 {
     public const string AddRefEvaluations = "analysis/wfiAnalysis/addRefEvaluations";
     public const string RemoveRefEvaluations = "analysis/wfiAnalysis/removeRefEvaluations";
-    public const string CreateAnalysis = "analysis/wfiWordform/createAnalysis";
+    public const string CreateAnalysis = "analysis/wfiWordform/createAnalyses";
 
     [ModuleInitializer]
     internal static void Register()
@@ -78,7 +78,7 @@ internal sealed class HumanEvaluationHandler(bool add) : IOperationHandler
     }
 
     private static IReadOnlyDictionary<string, string> Read(IWfiAnalysis analysis) =>
-        ReferenceCollectionFieldSnapshotting.ReadAlternatives(analysis.EvaluationsRC);
+        AnalysisFieldSnapshots.Read(analysis).AlternativesFields[SnapshotFields.WfiAnalysisEvaluations];
 }
 
 /// <summary>One ordered morph bundle in a new parser candidate.</summary>
@@ -104,13 +104,12 @@ public static class CreateAnalysisPayload
                 ? ClosedPayloadParsing.GetRequiredCanonicalId(morph, "form", kind) : null;
             CanonicalId? msa = morph.TryGetProperty("msa", out var msaElement) && msaElement.ValueKind != JsonValueKind.Null
                 ? ClosedPayloadParsing.GetRequiredCanonicalId(morph, "msa", kind) : null;
-            if (form is null && string.IsNullOrEmpty(morph.TryGetProperty("guessedString", out var guessValue)
-                    ? guessValue.GetString() : null))
-                throw new ContractParseException($"'{kind}' requires a form or guessed string for each morph.");
-            CanonicalId? inflType = morph.TryGetProperty("inflType", out var infl) ?
+            CanonicalId? inflType = morph.TryGetProperty("inflType", out var infl) && infl.ValueKind != JsonValueKind.Null ?
                 ClosedPayloadParsing.GetRequiredCanonicalId(morph, "inflType", kind) : null;
-            string? guessed = morph.TryGetProperty("guessedString", out var guess) ?
+            string? guessed = morph.TryGetProperty("guessedString", out var guess) && guess.ValueKind != JsonValueKind.Null ?
                 ClosedPayloadParsing.GetRequiredString(morph, "guessedString", kind) : null;
+            if (form is null && string.IsNullOrEmpty(guessed))
+                throw new ContractParseException($"'{kind}' requires a form or guessed string for each morph.");
             result.Add(new CandidateMorph(form, msa, inflType, guessed));
         }
         return result;
@@ -161,5 +160,5 @@ internal sealed class CreateAnalysisHandler : IOperationHandler
     }
 
     private static IReadOnlyDictionary<string, string> Read(IWfiWordform wordform) =>
-        ReferenceCollectionFieldSnapshotting.ReadAlternatives(wordform.AnalysesOC);
+        AnalysisFieldSnapshots.Read(wordform).AlternativesFields[SnapshotFields.WfiWordformAnalyses];
 }

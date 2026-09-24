@@ -24,18 +24,20 @@ public static class AnalysisChangeComposer
             $"'{intent.Kind}' requires an Assessment with a parser reading for this word.");
         if (reading.Morphs.Count == 0)
             throw new InvalidOperationException("A parser reading requires at least one morph.");
-        var existing = wordform.AnalysesOC.FirstOrDefault(analysis => Matches(analysis, reading));
+        var existing = wordform.AnalysesOC.Where(analysis => Matches(analysis, reading)).ToArray();
 
         if (intent.Kind == "candidate")
         {
-            if (existing is null)
+            if (existing.Length == 0)
                 throw new InvalidOperationException("The parser reading has no stored analysis to return to candidate.");
-            var opinion = existing.GetAgentOpinion(cache.LangProject.DefaultUserAgent);
-            if (opinion == Opinions.noopinion) return [];
-            return [OpinionOperation(existing, false, opinion == Opinions.approves)];
+            return existing.Select(analysis => (Analysis: analysis,
+                    Opinion: analysis.GetAgentOpinion(cache.LangProject.DefaultUserAgent)))
+                .Where(item => item.Opinion != Opinions.noopinion)
+                .Select(item => OpinionOperation(item.Analysis, item.Opinion == Opinions.approves))
+                .ToArray();
         }
 
-        if (intent.Kind == "add-candidate" && existing is not null)
+        if (intent.Kind == "add-candidate" && existing.Length > 0)
             throw new InvalidOperationException("The parser reading already has a stored analysis.");
         if (intent.Kind is not ("approve" or "reject" or "add-candidate"))
             throw new InvalidOperationException($"Unknown collected change kind '{intent.Kind}'.");
@@ -43,7 +45,7 @@ public static class AnalysisChangeComposer
         var operations = new List<OperationEnvelope>();
         CanonicalId analysisId;
         CanonicalId? creationId = null;
-        if (existing is null)
+        if (existing.Length == 0)
         {
             foreach (var morph in reading.Morphs)
             {
@@ -60,22 +62,26 @@ public static class AnalysisChangeComposer
                 entityId: analysisId, target: intent.WordformId, after: MorphPayload(reading)));
         }
         else
-            analysisId = CanonicalId.FromGuid(existing.Guid);
+            analysisId = CanonicalId.FromGuid(existing[0].Guid);
 
         if (intent.Kind != "add-candidate")
-            operations.Add(new OperationEnvelope(CanonicalId.Mint(), WfiAnalysisOperationKinds.AddRefEvaluations,
-                target: analysisId,
-                after: JsonSerializer.SerializeToElement(new
+        {
+            IEnumerable<CanonicalId> targets = creationId is null ? existing.Select(analysis => CanonicalId.FromGuid(analysis.Guid)) :
+                [analysisId];
+            foreach (var target in targets)
+                operations.Add(new OperationEnvelope(CanonicalId.Mint(), WfiAnalysisOperationKinds.AddRefEvaluations,
+                    target: target,
+                    after: JsonSerializer.SerializeToElement(new
                 {
                     member = intent.Kind == "approve" ? HumanEvaluationPayload.Approves : HumanEvaluationPayload.Disapproves,
                 }),
                 dependsOn: creationId is { } prerequisite ? [new OperationDependency(prerequisite)] : []));
+        }
         return operations;
     }
 
-    private static OperationEnvelope OpinionOperation(IWfiAnalysis analysis, bool add, bool approves) =>
-        new(CanonicalId.Mint(), add ? WfiAnalysisOperationKinds.AddRefEvaluations :
-            WfiAnalysisOperationKinds.RemoveRefEvaluations,
+    private static OperationEnvelope OpinionOperation(IWfiAnalysis analysis, bool approves) =>
+        new(CanonicalId.Mint(), WfiAnalysisOperationKinds.RemoveRefEvaluations,
             target: CanonicalId.FromGuid(analysis.Guid),
             after: JsonSerializer.SerializeToElement(new
             {

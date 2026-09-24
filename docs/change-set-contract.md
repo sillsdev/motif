@@ -198,15 +198,19 @@ retracts the opposite opinion. Removing one reference returns that analysis to c
 when it was the current opinion. The effect and semantic snapshot field is
 `analysis/wfiAnalysis/evaluations`, an identity keyed map of the full evaluation membership.
 
-`analysis/wfiWordform/createAnalysis` targets a `WfiWordform`, supplies a fresh `entityId`, and has
+`analysis/wfiWordform/createAnalyses` targets a `WfiWordform`, supplies a fresh `entityId`, and has
 the closed `after` shape `{ "morphs": [{ "form": "<id>", "msa": "<id>",
 "inflType": "<id>", "guessedString": "..." }] }`. `morphs` is nonempty and ordered. The form,
 MSA, and inflection type are optional when the parser does not supply them; a missing form requires
 a guessed string. Lowering creates an owned `WfiAnalysis`, one ordered `WfiMorphBundle` per morph,
 and the default parser agent's approval. Its effect and snapshot field is
-`analysis/wfiWordform/analyses`, the wordform's complete analysis membership. FieldWorks' parser
-filing behavior is pinned by `CreateParserCandidate_RoundTripsThroughDryRunAndApply` and
-`ApproveParserReading_ComposesCandidateThenHumanOpinion`.
+`analysis/wfiWordform/analyses`, keyed by analysis id with the ordered morph references, guessed
+form, and evaluation membership in each value. This mirrors FieldWorks' `ProcessAnalysis` in
+`Src/LexText/ParserCore/ParseFiler.cs`; the fixture
+`ParserCandidate_FilesReferencesGuessAndOnlyTheParserOpinion` checks all four bundle fields and
+both agents' opinions. The inventory's `delete` verb describes a LibLCM capability, but this
+operation family does not expose `deleteAnalyses`: none of the five collected actions deletes an
+analysis, and removing an owned analysis requires separate reference and ownership semantics.
 
 Each collected operation carries a nonsemantic `extensions.changeFit` fingerprint: wordform id,
 optional existing analysis id, wordform form, content digest for an existing analysis or parser
