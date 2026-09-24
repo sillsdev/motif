@@ -65,6 +65,12 @@ different — a word we analysed was deleted — the change has **drifted**. App
 has drifted, until it is removed or the project is refreshed and the change checked again. This is Drift
 and Preflight applied per change, not a new concept.
 
+**`--force` does not reach it.** `--force` exists for evidence that is incomplete — a parse that did not
+finish, an Assessment that is missing or measured another state — the way a person may merge while CI has
+not finished. A change that no longer fits is the other kind of problem, the way a merge conflict is: the
+change cannot be applied as written, and forcing it would write something nobody chose. It must be brought
+up to date against the project, never forced.
+
 ### 5. The default Selection and the stored summaries live in the Motif store
 
 The first time a project opens, a setup dialog asks what to measure every time. That choice is the
