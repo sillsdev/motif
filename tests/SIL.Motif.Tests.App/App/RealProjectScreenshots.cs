@@ -118,7 +118,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         workspace.Baseline.RefreshCommand.Execute(null);
         walkthrough.WaitUntil(() => workspace.Baseline.HasBaseline && !workspace.Baseline.RefreshCommand.IsRunning,
             TimeSpan.FromMinutes(10), "the Baseline was not captured");
-        walkthrough.WaitUntil(() => workspace.Grammar.HasChecked && !workspace.Grammar.CheckCommand.IsRunning,
+        walkthrough.WaitUntil(() => workspace.PageModel<WarningsPageModel>().Grammar.HasChecked && !workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.IsRunning,
             TimeSpan.FromMinutes(5), "the grammar check did not finish");
 
         walkthrough.WaitUntil(() => workspace.Selection.Texts.Count > 0 ||
@@ -142,7 +142,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         }
         output.WriteLine($"{Path.GetFileName(original)}: {workspace.Selection.Texts.Count(text => text.IsChecked)} texts, " +
             $"{workspace.Words.Rows.Count} text words, {workspace.Selection.PastedWordEntries.Count} pasted words, " +
-            $"{workspace.Grammar.Warnings.TotalCount} grammar findings");
+            $"{workspace.PageModel<WarningsPageModel>().Grammar.Warnings.TotalCount} grammar findings");
 
         workspace.Assess.RunCommand.Execute(null);
         walkthrough.WaitUntil(() => workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
@@ -256,7 +256,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     // The largest kind of finding chosen, so its own view is reviewed as well as the whole list.
     private static void SaveGrammarWithAKindChosen(WalkthroughWindow walkthrough, string folder)
     {
-        var warnings = walkthrough.Workspace.Grammar.Warnings;
+        var warnings = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar.Warnings;
         var kind = warnings.WarningGroups.Concat(warnings.InformationGroups).MaxBy(group => group.Count);
         if (kind is null) return;
         warnings.SelectGroupCommand.Execute(kind);

@@ -34,7 +34,6 @@ public sealed class WorkspacePageTests
             new ProjectViewModel(fake, projectPicker),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
-            new GrammarViewModel(fake),
             selection,
             words,
             new AssessViewModel(fake, selection),
@@ -450,7 +449,7 @@ public sealed class WorkspacePageTests
         await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
         Assert.Single(fake.CheckGrammarRequests);
-        Assert.True(workspace.Grammar.HasChecked);
+        Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.HasChecked);
     }
 
     [Fact]
@@ -463,14 +462,14 @@ public sealed class WorkspacePageTests
         Assert.Single(fake.StoredGrammarCheckRequests);
         Assert.Empty(fake.CheckGrammarRequests);
         Assert.True(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
-        Assert.Equal("Not checked yet", workspace.Grammar.SummaryText);
+        Assert.Equal("Not checked yet", workspace.PageModel<WarningsPageModel>().Grammar.SummaryText);
         Assert.False(workspace.PageOf(WorkspacePage.Warnings).HasBadge);
 
         await workspace.PageModel<WarningsPageModel>().CheckGrammarCommand.ExecuteAsync(null);
 
         Assert.Equal(ProjectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
         Assert.False(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
-        Assert.True(workspace.Grammar.CheckCommand.CanExecute(null));
+        Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.CanExecute(null));
     }
 
     [Fact]
@@ -487,8 +486,8 @@ public sealed class WorkspacePageTests
         await ChooseProjectAsync(fake, projectPicker, workspace);
 
         Assert.False(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
-        Assert.Equal("1 finding", workspace.Grammar.SummaryText);
-        Assert.True(workspace.Grammar.CheckCommand.CanExecute(null));
+        Assert.Equal("1 finding", workspace.PageModel<WarningsPageModel>().Grammar.SummaryText);
+        Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.CanExecute(null));
     }
 
     [Fact]

@@ -32,7 +32,6 @@ public sealed class WalkthroughWindow : IDisposable
             new ProjectViewModel(commandClient, _projectPicker),
             new ProjectHistoryViewModel(commandClient),
             new BaselineViewModel(commandClient),
-            new GrammarViewModel(commandClient),
             selection,
             words,
             new AssessViewModel(commandClient, selection),

@@ -56,14 +56,13 @@ public sealed partial class WorkspaceContext : ObservableObject
 {
     public WorkspaceContext(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
-        GrammarViewModel grammar, SelectionViewModel selection, TextWordsViewModel words, AssessViewModel assess,
+        SelectionViewModel selection, TextWordsViewModel words, AssessViewModel assess,
         ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
         IFileDragSource dragSource)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(projectHistory);
         ArgumentNullException.ThrowIfNull(baseline);
-        ArgumentNullException.ThrowIfNull(grammar);
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
@@ -74,7 +73,6 @@ public sealed partial class WorkspaceContext : ObservableObject
         Project = project;
         ProjectHistory = projectHistory;
         Baseline = baseline;
-        Grammar = grammar;
         Selection = selection;
         Words = words;
         Assess = assess;
@@ -90,8 +88,6 @@ public sealed partial class WorkspaceContext : ObservableObject
     public ProjectHistoryViewModel ProjectHistory { get; }
 
     public BaselineViewModel Baseline { get; }
-
-    public GrammarViewModel Grammar { get; }
 
     public SelectionViewModel Selection { get; }
 
@@ -122,6 +118,10 @@ public sealed partial class WorkspaceContext : ObservableObject
 
     /// <summary>The open project's file name, or a prompt before one is chosen.</summary>
     public string ProjectName => ProjectPath is null ? "Choose a project" : Path.GetFileName(ProjectPath);
+
+    /// <summary>The grammar check in one line, as the page that owns the check last published it.</summary>
+    [ObservableProperty]
+    private GrammarSummary? _grammarSummary;
 
     /// <summary>The evidence published for the open project, or <see langword="null"/> before any.</summary>
     [ObservableProperty]

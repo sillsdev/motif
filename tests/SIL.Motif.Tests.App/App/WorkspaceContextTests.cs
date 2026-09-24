@@ -258,7 +258,6 @@ public sealed class WorkspaceContextTests
             new ProjectViewModel(fake, new NoProjectPicker()),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
-            new GrammarViewModel(fake),
             selection,
             words,
             new AssessViewModel(fake, selection),

@@ -27,7 +27,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Below this window width the sidebar shows icons alone, with each label as a tooltip.</summary>
     public const double SidebarCollapseWidth = 1100;
 
-    private readonly ICommandClient _commandClient;
     private Task _reloadAfterRefresh = Task.CompletedTask;
     private bool _isRefreshing;
     private bool _refreshCancelled;
@@ -35,24 +34,22 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
-        GrammarViewModel grammar, SelectionViewModel selection, TextWordsViewModel words,
+        SelectionViewModel selection, TextWordsViewModel words,
         AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(projectHistory);
         ArgumentNullException.ThrowIfNull(baseline);
-        ArgumentNullException.ThrowIfNull(grammar);
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
         ArgumentNullException.ThrowIfNull(folderPicker);
         ArgumentNullException.ThrowIfNull(dragSource);
         ArgumentNullException.ThrowIfNull(commandClient);
-        _commandClient = commandClient;
 
         assess.TextWords = words;
-        Context = new WorkspaceContext(project, projectHistory, baseline, grammar, selection, words, assess,
+        Context = new WorkspaceContext(project, projectHistory, baseline, selection, words, assess,
             new ChangesViewModel(), commandClient, folderPicker, dragSource);
         OpenConfiguration = () => Context.OpenTexts(TextsTab.Texts);
 
@@ -263,25 +260,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
     }
 
-    // Opening shows the check stored for this Baseline, and never starts one of its own.
-    private async Task LoadStoredGrammarAsync(string path, CancellationToken cancellationToken)
-    {
-        await Grammar.SetProjectAsync(null, cancellationToken).ConfigureAwait(true);
-        var stored = await _commandClient.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), cancellationToken)
-            .ConfigureAwait(true);
-        if (!string.Equals(path, Context.ProjectPath, StringComparison.Ordinal)) return;
-        // A stored hit is read, not rerun: pinned by `TheStoredReadStampsTheParserExactlyAsTheCheckDoes`.
-        if (stored.Succeeded && stored.Value?.Check is not null)
-            await Grammar.SetProjectAsync(path, cancellationToken).ConfigureAwait(true);
-    }
-
     public ProjectViewModel Project => Context.Project;
 
     public ProjectHistoryViewModel ProjectHistory => Context.ProjectHistory;
 
     public BaselineViewModel Baseline => Context.Baseline;
-
-    public GrammarViewModel Grammar => Context.Grammar;
 
     public SelectionViewModel Selection => Context.Selection;
 
@@ -320,12 +303,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         RefreshRecentProjects();
         RaiseFreshness();
 
-        var grammar = LoadStoredGrammarAsync(fwDataPath, cancellationToken);
         await ProjectHistory.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Words.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
-        await grammar.ConfigureAwait(true);
 
         Assess.ProjectPath = fwDataPath;
         await Context.PublishProjectOpenedAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
@@ -337,14 +318,12 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private void OnBaselineRefreshed(object? sender, EventArgs e) => _reloadAfterRefresh = ReloadAfterRefreshAsync();
 
-    // The Text list and grammar findings belong to the Baseline just captured, not the one shown before Refresh.
+    // The Text list and every page's own state belong to the Baseline just captured, not the one before Refresh.
     private async Task ReloadAfterRefreshAsync()
     {
         if (Context.ProjectPath is not { } path) return;
-        var grammar = Grammar.SetProjectAsync(path);
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
         await ProjectHistory.LoadAsync().ConfigureAwait(true);
-        await grammar.ConfigureAwait(true);
         await Context.PublishBaselineCapturedAsync().ConfigureAwait(true);
     }
 

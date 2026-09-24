@@ -39,7 +39,6 @@ public sealed partial class App : Application
             new ProjectViewModel(commandClient, pickers),
             new ProjectHistoryViewModel(commandClient),
             new BaselineViewModel(commandClient),
-            new GrammarViewModel(commandClient),
             selection,
             words,
             new AssessViewModel(commandClient, selection),

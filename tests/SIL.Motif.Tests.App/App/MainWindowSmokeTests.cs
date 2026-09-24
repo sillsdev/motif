@@ -53,7 +53,7 @@ public sealed class MainWindowSmokeTests
             Assert.Same(workspace.Baseline, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).Baseline);
             Assert.Same(
                 workspace.ProjectHistory, Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).History);
-            Assert.Same(workspace.Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
+            Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
             Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
             Assert.Same(workspace.Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
             Assert.Same(workspace.Assess, Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>()).Assess);
@@ -167,7 +167,7 @@ public sealed class MainWindowSmokeTests
                 RaiseLeftPointerPress(statisticsCell, window);
                 Assert.Same(workspace.PageModel<TimingPageModel>().Statistics.Rows[0], statistics.SelectedItem);
 
-                workspace.Grammar.Warnings.Load([
+                workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Load([
                     new GrammarWarning(
                         GrammarDiagnosticLevel.Warning, "Entry",
                         [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Text)],
@@ -178,11 +178,11 @@ public sealed class MainWindowSmokeTests
                         Code = "fwdata.dropped-item",
                         Guidance = "Restore the missing item in FieldWorks.",
                     }]);
-                workspace.Grammar.HasBaseline = true;
-                workspace.Grammar.HasChecked = true;
+                workspace.PageModel<WarningsPageModel>().Grammar.HasBaseline = true;
+                workspace.PageModel<WarningsPageModel>().Grammar.HasChecked = true;
                 workspace.CurrentPage = WorkspacePage.Warnings;
-                workspace.Grammar.Warnings.SelectGroupCommand.Execute(
-                    Assert.Single(workspace.Grammar.Warnings.WarningGroups));
+                workspace.PageModel<WarningsPageModel>().Grammar.Warnings.SelectGroupCommand.Execute(
+                    Assert.Single(workspace.PageModel<WarningsPageModel>().Grammar.Warnings.WarningGroups));
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
@@ -628,7 +628,6 @@ public sealed class MainWindowSmokeTests
             new ProjectViewModel(fake, new FakeProjectPicker()),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
-            new GrammarViewModel(fake),
             selection,
             words,
             new AssessViewModel(fake, selection),

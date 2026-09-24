@@ -129,7 +129,7 @@ public sealed class PageScreenshots
         var words = new TextWordsViewModel(fake, selection);
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new Picker()), new ProjectHistoryViewModel(fake), new BaselineViewModel(fake),
-            new GrammarViewModel(fake), selection, words, new AssessViewModel(fake, selection),
+            selection, words, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
             fake);
         var window = new MainWindow();

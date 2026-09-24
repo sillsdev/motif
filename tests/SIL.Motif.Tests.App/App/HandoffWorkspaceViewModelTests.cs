@@ -51,7 +51,6 @@ public sealed class HandoffWorkspaceViewModelTests
             new ProjectViewModel(fake, projectPicker),
             new ProjectHistoryViewModel(fake),
             new BaselineViewModel(fake),
-            new GrammarViewModel(fake),
             selection,
             words,
             new AssessViewModel(fake, selection),
