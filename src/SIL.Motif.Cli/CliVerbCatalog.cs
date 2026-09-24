@@ -158,12 +158,34 @@ public static class CliVerbCatalog
             new[]
             {
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
-                "[--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--time-limit-ms <ms>] [--json]",
+                "[--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] " +
+                "[--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]",
             }),
 
         new CliVerbDescriptor(
             "Assess", "stats", "stats",
             new[] { "stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]" }),
+
+        new CliVerbDescriptor(
+            "Project", "selection", "selection show",
+            new[] { "selection show --project <fwdata> [--json]" }),
+        new CliVerbDescriptor(
+            "Project", "selection", "selection set-default",
+            new[]
+            {
+                "selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] " +
+                "[--add-words <word,word>] [--json]",
+            }),
+        new CliVerbDescriptor(
+            "Project", "overview", "overview",
+            new[] { "overview --project <fwdata> [--json]" }),
+        new CliVerbDescriptor(
+            "Project", "timing", "timing",
+            new[]
+            {
+                "timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] " +
+                "[--by kind|rule] [--rule <name>] [--top N] [--json]",
+            }),
 
         new CliVerbDescriptor(
             "Handoff", "handoff", "handoff",

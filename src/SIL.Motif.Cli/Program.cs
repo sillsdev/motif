@@ -13,6 +13,7 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
@@ -607,6 +608,55 @@ try
             }
             break;
 
+        case "overview":
+            if (!flags.TryGetValue("project", out var overviewProject))
+                return Usage(UsageLineFor("overview"), asJson);
+            result = RenderCommand(OverviewCommand.Overview(new OverviewRequest(overviewProject)));
+            break;
+
+        case "timing":
+            if (!flags.TryGetValue("project", out var timingProject))
+                return Usage(UsageLineFor("timing"), asJson);
+            var timingTop = 10;
+            if (flags.TryGetValue("top", out var timingTopRaw) &&
+                (!int.TryParse(timingTopRaw, out timingTop) || timingTop <= 0))
+                return Usage(UsageLineFor("timing"), asJson);
+            var explicitTimingWords = flags.TryGetValue("word", out var timingWordsRaw)
+                ? timingWordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : null;
+            var timingBy = flags.GetValueOrDefault("by", "kind");
+            if (timingBy is not ("kind" or "rule") ||
+                (flags.ContainsKey("rule") && timingBy != "rule"))
+                return Usage(UsageLineFor("timing"), asJson);
+            result = RenderCommand(TimingCommand.Timing(new TimingRequest(
+                timingProject, flags.GetValueOrDefault("assessment"), flags.GetValueOrDefault("words", "all"),
+                timingBy, flags.GetValueOrDefault("rule"), timingTop, explicitTimingWords)));
+            break;
+
+        case "selection":
+            if (positionals.Count != 1 || !flags.TryGetValue("project", out var selectionProject))
+                return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default"), asJson);
+            switch (positionals[0])
+            {
+                case "show":
+                    result = RenderCommand(SelectionCommands.ReadDefault(
+                        new ReadDefaultSelectionRequest(selectionProject)));
+                    break;
+                case "set-default":
+                    if (!flags.TryGetValue("name", out var selectionName) ||
+                        !TryParseGuidList(flags.GetValueOrDefault("texts"), out var selectionTexts))
+                        return Usage(UsageLineFor("selection set-default"), asJson);
+                    var addedWords = flags.TryGetValue("add-words", out var addedWordsRaw)
+                        ? addedWordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        : Array.Empty<string>();
+                    result = RenderCommand(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+                        selectionProject, selectionName, selectionTexts, addedWords)));
+                    break;
+                default:
+                    return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default"), asJson);
+            }
+            break;
+
         case "assess":
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
             var assessRetryFailed = flags.ContainsKey("retry-failed");
@@ -642,10 +692,20 @@ try
                     return Usage(AssessUsage(), asJson);
                 assessTimeLimitMs = parsedTimeLimitMs;
             }
-            var assessSelection = new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
-                assessWords, assessRetryFailed, assessRetrySlowerThan, assessRetrySource);
+            StepCap? assessStepCap = null;
+            if (flags.TryGetValue("step-cap", out var assessStepCapRaw))
+            {
+                try { assessStepCap = StepCap.Parse(assessStepCapRaw); }
+                catch (FormatException) { return Usage(AssessUsage(), asJson); }
+            }
+            var selectionWasRequested = flags.ContainsKey("all-wordforms") || flags.ContainsKey("texts") ||
+                assessWordsFile is not null || assessRetryFailed || assessRetrySlowerThan is not null;
+            var assessSelection = selectionWasRequested
+                ? new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
+                    assessWords, assessRetryFailed, assessRetrySlowerThan, assessRetrySource)
+                : null;
             result = RenderCommand(AssessCommand.Assess(
-                new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs),
+                new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap),
                 asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
             break;
 
@@ -837,7 +897,7 @@ static string ResolveCommandName(string[] invocation)
     if (invocation.Length == 0) return string.Empty;
 
     var first = invocation[0];
-    if (first is "config" or "baseline" or "jobs")
+    if (first is "config" or "baseline" or "jobs" or "selection")
     {
         var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;
@@ -882,6 +942,7 @@ static void PrintUsage(TextWriter writer, CommandSurfacePolicy policy)
     PrintSection(
         writer, "Comparison", "Comparison (joins two Assessments on the word; stores and prints the difference):", policy);
     PrintSection(writer, "Corpus", "Corpus (text Motif measures against; never part of the FieldWorks project):", policy);
+    PrintSection(writer, "Project", "Project (stored Selection and read-only Assessment summaries):", policy);
     PrintSection(
         writer, "Baseline",
         "Baseline (a saved-file capture of a project FieldWorks may hold open, synchronous, no queue):", policy);

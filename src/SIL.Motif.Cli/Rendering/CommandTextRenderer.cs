@@ -51,6 +51,9 @@ public static class CommandTextRenderer
             BaselineCaptureResponse r => RenderBaselineCaptured(r),
             AssessCommandResponse r => RenderAssessed(r),
             StatsCommandResponse r => RenderStats(r),
+            DefaultSelectionResponse r => RenderDefaultSelection(r),
+            OverviewResponse r => RenderOverview(r),
+            TimingResponse r => RenderTiming(r),
             HandoffCommandResponse r => RenderHandoff(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
@@ -214,6 +217,73 @@ public static class CommandTextRenderer
 
     // Human-mode dispatch always asks for text output, so response.Text is always populated here.
     private static string RenderStats(StatsCommandResponse response) => response.Text ?? string.Empty;
+
+    private static string RenderDefaultSelection(DefaultSelectionResponse response)
+    {
+        if (response.Selection is null) return "No default Selection is saved." + Environment.NewLine;
+        var selection = response.Selection;
+        return $"Default Selection: {selection.Name}{Environment.NewLine}" +
+            $"  Texts:       {selection.TextIds.Count:N0}{Environment.NewLine}" +
+            $"  Added words: {selection.AddedWords.Count:N0}{Environment.NewLine}" +
+            $"  Updated:     {selection.UpdatedUtc}{Environment.NewLine}";
+    }
+
+    private static string RenderOverview(OverviewResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"{response.ProjectName}  opened {response.OpenedUtc.ToLocalTime():t}");
+        text.AppendLine($"  Last FieldWorks save: {response.LastFieldWorksSaveUtc?.ToLocalTime().ToString("t") ?? "unknown"}");
+        text.AppendLine($"Selection default: {response.SelectionTextCount:N0} text + " +
+            $"{response.SelectionAddedWordCount:N0} words = {response.SelectionWordCount:N0} words, " +
+            $"{response.TextOccurrenceCount:N0} occurrences");
+        text.AppendLine($"Project    {response.WordformCount:N0} wordforms  {response.RuleCount:N0} rules  {response.LexemeCount:N0} lexemes");
+        text.AppendLine($"Fingerprints grammar {ShortHash(response.GrammarFingerprint)}  Selection {ShortHash(response.SelectionFingerprint)}");
+        var coverage = Percent(response.TextCoverage.ParsedWords, response.SelectionWordCount);
+        var occurrenceCoverage = Percent(response.TextCoverage.ParsedOccurrences, response.TextCoverage.TotalOccurrences);
+        text.AppendLine($"Coverage   {response.TextCoverage.ParsedWords:N0}/{response.SelectionWordCount:N0} parse ({coverage})  " +
+            $"{response.TextCoverage.NoParseWords:N0} no parse  {response.TextCoverage.UnknownWords:N0} unknown  " +
+            $"{response.TextCoverage.SkippedWords:N0} skipped");
+        text.AppendLine($"           {response.TextCoverage.ParsedOccurrences:N0}/{response.TextCoverage.TotalOccurrences:N0} occurrences covered ({occurrenceCoverage})");
+        text.AppendLine($"Accuracy   {response.Accuracy.ApprovedWordsKept:N0}/{response.Accuracy.ApprovedWordCount:N0} approved kept  " +
+            $"{response.Accuracy.Violations:N0} violations  {response.Accuracy.UnknownWords:N0} unknown");
+        text.AppendLine($"           rejected rebuilt {response.Accuracy.RejectedAnalysesRebuilt:N0}/{response.Accuracy.RejectedWordCount:N0}  " +
+            $"candidates confirmed {response.Accuracy.CandidatesConfirmed:N0}/{response.Accuracy.CandidateWordCount:N0}");
+        var slowest = response.Timing.SlowestWords.FirstOrDefault();
+        text.AppendLine($"Timing     median {FormatMs(response.Timing.MedianMs)}  p95 {FormatMs(response.Timing.Percentile95Ms)}  " +
+            (slowest is null ? "slowest (none)" : $"slowest {slowest.Word} {slowest.ElapsedMs:N0} ms"));
+        text.AppendLine($"           {response.Timing.StepLimitedWordCount:N0} words hit the step limit");
+        text.AppendLine(response.Warnings is null
+            ? "Warnings   not stored"
+            : $"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings");
+        if (response.AssessmentId is not null)
+            text.AppendLine($"Assessed   {response.AssessmentId} at {response.AssessedUtc?.ToLocalTime():t} " +
+                $"in {response.AssessmentElapsedSeconds?.ToString("N1") ?? "unknown"} s");
+        return text.ToString();
+    }
+
+    private static string RenderTiming(TimingResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Timing for {response.WordCount:N0} word(s) from {response.WordSet} ({response.AssessmentId})");
+        text.AppendLine($"  Median: {FormatMs(response.MedianMs)}  p95: {FormatMs(response.Percentile95Ms)}");
+        text.AppendLine($"  By {response.By}:");
+        foreach (var row in response.Aggregates)
+            text.AppendLine($"    {row.Name}: {row.ElapsedMs:N2} ms ({row.ShareOfTotal:P1}), " +
+                $"{row.Attempts:N0} attempts, {row.WordsTouched:N0} words");
+        if (response.CostliestWords.Count > 0)
+        {
+            text.AppendLine("  Costliest words:");
+            foreach (var word in response.CostliestWords)
+                text.AppendLine($"    {word.Word}: {word.ElapsedMs:N2} ms, {word.Attempts:N0} attempts");
+        }
+        return text.ToString();
+    }
+
+    private static string Percent(int value, int total) => total == 0 ? "0%" : (100d * value / total).ToString("N0") + "%";
+
+    private static string FormatMs(double? value) => value is null ? "unknown" : value.Value.ToString("N0") + " ms";
+
+    private static string ShortHash(string? value) => value is null ? "unknown" : value[..Math.Min(8, value.Length)] + "…";
 
     private static string RenderHandoff(HandoffCommandResponse response)
     {

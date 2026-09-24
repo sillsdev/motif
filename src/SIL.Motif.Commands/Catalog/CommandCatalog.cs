@@ -13,8 +13,9 @@ namespace SIL.Motif.Commands.Catalog;
 /// handler in <see cref="ProposalCommands"/>, <see cref="AnalysisDraftChanges"/>,
 /// <see cref="CorpusCommands"/>, <see cref="ConfigCommands"/>,
 /// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, <see cref="BaselineCaptureCommand"/>,
-/// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="HandoffCommand"/>,
-/// and <see cref="JobCommands"/>.
+/// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
+/// <see cref="OverviewCommand"/>, <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>, and
+/// <see cref="JobCommands"/>.
 /// </summary>
 /// <remarks>
 /// Four names each cover two entries because one CLI verb reaches two distinct handlers under
@@ -98,6 +99,14 @@ public static class CommandCatalog
 
         // StatsCommand
         new CommandDescriptor("stats", typeof(StatsRequest), typeof(StatsCommandResponse), CommandSurface.Released),
+
+        // Saved default Selection
+        new CommandDescriptor("selection show", typeof(ReadDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released),
+        new CommandDescriptor("selection set-default", typeof(SetDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released),
+
+        // Overview and Timing
+        new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released),
+        new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released),
 
         // HandoffCommand
         new CommandDescriptor("handoff", typeof(HandoffRequest), typeof(HandoffCommandResponse), CommandSurface.Released),
