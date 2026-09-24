@@ -63,6 +63,7 @@ public static class ProposalDryRunner
         if (plan is null) throw new ArgumentNullException(nameof(plan));
 
         var proposal = plan.Requested;
+        AnalysisOpinionSlotValidator.Validate(proposal);
 
         var cache = scratch.ConsumeForOneRun();
 

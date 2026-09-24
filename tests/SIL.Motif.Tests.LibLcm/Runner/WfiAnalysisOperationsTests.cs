@@ -179,6 +179,22 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
     }
 
     [Fact]
+    public void OppositeHumanOpinionsOnOneAnalysis_AreRefusedBeforeDryRun()
+    {
+        var target = CanonicalId.FromGuid(_analysis.Guid);
+        var approve = new OperationEnvelope(CanonicalId.Mint(),
+            "analysis/wfiAnalysis/addRefEvaluations", target: target,
+            after: JsonSerializer.SerializeToElement(new { member = "defaultUserApproves" }));
+        var reject = new OperationEnvelope(CanonicalId.Mint(),
+            "analysis/wfiAnalysis/addRefEvaluations", target: target,
+            after: JsonSerializer.SerializeToElement(new { member = "defaultUserDisapproves" }));
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" },
+            CanonicalId.Mint(), null, [approve, reject]);
+
+        Assert.Throws<ContractParseException>(() => ScratchDryRun.Of(_cache, proposal));
+    }
+
+    [Fact]
     public void ApproveParserReading_ComposesCandidateThenHumanOpinion()
     {
         var source = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);

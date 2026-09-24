@@ -674,6 +674,8 @@ public static partial class ProposalCommands
                         Fact(("draftName", request.DraftName))));
                 }
 
+                SIL.Motif.Runner.Operations.AnalysisOpinionSlotValidator.Validate(envelope);
+
                 var intentDigest = IntentDigest.Compute(envelope);
 
                 // Whether a committed revision already existed under this id decides "Finalized" vs "Amended".

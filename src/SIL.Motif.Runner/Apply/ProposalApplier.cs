@@ -74,6 +74,7 @@ public static class ProposalApplier
         if (proposal is null) throw new ArgumentNullException(nameof(proposal));
         if (applierIdentity is null) throw new ArgumentNullException(nameof(applierIdentity));
         if (description is null) throw new ArgumentNullException(nameof(description));
+        AnalysisOpinionSlotValidator.Validate(proposal);
 
         if (anchor is null)
         {
