@@ -4,6 +4,9 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Services;
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.App.Views;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -26,7 +29,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Below this window width the sidebar shows icons alone, with each label as a tooltip.</summary>
     public const double SidebarCollapseWidth = 1100;
 
+    private readonly ICommandClient _commandClient;
     private string? _projectPath;
+    // The FieldWorks save the numbers on screen were measured against, once an Assessment has completed.
+    private DateTimeOffset? _assessedSaveUtc;
     private Task _reloadAfterRefresh = Task.CompletedTask;
     private bool _isRefreshing;
     private bool _refreshCancelled;
@@ -35,7 +41,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
         GrammarViewModel grammar, SelectionViewModel selection, TextWordsViewModel words,
-        AssessViewModel assess, StatisticsViewModel statistics, HandoffViewModel handoff)
+        AssessViewModel assess, StatisticsViewModel statistics, HandoffViewModel handoff, ICommandClient commandClient)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(projectHistory);
@@ -46,6 +52,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         ArgumentNullException.ThrowIfNull(assess);
         ArgumentNullException.ThrowIfNull(statistics);
         ArgumentNullException.ThrowIfNull(handoff);
+        ArgumentNullException.ThrowIfNull(commandClient);
+        _commandClient = commandClient;
 
         Project = project;
         ProjectHistory = projectHistory;
@@ -74,13 +82,14 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         ResultsInText.OpenTexts = () => ShowTexts(TextsTab.Texts);
         OpenConfiguration = () => ShowTexts(TextsTab.Texts);
 
-        Pages = Enum.GetValues<WorkspacePage>().Select(page => new PageViewModel(page, WorkspacePages.TitleOf(page))).ToArray();
+        Pages = PageRegistry.Entries.Select(entry => new PageViewModel(entry.Page, entry.Title, entry.Icon)).ToArray();
         ShowPageCommand = new RelayCommand<WorkspacePage>(page => CurrentPage = page);
 
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(recent =>
             recent is null ? Task.CompletedTask : SetProjectAsync(recent.FullFwDataPath));
         ConfigureCommand = new RelayCommand(() => OpenConfiguration?.Invoke());
+        CheckGrammarCommand = new AsyncRelayCommand(CheckGrammarAsync, () => HasProject && !Grammar.IsLoading);
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         CancelRefreshCommand = new RelayCommand(CancelRefresh, () => _isRefreshing);
@@ -115,7 +124,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>The sidebar entry for <see cref="CurrentPage"/>; setting it opens that page.</summary>
     public PageViewModel SelectedPage
     {
-        get => Pages[(int)CurrentPage];
+        get => PageOf(CurrentPage);
         set
         {
             if (value is not null) CurrentPage = value.Page;
@@ -142,6 +151,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     /// <summary>The negation of <see cref="IsSidebarCollapsed"/>, so a view never composes <c>!</c> itself.</summary>
     public bool IsSidebarExpanded => !IsSidebarCollapsed;
+
+    /// <summary>The sidebar entry for <paramref name="page"/>.</summary>
+    public PageViewModel PageOf(WorkspacePage page) => Pages.First(entry => entry.Page == page);
 
     /// <summary>Collapses or expands the sidebar for a window <paramref name="width"/> pixels wide.</summary>
     public void UpdateWindowWidth(double width) => IsSidebarCollapsed = width < SidebarCollapseWidth;
@@ -185,7 +197,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public ProjectFreshness Freshness =>
         !HasProject ? ProjectFreshness.NoProject
         : _isRefreshing ? ProjectFreshness.Refreshing
-        : Baseline.IsSavedSince ? ProjectFreshness.SavedSince
+        : IsSavedSinceTheNumbers ? ProjectFreshness.SavedSince
         : !Baseline.HasBaseline ? ProjectFreshness.NoBaseline
         : _refreshed ? ProjectFreshness.Refreshed
         : ProjectFreshness.Current;
@@ -208,7 +220,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public string FreshnessDetail => Freshness switch
     {
         ProjectFreshness.NoBaseline => "Refresh to capture one from FieldWorks' last save.",
-        ProjectFreshness.Current or ProjectFreshness.SavedSince => BaselineAndSaveText(),
+        ProjectFreshness.Current => BaselineAndSaveText(),
+        ProjectFreshness.SavedSince => SavedSinceText(),
         ProjectFreshness.Refreshing => Assess.IsActive
             ? Assess.Progress?.Message is { Length: > 0 } message ? message : "Assessing the Selection..."
             : "Capturing a new Baseline...",
@@ -250,6 +263,24 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         RaiseFreshness();
     }
 
+    // What the numbers on screen were measured against: the last completed Assessment's save, else the Baseline's.
+    private DateTimeOffset? NumbersSavedUtc => _assessedSaveUtc ?? Baseline.SourceLastWriteUtc;
+
+    // The latest save known: the project file as last read, or a Baseline captured from a later save.
+    private DateTimeOffset? LatestSaveUtc =>
+        Baseline.ProjectLastWriteUtc is { } written && (Baseline.SourceLastWriteUtc is not { } source || written > source)
+            ? written
+            : Baseline.SourceLastWriteUtc;
+
+    private bool IsSavedSinceTheNumbers => NumbersSavedUtc is { } numbers && LatestSaveUtc is { } latest && latest > numbers;
+
+    private string SavedSinceText()
+    {
+        var stem = Path.GetFileNameWithoutExtension(_projectPath);
+        return $"{stem} saved {When(LatestSaveUtc!.Value)}; the numbers still describe {When(NumbersSavedUtc!.Value)} " +
+            "until you refresh.";
+    }
+
     private string BaselineAndSaveText()
     {
         var stem = Path.GetFileNameWithoutExtension(_projectPath);
@@ -264,6 +295,27 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         return local.Date == DateTime.Today
             ? local.ToString("t", CultureInfo.CurrentCulture) + " today"
             : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
+    }
+
+    /// <summary>Whether the open project's grammar has no check to show, so the Warnings page offers one.</summary>
+    public bool IsGrammarNotChecked => HasProject && !Grammar.HasChecked && !Grammar.IsLoading;
+
+    /// <summary>Checks the open project's grammar: started only by a person, since it can take a minute.</summary>
+    public IAsyncRelayCommand CheckGrammarCommand { get; }
+
+    private Task CheckGrammarAsync() => _projectPath is { } path ? Grammar.SetProjectAsync(path) : Task.CompletedTask;
+
+    // Opening shows the check stored for this Baseline, and never starts one of its own.
+    private async Task LoadStoredGrammarAsync(string path, CancellationToken cancellationToken)
+    {
+        await Grammar.SetProjectAsync(null, cancellationToken).ConfigureAwait(true);
+        var stored = await _commandClient.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), cancellationToken)
+            .ConfigureAwait(true);
+        if (!string.Equals(path, _projectPath, StringComparison.Ordinal)) return;
+        // A stored check is answered from the store, so attaching the project here reads it rather than rerunning.
+        if (stored.Succeeded && stored.Value?.Check is not null)
+            await Grammar.SetProjectAsync(path, cancellationToken).ConfigureAwait(true);
+        OnPropertyChanged(nameof(IsGrammarNotChecked));
     }
 
     /// <summary>What the AI Handoff page's action reads: the first write, or a rewrite.</summary>
@@ -375,8 +427,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         RefreshRecentProjects();
         RaiseFreshness();
 
-        // The grammar check is the slowest read and needs nothing the others produce, so it starts first.
-        var grammar = Grammar.SetProjectAsync(fwDataPath, cancellationToken);
+        var grammar = LoadStoredGrammarAsync(fwDataPath, cancellationToken);
         await ProjectHistory.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
         await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
@@ -398,7 +449,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private async Task ReloadAfterRefreshAsync()
     {
         if (_projectPath is not { } path) return;
-        var grammar = Grammar.CheckCommand.ExecuteAsync(null);
+        var grammar = Grammar.SetProjectAsync(path);
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
         await ProjectHistory.LoadAsync().ConfigureAwait(true);
         await grammar.ConfigureAwait(true);
@@ -470,15 +521,20 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         OnPropertyChanged(nameof(HandoffActionText));
         if (ReferenceEquals(sender, Baseline)) RaiseFreshness();
+        if (ReferenceEquals(sender, Grammar))
+        {
+            OnPropertyChanged(nameof(IsGrammarNotChecked));
+            CheckGrammarCommand.NotifyCanExecuteChanged();
+        }
         RefreshPages();
     }
 
     private void RefreshPages()
     {
-        Pages[(int)WorkspacePage.Warnings].Badge = Grammar.ShowFindings
+        PageOf(WorkspacePage.Warnings).Badge = Grammar.ShowFindings
             ? Grammar.Warnings.TotalCount.ToString(CultureInfo.CurrentCulture)
             : string.Empty;
-        Pages[(int)WorkspacePage.Review].Badge = Changes.Items.Count > 0
+        PageOf(WorkspacePage.Review).Badge = Changes.Items.Count > 0
             ? Changes.Items.Count.ToString(CultureInfo.CurrentCulture)
             : string.Empty;
 
@@ -504,6 +560,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Completed)
         {
             Baseline.HasAssessment = true;
+            _assessedSaveUtc = Assess.Result?.Baseline.SourceLastWriteUtc;
+            RaiseFreshness();
             Statistics.Reset();
             Statistics.SummaryMarkdown = Assess.Result?.SummaryMarkdown;
             Statistics.AssessmentId = Assess.Result?.Measurements
@@ -548,6 +606,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         RerunOffered = false;
         HasEverAssessed = false;
         _refreshed = false;
+        _assessedSaveUtc = null;
 
         Assess.Reset();
         Assess.Trace.Reset();

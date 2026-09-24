@@ -50,6 +50,10 @@ public sealed class DesktopServiceBoundaryTests
     }
 
     [Fact]
+    public void TheFolderPickerNamesTheAiHandoff() =>
+        Assert.Contains("AI Handoff", AvaloniaStoragePickers.FolderPickerTitle, StringComparison.Ordinal);
+
+    [Fact]
     public async Task CaptureBaselineAsyncCompletesWithTheConfiguredResponse()
     {
         var fake = new FakeCommandClient();

@@ -44,7 +44,8 @@ public sealed partial class App : Application
             words,
             new AssessViewModel(commandClient, selection),
             new StatisticsViewModel(commandClient),
-            new HandoffViewModel(commandClient, selection, pickers, pickers));
+            new HandoffViewModel(commandClient, selection, pickers, pickers),
+            commandClient);
     }
 
     // Fire-and-forget by design: nothing else in startup waits for the Known-project list to resolve.

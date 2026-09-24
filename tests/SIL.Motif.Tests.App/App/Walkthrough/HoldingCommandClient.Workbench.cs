@@ -13,6 +13,10 @@ internal sealed partial class HoldingCommandClient
         GrammarCheckRequest request, CancellationToken cancellationToken) =>
         _inner.CheckGrammarAsync(request, cancellationToken);
 
+    public Task<CommandOutcome<StoredGrammarCheckResponse>> ReadStoredGrammarCheckAsync(
+        GrammarCheckRequest request, CancellationToken cancellationToken) =>
+        _inner.ReadStoredGrammarCheckAsync(request, cancellationToken);
+
     public Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
         TextWordsRequest request, CancellationToken cancellationToken) =>
         _inner.ListTextWordsAsync(request, cancellationToken);

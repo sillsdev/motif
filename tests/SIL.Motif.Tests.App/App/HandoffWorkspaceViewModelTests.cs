@@ -56,7 +56,8 @@ public sealed class HandoffWorkspaceViewModelTests
             words,
             new AssessViewModel(fake, selection),
             new StatisticsViewModel(fake),
-            new HandoffViewModel(fake, selection, folderPicker, dragSource));
+            new HandoffViewModel(fake, selection, folderPicker, dragSource),
+            fake);
         return (fake, projectPicker, folderPicker, dragSource, workspace);
     }
 

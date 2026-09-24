@@ -595,7 +595,8 @@ public sealed class MainWindowSmokeTests
             words,
             new AssessViewModel(fake, selection),
             new StatisticsViewModel(fake),
-            new HandoffViewModel(fake, selection, new FakeFolderPicker(), dragSource));
+            new HandoffViewModel(fake, selection, new FakeFolderPicker(), dragSource),
+            fake);
 
         var window = new MainWindow();
         window.Compose(workspace);

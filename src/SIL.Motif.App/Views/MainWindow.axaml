@@ -269,7 +269,7 @@
                 <Grid ColumnDefinitions="Auto,*,Auto">
                   <Viewbox Classes="pageIcon" VerticalAlignment="Center">
                     <Canvas Width="24" Height="24">
-                      <Path Classes="pageIcon" Data="{Binding Page, Converter={x:Static views:PageIcons.Geometry}}"
+                      <Path Classes="pageIcon" Data="{Binding Icon, Converter={x:Static views:PageIcons.Geometry}}"
                             Stroke="{Binding $parent[ListBoxItem].Foreground}" />
                     </Canvas>
                   </Viewbox>

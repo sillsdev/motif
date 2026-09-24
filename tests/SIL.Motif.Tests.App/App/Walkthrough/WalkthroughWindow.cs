@@ -37,7 +37,8 @@ public sealed class WalkthroughWindow : IDisposable
             words,
             new AssessViewModel(commandClient, selection),
             new StatisticsViewModel(commandClient),
-            new HandoffViewModel(commandClient, selection, _folderPicker, _dragSource));
+            new HandoffViewModel(commandClient, selection, _folderPicker, _dragSource),
+            commandClient);
 
         Window = new MainWindow();
         Window.Compose(Workspace);

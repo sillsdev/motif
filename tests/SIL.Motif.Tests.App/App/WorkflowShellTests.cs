@@ -81,6 +81,33 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
+    public void EveryPageHasExactlyOneRegistryEntryAndTheSidebarFollowsItsOrder()
+    {
+        var registered = PageRegistry.Entries.Select(entry => entry.Page).ToList();
+        Assert.Equal(Enum.GetValues<WorkspacePage>().Order(), registered.Order());
+        Assert.Equal(registered.Count, registered.Distinct().Count());
+
+        var workspace = NewWorkspace();
+        Assert.Equal(registered, workspace.Pages.Select(page => page.Page));
+        Assert.Equal(PageRegistry.Entries.Select(entry => entry.Title), workspace.Pages.Select(page => page.Title));
+    }
+
+    [Fact]
+    public void EveryRegisteredPageCarriesAnIconThatDraws()
+    {
+        _avalonia.Invoke(() =>
+        {
+            foreach (var entry in PageRegistry.Entries)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(entry.Icon), $"{entry.Page} has no icon.");
+                var bounds = PageIcons.ToGeometry(entry.Icon).Bounds;
+                Assert.True(bounds.Width > 0 && bounds.Height > 0, $"{entry.Page}'s icon draws nothing.");
+                Assert.True(bounds.Right <= 24 && bounds.Bottom <= 24, $"{entry.Page}'s icon leaves the 24-unit grid.");
+            }
+        });
+    }
+
+    [Fact]
     public void EveryPageIsBuiltFromTheRegistryAndTheWindowHostsEachOnce()
     {
         _avalonia.Invoke(() =>
@@ -92,7 +119,7 @@ public sealed class WorkflowShellTests
                 Assert.Equal(PageHosts, host.Children.Select(child => child.Name));
                 foreach (var page in Enum.GetValues<WorkspacePage>())
                 {
-                    var built = PageRegistry.Create(page, workspace);
+                    var built = PageRegistry.For(page).Create(workspace);
                     Assert.IsType(built.GetType(), host.Children[(int)page]);
                 }
             }
@@ -455,6 +482,24 @@ public sealed class WorkflowShellTests
         return Directory.EnumerateFiles(views, "*.axaml", SearchOption.AllDirectories).Select(File.ReadAllText);
     }
 
+    private static HandoffWorkspaceViewModel NewWorkspace()
+    {
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake);
+        var words = new TextWordsViewModel(fake, selection);
+        return new HandoffWorkspaceViewModel(
+            new ProjectViewModel(fake, new NoProjectPicker()),
+            new ProjectHistoryViewModel(fake),
+            new BaselineViewModel(fake),
+            new GrammarViewModel(fake),
+            selection,
+            words,
+            new AssessViewModel(fake, selection),
+            new StatisticsViewModel(fake),
+            new HandoffViewModel(fake, selection, new NoFolderPicker(), DragSource),
+            fake);
+    }
+
     private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow()
     {
         var fake = new FakeCommandClient();
@@ -469,7 +514,8 @@ public sealed class WorkflowShellTests
             words,
             new AssessViewModel(fake, selection),
             new StatisticsViewModel(fake),
-            new HandoffViewModel(fake, selection, new NoFolderPicker(), DragSource));
+            new HandoffViewModel(fake, selection, new NoFolderPicker(), DragSource),
+            fake);
 
         var window = new MainWindow();
         window.Compose(workspace);

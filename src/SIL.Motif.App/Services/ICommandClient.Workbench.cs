@@ -13,6 +13,10 @@ public partial interface ICommandClient
     Task<CommandOutcome<GrammarCheckResponse>> CheckGrammarAsync(
         GrammarCheckRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Reads the grammar check last stored for the current Baseline; never runs the parser.</summary>
+    Task<CommandOutcome<StoredGrammarCheckResponse>> ReadStoredGrammarCheckAsync(
+        GrammarCheckRequest request, CancellationToken cancellationToken);
+
     /// <summary>Reads the chosen Texts' words, where each occurs, and the analyses the project holds for them.</summary>
     Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
         TextWordsRequest request, CancellationToken cancellationToken);

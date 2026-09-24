@@ -1,53 +1,39 @@
-using Avalonia;
+using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
-using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
 /// <summary>
-/// The sidebar's line icons, one per <see cref="WorkspacePage"/>, drawn on a 24-unit grid as outlines to be
-/// stroked in the current text colour so they read the same in light and dark themes.
+/// Builds the sidebar's line icons as path data on a 24-unit grid, to be stroked in the current text colour so
+/// they read the same in light and dark themes. Each page's icon is written in its <see cref="PageRegistry"/>
+/// entry with these helpers.
 /// </summary>
 public static class PageIcons
 {
-    /// <summary>Converts a <see cref="WorkspacePage"/> to its icon's geometry, for a <c>Path</c>'s data.</summary>
-    public static readonly IValueConverter Geometry =
-        new FuncValueConverter<WorkspacePage, Geometry>(page => For(page));
+    /// <summary>Converts an icon's path data to the geometry a <c>Path</c> strokes.</summary>
+    public static readonly IValueConverter Geometry = new FuncValueConverter<string?, Geometry?>(
+        data => string.IsNullOrWhiteSpace(data) ? null : ToGeometry(data));
 
-    /// <summary>The AI Handoff's sparkles, also used beside prompts that start one.</summary>
-    public static Geometry Sparkles => For(WorkspacePage.AiHandoff);
+    /// <summary>The geometry <paramref name="data"/> draws.</summary>
+    public static Geometry ToGeometry(string data) => StreamGeometry.Parse(data);
 
-    /// <summary>The outline for <paramref name="page"/>.</summary>
-    public static Geometry For(WorkspacePage page) => page switch
+    /// <summary>Joins several outlines into one icon.</summary>
+    public static string Of(params string[] parts) => string.Join(" ", parts);
+
+    /// <summary>A rectangle with corners rounded by 1.5 units, as the design's icons draw them.</summary>
+    public static string Rect(double x, double y, double width, double height)
     {
-        WorkspacePage.Overview => Group(
-            Rect(3.5, 3.5, 7, 9), Rect(13.5, 3.5, 7, 5), Rect(13.5, 11.5, 7, 9), Rect(3.5, 15.5, 7, 5)),
-        WorkspacePage.Texts => Group(
-            Parse("M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"), Parse("M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z")),
-        WorkspacePage.TryAWord => Group(
-            Circle(10.5, 10.5, 6.5), Parse("M15.5 15.5L21 21"), Parse("M7.5 10.5h6M10.5 8v5")),
-        WorkspacePage.Timing => Group(Circle(12, 13, 7), Parse("M12 13V9M10 3h4M12 3v3M18 6l1.5-1.5")),
-        WorkspacePage.Warnings => Group(Parse("M12 4l9 16H3z"), Parse("M12 10v4M12 17v.5")),
-        WorkspacePage.Review => Group(Parse("M7 4v16M17 4v16"), Parse("M4 8l3-3 3 3M14 16l3 3 3-3")),
-        WorkspacePage.AiHandoff => Group(
-            Parse("M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7z"),
-            Parse("M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z")),
-        _ => throw new ArgumentOutOfRangeException(nameof(page), page, null),
-    };
-
-    private static GeometryGroup Group(params Geometry[] parts)
-    {
-        var group = new GeometryGroup { FillRule = FillRule.NonZero };
-        foreach (var part in parts) group.Children.Add(part);
-        return group;
+        const double r = 1.5;
+        var across = width - 2 * r;
+        var down = height - 2 * r;
+        return Format($"M{x + r} {y}h{across}a{r} {r} 0 0 1 {r} {r}v{down}a{r} {r} 0 0 1 {-r} {r}h{-across}") +
+            Format($"a{r} {r} 0 0 1 {-r} {-r}v{-down}a{r} {r} 0 0 1 {r} {-r}z");
     }
 
-    private static RectangleGeometry Rect(double x, double y, double width, double height) =>
-        new(new Rect(x, y, width, height), 1.5, 1.5);
+    /// <summary>A circle centred on (<paramref name="x"/>, <paramref name="y"/>).</summary>
+    public static string Circle(double x, double y, double radius) =>
+        Format($"M{x - radius} {y}a{radius} {radius} 0 1 0 {2 * radius} 0a{radius} {radius} 0 1 0 {-2 * radius} 0z");
 
-    private static EllipseGeometry Circle(double x, double y, double radius) =>
-        new(new Rect(x - radius, y - radius, radius * 2, radius * 2));
-
-    private static Geometry Parse(string data) => StreamGeometry.Parse(data);
+    private static string Format(FormattableString path) => path.ToString(CultureInfo.InvariantCulture);
 }

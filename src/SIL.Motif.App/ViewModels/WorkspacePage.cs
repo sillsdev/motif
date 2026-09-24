@@ -2,7 +2,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SIL.Motif.App.ViewModels;
 
-/// <summary>The window's pages, in the order the sidebar lists them. Any page can be opened at any time.</summary>
+/// <summary>
+/// Names the window's pages. Their order, labels, icons and views are registered together in the page registry;
+/// any page can be opened at any time.
+/// </summary>
 public enum WorkspacePage
 {
     /// <summary>Where the project stands: its Baseline, its latest Assessment, its grammar and its history.</summary>
@@ -27,23 +30,6 @@ public enum WorkspacePage
     AiHandoff,
 }
 
-/// <summary>The sidebar label of each <see cref="WorkspacePage"/>.</summary>
-public static class WorkspacePages
-{
-    /// <summary>What the sidebar calls <paramref name="page"/>.</summary>
-    public static string TitleOf(WorkspacePage page) => page switch
-    {
-        WorkspacePage.Overview => "Overview",
-        WorkspacePage.Texts => "Texts",
-        WorkspacePage.TryAWord => "Try a Word",
-        WorkspacePage.Timing => "Timing",
-        WorkspacePage.Warnings => "Warnings",
-        WorkspacePage.Review => "Review changes",
-        WorkspacePage.AiHandoff => "AI Handoff",
-        _ => throw new ArgumentOutOfRangeException(nameof(page), page, null),
-    };
-}
-
 /// <summary>The views of the words that share the Texts page, each one a tab.</summary>
 public enum TextsTab
 {
@@ -66,16 +52,21 @@ public enum TextsTab
 /// <summary>One sidebar entry: a page's label, an optional count, and whether it is the page on screen.</summary>
 public sealed partial class PageViewModel : ObservableObject
 {
-    public PageViewModel(WorkspacePage page, string title)
+    public PageViewModel(WorkspacePage page, string title, string icon)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(icon);
         Page = page;
         Title = title;
+        Icon = icon;
     }
 
     public WorkspacePage Page { get; }
 
     public string Title { get; }
+
+    /// <summary>The sidebar icon as path data on a 24-unit grid.</summary>
+    public string Icon { get; }
 
     /// <summary>The accessible name of the sidebar entry that opens this page.</summary>
     public string AutomationName => $"{Title} page";

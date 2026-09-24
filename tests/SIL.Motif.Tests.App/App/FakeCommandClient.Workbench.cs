@@ -13,6 +13,8 @@ public sealed partial class FakeCommandClient
     private Func<GrammarCheckRequest, CancellationToken, Task<CommandOutcome<GrammarCheckResponse>>>
         _checkGrammar = (_, _) => Completed(new GrammarCheckResponse([], HasBaseline: true));
 
+    private GrammarCheckResponse? _storedGrammarCheck;
+
     private Func<TextWordsRequest, CancellationToken, Task<CommandOutcome<TextWordsResponse>>>
         _listTextWords = (_, _) => Completed(new TextWordsResponse([], [], HasBaseline: true));
 
@@ -22,6 +24,7 @@ public sealed partial class FakeCommandClient
 
     public List<ProjectHistoryRequest> ProjectHistoryRequests { get; } = [];
     public List<GrammarCheckRequest> CheckGrammarRequests { get; } = [];
+    public List<GrammarCheckRequest> StoredGrammarCheckRequests { get; } = [];
     public List<TextWordsRequest> ListTextWordsRequests { get; } = [];
     public List<WordTraceRequest> TraceWordRequests { get; } = [];
 
@@ -40,6 +43,9 @@ public sealed partial class FakeCommandClient
 
     public void CheckGrammarRefusesWith(Refusal refusal) =>
         OnCheckGrammar((_, _) => Refused<GrammarCheckResponse>(refusal));
+
+    /// <summary>What the stored grammar check read answers; nothing stored until a test says otherwise.</summary>
+    public void StoredGrammarCheckIs(GrammarCheckResponse? response) => _storedGrammarCheck = response;
 
     public void OnListTextWords(
         Func<TextWordsRequest, CancellationToken, Task<CommandOutcome<TextWordsResponse>>> behavior) =>
@@ -66,6 +72,13 @@ public sealed partial class FakeCommandClient
     {
         CheckGrammarRequests.Add(request);
         return _checkGrammar(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<StoredGrammarCheckResponse>> ReadStoredGrammarCheckAsync(
+        GrammarCheckRequest request, CancellationToken cancellationToken)
+    {
+        StoredGrammarCheckRequests.Add(request);
+        return Completed(new StoredGrammarCheckResponse(_storedGrammarCheck));
     }
 
     public Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(

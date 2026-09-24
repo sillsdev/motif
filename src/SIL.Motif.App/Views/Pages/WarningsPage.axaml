@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.WarningsPage"
+             x:DataType="vm:HandoffWorkspaceViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <!-- Opening a project never checks the grammar; until someone asks, the page says so and offers the check. -->
+    <Border Classes="card" Margin="20,16,20,0" IsVisible="{Binding IsGrammarNotChecked}"
+            AutomationProperties.Name="Grammar not checked yet">
+      <DockPanel LastChildFill="True">
+        <Button DockPanel.Dock="Right" Content="Check the grammar" VerticalAlignment="Center" Margin="12,0,0,0"
+                Classes="Primary" Theme="{DynamicResource SolidButton}"
+                Command="{Binding CheckGrammarCommand}" AutomationProperties.Name="Check the grammar" />
+        <StackPanel Spacing="2">
+          <views:CopyableTextBlock Text="Not checked yet" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Checking reads the whole grammar, so it can take a minute on a large project. It runs only when you ask." />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+    <ContentControl Grid.Row="1" x:Name="GrammarHost" />
+  </Grid>
+</UserControl>

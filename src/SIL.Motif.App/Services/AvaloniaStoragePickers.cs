@@ -35,12 +35,15 @@ public sealed class AvaloniaStoragePickers : IProjectPicker, IHandoffFolderPicke
         return files.Count > 0 ? files[0].TryGetLocalPath() : null;
     }
 
+    /// <summary>The title of the dialog that chooses where the AI Handoff files are written.</summary>
+    public const string FolderPickerTitle = "Choose where to write the AI Handoff";
+
     public async Task<string?> PickFolderAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var folders = await _topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Choose a Handoff destination",
+            Title = FolderPickerTitle,
             AllowMultiple = false,
         });
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;

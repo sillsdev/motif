@@ -39,7 +39,8 @@ public sealed class WorkspacePageTests
             words,
             new AssessViewModel(fake, selection),
             new StatisticsViewModel(fake),
-            new HandoffViewModel(fake, selection, new FakeFolderPicker(), new FakeDragSource()));
+            new HandoffViewModel(fake, selection, new FakeFolderPicker(), new FakeDragSource()),
+            fake);
         return (fake, projectPicker, workspace);
     }
 
@@ -56,8 +57,8 @@ public sealed class WorkspacePageTests
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
     }
 
-    private static AssessCommandResponse NewAssessResponse() => new(
-        new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false),
+    private static AssessCommandResponse NewAssessResponse(DateTimeOffset? saved = null) => new(
+        new BaselineCaptureResponse(Token, ProjectPath, saved ?? Saved, false, false),
         new SelectionProjection([], []), [], "summary")
     {
         InvocationId = "invocation/one",
@@ -183,15 +184,17 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task TheWarningsBadgeCountsTheGrammarsFindings()
+    public async Task TheWarningsBadgeCountsTheStoredGrammarCheck()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
-        fake.CheckGrammarCompletesWith(new GrammarCheckResponse(
+        var stored = new GrammarCheckResponse(
             [
                 new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped"),
                 new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("again", "text")], "warning: again"),
             ],
-            HasBaseline: true));
+            HasBaseline: true);
+        fake.StoredGrammarCheckIs(stored);
+        fake.CheckGrammarCompletesWith(stored);
 
         await ChooseProjectAsync(fake, projectPicker, workspace);
 
@@ -379,7 +382,10 @@ public sealed class WorkspacePageTests
         workspace.ShowPageCommand.Execute(WorkspacePage.Overview);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved.AddHours(3), false, false));
-        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
+        fake.AssessCompletesWith(NewAssessResponse(Saved.AddHours(3)) with
+        {
+            Words = [Word("kitabu", "analysed", ProjectStanding.Approved)],
+        });
         await workspace.RefreshCommand.ExecuteAsync(null);
 
         Assert.Single(fake.CaptureBaselineRequests);
@@ -433,16 +439,105 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task RefreshingTheBaselineChecksGrammarAgain()
+    public async Task RefreshingTheBaselineChecksTheGrammarBecauseAPersonAskedForIt()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
-        Assert.Single(fake.CheckGrammarRequests);
+        Assert.Empty(fake.CheckGrammarRequests);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false));
         await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
-        Assert.Equal(2, fake.CheckGrammarRequests.Count);
+        Assert.Single(fake.CheckGrammarRequests);
+        Assert.True(workspace.Grammar.HasChecked);
+    }
+
+    [Fact]
+    public async Task OpeningAProjectWithNothingStoredNeverChecksTheGrammarAndOffersTheCheck()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+
+        Assert.Single(fake.StoredGrammarCheckRequests);
+        Assert.Empty(fake.CheckGrammarRequests);
+        Assert.True(workspace.IsGrammarNotChecked);
+        Assert.Equal("Not checked yet", workspace.Grammar.SummaryText);
+        Assert.False(workspace.Pages[(int)WorkspacePage.Warnings].HasBadge);
+
+        await workspace.CheckGrammarCommand.ExecuteAsync(null);
+
+        Assert.Equal(ProjectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
+        Assert.False(workspace.IsGrammarNotChecked);
+        Assert.True(workspace.Grammar.CheckCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task OpeningAProjectWithAStoredCheckShowsItAndLeavesReloadWorking()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        var stored = new GrammarCheckResponse(
+            [new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped")],
+            HasBaseline: true);
+        fake.StoredGrammarCheckIs(stored);
+        fake.CheckGrammarCompletesWith(stored);
+
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+
+        Assert.False(workspace.IsGrammarNotChecked);
+        Assert.Equal("1 finding", workspace.Grammar.SummaryText);
+        Assert.True(workspace.Grammar.CheckCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ABaselineRefreshThatLeavesAnOlderAssessmentShowingIsNotCurrent()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+        Assert.Equal(ProjectFreshness.Current, workspace.Freshness);
+
+        var later = Saved.AddHours(3);
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, later, false, false));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
+        Assert.Contains("the numbers still describe", workspace.FreshnessDetail);
+    }
+
+    [Fact]
+    public async Task ARefreshWhoseAssessmentIsCancelledStillSaysTheNumbersAreOlder()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved.AddHours(3), false, false));
+        fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
+        var refreshing = workspace.RefreshCommand.ExecuteAsync(null);
+        workspace.CancelRefreshCommand.Execute(null);
+        await refreshing;
+
+        Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
+    }
+
+    [Fact]
+    public async Task RecapturingTheSameSaveUnderAnAssessmentStaysCurrent()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal(ProjectFreshness.Current, workspace.Freshness);
     }
 
     [Fact]

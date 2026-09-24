@@ -45,7 +45,7 @@ public sealed partial class MainWindow : Window
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");
         foreach (var entry in workspace.Pages)
         {
-            var view = PageRegistry.Create(entry.Page, workspace);
+            var view = PageRegistry.For(entry.Page).Create(workspace);
             view.Name = $"{entry.Page}Page";
             view.Bind(IsVisibleProperty, new Binding(nameof(PageViewModel.IsCurrent)) { Source = entry });
             host.Children.Add(view);

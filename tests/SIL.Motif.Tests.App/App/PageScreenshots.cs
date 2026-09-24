@@ -111,6 +111,7 @@ public sealed class PageScreenshots
             new ProjectHistoryEntry(DateTimeOffset.Now.AddMinutes(-20), ProjectHistoryKind.Assessment, "142 words · 118 parsed · 9 differ from stored"),
             new ProjectHistoryEntry(DateTimeOffset.Now.AddHours(-2), ProjectHistoryKind.Baseline, "Baseline captured · 1,318 entries · 3 texts"),
         ]));
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
         fake.CheckGrammarCompletesWith(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
         fake.ListTextsCompletesWith(new TextInventoryResponse(
             [new TextChoiceSummary(Story, "Hadithi ya sungura"), new TextChoiceSummary(Letter, "Barua kwa mwalimu")], HasBaseline: true));
@@ -129,7 +130,8 @@ public sealed class PageScreenshots
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new Picker()), new ProjectHistoryViewModel(fake), new BaselineViewModel(fake),
             new GrammarViewModel(fake), selection, words, new AssessViewModel(fake, selection),
-            new StatisticsViewModel(fake), new HandoffViewModel(fake, selection, new Folder(), new Drag()));
+            new StatisticsViewModel(fake), new HandoffViewModel(fake, selection, new Folder(), new Drag()),
+            fake);
         var window = new MainWindow();
         window.Compose(workspace);
         window.Show();

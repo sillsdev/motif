@@ -14,6 +14,10 @@ public sealed partial class CommandClient
         GrammarCheckRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => GrammarCheckQuery.Query(request, cancellationToken));
 
+    public Task<CommandOutcome<StoredGrammarCheckResponse>> ReadStoredGrammarCheckAsync(
+        GrammarCheckRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => StoredGrammarCheckQuery.Query(request), cancellationToken);
+
     public Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
         TextWordsRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => TextWordsQuery.Query(request));
