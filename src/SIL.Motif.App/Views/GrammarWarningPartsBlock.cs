@@ -44,11 +44,11 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
 
     private static Control ControlFor(GrammarWarningPart part)
     {
-        if (part.Role == "object" && part.FieldWorksLink is { } link)
+        if (part.Role == GrammarWarningPartRole.Object && part.FieldWorksLink is { } link)
             return LinkFor(part, link);
 
-        var text = part.Role == "missing" ? $"missing object {part.Text}" : part.Text;
-        if (part.LinkStatus == "unavailable")
+        var text = part.Role == GrammarWarningPartRole.Missing ? $"missing object {part.Text}" : part.Text;
+        if (part.LinkStatus == FieldWorksLinkStatus.Unavailable)
             text += $" (FieldWorks link unavailable: {UnavailableReason(part.LinkReason)})";
         var block = new CopyableTextBlock
         {
@@ -58,15 +58,15 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         };
         switch (part.Role)
         {
-            case "object":
+            case GrammarWarningPartRole.Object:
                 block.Foreground = ObjectBrush;
                 block.FontWeight = FontWeight.SemiBold;
                 break;
-            case "missing":
+            case GrammarWarningPartRole.Missing:
                 block.Foreground = MissingBrush;
                 block.FontWeight = FontWeight.SemiBold;
                 break;
-            case "value":
+            case GrammarWarningPartRole.Value:
                 block.Foreground = ValueBrush;
                 block.FontFamily = new FontFamily("Cascadia Mono, Consolas, monospace");
                 break;
@@ -74,13 +74,13 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         return block;
     }
 
-    private static string UnavailableReason(string? reason) => reason switch
+    private static string UnavailableReason(FieldWorksLinkReason? reason) => reason switch
     {
-        "missing_project" => "no FieldWorks project name was supplied",
-        "guid_not_recorded" => "PanGloss did not record a GUID",
-        "invalid_guid" => "the recorded GUID is invalid",
-        "unsupported_kind" => "FieldWorks cannot open this kind",
-        _ => reason ?? "the reason was not provided",
+        FieldWorksLinkReason.MissingProject => "no FieldWorks project name was supplied",
+        FieldWorksLinkReason.GuidNotRecorded => "PanGloss did not record a GUID",
+        FieldWorksLinkReason.InvalidGuid => "the recorded GUID is invalid",
+        FieldWorksLinkReason.UnsupportedKind => "FieldWorks cannot open this kind",
+        _ => "the reason was not provided",
     };
 
     private static HyperlinkButton LinkFor(GrammarWarningPart part, string link)
@@ -94,7 +94,7 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
             Foreground = ObjectBrush,
             FontWeight = FontWeight.SemiBold,
         };
-        ToolTip.SetTip(button, $"Open this {part.Kind?.ToLowerInvariant() ?? "object"} in FieldWorks");
+        ToolTip.SetTip(button, $"Open this {part.FieldWorksKind?.ToLowerInvariant() ?? "object"} in FieldWorks");
         return button;
     }
 }

@@ -1,16 +1,17 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>A grammar-health diagnostic with the description and subjects supplied by PanGloss.</summary>
 /// <param name="Severity">The diagnostic level: <c>warning</c> or <c>info</c>.</param>
-/// <param name="Kind">A readable name for the diagnostic code.</param>
+/// <param name="CodeLabel">A readable name for the diagnostic code.</param>
 /// <param name="Subject">The named FieldWorks subjects, including their reported link state.</param>
 /// <param name="Problem">The report description, represented as display parts.</param>
 /// <param name="Text">A readable form of the level, code, and description.</param>
 public sealed record GrammarWarning(
-    string Severity,
-    string Kind,
+    GrammarDiagnosticLevel Severity,
+    [property: JsonPropertyName("kind")] string CodeLabel,
     IReadOnlyList<GrammarWarningPart> Subject,
     IReadOnlyList<GrammarWarningPart> Problem,
     string Text)
@@ -28,7 +29,7 @@ public sealed record GrammarWarning(
     public string? Guidance { get; init; }
 
     /// <summary>Whether the finding came from checking the grammar or importing it.</summary>
-    public string Origin { get; init; } = string.Empty;
+    public GrammarFindingOrigin Origin { get; init; }
 }
 
 /// <summary>One summary row grouping diagnostics by their stable code.</summary>
@@ -36,7 +37,7 @@ public sealed record GrammarWarning(
 /// <param name="GroupName">The name shown for this kind of diagnostic.</param>
 /// <param name="Level">The report level for this kind of diagnostic.</param>
 /// <param name="Count">How many diagnostics of this kind the report contains.</param>
-public sealed record GrammarWarningSummary(string Code, string? GroupName, string Level, int Count);
+public sealed record GrammarWarningSummary(string Code, string? GroupName, GrammarDiagnosticLevel Level, int Count);
 
 /// <summary>A named subject in a grammar-health diagnostic.</summary>
 /// <param name="Text">The human-readable title and subtitle shown for the subject.</param>
@@ -46,9 +47,9 @@ public sealed record GrammarWarningSummary(string Code, string? GroupName, strin
 /// <param name="FieldWorksLink">The report's FieldWorks URL when one is available.</param>
 public sealed record GrammarWarningPart(
     string Text,
-    string Role,
+    GrammarWarningPartRole Role,
     string? ObjectId = null,
-    string? Kind = null,
+    [property: JsonPropertyName("kind")] string? FieldWorksKind = null,
     string? FieldWorksLink = null)
 {
     /// <summary>The subject's title exactly as PanGloss reported it.</summary>
@@ -67,10 +68,10 @@ public sealed record GrammarWarningPart(
     public string? FieldWorksGuid { get; init; }
 
     /// <summary>The FieldWorks link state reported by PanGloss.</summary>
-    public string? LinkStatus { get; init; }
+    public FieldWorksLinkStatus? LinkStatus { get; init; }
 
     /// <summary>The reason PanGloss gave when the link is unavailable.</summary>
-    public string? LinkReason { get; init; }
+    public FieldWorksLinkReason? LinkReason { get; init; }
 
     /// <summary>The FieldWorks tool identifier reported for an available link.</summary>
     public string? FieldWorksTool { get; init; }

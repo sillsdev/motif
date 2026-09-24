@@ -189,8 +189,10 @@ public sealed class WorkspacePageTests
         var (fake, projectPicker, workspace) = NewWorkspace();
         var stored = new GrammarCheckResponse(
             [
-                new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped"),
-                new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("again", "text")], "warning: again"),
+                new GrammarWarning(GrammarDiagnosticLevel.Warning, "Entry", [], [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)], "warning: dropped")
+                { Group = "Dropped entry", Code = "fwdata.dropped-entry" },
+                new GrammarWarning(GrammarDiagnosticLevel.Warning, "Entry", [], [new GrammarWarningPart("again", GrammarWarningPartRole.Text)], "warning: again")
+                { Group = "Dropped entry", Code = "fwdata.dropped-entry" },
             ],
             HasBaseline: true);
         fake.StoredGrammarCheckIs(stored);
@@ -477,7 +479,8 @@ public sealed class WorkspacePageTests
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         var stored = new GrammarCheckResponse(
-            [new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped")],
+            [new GrammarWarning(GrammarDiagnosticLevel.Warning, "Entry", [], [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)], "warning: dropped")
+            { Group = "Dropped entry", Code = "fwdata.dropped-entry" }],
             HasBaseline: true);
         fake.StoredGrammarCheckIs(stored);
         fake.CheckGrammarCompletesWith(stored);

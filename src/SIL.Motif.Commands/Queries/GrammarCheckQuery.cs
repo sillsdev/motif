@@ -58,14 +58,15 @@ public static class GrammarCheckQuery
                     new GrammarCheckResponse(Array.Empty<GrammarWarning>(), HasBaseline: false));
 
             var cachePath = Path.Combine(Path.GetDirectoryName(baseline.FwDataPath)!, CacheFileName);
-            // This source change invalidates cached rows that included findings parsed from stderr.
+            // Bump this salt whenever the cached response shape changes.
             var stamp = parserStamp is null ? null
                 : "grammar-health-v2-import-findings|" + baseline.Token.BundleDigest + "|" + parserStamp;
             if (stamp is not null && ReadCache(cachePath, stamp) is { } cached)
                 return CommandOutcome<GrammarCheckResponse>.Success(cached);
 
             var outcome = invoker.RunAsync(
-                    new PanGlossRequest.GrammarHealth(baseline.FwDataPath), "grammar-check:" + workspaceKey,
+                    new PanGlossRequest.GrammarHealth(baseline.FwDataPath, project.FieldWorksProjectIdentity),
+                    "grammar-check:" + workspaceKey,
                     cancellationToken)
                 .GetAwaiter().GetResult();
             if (outcome is PanGlossOutcome.Cancelled)
@@ -78,6 +79,16 @@ public static class GrammarCheckQuery
             {
                 report = ReadReport(completed.Output);
             }
+            catch (UnsupportedGrammarHealthSchemaException exception)
+            {
+                return CommandOutcome<GrammarCheckResponse>.Refused(new Refusal(
+                    "grammarcheck.unsupported-schema", FailureReason.Refused,
+                    $"PanGloss grammar-health schema version {exception.Version} is unsupported; this Motif build " +
+                    "expects version 2. Update PanGloss and Motif together.",
+                    Fact(("projectPath", request.ProjectPath),
+                        ("actualSchemaVersion", exception.Version.ToString(CultureInfo.InvariantCulture)),
+                        ("expectedSchemaVersion", "2"))));
+            }
             catch (JsonException exception)
             {
                 return CommandOutcome<GrammarCheckResponse>.Refused(new Refusal(
@@ -87,12 +98,12 @@ public static class GrammarCheckQuery
             }
 
             var findings = report.Diagnostics
-                .Select(finding => ToGrammarWarning(finding, report.Summary))
+                .Select(diagnostic => ToGrammarWarning(diagnostic!))
                 .ToArray();
             var response = new GrammarCheckResponse(findings, HasBaseline: true)
             {
                 Summary = report.Summary.Select(row => new GrammarWarningSummary(
-                    row.Code!, row.GroupName, row.Level!, row.Count!.Value)).ToArray(),
+                    row!.Code!, row.GroupName, row.Level, row.Count)).ToArray(),
             };
             if (stamp is not null) WriteCache(cachePath, stamp, response);
             return CommandOutcome<GrammarCheckResponse>.Success(response);
@@ -111,6 +122,7 @@ public static class GrammarCheckQuery
         }
         catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
         {
+            // A stale or unreadable cache can be recomputed from the Baseline.
             return null;
         }
     }
@@ -123,12 +135,14 @@ public static class GrammarCheckQuery
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
+            // Cache persistence only affects the next check's speed.
         }
     }
 
     private static string? ParserStamp()
     {
         if (PanGlossExecutable.TryLocate() is not { } exe || !File.Exists(exe)) return null;
+        // Path, size, and write time distinguish a rebuilt or replaced parser executable.
         var info = new FileInfo(exe);
         return string.Create(CultureInfo.InvariantCulture, $"{info.FullName}|{info.Length}|{info.LastWriteTimeUtc:O}");
     }
@@ -140,112 +154,67 @@ public static class GrammarCheckQuery
         using var document = JsonDocument.Parse(output);
         var root = document.RootElement;
         if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("schema_version", out var version) ||
-            !version.TryGetInt32(out var schemaVersion) || schemaVersion != 2)
-            throw new JsonException("Expected a grammar-health report with schema_version 2.");
-        if (!root.TryGetProperty("fieldworks_project", out var project) || project.ValueKind != JsonValueKind.Object)
-            throw new JsonException("Missing fieldworks_project object.");
-        if (!HasTextOrNull(project, "name") || !HasTextOrNull(project, "source"))
-            throw new JsonException("The fieldworks_project fields are incomplete.");
-        if (!root.TryGetProperty("summary", out var summary) || summary.ValueKind != JsonValueKind.Array)
-            throw new JsonException("Missing summary array.");
-        if (!root.TryGetProperty("diagnostics", out var diagnostics) || diagnostics.ValueKind != JsonValueKind.Array)
-            throw new JsonException("Missing diagnostics array.");
-
+            !version.TryGetInt32(out var schemaVersion))
+            throw new JsonException("The grammar-health report must be an object with an integer schema_version.");
+        if (schemaVersion != 2) throw new UnsupportedGrammarHealthSchemaException(schemaVersion);
         var report = root.Deserialize<GrammarHealthReportJson>(JsonOptions)
             ?? throw new JsonException("Missing grammar-health report.");
-        if (report.SchemaVersion != 2 || report.FieldWorksProject is null || report.Summary is null ||
-            report.Diagnostics is null)
-            throw new JsonException("The grammar-health report is incomplete.");
-        var summaryRows = summary.EnumerateArray().ToArray();
-        if (summaryRows.Length != report.Summary.Count)
-            throw new JsonException("The summary rows could not be read.");
-        for (var index = 0; index < report.Summary.Count; index++)
+        var fieldWorksProject = report.FieldWorksProject
+            ?? throw new JsonException("The grammar-health report is incomplete.");
+        var summary = report.Summary
+            ?? throw new JsonException("The grammar-health report is incomplete.");
+        var diagnostics = report.Diagnostics
+            ?? throw new JsonException("The grammar-health report is incomplete.");
+        if ((fieldWorksProject.Name is { } name && string.IsNullOrWhiteSpace(name)) ||
+            (fieldWorksProject.Name is null) != (fieldWorksProject.Source is null))
+            throw new JsonException("The FieldWorks project fields are invalid.");
+        foreach (var row in summary)
         {
-            var row = report.Summary[index];
-            var wireRow = summaryRows[index];
-            if (string.IsNullOrWhiteSpace(row.Code) || string.IsNullOrWhiteSpace(row.GroupName) ||
-                !IsLevel(row.Level) || row.Count is null ||
-                !HasText(wireRow, "code") || !HasText(wireRow, "group_name") ||
-                !HasText(wireRow, "level") || !wireRow.TryGetProperty("count", out var count) ||
-                !count.TryGetInt32(out _))
-                throw new JsonException("A summary row is incomplete or has an unsupported level.");
+            if (row is null || string.IsNullOrWhiteSpace(row.Code) ||
+                string.IsNullOrWhiteSpace(row.GroupName) || row.Count < 0)
+                throw new JsonException("A summary row is incomplete or invalid.");
         }
-        var diagnosticRows = diagnostics.EnumerateArray().ToArray();
-        if (diagnosticRows.Length != report.Diagnostics.Count)
-            throw new JsonException("The diagnostics rows could not be read.");
-        for (var index = 0; index < report.Diagnostics.Count; index++)
+        foreach (var diagnostic in diagnostics)
         {
-            var diagnostic = report.Diagnostics[index];
-            var wireDiagnostic = diagnosticRows[index];
-            if (!IsLevel(diagnostic.Level) || string.IsNullOrWhiteSpace(diagnostic.Code) ||
-                string.IsNullOrWhiteSpace(diagnostic.GroupName) || !IsOrigin(diagnostic.Origin) ||
-                string.IsNullOrWhiteSpace(diagnostic.Description) || diagnostic.Subjects is null ||
-                !HasText(wireDiagnostic, "level") || !HasText(wireDiagnostic, "code") ||
-                !HasText(wireDiagnostic, "group_name") || !HasText(wireDiagnostic, "origin") ||
-                !HasText(wireDiagnostic, "description") ||
-                !wireDiagnostic.TryGetProperty("guidance", out var guidance) ||
-                guidance.ValueKind is not (JsonValueKind.String or JsonValueKind.Null) ||
-                !wireDiagnostic.TryGetProperty("subjects", out var subjects) ||
-                subjects.ValueKind != JsonValueKind.Array)
-                throw new JsonException("A diagnostic is incomplete or has an unsupported level or origin.");
-            var subjectRows = subjects.EnumerateArray().ToArray();
-            if (subjectRows.Length != diagnostic.Subjects.Count)
-                throw new JsonException("The diagnostic subjects could not be read.");
-            for (var subjectIndex = 0; subjectIndex < diagnostic.Subjects.Count; subjectIndex++)
+            if (diagnostic is null || string.IsNullOrWhiteSpace(diagnostic.Code) ||
+                string.IsNullOrWhiteSpace(diagnostic.GroupName) ||
+                string.IsNullOrWhiteSpace(diagnostic.Description) || diagnostic.Subjects is null)
+                throw new JsonException("A diagnostic is incomplete.");
+            foreach (var subject in diagnostic.Subjects)
             {
-                var subject = diagnostic.Subjects[subjectIndex];
-                var wireSubject = subjectRows[subjectIndex];
-                if (string.IsNullOrWhiteSpace(subject.Kind) || string.IsNullOrWhiteSpace(subject.Title) ||
-                    subject.FieldWorks is null || !IsLinkState(subject.FieldWorks.Status) ||
-                    !HasText(wireSubject, "kind") || !HasText(wireSubject, "title") ||
-                    !HasTextOrNull(wireSubject, "subtitle") || !HasTextOrNull(wireSubject, "guid") ||
-                    !HasTextOrNull(wireSubject, "internal_id") ||
-                    !wireSubject.TryGetProperty("fieldworks", out var fieldworks) ||
-                    fieldworks.ValueKind != JsonValueKind.Object || !HasText(fieldworks, "status"))
-                    throw new JsonException("A diagnostic subject is incomplete or has an unsupported link state.");
-                if (subject.OpensIn is not null &&
-                    (!wireSubject.TryGetProperty("opens_in", out var opensIn) ||
-                     opensIn.ValueKind != JsonValueKind.Object || !HasText(opensIn, "tool") ||
-                     !HasText(opensIn, "guid")))
+                if (subject is null || string.IsNullOrWhiteSpace(subject.Kind) ||
+                    string.IsNullOrWhiteSpace(subject.Title) ||
+                    subject.FieldWorks is null)
+                    throw new JsonException("A diagnostic subject is incomplete.");
+                if (subject.OpensIn is not null && (string.IsNullOrWhiteSpace(subject.OpensIn.Tool) ||
+                    string.IsNullOrWhiteSpace(subject.OpensIn.Guid)))
                     throw new JsonException("A diagnostic subject has an invalid open target.");
-                if (subject.FieldWorks.Status == "available" &&
-                    (!HasText(fieldworks, "guid") || !HasText(fieldworks, "tool") || !HasText(fieldworks, "url")))
+                if (subject.FieldWorks.Status == FieldWorksLinkStatus.Available &&
+                    (string.IsNullOrWhiteSpace(subject.FieldWorks.Guid) ||
+                     string.IsNullOrWhiteSpace(subject.FieldWorks.Tool) ||
+                     string.IsNullOrWhiteSpace(subject.FieldWorks.Url)))
                     throw new JsonException("An available FieldWorks link is incomplete.");
-                if (subject.FieldWorks.Status == "unavailable" && !HasText(fieldworks, "reason"))
+                if (subject.FieldWorks.Status == FieldWorksLinkStatus.Unavailable &&
+                    subject.FieldWorks.Reason is null)
                     throw new JsonException("An unavailable FieldWorks link has no reason.");
             }
         }
         return report;
     }
 
-    private static bool HasText(JsonElement value, string property) =>
-        value.ValueKind == JsonValueKind.Object && value.TryGetProperty(property, out var field) &&
-        field.ValueKind == JsonValueKind.String;
-
-    private static bool HasTextOrNull(JsonElement value, string property) =>
-        value.ValueKind == JsonValueKind.Object && value.TryGetProperty(property, out var field) &&
-        field.ValueKind is JsonValueKind.String or JsonValueKind.Null;
-
-    private static bool IsLevel(string? level) => level is "warning" or "info";
-    private static bool IsOrigin(string? origin) => origin is "check" or "import";
-    private static bool IsLinkState(string? status) => status is "available" or "unavailable";
-
-    private static GrammarWarning ToGrammarWarning(
-        GrammarHealthDiagnosticJson finding,
-        IReadOnlyList<GrammarHealthSummaryJson> summary)
+    private static GrammarWarning ToGrammarWarning(GrammarHealthDiagnosticJson finding)
     {
-        var subjects = finding.Subjects!.Select(SubjectPart).ToArray();
+        var subjects = finding.Subjects!.Select(subject => SubjectPart(subject!)).ToArray();
         var description = finding.Description!;
-        var problem = new[] { new GrammarWarningPart(description, "text") };
-        var text = $"{finding.Level}: {finding.Code}: {description}";
-        var group = summary.FirstOrDefault(row => row.Code == finding.Code)?.GroupName ?? finding.GroupName;
-        return new GrammarWarning(finding.Level!, ReadableCode(finding.Code), subjects, problem, text)
+        var problem = new[] { new GrammarWarningPart(description, GrammarWarningPartRole.Text) };
+        var text = $"{finding.Level.ToWireValue()}: {finding.Code}: {description}";
+        return new GrammarWarning(finding.Level, ReadableCode(finding.Code), subjects, problem, text)
         {
-            Group = group,
+            Group = finding.GroupName,
             Code = finding.Code,
             Description = description,
             Guidance = finding.Guidance,
-            Origin = finding.Origin!,
+            Origin = finding.Origin,
         };
     }
 
@@ -257,10 +226,10 @@ public static class GrammarCheckQuery
         var objectId = part.Guid ?? part.InternalId;
         return new GrammarWarningPart(
             text,
-            objectId is null ? "text" : "object",
+            objectId is null ? GrammarWarningPartRole.Text : GrammarWarningPartRole.Object,
             objectId,
             part.Kind,
-            fieldWorks.Status == "available" ? fieldWorks.Url : null)
+            fieldWorks.Status == FieldWorksLinkStatus.Available ? fieldWorks.Url : null)
         {
             Title = title,
             Subtitle = part.Subtitle,
@@ -283,42 +252,89 @@ public static class GrammarCheckQuery
               (words.Length > 1 ? " " + string.Join(' ', words.Skip(1)) : string.Empty);
     }
 
-    private sealed record GrammarHealthReportJson(
-        [property: JsonPropertyName("schema_version")] int? SchemaVersion,
-        [property: JsonPropertyName("fieldworks_project")] FieldWorksProjectJson? FieldWorksProject,
-        IReadOnlyList<GrammarHealthSummaryJson>? Summary,
-        IReadOnlyList<GrammarHealthDiagnosticJson>? Diagnostics);
+    private sealed record GrammarHealthReportJson
+    {
+        public GrammarHealthReportJson() { }
 
-    private sealed record FieldWorksProjectJson(string? Name, string? Source);
+        [JsonPropertyName("fieldworks_project")]
+        public required FieldWorksProjectJson? FieldWorksProject { get; init; }
+        public required IReadOnlyList<GrammarHealthSummaryJson?>? Summary { get; init; }
+        public required IReadOnlyList<GrammarHealthDiagnosticJson?>? Diagnostics { get; init; }
+    }
 
-    private sealed record GrammarHealthSummaryJson(
-        string? Code,
-        [property: JsonPropertyName("group_name")] string? GroupName,
-        string? Level,
-        int? Count);
+    private sealed record FieldWorksProjectJson
+    {
+        public FieldWorksProjectJson() { }
 
-    private sealed record GrammarHealthDiagnosticJson(
-        string? Level,
-        string? Code,
-        [property: JsonPropertyName("group_name")] string? GroupName,
-        string? Origin,
-        string? Description,
-        string? Guidance,
-        IReadOnlyList<GrammarHealthSubjectJson>? Subjects);
+        public required string? Name { get; init; }
+        public required GrammarFieldWorksProjectSource? Source { get; init; }
+    }
 
-    private sealed record GrammarHealthSubjectJson(
-        string? Kind,
-        string? Title,
-        string? Subtitle,
-        string? Guid,
-        [property: JsonPropertyName("internal_id")] string? InternalId,
-        [property: JsonPropertyName("opens_in")] GrammarHealthOpenTargetJson? OpensIn,
-        [property: JsonPropertyName("fieldworks")] GrammarHealthLinkJson? FieldWorks);
+    private sealed record GrammarHealthSummaryJson
+    {
+        public GrammarHealthSummaryJson() { }
 
-    private sealed record GrammarHealthOpenTargetJson(string? Tool, string? Guid);
+        public required string? Code { get; init; }
+        [JsonPropertyName("group_name")]
+        public required string? GroupName { get; init; }
+        public required GrammarDiagnosticLevel Level { get; init; }
+        public required int Count { get; init; }
+    }
 
-    private sealed record GrammarHealthLinkJson(
-        string? Status, string? Reason, string? Guid, string? Tool, string? Url);
+    private sealed record GrammarHealthDiagnosticJson
+    {
+        public GrammarHealthDiagnosticJson() { }
+
+        public required GrammarDiagnosticLevel Level { get; init; }
+        public required string? Code { get; init; }
+        [JsonPropertyName("group_name")]
+        public required string? GroupName { get; init; }
+        public required GrammarFindingOrigin Origin { get; init; }
+        public required string? Description { get; init; }
+        public required string? Guidance { get; init; }
+        public required IReadOnlyList<GrammarHealthSubjectJson?>? Subjects { get; init; }
+    }
+
+    private sealed record GrammarHealthSubjectJson
+    {
+        public GrammarHealthSubjectJson() { }
+
+        public required string? Kind { get; init; }
+        public required string? Title { get; init; }
+        public required string? Subtitle { get; init; }
+        public required string? Guid { get; init; }
+        [JsonPropertyName("internal_id")]
+        public required string? InternalId { get; init; }
+        [JsonPropertyName("opens_in")]
+        public GrammarHealthOpenTargetJson? OpensIn { get; init; }
+        [JsonPropertyName("fieldworks")]
+        public required GrammarHealthLinkJson? FieldWorks { get; init; }
+    }
+
+    private sealed record GrammarHealthOpenTargetJson
+    {
+        public GrammarHealthOpenTargetJson() { }
+
+        public required string? Tool { get; init; }
+        public required string? Guid { get; init; }
+    }
+
+    private sealed record GrammarHealthLinkJson
+    {
+        public GrammarHealthLinkJson() { }
+
+        public required FieldWorksLinkStatus Status { get; init; }
+        public FieldWorksLinkReason? Reason { get; init; }
+        public required string? Guid { get; init; }
+        public string? Tool { get; init; }
+        public string? Url { get; init; }
+    }
+
+    private sealed class UnsupportedGrammarHealthSchemaException(int version)
+        : JsonException($"Unsupported grammar-health schema version {version}.")
+    {
+        public int Version { get; } = version;
+    }
 
     private static Refusal Cancelled(string projectPath) => new(
         "grammarcheck.cancelled", FailureReason.Cancelled, "The grammar check was cancelled.",

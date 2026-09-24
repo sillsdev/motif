@@ -9,26 +9,26 @@ namespace SIL.Motif.Tests.App;
 public sealed class GrammarWarningsViewModelTests
 {
     private static readonly GrammarWarning EntryWarning = new(
-        "warning", "Entry",
-        [new("lex entry", "text"), new("kuona", "object", "e", "Entry", "silfw://localhost/link?x")],
-        [new("msa", "text"), new("0c686afa-8d21-4e3b-bc0e-41812150cf4c", "missing"),
-         new("does not resolve within this entry", "text")],
+        GrammarDiagnosticLevel.Warning, "Entry",
+        [new("lex entry", GrammarWarningPartRole.Text), new("kuona", GrammarWarningPartRole.Object, "e", "Entry", "silfw://localhost/link?x")],
+        [new("msa", GrammarWarningPartRole.Text), new("0c686afa-8d21-4e3b-bc0e-41812150cf4c", GrammarWarningPartRole.Missing),
+         new("does not resolve within this entry", GrammarWarningPartRole.Text)],
         "warning: hc-unresolved-morph-type: msa does not resolve within this entry")
     {
         Group = "Unresolved morph type",
         Code = "hc-unresolved-morph-type",
-        Origin = "import",
+        Origin = GrammarFindingOrigin.Import,
     };
 
     private static readonly GrammarWarning PhonemeWarning = new(
-        "info", "Phoneme",
-        [new("phoneme", "text"), new("ng", "object", "p", "Phoneme")],
-        [new("is not modelled", "text")],
+        GrammarDiagnosticLevel.Information, "Phoneme",
+        [new("phoneme", GrammarWarningPartRole.Text), new("ng", GrammarWarningPartRole.Object, "p", "Phoneme")],
+        [new("is not modelled", GrammarWarningPartRole.Text)],
         "info: hc-unused-phoneme: is not modelled")
     {
         Group = "Unused phoneme",
         Code = "hc-unused-phoneme",
-        Origin = "check",
+        Origin = GrammarFindingOrigin.Check,
     };
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class GrammarWarningsViewModelTests
         var table = new GrammarWarningsViewModel();
         table.Load([EntryWarning, EntryWarning, PhonemeWarning]);
 
-        var kind = table.LeftOutGroups.Concat(table.WorthALookGroups).MaxBy(group => group.Count)!;
+        var kind = table.WarningGroups.Concat(table.InformationGroups).MaxBy(group => group.Count)!;
         table.SelectGroupCommand.Execute(kind);
 
         Assert.Equal("2 findings of this kind", table.CountSummary);
@@ -84,10 +84,10 @@ public sealed class GrammarWarningsViewModelTests
 
         table.Load([named, PhonemeWarning]);
 
-        var group = table.LeftOutGroups.Concat(table.WorthALookGroups).Single(kind => kind.Name == "Unresolved grammatical info");
+        var group = table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind.Name == "Unresolved grammatical info");
         Assert.Equal("The entry points at grammatical info it does not own.", group.Description);
         Assert.True(group.HasGuidance);
-        Assert.False(table.LeftOutGroups.Concat(table.WorthALookGroups).Single(kind => kind != group).HasDescription);
+        Assert.False(table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind != group).HasDescription);
     }
 
     [Fact]
@@ -96,16 +96,17 @@ public sealed class GrammarWarningsViewModelTests
         var table = new GrammarWarningsViewModel();
         table.Load([EntryWarning, PhonemeWarning]);
 
-        table.KindFilter = "phon";
+        table.WhereFilter = "phon";
         Assert.Equal("ng", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).SubjectParts[1].Text);
         Assert.Equal("1 of 2 findings match the filters", table.CountSummary);
 
-        table.KindFilter = string.Empty;
+        table.WhereFilter = string.Empty;
         table.WhereFilter = "kuona";
-        Assert.Equal("Entry", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).Kind);
+        Assert.Equal("Unresolved morph type", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
 
-        table.SeverityFilter = "info";
-        Assert.Empty(table.Rows);
+        table.WhereFilter = string.Empty;
+        table.ProblemFilter = "not modelled";
+        Assert.Equal("Unused phoneme", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
     }
 
     [Fact]

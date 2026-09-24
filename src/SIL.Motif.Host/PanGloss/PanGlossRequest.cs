@@ -169,13 +169,15 @@ public abstract record PanGlossRequest
     /// (<c>grammar</c> plus an optional <c>out.json</c>), where reading standard output instead would supply
     /// only the first of the two and fail that conformance check on every invocation, not only this one's own.
     /// </summary>
-    public sealed record GrammarHealth(string GrammarPath) : PanGlossRequest
+    public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName) : PanGlossRequest
     {
         public override string Subcommand => "grammar-health";
 
         internal override void Validate()
         {
             if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
+            if (string.IsNullOrWhiteSpace(FieldWorksProjectName))
+                throw new ArgumentException("Required.", nameof(FieldWorksProjectName));
             if (!File.Exists(GrammarPath))
                 throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
         }
@@ -185,6 +187,8 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("grammar-health");
             startInfo.ArgumentList.Add(GrammarPath);
             startInfo.ArgumentList.Add(Path.Combine(scratch, "health.json"));
+            startInfo.ArgumentList.Add("--fw-project");
+            startInfo.ArgumentList.Add(FieldWorksProjectName);
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed)

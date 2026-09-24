@@ -82,12 +82,12 @@
             <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
                               IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
                               Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}" />
-            <views:FilterChip Label="Left out of the grammar" Count="{Binding Grammar.Warnings.LeftOutCount}" Verdict="Differs"
-                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.LeftOut}}"
-                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.LeftOut}" />
-            <views:FilterChip Label="Worth a look" Count="{Binding Grammar.Warnings.WorthALookCount}" Verdict="Limit"
-                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.WorthALook}}"
-                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.WorthALook}" />
+            <views:FilterChip Label="Warnings" Count="{Binding Grammar.Warnings.WarningCount}" Verdict="Differs"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Warnings}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Warnings}" />
+            <views:FilterChip Label="Information" Count="{Binding Grammar.Warnings.InformationCount}" Verdict="Limit"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Information}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Information}" />
           </WrapPanel>
           <Button DockPanel.Dock="Right" Content="Reload grammar"
                   Command="{Binding Grammar.CheckCommand}"
@@ -102,10 +102,10 @@
           <ScrollViewer Grid.Column="0">
             <StackPanel Spacing="2">
               <views:CopyableTextBlock Classes="muted" FontSize="12" FontWeight="SemiBold" Margin="8,4,0,2"
-                         Text="{Binding Grammar.Warnings.LeftOutCount, StringFormat='LEFT OUT OF THE GRAMMAR · {0}'}"
-                         IsVisible="{Binding Grammar.Warnings.HasLeftOutGroups}" />
-              <ItemsControl ItemsSource="{Binding Grammar.Warnings.LeftOutGroups}" IsVisible="{Binding Grammar.Warnings.HasLeftOutGroups}"
-                            AutomationProperties.Name="Kinds of finding left out of the grammar">
+                         Text="{Binding Grammar.Warnings.WarningCount, StringFormat='WARNINGS · {0}'}"
+                         IsVisible="{Binding Grammar.Warnings.HasWarningGroups}" />
+              <ItemsControl ItemsSource="{Binding Grammar.Warnings.WarningGroups}" IsVisible="{Binding Grammar.Warnings.HasWarningGroups}"
+                            AutomationProperties.Name="Kinds of warning">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
                     <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
@@ -120,10 +120,10 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <views:CopyableTextBlock Classes="muted" FontSize="12" FontWeight="SemiBold" Margin="8,12,0,2"
-                         Text="{Binding Grammar.Warnings.WorthALookCount, StringFormat='WORTH A LOOK · {0}'}"
-                         IsVisible="{Binding Grammar.Warnings.HasWorthALookGroups}" />
-              <ItemsControl ItemsSource="{Binding Grammar.Warnings.WorthALookGroups}" IsVisible="{Binding Grammar.Warnings.HasWorthALookGroups}"
-                            AutomationProperties.Name="Kinds of finding worth a look">
+                         Text="{Binding Grammar.Warnings.InformationCount, StringFormat='INFORMATION · {0}'}"
+                         IsVisible="{Binding Grammar.Warnings.HasInformationGroups}" />
+              <ItemsControl ItemsSource="{Binding Grammar.Warnings.InformationGroups}" IsVisible="{Binding Grammar.Warnings.HasInformationGroups}"
+                            AutomationProperties.Name="Kinds of information">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
                     <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
@@ -148,7 +148,7 @@
             </StackPanel>
         <!-- The parser's own account of the chosen kind: what it means and what usually helps. -->
         <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="12"
-              IsVisible="{Binding Grammar.Warnings.SelectedGroup.HasDescription, FallbackValue=False}">
+              IsVisible="{Binding Grammar.Warnings.SelectedGroup.HasDetails, FallbackValue=False}">
           <Border Grid.Column="0" Classes="card" Padding="12,10">
             <StackPanel Spacing="4">
               <views:CopyableTextBlock Text="What it means" FontWeight="SemiBold" />
@@ -179,6 +179,15 @@
           <DataGrid.Columns>
             <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
                  DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
+            <DataGridTemplateColumn Header="Level" Width="Auto" SortMemberPath="Severity"
+                                    ClipboardContentBinding="{ReflectionBinding Severity}">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                  <TextBlock Classes="severity" Classes.warning="{Binding IsWarning}"
+                             Classes.info="{Binding IsInfo}" Text="{Binding Severity}" Margin="6,4" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Where" Width="*" SortMemberPath="Where"
                                     ClipboardContentBinding="{ReflectionBinding Where}">
               <DataGridTemplateColumn.CellTemplate>
@@ -190,7 +199,7 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Problem and guidance" Width="2*" SortMemberPath="Problem"
+            <DataGridTemplateColumn Header="Problem" Width="2*" SortMemberPath="Problem"
                                     ClipboardContentBinding="{ReflectionBinding Problem}">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
@@ -200,8 +209,6 @@
                     <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}"
                                                     ToolTip.Tip="{Binding Text}" />
                     <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding RepeatText}" IsVisible="{Binding IsRepeated}" />
-                    <TextBlock Text="{Binding Guidance, StringFormat='Guidance: {0}'}"
-                               TextWrapping="Wrap" IsVisible="{Binding HasGuidance}" />
                   </StackPanel>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>

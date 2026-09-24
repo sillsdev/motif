@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -73,8 +74,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.DoesNotContain(response.Findings, finding => finding.Text.Contains("stderr-only", StringComparison.Ordinal));
 
         var warning = response.Findings[0];
-        Assert.Equal("warning", warning.Severity);
-        Assert.Equal("import", warning.Origin);
+        Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);
+        Assert.Equal(GrammarFindingOrigin.Import, warning.Origin);
         Assert.Equal("Partial morpheme analysis", warning.Group);
         Assert.Equal("Lexical entry 'mbo' has no grammatical category.", warning.Description);
         Assert.Equal("In Lexicon > Lexicon Edit, set Grammatical Info. > Category.", warning.Guidance);
@@ -84,42 +85,47 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal("mbo (ADD)", entry.Text);
         Assert.Equal("mbo", entry.Title);
         Assert.Equal("ADD", entry.Subtitle);
-        Assert.Equal("LexEntry", entry.Kind);
+        Assert.Equal("LexEntry", entry.FieldWorksKind);
         Assert.Equal(entryGuid, entry.ObjectId);
         Assert.Equal(entryGuid, entry.SubjectGuid);
         Assert.Null(entry.InternalId);
-        Assert.Equal("available", entry.LinkStatus);
+        Assert.Equal(FieldWorksLinkStatus.Available, entry.LinkStatus);
         Assert.Equal("lexiconEdit", entry.FieldWorksTool);
         Assert.Equal(openGuid, entry.FieldWorksGuid);
         Assert.Contains(openGuid, entry.FieldWorksLink, StringComparison.Ordinal);
 
         var phoneme = warning.Subject[1];
         Assert.Equal("ng", phoneme.Text);
-        Assert.Equal("PhPhoneme", phoneme.Kind);
-        Assert.Equal("unsupported_kind", phoneme.LinkReason);
+        Assert.Equal("PhPhoneme", phoneme.FieldWorksKind);
+        Assert.Equal(FieldWorksLinkReason.UnsupportedKind, phoneme.LinkReason);
         Assert.Null(phoneme.FieldWorksLink);
 
         var info = response.Findings[1];
-        Assert.Equal("info", info.Severity);
-        Assert.Equal("check", info.Origin);
+        Assert.Equal(GrammarDiagnosticLevel.Information, info.Severity);
+        Assert.Equal(GrammarFindingOrigin.Check, info.Origin);
         Assert.Equal("Duplicate segment features", info.Group);
 
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(response));
         Assert.False(json.RootElement.TryGetProperty("FieldWorksProject", out _));
         var reportFinding = json.RootElement.GetProperty("Findings")[0];
+        Assert.Equal("warning", reportFinding.GetProperty("Severity").GetString());
         Assert.Equal("import", reportFinding.GetProperty("Origin").GetString());
         Assert.False(reportFinding.TryGetProperty("Audience", out _));
         Assert.Equal(entryGuid, reportFinding.GetProperty("Subject")[0].GetProperty("SubjectGuid").GetString());
         Assert.Null(reportFinding.GetProperty("Subject")[0].GetProperty("InternalId").GetString());
         Assert.False(reportFinding.GetProperty("Subject")[0].TryGetProperty("OpenTargetTool", out _));
         Assert.Equal("available", reportFinding.GetProperty("Subject")[0].GetProperty("LinkStatus").GetString());
+        Assert.Equal("object", reportFinding.GetProperty("Subject")[0].GetProperty("Role").GetString());
+        Assert.Equal("unsupported_kind", reportFinding.GetProperty("Subject")[1].GetProperty("LinkReason").GetString());
+        Assert.Equal("info", json.RootElement.GetProperty("Summary")[1].GetProperty("Level").GetString());
 
         var request = Assert.IsType<PanGlossRequest.GrammarHealth>(Assert.Single(invoker.Requests).Request);
         Assert.EndsWith(".fwdata", request.GrammarPath, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(Path.GetFileNameWithoutExtension(fwDataPath), request.FieldWorksProjectName);
     }
 
     [Fact]
-    public void AReportMustHaveTheCurrentV2Envelope_AndOldFindingsShapeIsRejected()
+    public void AReportWithTheOldFindingsMemberIsRejected()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
@@ -128,6 +134,46 @@ public sealed class GrammarCheckQueryTests : IDisposable
             Respond = _ => new PanGlossOutcome.Completed(
                 "{\"schema_version\":2,\"summary\":[],\"findings\":[]}",
                 string.Empty, TimeSpan.Zero),
+        };
+
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("grammarcheck.malformed-findings", outcome.Refusal!.Code);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void AnUnsupportedSchemaVersionNamesTheVersionAndUpdateRequirement(int schemaVersion)
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(
+                $"{{\"schema_version\":{schemaVersion}}}", string.Empty, TimeSpan.Zero),
+        };
+
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("grammarcheck.unsupported-schema", outcome.Refusal!.Code);
+        Assert.Contains($"version {schemaVersion}", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("version 2", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("update PanGloss and Motif", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("{\"schema_version\":2,\"fieldworks_project\":{\"name\":null,\"source\":null},\"summary\":[],\"findings\":[]}")]
+    public void AReportWithoutTheV2ObjectAndDiagnosticsEnvelopeIsMalformed(string report)
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(report, string.Empty, TimeSpan.Zero),
         };
 
         var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);

@@ -257,7 +257,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     private static void SaveGrammarWithAKindChosen(WalkthroughWindow walkthrough, string folder)
     {
         var warnings = walkthrough.Workspace.Grammar.Warnings;
-        var kind = warnings.LeftOutGroups.Concat(warnings.WorthALookGroups).MaxBy(group => group.Count);
+        var kind = warnings.WarningGroups.Concat(warnings.InformationGroups).MaxBy(group => group.Count);
         if (kind is null) return;
         warnings.SelectGroupCommand.Execute(kind);
         walkthrough.Workspace.CurrentPage = WorkspacePage.Warnings;

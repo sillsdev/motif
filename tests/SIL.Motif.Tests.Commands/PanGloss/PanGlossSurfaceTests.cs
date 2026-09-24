@@ -163,7 +163,7 @@ public sealed class PanGlossSurfaceTests
             new PanGlossRequest.Batch("project.fwdata", ["motifa"], TimeSpan.FromSeconds(1), "cache.sqlite"),
             new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
-            new PanGlossRequest.GrammarHealth("project.fwdata"),
+            new PanGlossRequest.GrammarHealth("project.fwdata", "project"),
         ];
         // Trace is checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()

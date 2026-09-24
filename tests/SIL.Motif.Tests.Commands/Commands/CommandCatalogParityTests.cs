@@ -112,7 +112,7 @@ public sealed class CommandCatalogParityTests
         "timing.invalid-request", "timing.invalid-word-set", "timing.no-assessment", "timing.no-baseline",
         "timing.wrong-kind", "timing.word-set-not-found",
         "store.inconsistent", "store.unsupported",
-        "grammarcheck.cancelled", "grammarcheck.malformed-findings", "grammarcheck.parser-refused",
+        "grammarcheck.cancelled", "grammarcheck.malformed-findings", "grammarcheck.unsupported-schema", "grammarcheck.parser-refused",
         "grammarcheck.parser-unavailable", "grammarcheck.timed-out",
         "wordtrace.cancelled", "wordtrace.malformed-diagnostic", "wordtrace.malformed-output", "wordtrace.no-baseline", "wordtrace.parser-refused",
         "wordtrace.parser-unavailable",

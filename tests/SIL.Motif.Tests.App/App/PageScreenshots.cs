@@ -169,15 +169,20 @@ public sealed class PageScreenshots
             for (var index = 0; index < count; index++)
             {
                 var text = "warning: " + (subject.Length == 0 ? problem : $"{subject}: {problem}");
-                findings.Add(new GrammarWarning("warning", string.Empty,
-                    subject.Length == 0 ? [] : [new GrammarWarningPart(subject, "text")], [new GrammarWarningPart(problem, "text")], text));
+                findings.Add(new GrammarWarning(GrammarDiagnosticLevel.Warning, string.Empty,
+                    subject.Length == 0 ? [] : [new GrammarWarningPart(subject, GrammarWarningPartRole.Text)],
+                    [new GrammarWarningPart(problem, GrammarWarningPartRole.Text)], text)
+                {
+                    Group = "Parser finding",
+                    Code = "test.parser-finding",
+                });
             }
         }
         foreach (var entry in new[] { "mbo - ADD", "di - EVID", "phwet - entrar", "botari - boa tarde" })
         {
-            findings.Add(new GrammarWarning("warning", "Partial morpheme",
-                [new GrammarWarningPart(entry, "object", null, "lex_entry", "silfw://localhost/link?tool=lexiconEdit")],
-                [new GrammarWarningPart($"Lexical entry '{entry}' is partially analyzed.", "text")],
+            findings.Add(new GrammarWarning(GrammarDiagnosticLevel.Warning, "Partial morpheme",
+                [new GrammarWarningPart(entry, GrammarWarningPartRole.Object, null, "lex_entry", "silfw://localhost/link?tool=lexiconEdit")],
+                [new GrammarWarningPart($"Lexical entry '{entry}' is partially analyzed.", GrammarWarningPartRole.Text)],
                 $"warning: hc-partial-morpheme: Lexical entry '{entry}' is partially analyzed.")
             {
                 Group = "Partial morpheme analysis",

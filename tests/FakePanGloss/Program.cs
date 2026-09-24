@@ -49,7 +49,7 @@ internal static class Program
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
         new("parse", ["grammar", "word"],
             [new("--trace", true), new("--trace-format", true), new("--trace-details", false)], RunParse),
-        new("grammar-health", ["grammar", "out.json"], [], RunGrammarHealth),
+        new("grammar-health", ["grammar", "out.json"], [new("--fw-project", true)], RunGrammarHealth),
     ];
 
     private static int Main(string[] args)
@@ -305,12 +305,12 @@ internal static class Program
         "\"surfaceMismatch\":0,\"uses\":0,\"timingAvailable\":false,\"selfElapsedNs\":null}}" +
         ",\"trace\":" + (treeJson ?? "null") + "}";
 
-    // grammar-health <grammar> [<out.json>]
+    // grammar-health <grammar> [<out.json>] [--fw-project <project>]
     private static int RunGrammarHealth(string[] args)
     {
         if (args.Length < 2)
         {
-            Console.Error.WriteLine("usage: pangloss grammar-health <grammar> [<out.json>]");
+            Console.Error.WriteLine("usage: pangloss grammar-health <grammar> [<out.json>] [--fw-project <project>]");
             return 64;
         }
         var grammarPath = args[1];
@@ -329,7 +329,12 @@ internal static class Program
         }
 
         var isFwData = Path.GetExtension(grammarPath).Equals(".fwdata", StringComparison.OrdinalIgnoreCase);
-        var projectName = isFwData ? Path.GetFileNameWithoutExtension(grammarPath) : null;
+        var projectArgumentIndex = Array.IndexOf(args, "--fw-project");
+        var explicitProjectName = projectArgumentIndex >= 0 && projectArgumentIndex + 1 < args.Length
+            ? args[projectArgumentIndex + 1]
+            : null;
+        var projectName = explicitProjectName ?? (isFwData ? Path.GetFileNameWithoutExtension(grammarPath) : null);
+        var projectSource = explicitProjectName is not null ? "argument" : isFwData ? "fwdata_path" : null;
         var encodedProjectName = projectName is null ? null
             : Uri.EscapeDataString(projectName).Replace("%20", "+", StringComparison.Ordinal);
         var openGuid = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -345,7 +350,7 @@ internal static class Program
         var json = behaviour.GrammarHealthReportJson ?? JsonSerializer.Serialize(new
         {
             schema_version = 2,
-            fieldworks_project = new { name = projectName, source = isFwData ? "fwdata_path" : null },
+            fieldworks_project = new { name = projectName, source = projectSource },
             summary = new[]
             {
                 new { code = "fwdata.empty-representation", group_name = "Empty item representation", level = "warning", count = 1 },

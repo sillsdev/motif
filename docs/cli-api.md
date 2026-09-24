@@ -353,9 +353,11 @@ In human mode, progress lines ("Ensuring a current Baseline exists...", "Composi
 the run proceeds; `--json` suppresses them. The final human rendering names the `.fwdata` path, the
 Baseline's last-save timestamp with the same "(as of FieldWorks' last save)" wording, the Selection's word
 count and its per-source provenance counts, the recorded Assessment ids, and a summary of statistics collected
-during the batch as a fenced code block. `--json` binds to `AssessCommandResponse`: `baseline` (a full
+during the batch as a fenced code block. The human Assessment text calls retained parser standard-error lines
+**Parser load messages**. `--json` binds to `AssessCommandResponse`: `baseline` (a full
 `BaselineCaptureResponse`, as above), `selection` (a `SelectionProjection` — `words` and a `provenance`
-array of `{source, count}`), `assessmentIds`, `summaryMarkdown`.
+array of `{source, count}`), `assessmentIds`, `summaryMarkdown`. It does not include the removed
+`grammarWarningDetails` field; parser standard-error lines remain in retained invocation evidence.
 
 Refusals of its own: `assess.parser-unavailable` (parser discovery, Assessment production, or batch statistics
 validation failed), `assessment.cancelled`, `selection.empty`, `selection.text-not-found`
@@ -420,11 +422,12 @@ Subjects retain their FieldWorks class `kind`, `title`, nullable `subtitle`, `gu
 and optional `opens_in` target. Their `fieldworks` link is either available with `guid`, `tool`, and `url`, or
 unavailable with a `reason`. Available links open FieldWorks; unavailable reasons appear beside the subject.
 Import diagnostics appear as **From import**, while grammar-check diagnostics appear as **From grammar check**.
-The report has no `audience` field, so Motif does not assign one; an audience feature requires PanGloss to emit
-that information. Standard-error warning lines are not read as grammar findings.
+Motif does not publish an audience property; support can be added when PanGloss includes audience in the report.
+Standard-error warning lines are not read as grammar findings.
 
-Motif reads schema version 2 only. A bare array, an earlier findings envelope, or a different version is
-refused; update PanGloss and Motif together when the report schema changes.
+Motif reads schema version 2 only. A bare array or an earlier findings envelope is refused as
+`grammarcheck.malformed-findings`. A different integer version is refused as
+`grammarcheck.unsupported-schema`, with the received and expected versions; update PanGloss and Motif together.
 
 **`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
 straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —

@@ -132,7 +132,7 @@ public sealed partial class GrammarViewModel : ObservableObject
         // The table is filled before the state flips, so no view ever sees "checked" with an empty table.
         if (outcome.Succeeded)
         {
-            Warnings.Load(outcome.Value!.Findings, outcome.Value.Summary);
+            Warnings.Load(outcome.Value!.Findings);
             HasBaseline = outcome.Value.HasBaseline;
         }
         else

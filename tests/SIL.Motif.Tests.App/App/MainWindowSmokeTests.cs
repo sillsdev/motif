@@ -164,16 +164,26 @@ public sealed class MainWindowSmokeTests
 
                 workspace.Grammar.Warnings.Load([
                     new GrammarWarning(
-                        "warning", "Entry",
-                        [new GrammarWarningPart("lex entry", "text")],
-                        [new GrammarWarningPart("dropped", "text")],
-                        "warning: lex entry: dropped")]);
+                        GrammarDiagnosticLevel.Warning, "Entry",
+                        [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Text)],
+                        [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)],
+                        "warning: lex entry: dropped")
+                    {
+                        Group = "Dropped item",
+                        Code = "fwdata.dropped-item",
+                        Guidance = "Restore the missing item in FieldWorks.",
+                    }]);
                 workspace.Grammar.HasBaseline = true;
                 workspace.Grammar.HasChecked = true;
                 workspace.CurrentPage = WorkspacePage.Warnings;
+                workspace.Grammar.Warnings.SelectGroupCommand.Execute(
+                    Assert.Single(workspace.Grammar.Warnings.WarningGroups));
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
+
+                Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
+                    block => block.Text == "Restore the missing item in FieldWorks.");
 
                 var grammar = window.GetVisualDescendants().OfType<DataGrid>()
                     .Single(grid => AutomationProperties.GetName(grid) == "Grammar warnings");
@@ -235,9 +245,9 @@ public sealed class MainWindowSmokeTests
             {
                 Parts =
                 [
-                    new GrammarWarningPart("entry", "object", "id", "lex entry", "silfw://localhost/link"),
-                    new GrammarWarningPart("has", "text"),
-                    new GrammarWarningPart("value", "value"),
+                    new GrammarWarningPart("entry", GrammarWarningPartRole.Object, "id", "lex entry", "silfw://localhost/link"),
+                    new GrammarWarningPart("has", GrammarWarningPartRole.Text),
+                    new GrammarWarningPart("value", GrammarWarningPartRole.Value),
                 ],
             };
 
@@ -265,10 +275,10 @@ public sealed class MainWindowSmokeTests
             {
                 Parts =
                 [
-                    new GrammarWarningPart("entry", "object", "id", "lex entry")
+                    new GrammarWarningPart("entry", GrammarWarningPartRole.Object, "id", "lex entry")
                     {
-                        LinkStatus = "unavailable",
-                        LinkReason = "guid_not_recorded",
+                        LinkStatus = FieldWorksLinkStatus.Unavailable,
+                        LinkReason = FieldWorksLinkReason.GuidNotRecorded,
                     },
                 ],
             };

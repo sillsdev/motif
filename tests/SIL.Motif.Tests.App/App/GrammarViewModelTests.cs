@@ -44,7 +44,8 @@ public sealed class GrammarViewModelTests
         var setting = grammar.SetProjectAsync(ProjectPath);
         Assert.True(seen[nameof(GrammarViewModel.ShowLoading)]);
         answer.SetResult(CommandOutcome<GrammarCheckResponse>.Success(new GrammarCheckResponse(
-            [new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped")],
+            [new GrammarWarning(GrammarDiagnosticLevel.Warning, "Entry", [], [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)], "warning: dropped")
+            { Group = "Dropped entry", Code = "fwdata.dropped-entry" }],
             HasBaseline: true)));
         await setting;
 
@@ -58,7 +59,8 @@ public sealed class GrammarViewModelTests
     {
         var fake = new FakeCommandClient();
         fake.CheckGrammarCompletesWith(new GrammarCheckResponse(
-            [new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("dropped", "text")], "warning: dropped")],
+            [new GrammarWarning(GrammarDiagnosticLevel.Warning, "Entry", [], [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)], "warning: dropped")
+            { Group = "Dropped entry", Code = "fwdata.dropped-entry" }],
             HasBaseline: true));
         var grammar = new GrammarViewModel(fake);
 
@@ -136,7 +138,8 @@ public sealed class GrammarViewModelTests
     {
         var fake = new FakeCommandClient();
         fake.CheckGrammarCompletesWith(new GrammarCheckResponse(
-            [new GrammarWarning("warning", "Entry", [], [new GrammarWarningPart("x", "text")], "warning: x")],
+            [new GrammarWarning(GrammarDiagnosticLevel.Warning, "Entry", [], [new GrammarWarningPart("x", GrammarWarningPartRole.Text)], "warning: x")
+            { Group = "Dropped entry", Code = "fwdata.dropped-entry" }],
             HasBaseline: true));
         var grammar = new GrammarViewModel(fake);
         await grammar.SetProjectAsync(ProjectPath);
