@@ -328,19 +328,90 @@ internal static class Program
             return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
         }
 
-        var json = behaviour.GrammarHealthReportJson ??
-            "{\"schema_version\":2,\"fieldworks_project\":{\"name\":\"Fake project\",\"source\":\"argument\"}," +
-            "\"summary\":[{\"code\":\"import.missing-form\",\"group_name\":\"Missing form\",\"level\":\"warning\",\"count\":1}," +
-            "{\"code\":\"import.unused-class\",\"group_name\":\"Unused class\",\"level\":\"info\",\"count\":1}]," +
-            "\"diagnostics\":[{\"level\":\"warning\",\"code\":\"import.missing-form\",\"group_name\":\"Missing form\"," +
-            "\"origin\":\"import\",\"description\":\"An entry has no citation form.\",\"guidance\":null," +
-            "\"subjects\":[{\"kind\":\"LexEntry\",\"title\":\"Example entry\",\"subtitle\":null,\"guid\":null," +
-            "\"internal_id\":\"lex_entry#1\",\"fieldworks\":{\"status\":\"unavailable\",\"reason\":\"guid_not_recorded\",\"guid\":null}}]}," +
-            "{\"level\":\"info\",\"code\":\"import.unused-class\",\"group_name\":\"Unused class\",\"origin\":\"import\"," +
-            "\"description\":\"A natural class is no longer referenced.\",\"guidance\":null,\"subjects\":[]}] }";
+        var isFwData = Path.GetExtension(grammarPath).Equals(".fwdata", StringComparison.OrdinalIgnoreCase);
+        var projectName = isFwData ? Path.GetFileNameWithoutExtension(grammarPath) : null;
+        var encodedProjectName = projectName is null ? null
+            : Uri.EscapeDataString(projectName).Replace("%20", "+", StringComparison.Ordinal);
+        var openGuid = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+        object fieldworks = encodedProjectName is null
+            ? new { status = "unavailable", reason = "missing_project", guid = openGuid }
+            : new
+            {
+                status = "available",
+                guid = openGuid,
+                tool = "phonemeEdit",
+                url = $"silfw://localhost/link?database={encodedProjectName}&tool=phonemeEdit&guid={openGuid}&tag=",
+            };
+        var json = behaviour.GrammarHealthReportJson ?? JsonSerializer.Serialize(new
+        {
+            schema_version = 2,
+            fieldworks_project = new { name = projectName, source = isFwData ? "fwdata_path" : null },
+            summary = new[]
+            {
+                new { code = "fwdata.empty-representation", group_name = "Empty item representation", level = "warning", count = 1 },
+                new { code = "fwdata.only-first-used", group_name = "Only first list item is used", level = "info", count = 1 },
+                new { code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features", level = "warning", count = 1 },
+            },
+            diagnostics = new object[]
+            {
+                new
+                {
+                    level = "warning",
+                    code = "fwdata.empty-representation",
+                    group_name = "Empty item representation",
+                    origin = "import",
+                    description = "A boundary marker has no representation.",
+                    guidance = "Add a representation to the named boundary marker.",
+                    subjects = new object[]
+                    {
+                        new
+                        {
+                            kind = "PhBdryMarker",
+                            title = "+",
+                            subtitle = (string?)null,
+                            guid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                            internal_id = (string?)null,
+                            opens_in = new { tool = "phonemeEdit", guid = openGuid },
+                            fieldworks,
+                        },
+                    },
+                },
+                new
+                {
+                    level = "info",
+                    code = "fwdata.only-first-used",
+                    group_name = "Only first list item is used",
+                    origin = "import",
+                    description = "Only the first phoneme set is loaded.",
+                    guidance = "Check the project's phoneme sets.",
+                    subjects = Array.Empty<object>(),
+                },
+                new
+                {
+                    level = "warning",
+                    code = "hc-duplicate-feature-bundle",
+                    group_name = "Duplicate segment features",
+                    origin = "check",
+                    description = "Phonemes /n/ and /s/ share the same feature values.",
+                    guidance = "Assign distinct feature values to these phonemes.",
+                    subjects = new object[]
+                    {
+                        new
+                        {
+                            kind = "PhPhonemeSet",
+                            title = "Main phoneme set",
+                            subtitle = (string?)null,
+                            guid = (string?)null,
+                            internal_id = "table#0:table1",
+                            fieldworks = new { status = "unavailable", reason = "guid_not_recorded", guid = (string?)null },
+                        },
+                    },
+                },
+            },
+        });
         if (outPath is not null) File.WriteAllText(outPath, json);
         else Console.Out.Write(json);
-        Console.Error.WriteLine("grammar-health complete: 1 warning(s), 1 info");
+        Console.Error.WriteLine("grammar-health complete: 2 warning(s), 1 info");
         return behaviour.ExitCode;
     }
 

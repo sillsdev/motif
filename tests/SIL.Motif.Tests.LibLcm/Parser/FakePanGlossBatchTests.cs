@@ -58,9 +58,9 @@ public sealed class FakePanGlossBatchTests : IDisposable
     }
 
     [Fact]
-    public void GrammarHealth_DefaultReportIncludesImportFindingsForBothAudiences()
+    public void GrammarHealth_DefaultReportMatchesPanGlossV2Shape()
     {
-        var grammar = Path.Combine(_root, "grammar.json");
+        var grammar = Path.Combine(_root, "grammar.fwdata");
         var reportPath = Path.Combine(_root, "report.json");
         File.WriteAllText(grammar, "never read");
 
@@ -68,19 +68,41 @@ public sealed class FakePanGlossBatchTests : IDisposable
 
         Assert.Equal(0, exit);
         using var report = JsonDocument.Parse(File.ReadAllText(reportPath));
-        var findings = report.RootElement.GetProperty("findings");
-        Assert.Equal(2, findings.GetArrayLength());
-        Assert.All(findings.EnumerateArray(), finding =>
-        {
-            Assert.Equal("import", finding.GetProperty("origin").GetString());
-            var subject = Assert.Single(finding.GetProperty("subjects").EnumerateArray());
-            Assert.True(subject.TryGetProperty("kind", out _));
-            Assert.True(subject.TryGetProperty("title", out _));
-            Assert.True(subject.TryGetProperty("guid", out _));
-            Assert.True(subject.GetProperty("fieldworks").TryGetProperty("status", out _));
-        });
-        Assert.Contains(findings.EnumerateArray(), finding =>
-            finding.GetProperty("audience").GetString() == "developer");
+        var root = report.RootElement;
+        Assert.Equal(2, root.GetProperty("schema_version").GetInt32());
+        var project = root.GetProperty("fieldworks_project");
+        Assert.Equal("grammar", project.GetProperty("name").GetString());
+        Assert.Equal("fwdata_path", project.GetProperty("source").GetString());
+
+        var summary = root.GetProperty("summary");
+        var diagnostics = root.GetProperty("diagnostics");
+        Assert.Equal(3, summary.GetArrayLength());
+        Assert.Equal(3, diagnostics.GetArrayLength());
+
+        var importedWarning = diagnostics[0];
+        Assert.Equal("warning", importedWarning.GetProperty("level").GetString());
+        Assert.Equal("fwdata.empty-representation", importedWarning.GetProperty("code").GetString());
+        Assert.Equal("import", importedWarning.GetProperty("origin").GetString());
+        var subject = Assert.Single(importedWarning.GetProperty("subjects").EnumerateArray());
+        Assert.Equal("PhBdryMarker", subject.GetProperty("kind").GetString());
+        Assert.Null(subject.GetProperty("internal_id").GetString());
+        Assert.True(subject.TryGetProperty("opens_in", out var opensIn));
+        Assert.Equal("phonemeEdit", opensIn.GetProperty("tool").GetString());
+        Assert.Equal("available", subject.GetProperty("fieldworks").GetProperty("status").GetString());
+
+        var importedInfo = diagnostics[1];
+        Assert.Equal("info", importedInfo.GetProperty("level").GetString());
+        Assert.Equal("fwdata.only-first-used", importedInfo.GetProperty("code").GetString());
+        Assert.Equal("import", importedInfo.GetProperty("origin").GetString());
+        Assert.Empty(importedInfo.GetProperty("subjects").EnumerateArray());
+
+        var check = diagnostics[2];
+        Assert.Equal("warning", check.GetProperty("level").GetString());
+        Assert.Equal("check", check.GetProperty("origin").GetString());
+        Assert.Equal("guid_not_recorded", Assert.Single(check.GetProperty("subjects").EnumerateArray())
+            .GetProperty("fieldworks").GetProperty("reason").GetString());
+        Assert.All(diagnostics.EnumerateArray(), diagnostic =>
+            Assert.False(diagnostic.TryGetProperty("audience", out _)));
     }
 
     private static int Run(params string[] args)
