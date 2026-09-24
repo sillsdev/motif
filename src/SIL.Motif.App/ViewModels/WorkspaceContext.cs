@@ -139,6 +139,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         ProjectPath = projectPath;
+        await Changes.OpenProjectAsync(projectPath).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
     }

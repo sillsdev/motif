@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
 
@@ -12,7 +11,7 @@ public sealed class ReviewPageModel : PageModel
 {
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
-        Changes.Items.CollectionChanged += OnChangesChanged;
+        Changes.PropertyChanged += OnChangesChanged;
         context.PropertyChanged += OnContextPropertyChanged;
     }
 
@@ -21,10 +20,11 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>The open project's file name, which the apply card names.</summary>
     public string ProjectName => Context.ProjectName;
 
-    protected override void OnProjectCleared() => Changes.ClearCommand.Execute(null);
-
-    private void OnChangesChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        Badge = Changes.Items.Count > 0 ? Changes.Items.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
+    private void OnChangesChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ChangesViewModel.Count))
+            Badge = Changes.Count > 0 ? Changes.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
+    }
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

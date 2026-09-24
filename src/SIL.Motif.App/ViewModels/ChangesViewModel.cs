@@ -58,9 +58,28 @@ public sealed partial class ChangesViewModel : ObservableObject
             Items.Clear();
             Raise();
         });
+        Items.CollectionChanged += (_, _) => Raise();
     }
 
     public ObservableCollection<ChangeViewModel> Items { get; } = [];
+
+    /// <summary>The project these changes belong to, or <see langword="null"/> before one is open.</summary>
+    public string? ProjectPath { get; private set; }
+
+    /// <summary>
+    /// Shows the pending changes of the project at <paramref name="projectPath"/>. Changes collected in this window
+    /// belong to the project they were collected for, so another project starts with none.
+    /// </summary>
+    public Task OpenProjectAsync(string projectPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
+        if (!string.Equals(ProjectPath, projectPath, StringComparison.OrdinalIgnoreCase)) Items.Clear();
+        ProjectPath = projectPath;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>How many changes wait.</summary>
+    public int Count => Items.Count;
 
     public IRelayCommand<ChangeViewModel> RemoveCommand { get; }
     public IRelayCommand ClearCommand { get; }
@@ -101,6 +120,7 @@ public sealed partial class ChangesViewModel : ObservableObject
 
     private void Raise()
     {
+        OnPropertyChanged(nameof(Count));
         OnPropertyChanged(nameof(HasItems));
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(CountText));

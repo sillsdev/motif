@@ -20,6 +20,8 @@ public sealed class WorkspaceContextTests
 {
     private const string ProjectPath = @"C:\projects\one.fwdata";
 
+    private const string OtherProjectPath = @"C:\projects\two.fwdata";
+
     private static readonly BaselineToken Token = new(
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
@@ -57,16 +59,22 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
-    public void AReviewPageModelCountsThePendingChangesInItsBadgeAndClearsThemWithTheProject()
+    public async Task PendingChangesFollowAProjectSwitchOnlyThroughTheirSlotAndTheReviewBadgeCountsThem()
     {
         var context = NewContext();
         var review = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        Assert.Equal(ProjectPath, context.Changes.ProjectPath);
         Assert.Equal(string.Empty, review.Badge);
 
         context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "dogz", "Approved", string.Empty));
         Assert.Equal("1", review.Badge);
 
         context.ClearProject();
+        Assert.True(context.Changes.HasItems);
+
+        await context.PublishProjectOpenedAsync(OtherProjectPath);
+        Assert.Equal(OtherProjectPath, context.Changes.ProjectPath);
         Assert.False(context.Changes.HasItems);
         Assert.Equal(string.Empty, review.Badge);
     }
