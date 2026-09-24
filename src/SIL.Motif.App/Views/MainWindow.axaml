@@ -230,6 +230,13 @@
                       Command="{Binding ShowResultsViewCommand}"
                       CommandParameter="{x:Static vm:ResultsView.Compare}"
                       AutomationProperties.Name="Compare results view" />
+              <Button Content="What changed"
+                      Classes="tab" Classes.active="{Binding ShowResultsDifference}"
+                      Theme="{DynamicResource BorderlessButton}"
+                      IsVisible="{Binding Assess.Difference.HasDifference}"
+                      Command="{Binding ShowResultsViewCommand}"
+                      CommandParameter="{x:Static vm:ResultsView.Difference}"
+                      AutomationProperties.Name="What changed results view" />
               <Button Content="Words"
                       Classes="tab" Classes.active="{Binding ShowResultsWords}"
                       Theme="{DynamicResource BorderlessButton}"
@@ -266,6 +273,7 @@
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center" />
           </Panel>
+          <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowResultsDifference}" />
           <Panel IsVisible="{Binding ShowResultsWords}">
             <ContentControl x:Name="AssessHost" />
             <views:CopyableTextBlock Classes="muted"

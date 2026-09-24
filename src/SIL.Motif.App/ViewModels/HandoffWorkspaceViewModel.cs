@@ -45,6 +45,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Handoff = handoff;
         ResultsInText = new ResultsInTextViewModel(words, assess, ShowWordInResults, TryWordInResults);
         assess.Compare.OpenWord = ShowWordInResults;
+        assess.Difference.OpenWord = ShowWordInResults;
         assess.Compare.HandOff = words =>
         {
             Handoff.UseWords(words);
@@ -121,12 +122,15 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Which view of a finished Assessment the Results stage is showing.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowResultsCompare))]
+    [NotifyPropertyChangedFor(nameof(ShowResultsDifference))]
     [NotifyPropertyChangedFor(nameof(ShowResultsWords))]
     [NotifyPropertyChangedFor(nameof(ShowResultsInText))]
     [NotifyPropertyChangedFor(nameof(ShowResultsStatistics))]
     private ResultsView _resultsView;
 
     public bool ShowResultsCompare => ResultsView == ResultsView.Compare;
+
+    public bool ShowResultsDifference => ResultsView == ResultsView.Difference;
 
     public bool ShowResultsWords => ResultsView == ResultsView.Words;
 
@@ -349,6 +353,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             Handoff.CoverageText = CoverageOf(Assess.CompletedAt, Assess.Words.CountSummary,
                 Selection.ChosenTextIds.Count, Selection.PastedWordEntries.Count);
             HasEverAssessed = true;
+            // A re-run exists to settle words, so what it settled is the first thing to see.
+            if (Assess.LastRunWasRerun && Assess.Difference.HasDifference) ResultsView = ResultsView.Difference;
             // The Project stage's history lists this Assessment as soon as it is stored.
             _ = ProjectHistory.LoadAsync();
             Words.ShowAssessment(Assess.Words.Find);

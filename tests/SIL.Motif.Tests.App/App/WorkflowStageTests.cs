@@ -59,6 +59,30 @@ public sealed class WorkflowStageTests
     };
 
     [Fact]
+    public async Task ARerunOpensWhatChangedAndAFullRunStaysOnCompare()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        AssessmentWordResult Word(string outcome, bool incomplete) =>
+            new("alimpiga", outcome, incomplete, "Search completed", 10, null) { ProjectStanding = ProjectStanding.NotPresent };
+        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("timed-out", true)] });
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+        Assert.True(workspace.ShowResultsCompare);
+
+        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("no-analysis", false)] });
+        await workspace.Assess.RerunAsync(["alimpiga"], 30_000);
+
+        Assert.True(workspace.ShowResultsDifference);
+        Assert.Equal(MoveKind.Settled, workspace.Assess.Difference.SelectedMove!.Kind);
+
+        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("no-analysis", false)] });
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        Assert.True(workspace.ShowResultsCompare);
+    }
+
+    [Fact]
     public void TheStepperListsTheFiveStagesInWorkflowOrderAndOpensOnProject()
     {
         var (_, _, workspace) = NewWorkspace();

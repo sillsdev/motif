@@ -55,8 +55,9 @@
   <StackPanel Spacing="3">
     <DockPanel>
       <HyperlinkButton DockPanel.Dock="Right" Content="Clear" FontSize="11" Command="{Binding ClearSelectionCommand}"
-                       IsVisible="{Binding AnySelected}" AutomationProperties.Name="Clear the chosen matrix cells" />
-      <TextBlock Classes="muted" FontSize="11" Text="Filter by the matrix (click to add or remove a cell)" VerticalAlignment="Center" />
+                       IsVisible="{Binding $parent[views:MiniMatrix].IsInteractive}" IsEnabled="{Binding AnySelected}"
+                       AutomationProperties.Name="Clear the chosen matrix cells" />
+      <TextBlock Classes="muted" FontSize="11" Text="{Binding $parent[views:MiniMatrix].Hint}" VerticalAlignment="Center" />
     </DockPanel>
     <Grid ColumnDefinitions="92,*">
       <ItemsControl Grid.Column="1" ItemsSource="{Binding Columns}">

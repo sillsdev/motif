@@ -27,6 +27,9 @@ public enum ResultsView
     /// <summary>Every word in the matrix of what the project held against what the parser did, and the list it filters.</summary>
     Compare,
 
+    /// <summary>What changed since the run before: the words that moved between cells of the Compare matrix.</summary>
+    Difference,
+
     /// <summary>One row per word the parser was asked about.</summary>
     Words,
 

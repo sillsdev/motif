@@ -45,6 +45,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         if (words.Count == 0) return Task.CompletedTask;
         _rerunWords = words;
         _rerunLimitMs = limitMs;
+        _rerunDescription = $"{words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} again at {limitMs / 1000.0:0.#} s each";
         return RunCommand.ExecuteAsync(null);
     }
 
@@ -61,7 +62,16 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     protected override Task<bool> PrepareRunAsync()
     {
         _mergeInto = _rerunWords is not null ? Result : null;
+        if (Result is not null) (_previous, _previousAt) = (Result, CompletedAt);
+        LastRunWasRerun = _rerunWords is not null;
+        if (!LastRunWasRerun) _rerunDescription = null;
         return Task.FromResult(true);
+    }
+
+    protected override void OnReset()
+    {
+        (_previous, _previousAt, _rerunDescription) = (null, null, null);
+        Difference.Load(null, null, string.Empty, string.Empty);
     }
 
     /// <summary>The project this Assessment measures, or <c>null</c> before a project has been chosen.</summary>
@@ -86,6 +96,16 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// <summary>The same words in the matrix of what the project held against what the parser did.</summary>
     public CompareViewModel Compare { get; } = new();
 
+    /// <summary>What changed since the run before this one, when there was one.</summary>
+    public DifferenceViewModel Difference { get; } = new();
+
+    /// <summary>Whether the latest run gave some words more time rather than measuring the whole Selection again.</summary>
+    public bool LastRunWasRerun { get; private set; }
+
+    private AssessCommandResponse? _previous;
+    private DateTimeOffset? _previousAt;
+    private string? _rerunDescription;
+
     /// <summary>Traces one word on demand against the current Baseline's grammar, for Try a Word.</summary>
     public TraceWordViewModel Trace { get; }
 
@@ -101,6 +121,12 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         if (Result is not null) CompletedAt = DateTimeOffset.Now;
         Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null);
         Compare.Load(Result is null ? null : Words.AllRows);
+        // A run clears the result as it starts; the comparison waits for the new result rather than emptying.
+        if (Result is null) return;
+        var before = _previous?.Words.Select(word => new AssessWordRowViewModel(word)).ToArray();
+        Difference.Load(before, before is null ? null : Words.AllRows,
+            _previousAt is { } at ? $"Run of {at.ToLocalTime():t}" : "The run before",
+            _rerunDescription is { } rerun ? $"This run: {rerun}" : "This run");
     }
 
     private static int? LookUpOccurrences(TextWordsViewModel textWords, string word) =>

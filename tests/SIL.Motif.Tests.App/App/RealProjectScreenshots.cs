@@ -96,6 +96,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 SaveEveryStage(walkthrough, folder);
                 SaveGrammarWithAKindChosen(walkthrough, folder);
                 SaveCompareWithCellsChosen(walkthrough, folder);
+                SaveWhatChangedAfterARerun(walkthrough, folder);
                 SaveInTextWithNoTextChecked(walkthrough, folder);
                 return Task.CompletedTask;
             }, TimeSpan.FromMinutes(30));
@@ -227,6 +228,30 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         compare.Changes.ClearCommand.Execute(null);
         compare.ClearSelectionCommand.Execute(null);
     }
+
+    // A real re-run of a few unknown words with more time, so "What changed" shows moves the parser made.
+    private static void SaveWhatChangedAfterARerun(WalkthroughWindow walkthrough, string folder)
+    {
+        var workspace = walkthrough.Workspace;
+        var words = workspace.Assess.Compare.RerunWords.Take(RerunBudget).ToArray();
+        if (words.Length == 0) return;
+        _ = workspace.Assess.RerunAsync(words, RerunLimitMs);
+        walkthrough.WaitUntil(() => workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused &&
+            !workspace.Assess.IsActive, TimeSpan.FromMinutes(20), "the re-run did not finish");
+        Assert.Equal(RunState.Completed, workspace.Assess.State);
+        foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+        {
+            Application.Current!.RequestedThemeVariant = variant;
+            workspace.CurrentStage = WorkflowStage.Results;
+            workspace.ResultsView = ResultsView.Difference;
+            Save(walkthrough.Window, Path.Combine(folder, $"4g-results-what-changed-{theme}.png"));
+        }
+        Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+    }
+
+    // Few enough words, with enough time each, that the re-run finishes in minutes and still moves some.
+    private const int RerunBudget = 12;
+    private const int RerunLimitMs = 20_000;
 
     // The largest kind of finding chosen, so its own view is reviewed as well as the whole list.
     private static void SaveGrammarWithAKindChosen(WalkthroughWindow walkthrough, string folder)
