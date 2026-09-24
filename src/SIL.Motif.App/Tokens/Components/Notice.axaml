@@ -1,0 +1,12 @@
+<!--
+  A notice: a tinted box that asks for attention without being an error.
+  Names Intent keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.notice">
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Notice}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Notice}" />
+  </Style>
+</Styles>

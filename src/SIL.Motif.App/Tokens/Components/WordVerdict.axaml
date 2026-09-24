@@ -1,0 +1,37 @@
+<!--
+  The underline a word wears in a reader, in the verdict colours.
+  Names Intent keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.wordVerdict">
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.UnderlineHeavy}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.TextFaint}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Word}" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.wordVerdict.agrees">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Success}" />
+  </Style>
+  <Style Selector="Border.wordVerdict.differs">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Danger}" />
+  </Style>
+  <Style Selector="Border.wordVerdict.new">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
+  </Style>
+  <Style Selector="Border.wordVerdict.noresult">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Warning}" />
+  </Style>
+  <Style Selector="Border.wordVerdict.several">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Link}" />
+  </Style>
+  <Style Selector="Border.wordVerdict.approved">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Approved.Accent}" />
+  </Style>
+  <Style Selector="Border.wordVerdict.candidate">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Candidate.Accent}" />
+  </Style>
+  <Style Selector="Border.wordVerdict.dimmed">
+    <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
+  </Style>
+</Styles>

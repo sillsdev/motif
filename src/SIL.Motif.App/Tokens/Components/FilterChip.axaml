@@ -1,0 +1,27 @@
+<!--
+  Filter chips: one look for every page's chips.
+  Names Intent keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Button.filterChip">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Chip}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.Chip}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+  </Style>
+  <Style Selector="Button.filterChip.active">
+    <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
+  </Style>
+  <Style Selector="Button.filterChip TextBlock.chipCount">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Button.filterChip.active TextBlock.chipCount">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
+  </Style>
+</Styles>

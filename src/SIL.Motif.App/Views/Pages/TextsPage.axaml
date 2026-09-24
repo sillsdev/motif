@@ -5,25 +5,11 @@
              x:Class="SIL.Motif.App.Views.TextsPage"
              x:DataType="vm:HandoffWorkspaceViewModel">
   <UserControl.Styles>
-    <!-- Tabs on a page: the active one underlined in the accent colour. -->
-    <Style Selector="Button.tab">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-      <Setter Property="Padding" Value="0,8" />
-      <Setter Property="Margin" Value="0,0,20,0" />
-      <Setter Property="BorderThickness" Value="0,0,0,2" />
-      <Setter Property="BorderBrush" Value="Transparent" />
-      <Setter Property="CornerRadius" Value="0" />
-    </Style>
-    <Style Selector="Button.tab.active">
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource MotifTabActive}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MotifTabActive}" />
-    </Style>
     <Style Selector="Button.pendingStrip">
       <Setter Property="CornerRadius" Value="99" />
       <Setter Property="Padding" Value="12,4" />
-      <Setter Property="Background" Value="{DynamicResource MotifCandidateFill}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MotifCandidateAccent}" />
+      <Setter Property="Background" Value="{DynamicResource Intent.Candidate.Fill}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Candidate.Accent}" />
       <Setter Property="BorderThickness" Value="1" />
     </Style>
   </UserControl.Styles>
@@ -36,9 +22,9 @@
                 Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
                 AutomationProperties.Name="Review the changes not applied yet">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Ellipse Width="7" Height="7" Fill="{DynamicResource MotifFreshStale}" VerticalAlignment="Center" />
+            <Ellipse Width="7" Height="7" Fill="{DynamicResource Intent.Warning.Text}" VerticalAlignment="Center" />
             <TextBlock Text="{Binding Changes.CountText}" FontWeight="SemiBold" VerticalAlignment="Center" />
-            <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource MotifTabActive}" VerticalAlignment="Center" />
+            <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource Intent.Accent}" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
         <Button DockPanel.Dock="Right"

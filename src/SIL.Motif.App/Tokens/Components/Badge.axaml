@@ -1,0 +1,30 @@
+<!--
+  A page's count beside its sidebar entry, solid on the collapsed sidebar so it still catches the eye.
+  Names Intent keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.pageBadge">
+    <Setter Property="Background" Value="{DynamicResource Intent.Neutral.Fill}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Pill}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Badge}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+  <Style Selector="Border.pageBadge :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
+  </Style>
+  <Style Selector="ListBox.collapsed Border.pageBadge">
+    <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.BadgeCompact}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CornerBadge}" />
+  </Style>
+  <Style Selector="ListBox.collapsed Border.pageBadge :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Micro}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Emphasis.Text}" />
+  </Style>
+</Styles>

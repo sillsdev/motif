@@ -1,0 +1,20 @@
+<!--
+  Tabs on a page: the active one underlined in the accent colour.
+  Names Intent keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Button.tab">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Tab}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterTab}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Underline}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+  </Style>
+  <Style Selector="Button.tab.active">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+</Styles>

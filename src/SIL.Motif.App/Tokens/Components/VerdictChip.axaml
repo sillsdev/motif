@@ -1,0 +1,64 @@
+<!--
+  One verdict, one colour: the meanings every page shares, on chips, glyphs and verdict text.
+  Names Intent keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.verdictChip">
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Tag}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Tag}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
+  </Style>
+  <Style Selector="Border.verdictChip :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Border.verdictChip.compact :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector="Border.verdictChip.agrees">
+    <Setter Property="Background" Value="{DynamicResource Intent.Success.Fill}" />
+  </Style>
+  <Style Selector="Border.verdictChip.agrees :is(TextBlock), TextBlock.verdictGlyph.agrees, :is(TextBlock).verdictText.agrees">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
+  </Style>
+  <Style Selector="Border.verdictChip.differs">
+    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
+  </Style>
+  <Style Selector="Border.verdictChip.differs :is(TextBlock), TextBlock.verdictGlyph.differs, :is(TextBlock).verdictText.differs">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+  </Style>
+  <Style Selector="Border.verdictChip.new">
+    <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
+  </Style>
+  <Style Selector="Border.verdictChip.new :is(TextBlock), TextBlock.verdictGlyph.new, :is(TextBlock).verdictText.new">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
+  </Style>
+  <Style Selector="Border.verdictChip.noresult">
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+  </Style>
+  <Style Selector="Border.verdictChip.noresult :is(TextBlock), TextBlock.verdictGlyph.noresult, :is(TextBlock).verdictText.noresult">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning}" />
+  </Style>
+  <Style Selector="Border.verdictChip.several">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
+  </Style>
+  <Style Selector="Border.verdictChip.several :is(TextBlock), TextBlock.verdictGlyph.several, :is(TextBlock).verdictText.several">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+  </Style>
+  <!-- What the project holds, in FieldWorks' own cyan (approved) and tan (a guess nobody approved). -->
+  <Style Selector="Border.verdictChip.approved">
+    <Setter Property="Background" Value="{DynamicResource Intent.Approved.Fill}" />
+  </Style>
+  <Style Selector="Border.verdictChip.approved :is(TextBlock), TextBlock.verdictGlyph.approved, :is(TextBlock).verdictText.approved">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Approved.Text}" />
+  </Style>
+  <Style Selector="Border.verdictChip.candidate">
+    <Setter Property="Background" Value="{DynamicResource Intent.Candidate.Fill}" />
+  </Style>
+  <Style Selector="Border.verdictChip.candidate :is(TextBlock), TextBlock.verdictGlyph.candidate, :is(TextBlock).verdictText.candidate">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Candidate.Text}" />
+  </Style>
+</Styles>

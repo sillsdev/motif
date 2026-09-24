@@ -1,0 +1,23 @@
+<!--
+  Text roles every page shares, so no view names a colour or size of its own.
+  Names Intent keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector=":is(TextBlock).stage-title">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).section-title">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector=":is(TextBlock).muted">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).error">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+</Styles>

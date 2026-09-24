@@ -9,230 +9,31 @@
 
     <!-- Styles cannot change control type; read-only markup names SelectableTextBlock explicitly. -->
     <!-- Button content stays TextBlock so button activation owns pointer and keyboard gestures. -->
-    <!-- Text roles shared by every panel, so no view names a colour of its own. -->
-    <Style Selector=":is(TextBlock).stage-title">
-      <Setter Property="FontSize" Value="22" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector=":is(TextBlock).section-title">
-      <Setter Property="FontSize" Value="16" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector=":is(TextBlock).muted">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-    </Style>
-    <Style Selector=":is(TextBlock).error">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-    </Style>
-    <Style Selector="Border.card">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="10" />
-      <Setter Property="Padding" Value="16" />
-    </Style>
-    <Style Selector="Border.notice">
-      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="Padding" Value="14,10" />
-    </Style>
-
-    <!-- One verdict, one colour: the six meanings every stage shares, on chips, glyphs and word underlines. -->
-    <Style Selector="Border.verdictChip">
-      <Setter Property="CornerRadius" Value="9" />
-      <Setter Property="Padding" Value="7,1" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
-    </Style>
-    <Style Selector="Border.verdictChip :is(TextBlock)">
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-    </Style>
-    <Style Selector="Border.verdictChip.compact :is(TextBlock)">
-      <Setter Property="FontSize" Value="11" />
-    </Style>
-    <Style Selector="Border.verdictChip.agrees">
-      <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
-    </Style>
-    <Style Selector="Border.verdictChip.agrees :is(TextBlock), TextBlock.verdictGlyph.agrees, :is(TextBlock).verdictText.agrees">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
-    </Style>
-    <Style Selector="Border.verdictChip.differs">
-      <Setter Property="Background" Value="{DynamicResource SemiColorDangerLight}" />
-    </Style>
-    <Style Selector="Border.verdictChip.differs :is(TextBlock), TextBlock.verdictGlyph.differs, :is(TextBlock).verdictText.differs">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
-    </Style>
-    <Style Selector="Border.verdictChip.new">
-      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
-    </Style>
-    <Style Selector="Border.verdictChip.new :is(TextBlock), TextBlock.verdictGlyph.new, :is(TextBlock).verdictText.new">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
-    <Style Selector="Border.verdictChip.noresult">
-      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
-    </Style>
-    <Style Selector="Border.verdictChip.noresult :is(TextBlock), TextBlock.verdictGlyph.noresult, :is(TextBlock).verdictText.noresult">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
-    </Style>
-    <Style Selector="Border.verdictChip.several">
-      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
-    </Style>
-    <Style Selector="Border.verdictChip.several :is(TextBlock), TextBlock.verdictGlyph.several, :is(TextBlock).verdictText.several">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorLink}" />
-    </Style>
-    <!-- What the project holds, in FieldWorks' own cyan (approved) and tan (a guess nobody approved). -->
-    <Style Selector="Border.verdictChip.approved">
-      <Setter Property="Background" Value="{DynamicResource MotifApprovedFill}" />
-    </Style>
-    <Style Selector="Border.verdictChip.approved :is(TextBlock), TextBlock.verdictGlyph.approved, :is(TextBlock).verdictText.approved">
-      <Setter Property="Foreground" Value="{DynamicResource MotifApprovedInk}" />
-    </Style>
-    <Style Selector="Border.verdictChip.candidate">
-      <Setter Property="Background" Value="{DynamicResource MotifCandidateFill}" />
-    </Style>
-    <Style Selector="Border.verdictChip.candidate :is(TextBlock), TextBlock.verdictGlyph.candidate, :is(TextBlock).verdictText.candidate">
-      <Setter Property="Foreground" Value="{DynamicResource MotifCandidateInk}" />
-    </Style>
-
-    <!-- A part of an outcome bar, filled with its meaning's colour. -->
-    <Style Selector="Border.outcomeSegment">
-      <Setter Property="Background" Value="{DynamicResource SemiColorText3}" />
-    </Style>
-    <Style Selector="Border.outcomeSegment.agrees">
-      <Setter Property="Background" Value="{DynamicResource SemiColorSuccess}" />
-    </Style>
-    <Style Selector="Border.outcomeSegment.differs">
-      <Setter Property="Background" Value="{DynamicResource SemiColorDanger}" />
-    </Style>
-    <Style Selector="Border.outcomeSegment.new">
-      <Setter Property="Background" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
-    <Style Selector="Border.outcomeSegment.noresult">
-      <Setter Property="Background" Value="{DynamicResource SemiColorWarning}" />
-    </Style>
-    <Style Selector="Border.outcomeSegment.several">
-      <Setter Property="Background" Value="{DynamicResource SemiColorLink}" />
-    </Style>
-    <Style Selector="Border.outcomeSegment.approved">
-      <Setter Property="Background" Value="{DynamicResource MotifApprovedAccent}" />
-    </Style>
-    <Style Selector="Border.outcomeSegment.candidate">
-      <Setter Property="Background" Value="{DynamicResource MotifCandidateAccent}" />
-    </Style>
-
-    <!-- The underline a word wears in a reader, in the same six colours. -->
-    <Style Selector="Border.wordVerdict">
-      <Setter Property="BorderThickness" Value="0,0,0,3" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorText3}" />
-      <Setter Property="Padding" Value="4,2" />
-      <Setter Property="Background" Value="Transparent" />
-    </Style>
-    <Style Selector="Border.wordVerdict.agrees">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}" />
-    </Style>
-    <Style Selector="Border.wordVerdict.differs">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorDanger}" />
-    </Style>
-    <Style Selector="Border.wordVerdict.new">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
-    <Style Selector="Border.wordVerdict.noresult">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorWarning}" />
-    </Style>
-    <Style Selector="Border.wordVerdict.several">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorLink}" />
-    </Style>
-    <Style Selector="Border.wordVerdict.approved">
-      <Setter Property="BorderBrush" Value="{DynamicResource MotifApprovedAccent}" />
-    </Style>
-    <Style Selector="Border.wordVerdict.candidate">
-      <Setter Property="BorderBrush" Value="{DynamicResource MotifCandidateAccent}" />
-    </Style>
-    <Style Selector="Border.wordVerdict.dimmed">
-      <Setter Property="Opacity" Value="0.35" />
-    </Style>
-
-    <!-- Filter chips: one look for every stage's chips. -->
-    <Style Selector="Button.filterChip">
-      <Setter Property="Padding" Value="9,3" />
-      <Setter Property="CornerRadius" Value="12" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="Margin" Value="0,0,4,4" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-      <Setter Property="BorderThickness" Value="1" />
-    </Style>
-    <Style Selector="Button.filterChip.active">
-      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
-    <Style Selector="Button.filterChip TextBlock.chipCount">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-    </Style>
-    <Style Selector="Button.filterChip.active TextBlock.chipCount">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
-
-    <!-- A number's heat shade, and the hairline between morphemes in an interlinear row. -->
-    <Style Selector="Border.heat">
-      <Setter Property="Background" Value="{DynamicResource SemiColorWarning}" />
-    </Style>
-    <Style Selector="Border.morphEdge">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-    </Style>
+    <!-- Component styles: each maps a control's look onto Intent keys, and comes after Semi to win over it. -->
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Text.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Card.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Notice.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/VerdictChip.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/OutcomeBar.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordVerdict.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/FilterChip.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/HeatCell.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/MorphemeRow.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TopBar.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Menu.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Freshness.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Sidebar.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Badge.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TabStrip.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://LiveMarkdown.Avalonia/Defaults.axaml" />
+        <!-- Raw values first, then what they are for; Intent's aliases resolve against the primitives above them. -->
+        <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Primitives.axaml" />
+        <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Intent.axaml" />
       </ResourceDictionary.MergedDictionaries>
-      <!-- FieldWorks' cyan RGB(150,255,255) and tan RGB(234,220,186), darkened for text and deepened for dark mode. -->
-      <ResourceDictionary.ThemeDictionaries>
-        <ResourceDictionary x:Key="Light">
-          <SolidColorBrush x:Key="MotifApprovedFill" Color="#D2F6F7" />
-          <SolidColorBrush x:Key="MotifApprovedInk" Color="#08666C" />
-          <SolidColorBrush x:Key="MotifApprovedAccent" Color="#1DB3BA" />
-          <SolidColorBrush x:Key="MotifCandidateFill" Color="#F3EAD4" />
-          <SolidColorBrush x:Key="MotifCandidateInk" Color="#74531A" />
-          <SolidColorBrush x:Key="MotifCandidateAccent" Color="#C9A45A" />
-          <SolidColorBrush x:Key="MotifSidebarFill" Color="#FBFCFD" />
-          <SolidColorBrush x:Key="MotifSidebarInk" Color="#454C57" />
-          <SolidColorBrush x:Key="MotifSidebarSelectedFill" Color="#E8F1FF" />
-          <SolidColorBrush x:Key="MotifSidebarSelectedInk" Color="#0B4FC4" />
-          <SolidColorBrush x:Key="MotifBadgeFill" Color="#ECEEF2" />
-          <SolidColorBrush x:Key="MotifBadgeInk" Color="#454C57" />
-          <SolidColorBrush x:Key="MotifCountFill" Color="#0064FA" />
-          <SolidColorBrush x:Key="MotifCountInk" Color="#FFFFFF" />
-          <SolidColorBrush x:Key="MotifFreshCurrent" Color="#1A6B2C" />
-          <SolidColorBrush x:Key="MotifFreshStale" Color="#8A5A00" />
-          <SolidColorBrush x:Key="MotifFreshBusy" Color="#0B4FC4" />
-          <SolidColorBrush x:Key="MotifTabActive" Color="#0B4FC4" />
-        </ResourceDictionary>
-        <ResourceDictionary x:Key="Dark">
-          <SolidColorBrush x:Key="MotifApprovedFill" Color="#123E41" />
-          <SolidColorBrush x:Key="MotifApprovedInk" Color="#8AE7EB" />
-          <SolidColorBrush x:Key="MotifApprovedAccent" Color="#3CC6CD" />
-          <SolidColorBrush x:Key="MotifCandidateFill" Color="#43381F" />
-          <SolidColorBrush x:Key="MotifCandidateInk" Color="#E8CF95" />
-          <SolidColorBrush x:Key="MotifCandidateAccent" Color="#C9A45A" />
-          <SolidColorBrush x:Key="MotifSidebarFill" Color="#1B1E23" />
-          <SolidColorBrush x:Key="MotifSidebarInk" Color="#C3C8D0" />
-          <SolidColorBrush x:Key="MotifSidebarSelectedFill" Color="#1D3354" />
-          <SolidColorBrush x:Key="MotifSidebarSelectedInk" Color="#8DB8FF" />
-          <SolidColorBrush x:Key="MotifBadgeFill" Color="#30353D" />
-          <SolidColorBrush x:Key="MotifBadgeInk" Color="#C3C8D0" />
-          <SolidColorBrush x:Key="MotifCountFill" Color="#3D8BFF" />
-          <SolidColorBrush x:Key="MotifCountInk" Color="#FFFFFF" />
-          <SolidColorBrush x:Key="MotifFreshCurrent" Color="#6FCF87" />
-          <SolidColorBrush x:Key="MotifFreshStale" Color="#E3B55E" />
-          <SolidColorBrush x:Key="MotifFreshBusy" Color="#8DB8FF" />
-          <SolidColorBrush x:Key="MotifTabActive" Color="#8DB8FF" />
-        </ResourceDictionary>
-      </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

@@ -6,178 +6,44 @@
         x:DataType="vm:HandoffWorkspaceViewModel"
         Title="Motif"
         Icon="avares://SIL.Motif.App/Assets/motif.ico"
-        Width="1240"
-        Height="780"
-        MinWidth="820"
-        MinHeight="600">
-  <Window.Styles>
-    <!-- The sidebar: icon and label per page, the label hidden and offered as a tooltip when collapsed. -->
-    <Style Selector="Border.sidebar">
-      <Setter Property="Background" Value="{DynamicResource MotifSidebarFill}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-      <Setter Property="BorderThickness" Value="0,0,1,0" />
-      <Setter Property="Width" Value="204" />
-    </Style>
-    <Style Selector="Border.sidebar.collapsed">
-      <Setter Property="Width" Value="52" />
-    </Style>
-    <Style Selector="ListBox.sidebar">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="8,12" />
-    </Style>
-    <Style Selector="ListBox.sidebar.collapsed">
-      <Setter Property="Padding" Value="0,12" />
-    </Style>
-    <Style Selector="ListBox.sidebar ListBoxItem">
-      <Setter Property="Padding" Value="10,7" />
-      <Setter Property="Margin" Value="0,0,0,2" />
-      <Setter Property="MinHeight" Value="0" />
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="FontSize" Value="13.5" />
-      <Setter Property="Foreground" Value="{DynamicResource MotifSidebarInk}" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    </Style>
-    <Style Selector="ListBox.sidebar ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Foreground" Value="{DynamicResource MotifSidebarInk}" />
-    </Style>
-    <Style Selector="ListBox.sidebar ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource SemiColorFill0}" />
-    </Style>
-    <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MotifSidebarSelectedFill}" />
-      <Setter Property="Foreground" Value="{DynamicResource MotifSidebarSelectedInk}" />
-    </Style>
-    <Style Selector="ListBox.sidebar ListBoxItem:selected">
-      <Setter Property="Foreground" Value="{DynamicResource MotifSidebarSelectedInk}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector="ListBox.sidebar.collapsed ListBoxItem">
-      <Setter Property="Padding" Value="0,10" />
-      <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="BorderThickness" Value="2,0,0,0" />
-      <Setter Property="BorderBrush" Value="Transparent" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="ListBox.sidebar.collapsed ListBoxItem:selected">
-      <Setter Property="BorderBrush" Value="{DynamicResource MotifCountFill}" />
-    </Style>
-    <Style Selector="ListBox.sidebar.collapsed ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="Transparent" />
-    </Style>
-    <Style Selector="Path.pageIcon">
-      <Setter Property="StrokeThickness" Value="1.8" />
-      <Setter Property="StrokeLineCap" Value="Round" />
-      <Setter Property="StrokeJoin" Value="Round" />
-    </Style>
-    <Style Selector="Viewbox.pageIcon">
-      <Setter Property="Width" Value="18" />
-      <Setter Property="Height" Value="18" />
-    </Style>
-    <Style Selector="ListBox.collapsed Viewbox.pageIcon">
-      <Setter Property="Width" Value="22" />
-      <Setter Property="Height" Value="22" />
-    </Style>
-    <Style Selector="ListBox.collapsed :is(TextBlock).pageLabel">
-      <Setter Property="IsVisible" Value="False" />
-    </Style>
-    <Style Selector="Border.pageBadge">
-      <Setter Property="Background" Value="{DynamicResource MotifBadgeFill}" />
-      <Setter Property="CornerRadius" Value="99" />
-      <Setter Property="Padding" Value="6,0" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="HorizontalAlignment" Value="Right" />
-    </Style>
-    <Style Selector="Border.pageBadge :is(TextBlock)">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource MotifBadgeInk}" />
-    </Style>
-    <Style Selector="ListBox.collapsed Border.pageBadge">
-      <Setter Property="Background" Value="{DynamicResource MotifCountFill}" />
-      <Setter Property="Padding" Value="4,0" />
-      <Setter Property="VerticalAlignment" Value="Top" />
-      <Setter Property="Margin" Value="0,-4,-6,0" />
-    </Style>
-    <Style Selector="ListBox.collapsed Border.pageBadge :is(TextBlock)">
-      <Setter Property="FontSize" Value="10.5" />
-      <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Foreground" Value="{DynamicResource MotifCountInk}" />
-    </Style>
-
-    <!-- The freshness line: green when current, amber when FieldWorks has saved since, blue while refreshing. -->
-    <Style Selector="Ellipse.freshDot">
-      <Setter Property="Width" Value="8" />
-      <Setter Property="Height" Value="8" />
-      <Setter Property="Fill" Value="{DynamicResource SemiColorText3}" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Ellipse.freshDot.current">
-      <Setter Property="Fill" Value="{DynamicResource MotifFreshCurrent}" />
-    </Style>
-    <Style Selector="Ellipse.freshDot.stale">
-      <Setter Property="Fill" Value="{DynamicResource MotifFreshStale}" />
-    </Style>
-    <Style Selector="Ellipse.freshDot.busy">
-      <Setter Property="Fill" Value="{DynamicResource MotifFreshBusy}" />
-    </Style>
-    <Style Selector=":is(TextBlock).freshLabel">
-      <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="FontSize" Value="12.5" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector=":is(TextBlock).freshLabel.current">
-      <Setter Property="Foreground" Value="{DynamicResource MotifFreshCurrent}" />
-    </Style>
-    <Style Selector=":is(TextBlock).freshLabel.stale">
-      <Setter Property="Foreground" Value="{DynamicResource MotifFreshStale}" />
-    </Style>
-    <Style Selector=":is(TextBlock).freshLabel.busy">
-      <Setter Property="Foreground" Value="{DynamicResource MotifFreshBusy}" />
-    </Style>
-
-    <Style Selector="Button.menuEntry">
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Padding" Value="10,8" />
-    </Style>
-  </Window.Styles>
-
+        Width="{DynamicResource Intent.Size.WindowWidth}"
+        Height="{DynamicResource Intent.Size.WindowHeight}"
+        MinWidth="{DynamicResource Intent.Size.WindowMinWidth}"
+        MinHeight="{DynamicResource Intent.Size.WindowMinHeight}">
   <Grid RowDefinitions="Auto,Auto,*">
 
     <!-- Top bar: the project menu, how fresh the numbers are, and Refresh. -->
-    <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="18,0" Height="52">
+    <Border Classes="topBar">
       <DockPanel LastChildFill="True" VerticalAlignment="Center">
 
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
-          <Image Source="avares://SIL.Motif.App/Assets/motif-icon.png" Width="22" Height="22" />
-          <views:CopyableTextBlock Text="Motif" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+        <StackPanel Classes="topBarGroup brand" DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+          <Image Classes="brandLogo" Source="avares://SIL.Motif.App/Assets/motif-icon.png" />
+          <views:CopyableTextBlock Classes="brandName" Text="Motif" VerticalAlignment="Center" />
         </StackPanel>
 
-        <Button x:Name="ProjectMenuButton" DockPanel.Dock="Left" MaxWidth="240" VerticalAlignment="Center"
-                Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
-                Margin="0,0,12,0" AutomationProperties.Name="Project menu">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="{Binding ProjectName}" MaxWidth="190" TextTrimming="CharacterEllipsis" FontSize="13" />
-            <TextBlock Text="&#x25BE;" FontSize="11" VerticalAlignment="Center" />
+        <Button x:Name="ProjectMenuButton" DockPanel.Dock="Left" VerticalAlignment="Center"
+                Theme="{DynamicResource OutlineButton}" Classes="Tertiary projectMenu"
+                AutomationProperties.Name="Project menu">
+          <StackPanel Classes="topBarGroup" Orientation="Horizontal">
+            <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="disclosure" Text="&#x25BE;" VerticalAlignment="Center" />
           </StackPanel>
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft">
-              <StackPanel Width="280" Spacing="2">
+              <StackPanel Classes="menu">
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
                         Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="Select a new project">
                   <StackPanel>
-                    <TextBlock Text="Select new&#x2026;" FontSize="13.5" FontWeight="SemiBold" />
-                    <TextBlock Text="Choose another .fwdata file" FontSize="11.5" Foreground="{DynamicResource SemiColorText2}" />
+                    <TextBlock Classes="menuTitle" Text="Select new&#x2026;" />
+                    <TextBlock Classes="menuDetail" Text="Choose another .fwdata file" />
                   </StackPanel>
                 </Button>
                 <Button x:Name="OpenRecentButton" Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                         IsEnabled="{Binding HasRecentProjects}" AutomationProperties.Name="Open a recent project">
                   <StackPanel>
-                    <TextBlock Text="Open recent" FontSize="13.5" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding RecentProjectsText, StringFormat='{}{0} &#x203A;'}" FontSize="11.5"
-                               Foreground="{DynamicResource SemiColorText2}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="menuTitle" Text="Open recent" />
+                    <TextBlock Classes="menuDetail" Text="{Binding RecentProjectsText, StringFormat='{}{0} &#x203A;'}"
+                               TextTrimming="CharacterEllipsis" />
                   </StackPanel>
                   <Button.Flyout>
                     <MenuFlyout Placement="RightEdgeAlignedTop" />
@@ -187,8 +53,8 @@
                         Command="{Binding ConfigureCommand}" IsEnabled="{Binding HasProject}"
                         AutomationProperties.Name="Configure the project">
                   <StackPanel>
-                    <TextBlock Text="Configure&#x2026;" FontSize="13.5" FontWeight="SemiBold" />
-                    <TextBlock Text="Texts, added words and limits" FontSize="11.5" Foreground="{DynamicResource SemiColorText2}" />
+                    <TextBlock Classes="menuTitle" Text="Configure&#x2026;" />
+                    <TextBlock Classes="menuDetail" Text="Texts, added words and limits" />
                   </StackPanel>
                 </Button>
               </StackPanel>
@@ -196,7 +62,7 @@
           </Button.Flyout>
         </Button>
 
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <StackPanel Classes="topBarGroup" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
           <Button Content="See what changed" Command="{Binding SeeWhatChangedCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsSeeWhatChanged}" AutomationProperties.Name="See what the refresh changed" />
@@ -209,14 +75,14 @@
                   ToolTip.Tip="Capture a new Baseline from FieldWorks' last save, then assess the Selection against it." />
         </StackPanel>
 
-        <StackPanel x:Name="FreshnessLine" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+        <StackPanel x:Name="FreshnessLine" Classes="freshness" Orientation="Horizontal" VerticalAlignment="Center"
                     IsVisible="{Binding HasFreshness}">
           <Ellipse Classes="freshDot" Classes.current="{Binding FreshnessIsCurrent}"
                    Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}" />
           <views:CopyableTextBlock Classes="freshLabel" Text="{Binding FreshnessLabel}"
                                    Classes.current="{Binding FreshnessIsCurrent}"
                                    Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}" />
-          <views:CopyableTextBlock Classes="muted" FontSize="12.5" Text="{Binding FreshnessDetail}"
+          <views:CopyableTextBlock Classes="muted freshDetail" Text="{Binding FreshnessDetail}"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </StackPanel>
       </DockPanel>
@@ -224,8 +90,7 @@
 
     <Border Grid.Row="1"
             IsVisible="{Binding RerunOffered}"
-            Margin="16,12,16,0"
-            Classes="card">
+            Classes="card banner">
       <DockPanel LastChildFill="True">
         <Button Content="Run again"
                 Command="{Binding AcceptRerunCommand}"
@@ -235,7 +100,7 @@
                 Command="{Binding DismissRerunCommand}"
                 AutomationProperties.Name="Dismiss the rerun offer"
                 DockPanel.Dock="Right"
-                Margin="0,0,8,0" />
+                Classes="bannerAction" />
         <views:CopyableTextBlock Text="A new Baseline was captured; the previous Assessment may be out of date."
                    VerticalAlignment="Center"
                    TextWrapping="Wrap" />
@@ -246,9 +111,9 @@
 
       <Border x:Name="Sidebar" Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}">
         <DockPanel LastChildFill="True">
-          <StackPanel DockPanel.Dock="Bottom" Margin="18,8,8,14" Spacing="2" IsVisible="{Binding IsSidebarExpanded}">
-            <views:CopyableTextBlock Classes="muted" FontSize="11" Text="Selection" />
-            <views:CopyableTextBlock FontSize="11" FontWeight="Bold" TextWrapping="Wrap" Text="{Binding Selection.SummaryText}" />
+          <StackPanel Classes="sidebarFooter" DockPanel.Dock="Bottom" IsVisible="{Binding IsSidebarExpanded}">
+            <views:CopyableTextBlock Classes="muted" Text="Selection" />
+            <views:CopyableTextBlock FontWeight="Bold" TextWrapping="Wrap" Text="{Binding Selection.SummaryText}" />
           </StackPanel>
           <ListBox x:Name="PageList"
                    Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}"
@@ -273,7 +138,7 @@
                             Stroke="{Binding $parent[ListBoxItem].Foreground}" />
                     </Canvas>
                   </Viewbox>
-                  <views:CopyableTextBlock Grid.Column="1" Classes="pageLabel" Text="{Binding Title}" Margin="10,0,0,0"
+                  <views:CopyableTextBlock Grid.Column="1" Classes="pageLabel" Text="{Binding Title}"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                   <Border Grid.Column="2" Classes="pageBadge" IsVisible="{Binding HasBadge}">
                     <views:CopyableTextBlock Text="{Binding Badge}" />

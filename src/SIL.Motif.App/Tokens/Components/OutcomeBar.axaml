@@ -1,0 +1,31 @@
+<!--
+  A part of an outcome bar, filled with its meaning's colour.
+  Names Intent keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.outcomeSegment">
+    <Setter Property="Background" Value="{DynamicResource Intent.TextFaint}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.agrees">
+    <Setter Property="Background" Value="{DynamicResource Intent.Success}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.differs">
+    <Setter Property="Background" Value="{DynamicResource Intent.Danger}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.new">
+    <Setter Property="Background" Value="{DynamicResource Intent.Primary}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.noresult">
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.several">
+    <Setter Property="Background" Value="{DynamicResource Intent.Link}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.approved">
+    <Setter Property="Background" Value="{DynamicResource Intent.Approved.Accent}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.candidate">
+    <Setter Property="Background" Value="{DynamicResource Intent.Candidate.Accent}" />
+  </Style>
+</Styles>
