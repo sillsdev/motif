@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Store;
@@ -15,25 +16,6 @@ using SIL.Motif.Worker.Store;
 using SIL.LCModel;
 
 namespace SIL.Motif.Commands;
-
-/// <summary>The fields retained by a collected App change, plus the Assessment that supplied its reading.</summary>
-public sealed record CollectedChangeRequest(
-    string FwDataPath, string ProductVersion, string DraftName,
-    string Kind, string Word, string Reading, string? AssessmentId);
-
-/// <summary>Removes one word's collected change from the persistent Draft.</summary>
-public sealed record RemoveCollectedChangeRequest(
-    string FwDataPath, string ProductVersion, string DraftName, string Word);
-
-/// <summary>Removes every collected change that no longer fits the live project.</summary>
-public sealed record RemoveNonFittingChangesRequest(
-    string FwDataPath, string ProductVersion, string DraftName);
-
-/// <summary>Reads one persistent Draft's change fit against the live project.</summary>
-public sealed record PreflightDraftRequest(string FwDataPath, string ProductVersion, string DraftName);
-
-/// <summary>The saved Draft after one change was added, replaced, or removed.</summary>
-public sealed record CollectedChangeResponse(string DraftName, string ProposalId, int OperationCount);
 
 /// <summary>Maps individual Changes entries into one durable Draft in the paired project store.</summary>
 public static class AnalysisDraftChanges

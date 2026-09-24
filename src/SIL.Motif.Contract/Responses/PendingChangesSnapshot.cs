@@ -1,0 +1,14 @@
+namespace SIL.Motif.Contract.Responses;
+
+/// <summary>One authored change and all operations lowered from it.</summary>
+public sealed record PendingChange(
+    string ChangeId, string WordformId, string Word, string Kind, string? AssessmentId,
+    string? DisplayReading, IReadOnlyList<string> OperationIds);
+
+/// <summary>The fit of one authored change, including missing mapping or fingerprint evidence.</summary>
+public sealed record ChangeFit(string ChangeId, bool StillFits, IReadOnlyList<string> Reasons);
+
+/// <summary>The durable pending Draft and its per-change fit against the saved project.</summary>
+public sealed record PendingChangesSnapshot(
+    string? DraftId, string Revision, IReadOnlyList<PendingChange> Changes,
+    IReadOnlyList<ChangeFit> FitSummary);

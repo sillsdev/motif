@@ -8,6 +8,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Corpus;
@@ -606,8 +607,28 @@ public sealed class ProposalWorkflowTests
                 {
                     Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, word, 0,
                         false, false, false,
-                        [new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, null)])], []),
+                        [new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, null)]),
+                         new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, "chosen-second")])], []),
                 }]));
+        }
+        var pending = PendingChanges.Load(new PendingChangesRequest(_fwDataPath, ProductVersion));
+        Assert.True(pending.Succeeded, pending.Refusal?.Message);
+        var secondReading = new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, "chosen-second")]);
+        var candidateChange = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+            pending.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "add-candidate",
+                CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading)));
+        Assert.True(candidateChange.Succeeded, candidateChange.Refusal?.Message);
+        var spellingChange = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+            candidateChange.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformGuid).Value, word)));
+        Assert.True(spellingChange.Succeeded, spellingChange.Refusal?.Message);
+        Assert.Equal(2, spellingChange.Value!.Changes.Count);
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var pendingDraft = JsonNode.Parse(new ProposalRepository(database)
+                .GetDraft(PendingChanges.DraftName).ProposalJson!)!;
+            Assert.Equal("chosen-second", pendingDraft["operations"]![0]!["extensions"]!["changeFit"]!
+                ["reading"]!["morphs"]![0]!["guessedString"]!.GetValue<string>());
         }
         const string draftName = "parser-change-draft";
         CollectedChangeRequest Request(string kind) => new(
@@ -623,22 +644,42 @@ public sealed class ProposalWorkflowTests
         Assert.True(reject.Succeeded, reject.Refusal?.Message);
         Assert.Equal(2, reject.Value!.OperationCount);
 
-        using (var cache = loader.LoadCache(_fwDataPath))
-        {
-            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-            {
-                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformGuid);
-                var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
-                wordform.AnalysesOC.Add(analysis);
+          Guid storedAnalysisGuid = Guid.Empty;
+          using (var cache = loader.LoadCache(_fwDataPath))
+          {
+              NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+              {
+                  var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformGuid);
+                  var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                  wordform.AnalysesOC.Add(analysis);
                 var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
                 analysis.MorphBundlesOS.Add(bundle);
                 bundle.MorphRA = cache.ServiceLocator.GetInstance<IMoFormRepository>().GetObject(Guid.Parse(formGuid));
                 bundle.MsaRA = cache.ServiceLocator.GetInstance<IMoMorphSynAnalysisRepository>().GetObject(Guid.Parse(msaGuid));
                 cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.disapproves);
             });
-            loader.Save(cache);
-        }
-        var clear = AnalysisDraftChanges.AddOrReplace(Request("candidate"));
+              loader.Save(cache);
+          }
+          using (var cache = loader.LoadScratchCache(_fwDataPath))
+          {
+              var storedWord = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformGuid);
+              storedAnalysisGuid = Assert.Single(storedWord.AnalysesOC).Guid;
+          }
+          var selectedStored = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+              spellingChange.Value.Revision, new ChangeIntent(CanonicalId.Mint().Value, "candidate",
+                  CanonicalId.FromGuid(wordformGuid).Value, word,
+                  StoredAnalysisId: CanonicalId.FromGuid(storedAnalysisGuid).Value)));
+          Assert.True(selectedStored.Succeeded, selectedStored.Refusal?.Message);
+          Assert.Equal(3, selectedStored.Value!.Changes.Count);
+          var newerBaseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath),
+              Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "managed-parser-change-updated"));
+          Assert.True(newerBaseline.Succeeded, newerBaseline.Refusal?.Message);
+          var staleReading = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+              selectedStored.Value.Revision, new ChangeIntent(CanonicalId.Mint().Value, "approve",
+                  CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading)));
+          Assert.Equal("change.assessment-stale", staleReading.Refusal?.Code);
+
+          var clear = AnalysisDraftChanges.AddOrReplace(Request("candidate"));
         Assert.True(clear.Succeeded, clear.Refusal?.Message);
         Assert.Equal(1, clear.Value!.OperationCount);
         using (var database = ProjectMotifDatabase.Open(_fwDataPath))

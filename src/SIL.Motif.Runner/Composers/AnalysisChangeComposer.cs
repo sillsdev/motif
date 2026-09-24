@@ -8,7 +8,8 @@ using SIL.LCModel;
 namespace SIL.Motif.Runner.Composers;
 
 /// <summary>One action a person collected for a word's first parser reading.</summary>
-public sealed record AnalysisChangeIntent(string Kind, CanonicalId WordformId, ParseAnalysis? Reading);
+public sealed record AnalysisChangeIntent(string Kind, CanonicalId WordformId, ParseAnalysis? Reading,
+    CanonicalId? StoredAnalysisId = null, string? ChangeId = null);
 
 /// <summary>Actions that a collected word change can request.</summary>
 public static class AnalysisChangeKinds
@@ -28,13 +29,17 @@ public static class AnalysisChangeComposer
         var wordform = ReferenceFieldLowering.Resolve<IWfiWordform>(cache, intent.WordformId, nameof(AnalysisChangeComposer));
         if (intent.Kind == AnalysisChangeKinds.IncorrectSpelling)
             return [new OperationEnvelope(CanonicalId.Mint(), WfiWordformSpellingStatusOperationKinds.SetSpellingStatus,
-                target: intent.WordformId, after: JsonSerializer.SerializeToElement(new { value = 2 }))];
+                target: intent.WordformId, after: JsonSerializer.SerializeToElement(new { value = 2 }),
+                extensions: ChangeExtension(intent.ChangeId))];
 
         var reading = intent.Reading ?? throw new InvalidOperationException(
             $"'{intent.Kind}' requires an Assessment with a parser reading for this word.");
         if (reading.Morphs.Count == 0)
             throw new InvalidOperationException("A parser reading requires at least one morph.");
-        var existing = wordform.AnalysesOC.Where(analysis => Matches(analysis, reading)).ToArray();
+        var existing = wordform.AnalysesOC.Where(analysis => Matches(analysis, reading) &&
+            (intent.StoredAnalysisId is null || analysis.Guid == intent.StoredAnalysisId.Value.ToGuid())).ToArray();
+        if (intent.StoredAnalysisId is not null && existing.Length != 1)
+            throw new InvalidOperationException("The chosen stored analysis does not match the reading.");
 
         if (intent.Kind == AnalysisChangeKinds.Candidate)
         {
@@ -43,7 +48,7 @@ public static class AnalysisChangeComposer
             return existing.Select(analysis => (Analysis: analysis,
                     Opinion: analysis.GetAgentOpinion(cache.LangProject.DefaultUserAgent)))
                 .Where(item => item.Opinion != Opinions.noopinion)
-                .Select(item => OpinionOperation(item.Analysis, item.Opinion == Opinions.approves))
+                .Select(item => OpinionOperation(item.Analysis, item.Opinion == Opinions.approves, intent.ChangeId))
                 .ToArray();
         }
 
@@ -69,7 +74,8 @@ public static class AnalysisChangeComposer
             creationId = CanonicalId.Mint();
             analysisId = CanonicalId.Mint();
             operations.Add(new OperationEnvelope(creationId.Value, WfiAnalysisOperationKinds.CreateAnalysis,
-                entityId: analysisId, target: intent.WordformId, after: MorphPayload(reading)));
+                entityId: analysisId, target: intent.WordformId, after: MorphPayload(reading),
+                extensions: ChangeExtension(intent.ChangeId)));
         }
         else
             analysisId = CanonicalId.FromGuid(existing[0].Guid);
@@ -85,18 +91,22 @@ public static class AnalysisChangeComposer
                 {
                     member = intent.Kind == AnalysisChangeKinds.Approve ? HumanEvaluationPayload.Approves : HumanEvaluationPayload.Disapproves,
                 }),
-                dependsOn: creationId is { } prerequisite ? [new OperationDependency(prerequisite)] : []));
+                dependsOn: creationId is { } prerequisite ? [new OperationDependency(prerequisite)] : [],
+                extensions: ChangeExtension(intent.ChangeId)));
         }
         return operations;
     }
 
-    private static OperationEnvelope OpinionOperation(IWfiAnalysis analysis, bool approves) =>
+    private static OperationEnvelope OpinionOperation(IWfiAnalysis analysis, bool approves, string? changeId) =>
         new(CanonicalId.Mint(), WfiAnalysisOperationKinds.RemoveRefEvaluations,
             target: CanonicalId.FromGuid(analysis.Guid),
             after: JsonSerializer.SerializeToElement(new
             {
                 member = approves ? HumanEvaluationPayload.Approves : HumanEvaluationPayload.Disapproves,
-            }));
+            }), extensions: ChangeExtension(changeId));
+
+    private static JsonElement? ChangeExtension(string? changeId) => changeId is null
+        ? null : JsonSerializer.SerializeToElement(new { changeId });
 
     public static bool Matches(IWfiAnalysis analysis, ParseAnalysis reading) =>
         analysis.MorphBundlesOS.Count == reading.Morphs.Count &&

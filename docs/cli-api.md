@@ -19,7 +19,7 @@ lives in `Project.motif.db` beside the project, and a resident job runner picks 
 motif <verb> [--project <path.fwdata>] [--store <dir>] [flags] [--json]
 ```
 
-The command catalog contains 52 descriptors. The table below is regenerated from
+The command catalog contains 55 descriptors. The table below is regenerated from
 `CommandCatalog.All` and `CliVerbCatalog.All`; the usage cells preserve the catalogued strings used by
 `UsageLineFor(...)` and the CLI dispatch. `dry-run --wait`, `trial --wait`, and `report --list-kinds`
 are selector descriptors with no independent usage line, so they repeat the parent invocation line
@@ -30,6 +30,9 @@ that dispatches them. `preflight --draft` selects the Draft handler of the `pref
 | `open` | Released | `open <fwdata> [--json]` |
 | `analyses` | Released | `analyses --project <fwdata> [--json]`<br>`analyses --project <fwdata> --assessment <assessmentId> --current-selection-sha256 <sha256> --current-grammar-sha256 <sha256> [--json]` |
 | `new` | Developer | `new --project <fwdata> --draft <name> [--label <text>]` |
+| `pending-changes` | Developer | `pending-changes --project <fwdata> [--json]` |
+| `put-pending-change` | Developer | `put-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> --kind <kind> --word <word> [--wordform-id <id>] [--assessment <id> --reading-json <json>] [--stored-analysis-id <id>] [--json]` |
+| `remove-pending-change` | Developer | `remove-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
 | `collect-change` | Developer | `collect-change --project <fwdata> --draft <name> --kind <kind> --word <word> [--assessment <assessmentId>] [--reading <text>]` |
 | `remove-collected-change` | Developer | `remove-collected-change --project <fwdata> --draft <name> --word <word>` |
 | `remove-nonfitting-changes` | Developer | `remove-nonfitting-changes --project <fwdata> --draft <name>` |
@@ -96,7 +99,8 @@ The Released surface contains `open`, `analyses`, `config show`, `report`, `repo
 `add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
 `jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
 
-The Developer surface contains `new`, `collect-change`, `remove-collected-change`,
+The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
+`remove-pending-change`, `collect-change`, `remove-collected-change`,
 `remove-nonfitting-changes`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
@@ -112,12 +116,12 @@ is `no longer fits`. The `--draft` selector checks pending changes before finali
 and refuses a nonfitting change even with `--force`; `--force` only bypasses Readiness reasons.
 An Apply that succeeds records a durable Receipt in the paired project database.
 
-The App's collected changes use `AnalysisDraftChanges` in Commands to add, replace, or remove a
-single word's change in a persistent Draft. The request carries the App entry's kind, word, and
-display reading, plus the Assessment id that produced its parser reading. The stored Assessment's
-first morphology reading supplies the exact morph references; display text is never treated as an
-identity. A current Baseline is required. The App keeps this as one Draft in `Project.motif.db` until
-its save action finalizes and applies it.
+The App and the pending-change CLI verbs use `PendingChanges` in Commands to load, put, and remove
+changes in one persistent Draft. Each change has its own id, so several changes can address one word.
+Put and remove require the revision returned by the last load; a stale revision is refused. A parser
+change carries the exact reading chosen from an Assessment, or identifies a stored analysis. Display
+text is never an identity. A current Baseline is required, and the snapshot reports fit for every
+change. The Draft stays in `Project.motif.db` when the App closes.
 
 `CommandSurfacePolicy.IsAvailable` exposes a command when its surface is Released or when developer
 commands are enabled. Set `MOTIF_DEVELOPER_COMMANDS=1` exactly to re-enable the Developer commands for

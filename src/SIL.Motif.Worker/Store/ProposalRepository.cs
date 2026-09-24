@@ -34,6 +34,10 @@ public interface IProposalRepository
     void CreateDraft(string draftName, CanonicalId proposalId, string draftJson);
     /// <summary>Replaces a Draft's in-progress content. The Draft keeps its identity and name.</summary>
     void SaveDraft(string draftName, string draftJson);
+    /// <summary>Replaces a Draft only if its stored bytes still equal the caller's read.</summary>
+    bool TrySaveDraft(string draftName, string expectedJson, string draftJson);
+    /// <summary>Creates a Draft only if its name is still free.</summary>
+    bool TryCreateDraft(string draftName, CanonicalId proposalId, string draftJson);
     /// <summary>Gets one Draft by name.</summary>
     ProposalRecord GetDraft(string draftName);
     /// <summary>Lists every Draft, ordered by name.</summary>
@@ -325,6 +329,33 @@ public sealed class ProposalRepository : IProposalRepository
         command.Parameters.AddWithValue("$json", draftJson);
         command.Parameters.AddWithValue("$name", draftName);
         if (command.ExecuteNonQuery() != 1) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
+    }
+
+    public bool TrySaveDraft(string draftName, string expectedJson, string draftJson)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Proposals SET DraftJson = $json WHERE DraftName = $name AND DraftJson = $expected;";
+        command.Parameters.AddWithValue("$json", draftJson);
+        command.Parameters.AddWithValue("$name", draftName);
+        command.Parameters.AddWithValue("$expected", expectedJson);
+        return command.ExecuteNonQuery() == 1;
+    }
+
+    public bool TryCreateDraft(string draftName, CanonicalId proposalId, string draftJson)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status, DraftName, DraftJson)
+            VALUES ($id, NULL, $status, $name, $json)
+            ON CONFLICT(DraftName) DO NOTHING;
+            """;
+        command.Parameters.AddWithValue("$id", proposalId.Value);
+        command.Parameters.AddWithValue("$status", DraftStatus);
+        command.Parameters.AddWithValue("$name", draftName);
+        command.Parameters.AddWithValue("$json", draftJson);
+        return command.ExecuteNonQuery() == 1;
     }
 
     /// <inheritdoc />

@@ -340,6 +340,48 @@ try
                 ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0]), usage));
             break;
 
+        case "pending-changes":
+            if (!flags.TryGetValue("project", out var pendingProject))
+                return Usage("Usage: motif pending-changes --project <fwdata> [--json]", asJson);
+            result = RenderProposal(PendingChanges.Load(new PendingChangesRequest(
+                pendingProject, CliProductVersion())));
+            break;
+
+        case "put-pending-change":
+            if (!flags.TryGetValue("project", out var putProject) ||
+                !flags.TryGetValue("expected-revision", out var putRevision) ||
+                !flags.TryGetValue("change-id", out var putId) ||
+                !flags.TryGetValue("kind", out var putKind) ||
+                !flags.TryGetValue("word", out var putWord))
+                return Usage("Usage: motif put-pending-change --project <fwdata> " +
+                    "--expected-revision <revision> --change-id <id> --kind <kind> --word <word> " +
+                    "[--wordform-id <id>] [--assessment <id> --reading-json <json>] [--json]", asJson);
+            ParseAnalysis? chosenReading = null;
+            if (flags.TryGetValue("reading-json", out var readingJson))
+            {
+                try { chosenReading = System.Text.Json.JsonSerializer.Deserialize<ParseAnalysis>(readingJson); }
+                catch (System.Text.Json.JsonException)
+                {
+                    return Usage("--reading-json must contain one ParseAnalysis object.", asJson);
+                }
+            }
+            result = RenderProposal(PendingChanges.Put(new PutPendingChangeRequest(
+                putProject, CliProductVersion(), putRevision,
+                new ChangeIntent(putId, putKind, flags.GetValueOrDefault("wordform-id") ?? "",
+                    putWord, flags.GetValueOrDefault("assessment"), chosenReading,
+                    flags.GetValueOrDefault("stored-analysis-id"), flags.GetValueOrDefault("display-reading")))));
+            break;
+
+        case "remove-pending-change":
+            if (!flags.TryGetValue("project", out var removePendingProject) ||
+                !flags.TryGetValue("expected-revision", out var removePendingRevision) ||
+                !flags.TryGetValue("change-id", out var removePendingId))
+                return Usage("Usage: motif remove-pending-change --project <fwdata> " +
+                    "--expected-revision <revision> --change-id <id> [--json]", asJson);
+            result = RenderProposal(PendingChanges.Remove(new RemovePendingChangeRequest(
+                removePendingProject, CliProductVersion(), removePendingRevision, removePendingId)));
+            break;
+
         case "collect-change":
             if (!flags.TryGetValue("project", out var collectProject) ||
                 !flags.TryGetValue("draft", out var collectDraft) ||

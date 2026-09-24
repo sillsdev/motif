@@ -38,6 +38,15 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "new", "new",
             new[] { "new --project <fwdata> --draft <name> [--label <text>]" }),
+        new CliVerbDescriptor("Commands", "pending-changes", "pending-changes",
+            new[] { "pending-changes --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "put-pending-change", "put-pending-change",
+            new[] { "put-pending-change --project <fwdata> --expected-revision <revision> " +
+                "--change-id <id> --kind <kind> --word <word> [--wordform-id <id>] " +
+                "[--assessment <id> --reading-json <json>] [--stored-analysis-id <id>] [--json]" }),
+        new CliVerbDescriptor("Commands", "remove-pending-change", "remove-pending-change",
+            new[] { "remove-pending-change --project <fwdata> --expected-revision <revision> " +
+                "--change-id <id> [--json]" }),
         new CliVerbDescriptor("Commands", "collect-change", "collect-change",
             new[] { "collect-change --project <fwdata> --draft <name> --kind <kind> --word <word> " +
                 "[--assessment <assessmentId>] [--reading <text>]" }),

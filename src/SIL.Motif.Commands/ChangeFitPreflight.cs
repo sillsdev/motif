@@ -10,15 +10,12 @@ using SIL.LCModel;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>The live fit of one collected change against its authored wordform and analysis.</summary>
-public sealed record ChangeFitResult(string OperationId, bool StillFits, string Reason, string BaselineToken);
-
 /// <summary>The identities and observed form against which a collected change was composed.</summary>
 public sealed record ChangeFitFingerprint(
     string WordformId, string? AnalysisId, string WordformForm, string BaselineToken,
     string? AnalysisContentDigest = null, string? ReadingContentDigest = null, ParseAnalysis? Reading = null);
 
-/// <summary>Checks collected changes against the live project immediately before Apply.</summary>
+/// <summary>Checks collected changes against the saved project used by Review and Apply.</summary>
 public static class ChangeFitPreflight
 {
     public static IReadOnlyList<ChangeFitResult> Check(LcmCache cache, Proposal proposal,

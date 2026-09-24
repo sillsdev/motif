@@ -9,9 +9,6 @@ using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>The fit of all collected changes in one Proposal.</summary>
-public sealed record PreflightResponse(string ProposalId, IReadOnlyList<ChangeFitResult> Changes);
-
 public static partial class ProposalCommands
 {
     /// <summary>Reads the live project and reports Drift for each collected change.</summary>
