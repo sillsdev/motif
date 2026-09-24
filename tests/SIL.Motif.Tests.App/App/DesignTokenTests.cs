@@ -9,7 +9,8 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Pins the App's three token layers: every Intent key resolves in the light and the dark theme, a theme's
 /// brush is its own and not the other theme's captured at load, an Intent alias of a Semi role is that role's
-/// own brush, and component styles name Intent keys only. An unknown key in a <c>DynamicResource</c> is not an
+/// own brush, a component style takes its colours from Intent keys and its sizes from Intent keys or its own
+/// Component keys aliasing primitives, and no view names a primitive. An unknown key in a <c>DynamicResource</c> is not an
 /// error — the setter silently does nothing — so resolution is checked here rather than by eye.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
@@ -93,22 +94,69 @@ public sealed class DesignTokenTests
     }
 
     [Fact]
-    public void EveryKeyAComponentStyleNamesIsAnIntentKeyThatResolves()
+    public void EveryColourAComponentStyleSetsNamesAnIntentKey()
     {
-        var files = ComponentFiles();
-        Assert.Contains(files, file => Path.GetFileName(file) == "Sidebar.axaml");
-        var named = files.SelectMany(file => ResourceKeysNamedIn(File.ReadAllText(file))
-            .Select(key => (File: Path.GetFileName(file), Key: key))).ToList();
-        Assert.NotEmpty(named);
-        Assert.All(named, use => Assert.True(use.Key.StartsWith("Intent.", StringComparison.Ordinal),
-            $"{use.File} names {use.Key}; a component style names Intent keys only."));
+        var setters = ComponentSetters().Where(setter => ColourProperties.Contains(setter.Property)).ToList();
+        Assert.NotEmpty(setters);
+        Assert.All(setters, setter => Assert.True(Regex.IsMatch(setter.Value, @"^\{DynamicResource Intent\.[\w.]+\}$"),
+            $"{setter.File} sets {setter.Property} to {setter.Value}; a component's colours come from Intent keys only."));
+    }
+
+    [Fact]
+    public void EverySizeAComponentStyleSetsNamesAnIntentOrComponentKey()
+    {
+        var setters = ComponentSetters().Where(setter => SizeProperties.Contains(setter.Property)).ToList();
+        Assert.NotEmpty(setters);
+        Assert.All(setters, setter => Assert.True(
+            Regex.IsMatch(setter.Value, @"^\{DynamicResource (Intent|Component)\.[\w.]+\}$"),
+            $"{setter.File} sets {setter.Property} to {setter.Value}; a size or gap comes from an Intent or Component key."));
+    }
+
+    [Fact]
+    public void AComponentFileDeclaresOnlyItsOwnKeysAndAliasesPrimitivesForThem()
+    {
+        var declared = 0;
+        foreach (var file in ComponentFiles())
+        {
+            var component = Path.GetFileNameWithoutExtension(file);
+            foreach (var element in XDocument.Load(file).Descendants().Where(element => element.Attribute(Xaml + "Key") is not null))
+            {
+                declared++;
+                var key = (string)element.Attribute(Xaml + "Key")!;
+                Assert.StartsWith($"Component.{component}.", key);
+                Assert.Equal("StaticResource", element.Name.LocalName);
+                Assert.StartsWith("Primitive.", (string?)element.Attribute("ResourceKey") ?? "");
+            }
+        }
+        Assert.True(declared > 0, "No component file declares a Component key.");
+    }
+
+    [Fact]
+    public void EveryKeyAComponentStyleNamesResolvesInBothThemeVariants()
+    {
+        var named = ComponentFiles().SelectMany(file => ResourceKeysNamedIn(File.ReadAllText(file))
+            .Where(key => !key.StartsWith("Primitive.", StringComparison.Ordinal))).Distinct().ToList();
+        Assert.Contains("Component.Sidebar.FooterMargin", named);
+        Assert.Contains("Intent.Clear", named);
 
         _avalonia.Invoke(() =>
         {
             foreach (var variant in Variants)
-            foreach (var key in named.Select(use => use.Key).Distinct())
-                Assert.True(Application.Current!.TryGetResource(key, variant, out _), $"{key} is missing in {variant}.");
+            foreach (var key in named)
+                Assert.True(Application.Current!.TryGetResource(key, variant, out var value) && value is not null,
+                    $"{key} is missing in {variant}.");
         });
+    }
+
+    [Fact]
+    public void NoViewNamesAPrimitiveKey()
+    {
+        var views = Path.Combine(AppDirectory(), "Views");
+        var named = Directory.EnumerateFiles(views, "*.axaml", SearchOption.AllDirectories)
+            .SelectMany(path => ResourceKeysNamedIn(File.ReadAllText(path)).Select(key => (File: Path.GetFileName(path), Key: key)))
+            .Where(use => use.Key.StartsWith("Primitive.", StringComparison.Ordinal))
+            .ToList();
+        Assert.Empty(named);
     }
 
     [Fact]
@@ -156,8 +204,21 @@ public sealed class DesignTokenTests
             Assert.Matches($@"(?m)^\s*{Regex.Escape(key)}\s", header);
     }
 
+    private static readonly HashSet<string> ColourProperties = ["Background", "Foreground", "BorderBrush", "Fill", "Stroke"];
+
+    private static readonly HashSet<string> SizeProperties =
+    [
+        "Padding", "Margin", "Spacing", "FontSize", "CornerRadius", "BorderThickness", "Width", "Height", "MinWidth",
+        "MinHeight", "MaxWidth", "MaxHeight", "StrokeThickness", "Opacity",
+    ];
+
+    private static IEnumerable<(string File, string Property, string Value)> ComponentSetters() =>
+        ComponentFiles().SelectMany(file => XDocument.Load(file).Descendants()
+            .Where(element => element.Name.LocalName == "Setter")
+            .Select(element => (Path.GetFileName(file), (string)element.Attribute("Property")!, (string)element.Attribute("Value")!)));
+
     private static IEnumerable<string> ResourceKeysNamedIn(string text) =>
-        Regex.Matches(text, @"(?:Dynamic|Static)Resource\s+(?:ResourceKey=)?([\w.]+)").Select(match => match.Groups[1].Value);
+        Regex.Matches(text, @"(?:Dynamic|Static)Resource\s+(?:ResourceKey=)?([\w.]+)(?!:)").Select(match => match.Groups[1].Value);
 
     private static List<string> IntentKeys()
     {
