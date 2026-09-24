@@ -176,7 +176,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         if (warnings is not null)
         {
             _all.AddRange(warnings
-                .GroupBy(warning => (warning.Text, warning.Origin, warning.Code), StringTupleComparer.Instance)
+                .GroupBy(warning => (warning.Text, warning.Origin, warning.Code, warning.Audience),
+                    StringTupleComparer.Instance)
                 .Select(rows => new GrammarWarningRowViewModel(
                     rows.First(), rows.Sum(_ => 1), summary?.FirstOrDefault(row => row.Code == rows.Key.Code))));
         }
@@ -217,21 +218,24 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private static bool Contains(string text, string filter) =>
         string.IsNullOrWhiteSpace(filter) || text.Contains(filter.Trim(), StringComparison.CurrentCultureIgnoreCase);
 
-    private sealed class StringTupleComparer : IEqualityComparer<(string Text, string Origin, string? Code)>
+    private sealed class StringTupleComparer :
+        IEqualityComparer<(string Text, string Origin, string? Code, string Audience)>
     {
         public static StringTupleComparer Instance { get; } = new();
 
-        public bool Equals((string Text, string Origin, string? Code) left,
-            (string Text, string Origin, string? Code) right) =>
+        public bool Equals((string Text, string Origin, string? Code, string Audience) left,
+            (string Text, string Origin, string? Code, string Audience) right) =>
             string.Equals(left.Text, right.Text, StringComparison.Ordinal) &&
             string.Equals(left.Origin, right.Origin, StringComparison.Ordinal) &&
-            string.Equals(left.Code, right.Code, StringComparison.Ordinal);
+            string.Equals(left.Code, right.Code, StringComparison.Ordinal) &&
+            string.Equals(left.Audience, right.Audience, StringComparison.Ordinal);
 
-        public int GetHashCode((string Text, string Origin, string? Code) value) =>
+        public int GetHashCode((string Text, string Origin, string? Code, string Audience) value) =>
             HashCode.Combine(
                 StringComparer.Ordinal.GetHashCode(value.Text),
                 StringComparer.Ordinal.GetHashCode(value.Origin),
-                value.Code is null ? 0 : StringComparer.Ordinal.GetHashCode(value.Code));
+                value.Code is null ? 0 : StringComparer.Ordinal.GetHashCode(value.Code),
+                StringComparer.Ordinal.GetHashCode(value.Audience));
     }
 }
 

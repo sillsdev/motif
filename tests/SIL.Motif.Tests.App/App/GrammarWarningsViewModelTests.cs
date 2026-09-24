@@ -157,7 +157,8 @@ public sealed class GrammarWarningsViewModelTests
 
         table.Load([EntryWarning, PhonemeWarning]);
 
-        var imported = Assert.Single(table.Rows.Cast<GrammarWarningRowViewModel>(), row => row.HasOrigin);
+        var imported = Assert.Single(table.Rows.Cast<GrammarWarningRowViewModel>(),
+            row => row.OriginLabel == "From import");
         Assert.Equal("From import", imported.OriginLabel);
     }
 }

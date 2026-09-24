@@ -41,7 +41,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
-                """[{"severity":"error","code":"hc-undeclared-segment","message":"Segment x is undeclared.","subjects":[]}]""",
+                ReportWithOneFinding,
                 string.Empty, TimeSpan.Zero),
         };
         var request = new GrammarCheckRequest(fwDataPath);
@@ -63,7 +63,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         var request = new GrammarCheckRequest(fwDataPath);
         GrammarCheckQuery.Query(request, new FakeInvoker
         {
-            Respond = _ => new PanGlossOutcome.Completed("[]", string.Empty, TimeSpan.Zero),
+            Respond = _ => new PanGlossOutcome.Completed(EmptyReport, string.Empty, TimeSpan.Zero),
         }, CancellationToken.None, parserStamp: "build-1");
 
         Assert.Null(StoredGrammarCheckQuery.Query(request, parserStamp: "build-2").Value!.Check);
@@ -102,6 +102,36 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         Assert.True(stored.Succeeded, stored.Refusal?.Message);
         Assert.False(stored.Value!.Check!.HasBaseline);
     }
+
+    private const string ReportWithOneFinding = """
+        {
+          "schema_version": 2,
+          "fieldworks_project": { "name": null, "source": null },
+          "summary": [
+            { "code": "hc-undeclared-segment", "group_name": "Undeclared segment", "level": "info", "count": 1 }
+          ],
+          "diagnostics": [
+            {
+              "level": "info",
+              "code": "hc-undeclared-segment",
+              "group_name": "Undeclared segment",
+              "origin": "check",
+              "description": "Segment x is undeclared.",
+              "guidance": null,
+              "subjects": []
+            }
+          ]
+        }
+        """;
+
+    private const string EmptyReport = """
+        {
+          "schema_version": 2,
+          "fieldworks_project": { "name": null, "source": null },
+          "summary": [],
+          "diagnostics": []
+        }
+        """;
 
     private void Capture(string fwDataPath)
     {
