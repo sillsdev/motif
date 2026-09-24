@@ -60,8 +60,12 @@ that dispatches them. `preflight --draft` selects the Draft handler of the `pref
 | `report --list-kinds` | Released | `Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]` |
 | `compare` | Released | `Usage: motif compare --project <fwdata> --from <assessmentId> --to <assessmentId> [--json]` |
 | `baseline capture` | Released | `baseline capture <project> [--json]` |
-| `assess` | Released | `assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] [--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--time-limit-ms <ms>] [--json]` |
+| `assess` | Released | `assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] [--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--time-limit-ms <ms>] [--step-cap <steps\|unbounded>] [--json]` |
 | `stats` | Released | `stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]` |
+| `selection show` | Released | `selection show --project <fwdata> [--json]` |
+| `selection set-default` | Released | `selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] [--add-words <word,word>] [--json]` |
+| `overview` | Released | `overview --project <fwdata> [--json]` |
+| `timing` | Released | `timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind\|rule] [--rule <name>] [--top N] [--json]` |
 | `handoff` | Released | `handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]` |
 | `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |
 | `add-document` | Released | `add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> [--title <text>] [--licence <text>] [--may-derive true\|false] [--licence-basis <text>]` |
@@ -87,7 +91,8 @@ through the working directory.
 ## Released and developer surfaces
 
 The Released surface contains `open`, `analyses`, `config show`, `report`, `report --list-kinds`,
-`compare`, `baseline capture`, `assess`, `stats`, `handoff`, `add-corpus`, `add-document`,
+`compare`, `baseline capture`, `assess`, `stats`, `selection show`, `selection set-default`,
+`overview`, `timing`, `handoff`, `add-corpus`, `add-document`,
 `add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
 `jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
 
@@ -308,8 +313,8 @@ could not be loaded as a scratch cache), `baseline.owned-root-violation` (the ma
 its own invariants), `baseline.busy` (another capture or publish holds the same files).
 
 **`assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] [--retry-failed]
-[--retry-slower-than <ms>] [--json]`** ensures a current Baseline exists for the project, composes a
-Selection from whichever sources were named, sends that Selection through PanGloss under the machine-wide
+[--retry-slower-than <ms>] [--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]`** ensures a current Baseline exists for the project, composes a
+Selection from the named sources or the saved default, sends that Selection through PanGloss under the machine-wide
 admission queue, and records the outcome as Assessments — one per collected kind (parse time and
 per-object timing), so a single run yields two Assessment ids.
 
@@ -319,8 +324,7 @@ only captures a fresh one when no Baseline row exists yet at all — pinned by
 and never re-reads the file to see whether it changed, unlike `baseline capture` itself, which always
 re-reads and republishes.
 
-The four sources combine as a union — naming more than one adds their words together, not choosing between
-them:
+The explicit sources combine as a union — naming more than one adds their words together:
 
 - `--all-wordforms` — every wordform currently in the project;
 - `--texts <guid,guid>` — the wordforms of the named Texts, matched only by their own GUID, never by name
@@ -332,8 +336,12 @@ them:
 
 Every source's words pass through the same trim-and-NFD-normalize pipeline before being combined, so a
 pasted or typed word can never fail to match a project wordform over a normalization difference alone.
-Naming no source, or naming sources that together contribute no words, is refused as `selection.empty`;
-naming a `--texts` GUID absent from the project is refused as `selection.text-not-found`.
+When no explicit source is named, `assess` resolves the saved default Selection. No saved default is refused as
+`selection.default-missing`. Naming explicit sources that together contribute no words is refused as
+`selection.empty`; naming a `--texts` GUID absent from the project is refused as `selection.text-not-found`.
+`--time-limit-ms` overrides the configured per-word wall-clock limit. `--step-cap` overrides the configured
+per-word search cap, whose default is 50,000,000 steps; `unbounded` asks PanGloss not to apply a step cap.
+A search that hits either limit is stored as incomplete and appears as Unknown in Compare and Overview.
 
 **Cancellation records nothing.** A cancelled run refuses as `assessment.cancelled`; no partial Assessment
 is ever left behind: recording waits for both Assessment production and the statistics summary to succeed.
@@ -356,6 +364,42 @@ statistics-summary invocation failed), `assessment.cancelled`, `selection.empty`
 mistyped project path is refused as `project.not-found` even when the parser is entirely unavailable,
 because the project is resolved before the Assessor is ever built — pinned by
 `AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt`.
+
+## Selection, Overview, and Timing
+
+**`selection show --project <fwdata> [--json]`** reads the saved default Selection's name, Text GUIDs,
+added words, and saved timestamps. **`selection set-default --project <fwdata> --name <name>
+[--texts <guid,guid>] [--add-words <word,word>] [--json]`** saves those inputs and makes that named
+Selection the default. At least one Text or one added word is required. Text GUIDs are checked against the
+current Baseline when one exists; before the first Baseline they are checked when `assess` resolves the
+Selection. A later `assess` records the exact resolved word list and digest on its Assessment. Its selection
+is the union of the chosen Texts' wordforms and the added words.
+
+`selection show` binds to `DefaultSelectionResponse` (`selection`, or `null` when none is saved).
+`selection set-default` binds to the same shape. Refusals include `selection.empty`, `selection.invalid`,
+and `selection.text-not-found`.
+
+**`overview --project <fwdata> [--json]`** reads the current Baseline, its saved default Selection, and the
+latest ParseTime Assessment with the same Baseline token and exact resolved Selection. It reports project
+timestamps and counts, Selection word and Text-occurrence counts, wordforms, rules, lexemes, grammar and
+Selection fingerprints, Text Coverage, Accuracy, and parse-time median, p95, slowest words, and step-limited
+count. Text Coverage and Accuracy use the same Compare placement rules as the App. A time- or step-limited
+word is Unknown, not a verdict. `Warnings` is a typed field in `OverviewResponse`; it is `null` until warning
+facts are retained. With no matching Assessment the response still has the project and Selection facts, while
+Assessment metrics are empty. `--json` emits `OverviewResponse`.
+
+**`timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind|rule]
+[--rule <name>] [--top N] [--json]`** reads only timings stored with an Assessment. Without `--assessment`,
+it resolves the current Baseline's default Selection to its matching Assessment. `<set>` can be `all`,
+`step-limit`, `slowest`, `cell:<standing>:<column>`, or a saved Selection name; `--word` supplies an explicit
+word list. `--by kind` groups time by rule kind, and `--by rule` groups by rule name. `--rule` also returns
+the most costly words for that rule. The response includes the word-time percentiles, slowest words, totals,
+time share, attempts, and number of words touched. `--top` defaults to 10. `--json` emits `TimingResponse`.
+
+Per-object rows are not emitted by the Assessment batch itself. After the batch writes its statistics cache,
+Motif makes a separate PanGloss `stats --group word` query and one `stats --group object --word FORM` query
+per selected word, then stores the normalized rows with the ParseTime Assessment. Each query remains one
+PanGloss process invocation; opening Overview or Timing makes no parser call.
 
 **`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
 straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —

@@ -79,10 +79,10 @@ mutable path from substituting new evidence after verification.
 A budget-limited word remains visibly incomplete, even when the parser has found partial analyses.
 The approved policy is a separate Capped count, distinct from TimedOut, Skipped and NoAnalysis.
 
-The owner approved a default of 200000 steps per word alongside the existing per-word wall-clock
-limit. Pass `--step-cap 200000` for that default. Store both limits in the scope as
-comparison context and surface mismatches. Compatibility remains AssessorId plus Kind only; differing
-budgets do not block comparisons.
+PanGloss's default is 50,000,000 steps per word alongside the existing per-word wall-clock limit, and
+Motif uses that same default. It can also pass a smaller explicit cap or `unbounded`. Store both limits
+in the scope as comparison context and surface mismatches. Compatibility remains AssessorId plus Kind
+only; differing budgets do not block comparisons.
 
 The owner requires a prominent per-word `INCOMPLETE — parsing did not finish` status whenever that
 word's search is cut short. Continue parsing the remaining words when a word reaches its step or time
