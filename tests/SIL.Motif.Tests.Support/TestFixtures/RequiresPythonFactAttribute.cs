@@ -28,6 +28,7 @@ public static class PythonExecutable
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
+                CreateNoWindow = true,
             });
             process!.WaitForExit(5000);
             return process.ExitCode == 0;

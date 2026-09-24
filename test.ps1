@@ -154,7 +154,8 @@ $jobs = foreach ($project in $testProjects) {
             '--logger'
             ('"trx;LogFileName={0}.trx"' -f $name)
         )
-        $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru `
+        # Without -NoNewWindow, Start-Process gives every project its own console window for the whole run.
+        $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru -NoNewWindow `
             -RedirectStandardOutput $log -RedirectStandardError $errorLog
         $summarySeenAt = $null
         $stopReason = $null

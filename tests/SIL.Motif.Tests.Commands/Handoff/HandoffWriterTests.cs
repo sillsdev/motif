@@ -438,6 +438,7 @@ public sealed class HandoffWriterTests : IDisposable
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            CreateNoWindow = true,
         };
         startInfo.ArgumentList.Add(Path.Combine(destination, "parse_grammar_texts_assessment.py"));
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);

@@ -69,6 +69,7 @@ public sealed class HandoffPythonHelperTests : IDisposable
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            CreateNoWindow = true,
         };
         startInfo.ArgumentList.Add("-m");
         startInfo.ArgumentList.Add("py_compile");
@@ -94,6 +95,7 @@ public sealed class HandoffPythonHelperTests : IDisposable
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            CreateNoWindow = true,
         };
         startInfo.ArgumentList.Add(scriptPath);
         startInfo.ArgumentList.Add("--help");
