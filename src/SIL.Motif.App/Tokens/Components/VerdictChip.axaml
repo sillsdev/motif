@@ -1,12 +1,16 @@
 <!--
   One verdict, one colour: the meanings every page shares, on chips, glyphs and verdict text.
-  Names Intent keys only.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.VerdictChip.Padding" ResourceKey="Primitive.Inset.7_1_7_1" />
+    <StaticResource x:Key="Component.VerdictChip.Radius" ResourceKey="Primitive.Radius.9" />
+  </Styles.Resources>
   <Style Selector="Border.verdictChip">
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Tag}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Tag}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.VerdictChip.Radius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.VerdictChip.Padding}" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
   </Style>

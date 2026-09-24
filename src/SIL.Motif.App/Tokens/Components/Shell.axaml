@@ -1,0 +1,13 @@
+<!--
+  The main window's opening and smallest size.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Shell.Width" ResourceKey="Primitive.Size.1240" />
+    <StaticResource x:Key="Component.Shell.Height" ResourceKey="Primitive.Size.780" />
+    <StaticResource x:Key="Component.Shell.MinWidth" ResourceKey="Primitive.Size.820" />
+    <StaticResource x:Key="Component.Shell.MinHeight" ResourceKey="Primitive.Size.600" />
+  </Styles.Resources>
+</Styles>

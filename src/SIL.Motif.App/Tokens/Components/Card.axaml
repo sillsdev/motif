@@ -1,13 +1,17 @@
 <!--
   A card: a bordered, rounded box holding one thing on a page.
-  Names Intent keys only.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Card.Padding" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Card.Radius" ResourceKey="Primitive.Radius.10" />
+  </Styles.Resources>
   <Style Selector="Border.card">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Card}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Card}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Card.Radius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Card.Padding}" />
   </Style>
 </Styles>

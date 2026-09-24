@@ -1,13 +1,18 @@
 <!--
   A page's count beside its sidebar entry, solid on the collapsed sidebar so it still catches the eye.
-  Names Intent keys only.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Badge.Padding" ResourceKey="Primitive.Inset.6_0_6_0" />
+    <StaticResource x:Key="Component.Badge.PaddingCollapsed" ResourceKey="Primitive.Inset.4_0_4_0" />
+    <StaticResource x:Key="Component.Badge.MarginCollapsed" ResourceKey="Primitive.Inset.0_-4_-6_0" />
+  </Styles.Resources>
   <Style Selector="Border.pageBadge">
     <Setter Property="Background" Value="{DynamicResource Intent.Neutral.Fill}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Pill}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Badge}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Badge.Padding}" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="HorizontalAlignment" Value="Right" />
   </Style>
@@ -18,9 +23,9 @@
   </Style>
   <Style Selector="ListBox.collapsed Border.pageBadge">
     <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.BadgeCompact}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Badge.PaddingCollapsed}" />
     <Setter Property="VerticalAlignment" Value="Top" />
-    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CornerBadge}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Badge.MarginCollapsed}" />
   </Style>
   <Style Selector="ListBox.collapsed Border.pageBadge :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Micro}" />

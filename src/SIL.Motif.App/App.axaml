@@ -9,7 +9,7 @@
 
     <!-- Styles cannot change control type; read-only markup names SelectableTextBlock explicitly. -->
     <!-- Button content stays TextBlock so button activation owns pointer and keyboard gestures. -->
-    <!-- Component styles: each maps a control's look onto Intent keys, and comes after Semi to win over it. -->
+    <!-- Component styles map a control's look onto tokens, and come after Semi to win over it. -->
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Text.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Card.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Notice.axaml" />
@@ -19,6 +19,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/FilterChip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/HeatCell.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/MorphemeRow.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Shell.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TopBar.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Menu.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Freshness.axaml" />

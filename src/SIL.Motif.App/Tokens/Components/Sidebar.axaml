@@ -1,34 +1,47 @@
 <!--
   The sidebar: icon and label per page, the label hidden and offered as a tooltip when collapsed.
-  Names Intent keys only.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Sidebar.Width" ResourceKey="Primitive.Size.204" />
+    <StaticResource x:Key="Component.Sidebar.RailWidth" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.Sidebar.ListPadding" ResourceKey="Primitive.Inset.8_12_8_12" />
+    <StaticResource x:Key="Component.Sidebar.ListPaddingCollapsed" ResourceKey="Primitive.Inset.0_12_0_12" />
+    <StaticResource x:Key="Component.Sidebar.ItemPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
+    <StaticResource x:Key="Component.Sidebar.ItemPaddingCollapsed" ResourceKey="Primitive.Inset.0_10_0_10" />
+    <StaticResource x:Key="Component.Sidebar.ItemMargin" ResourceKey="Primitive.Inset.0_0_0_2" />
+    <StaticResource x:Key="Component.Sidebar.IconSize" ResourceKey="Primitive.Size.18" />
+    <StaticResource x:Key="Component.Sidebar.IconSizeCollapsed" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.Sidebar.LabelMargin" ResourceKey="Primitive.Inset.10_0_0_0" />
+    <StaticResource x:Key="Component.Sidebar.FooterMargin" ResourceKey="Primitive.Inset.18_8_8_14" />
+  </Styles.Resources>
   <Style Selector="Border.sidebar">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerEnd}" />
-    <Setter Property="Width" Value="{DynamicResource Intent.Size.Sidebar}" />
+    <Setter Property="Width" Value="{DynamicResource Component.Sidebar.Width}" />
   </Style>
   <Style Selector="Border.sidebar.collapsed">
-    <Setter Property="Width" Value="{DynamicResource Intent.Size.Rail}" />
+    <Setter Property="Width" Value="{DynamicResource Component.Sidebar.RailWidth}" />
   </Style>
   <Style Selector="ListBox.sidebar">
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.NavList}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Sidebar.ListPadding}" />
   </Style>
   <Style Selector="ListBox.sidebar.collapsed">
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.NavListCollapsed}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Sidebar.ListPaddingCollapsed}" />
   </Style>
   <Style Selector="ListBox.sidebar ListBoxItem">
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.NavItem}" />
-    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.BelowMinimal}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Sidebar.ItemPadding}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Sidebar.ItemMargin}" />
     <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.None}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Navigation}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
   <Style Selector="ListBox.sidebar ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
@@ -46,17 +59,17 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="ListBox.sidebar.collapsed ListBoxItem">
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.NavItemCollapsed}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Sidebar.ItemPaddingCollapsed}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.MarkerStart}" />
-    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="ListBox.sidebar.collapsed ListBoxItem:selected">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Emphasis.Fill}" />
   </Style>
   <Style Selector="ListBox.sidebar.collapsed ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
   </Style>
   <Style Selector="Path.pageIcon">
     <Setter Property="StrokeThickness" Value="{DynamicResource Intent.Stroke.Icon}" />
@@ -64,21 +77,21 @@
     <Setter Property="StrokeJoin" Value="Round" />
   </Style>
   <Style Selector="Viewbox.pageIcon">
-    <Setter Property="Width" Value="{DynamicResource Intent.Size.Icon}" />
-    <Setter Property="Height" Value="{DynamicResource Intent.Size.Icon}" />
+    <Setter Property="Width" Value="{DynamicResource Component.Sidebar.IconSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Sidebar.IconSize}" />
   </Style>
   <Style Selector="ListBox.collapsed Viewbox.pageIcon">
-    <Setter Property="Width" Value="{DynamicResource Intent.Size.IconLarge}" />
-    <Setter Property="Height" Value="{DynamicResource Intent.Size.IconLarge}" />
+    <Setter Property="Width" Value="{DynamicResource Component.Sidebar.IconSizeCollapsed}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Sidebar.IconSizeCollapsed}" />
   </Style>
   <Style Selector=":is(TextBlock).pageLabel">
-    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.BeforeLabel}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Sidebar.LabelMargin}" />
   </Style>
   <Style Selector="ListBox.collapsed :is(TextBlock).pageLabel">
     <Setter Property="IsVisible" Value="False" />
   </Style>
   <Style Selector="StackPanel.sidebarFooter">
-    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.NavFooter}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Sidebar.FooterMargin}" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>
   <Style Selector="StackPanel.sidebarFooter :is(TextBlock)">

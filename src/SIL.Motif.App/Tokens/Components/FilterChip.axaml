@@ -1,15 +1,20 @@
 <!--
   Filter chips: one look for every page's chips.
-  Names Intent keys only.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.FilterChip.Padding" ResourceKey="Primitive.Inset.9_3_9_3" />
+    <StaticResource x:Key="Component.FilterChip.Radius" ResourceKey="Primitive.Radius.12" />
+    <StaticResource x:Key="Component.FilterChip.Margin" ResourceKey="Primitive.Inset.0_0_4_4" />
+  </Styles.Resources>
   <Style Selector="Button.filterChip">
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Chip}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.FilterChip.Padding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.FilterChip.Radius}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
-    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.Chip}" />
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Margin" Value="{DynamicResource Component.FilterChip.Margin}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
   </Style>

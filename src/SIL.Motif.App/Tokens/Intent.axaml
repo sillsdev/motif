@@ -1,16 +1,24 @@
 <!--
-  Intent: what a value is for. The only keys a view or a component style names.
+  Intent: what a value is for.
 
   Every key below is listed once here, so a page can be styled from this list without opening the file.
   Colours differ by theme and live in the Light and Dark dictionaries; always consume them with
-  DynamicResource, which follows a theme change. Spacing, type, radius and size are the same in both themes.
+  DynamicResource, which follows a theme change. Spacing, type, radius and stroke are the same in both themes.
   An Intent key refers only to a Primitive or to a Semi.Avalonia role, never to a literal.
+
+  Who names what:
+    A view names Intent keys or Component keys, never a Primitive key or a literal colour, size or gap.
+    A component style (Tokens/Components) takes every colour from an Intent key. Its sizes and gaps come
+    from Intent keys or from Component.<Name>.* keys it declares itself, each an alias of a Primitive.
+    A size or gap only one component uses belongs in that component's file, not here.
+    Views not yet converted still name Semi keys and literals; they are converted page by page.
 
   Colours (brushes, per theme):
     Intent.Surface                the window's own background (Semi's Background0)
     Intent.Surface.Subtle         a panel set just apart from the window, such as the sidebar
     Intent.Surface.Hover          what a row shows under the pointer (Semi's Fill0)
     Intent.Surface.Neutral        a chip or tag with no verdict of its own (Semi's Fill1)
+    Intent.Clear                  no fill at all, where a style must set a brush but show nothing
     Intent.Text                   body text (Semi's Text0)
     Intent.TextSecondary          navigation labels and badge counts, quieter than body text
     Intent.TextMuted              supporting text: details, captions, counts (Semi's Text2)
@@ -52,32 +60,10 @@
 
   Insets (Thickness, for Padding):
     Intent.Inset.None             no padding
-    Intent.Inset.Card             inside a card
-    Intent.Inset.Notice           inside a notice
-    Intent.Inset.Tag              inside a verdict chip
-    Intent.Inset.Chip             inside a filter chip
-    Intent.Inset.Pill             inside a pill-shaped button
-    Intent.Inset.Badge            inside a count badge
-    Intent.Inset.BadgeCompact     inside a count badge on the collapsed sidebar
-    Intent.Inset.Word             around a word in a reader
-    Intent.Inset.NavList          around the sidebar's list
-    Intent.Inset.NavListCollapsed around the collapsed sidebar's list
-    Intent.Inset.NavItem          inside a sidebar entry
-    Intent.Inset.NavItemCollapsed inside a collapsed sidebar entry
-    Intent.Inset.NavFooter        around the sidebar's footer
-    Intent.Inset.MenuItem         inside a menu entry
-    Intent.Inset.Bar              inside the top bar
-    Intent.Inset.Tab              inside a tab
 
   Gaps (Thickness, for Margin):
     Intent.Gap.AfterGroup         after an item, before the next group
     Intent.Gap.AfterRelated       after an item, before a related one
-    Intent.Gap.AfterTab           after a tab, before the next tab
-    Intent.Gap.BelowMinimal       under a list entry
-    Intent.Gap.Chip               after and under a chip that wraps
-    Intent.Gap.BeforeLabel        between an icon and its label
-    Intent.Gap.Banner             around a banner under the top bar
-    Intent.Gap.CornerBadge        pulls a badge onto its icon's corner
 
   Strokes (Thickness for BorderThickness; double for StrokeThickness):
     Intent.Stroke.None            no border
@@ -92,10 +78,6 @@
   Radii (CornerRadius):
     Intent.Radius.None            square
     Intent.Radius.Control         a list entry or small control
-    Intent.Radius.Notice          a notice
-    Intent.Radius.Tag             a verdict chip
-    Intent.Radius.Card            a card
-    Intent.Radius.Chip            a filter chip
     Intent.Radius.Pill            fully rounded ends
 
   Type sizes (double, for FontSize):
@@ -109,21 +91,6 @@
     Intent.Type.Caption           a menu entry's second line
     Intent.Type.Label             badges, compact chips, the sidebar footer, disclosure marks
     Intent.Type.Micro             a badge on the collapsed sidebar
-
-  Sizes (double, for Width and Height):
-    Intent.Size.Dot               a status dot
-    Intent.Size.Icon              a page icon
-    Intent.Size.IconLarge         a page icon on the collapsed sidebar, and the app's logo
-    Intent.Size.Bar               the top bar's height
-    Intent.Size.Rail              the collapsed sidebar's width
-    Intent.Size.Sidebar           the sidebar's width
-    Intent.Size.Menu              a flyout menu's width
-    Intent.Size.MenuButtonMax     the widest a menu button grows
-    Intent.Size.MenuLabelMax      the widest a menu button's label grows
-    Intent.Size.WindowWidth       the window's opening width
-    Intent.Size.WindowHeight      the window's opening height
-    Intent.Size.WindowMinWidth    the narrowest the window goes
-    Intent.Size.WindowMinHeight   the shortest the window goes
 
   Opacity (double):
     Intent.Opacity.Dimmed         something shown but set aside
@@ -153,31 +120,9 @@
   <StaticResource x:Key="Intent.Space.Page" ResourceKey="Primitive.Space.20" />
 
   <StaticResource x:Key="Intent.Inset.None" ResourceKey="Primitive.Inset.0_0_0_0" />
-  <StaticResource x:Key="Intent.Inset.Card" ResourceKey="Primitive.Inset.16_16_16_16" />
-  <StaticResource x:Key="Intent.Inset.Notice" ResourceKey="Primitive.Inset.14_10_14_10" />
-  <StaticResource x:Key="Intent.Inset.Tag" ResourceKey="Primitive.Inset.7_1_7_1" />
-  <StaticResource x:Key="Intent.Inset.Chip" ResourceKey="Primitive.Inset.9_3_9_3" />
-  <StaticResource x:Key="Intent.Inset.Pill" ResourceKey="Primitive.Inset.12_4_12_4" />
-  <StaticResource x:Key="Intent.Inset.Badge" ResourceKey="Primitive.Inset.6_0_6_0" />
-  <StaticResource x:Key="Intent.Inset.BadgeCompact" ResourceKey="Primitive.Inset.4_0_4_0" />
-  <StaticResource x:Key="Intent.Inset.Word" ResourceKey="Primitive.Inset.4_2_4_2" />
-  <StaticResource x:Key="Intent.Inset.NavList" ResourceKey="Primitive.Inset.8_12_8_12" />
-  <StaticResource x:Key="Intent.Inset.NavListCollapsed" ResourceKey="Primitive.Inset.0_12_0_12" />
-  <StaticResource x:Key="Intent.Inset.NavItem" ResourceKey="Primitive.Inset.10_7_10_7" />
-  <StaticResource x:Key="Intent.Inset.NavItemCollapsed" ResourceKey="Primitive.Inset.0_10_0_10" />
-  <StaticResource x:Key="Intent.Inset.NavFooter" ResourceKey="Primitive.Inset.18_8_8_14" />
-  <StaticResource x:Key="Intent.Inset.MenuItem" ResourceKey="Primitive.Inset.10_8_10_8" />
-  <StaticResource x:Key="Intent.Inset.Bar" ResourceKey="Primitive.Inset.18_0_18_0" />
-  <StaticResource x:Key="Intent.Inset.Tab" ResourceKey="Primitive.Inset.0_8_0_8" />
 
   <StaticResource x:Key="Intent.Gap.AfterGroup" ResourceKey="Primitive.Inset.0_0_12_0" />
   <StaticResource x:Key="Intent.Gap.AfterRelated" ResourceKey="Primitive.Inset.0_0_8_0" />
-  <StaticResource x:Key="Intent.Gap.AfterTab" ResourceKey="Primitive.Inset.0_0_20_0" />
-  <StaticResource x:Key="Intent.Gap.BelowMinimal" ResourceKey="Primitive.Inset.0_0_0_2" />
-  <StaticResource x:Key="Intent.Gap.Chip" ResourceKey="Primitive.Inset.0_0_4_4" />
-  <StaticResource x:Key="Intent.Gap.BeforeLabel" ResourceKey="Primitive.Inset.10_0_0_0" />
-  <StaticResource x:Key="Intent.Gap.Banner" ResourceKey="Primitive.Inset.16_12_16_0" />
-  <StaticResource x:Key="Intent.Gap.CornerBadge" ResourceKey="Primitive.Inset.0_-4_-6_0" />
 
   <StaticResource x:Key="Intent.Stroke.None" ResourceKey="Primitive.Inset.0_0_0_0" />
   <StaticResource x:Key="Intent.Stroke.Box" ResourceKey="Primitive.Inset.1_1_1_1" />
@@ -190,10 +135,6 @@
 
   <StaticResource x:Key="Intent.Radius.None" ResourceKey="Primitive.Radius.0" />
   <StaticResource x:Key="Intent.Radius.Control" ResourceKey="Primitive.Radius.6" />
-  <StaticResource x:Key="Intent.Radius.Notice" ResourceKey="Primitive.Radius.8" />
-  <StaticResource x:Key="Intent.Radius.Tag" ResourceKey="Primitive.Radius.9" />
-  <StaticResource x:Key="Intent.Radius.Card" ResourceKey="Primitive.Radius.10" />
-  <StaticResource x:Key="Intent.Radius.Chip" ResourceKey="Primitive.Radius.12" />
   <StaticResource x:Key="Intent.Radius.Pill" ResourceKey="Primitive.Radius.99" />
 
   <StaticResource x:Key="Intent.Type.Title" ResourceKey="Primitive.Type.22" />
@@ -207,24 +148,12 @@
   <StaticResource x:Key="Intent.Type.Label" ResourceKey="Primitive.Type.11" />
   <StaticResource x:Key="Intent.Type.Micro" ResourceKey="Primitive.Type.10p5" />
 
-  <StaticResource x:Key="Intent.Size.Dot" ResourceKey="Primitive.Size.8" />
-  <StaticResource x:Key="Intent.Size.Icon" ResourceKey="Primitive.Size.18" />
-  <StaticResource x:Key="Intent.Size.IconLarge" ResourceKey="Primitive.Size.22" />
-  <StaticResource x:Key="Intent.Size.Bar" ResourceKey="Primitive.Size.52" />
-  <StaticResource x:Key="Intent.Size.Rail" ResourceKey="Primitive.Size.52" />
-  <StaticResource x:Key="Intent.Size.Sidebar" ResourceKey="Primitive.Size.204" />
-  <StaticResource x:Key="Intent.Size.Menu" ResourceKey="Primitive.Size.280" />
-  <StaticResource x:Key="Intent.Size.MenuButtonMax" ResourceKey="Primitive.Size.240" />
-  <StaticResource x:Key="Intent.Size.MenuLabelMax" ResourceKey="Primitive.Size.190" />
-  <StaticResource x:Key="Intent.Size.WindowWidth" ResourceKey="Primitive.Size.1240" />
-  <StaticResource x:Key="Intent.Size.WindowHeight" ResourceKey="Primitive.Size.780" />
-  <StaticResource x:Key="Intent.Size.WindowMinWidth" ResourceKey="Primitive.Size.820" />
-  <StaticResource x:Key="Intent.Size.WindowMinHeight" ResourceKey="Primitive.Size.600" />
 
   <StaticResource x:Key="Intent.Opacity.Dimmed" ResourceKey="Primitive.Opacity.35" />
 
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
       <StaticResource x:Key="Intent.Surface" ResourceKey="SemiColorBackground0" />
       <SolidColorBrush x:Key="Intent.Surface.Subtle" Color="{StaticResource Primitive.Color.Grey25}" />
       <StaticResource x:Key="Intent.Surface.Hover" ResourceKey="SemiColorFill0" />
@@ -259,6 +188,7 @@
       <SolidColorBrush x:Key="Intent.Candidate.Accent" Color="{StaticResource Primitive.Color.Tan500}" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
       <StaticResource x:Key="Intent.Surface" ResourceKey="SemiColorBackground0" />
       <SolidColorBrush x:Key="Intent.Surface.Subtle" Color="{StaticResource Primitive.Color.Grey900}" />
       <StaticResource x:Key="Intent.Surface.Hover" ResourceKey="SemiColorFill0" />

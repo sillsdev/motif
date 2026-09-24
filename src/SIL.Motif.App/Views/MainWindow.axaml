@@ -6,10 +6,10 @@
         x:DataType="vm:HandoffWorkspaceViewModel"
         Title="Motif"
         Icon="avares://SIL.Motif.App/Assets/motif.ico"
-        Width="{DynamicResource Intent.Size.WindowWidth}"
-        Height="{DynamicResource Intent.Size.WindowHeight}"
-        MinWidth="{DynamicResource Intent.Size.WindowMinWidth}"
-        MinHeight="{DynamicResource Intent.Size.WindowMinHeight}">
+        Width="{DynamicResource Component.Shell.Width}"
+        Height="{DynamicResource Component.Shell.Height}"
+        MinWidth="{DynamicResource Component.Shell.MinWidth}"
+        MinHeight="{DynamicResource Component.Shell.MinHeight}">
   <Grid RowDefinitions="Auto,Auto,*">
 
     <!-- Top bar: the project menu, how fresh the numbers are, and Refresh. -->

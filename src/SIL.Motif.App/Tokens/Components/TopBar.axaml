@@ -1,14 +1,22 @@
 <!--
   The top bar: the Motif wordmark, the project menu, the freshness line and Refresh, with the banner below it.
-  Names Intent keys only.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.TopBar.Padding" ResourceKey="Primitive.Inset.18_0_18_0" />
+    <StaticResource x:Key="Component.TopBar.Height" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.TopBar.LogoSize" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.TopBar.ProjectMenuMaxWidth" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.TopBar.ProjectNameMaxWidth" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.TopBar.BannerMargin" ResourceKey="Primitive.Inset.16_12_16_0" />
+  </Styles.Resources>
   <Style Selector="Border.topBar">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Bar}" />
-    <Setter Property="Height" Value="{DynamicResource Intent.Size.Bar}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.TopBar.Padding}" />
+    <Setter Property="Height" Value="{DynamicResource Component.TopBar.Height}" />
   </Style>
   <Style Selector="StackPanel.topBarGroup">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
@@ -17,26 +25,26 @@
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterGroup}" />
   </Style>
   <Style Selector="Image.brandLogo">
-    <Setter Property="Width" Value="{DynamicResource Intent.Size.IconLarge}" />
-    <Setter Property="Height" Value="{DynamicResource Intent.Size.IconLarge}" />
+    <Setter Property="Width" Value="{DynamicResource Component.TopBar.LogoSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.TopBar.LogoSize}" />
   </Style>
   <Style Selector=":is(TextBlock).brandName">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Brand}" />
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
   <Style Selector="Button.projectMenu">
-    <Setter Property="MaxWidth" Value="{DynamicResource Intent.Size.MenuButtonMax}" />
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.TopBar.ProjectMenuMaxWidth}" />
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterGroup}" />
   </Style>
   <Style Selector="Button.projectMenu :is(TextBlock).projectName">
-    <Setter Property="MaxWidth" Value="{DynamicResource Intent.Size.MenuLabelMax}" />
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.TopBar.ProjectNameMaxWidth}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
   </Style>
   <Style Selector="Button.projectMenu :is(TextBlock).disclosure">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>
   <Style Selector="Border.banner">
-    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.Banner}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.TopBar.BannerMargin}" />
   </Style>
   <Style Selector="Button.bannerAction">
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterRelated}" />

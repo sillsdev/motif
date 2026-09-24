@@ -44,6 +44,7 @@
   <Color x:Key="Primitive.Color.Amber300">#E3B55E</Color>
   <Color x:Key="Primitive.Color.Amber800">#8A5A00</Color>
 
+  <Color x:Key="Primitive.Color.Clear">#00FFFFFF</Color>
   <Color x:Key="Primitive.Color.Grey0">#FFFFFF</Color>
   <Color x:Key="Primitive.Color.Grey25">#FBFCFD</Color>
   <Color x:Key="Primitive.Color.Grey100">#ECEEF2</Color>

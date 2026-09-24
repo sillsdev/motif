@@ -1,14 +1,17 @@
 <!--
   The underline a word wears in a reader, in the verdict colours.
-  Names Intent keys only.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.WordVerdict.Padding" ResourceKey="Primitive.Inset.4_2_4_2" />
+  </Styles.Resources>
   <Style Selector="Border.wordVerdict">
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.UnderlineHeavy}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.TextFaint}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Word}" />
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="{DynamicResource Component.WordVerdict.Padding}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
   </Style>
   <Style Selector="Border.wordVerdict.agrees">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Success}" />
