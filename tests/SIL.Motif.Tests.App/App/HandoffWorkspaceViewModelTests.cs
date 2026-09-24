@@ -55,7 +55,6 @@ public sealed class HandoffWorkspaceViewModelTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new StatisticsViewModel(fake),
             new HandoffViewModel(fake, selection, folderPicker, dragSource),
             fake);
         return (fake, projectPicker, folderPicker, dragSource, workspace);
@@ -80,13 +79,13 @@ public sealed class HandoffWorkspaceViewModelTests
         fake.StatsCompletesWith(new StatsCommandResponse(
             "assessment/one", "grammar.json", "cache.sqlite", null,
             [JsonDocument.Parse("""{"kind":"word","form":"from-project-one"}""").RootElement.Clone()]));
-        await workspace.Statistics.LoadCommand.ExecuteAsync(null);
-        Assert.Single(workspace.Statistics.Rows);
+        await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
+        Assert.Single(workspace.PageModel<TimingPageModel>().Statistics.Rows);
 
         await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata", NewToken());
-        workspace.Statistics.SortBy("word");
+        workspace.PageModel<TimingPageModel>().Statistics.SortBy("word");
 
-        Assert.Empty(workspace.Statistics.Rows);
+        Assert.Empty(workspace.PageModel<TimingPageModel>().Statistics.Rows);
     }
 
     [Fact]
@@ -102,7 +101,7 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.True(workspace.Baseline.HasBaseline);
         Assert.Single(workspace.Selection.Texts);
         Assert.Equal(ProjectPath, workspace.Assess.ProjectPath);
-        Assert.Equal(ProjectPath, workspace.Statistics.ProjectPath);
+        Assert.Equal(ProjectPath, workspace.PageModel<TimingPageModel>().Statistics.ProjectPath);
         Assert.Equal(ProjectPath, workspace.Handoff.ProjectPath);
     }
 
@@ -163,8 +162,8 @@ public sealed class HandoffWorkspaceViewModelTests
         await workspace.Assess.RunCommand.ExecuteAsync(null);
 
         Assert.True(workspace.Baseline.HasAssessment);
-        Assert.Equal("(summary)", workspace.Statistics.SummaryMarkdown);
-        Assert.Equal("assessment/one", workspace.Statistics.AssessmentId);
+        Assert.Equal("(summary)", workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
+        Assert.Equal("assessment/one", workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
         Assert.Equal("invocation/one", workspace.Handoff.InvocationId);
         Assert.True(workspace.Context.HasEvidence);
         Assert.False(workspace.Context.HasNoEvidence);
@@ -190,7 +189,7 @@ public sealed class HandoffWorkspaceViewModelTests
 
         Assert.False(workspace.RerunOffered);
         Assert.Equal(2, fake.AssessRequests.Count);
-        Assert.Equal("(second)", workspace.Statistics.SummaryMarkdown);
+        Assert.Equal("(second)", workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
     }
 
     [Fact]
@@ -222,16 +221,16 @@ public sealed class HandoffWorkspaceViewModelTests
         fake.StatsCompletesWith(new StatsCommandResponse(
             "assessment/one", "grammar.json", "cache.sqlite", null,
             [JsonDocument.Parse("""{"kind":"word"}""").RootElement.Clone()]));
-        await workspace.Statistics.LoadCommand.ExecuteAsync(null);
+        await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
 
         await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata");
 
         Assert.False(workspace.Context.HasEvidence);
         Assert.True(workspace.Context.HasNoEvidence);
-        Assert.Null(workspace.Statistics.SummaryMarkdown);
-        Assert.Null(workspace.Statistics.AssessmentId);
+        Assert.Null(workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
+        Assert.Null(workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
         Assert.Null(workspace.Handoff.InvocationId);
-        Assert.Empty(workspace.Statistics.Rows);
+        Assert.Empty(workspace.PageModel<TimingPageModel>().Statistics.Rows);
         Assert.Equal(RunState.Idle, workspace.Assess.State);
         Assert.Null(workspace.Assess.Result);
         Assert.Empty(workspace.Handoff.Files);
@@ -257,12 +256,12 @@ public sealed class HandoffWorkspaceViewModelTests
         fake.StatsCompletesWith(new StatsCommandResponse(
             "assessment/one", "grammar.json", "cache.sqlite", null,
             [JsonDocument.Parse("""{"kind":"word","attempts":1}""").RootElement.Clone()]));
-        workspace.Statistics.SelectedGroup = workspace.Statistics.Groups[1];
-        await workspace.Statistics.LoadCommand.ExecuteAsync(null);
-        workspace.Statistics.FilterText = "word";
-        workspace.Statistics.SortBy("attempts");
-        Assert.Single(workspace.Statistics.Rows);
-        Assert.Equal(workspace.Statistics.Groups[1], Assert.Single(fake.StatsRequests).ForwardedArguments[1]);
+        workspace.PageModel<TimingPageModel>().Statistics.SelectedGroup = workspace.PageModel<TimingPageModel>().Statistics.Groups[1];
+        await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
+        workspace.PageModel<TimingPageModel>().Statistics.FilterText = "word";
+        workspace.PageModel<TimingPageModel>().Statistics.SortBy("attempts");
+        Assert.Single(workspace.PageModel<TimingPageModel>().Statistics.Rows);
+        Assert.Equal(workspace.PageModel<TimingPageModel>().Statistics.Groups[1], Assert.Single(fake.StatsRequests).ForwardedArguments[1]);
         Assert.Equal("assessment/one", Assert.Single(fake.StatsRequests).AssessmentId);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(

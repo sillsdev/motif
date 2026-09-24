@@ -58,7 +58,7 @@ public sealed class MainWindowSmokeTests
             Assert.Same(workspace.Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
             Assert.Same(workspace.Assess, Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>()).Assess);
             Assert.Same(
-                workspace.Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
+                workspace.PageModel<TimingPageModel>().Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
             Assert.Same(workspace.Handoff, Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>()).Handoff);
         });
     }
@@ -149,7 +149,7 @@ public sealed class MainWindowSmokeTests
                             "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
                         "project.fwdata", DateTimeOffset.UtcNow, false, false),
                     new SelectionProjection([], []), [], "summary"), DateTimeOffset.Now, WasRerun: false));
-                workspace.Statistics.Rows.Add(new StatsRowViewModel(statisticsDocument.RootElement.Clone()));
+                workspace.PageModel<TimingPageModel>().Statistics.Rows.Add(new StatsRowViewModel(statisticsDocument.RootElement.Clone()));
                 workspace.CurrentPage = WorkspacePage.Timing;
 
                 window.Show();
@@ -165,7 +165,7 @@ public sealed class MainWindowSmokeTests
                 var statisticsCell = statistics.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .First(cell => cell.IsEffectivelyVisible && cell.Text == "motifa");
                 RaiseLeftPointerPress(statisticsCell, window);
-                Assert.Same(workspace.Statistics.Rows[0], statistics.SelectedItem);
+                Assert.Same(workspace.PageModel<TimingPageModel>().Statistics.Rows[0], statistics.SelectedItem);
 
                 workspace.Grammar.Warnings.Load([
                     new GrammarWarning(
@@ -632,7 +632,6 @@ public sealed class MainWindowSmokeTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new StatisticsViewModel(fake),
             new HandoffViewModel(fake, selection, new FakeFolderPicker(), dragSource),
             fake);
 

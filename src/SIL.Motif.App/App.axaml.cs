@@ -43,7 +43,6 @@ public sealed partial class App : Application
             selection,
             words,
             new AssessViewModel(commandClient, selection),
-            new StatisticsViewModel(commandClient),
             new HandoffViewModel(commandClient, selection, pickers, pickers),
             commandClient);
     }

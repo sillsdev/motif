@@ -58,15 +58,15 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
 
             Assert.True(walkthrough.Workspace.Context.HasEvidence);
             Assert.True(walkthrough.Named<ContentControl>("StatisticsHost").IsVisible);
-            Assert.NotNull(walkthrough.Workspace.Statistics.AssessmentId);
-            Assert.Equal(walkthrough.Workspace.Statistics.Groups[0],
-                walkthrough.Workspace.Statistics.SelectedGroup);
+            Assert.NotNull(walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
+            Assert.Equal(walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.Groups[0],
+                walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.SelectedGroup);
 
             walkthrough.Click("Refresh statistics");
             var statisticsDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
             walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Statistics.Rows.Count > 0 &&
-                    walkthrough.Workspace.Statistics.LoadCommand.ExecutionTask is not { IsCompleted: false },
+                () => walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.Rows.Count > 0 &&
+                    walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecutionTask is not { IsCompleted: false },
                 WalkthroughSteps.Remaining(statisticsDeadline), "statistics did not load any rows");
 
             Assert.True(walkthrough.Workspace.Baseline.HasAssessment);

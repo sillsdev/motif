@@ -150,8 +150,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         Assert.True(workspace.Assess.State == RunState.Completed,
             $"The Assessment ended {workspace.Assess.State}: {workspace.Assess.Refusal?.Message}");
 
-        workspace.Statistics.LoadCommand.Execute(null);
-        walkthrough.WaitUntil(() => !workspace.Statistics.LoadCommand.IsRunning, TimeSpan.FromMinutes(2), "Statistics did not load");
+        workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.Execute(null);
+        walkthrough.WaitUntil(() => !workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.IsRunning, TimeSpan.FromMinutes(2), "Statistics did not load");
 
         var tokens = workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord).ToList();
         var inText = tokens.FirstOrDefault(token => token.Verdict == OccurrenceVerdict.Differs) ?? tokens.FirstOrDefault();

@@ -38,7 +38,6 @@ public sealed class WorkspacePageTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new StatisticsViewModel(fake),
             new HandoffViewModel(fake, selection, new FakeFolderPicker(), new FakeDragSource()),
             fake);
         return (fake, projectPicker, workspace);
@@ -583,7 +582,7 @@ public sealed class WorkspacePageTests
         await ChooseProjectAsync(fake, projectPicker, workspace);
         workspace.ShowPageCommand.Execute(WorkspacePage.Timing);
 
-        workspace.Statistics.TryWord!("kitabu");
+        workspace.PageModel<TimingPageModel>().Statistics.TryWord!("kitabu");
 
         Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
         Assert.Equal("kitabu", workspace.Assess.Trace.WordToTry);

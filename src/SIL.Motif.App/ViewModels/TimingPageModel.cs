@@ -10,12 +10,14 @@ public sealed class TimingPageModel : PageModel
 {
     public TimingPageModel(WorkspaceContext context) : base(context)
     {
+        Statistics = new StatisticsViewModel(context.Commands);
         Statistics.AssessedWord = context.Assess.Words.Find;
         Statistics.TryWord = context.TryWord;
         Statistics.OpenTimeLimit = () => context.OpenTexts(TextsTab.Texts);
     }
 
-    public StatisticsViewModel Statistics => Context.Statistics;
+    /// <summary>The page's own statistics, read through the context's commands.</summary>
+    public StatisticsViewModel Statistics { get; }
 
     /// <summary>What another page last opened Timing on, or <see langword="null"/> when none has.</summary>
     public OpenTimingRequest? Focus { get; private set; }

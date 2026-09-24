@@ -543,7 +543,6 @@ public sealed class WorkflowShellTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new StatisticsViewModel(fake),
             new HandoffViewModel(fake, selection, new NoFolderPicker(), DragSource),
             fake);
     }
@@ -563,7 +562,6 @@ public sealed class WorkflowShellTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new StatisticsViewModel(fake),
             new HandoffViewModel(fake, selection, new NoFolderPicker(), DragSource),
             fake);
 

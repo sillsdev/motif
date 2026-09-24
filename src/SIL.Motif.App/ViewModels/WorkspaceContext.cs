@@ -18,6 +18,23 @@ public sealed record WorkspaceEvidence(AssessCommandResponse Assessment, DateTim
     public DateTimeOffset MeasuredSaveUtc => Assessment.Baseline.SourceLastWriteUtc;
 }
 
+/// <summary>The open project's Baseline as the window describes it, captured whenever it changes.</summary>
+/// <param name="HasBaseline">Whether a Baseline has been captured for the project.</param>
+/// <param name="CapturedTimeText">What to say about capture when there is no Baseline yet.</param>
+/// <param name="SavedText">Which FieldWorks save the Baseline was captured from.</param>
+/// <param name="CapturedAtText">When the Baseline was captured.</param>
+/// <param name="HeldStatusText">Whether FieldWorks held the project open during the capture.</param>
+/// <param name="RefusalMessage">Why the last capture was refused, or <see langword="null"/>.</param>
+public sealed record WorkspaceBaseline(
+    bool HasBaseline, string CapturedTimeText, string SavedText, string CapturedAtText, string HeldStatusText,
+    string? RefusalMessage);
+
+/// <summary>The grammar check's findings in one line, for pages that summarise them.</summary>
+/// <param name="SummaryText">The check's state or its count of findings.</param>
+/// <param name="ShowFindings">Whether the check found anything to break down.</param>
+/// <param name="BreakdownText">The findings by kind.</param>
+public sealed record GrammarSummary(string SummaryText, bool ShowFindings, string BreakdownText);
+
 /// <summary>
 /// A request to open a page, carrying whatever that page should show when it opens. Each page declares the
 /// requests it answers beside its own model, so a new request never touches another page.
@@ -40,7 +57,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     public WorkspaceContext(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
         GrammarViewModel grammar, SelectionViewModel selection, TextWordsViewModel words, AssessViewModel assess,
-        StatisticsViewModel statistics, HandoffViewModel handoff, ChangesViewModel changes, ICommandClient commands)
+        HandoffViewModel handoff, ChangesViewModel changes, ICommandClient commands)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(projectHistory);
@@ -49,7 +66,6 @@ public sealed partial class WorkspaceContext : ObservableObject
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
-        ArgumentNullException.ThrowIfNull(statistics);
         ArgumentNullException.ThrowIfNull(handoff);
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(commands);
@@ -60,7 +76,6 @@ public sealed partial class WorkspaceContext : ObservableObject
         Selection = selection;
         Words = words;
         Assess = assess;
-        Statistics = statistics;
         Handoff = handoff;
         Changes = changes;
         Commands = commands;
@@ -80,8 +95,6 @@ public sealed partial class WorkspaceContext : ObservableObject
     public TextWordsViewModel Words { get; }
 
     public AssessViewModel Assess { get; }
-
-    public StatisticsViewModel Statistics { get; }
 
     public HandoffViewModel Handoff { get; }
 

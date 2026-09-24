@@ -36,7 +36,6 @@ public sealed class WalkthroughWindow : IDisposable
             selection,
             words,
             new AssessViewModel(commandClient, selection),
-            new StatisticsViewModel(commandClient),
             new HandoffViewModel(commandClient, selection, _folderPicker, _dragSource),
             commandClient);
 

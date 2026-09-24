@@ -36,7 +36,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, ProjectHistoryViewModel projectHistory, BaselineViewModel baseline,
         GrammarViewModel grammar, SelectionViewModel selection, TextWordsViewModel words,
-        AssessViewModel assess, StatisticsViewModel statistics, HandoffViewModel handoff, ICommandClient commandClient)
+        AssessViewModel assess, HandoffViewModel handoff, ICommandClient commandClient)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(projectHistory);
@@ -45,13 +45,12 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(assess);
-        ArgumentNullException.ThrowIfNull(statistics);
         ArgumentNullException.ThrowIfNull(handoff);
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
 
         assess.TextWords = words;
-        Context = new WorkspaceContext(project, projectHistory, baseline, grammar, selection, words, assess, statistics,
+        Context = new WorkspaceContext(project, projectHistory, baseline, grammar, selection, words, assess,
             handoff, new ChangesViewModel(), commandClient);
         OpenConfiguration = () => Context.OpenTexts(TextsTab.Texts);
 
@@ -287,8 +286,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public TextWordsViewModel Words => Context.Words;
 
     public AssessViewModel Assess => Context.Assess;
-
-    public StatisticsViewModel Statistics => Context.Statistics;
 
     public HandoffViewModel Handoff => Context.Handoff;
 

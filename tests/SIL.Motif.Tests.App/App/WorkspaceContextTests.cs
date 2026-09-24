@@ -232,7 +232,6 @@ public sealed class WorkspaceContextTests
             selection,
             words,
             new AssessViewModel(fake, selection),
-            new StatisticsViewModel(fake),
             new HandoffViewModel(fake, selection, new NoFolderPicker(), new NoDragSource()),
             new ChangesViewModel(),
             fake);
