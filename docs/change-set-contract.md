@@ -182,6 +182,44 @@ a duplicate name. See [ADR 0005](adr/0005-schema-operations-non-undoable-uow.md)
 but the verb is general: any construct whose durable identity is a locator other than canonical GUID
 resolves through the same tri-state rule.
 
+### Word analysis operations
+
+The analysis composer accepts the five collected actions `approve`, `reject`, `candidate`,
+`incorrect-spelling`, and `add-candidate`. It resolves the selected wordform and the first parser
+reading in a named Assessment against a scratch project. The display reading is explanatory text;
+the Assessment's morph references determine identity. It refuses ambiguous wordform text, absent
+evidence, unresolvable references, and a duplicate candidate. It may emit a create operation before
+an opinion operation, with an explicit `dependsOn` edge.
+
+`analysis/wfiAnalysis/addRefEvaluations` and `removeRefEvaluations` target a `WfiAnalysis` and have
+the closed `after` shape `{ "member": "defaultUserApproves" }` or
+`{ "member": "defaultUserDisapproves" }`. Adding an opinion uses LibLCM's default user agent, which
+retracts the opposite opinion. Removing one reference returns that analysis to candidate status
+when it was the current opinion. The effect and semantic snapshot field is
+`analysis/wfiAnalysis/evaluations`, an identity keyed map of the full evaluation membership.
+
+`analysis/wfiWordform/createAnalysis` targets a `WfiWordform`, supplies a fresh `entityId`, and has
+the closed `after` shape `{ "morphs": [{ "form": "<id>", "msa": "<id>",
+"inflType": "<id>", "guessedString": "..." }] }`. `morphs` is nonempty and ordered. The form,
+MSA, and inflection type are optional when the parser does not supply them; a missing form requires
+a guessed string. Lowering creates an owned `WfiAnalysis`, one ordered `WfiMorphBundle` per morph,
+and the default parser agent's approval. Its effect and snapshot field is
+`analysis/wfiWordform/analyses`, the wordform's complete analysis membership. FieldWorks' parser
+filing behavior is pinned by `CreateParserCandidate_RoundTripsThroughDryRunAndApply` and
+`ApproveParserReading_ComposesCandidateThenHumanOpinion`.
+
+Each collected operation carries a nonsemantic `extensions.changeFit` fingerprint: wordform id,
+optional existing analysis id, wordform form, content digest for an existing analysis or parser
+reading, and the Baseline token against which it was collected. Preflight checks these against the
+live project and reports `still fits` or `no longer fits` per operation. Apply repeats the check
+and refuses any nonfitting change, including under `--force`. Removing nonfitting operations from
+the Draft removes their declared dependents as well and leaves unrelated changes intact. Reopening
+and finalizing after a removal produces a new revision and clears its old bound Dry Run; the new
+revision needs its own Dry Run before Apply. Review is an App screen for reading reports. It records
+no Decision and grants no Apply permission; computed Readiness remains the Apply gate.
+Any future rebase may refresh Baseline evidence or unambiguous anchors; it cannot retarget a wordform,
+choose another analysis, change an opinion, or reorder the declared morphs.
+
 ## IDs and GUID mapping
 
 Change Set IDs, operation IDs, and proposed entity IDs use this textual convention:
@@ -751,15 +789,21 @@ and the unit of work commits. It contains:
 - runner, projection, and LibLCM/model versions, so a stored result digest remains interpretable
   after a dependency bump.
 
-Apply requires a prior Assessment and refuses to run without one: the Assessment's footprint digest
-binds apply to a specific evaluated baseline, so a footprint that has moved since stops apply with a
-drift diagnostic rather than proceeding, and a bare apply with no bound Assessment is a hard error.
+Apply requires a prior bound Dry Run and refuses to run without one: its footprint digest binds
+Apply to a specific evaluated baseline, so a footprint that has moved since stops Apply with a
+Drift diagnostic rather than proceeding. Readiness is computed from a Correctness Assessment;
+`--force` can bypass Readiness reasons, but not a nonfitting collected change.
 See [ADR 0004](adr/0004-prerequisite-graph-stable-ids-bound-apply.md).
 
 Apply requires an opaque applier identity from the host and writes exactly one
 [applied-change log](applied-log.md) entry inside the same unit of work. That entry is excluded from
 the semantic snapshot and from expected effects, so it never reaches any digest; including it would
 make every effect digest unique and change the project's semantic digest on every apply.
+
+After the host saves the project, it records the Receipt in the paired project's `Receipts` table
+and marks the Proposal applied in the same store transaction. Retrying an already applied Proposal
+does not add another row. If saving or Receipt recording fails after the LibLCM commit, the caller
+receives a reconciliation error rather than a rollback claim.
 
 No receipt is emitted for a rolled-back application, except a distinct failure report that cannot
 be mistaken for a realized state edge.

@@ -19,7 +19,7 @@ lives in `Project.motif.db` beside the project, and a resident job runner picks 
 motif <verb> [--project <path.fwdata>] [--store <dir>] [flags] [--json]
 ```
 
-The command catalog contains 47 descriptors. The table below is regenerated from
+The command catalog contains 48 descriptors. The table below is regenerated from
 `CommandCatalog.All` and `CliVerbCatalog.All`; the usage cells preserve the catalogued strings used by
 `UsageLineFor(...)` and the CLI dispatch. `dry-run --wait`, `trial --wait`, and `report --list-kinds`
 are selector descriptors with no independent usage line, so they repeat the parent invocation line
@@ -48,6 +48,7 @@ that dispatches them.
 | `supersede` | Developer | `supersede --project <fwdata> <proposalId> <supersededByProposalId>` |
 | `list` | Developer | `list --project <fwdata> [--json]` |
 | `show` | Developer | `show --project <fwdata> <proposalId> [--json]` |
+| `preflight` | Developer | `preflight --project <fwdata> <proposalId> [--json]` |
 | `apply` | Developer | `apply <proposalId> --project <fwdata> --user <name> [--force] [--json]` |
 | `log` | Developer | `log --project <fwdata> [--json]` |
 | `config show` | Released | `Usage: motif config show --project <fwdata> [--json]` |
@@ -89,7 +90,21 @@ The Released surface contains `open`, `analyses`, `config show`, `report`, `repo
 The Developer surface contains `new`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
-`supersede`, `list`, `show`, `apply`, `log`, `dry-run`, `dry-run --wait`, `trial`, and `trial --wait`.
+`supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`, `dry-run --wait`, `trial`, and `trial --wait`.
+
+`preflight` reads the live project and reports each collected change as `still fits` or
+`no longer fits`, with an operation id and reason. `--json` returns the same entries as structured
+`changes`. A deleted wordform, changed wordform form, missing or moved analysis, changed analysis
+reading, or a parser reading that has since been stored is `no longer fits`. Apply checks this again
+and refuses a nonfitting change even with `--force`; `--force` only bypasses Readiness reasons.
+An Apply that succeeds records a durable Receipt in the paired project database.
+
+The App's collected changes use `AnalysisDraftChanges` in Commands to add, replace, or remove a
+single word's change in a persistent Draft. The request carries the App entry's kind, word, and
+display reading, plus the Assessment id that produced its parser reading. The stored Assessment's
+first morphology reading supplies the exact morph references; display text is never treated as an
+identity. A current Baseline is required. The App keeps this as one Draft in `Project.motif.db` until
+its save action finalizes and applies it.
 
 `CommandSurfacePolicy.IsAvailable` exposes a command when its surface is Released or when developer
 commands are enabled. Set `MOTIF_DEVELOPER_COMMANDS=1` exactly to re-enable the Developer commands for
