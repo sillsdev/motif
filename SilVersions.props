@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup Label="SIL Ecosystem Versions">
-    <!-- Pinned version of SIL.WritingSystems/SIL.Core, both resolved transitively via SIL.LCModel. -->
-    <SilLibPalasoVersion>17.0.0-beta0097</SilLibPalasoVersion>
+    <!-- SIL.WritingSystems/SIL.Core, pinned directly above SIL.LCModel's 17.x: 18 recovers an abandoned SLDR mutex. -->
+    <SilLibPalasoVersion>18.0.0-beta0042</SilLibPalasoVersion>
   </PropertyGroup>
 </Project>
