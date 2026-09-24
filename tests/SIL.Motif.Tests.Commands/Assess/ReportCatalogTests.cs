@@ -59,7 +59,7 @@ public sealed class ReportCatalogTests
 /// </summary>
 public sealed class ReportProducerTests
 {
-    private const string ScopeJson = """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":200000}""";
+    private const string ScopeJson = """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":"200000"}""";
     private const string GrammarSha = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     // "The Assessor may since be gone" simulated: nothing is registered, so a call to it would throw.

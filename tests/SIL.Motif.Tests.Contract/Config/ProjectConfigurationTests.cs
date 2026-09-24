@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.Config;
 using Xunit;
 
@@ -34,7 +35,7 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.Equal(AssessmentScopeConfiguration.DefaultName, scope.Name);
         Assert.Equal(AssessmentScopeConfiguration.DefaultQueryText, scope.Query);
         Assert.Equal(AssessmentScopeConfiguration.DefaultAssessorName, scope.Assessor);
-        Assert.Equal(200000, scope.PerWordStepLimit);
+        Assert.Equal(StepCap.Default, scope.PerWordStepLimit);
         Assert.Empty(scope.Collect);
         Assert.Equal(TimeSpan.FromSeconds(1), scope.PerWordLimit);
     }
@@ -172,7 +173,7 @@ public sealed class ProjectConfigurationTests : IDisposable
             $"[[scope]]\nname = \"limited\"\nper-word-step-limit = {steps}\nper-word-limit-ms = 750\n", "Project.motif.toml");
         var scope = Assert.Single(ProjectConfigurationFile.Parse(
             ProjectConfigurationFile.Render(parsed), "Project.motif.toml").Scopes);
-        Assert.Equal(steps, scope.PerWordStepLimit);
+        Assert.Equal(new StepCap(steps), scope.PerWordStepLimit);
         Assert.Equal(TimeSpan.FromMilliseconds(750), scope.PerWordLimit);
         Assert.DoesNotContain("engine", ProjectConfigurationFile.Render(parsed), StringComparison.Ordinal);
     }
@@ -187,6 +188,16 @@ public sealed class ProjectConfigurationTests : IDisposable
         var exception = Assert.Throws<ProjectConfigurationException>(() => ProjectConfigurationFile.Parse(
             $"[[scope]]\nname = \"limited\"\nper-word-step-limit = {steps}\n", "Project.motif.toml"));
         Assert.Contains("positive whole number", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnboundedStepLimitRoundTrips()
+    {
+        var parsed = ProjectConfigurationFile.Parse(
+            "[[scope]]\nname = \"limited\"\nper-word-step-limit = unbounded\n", "Project.motif.toml");
+
+        Assert.Equal(StepCap.Unbounded, Assert.Single(parsed.Scopes).PerWordStepLimit);
+        Assert.Contains("per-word-step-limit = unbounded", ProjectConfigurationFile.Render(parsed), StringComparison.Ordinal);
     }
 
     public void Dispose()

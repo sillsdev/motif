@@ -39,7 +39,9 @@ public sealed class ConfigCommandArgvTests : IDisposable
         Assert.Equal("default", scope.GetProperty("name").GetString());
         Assert.Equal("pangloss", scope.GetProperty("assessor").GetString());
         Assert.False(scope.TryGetProperty("engine", out _));
-        Assert.Equal(200000, scope.GetProperty("perWordStepLimit").GetInt32());
+        var stepLimit = scope.GetProperty("perWordStepLimit");
+        Assert.Equal(50000000, stepLimit.GetProperty("steps").GetInt64());
+        Assert.False(stepLimit.GetProperty("isUnbounded").GetBoolean());
         Assert.Equal(1000, scope.GetProperty("perWordLimitMs").GetInt64());
     }
 

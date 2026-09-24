@@ -159,7 +159,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(project, argv[1]);
         Assert.EndsWith("words.txt", argv[2], StringComparison.Ordinal);
         Assert.EndsWith("out.tsv", argv[3], StringComparison.Ordinal);
-        Assert.Equal(["--word-timeout-ms", "1500", "--step-cap", "200000", "--threads", "1", "--stats", "--cache", cache], argv[4..]);
+        Assert.Equal(["--word-timeout-ms", "1500", "--step-cap", "50000000", "--threads", "1", "--stats", "--cache", cache], argv[4..]);
         Assert.True(File.Exists(cache));
     }
 
@@ -172,7 +172,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         await invoker.RunAsync(
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), "test:batch", CancellationToken.None);
 
-        Assert.Equal(["--word-timeout-ms", "1000", "--step-cap", "200000", "--threads", "1"], Argv(project)[4..]);
+        Assert.Equal(["--word-timeout-ms", "1000", "--step-cap", "50000000", "--threads", "1"], Argv(project)[4..]);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public sealed class PanGlossInvokerTests : IDisposable
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1), PerWordStepLimit: stepLimit),
             "test:batch-invalid-budget", CancellationToken.None));
 
-        Assert.Equal("PerWordStepLimit", exception.ParamName);
+        Assert.Equal("steps", exception.ParamName);
         Assert.False(File.Exists(Path.Combine(_root, "_pangloss-argv.json")));
     }
 
@@ -369,7 +369,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(completed.Output, File.ReadAllText(evidence.TsvPath));
         Assert.Equal(completed.StandardError, File.ReadAllText(evidence.StandardErrorPath));
         Assert.Equal(700, evidence.PerWordTimeoutMs);
-        Assert.Equal(123, evidence.PerWordStepLimit);
+        Assert.Equal(new SIL.Motif.Contract.Assess.StepCap(123), evidence.PerWordStepLimit);
         Assert.Equal(1, evidence.Threads);
         Assert.False(evidence.CollectStatistics);
         File.WriteAllText(source, "changed after invocation");

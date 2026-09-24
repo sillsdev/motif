@@ -1,5 +1,6 @@
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.Assess;
 
@@ -65,7 +66,7 @@ public sealed record AssessmentScope
 {
     public AssessmentScope(
         IReadOnlyList<string> words, IReadOnlyList<AssessmentKind> collect, TimeSpan perWordLimit,
-        int perWordStepLimit = 200000)
+        StepCap? perWordStepLimit = null)
     {
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(collect);
@@ -75,9 +76,7 @@ public sealed record AssessmentScope
         Words = words;
         Collect = collect;
         PerWordLimit = perWordLimit;
-        if (perWordStepLimit <= 0)
-            throw new ArgumentOutOfRangeException(nameof(perWordStepLimit), "A per-word step limit must be positive.");
-        PerWordStepLimit = perWordStepLimit;
+        PerWordStepLimit = perWordStepLimit ?? StepCap.Default;
     }
 
     /// <summary>The resolved word list this run was told to try — not a query, the words themselves.</summary>
@@ -92,8 +91,8 @@ public sealed record AssessmentScope
     /// <summary>The per-word time cap; differences annotate comparisons without blocking them.</summary>
     public TimeSpan PerWordLimit { get; }
 
-    /// <summary>The per-word step cap; zero requests no search steps. Comparison context, never a compatibility gate.</summary>
-    public int PerWordStepLimit { get; }
+    /// <summary>The per-word step cap, or an explicit request for no step cap.</summary>
+    public StepCap PerWordStepLimit { get; }
 }
 
 /// <summary>

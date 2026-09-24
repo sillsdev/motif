@@ -56,6 +56,8 @@ public sealed record AssessmentWordResult(
     public int? Attempts { get; init; }
     /// <summary>How many of those attempts passed, when measured.</summary>
     public int? Passes { get; init; }
+    /// <summary>How many chosen Text occurrences this word represents in the run's resolved Selection.</summary>
+    public int? OccurrenceCount { get; init; }
     public bool HasUnavailableEvidence => Morphology?.Unavailable is { Count: > 0 };
     public string EvidenceStatus => Morphology switch
     {

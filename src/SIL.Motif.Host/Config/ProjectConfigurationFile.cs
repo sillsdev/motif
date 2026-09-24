@@ -1,4 +1,5 @@
 using System.Text;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.Config;
 
@@ -141,7 +142,7 @@ public static class ProjectConfigurationFile
             sb.AppendLine($"assessor = {Quote(scope.Assessor)}");
             sb.AppendLine($"collect = [{string.Join(", ", scope.Collect.Select(Quote))}]");
             sb.AppendLine($"per-word-limit-ms = {(long)scope.PerWordLimit.TotalMilliseconds}");
-            sb.AppendLine($"per-word-step-limit = {scope.PerWordStepLimit}");
+            sb.AppendLine($"per-word-step-limit = {scope.PerWordStepLimit.ToArgument()}");
         }
         return sb.ToString();
     }
@@ -238,11 +239,13 @@ public static class ProjectConfigurationFile
 
     private static string Bool(bool value) => value ? "true" : "false";
 
-    private static int ParseStepLimit(string path, int lineNumber, string key, string rawValue)
+    private static StepCap ParseStepLimit(string path, int lineNumber, string key, string rawValue)
     {
-        if (!int.TryParse(rawValue, out var value) || value <= 0)
-            throw Malformed(path, lineNumber, $"'{key}' must be a positive whole number, found '{rawValue}'");
-        return value;
+        try { return StepCap.Parse(rawValue); }
+        catch (FormatException)
+        {
+            throw Malformed(path, lineNumber, $"'{key}' must be a positive whole number or 'unbounded', found '{rawValue}'");
+        }
     }
 
     private static string Quote(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
@@ -261,7 +264,8 @@ public static class ProjectConfigurationFile
         private string? _assessor;
         private List<string>? _collect;
         private int? _perWordLimitMs;
-        private int? _perWordStepLimit;
+        private StepCap? _perWordStepLimit;
+        private bool _hasPerWordStepLimit;
 
         public void Set(string key, string rawValue, string path, int lineNumber)
         {
@@ -272,7 +276,10 @@ public static class ProjectConfigurationFile
                 case "assessor": _assessor = ParseString(path, lineNumber, key, rawValue); break;
                 case "collect": _collect = ParseStringArray(path, lineNumber, key, rawValue); break;
                 case "per-word-limit-ms": _perWordLimitMs = ParsePositiveMilliseconds(path, lineNumber, key, rawValue); break;
-                case "per-word-step-limit": _perWordStepLimit = ParseStepLimit(path, lineNumber, key, rawValue); break;
+                case "per-word-step-limit":
+                    _perWordStepLimit = ParseStepLimit(path, lineNumber, key, rawValue);
+                    _hasPerWordStepLimit = true;
+                    break;
             }
         }
 
@@ -288,7 +295,7 @@ public static class ProjectConfigurationFile
                 _perWordLimitMs is { } ms
                     ? TimeSpan.FromMilliseconds(ms)
                     : AssessmentScopeConfiguration.DefaultPerWordLimit,
-                _perWordStepLimit ?? AssessmentScopeConfiguration.DefaultPerWordStepLimit);
+                _hasPerWordStepLimit ? _perWordStepLimit : null);
         }
     }
 }

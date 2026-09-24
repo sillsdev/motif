@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -10,7 +11,7 @@ namespace SIL.Motif.Host.PanGloss;
 /// </summary>
 public abstract record PanGlossRequest
 {
-    public const int DefaultPerWordStepLimit = 200000;
+    public const long DefaultPerWordStepLimit = StepCap.DefaultSteps;
 
     private PanGlossRequest() { }
 
@@ -36,7 +37,7 @@ public abstract record PanGlossRequest
     /// </summary>
     public sealed record Batch(
         string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan PerWordLimit, string? StatsCachePath = null,
-        int PerWordStepLimit = DefaultPerWordStepLimit, string? ArtifactDirectory = null)
+        StepCap? PerWordStepLimit = null, string? ArtifactDirectory = null)
         : PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
@@ -49,8 +50,6 @@ public abstract record PanGlossRequest
             ArgumentNullException.ThrowIfNull(Words);
             if (PerWordLimit <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(PerWordLimit), "A per-word limit must be positive.");
-            if (PerWordStepLimit <= 0)
-                throw new ArgumentOutOfRangeException(nameof(PerWordStepLimit), "A per-word step limit must be positive.");
             if (!File.Exists(ProjectFilePath))
                 throw new FileNotFoundException("The project file the parser must read does not exist.", ProjectFilePath);
         }
@@ -67,7 +66,7 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--word-timeout-ms");
             startInfo.ArgumentList.Add(((int)PerWordLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
             startInfo.ArgumentList.Add("--step-cap");
-            startInfo.ArgumentList.Add(PerWordStepLimit.ToString(CultureInfo.InvariantCulture));
+            startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToArgument());
             startInfo.ArgumentList.Add("--threads");
             startInfo.ArgumentList.Add("1");
             if (CollectAnalyses)

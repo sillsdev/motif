@@ -1,4 +1,5 @@
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.Parser;
 
@@ -44,7 +45,7 @@ public sealed class PanGlossParser
     public async Task<ParserRunResult> AnalyseBatchAsync(
         string projectFilePath, IReadOnlyList<string> words, TimeSpan perWordLimit,
         string label, CancellationToken cancellationToken,
-        int perWordStepLimit = PanGlossRequest.DefaultPerWordStepLimit)
+        StepCap? perWordStepLimit = null)
     {
         var outcome = await _invoker.RunAsync(
             new PanGlossRequest.Batch(projectFilePath, words, perWordLimit, PerWordStepLimit: perWordStepLimit),
@@ -60,7 +61,7 @@ public sealed class PanGlossParser
                     ProjectPath: projectFilePath,
                     Warnings: ExtractWarnings(completed.StandardError))
                 {
-                    PerWordStepLimit = perWordStepLimit,
+                    PerWordStepLimit = perWordStepLimit ?? StepCap.Default,
                 };
                 return new ParserRunResult(analysis, null, outcome);
             case PanGlossOutcome.Refused refused when ParserRefusalRecognizer.Recognize(refused.StandardError) is { } refusal:

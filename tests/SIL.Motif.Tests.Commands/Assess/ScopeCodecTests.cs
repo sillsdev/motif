@@ -1,4 +1,5 @@
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Contract.Assess;
 using Xunit;
 
 namespace SIL.Motif.Tests.Assess;
@@ -14,7 +15,7 @@ public sealed class ScopeCodecTests
             new[] { AssessmentKind.ParseTime }, TimeSpan.FromMilliseconds(750), steps);
         var json = ScopeCodec.Write(original);
         var scope = ScopeCodec.ReadTrial(json, "coverage");
-        Assert.Equal(steps, scope.PerWordStepLimit);
+        Assert.Equal(new StepCap(steps), scope.PerWordStepLimit);
         Assert.Equal(TimeSpan.FromMilliseconds(750), scope.PerWordLimit);
         Assert.Equal(original.Words, scope.Words);
         Assert.Equal(original.Collect, scope.Collect);
@@ -42,10 +43,21 @@ public sealed class ScopeCodecTests
     public void ScopeDefaultsToTwoIndependentBudgets()
     {
         var scope = new AssessmentScope(Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1));
-        Assert.Equal(200000, scope.PerWordStepLimit);
+        Assert.Equal(StepCap.Default, scope.PerWordStepLimit);
         Assert.Throws<ArgumentOutOfRangeException>(() => new AssessmentScope(
             Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1), -1));
         Assert.Throws<ArgumentOutOfRangeException>(() => new AssessmentScope(
             Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.Zero, 0));
+    }
+
+    [Fact]
+    public void TrialWritesAndReadsAnExplicitUnboundedStepCap()
+    {
+        var trial = new StoredScope.Trial("words", ["cat"], [AssessmentKind.ParseTime],
+            TimeSpan.FromSeconds(1), StepCap.Unbounded);
+
+        var stored = ScopeCodec.ReadTrial(ScopeCodec.Write(trial), "coverage");
+
+        Assert.Equal(StepCap.Unbounded, stored.PerWordStepLimit);
     }
 }

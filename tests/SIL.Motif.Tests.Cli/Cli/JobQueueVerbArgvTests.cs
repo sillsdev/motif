@@ -264,7 +264,7 @@ public sealed class JobQueueVerbArgvTests : IDisposable
             ProposalIntentDigest: null,
             Assessor: "pangloss",
             Kind: "Correctness",
-            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":200000}""",
+            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":"200000"}""",
             ScopeDigest: "sha256:" + new string('a', 64),
             TokeniserName: "none",
             TokeniserVersion: "1",

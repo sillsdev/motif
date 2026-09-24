@@ -250,7 +250,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
             ProposalIntentDigest: intentDigest,
             Assessor: "pangloss",
             Kind: kind,
-            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":200000}""",
+            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":"200000"}""",
             ScopeDigest: "sha256:" + new string('a', 64),
             TokeniserName: "none",
             TokeniserVersion: "1",

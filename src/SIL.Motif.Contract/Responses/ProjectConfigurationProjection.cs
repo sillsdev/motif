@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -15,4 +16,4 @@ public sealed record AssessmentScopeProjection(
     string Assessor,
     IReadOnlyList<string> Collect,
     long PerWordLimitMs,
-    int PerWordStepLimit);
+    StepCap PerWordStepLimit);

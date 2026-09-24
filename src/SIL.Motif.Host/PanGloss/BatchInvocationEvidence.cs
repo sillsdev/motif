@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -16,7 +17,7 @@ public sealed record BatchInvocationEvidence(
     string StandardErrorPath,
     string StandardErrorSha256,
     int PerWordTimeoutMs,
-    int PerWordStepLimit,
+    StepCap PerWordStepLimit,
     int Threads,
     bool CollectStatistics)
 {

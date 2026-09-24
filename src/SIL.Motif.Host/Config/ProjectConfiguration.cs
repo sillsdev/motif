@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.Config;
 
@@ -17,7 +18,7 @@ public sealed record AssessmentScopeConfiguration
     public const string DefaultName = "default";
     public const string DefaultQueryText = "all words carrying a manual analysis";
     public const string DefaultAssessorName = "pangloss";
-    public const int DefaultPerWordStepLimit = 200000;
+    public static readonly StepCap DefaultPerWordStepLimit = StepCap.Default;
 
     public static readonly TimeSpan DefaultPerWordLimit = TimeSpan.FromSeconds(1);
 
@@ -27,7 +28,7 @@ public sealed record AssessmentScopeConfiguration
         string assessor,
         IReadOnlyList<string> collect,
         TimeSpan perWordLimit,
-        int perWordStepLimit = DefaultPerWordStepLimit)
+        StepCap? perWordStepLimit = null)
     {
         Name = RequireNonBlank(name, nameof(name));
         Query = RequireNonBlank(query, nameof(query));
@@ -37,9 +38,7 @@ public sealed record AssessmentScopeConfiguration
         if (perWordLimit <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
         PerWordLimit = perWordLimit;
-        if (perWordStepLimit <= 0)
-            throw new ArgumentOutOfRangeException(nameof(perWordStepLimit), "A per-word step limit must be positive.");
-        PerWordStepLimit = perWordStepLimit;
+        PerWordStepLimit = perWordStepLimit ?? DefaultPerWordStepLimit;
     }
 
     /// <summary>The scope's name, unique within a project's declarations.</summary>
@@ -57,8 +56,8 @@ public sealed record AssessmentScopeConfiguration
     /// <summary>The per-word time cap; differences annotate comparisons without blocking them.</summary>
     public TimeSpan PerWordLimit { get; }
 
-    /// <summary>The per-word step cap; zero requests no search steps. Comparison context, never a compatibility gate.</summary>
-    public int PerWordStepLimit { get; }
+    /// <summary>The per-word step cap, or an explicit request for no step cap.</summary>
+    public StepCap PerWordStepLimit { get; }
 
     /// <summary>The scope declared when a project names none of its own.</summary>
     public static AssessmentScopeConfiguration Default() => new(

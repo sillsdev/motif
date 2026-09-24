@@ -109,7 +109,8 @@ public sealed class ReadinessTests
             .ToArray();
         return new CorrectnessAssessment(
             assessmentId, "pangloss", "none", "1",
-            new StoredScope.Trial("all", Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1)),
+            new StoredScope.Trial("all", Array.Empty<string>(), Array.Empty<AssessmentKind>(),
+                TimeSpan.FromSeconds(1), SIL.Motif.Contract.Assess.StepCap.Default),
             selection, GrammarSha, assessedWords);
     }
 }

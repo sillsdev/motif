@@ -1,4 +1,5 @@
 using System.Globalization;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.Parser;
 
@@ -78,7 +79,7 @@ public sealed record BatchAnalysis(
     IReadOnlyList<string> Warnings)
 {
     /// <summary>The recorded per-word step budget, or null when the supplied evidence does not name one.</summary>
-    public int? PerWordStepLimit { get; init; }
+    public StepCap? PerWordStepLimit { get; init; }
 
     public int Analysed => Words.Count(w => w.Outcome == WordOutcome.Analysed);
     public int NoAnalysis => Words.Count(w => w.Outcome == WordOutcome.NoAnalysis);

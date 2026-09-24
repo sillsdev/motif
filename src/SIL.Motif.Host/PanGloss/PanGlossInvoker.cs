@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -241,7 +242,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     wordsPath, wordsDigest!,
                     tsvPath, tsvDigest,
                     stderrPath, BatchInvocationEvidence.DigestFile(stderrPath),
-                    (int)capturedBatch.PerWordLimit.TotalMilliseconds, capturedBatch.PerWordStepLimit,
+                    (int)capturedBatch.PerWordLimit.TotalMilliseconds,
+                    capturedBatch.PerWordStepLimit ?? StepCap.Default,
                     1, capturedBatch.StatsCachePath is not null)
                 {
                     AnalysesPath = analysesPath,

@@ -22,6 +22,11 @@ public sealed record AssessedWord(
 {
     public SIL.Motif.Contract.Responses.ParseWordEvidence? Morphology { get; init; }
     public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }
+    public string? ProjectStanding { get; init; }
+    public int? OccurrenceCount { get; init; }
+    public IReadOnlyList<string>? ReadingGrades { get; init; }
+    public int? MissedApprovedCount { get; init; }
+    public bool IsIncomplete { get; init; }
 }
 
 /// <summary>
