@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using Microsoft.Data.Sqlite;
+using SIL.LCModel;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
@@ -299,7 +300,9 @@ public static class AssessCommand
 
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                var wordContext = ReadProjectWordContext(baseline.FwDataPath, composition.Selection.Words,
+                using var namingCache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+                var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
+                var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
                     composition.Descriptor.TextIds);
                 pendingRecords = pendingRecords.Select(record => record with
                 {
@@ -363,31 +366,22 @@ public static class AssessCommand
                 IReadOnlyList<GrammarWarning>? grammarWarningDetails = null;
                 if (grammarWarnings is not null || words.Length > 0)
                 {
-                    // A second scratch load, paid only when there is something to name.
-                    using var namingCache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
-                    var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
                     if (grammarWarnings is not null)
                         grammarWarningDetails = GrammarWarningReader.Read(namingCache, projectName, grammarWarnings);
-                    var approvedByWord = ApprovedMorphologyReader.Read(namingCache);
-                    var disapprovedByWord = ApprovedMorphologyReader.ReadDisapproved(namingCache);
-                    var candidatesByWord = ApprovedMorphologyReader.ReadCandidates(namingCache);
-                    var misspelled = ApprovedMorphologyReader.ReadIncorrectSpellings(namingCache);
                     words = words.Select(word =>
                     {
                         var readings = word.Morphology is null
                             ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology);
                         var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : ((int?)null, (int?)null);
-                        var approved = approvedByWord.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
-                        var disapproved = disapprovedByWord.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
-                        var candidates = candidatesByWord.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
                         return word with
                         {
                             Readings = readings,
                             TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
-                            ReadingGrades = word.Morphology is null ? null
-                                : GradeReadings(word.Morphology.Analyses, approved, disapproved, candidates),
-                            ProjectStanding = ProjectStandings.Of(
-                                approved.Count, candidates.Count, disapproved.Count, misspelled.Contains(word.Word)),
+                            ReadingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
+                                wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
+                                wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
+                                wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>()),
+                            ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
                             OccurrenceCount = wordContext.HasTextSelection
                                 ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
                             MissedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
@@ -455,9 +449,8 @@ public static class AssessCommand
         new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
 
     private static ProjectWordContext ReadProjectWordContext(
-        string baselinePath, IReadOnlyList<string> words, IReadOnlyList<Guid> textIds)
+        LcmCache cache, IReadOnlyList<string> words, IReadOnlyList<Guid> textIds)
     {
-        using var cache = new FwDataProjectLoader().LoadScratchCache(baselinePath);
         var approved = ApprovedMorphologyReader.Read(cache);
         var rejected = ApprovedMorphologyReader.ReadDisapproved(cache);
         var candidates = ApprovedMorphologyReader.ReadCandidates(cache);

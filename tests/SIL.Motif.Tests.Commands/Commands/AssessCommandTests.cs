@@ -118,6 +118,10 @@ public sealed class AssessCommandTests : IDisposable
         var parseAssessment = assessed.Value.AssessmentIds
             .Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
+        Assert.Equal(parseAssessment.Words!.Select(word => word.ProjectStanding),
+            assessed.Value.Words.Select(word => word.ProjectStanding));
+        Assert.Equal(parseAssessment.Words.Select(word => word.ReadingGrades),
+            assessed.Value.Words.Select(word => word.ReadingGrades));
         Assert.Single(parseAssessment.ObjectTimings);
         Assert.Equal(1, parseAssessment.ObjectTimings.Single(row =>
             row.Word == SeededProject.AnalysedWordForm).Passes);
