@@ -8,6 +8,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
@@ -35,7 +36,7 @@ public static class PendingChanges
         {
             var repository = new ProposalRepository(database);
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project.FullFwDataPath, repository));
+                Snapshot(database, project, repository));
         });
 
     public static CommandOutcome<PendingChangesSnapshot> Put(PutPendingChangeRequest request) =>
@@ -186,7 +187,7 @@ public static class PendingChanges
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("changeId", change.ChangeId), ("expectedRevision", request.ExpectedRevision));
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project.FullFwDataPath, repository));
+                Snapshot(database, project, repository));
         });
 
     public static CommandOutcome<PendingChangesSnapshot> Remove(RemovePendingChangeRequest request) =>
@@ -210,7 +211,7 @@ public static class PendingChanges
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("changeId", request.ChangeId), ("expectedRevision", request.ExpectedRevision));
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project.FullFwDataPath, repository));
+                Snapshot(database, project, repository));
         });
 
     private static ProposalRecord? Current(ProposalRepository repository) =>
@@ -223,7 +224,7 @@ public static class PendingChanges
     private static string Revision(string? json) => json is null ? "none" :
         "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
 
-    private static PendingChangesSnapshot Snapshot(MotifDatabase database, string path,
+    private static PendingChangesSnapshot Snapshot(MotifDatabase database, ProjectLocator project,
         ProposalRepository repository)
     {
         var current = Current(repository);
@@ -253,11 +254,10 @@ public static class PendingChanges
         if (changes.Length == 0)
             return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);
 
-        using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
         var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
         var baseline = new BaselineRepository(database)
-            .GetCurrent(ProjectWorkspaceKey.Compute(new Contract.Projects.ProjectLocator(
-                path, Path.GetFileNameWithoutExtension(path))))?.Token;
+            .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
         var operationFits = ChangeFitPreflight.Check(cache, proposal, baseline)
             .ToDictionary(item => item.OperationId, StringComparer.Ordinal);
         var fits = changes.Select(change =>

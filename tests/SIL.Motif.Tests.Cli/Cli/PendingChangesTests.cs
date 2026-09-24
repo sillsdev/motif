@@ -54,6 +54,8 @@ public sealed class PendingChangesTests
             first.Value!.Revision, new ChangeIntent(secondId, "incorrect-spelling", wordId, "pending-word")));
         Assert.True(second.Succeeded, second.Refusal?.Message);
         Assert.Equal(2, second.Value!.Changes.Count);
+        Assert.All(second.Value.FitSummary, fit => Assert.True(fit.StillFits,
+            string.Join(" ", fit.Reasons)));
         Assert.Equal(2, PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes.Count);
 
         var stale = PendingChanges.Remove(new RemovePendingChangeRequest(_path, "1.0",
