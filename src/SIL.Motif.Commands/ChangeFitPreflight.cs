@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Security.Cryptography;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Composers;
@@ -20,7 +21,8 @@ public sealed record ChangeFitFingerprint(
 /// <summary>Checks collected changes against the live project immediately before Apply.</summary>
 public static class ChangeFitPreflight
 {
-    public static IReadOnlyList<ChangeFitResult> Check(LcmCache cache, Proposal proposal)
+    public static IReadOnlyList<ChangeFitResult> Check(LcmCache cache, Proposal proposal,
+        BaselineToken? currentBaseline = null)
     {
         var result = new List<ChangeFitResult>();
         var objects = cache.ServiceLocator.ObjectRepository;
@@ -66,12 +68,46 @@ public static class ChangeFitPreflight
                     continue;
                 }
             }
+            if (operation.Kind == WfiAnalysisOperationKinds.CreateAnalysis)
+            {
+                var morphs = CreateAnalysisPayload.Parse(operation.After ?? throw new InvalidDataException(
+                    "A candidate operation has no morphs."));
+                var missing = morphs.SelectMany(morph => new[]
+                    {
+                        (Id: morph.Form, Type: typeof(IMoForm)),
+                        (Id: morph.Msa, Type: typeof(IMoMorphSynAnalysis)),
+                        (Id: morph.InflType, Type: typeof(ILexEntryInflType)),
+                    })
+                    .FirstOrDefault(reference => reference.Id is { } id &&
+                        (!objects.TryGetObject(id.ToGuid(), out var value) ||
+                         !reference.Type.IsInstanceOfType(value)));
+                if (missing.Id is { } missingId)
+                {
+                    result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                        $"Candidate morph reference {missingId.Value} was deleted or changed type.",
+                        fingerprint.BaselineToken));
+                    continue;
+                }
+            }
             if (operation.Kind == WfiAnalysisOperationKinds.CreateAnalysis &&
                 fingerprint.Reading is { } reading &&
                 wordform.AnalysesOC.Any(analysis => AnalysisChangeComposer.Matches(analysis, reading)))
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
                     $"The parser reading already exists under wordform {wordId.Value}.", fingerprint.BaselineToken));
+                continue;
+            }
+            BaselineToken? captured;
+            try
+            {
+                captured = JsonSerializer.Deserialize<BaselineToken>(fingerprint.BaselineToken,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (JsonException) { captured = null; }
+            if (currentBaseline is null || captured is null || captured != currentBaseline)
+            {
+                result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                    "The collected change's Baseline is no longer current.", fingerprint.BaselineToken));
                 continue;
             }
             result.Add(new ChangeFitResult(operation.OperationId.Value, true,

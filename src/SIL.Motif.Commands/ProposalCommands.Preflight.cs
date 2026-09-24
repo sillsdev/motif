@@ -3,6 +3,8 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
@@ -22,8 +24,10 @@ public static partial class ProposalCommands
                 var id = NormalizeId(request.ProposalId);
                 var (_, proposal) = new ProposalRepository(database).GetFinalized(CanonicalId.Parse(id));
                 using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+                var currentBaseline = new BaselineRepository(database)
+                    .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
                 return CommandOutcome<PreflightResponse>.Success(
-                    new PreflightResponse(id, ChangeFitPreflight.Check(cache, proposal)));
+                    new PreflightResponse(id, ChangeFitPreflight.Check(cache, proposal, currentBaseline)));
             }
             catch (Exception ex)
             {

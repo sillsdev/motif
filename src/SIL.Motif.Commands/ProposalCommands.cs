@@ -29,6 +29,8 @@ using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
 using SIL.LCModel;
 
 namespace SIL.Motif.Commands;
@@ -1440,7 +1442,10 @@ public static partial class ProposalCommands
             {
                 if (record.Status != ManifestStatus.Applied)
                 {
-                    var nonFitting = ChangeFitPreflight.Check(cache, envelope).Where(change => !change.StillFits).ToArray();
+                    var currentBaseline = new BaselineRepository(database)
+                        .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
+                    var nonFitting = ChangeFitPreflight.Check(cache, envelope, currentBaseline)
+                        .Where(change => !change.StillFits).ToArray();
                     if (nonFitting.Length > 0)
                         return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                             "apply.change-no-longer-fits", FailureReason.Refused,

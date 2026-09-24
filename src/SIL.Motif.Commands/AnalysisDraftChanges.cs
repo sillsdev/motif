@@ -137,7 +137,9 @@ public static class AnalysisDraftChanges
                 var draft = ReadDraft(repository, request.DraftName);
                 var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
                 using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-                var failing = ChangeFitPreflight.Check(cache, proposal).Where(change => !change.StillFits)
+                var currentBaseline = new BaselineRepository(database)
+                    .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
+                var failing = ChangeFitPreflight.Check(cache, proposal, currentBaseline).Where(change => !change.StillFits)
                     .Select(change => change.OperationId).ToHashSet(StringComparer.Ordinal);
                 if (draft.Operations.Any(operation => failing.Contains(operation.OperationId) &&
                     OperationDependencyGraph.IsCascadingDelete(operation.Kind)))
@@ -168,8 +170,10 @@ public static class AnalysisDraftChanges
                 var draft = ReadDraft(new ProposalRepository(database), request.DraftName);
                 var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
                 using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+                var currentBaseline = new BaselineRepository(database)
+                    .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
                 return CommandOutcome<PreflightResponse>.Success(new PreflightResponse(
-                    draft.ProposalId, ChangeFitPreflight.Check(cache, proposal)));
+                    draft.ProposalId, ChangeFitPreflight.Check(cache, proposal, currentBaseline)));
             }
             catch (Exception ex)
             {

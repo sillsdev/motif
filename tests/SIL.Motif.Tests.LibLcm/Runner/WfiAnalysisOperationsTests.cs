@@ -1,4 +1,6 @@
 using System.Text.Json;
+using SIL.Motif.Commands;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
@@ -192,6 +194,62 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
             CanonicalId.Mint(), null, [approve, reject]);
 
         Assert.Throws<ContractParseException>(() => ScratchDryRun.Of(_cache, proposal));
+    }
+
+    [Fact]
+    public void MissingCandidateMorphReference_IsNoLongerFit()
+    {
+        var missingForm = CanonicalId.Mint();
+        var reading = new ParseAnalysis([new ParseMorph(missingForm.ToGuid().ToString("D"), null, null, null)]);
+        var fingerprint = new ChangeFitFingerprint(CanonicalId.FromGuid(_wordform.Guid).Value,
+            null, "motif-analysis-test", "captured-baseline", Reading: reading);
+        var operation = new OperationEnvelope(CanonicalId.Mint(), "analysis/wfiWordform/createAnalyses",
+            entityId: CanonicalId.Mint(), target: CanonicalId.FromGuid(_wordform.Guid),
+            after: JsonSerializer.SerializeToElement(new { morphs = new[] { new { form = missingForm.Value } } }),
+            extensions: JsonSerializer.SerializeToElement(new { changeFit = fingerprint }));
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" },
+            CanonicalId.Mint(), null, [operation]);
+
+        var fit = Assert.Single(ChangeFitPreflight.Check(_cache, proposal));
+        Assert.False(fit.StillFits);
+        Assert.Contains("morph reference", fit.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CollectedChangeWithoutItsCurrentBaseline_IsNoLongerFit()
+    {
+        var fingerprint = new ChangeFitFingerprint(CanonicalId.FromGuid(_wordform.Guid).Value,
+            null, "motif-analysis-test", "captured-baseline");
+        var operation = new OperationEnvelope(CanonicalId.Mint(), "analysis/wfiWordform/setSpellingStatus",
+            target: CanonicalId.FromGuid(_wordform.Guid),
+            after: JsonSerializer.SerializeToElement(new { value = 2 }),
+            extensions: JsonSerializer.SerializeToElement(new { changeFit = fingerprint }));
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" },
+            CanonicalId.Mint(), null, [operation]);
+
+        var fit = Assert.Single(ChangeFitPreflight.Check(_cache, proposal));
+        Assert.False(fit.StillFits);
+        Assert.Contains("Baseline", fit.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CollectedChangeFromEarlierBaseline_IsNoLongerFit()
+    {
+        var old = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+            "2026-01-01T00:00:00Z", "sha256:" + new string('b', 64));
+        var current = new BaselineToken("project", "sha256:" + new string('c', 64), "1",
+            "2026-01-02T00:00:00Z", "sha256:" + new string('d', 64));
+        var fingerprint = new ChangeFitFingerprint(CanonicalId.FromGuid(_wordform.Guid).Value,
+            null, "motif-analysis-test", JsonSerializer.Serialize(old));
+        var operation = new OperationEnvelope(CanonicalId.Mint(), "analysis/wfiWordform/setSpellingStatus",
+            target: CanonicalId.FromGuid(_wordform.Guid),
+            after: JsonSerializer.SerializeToElement(new { value = 2 }),
+            extensions: JsonSerializer.SerializeToElement(new { changeFit = fingerprint }));
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" },
+            CanonicalId.Mint(), null, [operation]);
+
+        Assert.True(Assert.Single(ChangeFitPreflight.Check(_cache, proposal, old)).StillFits);
+        Assert.False(Assert.Single(ChangeFitPreflight.Check(_cache, proposal, current)).StillFits);
     }
 
     [Fact]
