@@ -29,9 +29,6 @@ public sealed record GrammarWarning(
 
     /// <summary>Whether the finding came from checking the grammar or importing it.</summary>
     public string Origin { get; init; } = string.Empty;
-
-    /// <summary>The intended reader when the report supplies an audience.</summary>
-    public string Audience { get; init; } = "linguist";
 }
 
 /// <summary>One summary row grouping diagnostics by their stable code.</summary>

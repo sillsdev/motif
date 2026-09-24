@@ -248,7 +248,6 @@ public static class GrammarCheckQuery
             Description = description,
             Guidance = finding.Guidance,
             Origin = finding.Origin!,
-            Audience = finding.Audience ?? "linguist",
         };
     }
 
@@ -310,8 +309,7 @@ public static class GrammarCheckQuery
         string? Origin,
         string? Description,
         string? Guidance,
-        IReadOnlyList<GrammarHealthSubjectJson>? Subjects,
-        string? Audience = null);
+        IReadOnlyList<GrammarHealthSubjectJson>? Subjects);
 
     private sealed record GrammarHealthSubjectJson(
         string? Kind,

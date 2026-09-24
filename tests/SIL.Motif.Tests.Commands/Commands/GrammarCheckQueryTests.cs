@@ -76,7 +76,6 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var warning = response.Findings[0];
         Assert.Equal("warning", warning.Severity);
         Assert.Equal("import", warning.Origin);
-        Assert.Equal("linguist", warning.Audience);
         Assert.Equal("Partial morpheme analysis", warning.Group);
         Assert.Equal("Lexical entry 'mbo' has no grammatical category.", warning.Description);
         Assert.Equal("In Lexicon > Lexicon Edit, set Grammatical Info. > Category.", warning.Guidance);
@@ -102,13 +101,12 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var info = response.Findings[1];
         Assert.Equal("info", info.Severity);
         Assert.Equal("check", info.Origin);
-        Assert.Equal("linguist", info.Audience);
         Assert.Equal("Duplicate segment features", info.Group);
 
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(response));
         var reportFinding = json.RootElement.GetProperty("Findings")[0];
         Assert.Equal("import", reportFinding.GetProperty("Origin").GetString());
-        Assert.Equal("linguist", reportFinding.GetProperty("Audience").GetString());
+        Assert.False(reportFinding.TryGetProperty("Audience", out _));
         Assert.Equal("lex_entry#34", reportFinding.GetProperty("Subject")[0].GetProperty("InternalId").GetString());
         Assert.Equal("available", reportFinding.GetProperty("Subject")[0].GetProperty("LinkStatus").GetString());
 

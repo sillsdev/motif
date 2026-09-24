@@ -94,12 +94,6 @@
                   AutomationProperties.Name="Check the grammar again" />
           <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Margin="0,0,12,0" VerticalAlignment="Center"
                      Text="Findings never block an Assessment." />
-          <CheckBox DockPanel.Dock="Right" Margin="0,0,12,0"
-                    IsVisible="{Binding Grammar.Warnings.HasDeveloperFindings}"
-                    IsChecked="{Binding Grammar.Warnings.ShowDeveloperFindings}"
-                    AutomationProperties.Name="Show developer grammar findings">
-            Show developer findings
-          </CheckBox>
         </DockPanel>
 
         <Grid Grid.Row="1" ColumnDefinitions="320,*" ColumnSpacing="16">

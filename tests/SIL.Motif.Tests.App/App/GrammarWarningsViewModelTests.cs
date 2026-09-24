@@ -132,25 +132,6 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
-    public void DeveloperFindingsAreHiddenUntilRequested()
-    {
-        var linguistWarning = EntryWarning with { Guidance = "Set the grammatical category." };
-        var developerWarning = EntryWarning with { Audience = "developer" };
-        var table = new GrammarWarningsViewModel();
-
-        table.Load([linguistWarning, developerWarning]);
-
-        Assert.Single(table.Rows);
-        Assert.Equal(1, table.DeveloperFindingCount);
-        var visible = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
-        Assert.Equal("Set the grammatical category.", visible.Guidance);
-
-        table.ShowDeveloperFindings = true;
-
-        Assert.Equal(2, table.Rows.Count);
-    }
-
-    [Fact]
     public void ImportOriginIsShownAsTheSource()
     {
         var table = new GrammarWarningsViewModel();

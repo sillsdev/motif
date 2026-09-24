@@ -36,9 +36,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     public int LeftOutCount => VisibleFindings().Where(row => row.IsLeftOut).Sum(row => row.RepeatCount);
     public int WorthALookCount => VisibleFindings().Where(row => !row.IsLeftOut).Sum(row => row.RepeatCount);
 
-    public bool HasDeveloperFindings => DeveloperFindingCount > 0;
-    public int DeveloperFindingCount => _all.Where(row => row.IsDeveloper).Sum(row => row.RepeatCount);
-
     /// <summary>The split between findings that need attention and findings worth reviewing.</summary>
     public string BreakdownText => $"{LeftOutCount} left out of the grammar, {WorthALookCount} worth a look.";
 
@@ -49,9 +46,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasLeftOutGroups))]
     [NotifyPropertyChangedFor(nameof(HasWorthALookGroups))]
     private GrammarFindingBucket _bucket = GrammarFindingBucket.All;
-
-    [ObservableProperty]
-    private bool _showDeveloperFindings;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedGroup))]
@@ -73,13 +67,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         if (SelectedGroup is { } group && !InBucket(group.IsLeftOut)) SelectedGroup = null;
         OnPropertyChanged(nameof(SelectedGroupTitle));
         Refresh();
-    }
-
-    partial void OnShowDeveloperFindingsChanged(bool value)
-    {
-        RebuildGroups();
-        Refresh();
-        OnPropertyChanged(nameof(CountSummary));
     }
 
     partial void OnSelectedGroupChanged(GrammarFindingGroupViewModel? value)
@@ -152,16 +139,12 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     {
         get
         {
-            var hiddenDeveloperCount = ShowDeveloperFindings ? 0 : DeveloperFindingCount;
-            var visibleTotal = TotalCount - hiddenDeveloperCount;
-            var shown = ShownCount == visibleTotal
-                ? (visibleTotal == 1 ? "1 finding" : $"{visibleTotal} findings")
+            var shown = ShownCount == TotalCount
+                ? (TotalCount == 1 ? "1 finding" : $"{TotalCount} findings")
                 : SelectedGroup is { } group && ShownCount == group.Count
                     ? (ShownCount == 1 ? "1 finding of this kind" : $"{ShownCount} findings of this kind")
-                    : $"{ShownCount} of {visibleTotal} findings match the filters";
-            return hiddenDeveloperCount == 0
-                ? shown
-                : $"{shown}; {hiddenDeveloperCount} developer findings hidden";
+                    : $"{ShownCount} of {TotalCount} findings match the filters";
+            return shown;
         }
     }
 
@@ -176,14 +159,12 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         if (warnings is not null)
         {
             _all.AddRange(warnings
-                .GroupBy(warning => (warning.Text, warning.Origin, warning.Code, warning.Audience),
+                .GroupBy(warning => (warning.Text, warning.Origin, warning.Code),
                     StringTupleComparer.Instance)
                 .Select(rows => new GrammarWarningRowViewModel(
                     rows.First(), rows.Sum(_ => 1), summary?.FirstOrDefault(row => row.Code == rows.Key.Code))));
         }
         TotalCount = _all.Sum(row => row.RepeatCount);
-        OnPropertyChanged(nameof(DeveloperFindingCount));
-        OnPropertyChanged(nameof(HasDeveloperFindings));
         RebuildGroups();
         Refresh();
     }
@@ -202,7 +183,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private bool Matches(object item) =>
         item is GrammarWarningRowViewModel row
         && InBucket(row.IsLeftOut)
-        && (ShowDeveloperFindings || !row.IsDeveloper)
         && (SelectedGroup is not { } group ||
             (group.Code == row.GroupCode && group.IsLeftOut == row.IsLeftOut))
         && Contains(row.Severity, SeverityFilter)
@@ -211,31 +191,27 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         && (Contains(row.Problem, ProblemFilter) || Contains(row.Guidance, ProblemFilter) ||
             Contains(row.Text, ProblemFilter));
 
-    private IEnumerable<GrammarWarningRowViewModel> VisibleFindings() => ShowDeveloperFindings
-        ? _all
-        : _all.Where(row => !row.IsDeveloper);
+    private IEnumerable<GrammarWarningRowViewModel> VisibleFindings() => _all;
 
     private static bool Contains(string text, string filter) =>
         string.IsNullOrWhiteSpace(filter) || text.Contains(filter.Trim(), StringComparison.CurrentCultureIgnoreCase);
 
     private sealed class StringTupleComparer :
-        IEqualityComparer<(string Text, string Origin, string? Code, string Audience)>
+        IEqualityComparer<(string Text, string Origin, string? Code)>
     {
         public static StringTupleComparer Instance { get; } = new();
 
-        public bool Equals((string Text, string Origin, string? Code, string Audience) left,
-            (string Text, string Origin, string? Code, string Audience) right) =>
+        public bool Equals((string Text, string Origin, string? Code) left,
+            (string Text, string Origin, string? Code) right) =>
             string.Equals(left.Text, right.Text, StringComparison.Ordinal) &&
             string.Equals(left.Origin, right.Origin, StringComparison.Ordinal) &&
-            string.Equals(left.Code, right.Code, StringComparison.Ordinal) &&
-            string.Equals(left.Audience, right.Audience, StringComparison.Ordinal);
+            string.Equals(left.Code, right.Code, StringComparison.Ordinal);
 
-        public int GetHashCode((string Text, string Origin, string? Code, string Audience) value) =>
+        public int GetHashCode((string Text, string Origin, string? Code) value) =>
             HashCode.Combine(
                 StringComparer.Ordinal.GetHashCode(value.Text),
                 StringComparer.Ordinal.GetHashCode(value.Origin),
-                value.Code is null ? 0 : StringComparer.Ordinal.GetHashCode(value.Code),
-                StringComparer.Ordinal.GetHashCode(value.Audience));
+                value.Code is null ? 0 : StringComparer.Ordinal.GetHashCode(value.Code));
     }
 }
 
@@ -287,7 +263,6 @@ public sealed class GrammarWarningRowViewModel
         GroupCode = summary?.Code ?? warning.Code ?? warning.Group ?? GrammarFindingShapes.LabelOf(warning.Text);
         GroupName = summary?.GroupName ?? warning.Group ?? GrammarFindingShapes.LabelOf(warning.Text);
         IsLeftOut = GrammarFindingShapes.IsLeftOut(warning.Text);
-        IsDeveloper = warning.Audience == "developer";
         OriginLabel = warning.Origin switch
         {
             "import" => "From import",
@@ -316,7 +291,6 @@ public sealed class GrammarWarningRowViewModel
     public bool HasWhere => SubjectParts.Count > 0;
     public string Description { get; }
     public string Guidance { get; }
-    public bool IsDeveloper { get; }
     public string Severity { get; }
     public bool IsWarning => Severity == "warning";
     public bool IsInfo => Severity == "info";
