@@ -86,7 +86,7 @@ public sealed class PendingChangesTests
             var repository = new ProposalRepository(database);
             var stored = JsonNode.Parse(repository.GetDraft(PendingChanges.DraftName).ProposalJson!)!;
             stored["composerProvenance"]!.AsArray().Clear();
-            stored["operations"]![0]!["extensions"]!.AsObject().Remove("changeFit");
+            stored["operations"]![0]!["extensions"]!["changeFit"] = null;
             repository.SaveDraft(PendingChanges.DraftName, stored.ToJsonString());
         }
         var unmapped = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));

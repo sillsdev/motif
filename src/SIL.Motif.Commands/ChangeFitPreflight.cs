@@ -27,12 +27,20 @@ public static class ChangeFitPreflight
         {
             if (operation.Extensions is not { } extensions ||
                 extensions.ValueKind != JsonValueKind.Object ||
-                !extensions.TryGetProperty("changeFit", out var fit))
+                !extensions.TryGetProperty("changeFit", out var fit) ||
+                fit.ValueKind != JsonValueKind.Object)
                 continue;
-            var fingerprint = JsonSerializer.Deserialize<ChangeFitFingerprint>(fit.GetRawText(),
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                ?? throw new InvalidDataException("A change fit fingerprint is missing.");
-            var wordId = CanonicalId.Parse(fingerprint.WordformId);
+            ChangeFitFingerprint? fingerprint;
+            try
+            {
+                fingerprint = JsonSerializer.Deserialize<ChangeFitFingerprint>(fit.GetRawText(),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (JsonException) { continue; }
+            if (fingerprint is null || !CanonicalId.TryParse(fingerprint.WordformId, out var wordId) ||
+                string.IsNullOrWhiteSpace(fingerprint.WordformForm) ||
+                string.IsNullOrWhiteSpace(fingerprint.BaselineToken))
+                continue;
             if (!objects.TryGetObject(wordId.ToGuid(), out var wordObject) || wordObject is not IWfiWordform wordform)
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
@@ -49,7 +57,7 @@ public static class ChangeFitPreflight
             }
             if (fingerprint.AnalysisId is { } analysisId)
             {
-                var parsed = CanonicalId.Parse(analysisId);
+                if (!CanonicalId.TryParse(analysisId, out var parsed)) continue;
                 if (!wordform.AnalysesOC.Any(analysis => analysis.Guid == parsed.ToGuid()))
                 {
                     result.Add(new ChangeFitResult(operation.OperationId.Value, false,
@@ -101,7 +109,7 @@ public static class ChangeFitPreflight
                 captured = JsonSerializer.Deserialize<BaselineToken>(fingerprint.BaselineToken,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
-            catch (JsonException) { captured = null; }
+            catch (Exception exception) when (exception is JsonException or ArgumentException) { captured = null; }
             if (currentBaseline is null || captured is null || captured != currentBaseline)
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
