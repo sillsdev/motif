@@ -42,7 +42,7 @@ public static class StoredGrammarCheckQuery
             : CommandOutcome<StoredGrammarCheckResponse>.Refused(outcome.Refusal!);
     }
 
-    // The stamp GrammarCheckQuery writes beside a stored check; a different stamp only means "not stored".
+    // GrammarCheckQuery's stamp, pinned by `TheStoredReadStampsTheParserExactlyAsTheCheckDoes`.
     private static string? ParserStamp()
     {
         if (PanGlossExecutable.TryLocate() is not { } exe || !File.Exists(exe)) return null;

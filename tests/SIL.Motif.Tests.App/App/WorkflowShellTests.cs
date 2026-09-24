@@ -12,6 +12,8 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -29,8 +31,7 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WorkflowShellTests
 {
-    private static readonly string[] PageHosts =
-        ["OverviewPage", "TextsPage", "TryAWordPage", "TimingPage", "WarningsPage", "ReviewPage", "AiHandoffPage"];
+    private static readonly string[] PageHosts = PageRegistry.Entries.Select(entry => $"{entry.Page}Page").ToArray();
 
     private readonly AvaloniaHeadlessFixture _avalonia;
 
@@ -120,7 +121,7 @@ public sealed class WorkflowShellTests
                 foreach (var page in Enum.GetValues<WorkspacePage>())
                 {
                     var built = PageRegistry.For(page).Create(workspace);
-                    Assert.IsType(built.GetType(), host.Children[(int)page]);
+                    Assert.IsType(built.GetType(), host.Children.Single(child => child.Name == $"{page}Page"));
                 }
             }
             finally
@@ -128,6 +129,42 @@ public sealed class WorkflowShellTests
                 window.Close();
             }
         });
+    }
+
+    [Fact]
+    public void AProjectWithNoStoredGrammarCheckOffersAWorkingCheckButtonOnWarnings()
+    {
+        var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(
+            new BaselineToken("p", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64)),
+            DateTimeOffset.UtcNow, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = NewComposedWindow(fake);
+            try
+            {
+                window.Show();
+                await workspace.SetProjectAsync(@"C:\projects\one.fwdata");
+                workspace.CurrentPage = WorkspacePage.Warnings;
+                window.UpdateLayout();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.Empty(fake.CheckGrammarRequests);
+                var check = ButtonNamed(window, "Check the grammar");
+                Assert.True(check.IsEffectivelyVisible);
+                Assert.True(check.IsEffectivelyEnabled);
+
+                Click(window, check);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.Single(fake.CheckGrammarRequests);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -172,7 +209,7 @@ public sealed class WorkflowShellTests
 
                 foreach (var page in Enum.GetValues<WorkspacePage>().Reverse())
                 {
-                    Click(window, entries[(int)page]);
+                    Click(window, Entry(entries, page));
 
                     Assert.Equal(page, workspace.CurrentPage);
                     Assert.True(Host(window, $"{page}Page").IsVisible);
@@ -241,11 +278,11 @@ public sealed class WorkflowShellTests
                 var entries = SidebarEntries(window);
                 Assert.All(entries, entry => Assert.False(Label(entry).IsEffectivelyVisible));
                 Assert.Equal(workspace.Pages.Select(page => (object)page.Title), entries.Select(entry => ToolTip.GetTip(entry)));
-                var reviewBadge = entries[(int)WorkspacePage.Review].GetVisualDescendants().OfType<Border>()
+                var reviewBadge = Entry(entries, WorkspacePage.Review).GetVisualDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("pageBadge"));
                 Assert.True(reviewBadge.IsEffectivelyVisible);
 
-                Click(window, entries[(int)WorkspacePage.Review]);
+                Click(window, Entry(entries, WorkspacePage.Review));
                 Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);
             }
             finally
@@ -458,6 +495,9 @@ public sealed class WorkflowShellTests
     private static List<ListBoxItem> SidebarEntries(MainWindow window) =>
         window.FindControl<ListBox>("PageList")!.GetLogicalDescendants().OfType<ListBoxItem>().ToList();
 
+    private static ListBoxItem Entry(IEnumerable<ListBoxItem> entries, WorkspacePage page) =>
+        entries.Single(entry => entry.DataContext is PageViewModel model && model.Page == page);
+
     private static TextBlock Label(ListBoxItem entry) =>
         entry.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("pageLabel"));
 
@@ -500,9 +540,11 @@ public sealed class WorkflowShellTests
             fake);
     }
 
-    private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow()
+    private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow() =>
+        NewComposedWindow(new FakeCommandClient());
+
+    private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow(FakeCommandClient fake)
     {
-        var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var words = new TextWordsViewModel(fake, selection);
         var workspace = new HandoffWorkspaceViewModel(

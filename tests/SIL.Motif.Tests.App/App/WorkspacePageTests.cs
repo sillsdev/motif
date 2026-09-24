@@ -99,7 +99,7 @@ public sealed class WorkspacePageTests
         workspace.ShowPageCommand.Execute(page);
 
         Assert.Equal(page, workspace.CurrentPage);
-        Assert.Same(workspace.Pages[(int)page], workspace.SelectedPage);
+        Assert.Same(workspace.PageOf(page), workspace.SelectedPage);
         Assert.Equal(Enum.GetValues<WorkspacePage>().Select(each => each == page),
             workspace.Pages.Select(entry => entry.IsCurrent));
     }
@@ -198,7 +198,7 @@ public sealed class WorkspacePageTests
 
         await ChooseProjectAsync(fake, projectPicker, workspace);
 
-        var warnings = workspace.Pages[(int)WorkspacePage.Warnings];
+        var warnings = workspace.PageOf(WorkspacePage.Warnings);
         Assert.Equal("2", warnings.Badge);
         Assert.True(warnings.HasBadge);
         Assert.Empty(fake.AssessRequests);
@@ -215,7 +215,7 @@ public sealed class WorkspacePageTests
             Words = [Word("kitabu", "no-analysis", ProjectStanding.Approved), Word("mwalimu", "no-analysis", ProjectStanding.NotPresent)],
         });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        var review = workspace.Pages[(int)WorkspacePage.Review];
+        var review = workspace.PageOf(WorkspacePage.Review);
         Assert.False(review.HasBadge);
 
         Assert.Same(workspace.Changes, workspace.Assess.Compare.Changes);
@@ -463,7 +463,7 @@ public sealed class WorkspacePageTests
         Assert.Empty(fake.CheckGrammarRequests);
         Assert.True(workspace.IsGrammarNotChecked);
         Assert.Equal("Not checked yet", workspace.Grammar.SummaryText);
-        Assert.False(workspace.Pages[(int)WorkspacePage.Warnings].HasBadge);
+        Assert.False(workspace.PageOf(WorkspacePage.Warnings).HasBadge);
 
         await workspace.CheckGrammarCommand.ExecuteAsync(null);
 
@@ -522,6 +522,23 @@ public sealed class WorkspacePageTests
         workspace.CancelRefreshCommand.Execute(null);
         await refreshing;
 
+        Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
+    }
+
+    [Fact]
+    public async Task ARefreshWhoseAssessmentIsRefusedStillSaysTheNumbersAreOlder()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved.AddHours(3), false, false));
+        fake.AssessRefusesWith(new Refusal("assess.refused", FailureReason.Refused, "The parser declined."));
+        await workspace.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal(RunState.Refused, workspace.Assess.State);
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
     }
 

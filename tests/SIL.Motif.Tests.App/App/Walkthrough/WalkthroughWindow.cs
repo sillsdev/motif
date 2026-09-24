@@ -89,17 +89,8 @@ public sealed class WalkthroughWindow : IDisposable
     private void ShowStageOwning(Control control)
     {
         var owners = control.GetLogicalAncestors().OfType<Control>().Select(ancestor => ancestor.Name).ToList();
-        var page = owners.Select(name => name switch
-        {
-            "OverviewPage" => WorkspacePage.Overview,
-            "TextsPage" => WorkspacePage.Texts,
-            "TryAWordPage" => WorkspacePage.TryAWord,
-            "TimingPage" => WorkspacePage.Timing,
-            "WarningsPage" => WorkspacePage.Warnings,
-            "ReviewPage" => WorkspacePage.Review,
-            "AiHandoffPage" => WorkspacePage.AiHandoff,
-            _ => (WorkspacePage?)null,
-        }).FirstOrDefault(candidate => candidate is not null);
+        var page = PageRegistry.Entries.Select(entry => (WorkspacePage?)entry.Page)
+            .FirstOrDefault(candidate => owners.Contains($"{candidate}Page"));
         if (page is not { } owning) return;
 
         ShowPage(owning);
@@ -132,7 +123,7 @@ public sealed class WalkthroughWindow : IDisposable
     {
         if (Workspace.CurrentPage == page) return;
 
-        var name = Workspace.Pages[(int)page].AutomationName;
+        var name = Workspace.PageOf(page).AutomationName;
         var entry = Window.GetLogicalDescendants().OfType<ListBoxItem>().Single(item =>
             string.Equals(Avalonia.Automation.AutomationProperties.GetName(item), name, StringComparison.Ordinal));
         ClickControl(entry, name);

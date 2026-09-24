@@ -83,6 +83,16 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void TheStoredReadStampsTheParserExactlyAsTheCheckDoes()
+    {
+        static string? StampOf(Type query) => (string?)query
+            .GetMethod("ParserStamp", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .Invoke(null, null);
+
+        Assert.Equal(StampOf(typeof(GrammarCheckQuery)), StampOf(typeof(StoredGrammarCheckQuery)));
+    }
+
+    [Fact]
     public void NoBaselineIsAnEmptyCheckThatSaysSo()
     {
         var fwDataPath = _pristine.CopyProjectFile();

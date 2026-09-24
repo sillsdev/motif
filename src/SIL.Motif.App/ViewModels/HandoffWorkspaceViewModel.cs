@@ -312,10 +312,16 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         var stored = await _commandClient.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), cancellationToken)
             .ConfigureAwait(true);
         if (!string.Equals(path, _projectPath, StringComparison.Ordinal)) return;
-        // A stored check is answered from the store, so attaching the project here reads it rather than rerunning.
+        // A stored hit reads the same store the check does, pinned by `TheStoredReadStampsTheParserExactlyAsTheCheckDoes`.
         if (stored.Succeeded && stored.Value?.Check is not null)
             await Grammar.SetProjectAsync(path, cancellationToken).ConfigureAwait(true);
+        RaiseGrammarState();
+    }
+
+    private void RaiseGrammarState()
+    {
         OnPropertyChanged(nameof(IsGrammarNotChecked));
+        CheckGrammarCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>What the AI Handoff page's action reads: the first write, or a rewrite.</summary>
@@ -422,6 +428,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         _projectPath = fwDataPath;
         OnPropertyChanged(nameof(ProjectName));
         OnPropertyChanged(nameof(HasProject));
+        RaiseGrammarState();
         Project.ShowChosen(fwDataPath);
         CurrentPage = WorkspacePage.Overview;
         RefreshRecentProjects();
@@ -521,11 +528,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         OnPropertyChanged(nameof(HandoffActionText));
         if (ReferenceEquals(sender, Baseline)) RaiseFreshness();
-        if (ReferenceEquals(sender, Grammar))
-        {
-            OnPropertyChanged(nameof(IsGrammarNotChecked));
-            CheckGrammarCommand.NotifyCanExecuteChanged();
-        }
+        if (ReferenceEquals(sender, Grammar)) RaiseGrammarState();
         RefreshPages();
     }
 
