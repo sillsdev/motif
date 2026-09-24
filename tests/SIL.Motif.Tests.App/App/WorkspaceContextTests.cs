@@ -13,9 +13,8 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins that a page is built from a <see cref="WorkspaceContext"/> alone: a page model reacts to the project and
-/// evidence the context publishes, pages open one another only through the context's navigation actions, and no
-/// page model is known to the workspace, the context, or another page, so adding a page touches only its own files
-/// and its registry entry.
+/// evidence the context publishes, requests pass through context navigation, and page model types do not name
+/// the shell or one another.
 /// </summary>
 public sealed class WorkspaceContextTests
 {

@@ -46,14 +46,13 @@ public sealed record GrammarSummary(string SummaryText, bool ShowFindings, strin
 public abstract record PageRequest(WorkspacePage Page);
 
 /// <summary>
-/// What every page of the window is built from: the open project, the evidence published for it, the models the
-/// pages share, the pending changes, and the navigation actions by which one page opens another.
+/// The project and evidence published to the window's pages, their shared Assessment and Selection, pending
+/// changes, and navigation actions.
 /// </summary>
 /// <remarks>
-/// The window's shell publishes each project change and each completed Assessment here exactly once; each
-/// <see cref="PageModel"/> reacts to those signals and owns its own display state, so no page reaches through
-/// the shell or into another page. A page opens another only by an action here, such as <see cref="OpenWord"/>,
-/// which sets <see cref="CurrentPage"/> after the target page has answered the <see cref="PageRequest"/>.
+/// The shell publishes project and Assessment changes here. Page models receive those changes and may share
+/// <see cref="Assess"/> and <see cref="Selection"/> when their controls operate on the same run. Navigation
+/// requests, such as <see cref="OpenWord"/>, reach page models without giving them the shell.
 /// </remarks>
 public sealed partial class WorkspaceContext : ObservableObject
 {

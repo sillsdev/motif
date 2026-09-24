@@ -26,9 +26,7 @@ public sealed record PageEntry(
 
 /// <summary>
 /// The one place pages are registered. Each entry carries everything a page needs to appear: its place in the
-/// sidebar (the order of <see cref="Entries"/>), its label, its icon, its model and its view. Filling a page
-/// changes only that page's own view and model; adding one is one entry here, beside its
-/// <see cref="WorkspacePage"/> name.
+/// sidebar (the order of <see cref="Entries"/>), its label, its icon, its model and its view.
 /// </summary>
 public static class PageRegistry
 {

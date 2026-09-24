@@ -12,15 +12,13 @@ namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
 /// The Motif window's shell: choosing a project cancels whatever Assessment or AI Handoff run is active, clears
-/// the state the previous project displayed, and loads the new project's Baseline, grammar findings, history, and
-/// Text state. It owns the sidebar, the project menu, and the freshness line in the top bar, and it publishes each
-/// project change and each completed Assessment once, through <see cref="Context"/>, to the page models the page
-/// registry builds from that context.
+/// the state the previous project displayed, and loads the new project's Baseline and Selection. It owns the
+/// sidebar, project menu, and freshness line, and publishes project and Assessment changes through
+/// <see cref="Context"/> to the page models.
 /// </summary>
 /// <remarks>
-/// What a page does with a published project or Assessment, and how one page opens another, belongs to the pages'
-/// own models; the shell names none of them. Nothing here reruns anything on its own: <see cref="RefreshCommand"/>
-/// is the only way a new Baseline and a new run start together, and only a person presses it.
+/// Page models load their own project queries and handle requests through the context. The shell starts a new
+/// Baseline and Assessment together only through <see cref="RefreshCommand"/>.
 /// </remarks>
 public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
