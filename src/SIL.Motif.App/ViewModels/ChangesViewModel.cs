@@ -1,6 +1,12 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Services;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -41,23 +47,16 @@ public static class ChangeKinds
 }
 
 /// <summary>
-/// The changes collected so far about words' analyses, meant to become one Proposal and be applied to FieldWorks
-/// together. A word gets at most one change: choosing another replaces the first.
+/// The observable view of the pending Draft and each change's current fit with the saved project.
 /// </summary>
 public sealed partial class ChangesViewModel : ObservableObject
 {
-    public ChangesViewModel()
+    private readonly ICommandClient? _client;
+    public ChangesViewModel(ICommandClient? client = null)
     {
-        RemoveCommand = new RelayCommand<ChangeViewModel>(change =>
-        {
-            if (change is not null) Items.Remove(change);
-            Raise();
-        });
-        ClearCommand = new RelayCommand(() =>
-        {
-            Items.Clear();
-            Raise();
-        });
+        _client = client;
+        RemoveCommand = new AsyncRelayCommand<ChangeViewModel>(RemoveAsync);
+        ClearCommand = new AsyncRelayCommand(ClearAsync);
         Items.CollectionChanged += (_, _) => Raise();
     }
 
@@ -66,23 +65,108 @@ public sealed partial class ChangesViewModel : ObservableObject
     /// <summary>The project these changes belong to, or <see langword="null"/> before one is open.</summary>
     public string? ProjectPath { get; private set; }
 
-    /// <summary>
-    /// Shows the pending changes of the project at <paramref name="projectPath"/>. Changes collected in this window
-    /// belong to the project they were collected for, so another project starts with none.
-    /// </summary>
-    public Task OpenProjectAsync(string projectPath)
+    /// <summary>Loads the pending changes belonging to <paramref name="projectPath"/>.</summary>
+    public async Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
-        if (!string.Equals(ProjectPath, projectPath, StringComparison.OrdinalIgnoreCase)) Items.Clear();
         ProjectPath = projectPath;
-        return Task.CompletedTask;
+        Reset();
+        await ReloadAsync(cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>How many changes wait.</summary>
     public int Count => Items.Count;
 
-    public IRelayCommand<ChangeViewModel> RemoveCommand { get; }
-    public IRelayCommand ClearCommand { get; }
+    public IAsyncRelayCommand<ChangeViewModel> RemoveCommand { get; }
+    public IAsyncRelayCommand ClearCommand { get; }
+
+    public PendingChangesSnapshot Snapshot { get; private set; } = new(null, "none", [], []);
+
+    public Refusal? LastRefusal { get; private set; }
+
+    public string? ErrorText => LastRefusal?.Message;
+
+    public string? AssessmentId { get; set; }
+
+    public async Task SetProjectAsync(string path, CancellationToken cancellationToken = default)
+        => await OpenProjectAsync(path, cancellationToken).ConfigureAwait(true);
+
+    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    {
+        if (_client is null || ProjectPath is null) return;
+        Accept(await _client.LoadPendingChangesAsync(new PendingChangesRequest(
+            ProjectPath, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true));
+    }
+
+    public async Task PutAsync(ChangeIntent change, CancellationToken cancellationToken = default)
+    {
+        if (_client is null || ProjectPath is null) return;
+        var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
+            ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision, change),
+            cancellationToken).ConfigureAwait(true);
+        Accept(outcome);
+        if (outcome.Refusal?.Code == "change.revision-conflict") await ReloadAsync(cancellationToken);
+    }
+
+    public async Task AddAsync(string kind, CompareWordViewModel word)
+    {
+        if (_client is null || ProjectPath is null)
+        {
+            Add(kind, word);
+            return;
+        }
+        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", word.Word,
+            AssessmentId, word.Reading, DisplayReading: word.FirstReading)).ConfigureAwait(true);
+    }
+
+    private async Task RemoveAsync(ChangeViewModel? change)
+    {
+        if (change is null) return;
+        if (_client is null || ProjectPath is null)
+        {
+            Items.Remove(change);
+            Raise();
+            return;
+        }
+        var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
+            ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId),
+            CancellationToken.None).ConfigureAwait(true);
+        Accept(outcome);
+        if (outcome.Refusal?.Code == "change.revision-conflict") await ReloadAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        foreach (var change in Items.ToArray()) await RemoveAsync(change).ConfigureAwait(true);
+    }
+
+    public void Reset()
+    {
+        Items.Clear();
+        Snapshot = new PendingChangesSnapshot(null, "none", [], []);
+        LastRefusal = null;
+        AssessmentId = null;
+        OnPropertyChanged(nameof(Snapshot));
+        Raise();
+    }
+
+    private void Accept(CommandOutcome<PendingChangesSnapshot> outcome)
+    {
+        LastRefusal = outcome.Refusal;
+        OnPropertyChanged(nameof(LastRefusal));
+        OnPropertyChanged(nameof(ErrorText));
+        if (outcome.Value is not { } snapshot) return;
+        Snapshot = snapshot;
+        OnPropertyChanged(nameof(Snapshot));
+        Items.Clear();
+        foreach (var change in snapshot.Changes)
+        {
+            var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
+            Items.Add(new ChangeViewModel(change.Kind, change.Word, "Project analysis",
+                change.DisplayReading ?? "", change.ChangeId, fit));
+        }
+        Raise();
+    }
 
     public bool HasItems => Items.Count > 0;
 
@@ -101,6 +185,10 @@ public sealed partial class ChangesViewModel : ObservableObject
     {
         get
         {
+            var stale = Items.Count(item => item.Fit is { StillFits: false });
+            if (stale > 0)
+                return stale == 1 ? "1 change no longer fits the project. Review is blocked."
+                    : $"{stale:N0} changes no longer fit the project. Review is blocked.";
             var ready = Items.Count(item => item.CanBeProposedToday);
             var waiting = Items.Count - ready;
             return waiting == 0
@@ -129,8 +217,13 @@ public sealed partial class ChangesViewModel : ObservableObject
 }
 
 /// <summary>One collected change: what should happen to one word, and what it held when the change was chosen.</summary>
-public sealed class ChangeViewModel(string kind, string word, string heldLabel, string reading)
+public sealed class ChangeViewModel(string kind, string word, string heldLabel, string reading,
+    string? changeId = null, ChangeFit? fit = null)
 {
+    public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
+    public ChangeFit? Fit { get; } = fit;
+    public string FitStatus => Fit is null ? string.Empty : Fit.StillFits
+        ? "Still fits the project." : "No longer fits: " + string.Join(" ", Fit.Reasons);
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
     public string Word { get; } = word;

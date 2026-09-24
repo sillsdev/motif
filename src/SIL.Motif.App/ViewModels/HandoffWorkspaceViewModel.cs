@@ -44,7 +44,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         Project = project;
         Baseline = baseline;
-        Context = new WorkspaceContext(selection, assess, new ChangesViewModel(), commandClient, folderPicker, dragSource)
+        Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker, dragSource)
         {
             KnownProjects = project.KnownProjects,
             BrowseForProjectCommand = project.BrowseCommand,

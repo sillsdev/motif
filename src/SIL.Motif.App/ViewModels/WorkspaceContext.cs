@@ -161,6 +161,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         Evidence = null;
         CurrentEvidence = null;
+        Changes.Reset();
         foreach (var page in _pages) page.ProjectCleared();
     }
 
@@ -169,7 +170,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         ProjectPath = projectPath;
-        await Changes.OpenProjectAsync(projectPath).ConfigureAwait(true);
+        await Changes.OpenProjectAsync(projectPath, cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
     }
@@ -192,6 +193,8 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(evidence);
         Evidence = evidence;
+        Changes.AssessmentId = evidence.Assessment.Measurements
+            .SingleOrDefault(measurement => measurement.Kind == "ParseTime")?.AssessmentId;
         foreach (var page in _pages.ToArray()) page.EvidencePublished(evidence);
     }
 

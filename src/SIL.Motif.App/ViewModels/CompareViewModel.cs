@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -49,13 +50,13 @@ public sealed partial class CompareViewModel : ObservableObject
         RerunCommand = new AsyncRelayCommand(RerunUnknownAsync, () => Rerun is not null && RerunWords.Count > 0);
         HandOffCommand = new RelayCommand(() => HandOff?.Invoke(Words.Select(word => word.Word).ToArray()),
             () => HandOff is not null && Words.Count > 0);
-        ProposeCommand = new RelayCommand<string>(kind =>
+        ProposeCommand = new AsyncRelayCommand<string>(async kind =>
         {
             if (kind is null) return;
             var chosen = Words.Where(word => word.IsChecked).ToList();
             foreach (var word in chosen)
             {
-                Changes.Add(kind, word);
+                await Changes.AddAsync(kind, word);
                 word.IsChecked = false;
             }
         });
@@ -68,7 +69,7 @@ public sealed partial class CompareViewModel : ObservableObject
     public ChangesViewModel Changes { get; set; } = new();
 
     /// <summary>Adds a change of one kind (see <see cref="ChangeKinds"/>) for every checked word in the list.</summary>
-    public IRelayCommand<string> ProposeCommand { get; }
+    public IAsyncRelayCommand<string> ProposeCommand { get; }
 
     /// <summary>Runs words again with a longer limit and folds the answers into this Assessment; set by its owner.</summary>
     public Func<IReadOnlyList<string>, int, Task>? Rerun { get; set; }
@@ -449,6 +450,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
         ColumnLabel = CompareViewModel.ColumnLabelOf(Column);
         ColumnVerdict = CompareViewModel.VerdictOf(Column);
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
+        Reading = word.Morphology?.Analyses.FirstOrDefault();
     }
 
     public string Word { get; }
@@ -468,6 +470,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
 
     /// <summary>The parser's first reading, so a listed word shows what was just calculated for it.</summary>
     public string FirstReading { get; }
+
+    public ParseAnalysis? Reading { get; }
 
     /// <summary>Whether the word is ticked, to receive the next change chosen for ticked words.</summary>
     [ObservableProperty]
