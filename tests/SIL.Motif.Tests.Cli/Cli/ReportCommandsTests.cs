@@ -120,7 +120,7 @@ public sealed class ReportCommandsTests : IDisposable
                 ProposalIntentDigest: null,
                 Assessor: "pangloss",
                 Kind: kind,
-                ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":"200000"}""",
+                ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
                 ScopeDigest: "sha256:" + new string('a', 64),
                 TokeniserName: "none",
                 TokeniserVersion: "1",

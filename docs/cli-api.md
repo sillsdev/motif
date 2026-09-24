@@ -367,6 +367,10 @@ because the project is resolved before the Assessor is ever built — pinned by
 
 ## Selection, Overview, and Timing
 
+`config show --json` returns `ProjectConfigurationProjection`. Each scope's `perWordStepLimit` is a structured
+`StepCap` object with `steps` and `isUnbounded`; an unbounded cap has `steps: null` and `isUnbounded: true`.
+Assessment `ScopeJson` uses the same representation.
+
 **`selection show --project <fwdata> [--json]`** reads the saved default Selection's name, Text GUIDs,
 added words, and saved timestamps. **`selection set-default --project <fwdata> --name <name>
 [--texts <guid,guid>] [--add-words <word,word>] [--json]`** saves those inputs and makes that named
@@ -383,7 +387,8 @@ and `selection.text-not-found`.
 latest ParseTime Assessment with the same Baseline token and exact resolved Selection. It reports project
 timestamps and counts, Selection word and Text-occurrence counts, wordforms, rules, lexemes, grammar and
 Selection fingerprints, Text Coverage, Accuracy, and parse-time median, p95, slowest words, and step-limited
-count. Text Coverage and Accuracy use the same Compare placement rules as the App. A time- or step-limited
+count. A rule is each distinct affix allomorph on a lexeme or alternate form, plus each compound and
+phonological rule; morphemes are not counted. Text Coverage and Accuracy use the same Compare placement rules as the App. A time- or step-limited
 word is Unknown, not a verdict. `Warnings` is a typed field in `OverviewResponse`; it is `null` until warning
 facts are retained. With no matching Assessment the response still has the project and Selection facts, while
 Assessment metrics are empty. `--json` emits `OverviewResponse`.

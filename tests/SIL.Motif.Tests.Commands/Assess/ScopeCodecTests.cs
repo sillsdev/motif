@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Contract.Assess;
 using Xunit;
@@ -14,6 +15,10 @@ public sealed class ScopeCodecTests
         var original = new StoredScope.Trial("words", new[] { "cat" },
             new[] { AssessmentKind.ParseTime }, TimeSpan.FromMilliseconds(750), steps);
         var json = ScopeCodec.Write(original);
+        using var document = JsonDocument.Parse(json);
+        var cap = document.RootElement.GetProperty("perWordStepLimit");
+        Assert.Equal(steps, cap.GetProperty("steps").GetInt64());
+        Assert.False(cap.GetProperty("isUnbounded").GetBoolean());
         var scope = ScopeCodec.ReadTrial(json, "coverage");
         Assert.Equal(new StepCap(steps), scope.PerWordStepLimit);
         Assert.Equal(TimeSpan.FromMilliseconds(750), scope.PerWordLimit);
@@ -25,8 +30,10 @@ public sealed class ScopeCodecTests
     [Theory]
     [InlineData("{\"engine\":\"fast\",\"perWordLimitMs\":1000}")]
     [InlineData("{\"perWordLimitMs\":1000}")]
-    [InlineData("{\"perWordLimitMs\":1000,\"perWordStepLimit\":-1}")]
-    [InlineData("{\"perWordLimitMs\":1000,\"perWordStepLimit\":0}")]
+    [InlineData("{\"perWordLimitMs\":1000,\"perWordStepLimit\":{\"steps\":-1,\"isUnbounded\":false}}")]
+    [InlineData("{\"perWordLimitMs\":1000,\"perWordStepLimit\":{\"steps\":0,\"isUnbounded\":false}}")]
+    [InlineData("{\"perWordLimitMs\":1000,\"perWordStepLimit\":{\"steps\":200000,\"isUnbounded\":true}}")]
+    [InlineData("{\"perWordLimitMs\":1000,\"perWordStepLimit\":{\"steps\":null,\"isUnbounded\":false}}")]
     [InlineData("{\"perWordLimitMs\":0,\"perWordStepLimit\":200000}")]
     [InlineData("{\"perWordLimitMs\":1000,\"perWordStepLimit\":200000,\"engine\":\"fast\"}")]
     [InlineData("[]")]
@@ -56,7 +63,13 @@ public sealed class ScopeCodecTests
         var trial = new StoredScope.Trial("words", ["cat"], [AssessmentKind.ParseTime],
             TimeSpan.FromSeconds(1), StepCap.Unbounded);
 
-        var stored = ScopeCodec.ReadTrial(ScopeCodec.Write(trial), "coverage");
+        var json = ScopeCodec.Write(trial);
+        using var document = JsonDocument.Parse(json);
+        var cap = document.RootElement.GetProperty("perWordStepLimit");
+        Assert.Equal(JsonValueKind.Null, cap.GetProperty("steps").ValueKind);
+        Assert.True(cap.GetProperty("isUnbounded").GetBoolean());
+
+        var stored = ScopeCodec.ReadTrial(json, "coverage");
 
         Assert.Equal(StepCap.Unbounded, stored.PerWordStepLimit);
     }

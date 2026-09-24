@@ -265,7 +265,6 @@ public static class ProjectConfigurationFile
         private List<string>? _collect;
         private int? _perWordLimitMs;
         private StepCap? _perWordStepLimit;
-        private bool _hasPerWordStepLimit;
 
         public void Set(string key, string rawValue, string path, int lineNumber)
         {
@@ -278,7 +277,6 @@ public static class ProjectConfigurationFile
                 case "per-word-limit-ms": _perWordLimitMs = ParsePositiveMilliseconds(path, lineNumber, key, rawValue); break;
                 case "per-word-step-limit":
                     _perWordStepLimit = ParseStepLimit(path, lineNumber, key, rawValue);
-                    _hasPerWordStepLimit = true;
                     break;
             }
         }
@@ -295,7 +293,7 @@ public static class ProjectConfigurationFile
                 _perWordLimitMs is { } ms
                     ? TimeSpan.FromMilliseconds(ms)
                     : AssessmentScopeConfiguration.DefaultPerWordLimit,
-                _hasPerWordStepLimit ? _perWordStepLimit : null);
+                _perWordStepLimit);
         }
     }
 }
