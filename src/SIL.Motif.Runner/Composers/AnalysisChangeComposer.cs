@@ -82,12 +82,16 @@ public static class AnalysisChangeComposer
                 member = approves ? HumanEvaluationPayload.Approves : HumanEvaluationPayload.Disapproves,
             }));
 
-    private static bool Matches(IWfiAnalysis analysis, ParseAnalysis reading) =>
+    public static bool Matches(IWfiAnalysis analysis, ParseAnalysis reading) =>
         analysis.MorphBundlesOS.Count == reading.Morphs.Count &&
         analysis.MorphBundlesOS.Zip(reading.Morphs).All(pair =>
             MatchesGuid(pair.First.MorphRA?.Guid, pair.Second.Form) &&
             MatchesGuid(pair.First.MsaRA?.Guid, pair.Second.Msa) &&
-            MatchesGuid(pair.First.InflTypeRA?.Guid, pair.Second.InflType));
+            MatchesGuid(pair.First.InflTypeRA?.Guid, pair.Second.InflType) &&
+            (pair.Second.GuessedString is null ||
+             pair.First.Form.AvailableWritingSystemIds.Any(ws =>
+                 string.Equals(pair.First.Form.get_String(ws)?.Text?.Normalize(System.Text.NormalizationForm.FormD),
+                     pair.Second.GuessedString.Normalize(System.Text.NormalizationForm.FormD), StringComparison.Ordinal))));
 
     private static bool MatchesGuid(Guid? existing, string? candidate) =>
         existing is null ? candidate is null : Guid.TryParse(candidate, out var parsed) && existing == parsed;

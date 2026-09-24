@@ -77,12 +77,10 @@ public static class AnalysisDraftChanges
                             ? target.Value : null;
                     var analysis = analysisId is null ? null : wordform.AnalysesOC.Single(item =>
                         CanonicalId.FromGuid(item.Guid).Value == analysisId);
-                    var readingDigest = reading is null ? null : AnalysisContent.ComputeDigest(
-                        reading.Morphs.Select(morph => new MorphBundleContent(
-                            morph.Form, morph.Msa, morph.InflType)).ToArray());
+                    var readingDigest = reading is null ? null : ChangeFitPreflight.ReadingDigest(reading);
                     var fingerprint = new ChangeFitFingerprint(
                         wordformId.Value, analysisId, request.Word, baselineToken,
-                        analysis is null ? null : ChangeFitPreflight.ContentDigest(analysis), readingDigest);
+                        analysis is null ? null : ChangeFitPreflight.ContentDigest(analysis), readingDigest, reading);
                     draft.Operations.Add(ToDraft(operation, fingerprint));
                     draft.ContractVersions[OperationKind.GetGroup(operation.Kind)] = "1.0";
                 }

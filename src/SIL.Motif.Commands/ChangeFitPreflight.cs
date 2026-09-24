@@ -1,7 +1,10 @@
 using System.Text.Json;
+using System.Security.Cryptography;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
-using SIL.Motif.Host.Analysis;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Composers;
+using SIL.Motif.Runner.Operations;
 using SIL.LCModel;
 
 namespace SIL.Motif.Commands;
@@ -12,7 +15,7 @@ public sealed record ChangeFitResult(string OperationId, bool StillFits, string 
 /// <summary>The identities and observed form against which a collected change was composed.</summary>
 public sealed record ChangeFitFingerprint(
     string WordformId, string? AnalysisId, string WordformForm, string BaselineToken,
-    string? AnalysisContentDigest = null, string? ReadingContentDigest = null);
+    string? AnalysisContentDigest = null, string? ReadingContentDigest = null, ParseAnalysis? Reading = null);
 
 /// <summary>Checks collected changes against the live project immediately before Apply.</summary>
 public static class ChangeFitPreflight
@@ -63,9 +66,9 @@ public static class ChangeFitPreflight
                     continue;
                 }
             }
-            if (operation.Kind == "analysis/wfiWordform/createAnalysis" &&
-                fingerprint.ReadingContentDigest is { } readingDigest &&
-                wordform.AnalysesOC.Any(analysis => ContentDigest(analysis) == readingDigest))
+            if (operation.Kind == WfiAnalysisOperationKinds.CreateAnalysis &&
+                fingerprint.Reading is { } reading &&
+                wordform.AnalysesOC.Any(analysis => AnalysisChangeComposer.Matches(analysis, reading)))
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
                     $"The parser reading already exists under wordform {wordId.Value}.", fingerprint.BaselineToken));
@@ -77,8 +80,22 @@ public static class ChangeFitPreflight
         return result;
     }
 
-    public static string ContentDigest(IWfiAnalysis analysis) => AnalysisContent.ComputeDigest(
-        analysis.MorphBundlesOS.Select(bundle => new MorphBundleContent(
-            bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"),
-            bundle.InflTypeRA?.Guid.ToString("D"))).ToArray());
+    public static string ContentDigest(IWfiAnalysis analysis) => Digest(analysis.MorphBundlesOS.Select(bundle => new
+    {
+        form = bundle.MorphRA?.Guid.ToString("D"),
+        msa = bundle.MsaRA?.Guid.ToString("D"),
+        inflType = bundle.InflTypeRA?.Guid.ToString("D"),
+        guessedString = bundle.MorphRA is null ? bundle.Form.VernacularDefaultWritingSystem?.Text : null,
+    }).ToArray());
+
+    public static string ReadingDigest(ParseAnalysis reading) => Digest(reading.Morphs.Select(morph => new
+    {
+        form = morph.Form,
+        msa = morph.Msa,
+        inflType = morph.InflType,
+        guessedString = morph.GuessedString,
+    }).ToArray());
+
+    private static string Digest<T>(T value) => "sha256:" +
+        Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value))).ToLowerInvariant();
 }

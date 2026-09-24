@@ -141,6 +141,52 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         Assert.Equal(Opinions.approves, created.GetAgentOpinion(_cache.LangProject.DefaultParserAgent));
     }
 
+    [Theory]
+    [InlineData("approve")]
+    [InlineData("reject")]
+    [InlineData("candidate")]
+    public void GuessedReading_SelectsOnlyTheAnalysisWithTheSameForm(string kind)
+    {
+        IWfiAnalysis matching = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            foreach (var value in new[] { "xyz", "abc" })
+            {
+                var analysis = _cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                _wordform.AnalysesOC.Add(analysis);
+                var bundle = _cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                analysis.MorphBundlesOS.Add(bundle);
+                bundle.Form.set_String(_cache.DefaultVernWs,
+                    TsStringUtils.MakeString(value, _cache.DefaultVernWs));
+                if (value == "abc") matching = analysis;
+            }
+            _cache.LangProject.DefaultUserAgent.SetEvaluation(matching, Opinions.approves);
+        });
+        var reading = new ParseAnalysis([new ParseMorph(null, null, null, "abc")]);
+
+        var operations = AnalysisChangeComposer.Build(_cache,
+            new AnalysisChangeIntent(kind, CanonicalId.FromGuid(_wordform.Guid), reading));
+
+        Assert.Equal(CanonicalId.FromGuid(matching.Guid), Assert.Single(operations).Target);
+    }
+
+    [Fact]
+    public void DifferentGuessedForm_DoesNotBlockAddingCandidate()
+    {
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var bundle = _cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+            _analysis.MorphBundlesOS.Add(bundle);
+            bundle.Form.set_String(_cache.DefaultVernWs, TsStringUtils.MakeString("xyz", _cache.DefaultVernWs));
+        });
+        var reading = new ParseAnalysis([new ParseMorph(null, null, null, "abc")]);
+
+        var operations = AnalysisChangeComposer.Build(_cache,
+            new AnalysisChangeIntent("add-candidate", CanonicalId.FromGuid(_wordform.Guid), reading));
+
+        Assert.Equal("analysis/wfiWordform/createAnalysis", Assert.Single(operations).Kind);
+    }
+
     [Fact]
     public void AnalysisSnapshots_DiffEvaluationMembershipByCanonicalIdentity()
     {
