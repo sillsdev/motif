@@ -933,6 +933,7 @@ public static partial class ProposalCommands
             EntityId = operation.EntityId?.Value,
             DependsOn = operation.DependsOn.Select(d => d.OperationId.Value).ToList(),
             After = afterDict,
+            Extensions = operation.Extensions,
         };
     }
 
@@ -1435,6 +1436,16 @@ public static partial class ProposalCommands
             cache = loader.LoadCache(project.FullFwDataPath);
             try
             {
+                if (record.Status != ManifestStatus.Applied)
+                {
+                    var nonFitting = ChangeFitPreflight.Check(cache, envelope).Where(change => !change.StillFits).ToArray();
+                    if (nonFitting.Length > 0)
+                        return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                            "apply.change-no-longer-fits", FailureReason.Refused,
+                            $"Cannot apply Proposal {id}: {string.Join("; ", nonFitting.Select(change => change.Reason))}. " +
+                            "Reopen it and remove or replace the changes that no longer fit.",
+                            Fact(("proposalId", id))));
+                }
                 var description = manifest.Label ?? "";
                 var receipt = ProposalApplier.Apply(cache, envelope, manifest.Anchor, user, description);
 
@@ -1555,7 +1566,7 @@ public static partial class ProposalCommands
         "Only one program may hold a FieldWorks project at a time, and Motif takes the same lock " +
         "FieldWorks does. Close the other program and try again.";
 
-    private static string BuildProposalJson(DraftDocument draft)
+    internal static string BuildProposalJson(DraftDocument draft)
     {
         var document = new
         {
@@ -1570,6 +1581,7 @@ public static partial class ProposalCommands
                 target = op.Target,
                 dependsOn = op.DependsOn,
                 after = op.After,
+                extensions = op.Extensions,
             }).ToList(),
             extensions = BuildExtensions(draft),
         };

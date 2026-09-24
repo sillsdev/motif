@@ -58,6 +58,7 @@ public static class CommandCatalog
         new CommandDescriptor("supersede", typeof(SupersedeRequest), typeof(ProposalStatusChangedResponse), CommandSurface.Developer),
         new CommandDescriptor("list", typeof(ListProposalsRequest), typeof(ProposalListProjection), CommandSurface.Developer),
         new CommandDescriptor("show", typeof(ShowProposalRequest), typeof(ProposalDetailProjection), CommandSurface.Developer),
+        new CommandDescriptor("preflight", typeof(PreflightRequest), typeof(PreflightResponse), CommandSurface.Developer),
         new CommandDescriptor("apply", typeof(ApplyRequest), typeof(ApplyProjection), CommandSurface.Developer),
         new CommandDescriptor("log", typeof(LogRequest), typeof(AppliedLogProjection), CommandSurface.Developer),
 

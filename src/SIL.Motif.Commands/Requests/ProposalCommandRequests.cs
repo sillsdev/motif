@@ -87,4 +87,6 @@ public sealed record ShowProposalRequest(string FwDataPath, string ProductVersio
 public sealed record ApplyRequest(
     string FwDataPath, string ProductVersion, string ProposalId, string User, bool Force = false);
 
+public sealed record PreflightRequest(string FwDataPath, string ProductVersion, string ProposalId);
+
 public sealed record LogRequest(string FwDataPath);

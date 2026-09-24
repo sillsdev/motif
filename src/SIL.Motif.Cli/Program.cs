@@ -339,6 +339,13 @@ try
                 ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0]), usage));
             break;
 
+        case "preflight":
+            if (!flags.TryGetValue("project", out var preflightProject) || positionals.Count != 1)
+                return Usage("Usage: motif preflight --project <fwdata> <proposalId> [--json]", asJson);
+            result = RenderProposal(ProposalCommands.Preflight(new PreflightRequest(
+                preflightProject, CliProductVersion(), positionals[0])));
+            break;
+
         case "dry-run":
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var dryRunProject))
             {

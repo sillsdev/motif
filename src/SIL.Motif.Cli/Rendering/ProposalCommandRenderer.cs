@@ -40,6 +40,7 @@ public static class ProposalCommandRenderer
             AnalysisAggregateProjection p => ProjectionText.Render(p),
             ProposalListProjection p => ProjectionText.Render(p),
             ProposalDetailProjection p => ProjectionText.Render(p),
+            PreflightResponse p => RenderPreflight(p),
             ApplyProjection p => ProjectionText.Render(p),
             AppliedLogProjection p => ProjectionText.Render(p),
             DraftCreatedResponse r => RenderDraftCreated(r),
@@ -82,6 +83,15 @@ public static class ProposalCommandRenderer
         sb.AppendLine($"Created draft '{r.DraftName}'.");
         sb.AppendLine($"  proposalId: {r.ProposalId}");
         if (r.Label is not null) sb.AppendLine($"  label:       {r.Label}");
+        return sb.ToString();
+    }
+
+    private static string RenderPreflight(PreflightResponse response)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Preflight for Proposal {response.ProposalId}:");
+        foreach (var change in response.Changes)
+            sb.AppendLine($"  {change.OperationId}: {(change.StillFits ? "still fits" : "no longer fits")} — {change.Reason}");
         return sb.ToString();
     }
 

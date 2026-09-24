@@ -1,17 +1,24 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
+using SIL.LCModel.Infrastructure;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -329,6 +336,229 @@ public sealed class ProposalWorkflowTests
         return database.FullPath;
     }
 
+    [Fact]
+    public void DeletedWordform_IsNoLongerFitAndBlocksApplyEvenWithForce()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformGuid;
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            IWfiWordform wordform = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("fit-word", cache.DefaultVernWs)));
+            wordformGuid = wordform.Guid;
+            loader.Save(cache);
+        }
+
+        const string draftName = "fit-deleted-word";
+        var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null));
+        Assert.True(created.Succeeded);
+        var operationId = CanonicalId.Mint();
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var repository = new ProposalRepository(database);
+            var draft = JsonNode.Parse(repository.GetDraft(draftName).ProposalJson!)!.AsObject();
+            draft["contractVersions"]!["analysis"] = "1.0";
+            draft["operations"]!.AsArray().Add(new JsonObject
+            {
+                ["operationId"] = operationId.Value,
+                ["kind"] = "analysis/wfiWordform/setSpellingStatus",
+                ["target"] = CanonicalId.FromGuid(wordformGuid).Value,
+                ["after"] = new JsonObject { ["value"] = 2 },
+                ["extensions"] = new JsonObject { ["changeFit"] = new JsonObject
+                {
+                    ["wordformId"] = CanonicalId.FromGuid(wordformGuid).Value,
+                    ["wordformForm"] = "fit-word",
+                    ["baselineToken"] = "captured-baseline",
+                } },
+            });
+            repository.SaveDraft(draftName, draft.ToJsonString());
+        }
+        DraftRationale.Author(_fwDataPath, draftName, "Mark spelling incorrect", "The selected word is misspelled.");
+        Assert.True(ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName)).Succeeded);
+        Assert.True(RunDryRun(created.Value!.ProposalId).Succeeded);
+
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformGuid);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => wordform.Delete());
+            loader.Save(cache);
+        }
+
+        var preflight = ProposalCommands.Preflight(new PreflightRequest(
+            _fwDataPath, ProductVersion, created.Value.ProposalId));
+        Assert.True(preflight.Succeeded);
+        var fit = Assert.Single(preflight.Value!.Changes);
+        Assert.False(fit.StillFits);
+        Assert.Contains("deleted", fit.Reason, StringComparison.OrdinalIgnoreCase);
+        var textPreflight = RunPreflightCli(created.Value.ProposalId, false);
+        Assert.Contains("no longer fits", textPreflight, StringComparison.Ordinal);
+        var jsonPreflight = JsonNode.Parse(RunPreflightCli(created.Value.ProposalId, true))!;
+        Assert.False(jsonPreflight["changes"]![0]!["stillFits"]!.GetValue<bool>());
+        var apply = ProposalCommands.Apply(new ApplyRequest(
+            _fwDataPath, ProductVersion, created.Value.ProposalId, "tester", Force: true));
+        Assert.False(apply.Succeeded);
+        Assert.Equal("apply.change-no-longer-fits", apply.Refusal!.Code);
+    }
+
+    [Fact]
+    public void CollectedChanges_AreAddedReplacedAndRemovedIncrementallyInOneDurableDraft()
+    {
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var factory = cache.ServiceLocator.GetInstance<IWfiWordformFactory>();
+                factory.Create(TsStringUtils.MakeString("first-change", cache.DefaultVernWs));
+                factory.Create(TsStringUtils.MakeString("second-change", cache.DefaultVernWs));
+            });
+            loader.Save(cache);
+        }
+        var managedRoot = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "managed-fit");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), managedRoot).Succeeded);
+        const string draftName = "collected-changes";
+
+        var first = AnalysisDraftChanges.AddOrReplace(new CollectedChangeRequest(
+            _fwDataPath, ProductVersion, draftName, "incorrect-spelling", "first-change", "", null));
+        Assert.True(first.Succeeded);
+        Assert.Equal(1, first.Value!.OperationCount);
+        var second = AnalysisDraftChanges.AddOrReplace(new CollectedChangeRequest(
+            _fwDataPath, ProductVersion, draftName, "incorrect-spelling", "second-change", "", null));
+        Assert.True(second.Succeeded);
+        Assert.Equal(2, second.Value!.OperationCount);
+        var replacement = AnalysisDraftChanges.AddOrReplace(new CollectedChangeRequest(
+            _fwDataPath, ProductVersion, draftName, "incorrect-spelling", "first-change", "", null));
+        Assert.True(replacement.Succeeded);
+        Assert.Equal(2, replacement.Value!.OperationCount);
+
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var draft = JsonNode.Parse(new ProposalRepository(database).GetDraft(draftName).ProposalJson!)!;
+            Assert.Equal(2, draft["operations"]!.AsArray().Count);
+            Assert.Equal(2, draft["composerProvenance"]!.AsArray().Count);
+            Assert.All(draft["operations"]!.AsArray(), operation =>
+                Assert.NotNull(operation!["extensions"]!["changeFit"]!["baselineToken"]));
+        }
+        var removed = AnalysisDraftChanges.Remove(new RemoveCollectedChangeRequest(
+            _fwDataPath, ProductVersion, draftName, "second-change"));
+        Assert.True(removed.Succeeded);
+        Assert.Equal(1, removed.Value!.OperationCount);
+
+        Assert.True(AnalysisDraftChanges.AddOrReplace(new CollectedChangeRequest(
+            _fwDataPath, ProductVersion, draftName, "incorrect-spelling", "second-change", "", null)).Succeeded);
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            var firstWordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+                .Single(wordform => wordform.Form.VernacularDefaultWritingSystem?.Text == "first-change");
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => firstWordform.Delete());
+            loader.Save(cache);
+        }
+        var draftPreflight = AnalysisDraftChanges.PreflightDraft(new RemoveNonFittingChangesRequest(
+            _fwDataPath, ProductVersion, draftName));
+        Assert.True(draftPreflight.Succeeded);
+        Assert.Equal(2, draftPreflight.Value!.Changes.Count);
+        Assert.Single(draftPreflight.Value.Changes, change => !change.StillFits);
+        Assert.Single(draftPreflight.Value.Changes, change => change.StillFits);
+        var culled = AnalysisDraftChanges.RemoveNoLongerFitting(new RemoveNonFittingChangesRequest(
+            _fwDataPath, ProductVersion, draftName));
+        Assert.True(culled.Succeeded);
+        Assert.Equal(1, culled.Value!.OperationCount);
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var draft = JsonNode.Parse(new ProposalRepository(database).GetDraft(draftName).ProposalJson!)!;
+            Assert.Single(draft["operations"]!.AsArray());
+            Assert.Single(draft["composerProvenance"]!.AsArray());
+            Assert.Equal("second-change", draft["operations"]![0]!["extensions"]!["changeFit"]!["wordformForm"]!.GetValue<string>());
+        }
+    }
+
+    [Fact]
+    public void CollectedParserReading_MapsCandidateApprovalRejectionAndClearToOneDraft()
+    {
+        var loader = new FwDataProjectLoader();
+        const string word = "parser-change";
+        Guid wordformGuid;
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            IWfiWordform wordform = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs)));
+            wordformGuid = wordform.Guid;
+            loader.Save(cache);
+        }
+        var managedRoot = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "managed-parser-change");
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), managedRoot);
+        Assert.True(captured.Succeeded);
+        string formGuid;
+        string msaGuid;
+        using (var cache = loader.LoadScratchCache(_fwDataPath))
+        {
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+            formGuid = entry.LexemeFormOA!.Guid.ToString("D");
+            msaGuid = entry.MorphoSyntaxAnalysesOC.First().Guid.ToString("D");
+        }
+        var assessmentId = CanonicalId.Mint().Value;
+        var baselineToken = JsonSerializer.Serialize(captured.Value!.Token);
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                assessmentId, null, null, "test", "ParseTime", "{}", "sha256:scope",
+                "whitespace-and-punctuation", "1", baselineToken,
+                Selection.Create("parser-change", [word]), "sha256:outcome", "sha256:semantic",
+                "sha256:grammar", "model", "pipeline", 0,
+                [new AssessedWord(word, "parsed", [], 0)
+                {
+                    Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, word, 0,
+                        false, false, false,
+                        [new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, null)])], []),
+                }]));
+        }
+        const string draftName = "parser-change-draft";
+        CollectedChangeRequest Request(string kind) => new(
+            _fwDataPath, ProductVersion, draftName, kind, word, "display text", assessmentId);
+
+        var candidate = AnalysisDraftChanges.AddOrReplace(Request("add-candidate"));
+        Assert.True(candidate.Succeeded, candidate.Refusal?.Message);
+        Assert.Equal(1, candidate.Value!.OperationCount);
+        var approve = AnalysisDraftChanges.AddOrReplace(Request("approve"));
+        Assert.True(approve.Succeeded, approve.Refusal?.Message);
+        Assert.Equal(2, approve.Value!.OperationCount);
+        var reject = AnalysisDraftChanges.AddOrReplace(Request("reject"));
+        Assert.True(reject.Succeeded, reject.Refusal?.Message);
+        Assert.Equal(2, reject.Value!.OperationCount);
+
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformGuid);
+                var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(analysis);
+                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                analysis.MorphBundlesOS.Add(bundle);
+                bundle.MorphRA = cache.ServiceLocator.GetInstance<IMoFormRepository>().GetObject(Guid.Parse(formGuid));
+                bundle.MsaRA = cache.ServiceLocator.GetInstance<IMoMorphSynAnalysisRepository>().GetObject(Guid.Parse(msaGuid));
+                cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.disapproves);
+            });
+            loader.Save(cache);
+        }
+        var clear = AnalysisDraftChanges.AddOrReplace(Request("candidate"));
+        Assert.True(clear.Succeeded, clear.Refusal?.Message);
+        Assert.Equal(1, clear.Value!.OperationCount);
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var draft = JsonNode.Parse(new ProposalRepository(database).GetDraft(draftName).ProposalJson!)!;
+            Assert.Equal("analysis/wfiAnalysis/removeRefEvaluations",
+                draft["operations"]![0]!["kind"]!.GetValue<string>());
+            Assert.Single(draft["composerProvenance"]!.AsArray());
+            Assert.Equal(baselineToken,
+                draft["operations"]![0]!["extensions"]!["changeFit"]!["baselineToken"]!.GetValue<string>());
+        }
+    }
+
     private void AssertReceiptCount(string proposalId, string intentDigest, long expectedCount)
     {
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
@@ -338,6 +568,26 @@ public sealed class ProposalWorkflowTests
         command.Parameters.AddWithValue("$id", proposalId);
         command.Parameters.AddWithValue("$digest", intentDigest);
         Assert.Equal(expectedCount, (long)command.ExecuteScalar()!);
+    }
+
+    private string RunPreflightCli(string proposalId, bool json)
+    {
+        var start = new ProcessStartInfo(BuildOutput.Cli)
+        {
+            Arguments = $"preflight --project \"{_fwDataPath}\" {proposalId}" + (json ? " --json" : ""),
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        Assert.True(process.WaitForExit(60000));
+        Assert.Equal(0, process.ExitCode);
+        _ = error.GetAwaiter().GetResult();
+        return output.GetAwaiter().GetResult();
     }
 
 }

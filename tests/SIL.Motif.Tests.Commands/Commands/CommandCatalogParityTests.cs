@@ -74,7 +74,7 @@ public sealed class CommandCatalogParityTests
     // Pinned so a colliding or typo'd near-copy of an existing refusal code shows up as a named diff.
     private static readonly string[] ExpectedRefusalCodes =
     {
-        "apply.drift", "apply.dry-run-missing", "apply.not-ready", "apply.project-in-use",
+        "apply.change-no-longer-fits", "apply.drift", "apply.dry-run-missing", "apply.not-ready", "apply.project-in-use",
         "apply.reconciliation-needed",
         "assess.baseline-changed", "assess.invalid-limit", "assess.invocation-inconsistent", "assess.measurements-incomplete",
         "assess.parser-unavailable", "assess.unsupported-kind",
@@ -83,6 +83,8 @@ public sealed class CommandCatalogParityTests
         "assessment.aggregate-unavailable", "assessment.cancelled", "assessment.invalid-evidence", "assessment.invalid-id", "assessment.not-found",
         "baseline.busy", "baseline.copy-unloadable", "baseline.owned-root-violation",
         "baseline.source-incomplete",
+        "change.cannot-collect", "change.cannot-remove", "change.cannot-remove-nonfitting",
+        "change.preflight-unavailable",
         "comparison.assessment-not-found", "comparison.refused",
         "config.invalid",
         "corpus.bundle-invalid", "corpus.document-invalid", "corpus.document-not-found", "corpus.invalid",
@@ -98,6 +100,7 @@ public sealed class CommandCatalogParityTests
         "operation.invalid-target", "operation.invalid-writing-system",
         "project.busy", "project.invalid", "project.not-found", "project.operation-io", "project.refused",
         "project.store-io",
+        "preflight.unavailable",
         "proposal.inconsistent", "proposal.invalid-id", "proposal.invalid-status", "proposal.not-found",
         "proposal.split-duplicate-operation",
         "report.assessment-not-found", "report.invalid-kind", "report.refused",

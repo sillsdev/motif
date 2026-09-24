@@ -108,6 +108,9 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId> [--json]" }),
         new CliVerbDescriptor(
+            "Commands", "preflight", "preflight",
+            new[] { "preflight --project <fwdata> <proposalId> [--json]" }),
+        new CliVerbDescriptor(
             "Commands", "dry-run", "dry-run",
             new[] { "dry-run --project <fwdata> <proposalId> [--wait] [--json]" }),
         new CliVerbDescriptor("Commands", "dry-run", "dry-run --wait", NoUsage),

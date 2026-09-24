@@ -74,4 +74,7 @@ public sealed class DraftOperation
     /// string-valued ones the hand-authored CLI verbs build.
     /// </summary>
     public Dictionary<string, JsonElement> After { get; set; } = new();
+
+    /// <summary>Non-semantic metadata carried with the operation across finalize and reopen.</summary>
+    public JsonElement? Extensions { get; set; }
 }
