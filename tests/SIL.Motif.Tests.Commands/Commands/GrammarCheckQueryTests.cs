@@ -54,7 +54,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var entryGuid = _pristine.Seed.FirstEntryId.ToString("D");
-        var report = Report(entryGuid);
+        var openGuid = "5c9e433d-cc9b-4d12-b8cb-b5840f46dbd2";
+        var report = Report(entryGuid, openGuid);
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
@@ -69,8 +70,6 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.True(response.HasBaseline);
         Assert.Equal(2, response.Findings.Count);
         Assert.Equal(2, response.Summary.Count);
-        Assert.Equal("Sena 3", response.FieldWorksProject!.Name);
-        Assert.Equal("argument", response.FieldWorksProject.Source);
         Assert.DoesNotContain(response.Findings, finding => finding.Text.Contains("stderr-only", StringComparison.Ordinal));
 
         var warning = response.Findings[0];
@@ -87,10 +86,12 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal("ADD", entry.Subtitle);
         Assert.Equal("LexEntry", entry.Kind);
         Assert.Equal(entryGuid, entry.ObjectId);
-        Assert.Equal("lex_entry#34", entry.InternalId);
+        Assert.Equal(entryGuid, entry.SubjectGuid);
+        Assert.Null(entry.InternalId);
         Assert.Equal("available", entry.LinkStatus);
         Assert.Equal("lexiconEdit", entry.FieldWorksTool);
-        Assert.StartsWith("silfw://localhost/link?database=Sena%203", entry.FieldWorksLink, StringComparison.Ordinal);
+        Assert.Equal(openGuid, entry.FieldWorksGuid);
+        Assert.Contains(openGuid, entry.FieldWorksLink, StringComparison.Ordinal);
 
         var phoneme = warning.Subject[1];
         Assert.Equal("ng", phoneme.Text);
@@ -104,10 +105,13 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal("Duplicate segment features", info.Group);
 
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(response));
+        Assert.False(json.RootElement.TryGetProperty("FieldWorksProject", out _));
         var reportFinding = json.RootElement.GetProperty("Findings")[0];
         Assert.Equal("import", reportFinding.GetProperty("Origin").GetString());
         Assert.False(reportFinding.TryGetProperty("Audience", out _));
-        Assert.Equal("lex_entry#34", reportFinding.GetProperty("Subject")[0].GetProperty("InternalId").GetString());
+        Assert.Equal(entryGuid, reportFinding.GetProperty("Subject")[0].GetProperty("SubjectGuid").GetString());
+        Assert.Null(reportFinding.GetProperty("Subject")[0].GetProperty("InternalId").GetString());
+        Assert.False(reportFinding.GetProperty("Subject")[0].TryGetProperty("OpenTargetTool", out _));
         Assert.Equal("available", reportFinding.GetProperty("Subject")[0].GetProperty("LinkStatus").GetString());
 
         var request = Assert.IsType<PanGlossRequest.GrammarHealth>(Assert.Single(invoker.Requests).Request);
@@ -174,7 +178,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal("grammarcheck.parser-unavailable", outcome.Refusal!.Code);
     }
 
-    private static string Report(string entryGuid) => JsonSerializer.Serialize(new
+    private static string Report(string entryGuid, string openGuid) => JsonSerializer.Serialize(new
     {
         schema_version = 2,
         fieldworks_project = new { name = "Sena 3", source = "argument" },
@@ -198,11 +202,12 @@ public sealed class GrammarCheckQueryTests : IDisposable
                     new
                     {
                         kind = "LexEntry", title = "mbo", subtitle = "ADD", guid = entryGuid,
-                        internal_id = "lex_entry#34",
+                        internal_id = (string?)null,
+                        opens_in = new { tool = "lexiconEdit", guid = openGuid },
                         fieldworks = new
                         {
-                            status = "available", guid = entryGuid, tool = "lexiconEdit",
-                            url = $"silfw://localhost/link?database=Sena%203&tool=lexiconEdit&guid={entryGuid}&tag=",
+                            status = "available", guid = openGuid, tool = "lexiconEdit",
+                            url = $"silfw://localhost/link?database=Sena%203&tool=lexiconEdit&guid={openGuid}&tag=",
                         },
                     },
                     new

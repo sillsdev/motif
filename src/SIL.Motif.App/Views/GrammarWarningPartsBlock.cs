@@ -47,9 +47,12 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         if (part.Role == "object" && part.FieldWorksLink is { } link)
             return LinkFor(part, link);
 
+        var text = part.Role == "missing" ? $"missing object {part.Text}" : part.Text;
+        if (part.LinkStatus == "unavailable")
+            text += $" (FieldWorks link unavailable: {UnavailableReason(part.LinkReason)})";
         var block = new CopyableTextBlock
         {
-            Text = part.Role == "missing" ? $"missing object {part.Text}" : part.Text,
+            Text = text,
             Margin = new Thickness(0, 0, 4, 0),
             TextWrapping = TextWrapping.Wrap,
         };
@@ -70,6 +73,15 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         }
         return block;
     }
+
+    private static string UnavailableReason(string? reason) => reason switch
+    {
+        "missing_project" => "no FieldWorks project name was supplied",
+        "guid_not_recorded" => "PanGloss did not record a GUID",
+        "invalid_guid" => "the recorded GUID is invalid",
+        "unsupported_kind" => "FieldWorks cannot open this kind",
+        _ => reason ?? "the reason was not provided",
+    };
 
     private static HyperlinkButton LinkFor(GrammarWarningPart part, string link)
     {

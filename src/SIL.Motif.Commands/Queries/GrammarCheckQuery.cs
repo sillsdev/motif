@@ -93,8 +93,6 @@ public static class GrammarCheckQuery
             {
                 Summary = report.Summary.Select(row => new GrammarWarningSummary(
                     row.Code!, row.GroupName, row.Level!, row.Count!.Value)).ToArray(),
-                FieldWorksProject = new GrammarWarningProject(
-                    report.FieldWorksProject!.Name, report.FieldWorksProject.Source),
             };
             if (stamp is not null) WriteCache(cachePath, stamp, response);
             return CommandOutcome<GrammarCheckResponse>.Success(response);
@@ -257,7 +255,6 @@ public static class GrammarCheckQuery
         var text = part.Subtitle is { Length: > 0 } subtitle ? $"{title} ({subtitle})" : title;
         var fieldWorks = part.FieldWorks!;
         var objectId = part.Guid ?? part.InternalId;
-        var openTarget = part.OpensIn;
         return new GrammarWarningPart(
             text,
             objectId is null ? "text" : "object",
@@ -273,8 +270,6 @@ public static class GrammarCheckQuery
             LinkStatus = fieldWorks.Status,
             LinkReason = fieldWorks.Reason,
             FieldWorksTool = fieldWorks.Tool,
-            OpenTargetTool = openTarget?.Tool,
-            OpenTargetGuid = openTarget?.Guid,
         };
     }
 

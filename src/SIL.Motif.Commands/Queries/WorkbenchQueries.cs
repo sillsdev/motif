@@ -44,8 +44,6 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
     /// <summary>The parser's per-code summary rows, used to group findings for display.</summary>
     public IReadOnlyList<GrammarWarningSummary> Summary { get; init; } = [];
 
-    /// <summary>The FieldWorks project metadata reported with the grammar-health report.</summary>
-    public GrammarWarningProject? FieldWorksProject { get; init; }
 }
 
 /// <summary>Which Texts to read words from; empty reads none.</summary>

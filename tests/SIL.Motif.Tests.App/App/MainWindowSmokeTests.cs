@@ -257,6 +257,28 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
+    public void UnavailableGrammarWarningLinksExplainWhyFieldWorksCannotOpenTheSubject()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var block = new GrammarWarningPartsBlock
+            {
+                Parts =
+                [
+                    new GrammarWarningPart("entry", "object", "id", "lex entry")
+                    {
+                        LinkStatus = "unavailable",
+                        LinkReason = "guid_not_recorded",
+                    },
+                ],
+            };
+
+            Assert.Equal("entry (FieldWorks link unavailable: PanGloss did not record a GUID)",
+                Assert.IsType<CopyableTextBlock>(Assert.Single(block.Children)).Text);
+        });
+    }
+
+    [Fact]
     public void SwitchingTheThemeVariantWithARefusalAndAnInProgressStateBoundRaisesNoException()
     {
         _avalonia.Invoke(() =>

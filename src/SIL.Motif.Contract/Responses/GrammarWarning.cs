@@ -38,11 +38,6 @@ public sealed record GrammarWarning(
 /// <param name="Count">How many diagnostics of this kind the report contains.</param>
 public sealed record GrammarWarningSummary(string Code, string? GroupName, string Level, int Count);
 
-/// <summary>The project metadata attached to the grammar-health report.</summary>
-/// <param name="Name">The FieldWorks project name, or null when the report has none.</param>
-/// <param name="Source">How the report obtained the project name, or null when it has none.</param>
-public sealed record GrammarWarningProject(string? Name, string? Source);
-
 /// <summary>A named subject in a grammar-health diagnostic.</summary>
 /// <param name="Text">The human-readable title and subtitle shown for the subject.</param>
 /// <param name="Role">Whether the part is prose, a value, or a named FieldWorks subject.</param>
@@ -80,9 +75,4 @@ public sealed record GrammarWarningPart(
     /// <summary>The FieldWorks tool identifier reported for an available link.</summary>
     public string? FieldWorksTool { get; init; }
 
-    /// <summary>The explicit open target's tool, when the subject has one.</summary>
-    public string? OpenTargetTool { get; init; }
-
-    /// <summary>The explicit open target's GUID, when the subject has one.</summary>
-    public string? OpenTargetGuid { get; init; }
 }
