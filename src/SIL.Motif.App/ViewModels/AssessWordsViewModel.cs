@@ -185,7 +185,7 @@ public sealed class AssessWordRowViewModel
     {
         ArgumentNullException.ThrowIfNull(word);
         Word = word.Word;
-        OccurrenceCount = occurrenceCount;
+        OccurrenceCount = occurrenceCount ?? word.OccurrenceCount;
         Result = word.Outcome switch
         {
             "analysed" => "Parsed",

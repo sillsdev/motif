@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -321,44 +322,46 @@ public sealed partial class CompareViewModel : ObservableObject
     public static (WordProjectStatus Row, CompareColumn Column) Place(AssessWordRowViewModel word)
     {
         ArgumentNullException.ThrowIfNull(word);
-        var row = word.Standing ?? WordProjectStatus.NotPresent;
-        if (word.StoppedAtALimit) return (row, CompareColumn.Timeout);
-        if (word.Result == "Skipped") return (row, CompareColumn.Skipped);
-        if (!word.IsParsed) return (row, CompareColumn.NoParse);
-
-        bool Built(string grade) => word.Readings.Any(reading => reading.Grade == grade);
-        var matched = row switch
+        var result = CompareSemantics.Place(new CompareWordFacts(
+            StandingWire(word.Standing),
+            word.Result switch { "Parsed" => "analysed", "Skipped" => "skipped", _ => "no-analysis" },
+            word.StoppedAtALimit,
+            word.Readings.Select(reading => reading.Grade).Where(grade => grade is not null).Cast<string>().ToArray(),
+            word.MissedApproved.Count));
+        var row = WordProjectStatuses.FromStanding(result.Standing);
+        var column = result.Column switch
         {
-            WordProjectStatus.Approved => Built("approved") && word.MissedApproved.Count == 0,
-            WordProjectStatus.Candidate => Built("candidate"),
-            WordProjectStatus.Rejected => Built("disapproved"),
-            _ => Built("approved") || Built("candidate") || Built("disapproved"),
+            CompareColumnKind.Match => CompareColumn.Match,
+            CompareColumnKind.NoMatch => CompareColumn.NoMatch,
+            CompareColumnKind.NoParse => CompareColumn.NoParse,
+            CompareColumnKind.Timeout => CompareColumn.Timeout,
+            _ => CompareColumn.Skipped,
         };
-        return (row, matched ? CompareColumn.Match : CompareColumn.NoMatch);
+        return (row, column);
     }
 
     /// <summary>What a cell means and how it is coloured, one entry per combination.</summary>
-    public static (string Label, CompareFamily Family) MeaningOf(WordProjectStatus row, CompareColumn column) => column switch
+    public static (string Label, CompareFamily Family) MeaningOf(WordProjectStatus row, CompareColumn column)
     {
-        CompareColumn.Timeout => ("Unknown", CompareFamily.Unknown),
-        CompareColumn.Skipped => ("Not tested", CompareFamily.Unknown),
-        _ => (row, column) switch
+        var kind = column switch
         {
-            (WordProjectStatus.NotPresent, CompareColumn.Match) => ("Cannot happen", CompareFamily.None),
-            (WordProjectStatus.NotPresent, CompareColumn.NoMatch) => ("New: the parser proposes", CompareFamily.New),
-            (WordProjectStatus.NotPresent, _) => ("Nobody can analyse it", CompareFamily.Nobody),
-            (WordProjectStatus.Candidate, CompareColumn.Match) => ("Confirms the candidate", CompareFamily.Good),
-            (WordProjectStatus.Candidate, CompareColumn.NoMatch) => ("Differs: review", CompareFamily.Review),
-            (WordProjectStatus.Candidate, _) => ("Grammar can't build it", CompareFamily.Review),
-            (WordProjectStatus.Approved, CompareColumn.Match) => ("Kept", CompareFamily.Good),
-            (WordProjectStatus.Approved, CompareColumn.NoMatch) => ("Violation: built other", CompareFamily.Violation),
-            (WordProjectStatus.Approved, _) => ("Violation: lost", CompareFamily.Violation),
-            (WordProjectStatus.Rejected, CompareColumn.Match) => ("Violation: built anyway", CompareFamily.Violation),
-            (WordProjectStatus.Rejected, _) => ("Fine", CompareFamily.Fine),
-            (_, CompareColumn.Match) => ("Builds a misspelling", CompareFamily.Review),
-            (_, CompareColumn.NoMatch) => ("Over-generates", CompareFamily.Review),
-            _ => ("Correct", CompareFamily.Fine),
-        },
+            CompareColumn.Match => CompareColumnKind.Match,
+            CompareColumn.NoMatch => CompareColumnKind.NoMatch,
+            CompareColumn.NoParse => CompareColumnKind.NoParse,
+            CompareColumn.Timeout => CompareColumnKind.Timeout,
+            _ => CompareColumnKind.Skipped,
+        };
+        var result = CompareSemantics.MeaningOf(StandingWire(row), kind);
+        return (result.Label, Enum.Parse<CompareFamily>(result.Family.ToString()));
+    }
+
+    private static string StandingWire(WordProjectStatus? status) => status switch
+    {
+        WordProjectStatus.Approved => SIL.Motif.Contract.Responses.ProjectStanding.Approved,
+        WordProjectStatus.Candidate => SIL.Motif.Contract.Responses.ProjectStanding.Candidate,
+        WordProjectStatus.Rejected => SIL.Motif.Contract.Responses.ProjectStanding.Rejected,
+        WordProjectStatus.IncorrectSpelling => SIL.Motif.Contract.Responses.ProjectStanding.IncorrectSpelling,
+        _ => SIL.Motif.Contract.Responses.ProjectStanding.NotPresent,
     };
 
     /// <summary>The label a row header shows, in the same words as the Texts stage.</summary>
