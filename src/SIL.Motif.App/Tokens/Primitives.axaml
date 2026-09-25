@@ -62,6 +62,9 @@
   <x:Double x:Key="Primitive.Space.14">14</x:Double>
   <StaticResource x:Key="Primitive.Space.16" ResourceKey="SemiSpacingBase" />
   <StaticResource x:Key="Primitive.Space.20" ResourceKey="SemiSpacingBaseLoose" />
+  <x:Double x:Key="Primitive.Space.1">1</x:Double>
+  <x:Double x:Key="Primitive.Space.10">10</x:Double>
+  <x:Double x:Key="Primitive.Space.28">28</x:Double>
 
   <Thickness x:Key="Primitive.Inset.0_0_0_0">0</Thickness>
   <Thickness x:Key="Primitive.Inset.1_1_1_1">1</Thickness>
@@ -105,8 +108,23 @@
   <Thickness x:Key="Primitive.Inset.8_4_8_4">8,4</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_10_0">0,0,10,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_4_0">0,0,4,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_0_6_0">0,0,6,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_0_18_0">0,0,18,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_0_0_4">0,0,0,4</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_0_12_4">0,0,12,4</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_1_0_0">0,1,0,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_2_0_2">0,2</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_3_0_3">0,3</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_8_0_0">0,8,0,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_10_0_0">0,10,0,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_16_0_0">0,16,0,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.6_4_6_4">6,4</Thickness>
+  <Thickness x:Key="Primitive.Inset.20_8_20_8">20,8</Thickness>
+  <Thickness x:Key="Primitive.Inset.24_16_24_20">24,16,24,20</Thickness>
 
   <CornerRadius x:Key="Primitive.Radius.0">0</CornerRadius>
+  <CornerRadius x:Key="Primitive.Radius.2">2</CornerRadius>
+  <CornerRadius x:Key="Primitive.Radius.3">3</CornerRadius>
   <StaticResource x:Key="Primitive.Radius.6" ResourceKey="SemiBorderRadiusMedium" />
   <CornerRadius x:Key="Primitive.Radius.8">8</CornerRadius>
   <CornerRadius x:Key="Primitive.Radius.9">9</CornerRadius>
@@ -158,6 +176,15 @@
   <x:Double x:Key="Primitive.Size.780">780</x:Double>
   <x:Double x:Key="Primitive.Size.820">820</x:Double>
   <x:Double x:Key="Primitive.Size.1240">1240</x:Double>
+  <x:Double x:Key="Primitive.Size.10">10</x:Double>
+  <x:Double x:Key="Primitive.Size.14">14</x:Double>
+  <x:Double x:Key="Primitive.Size.48">48</x:Double>
+  <x:Double x:Key="Primitive.Size.56">56</x:Double>
+  <x:Double x:Key="Primitive.Size.420">420</x:Double>
+  <x:Double x:Key="Primitive.Size.480">480</x:Double>
+  <x:Double x:Key="Primitive.Size.640">640</x:Double>
+  <x:Double x:Key="Primitive.Size.760">760</x:Double>
+  <x:Double x:Key="Primitive.Size.1100">1100</x:Double>
 
   <x:Double x:Key="Primitive.Stroke.1p8">1.8</x:Double>
 

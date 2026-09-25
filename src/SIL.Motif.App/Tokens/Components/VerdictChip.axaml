@@ -14,6 +14,9 @@
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
   </Style>
+  <Style Selector="StackPanel.verdictChipRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
   <Style Selector="Border.verdictChip :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="FontWeight" Value="SemiBold" />

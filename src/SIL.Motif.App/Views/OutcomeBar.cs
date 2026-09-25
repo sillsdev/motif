@@ -25,7 +25,7 @@ public sealed class OutcomeBar : StackPanel
 
     public OutcomeBar()
     {
-        Spacing = 8;
+        Classes.Add("outcomeBar");
     }
 
     public IReadOnlyList<OutcomeSegment>? Segments
@@ -48,31 +48,28 @@ public sealed class OutcomeBar : StackPanel
         if (segments.Count == 0) return;
 
         var total = segments.Sum(segment => segment.Count);
-        var bar = new Grid { Height = ShowLegend ? 14 : 10, ColumnSpacing = 2, ClipToBounds = true };
+        var bar = new Grid { Classes = { "outcomeTrack" }, ClipToBounds = true };
+        bar.Classes.Set("compact", !ShowLegend);
         var legend = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var segment in segments)
         {
             bar.ColumnDefinitions.Add(new ColumnDefinition(segment.Count, GridUnitType.Star));
-            var part = new Border { Classes = { "outcomeSegment" }, CornerRadius = new CornerRadius(3) };
+            var part = new Border { Classes = { "outcomeSegment" } };
             VerdictClasses.SetVerdict(part, segment.Meaning);
             Grid.SetColumn(part, bar.ColumnDefinitions.Count - 1);
             bar.Children.Add(part);
 
             var share = (double)segment.Count / total;
-            var swatch = new Border
-            {
-                Classes = { "outcomeSegment" }, Width = 10, Height = 10, CornerRadius = new CornerRadius(2),
-                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0),
-            };
+            var swatch = new Border { Classes = { "outcomeSegment", "swatch" } };
             VerdictClasses.SetVerdict(swatch, segment.Meaning);
             legend.Children.Add(new StackPanel
             {
-                Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 18, 0),
+                Orientation = Orientation.Horizontal, Classes = { "outcomeLegendEntry" },
                 Children =
                 {
                     swatch,
-                    new CopyableTextBlock { Text = segment.CountText, FontWeight = Avalonia.Media.FontWeight.SemiBold, Margin = new Thickness(0, 0, 4, 0) },
-                    new CopyableTextBlock { Text = segment.Label, Margin = new Thickness(0, 0, 4, 0) },
+                    new CopyableTextBlock { Classes = { "outcomeLegendText" }, Text = segment.CountText, FontWeight = Avalonia.Media.FontWeight.SemiBold },
+                    new CopyableTextBlock { Classes = { "outcomeLegendText" }, Text = segment.Label },
                     new CopyableTextBlock { Classes = { "muted" }, Text = share.ToString("P0", CultureInfo.CurrentCulture) },
                 },
             });

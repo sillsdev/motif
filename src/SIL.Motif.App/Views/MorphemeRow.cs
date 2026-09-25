@@ -63,31 +63,23 @@ public sealed class MorphemeRow : WrapPanel
 
     private Control BlockFor(ParserReadingMorphViewModel morph, bool last)
     {
-        var column = new StackPanel { Spacing = 0 };
+        var column = new StackPanel();
         column.Children.Add(morph.HasLink
-            ? Link(morph, morph.Form, FontWeight.SemiBold, 13)
-            : new CopyableTextBlock { Text = morph.Form, FontWeight = FontWeight.SemiBold, FontSize = 13 });
+            ? Link(morph, morph.Form, FontWeight.SemiBold, "morphForm")
+            : new CopyableTextBlock { Text = morph.Form, FontWeight = FontWeight.SemiBold, Classes = { "morphForm" } });
         column.Children.Add(morph.HasLink
-            ? Link(morph, morph.GlossOrPlaceholder, FontWeight.Normal, 12)
-            : new CopyableTextBlock { Text = morph.GlossOrPlaceholder, FontSize = 12 });
+            ? Link(morph, morph.GlossOrPlaceholder, FontWeight.Normal, "morphGloss")
+            : new CopyableTextBlock { Text = morph.GlossOrPlaceholder, Classes = { "morphGloss" } });
         if (ShowCategory && morph.Category is { Length: > 0 })
-            column.Children.Add(new CopyableTextBlock { Text = morph.Category, FontSize = 11, Classes = { "muted" } });
+            column.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "morphCategory", "muted" } });
 
-        var block = new Border
-        {
-            Child = column,
-            Padding = new Thickness(0, 0, last ? 0 : 12, 0),
-            Margin = new Thickness(0, 0, last ? 0 : 12, 4),
-        };
-        if (Separators && !last)
-        {
-            block.BorderThickness = new Thickness(0, 0, 1, 0);
-            block.Classes.Add("morphEdge");
-        }
+        var block = new Border { Child = column, Classes = { "morph" } };
+        if (last) block.Classes.Add("last");
+        else if (Separators) block.Classes.Add("morphEdge");
         return block;
     }
 
-    private static HyperlinkButton Link(ParserReadingMorphViewModel morph, string text, FontWeight weight, double size)
+    private static HyperlinkButton Link(ParserReadingMorphViewModel morph, string text, FontWeight weight, string role)
     {
         var button = new HyperlinkButton
         {
@@ -95,7 +87,7 @@ public sealed class MorphemeRow : WrapPanel
             NavigateUri = morph.Link,
             Padding = new Thickness(0),
             FontWeight = weight,
-            FontSize = size,
+            Classes = { role },
         };
         AutomationProperties.SetName(button, morph.LinkName);
         return button;

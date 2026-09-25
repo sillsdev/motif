@@ -73,7 +73,7 @@ public sealed class FilterChip : Button
     private void Rebuild()
     {
         Classes.Set("active", IsActive);
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "filterChipRow" } };
         if (Verdict is { } verdict)
         {
             var glyph = new TextBlock { Text = Verdicts.GlyphOf(verdict), FontWeight = FontWeight.Bold };

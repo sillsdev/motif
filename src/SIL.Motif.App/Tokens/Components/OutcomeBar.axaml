@@ -1,9 +1,45 @@
 <!--
-  A part of an outcome bar, filled with its meaning's colour.
+  An outcome bar: a track of parts, each filled with its meaning's colour, over a legend of swatches and counts.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.OutcomeBar.TrackHeight" ResourceKey="Primitive.Size.14" />
+    <StaticResource x:Key="Component.OutcomeBar.CompactTrackHeight" ResourceKey="Primitive.Size.10" />
+    <StaticResource x:Key="Component.OutcomeBar.PartRadius" ResourceKey="Primitive.Radius.3" />
+    <StaticResource x:Key="Component.OutcomeBar.SwatchSize" ResourceKey="Primitive.Size.10" />
+    <StaticResource x:Key="Component.OutcomeBar.SwatchRadius" ResourceKey="Primitive.Radius.2" />
+    <StaticResource x:Key="Component.OutcomeBar.SwatchMargin" ResourceKey="Primitive.Inset.0_0_6_0" />
+    <StaticResource x:Key="Component.OutcomeBar.LegendEntryMargin" ResourceKey="Primitive.Inset.0_0_18_0" />
+    <StaticResource x:Key="Component.OutcomeBar.LegendTextMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
+  </Styles.Resources>
+  <Style Selector=":is(StackPanel).outcomeBar">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="Grid.outcomeTrack">
+    <Setter Property="Height" Value="{DynamicResource Component.OutcomeBar.TrackHeight}" />
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector="Grid.outcomeTrack.compact">
+    <Setter Property="Height" Value="{DynamicResource Component.OutcomeBar.CompactTrackHeight}" />
+  </Style>
+  <Style Selector="Grid.outcomeTrack > Border.outcomeSegment">
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.OutcomeBar.PartRadius}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.swatch">
+    <Setter Property="Width" Value="{DynamicResource Component.OutcomeBar.SwatchSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.OutcomeBar.SwatchSize}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.OutcomeBar.SwatchRadius}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.OutcomeBar.SwatchMargin}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="StackPanel.outcomeLegendEntry">
+    <Setter Property="Margin" Value="{DynamicResource Component.OutcomeBar.LegendEntryMargin}" />
+  </Style>
+  <Style Selector="StackPanel.outcomeLegendEntry > :is(TextBlock).outcomeLegendText">
+    <Setter Property="Margin" Value="{DynamicResource Component.OutcomeBar.LegendTextMargin}" />
+  </Style>
   <Style Selector="Border.outcomeSegment">
     <Setter Property="Background" Value="{DynamicResource Intent.TextFaint}" />
   </Style>

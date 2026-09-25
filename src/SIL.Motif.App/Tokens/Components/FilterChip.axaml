@@ -23,6 +23,9 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
   </Style>
+  <Style Selector="StackPanel.filterChipRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />
+  </Style>
   <Style Selector="Button.filterChip TextBlock.chipCount">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>

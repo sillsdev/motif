@@ -80,7 +80,7 @@ public sealed class VerdictChip : Border
         Classes.Add(Verdicts.ClassOf(Verdict));
         Classes.Set("compact", Compact);
 
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "verdictChipRow" } };
         var glyph = Words(Verdicts.GlyphOf(Verdict));
         glyph.FontWeight = FontWeight.Bold;
         glyph.IsHitTestVisible = false;
