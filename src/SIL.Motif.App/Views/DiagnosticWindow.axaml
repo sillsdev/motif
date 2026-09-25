@@ -2,9 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SIL.Motif.App.Views.DiagnosticWindow"
         Title="Motif diagnostic"
-        Width="1100"
-        Height="760"
-        MinWidth="640"
-        MinHeight="480">
+        Width="{DynamicResource Component.Shell.DiagnosticWidth}"
+        Height="{DynamicResource Component.Shell.DiagnosticHeight}"
+        MinWidth="{DynamicResource Component.Shell.DiagnosticMinWidth}"
+        MinHeight="{DynamicResource Component.Shell.DiagnosticMinHeight}">
   <ContentControl x:Name="PanelHost" />
 </Window>

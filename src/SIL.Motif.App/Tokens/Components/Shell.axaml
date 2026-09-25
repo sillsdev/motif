@@ -1,5 +1,5 @@
 <!--
-  The main window's opening and smallest size.
+  The main window's and the diagnostic window's opening and smallest sizes.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
@@ -9,5 +9,9 @@
     <StaticResource x:Key="Component.Shell.Height" ResourceKey="Primitive.Size.780" />
     <StaticResource x:Key="Component.Shell.MinWidth" ResourceKey="Primitive.Size.820" />
     <StaticResource x:Key="Component.Shell.MinHeight" ResourceKey="Primitive.Size.600" />
+    <StaticResource x:Key="Component.Shell.DiagnosticWidth" ResourceKey="Primitive.Size.1100" />
+    <StaticResource x:Key="Component.Shell.DiagnosticHeight" ResourceKey="Primitive.Size.760" />
+    <StaticResource x:Key="Component.Shell.DiagnosticMinWidth" ResourceKey="Primitive.Size.640" />
+    <StaticResource x:Key="Component.Shell.DiagnosticMinHeight" ResourceKey="Primitive.Size.480" />
   </Styles.Resources>
 </Styles>

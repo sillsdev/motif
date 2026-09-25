@@ -138,6 +138,14 @@ public sealed class ComponentStyleTests
         yield return new("DifferencePanel", "a move column heading", host => Add(host, Text("columnHeader")),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
 
+        yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.BackgroundProperty, "Intent.Emphasis.Fill");
+        yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.WidthProperty, "Component.Handoff.StepMarkSize");
+        yield return new("Handoff", "a file's kind", host => Inside(host, Box("handoffKind")), TextBlock.ForegroundProperty, "Intent.Emphasis.Text");
+        yield return new("Handoff", "a written file", host => Add(host, Box("handoffFile")), Border.BorderThicknessProperty,
+            "Component.Handoff.FileEdge");
+        yield return new("Handoff", "the page header", host => Add(host, Box("handoffHeader")), Border.PaddingProperty,
+            "Component.Handoff.HeaderPadding");
+
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.HeightProperty, "Component.TopBar.Height");
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.PaddingProperty, "Component.TopBar.Padding");
         yield return new("TopBar", "the banner", host => Add(host, Box("banner")), Border.MarginProperty, "Component.TopBar.BannerMargin");

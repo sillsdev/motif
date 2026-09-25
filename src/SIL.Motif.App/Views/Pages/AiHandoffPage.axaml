@@ -5,7 +5,7 @@
              x:Class="SIL.Motif.App.Views.AiHandoffPage"
              x:DataType="vm:AiHandoffPageModel">
   <Grid RowDefinitions="Auto,*">
-    <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="20,8">
+    <Border Classes="handoffHeader">
       <DockPanel>
         <Button DockPanel.Dock="Right" Content="{Binding HandoffActionText}"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"

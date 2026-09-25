@@ -6,11 +6,11 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.HandoffPanel"
              x:DataType="views:HandoffPanel">
-  <Grid ColumnDefinitions="*,420" ColumnSpacing="28" Margin="24,16,24,20">
+  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Component.Handoff.ColumnGap}" Margin="{DynamicResource Component.Handoff.PageMargin}">
 
     <!-- Left: what goes in, then what was written last and whether it still matches Results. -->
     <ScrollViewer>
-      <StackPanel Spacing="14">
+      <StackPanel Spacing="{DynamicResource Component.Handoff.SectionGap}">
 
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                    Text="Give a chat model the files it needs to help you read this Assessment." />
@@ -18,7 +18,7 @@
         <Border Classes="notice" IsVisible="{Binding Handoff.HasChosenWords}" AutomationProperties.Name="Words chosen in Compare">
           <DockPanel>
             <Button DockPanel.Dock="Right" Content="Hand off the whole Assessment instead" Click="OnUseWholeAssessmentClick"
-                    VerticalAlignment="Center" Margin="10,0,0,0" />
+                    VerticalAlignment="Center" Margin="{DynamicResource Component.Handoff.ActionMargin}" />
             <views:CopyableTextBlock Text="{Binding Handoff.ChosenWordsText}" TextWrapping="Wrap" VerticalAlignment="Center" />
           </DockPanel>
         </Border>
@@ -27,7 +27,7 @@
                 AutomationProperties.Name="The Handoff is out of date">
           <!-- A dock, not a horizontal stack: a stack gives the sentence unlimited width, so it never wraps. -->
           <DockPanel>
-            <views:CopyableTextBlock DockPanel.Dock="Left" Text="&#x26a0;" FontWeight="Bold" Margin="0,0,10,0" />
+            <views:CopyableTextBlock DockPanel.Dock="Left" Text="&#x26a0;" FontWeight="Bold" Margin="{DynamicResource Component.Handoff.GlyphMargin}" />
             <views:CopyableTextBlock Text="{Binding Handoff.OutOfDateText}" TextWrapping="Wrap" />
           </DockPanel>
         </Border>
@@ -36,7 +36,7 @@
                      IsIndeterminate="{Binding Handoff.IsIndeterminate}"
                      Minimum="0" Maximum="1" Value="{Binding Handoff.ProgressFraction}"
                      AutomationProperties.Name="Handoff progress" />
-        <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding Handoff.IsActive}">
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Handoff.IsActive}">
           <views:CopyableTextBlock Text="{Binding Handoff.Progress.Message}" VerticalAlignment="Center" />
           <Button Content="Cancel" Command="{Binding Handoff.CancelCommand}"
                   AutomationProperties.Name="Cancel the running Handoff" />
@@ -58,56 +58,53 @@
         <!-- Before the first write: what the folder will hold, so nothing about it is a surprise. -->
         <Border Classes="card" IsVisible="{Binding !Handoff.HasCompletedFiles}"
                 AutomationProperties.Name="What the Handoff will contain">
-          <StackPanel Spacing="10">
-            <views:CopyableTextBlock Classes="section-title" Text="What goes in" FontSize="15" />
+          <StackPanel Spacing="{DynamicResource Component.Handoff.CardGap}">
+            <views:CopyableTextBlock Classes="section-title" Text="What goes in" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
             <ItemsControl ItemsSource="{Binding PlannedFiles}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="views:PlannedHandoffFile">
-                  <Grid ColumnDefinitions="220,*" ColumnSpacing="14" Margin="0,3">
-                    <views:CopyableTextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Component.Handoff.PlannedGap}" Margin="{DynamicResource Component.Handoff.PlannedMargin}">
+                    <views:CopyableTextBlock Text="{Binding Name}" FontWeight="SemiBold" Width="{DynamicResource Component.Handoff.PlannedNameWidth}" />
                     <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Purpose}" TextWrapping="Wrap" />
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                        Text="{Binding Handoff.DataSensitivitySentence}" />
           </StackPanel>
         </Border>
 
         <!-- After a write: the folder, the drag target, and every file it holds. -->
         <Border Classes="card" IsVisible="{Binding Handoff.HasCompletedFiles}">
-          <StackPanel Spacing="12">
-            <StackPanel Spacing="2">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
               <views:CopyableTextBlock Classes="section-title"
                          Text="{Binding Handoff.WrittenAtText}" />
               <views:CopyableTextBlock Text="{Binding Handoff.CoverageText}" TextWrapping="Wrap"
                          IsVisible="{Binding Handoff.CoverageText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-              <views:CopyableTextBlock Classes="muted" Text="{Binding Handoff.OutputDirectory}" TextWrapping="Wrap" FontSize="12" />
+              <views:CopyableTextBlock Classes="muted" Text="{Binding Handoff.OutputDirectory}" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Small}" />
             </StackPanel>
 
             <Button x:Name="AllFilesButton"
                     Content="{Binding Handoff.Files.Count, StringFormat='Drag all {0} files into your chat'}"
                     Click="OnAllFilesClick"
-                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="56"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="{DynamicResource Component.Handoff.DragHeight}"
                     ToolTip.Tip="Drag into a chat. From the keyboard, press Enter to copy the folder path."
                     AutomationProperties.Name="Drag all Handoff files" />
 
             <ItemsControl ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="Handoff files">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:HandoffFileViewModel">
-                  <Border Padding="0,8" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,1,0,0"
-                          Background="Transparent" PointerPressed="OnFileTilePointerPressed"
+                  <Border Classes="handoffFile" PointerPressed="OnFileTilePointerPressed"
                           AutomationProperties.Name="{Binding DragAccessibleName}">
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                      <Border Background="{DynamicResource SemiColorPrimary}" CornerRadius="6" MinWidth="48"
-                              Padding="6,4" VerticalAlignment="Center">
-                        <views:CopyableTextBlock Text="{Binding KindLabel}" Foreground="White" FontSize="11"
-                                   FontWeight="Bold" HorizontalAlignment="Center" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                      <Border Classes="handoffKind">
+                        <views:CopyableTextBlock Text="{Binding KindLabel}" />
                       </Border>
-                      <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                      <StackPanel Grid.Column="1" Spacing="{DynamicResource Component.Handoff.LineGap}" VerticalAlignment="Center">
                         <views:CopyableTextBlock Text="{Binding RelativePath}" TextWrapping="Wrap" FontWeight="SemiBold" />
-                        <views:CopyableTextBlock Classes="muted" Text="{Binding Purpose}" FontSize="12" TextWrapping="Wrap"
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding Purpose}" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                                    IsVisible="{Binding HasPurpose}" />
                       </StackPanel>
                       <Button Grid.Column="2" Content="Copy path" Click="OnCopyPathClick"
@@ -129,15 +126,15 @@
     </ScrollViewer>
 
     <!-- Right: the three steps to a chat, and what to ask once you are there. -->
-    <ScrollViewer Grid.Column="1">
-      <StackPanel Spacing="4">
-        <views:CopyableTextBlock Classes="section-title" Text="Get a chat model's help" FontSize="15" />
+    <ScrollViewer Grid.Column="1" Width="{DynamicResource Component.Handoff.GuideWidth}">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+        <views:CopyableTextBlock Classes="section-title" Text="Get a chat model's help" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
 
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="0,8,0,0">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.FirstStepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="1" /></Border>
-          <StackPanel Grid.Column="1" Spacing="6">
+          <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Snug}">
             <views:CopyableTextBlock Text="Copy the starter prompt" FontWeight="SemiBold" />
-            <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                        Text="It tells the model what the files are and how to read them." />
             <Button Content="Copy starter prompt" Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Click="OnCopyStarterPromptClick" IsEnabled="{Binding Handoff.HasCompletedFiles}"
@@ -145,31 +142,31 @@
           </StackPanel>
         </Grid>
 
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="0,10,0,0">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="2" /></Border>
-          <StackPanel Grid.Column="1" Spacing="2">
+          <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock Text="Open a chat" FontWeight="SemiBold" />
-            <views:CopyableTextBlock Classes="muted" FontSize="12" Text="Claude, ChatGPT or Gemini." TextWrapping="Wrap" />
+            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Claude, ChatGPT or Gemini." TextWrapping="Wrap" />
           </StackPanel>
         </Grid>
 
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="0,10,0,0">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="3" /></Border>
-          <StackPanel Grid.Column="1" Spacing="2">
+          <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock Text="Add the files, then paste" FontWeight="SemiBold" />
-            <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                        Text="Drag the files into the chat, then paste the prompt." />
           </StackPanel>
         </Grid>
 
-        <Border Classes="card" Margin="0,16,0,0">
-          <StackPanel Spacing="6">
+        <Border Classes="card" Margin="{DynamicResource Component.Handoff.AskMargin}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
             <views:CopyableTextBlock Text="Try asking" FontWeight="SemiBold" />
-            <views:CopyableTextBlock Classes="muted" FontSize="11" Text="Click a question to copy it." />
+            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="Click a question to copy it." />
             <ItemsControl ItemsSource="{Binding Questions}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
-                  <Button Classes="question" Click="OnCopyQuestionClick" Tag="{Binding}" Margin="0,2"
+                  <Button Classes="question" Click="OnCopyQuestionClick" Tag="{Binding}"
                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                           ToolTip.Tip="Copy this question" AutomationProperties.Name="{Binding}">
                     <TextBlock Text="{Binding}" TextWrapping="Wrap" />
@@ -182,29 +179,4 @@
       </StackPanel>
     </ScrollViewer>
   </Grid>
-
-  <UserControl.Styles>
-    <!-- A suggested question reads as a link: one click copies it for the chat. -->
-    <Style Selector="Button.question">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Padding" Value="0,2" />
-    </Style>
-    <Style Selector="Button.question TextBlock">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorLink}" />
-    </Style>
-    <Style Selector="Border.stepMark">
-      <Setter Property="Width" Value="24" />
-      <Setter Property="Height" Value="24" />
-      <Setter Property="CornerRadius" Value="12" />
-      <Setter Property="Background" Value="{DynamicResource SemiColorPrimary}" />
-      <Setter Property="VerticalAlignment" Value="Top" />
-    </Style>
-    <Style Selector="Border.stepMark :is(TextBlock)">
-      <Setter Property="Foreground" Value="White" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-  </UserControl.Styles>
 </UserControl>
