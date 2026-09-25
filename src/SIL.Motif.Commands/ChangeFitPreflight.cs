@@ -23,9 +23,16 @@ public static class ChangeFitPreflight
     {
         var result = new List<ChangeFitResult>();
         var objects = cache.ServiceLocator.ObjectRepository;
+        var authoredChanges = AuthoredChangeOperationIds(proposal);
         foreach (var operation in proposal.Operations)
         {
-            if (operation.Extensions is not { } extensions) continue;
+            if (operation.Extensions is not { } extensions)
+            {
+                if (authoredChanges.Contains(operation.OperationId.Value))
+                    result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                        "Change fingerprint is missing or invalid.", ""));
+                continue;
+            }
             if (extensions.ValueKind != JsonValueKind.Object)
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
@@ -33,7 +40,8 @@ public static class ChangeFitPreflight
                 continue;
             }
             var hasFit = extensions.TryGetProperty("changeFit", out var fit);
-            if (!hasFit && !extensions.TryGetProperty("changeId", out _)) continue;
+            if (!hasFit && !extensions.TryGetProperty("changeId", out _) &&
+                !authoredChanges.Contains(operation.OperationId.Value)) continue;
             if (!hasFit || fit.ValueKind != JsonValueKind.Object)
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
@@ -145,6 +153,24 @@ public static class ChangeFitPreflight
                 "Still fits the live project.", fingerprint.BaselineToken));
         }
         return result;
+    }
+
+    private static HashSet<string> AuthoredChangeOperationIds(Proposal proposal)
+    {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        if (proposal.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
+            !extensions.TryGetProperty("composers", out var composers) ||
+            composers.ValueKind != JsonValueKind.Array) return ids;
+        foreach (var composer in composers.EnumerateArray())
+        {
+            if (composer.ValueKind != JsonValueKind.Object ||
+                !composer.TryGetProperty("changeId", out _) ||
+                !composer.TryGetProperty("operationIds", out var operations) ||
+                operations.ValueKind != JsonValueKind.Array) continue;
+            foreach (var id in operations.EnumerateArray())
+                if (id.ValueKind == JsonValueKind.String && id.GetString() is { } value) ids.Add(value);
+        }
+        return ids;
     }
 
     public static string ContentDigest(IWfiAnalysis analysis) => Digest(analysis.MorphBundlesOS.Select(bundle => new

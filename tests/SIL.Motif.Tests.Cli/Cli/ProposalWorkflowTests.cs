@@ -337,8 +337,10 @@ public sealed class ProposalWorkflowTests
         return database.FullPath;
     }
 
-    [Fact]
-    public void MissingChangeFingerprintBlocksApplyEvenWithForce()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MissingChangeFingerprintBlocksApplyEvenWithForce(bool removeExtensions)
     {
         var loader = new FwDataProjectLoader();
         Guid wordformGuid;
@@ -360,17 +362,24 @@ public sealed class ProposalWorkflowTests
             var repository = new ProposalRepository(database);
             var draft = JsonNode.Parse(repository.GetDraft(draftName).ProposalJson!)!.AsObject();
             draft["contractVersions"]!["analysis"] = "1.0";
+            var operationId = CanonicalId.Mint().Value;
+            var changeId = CanonicalId.Mint().Value;
             draft["operations"]!.AsArray().Add(new JsonObject
             {
-                ["operationId"] = CanonicalId.Mint().Value,
+                ["operationId"] = operationId,
                 ["kind"] = "analysis/wfiWordform/setSpellingStatus",
                 ["target"] = CanonicalId.FromGuid(wordformGuid).Value,
                 ["after"] = new JsonObject { ["value"] = 2 },
-                ["extensions"] = new JsonObject
+                ["extensions"] = removeExtensions ? null : new JsonObject
                 {
-                    ["changeId"] = CanonicalId.Mint().Value,
+                    ["changeId"] = changeId,
                     ["changeFit"] = null,
                 },
+            });
+            draft["composerProvenance"]!.AsArray().Add(new JsonObject
+            {
+                ["changeId"] = changeId,
+                ["operationIds"] = new JsonArray(operationId),
             });
             repository.SaveDraft(draftName, draft.ToJsonString());
         }
