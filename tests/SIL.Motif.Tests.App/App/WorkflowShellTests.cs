@@ -338,6 +338,67 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
+    public void ProjectMenuIsDisabledWhileAnAssessmentRunsAndReturnsWhenItEnds()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                var menu = window.FindControl<Button>("ProjectMenuButton")!;
+                Assert.True(menu.IsEffectivelyEnabled);
+
+                workspace.Assess.State = RunState.Running;
+                window.UpdateLayout();
+                Assert.False(menu.IsEffectivelyEnabled);
+
+                workspace.Assess.State = RunState.Cancelled;
+                window.UpdateLayout();
+                Assert.True(menu.IsEffectivelyEnabled);
+            }
+            finally
+            {
+                workspace.Assess.State = RunState.Idle;
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AssessmentProgressReportedFromAWorkerIsPublishedOnTheAvaloniaThread()
+    {
+        var owningThread = -1;
+        var notificationThread = -1;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = NewComposedWindow();
+            try
+            {
+                owningThread = Environment.CurrentManagedThreadId;
+                var reported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                workspace.Assess.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName != nameof(AssessViewModel.Progress)) return;
+                    notificationThread = Environment.CurrentManagedThreadId;
+                    reported.TrySetResult();
+                };
+
+                await Task.Run(() => ((IProgress<AssessmentProgress>)workspace.Assess).Report(
+                    new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing...")));
+                await reported.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(10));
+
+        Assert.Equal(owningThread, notificationThread);
+    }
+
+    [Fact]
     public void TheFreshnessLineHidesUntilAProjectIsOpenAndRefreshIsTheOnlyAction()
     {
         _avalonia.Invoke(() =>

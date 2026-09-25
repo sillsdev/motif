@@ -23,6 +23,7 @@
 
         <Button x:Name="ProjectMenuButton" DockPanel.Dock="Left" VerticalAlignment="Center"
                 Theme="{DynamicResource OutlineButton}" Classes="Tertiary projectMenu"
+                IsEnabled="{Binding Context.ProjectAndSelectionEnabled}"
                 AutomationProperties.Name="Project menu">
           <StackPanel Classes="topBarGroup" Orientation="Horizontal">
             <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />

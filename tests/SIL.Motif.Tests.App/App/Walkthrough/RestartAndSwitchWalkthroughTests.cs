@@ -31,7 +31,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                 firstProject.ManagedRoot, firstProject.FwDataPath);
             restartedWalkthrough.Show();
             restartedWalkthrough.LoadKnownProjects();
-            restartedWalkthrough.Click("Browse for a FieldWorks project file");
+            restartedWalkthrough.SelectKnownProject(firstProject.FwDataPath);
             restartedWalkthrough.WaitUntil(
                 () => restartedWalkthrough.Workspace.Baseline.HasBaseline &&
                     restartedWalkthrough.Workspace.Selection.Texts.Count == 1,
@@ -43,14 +43,16 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                 SeededProject.TextTitle,
                 Assert.Single(restartedWalkthrough.Workspace.Selection.Texts).Title);
 
-            var knownProjects = restartedWalkthrough.Find<ComboBox>("Known projects");
-            Assert.Equal(1, knownProjects.ItemCount);
+            Assert.Single(restartedWalkthrough.Workspace.Project.KnownProjects);
             Assert.Equal(firstProject.FwDataPath,
                 Assert.Single(restartedWalkthrough.Workspace.Project.KnownProjects).FullFwDataPath);
+            restartedWalkthrough.OpenProjectMenu();
+            Assert.False(restartedWalkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
+            restartedWalkthrough.Click("Project menu");
 
             using var secondProject = new WalkthroughProject(pristine);
             restartedWalkthrough.ProjectPath = secondProject.FwDataPath;
-            restartedWalkthrough.Click("Browse for a FieldWorks project file");
+            restartedWalkthrough.ChooseNewProject();
             restartedWalkthrough.WaitUntil(
                 () => restartedWalkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                     restartedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
@@ -76,7 +78,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                 WalkthroughSteps.Remaining(deadline),
                 "choosing the held second project did not observe its lock file");
             restartedWalkthrough.SkipSetup();
-            restartedWalkthrough.Click("Refresh the Baseline");
+            restartedWalkthrough.Click("Refresh the project");
             restartedWalkthrough.WaitUntil(
                 () => restartedWalkthrough.Workspace.Baseline.HasBaseline &&
                     restartedWalkthrough.Workspace.Selection.Texts.Count == 1 &&
@@ -100,7 +102,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
 
     private static void ChooseProject(WalkthroughWindow walkthrough, string projectPath)
     {
-        if (walkthrough.Workspace.Project.KnownProjects.Any(known =>
+        if (walkthrough.Workspace.RecentProjects.Any(known =>
                 string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase)))
         {
             walkthrough.SelectKnownProject(projectPath);
@@ -108,7 +110,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
         }
 
         walkthrough.ProjectPath = projectPath;
-        walkthrough.Click("Browse for a FieldWorks project file");
+        walkthrough.ChooseNewProject();
     }
 
 }

@@ -13,23 +13,24 @@ internal static class WalkthroughSteps
     {
         walkthrough.Show();
 
-        Assert.Equal(0, walkthrough.Find<ComboBox>("Known projects").ItemCount);
-        Assert.True(walkthrough.Find<Button>("Browse for a FieldWorks project file").IsEffectivelyEnabled);
-
-        walkthrough.Click("Browse for a FieldWorks project file");
+        Assert.Empty(walkthrough.Workspace.Project.KnownProjects);
+        walkthrough.OpenProjectMenu();
+        Assert.True(walkthrough.FindProjectMenuEntry<Button>("Select a new project").IsEffectivelyEnabled);
+        Assert.False(walkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
+        walkthrough.ChooseNewProject();
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
             Remaining(deadline), "choosing the project did not load its initial window state");
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
         Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
-        Assert.True(walkthrough.Find<Button>("Refresh the Baseline").IsEffectivelyEnabled);
+        Assert.True(walkthrough.Find<Button>("Refresh the project").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
-        Assert.True(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
+        Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
         Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
 
-        walkthrough.Click("Refresh the Baseline");
+        walkthrough.Click("Refresh the project");
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.HasBaseline &&
                 walkthrough.Workspace.Selection.Texts.Count == 1 &&
@@ -40,11 +41,23 @@ internal static class WalkthroughSteps
         walkthrough.SkipSetup();
         Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
         Assert.NotEqual("No Baseline captured yet", walkthrough.Workspace.Baseline.CapturedTimeText);
-        // The Baseline names the FieldWorks save it copies, so its date is not read as the capture time.
-        var saved = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>().Single(text =>
-            text.Text == walkthrough.Workspace.Baseline.SavedText);
-        Assert.True(saved.IsVisible);
-        Assert.StartsWith("From FieldWorks' save of ", saved.Text, StringComparison.Ordinal);
+        // The Overview distinguishes when Motif captured a Baseline from the FieldWorks save it copies.
+        var overview = walkthrough.Workspace.PageModel<OverviewPageModel>();
+        walkthrough.WaitUntil(
+            () => overview.Overview is { BaselineCapturedUtc: not null, BaselineSourceLastWriteUtc: not null },
+            Remaining(deadline), "the Overview did not reload the captured Baseline");
+        Assert.NotNull(overview.Overview?.BaselineCapturedUtc);
+        Assert.NotNull(overview.Overview?.BaselineSourceLastWriteUtc);
+        Assert.Equal(overview.Overview?.LastFieldWorksSaveUtc, overview.Overview?.BaselineSourceLastWriteUtc);
+        var baselineDetails = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>().Single(text =>
+            text.Text == overview.BaselineDetails);
+        Assert.True(baselineDetails.IsVisible);
+        Assert.Contains("Baseline ", baselineDetails.Text, StringComparison.Ordinal);
+        Assert.Contains("saved ", baselineDetails.Text, StringComparison.Ordinal);
+        var projectDetails = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>().Single(text =>
+            text.Text == overview.ProjectDetails);
+        Assert.True(projectDetails.IsVisible);
+        Assert.Contains("last FieldWorks save ", projectDetails.Text, StringComparison.Ordinal);
         Assert.Equal("FieldWorks does not currently hold this project.",
             walkthrough.Workspace.Baseline.HeldStatusText);
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
@@ -57,8 +70,11 @@ internal static class WalkthroughSteps
     {
         walkthrough.Show();
 
-        Assert.Equal(0, walkthrough.Find<ComboBox>("Known projects").ItemCount);
-        walkthrough.Click("Browse for a FieldWorks project file");
+        Assert.Empty(walkthrough.Workspace.Project.KnownProjects);
+        walkthrough.OpenProjectMenu();
+        Assert.True(walkthrough.FindProjectMenuEntry<Button>("Select a new project").IsEffectivelyEnabled);
+        Assert.False(walkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
+        walkthrough.ChooseNewProject();
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
@@ -66,7 +82,7 @@ internal static class WalkthroughSteps
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
         Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
 
-        walkthrough.Click("Refresh the Baseline");
+        walkthrough.Click("Refresh the project");
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.HasBaseline &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts." &&
@@ -101,7 +117,7 @@ internal static class WalkthroughSteps
         Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
         walkthrough.Click("Run the Assessment");
-        Assert.False(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
+        Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
         Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Assess.State == RunState.Running &&
@@ -122,7 +138,7 @@ internal static class WalkthroughSteps
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Running,
                 Remaining(deadline), "the held Assessment did not reach Running");
-            Assert.False(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
+            Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
             Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
             Assert.True(walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled);
             holdingClient.ReleaseAssess();

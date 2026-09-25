@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Contract.Commands;
@@ -35,12 +36,14 @@ public enum RunState
 public abstract partial class CommandRunViewModel<TResponse> : ObservableObject, IProgress<AssessmentProgress>, IAsyncDisposable
     where TResponse : class
 {
+    private readonly int _ownerThreadId;
     private CancellationTokenSource? _cts;
     private bool _runInFlight;
     private int _runGeneration;
 
     protected CommandRunViewModel()
     {
+        _ownerThreadId = Environment.CurrentManagedThreadId;
         RunCommand = new AsyncRelayCommand(RunAsync, CanRun);
         CancelCommand = new RelayCommand(Cancel, CanCancel);
     }
@@ -122,7 +125,16 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
 
     protected virtual void OnRunStateChanged(RunState value) { }
 
-    void IProgress<AssessmentProgress>.Report(AssessmentProgress value) => Progress = value;
+    void IProgress<AssessmentProgress>.Report(AssessmentProgress value)
+    {
+        if (Environment.CurrentManagedThreadId == _ownerThreadId)
+        {
+            Progress = value;
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => Progress = value);
+    }
 
     private bool CanRun() =>
         !_runInFlight &&

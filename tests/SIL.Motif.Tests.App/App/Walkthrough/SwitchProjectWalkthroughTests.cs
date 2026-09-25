@@ -10,9 +10,9 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristine)
 {
-    // Project controls are disabled during a run, so a switch is cancel first, then Browse, then nothing left.
+    // Project selection is disabled during a run, so a switch is cancel first, then Select new.
     [RealParserFact]
-    public void BrowseIsDisabledDuringARunAndSwitchingAfterCancelClearsTheFirstProject()
+    public void ProjectMenuIsDisabledDuringARunAndSwitchingAfterCancelClearsTheFirstProject()
     {
         using var firstProject = new ConformanceProject();
         using var secondProject = new WalkthroughProject(pristine);
@@ -29,8 +29,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             WalkthroughSteps.StartSlowAssessment(walkthrough, deadline);
             PanglossProcesses.TrackNew(existing, appeared);
 
-            Assert.False(walkthrough.Find<Button>("Browse for a FieldWorks project file").IsEffectivelyEnabled);
-            Assert.False(walkthrough.Find<ComboBox>("Known projects").IsEffectivelyEnabled);
+            Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
 
             walkthrough.Click("Cancel the running Assessment");
             walkthrough.WaitUntil(() =>
@@ -38,10 +37,10 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 PanglossProcesses.TrackNew(existing, appeared);
                 return walkthrough.Workspace.Assess.State == RunState.Cancelled;
             }, WalkthroughSteps.Remaining(deadline), "the first Assessment did not cancel");
-            Assert.True(walkthrough.Find<Button>("Browse for a FieldWorks project file").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
 
             walkthrough.ProjectPath = secondProject.FwDataPath;
-            walkthrough.Click("Browse for a FieldWorks project file");
+            walkthrough.ChooseNewProject();
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(existing, appeared);
@@ -63,7 +62,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal("Capture a Baseline to choose Texts.",
                 walkthrough.Workspace.Selection.TextsEmptyMessage);
 
-            walkthrough.Click("Refresh the Baseline");
+            walkthrough.Click("Refresh the project");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Baseline.HasBaseline &&
                     walkthrough.Workspace.Selection.Texts.Count == 1 &&

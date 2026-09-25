@@ -31,9 +31,12 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 using var walkthrough = new WalkthroughWindow(
                     project.ManagedRoot, project.FwDataPath, outputDirectory);
                 walkthrough.Show();
-                Assert.Equal(0, walkthrough.Find<ComboBox>("Known projects").ItemCount);
+                Assert.Empty(walkthrough.Workspace.Project.KnownProjects);
+                walkthrough.OpenProjectMenu();
+                Assert.True(walkthrough.FindProjectMenuEntry<Button>("Select a new project").IsEffectivelyEnabled);
+                Assert.False(walkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
 
-                walkthrough.Click("Browse for a FieldWorks project file");
+                walkthrough.ChooseNewProject();
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                         walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
@@ -41,7 +44,7 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
                 Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
 
-                walkthrough.Click("Refresh the Baseline");
+                walkthrough.Click("Refresh the project");
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.Baseline.HasBaseline &&
                         walkthrough.Workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts.",

@@ -74,6 +74,28 @@ public sealed class WalkthroughWindow : IDisposable
         loading.GetAwaiter().GetResult();
     }
 
+    public void OpenProjectMenu()
+    {
+        if (!ProjectMenuFlyout.IsOpen) Click("Project menu");
+    }
+
+    public void ChooseNewProject()
+    {
+        OpenProjectMenu();
+        var entry = FindProjectMenuEntry<Button>("Select a new project");
+        Assert.True(entry.IsEffectivelyEnabled, "'Select a new project' is not effectively enabled.");
+        Assert.Same(Workspace.SelectNewProjectCommand, entry.Command);
+        entry.Command!.Execute(entry.CommandParameter);
+        ProjectMenuFlyout.Hide();
+        Pump();
+    }
+
+    public T FindProjectMenuEntry<T>(string accessibleName) where T : Control =>
+        (ProjectMenuFlyout.Content as Control)?.GetLogicalDescendants().OfType<T>().Single(control =>
+            string.Equals(Avalonia.Automation.AutomationProperties.GetName(control), accessibleName,
+                StringComparison.Ordinal))
+        ?? throw new InvalidOperationException("The project menu has no content.");
+
     /// <summary>The one control named <paramref name="name"/>, wherever it sits: each page's view has names of its own.</summary>
     public T Named<T>(string name) where T : Control =>
         Window.GetLogicalDescendants().OfType<T>().Single(control => control.Name == name);
@@ -183,22 +205,26 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void SelectKnownProject(string projectPath)
     {
-        var comboBox = Find<ComboBox>("Known projects");
-        var project = Workspace.Project.KnownProjects.Single(known =>
+        var project = Workspace.RecentProjects.Single(known =>
             string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
-        ClickControl(comboBox, "Known projects");
-        Assert.True(comboBox.IsDropDownOpen, "The Known projects picker did not open from a mouse click.");
-        for (var attempts = 0; attempts <= comboBox.ItemCount; attempts++)
-        {
-            if (Equals(comboBox.SelectedItem, project)) break;
-            Window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-            Pump();
-        }
-
-        Assert.Equal(project, comboBox.SelectedItem);
-        Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+        OpenProjectMenu();
+        var openRecent = FindProjectMenuEntry<Button>("Open a recent project");
+        Assert.True(openRecent.IsEffectivelyEnabled, "'Open a recent project' is not effectively enabled.");
+        Assert.IsType<MenuFlyout>(openRecent.Flyout).ShowAt(openRecent);
+        var item = Window.RecentProjectItems.Single(candidate =>
+            string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate),
+                project.AutomationName, StringComparison.Ordinal));
+        Assert.True(item.IsEffectivelyEnabled, $"'{project.AutomationName}' is not effectively enabled.");
+        Assert.Same(Workspace.OpenRecentProjectCommand, item.Command);
+        Assert.Same(project, item.CommandParameter);
+        item.Command!.Execute(item.CommandParameter);
+        ProjectMenuFlyout.Hide();
         Pump();
     }
+
+    private Flyout ProjectMenuFlyout =>
+        Window.FindControl<Button>("ProjectMenuButton")?.Flyout as Flyout
+        ?? throw new InvalidOperationException("The MainWindow has no project menu flyout.");
 
     public void DragAllFiles()
     {

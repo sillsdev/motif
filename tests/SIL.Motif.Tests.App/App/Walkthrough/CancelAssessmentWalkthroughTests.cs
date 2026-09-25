@@ -39,11 +39,11 @@ public sealed class CancelAssessmentWalkthroughTests
             }, TimeSpan.FromSeconds(10), "the cancelled Assessment left a PanGloss process alive");
 
             Assert.Equal("assessment.cancelled", walkthrough.Workspace.Assess.Refusal?.Code);
-            Assert.True(walkthrough.Named<ContentControl>("ProjectHost").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
             Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
             Assert.Empty(WalkthroughStoreAssertions.ListInvocations(project.FwDataPath));
 
-            walkthrough.Click("Refresh the Baseline");
+            walkthrough.Click("Refresh the project");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Baseline.HasBaseline &&
                     walkthrough.Workspace.Baseline.RefusalMessage is null,
