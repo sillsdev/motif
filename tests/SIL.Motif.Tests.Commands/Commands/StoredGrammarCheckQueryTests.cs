@@ -2,8 +2,12 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Host;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -54,6 +58,54 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         Assert.Equal(checkedNow.Value!.Findings.Single().Text, stored.Value!.Check!.Findings.Single().Text);
         Assert.Single(invoker.Requests);
     }
+
+    [Fact]
+    public void ASecondCheckOfTheSameBaselineReplacesTheFirstAfterSelectionChanges()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var request = new GrammarCheckRequest(fwDataPath);
+        var firstSelection = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            fwDataPath, "First", [], ["first"]));
+        Assert.True(firstSelection.Succeeded, firstSelection.Refusal?.Message);
+        var first = GrammarCheckQuery.Query(request, new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(ReportWithOneFinding, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None, parserStamp: "build-1");
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var firstRow = ReadGrammarCheckRow(fwDataPath);
+        Assert.True(firstRow.Succeeded, firstRow.Refusal?.Message);
+
+        var secondSelection = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            fwDataPath, "Second", [], ["second"]));
+        Assert.True(secondSelection.Succeeded, secondSelection.Refusal?.Message);
+        var second = GrammarCheckQuery.Query(request, new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(EmptyReport, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None, parserStamp: "build-2");
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+
+        var stored = StoredGrammarCheckQuery.Query(request);
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        Assert.Empty(stored.Value!.Check!.Findings);
+        var rows = ReadGrammarCheckRow(fwDataPath);
+        Assert.True(rows.Succeeded, rows.Refusal?.Message);
+        Assert.Equal(1, rows.Value!.Count);
+        Assert.NotEqual(firstRow.Value!.SelectionSha256, rows.Value.SelectionSha256);
+    }
+
+    private static CommandOutcome<GrammarCheckRows> ReadGrammarCheckRow(string fwDataPath) =>
+        ProjectStoreCommand.Run(fwDataPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*), MAX(SelectionSha256) FROM GrammarChecks;";
+            using var reader = command.ExecuteReader();
+            reader.Read();
+            return CommandOutcome<GrammarCheckRows>.Success(new(reader.GetInt32(0), reader.GetString(1)));
+        });
+
+    private sealed record GrammarCheckRows(int Count, string SelectionSha256);
 
     [Fact]
     public void StoredFindingsSurviveRemovalOfTheBaselineSideCache()

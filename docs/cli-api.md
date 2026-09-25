@@ -413,8 +413,8 @@ the Assessment, so partial statistics cannot look complete. Opening Overview or 
 
 The Warnings page reads PanGloss's grammar-health report last stored for the current Baseline. Opening the page
 or running `warnings` never invokes PanGloss. The person can start a new check with **Reload grammar**; successful
-findings replace the stored result. The store records the Baseline token and the resolved default Selection
-digest when one exists, but grammar findings remain valid for the Baseline after the Selection changes.
+findings replace the one stored result for that Baseline. The store also records the resolved default Selection
+digest at check time when one exists, but grammar findings remain valid after the Selection changes.
 `grammar-health` itself is not a catalogued `motif` CLI verb.
 
 **`warnings --project <fwdata> [--kind <code>] [--left-out] [--json]`** reads those stored findings.

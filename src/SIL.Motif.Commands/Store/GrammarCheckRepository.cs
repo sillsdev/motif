@@ -6,7 +6,7 @@ using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Commands.Store;
 
-/// <summary>Stores grammar findings for a Baseline and the resolved Selection current when they were checked.</summary>
+/// <summary>Stores one current grammar check per Baseline, with the Selection current when it was checked.</summary>
 public sealed class GrammarCheckRepository(MotifDatabase database)
 {
     private readonly MotifDatabase _database = database ?? throw new ArgumentNullException(nameof(database));
@@ -18,8 +18,7 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT ResponseJson FROM GrammarChecks WHERE BaselineToken = $baseline
-            ORDER BY CheckedUtc DESC, rowid DESC LIMIT 1;
+            SELECT ResponseJson FROM GrammarChecks WHERE BaselineToken = $baseline;
             """;
         command.Parameters.AddWithValue("$baseline", baselineToken);
         var json = command.ExecuteScalar() as string;
@@ -35,7 +34,7 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         }
     }
 
-    /// <summary>Replaces the check for the exact Baseline and Selection after a requested parser run succeeds.</summary>
+    /// <summary>Replaces the Baseline's check and recorded Selection after a requested parser run succeeds.</summary>
     public void Save(string baselineToken, string selectionSha256, string? parserStamp, GrammarCheckResponse response)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baselineToken);
@@ -46,7 +45,8 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         command.CommandText = """
             INSERT INTO GrammarChecks (BaselineToken, SelectionSha256, ParserStamp, ResponseJson, CheckedUtc)
             VALUES ($baseline, $selection, $parser, $response, $checked)
-            ON CONFLICT (BaselineToken, SelectionSha256) DO UPDATE SET
+            ON CONFLICT (BaselineToken) DO UPDATE SET
+                SelectionSha256 = excluded.SelectionSha256,
                 ParserStamp = excluded.ParserStamp,
                 ResponseJson = excluded.ResponseJson,
                 CheckedUtc = excluded.CheckedUtc;

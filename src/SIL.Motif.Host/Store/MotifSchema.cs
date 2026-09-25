@@ -320,7 +320,7 @@ public static class MotifSchema
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "GrammarChecks" =>
-        [C("BaselineToken", "TEXT", true, 1), C("SelectionSha256", "TEXT", true, 2),
+        [C("BaselineToken", "TEXT", false, 1), C("SelectionSha256", "TEXT", true),
             C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true), C("CheckedUtc", "TEXT", true)],
         "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true)],
         "CorpusDocuments" =>
@@ -719,12 +719,11 @@ public static class MotifSchema
 
     private const string GrammarCheckDdl = """
         CREATE TABLE GrammarChecks (
-            BaselineToken TEXT NOT NULL,
+            BaselineToken TEXT PRIMARY KEY,
             SelectionSha256 TEXT NOT NULL,
             ParserStamp TEXT NULL,
             ResponseJson TEXT NOT NULL,
-            CheckedUtc TEXT NOT NULL,
-            PRIMARY KEY (BaselineToken, SelectionSha256)
+            CheckedUtc TEXT NOT NULL
         );
         """;
 }
