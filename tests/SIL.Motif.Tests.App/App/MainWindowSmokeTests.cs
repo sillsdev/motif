@@ -156,6 +156,12 @@ public sealed class MainWindowSmokeTests
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
+                var details = window.GetVisualDescendants().OfType<Expander>()
+                    .Single(expander => Equals(expander.Header, "Detailed statistics"));
+                details.IsExpanded = true;
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
                 var statistics = window.GetVisualDescendants().OfType<DataGrid>()
                     .Single(grid => AutomationProperties.GetName(grid) == "Statistics rows");
                 AssertSelectableCells(statistics);

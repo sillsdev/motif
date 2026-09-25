@@ -164,6 +164,13 @@ public sealed class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.Warning");
         yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
             TextBlock.ForegroundProperty, "Intent.Danger");
+
+        yield return new("Timing", "the page", host => Add(host, Box("timingPage")), Border.PaddingProperty,
+            "Component.Timing.PagePadding");
+        yield return new("Timing", "the table header", host => Add(host, Box("timingTableHeader")),
+            Border.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("Timing", "a rule row", host => Add(host, Press("timingRuleRow")), Button.PaddingProperty,
+            "Component.Timing.RowPadding");
     }
 
     private static T Add<T>(Panel host, T control) where T : Control

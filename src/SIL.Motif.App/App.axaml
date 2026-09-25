@@ -28,6 +28,8 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TabStrip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Warnings.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TryWord.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Timing.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Statistics.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>

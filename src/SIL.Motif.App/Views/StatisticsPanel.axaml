@@ -5,39 +5,40 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.StatisticsPanel"
              x:DataType="views:StatisticsPanel">
-  <DockPanel Margin="24,12,24,24">
+  <DockPanel Margin="{DynamicResource Component.Statistics.PageMargin}">
 
     <!-- What the numbers say, before the numbers: three cards for a word grouping. -->
-    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,0,0,12"
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"
+          Margin="{DynamicResource Intent.Gap.AfterGroup}"
           IsVisible="{Binding Statistics.HasWordRows}">
-      <Border Grid.Column="0" Classes="card" Padding="14,12">
-        <StackPanel Spacing="4">
+      <Border Grid.Column="0" Classes="card">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
           <views:CopyableTextBlock Text="{Binding Statistics.IncompleteHeadline}" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.IncompleteDetail}" />
-          <HyperlinkButton Content="Give each word longer: Texts, Options" Padding="0" Click="OnOpenTimeLimitClick"
+          <HyperlinkButton Content="Give each word longer: Texts, Options" Padding="{DynamicResource Intent.Inset.None}" Click="OnOpenTimeLimitClick"
                            IsVisible="{Binding Statistics.AnyIncomplete}" />
         </StackPanel>
       </Border>
-      <Border Grid.Column="1" Classes="card" Padding="14,12" IsVisible="{Binding Statistics.HasSlowestWord}">
-        <StackPanel Spacing="4">
+      <Border Grid.Column="1" Classes="card" IsVisible="{Binding Statistics.HasSlowestWord}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
           <views:CopyableTextBlock Text="{Binding Statistics.SlowestHeadline}" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.SlowestDetail}" />
-          <HyperlinkButton Content="Try it in Try a Word" Padding="0" Click="OnTrySlowestClick" />
+          <HyperlinkButton Content="Try it in Try a Word" Padding="{DynamicResource Intent.Inset.None}" Click="OnTrySlowestClick" />
         </StackPanel>
       </Border>
-      <Border Grid.Column="2" Classes="card" Padding="14,12">
-        <StackPanel Spacing="4">
+      <Border Grid.Column="2" Classes="card">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
           <views:CopyableTextBlock Text="{Binding Statistics.PassesHeadline}" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.PassesDetail}" />
         </StackPanel>
       </Border>
     </Grid>
 
-    <DockPanel LastChildFill="False" DockPanel.Dock="Top" Margin="0,0,0,8">
+    <DockPanel LastChildFill="False" DockPanel.Dock="Top" Margin="{DynamicResource Intent.Gap.AfterRelated}">
       <ComboBox ItemsSource="{Binding Statistics.GroupChoices}"
                 SelectedItem="{Binding Statistics.SelectedGroupChoice}"
                 AutomationProperties.Name="Statistics group"
-                Margin="0,0,16,0">
+                Margin="{DynamicResource Intent.Gap.AfterGroup}">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:StatsGroupChoice">
             <TextBlock Text="{Binding Label}" />
@@ -46,12 +47,12 @@
       </ComboBox>
       <TextBox Text="{Binding Statistics.FilterText}"
                PlaceholderText="Filter rows..."
-               Width="200"
+               Width="{DynamicResource Component.Statistics.FilterWidth}"
                AutomationProperties.Name="Filter statistics rows"
-               Margin="0,0,16,0" />
-      <views:FilterChip Label="All rows" Count="{Binding Statistics.RowCount}" Margin="0,0,4,0"
+               Margin="{DynamicResource Intent.Gap.AfterGroup}" />
+      <views:FilterChip Label="All rows" Count="{Binding Statistics.RowCount}" Margin="{DynamicResource Intent.Gap.AfterRelated}"
                         IsActive="{Binding !Statistics.OnlyIncomplete}" Click="OnAllRowsClick" />
-      <views:FilterChip Label="Did not finish" Count="{Binding Statistics.IncompleteCount}" Verdict="Limit" Margin="0,0,16,0"
+      <views:FilterChip Label="Did not finish" Count="{Binding Statistics.IncompleteCount}" Verdict="Limit" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                         IsActive="{Binding Statistics.OnlyIncomplete}" Click="OnOnlyIncompleteClick" />
       <Button Content="Refresh"
               Command="{Binding Statistics.LoadCommand}"
@@ -61,7 +62,7 @@
     <views:CopyableTextBlock Classes="error" Text="{Binding Statistics.Refusal.Message}"
                IsVisible="{Binding Statistics.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
                DockPanel.Dock="Top" />
-    <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+    <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Margin="{DynamicResource Intent.Gap.AfterRelated}" TextWrapping="Wrap"
                Text="Shading: darker is larger, against the largest in its column. Attempts and time come from the parser's statistics pass; whether a word finished comes from the Assessment." />
     <views:CopyableTextBlock Text="Showing the last successful statistics; they may be out of date."
                IsVisible="{Binding Statistics.IsStale}"
@@ -80,21 +81,21 @@
         <DataGridTemplateColumn Header="Kind" Tag="kind" ClipboardContentBinding="{ReflectionBinding Kind}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:CopyableTextBlock Text="{Binding Kind}" Margin="6,4" />
+              <views:CopyableTextBlock Text="{Binding Kind}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="Object" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:CopyableTextBlock Text="{Binding Object}" Margin="6,4" />
+              <views:CopyableTextBlock Text="{Binding Object}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="Word" Tag="word" ClipboardContentBinding="{ReflectionBinding Word}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:CopyableTextBlock Text="{Binding Word}" Margin="6,4" />
+              <views:CopyableTextBlock Text="{Binding Word}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
@@ -102,7 +103,7 @@
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:VerdictChip Verdict="{Binding CompletionMeaning}" Text="{Binding CompletionShort}" Compact="True"
-                                 Margin="6,4" HorizontalAlignment="Left" IsVisible="{Binding HasCompletion}"
+                                 Margin="{DynamicResource Component.Statistics.CellMargin}" HorizontalAlignment="Left" IsVisible="{Binding HasCompletion}"
                                  ToolTip.Tip="{Binding CompletionStatus}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
@@ -110,21 +111,21 @@
         <DataGridTemplateColumn Header="Attempts" Tag="attempts" ClipboardContentBinding="{ReflectionBinding Attempts}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding AttemptsText}" Intensity="{Binding AttemptsHeat}" Margin="2,1" />
+              <views:HeatCell Text="{Binding AttemptsText}" Intensity="{Binding AttemptsHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="Readings" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding PassesText}" Intensity="{Binding PassesHeat}" Margin="2,1" />
+              <views:HeatCell Text="{Binding PassesText}" Intensity="{Binding PassesHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="Elapsed (ms)" Tag="elapsedMs" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding ElapsedText}" Intensity="{Binding ElapsedHeat}" Margin="2,1" />
+              <views:HeatCell Text="{Binding ElapsedText}" Intensity="{Binding ElapsedHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>

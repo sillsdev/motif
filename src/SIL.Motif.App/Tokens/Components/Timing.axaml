@@ -1,0 +1,29 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Timing.PagePadding" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Timing.SideWidth" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.Timing.BarHeight" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.Timing.PickerHeight" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.Timing.RowPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
+    <StaticResource x:Key="Component.Timing.HeaderPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+  </Styles.Resources>
+  <Style Selector="Border.timingPage">
+    <Setter Property="Padding" Value="{DynamicResource Component.Timing.PagePadding}" />
+  </Style>
+  <Style Selector="Border.timingTableHeader">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Timing.HeaderPadding}" />
+  </Style>
+  <Style Selector="Button.timingRuleRow">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Timing.RowPadding}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.timingRuleRow:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+  </Style>
+</Styles>
