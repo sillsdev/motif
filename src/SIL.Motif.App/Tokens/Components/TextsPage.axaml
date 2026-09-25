@@ -2,17 +2,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.TextsPage.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.TextsPage.DenseRowPadding" ResourceKey="Primitive.Inset.4x3" />
+    <StaticResource x:Key="Component.TextsPage.DenseRowPadding" ResourceKey="Primitive.Inset.4_3_4_3" />
     <StaticResource x:Key="Component.TextsPage.ListQuestionPadding" ResourceKey="Primitive.Inset.8_12_8_12" />
-    <StaticResource x:Key="Component.TextsPage.HeaderButtonPadding" ResourceKey="Primitive.Inset.6x2" />
+    <StaticResource x:Key="Component.TextsPage.HeaderButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.TextsPage.ShortLabelMargin" ResourceKey="Primitive.Inset.6_0_6_0" />
     <StaticResource x:Key="Component.TextsPage.ActionButtonMargin" ResourceKey="Primitive.Inset.0_0_4_4" />
-    <StaticResource x:Key="Component.TextsPage.LineMargin" ResourceKey="Primitive.Inset.0x4" />
-    <StaticResource x:Key="Component.TextsPage.WordGap" ResourceKey="Primitive.Inset.0x0x14x10" />
-    <StaticResource x:Key="Component.TextsPage.CountIndent" ResourceKey="Primitive.Inset.26x0x0x4" />
+    <StaticResource x:Key="Component.TextsPage.LineMargin" ResourceKey="Primitive.Inset.0_4_0_4" />
+    <StaticResource x:Key="Component.TextsPage.WordGap" ResourceKey="Primitive.Inset.0_0_14_10" />
+    <StaticResource x:Key="Component.TextsPage.CountIndent" ResourceKey="Primitive.Inset.26_0_0_4" />
     <StaticResource x:Key="Component.TextsPage.EmptyStateMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
-    <StaticResource x:Key="Component.TextsPage.AssessmentStatusPadding" ResourceKey="Primitive.Inset.8x4" />
-    <StaticResource x:Key="Component.TextsPage.MorphMargin" ResourceKey="Primitive.Inset.0x0x10x0" />
+    <StaticResource x:Key="Component.TextsPage.AssessmentStatusPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.TextsPage.MorphMargin" ResourceKey="Primitive.Inset.0_0_10_0" />
     <StaticResource x:Key="Component.TextsPage.ListQuestionWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.TextsPage.FixFirstListHeight" ResourceKey="Primitive.Size.156" />
     <StaticResource x:Key="Component.TextsPage.CompareSearchWidth" ResourceKey="Primitive.Size.220" />

@@ -84,6 +84,19 @@ public sealed class DesignTokenTests
     }
 
     [Fact]
+    public void InsetPrimitiveKeysNameAllFourSides()
+    {
+        var primitives = XDocument.Load(Path.Combine(AppDirectory(), "Tokens", "Primitives.axaml"));
+        var keys = primitives.Descendants()
+            .Where(element => element.Name.LocalName == "Thickness")
+            .Select(element => (string?)element.Attribute(Xaml + "Key"))
+            .Where(key => key?.StartsWith("Primitive.Inset.", StringComparison.Ordinal) == true);
+
+        Assert.All(keys, key => Assert.Matches(
+            "^Primitive\\.Inset\\.-?\\d+_-?\\d+_-?\\d+_-?\\d+$", key!));
+    }
+
+    [Fact]
     public void EachThemeResolvesItsOwnBrushNotTheOtherThemesCapturedAtLoad()
     {
         var keys = ThemedIntentKeys()["Light"];

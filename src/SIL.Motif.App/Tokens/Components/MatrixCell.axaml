@@ -9,7 +9,7 @@
     <StaticResource x:Key="Component.MatrixCell.SelectedOpacity" ResourceKey="Primitive.Opacity.100" />
     <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
-    <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0x0x4x0" />
+    <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
   </Styles.Resources>
   <Style Selector="Border.matrixCell">
     <Setter Property="CornerRadius" Value="{DynamicResource Component.MatrixCell.Radius}" />
