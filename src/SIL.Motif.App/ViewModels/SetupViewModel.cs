@@ -128,12 +128,13 @@ public sealed partial class SetupViewModel : ObservableObject
 
     public string RunSummary => _words.SummaryText;
 
-    public string FinishButtonText => IsEditingExistingSelection ? "Save changes" : "Start first run";
+    public string FinishButtonText => IsEditingExistingSelection ? "Use this Selection" : "Start first run";
 
-    public string FinishTitle => IsEditingExistingSelection ? "Save your default Selection" : "Ready for the first run?";
+    public string FinishTitle => IsEditingExistingSelection
+        ? "Use this Selection as the project default" : "Ready for the first run?";
 
     public string FinishDescription => IsEditingExistingSelection
-        ? "Save this Selection as the project default. The next Assessment will use it."
+        ? "This will be the project default. The next Assessment will use it."
         : "Motif will save this Selection with the project, then assess the stored Default Selection.";
 
     public IAsyncRelayCommand SkipCommand { get; }
