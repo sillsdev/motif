@@ -28,17 +28,28 @@ public sealed class ReleaseSurfaceTests : IDisposable
 
     private static readonly string[] DeveloperNames =
     [
-        "new", "collect-change", "remove-collected-change", "remove-nonfitting-changes",
+        "new", "pending-changes", "put-pending-change", "remove-pending-change",
         "add-set-gloss", "add-delete-lexeme-form", "compose-author-lexeme-form",
         "compose-author-feature-structure", "promote-gloss", "label", "comment", "finalize",
         "discard-draft", "reopen", "duplicate", "remove-operations", "split", "defer", "reject",
-        "supersede", "list", "show", "preflight", "preflight --draft", "dry-run", "dry-run --wait",
+        "supersede", "list", "show", "preflight", "dry-run", "dry-run --wait",
         "trial", "trial --wait", "apply", "log",
     ];
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-release-surface-" + Guid.NewGuid().ToString("N"));
 
     public ReleaseSurfaceTests() => Directory.CreateDirectory(_root);
+
+    [Theory]
+    [InlineData("collect-change")]
+    [InlineData("remove-collected-change")]
+    [InlineData("remove-nonfitting-changes")]
+    [InlineData("preflight --draft")]
+    public void RetiredDraftChangeCommandsHaveNoEntryPoint(string name)
+    {
+        Assert.DoesNotContain(CommandCatalog.All, command => command.Name == name);
+        Assert.DoesNotContain(CliVerbCatalog.All, command => command.CommandName == name);
+    }
 
     [Fact]
     public void EveryCataloguedCommandDeclaresAReleasedOrDeveloperSurface()

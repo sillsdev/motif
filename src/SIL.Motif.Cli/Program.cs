@@ -382,48 +382,12 @@ try
                 removePendingProject, CliProductVersion(), removePendingRevision, removePendingId)));
             break;
 
-        case "collect-change":
-            if (!flags.TryGetValue("project", out var collectProject) ||
-                !flags.TryGetValue("draft", out var collectDraft) ||
-                !flags.TryGetValue("kind", out var collectKind) ||
-                !flags.TryGetValue("word", out var collectWord))
-                return Usage("Usage: motif collect-change --project <fwdata> --draft <name> " +
-                    "--kind <kind> --word <word> [--assessment <assessmentId>] [--reading <text>]", asJson);
-            result = RenderProposal(AnalysisDraftChanges.AddOrReplace(new CollectedChangeRequest(
-                collectProject, CliProductVersion(), collectDraft, collectKind, collectWord,
-                flags.GetValueOrDefault("reading") ?? "", flags.GetValueOrDefault("assessment"))),
-                successAsJson: false);
-            break;
-
-        case "remove-collected-change":
-            if (!flags.TryGetValue("project", out var removeCollectedProject) ||
-                !flags.TryGetValue("draft", out var removeCollectedDraft) ||
-                !flags.TryGetValue("word", out var removeCollectedWord))
-                return Usage("Usage: motif remove-collected-change --project <fwdata> " +
-                    "--draft <name> --word <word>", asJson);
-            result = RenderProposal(AnalysisDraftChanges.Remove(new RemoveCollectedChangeRequest(
-                removeCollectedProject, CliProductVersion(), removeCollectedDraft, removeCollectedWord)),
-                successAsJson: false);
-            break;
-
-        case "remove-nonfitting-changes":
-            if (!flags.TryGetValue("project", out var removeNonfittingProject) ||
-                !flags.TryGetValue("draft", out var removeNonfittingDraft))
-                return Usage("Usage: motif remove-nonfitting-changes --project <fwdata> --draft <name>", asJson);
-            result = RenderProposal(AnalysisDraftChanges.RemoveNoLongerFitting(new RemoveNonFittingChangesRequest(
-                removeNonfittingProject, CliProductVersion(), removeNonfittingDraft)), successAsJson: false);
-            break;
-
         case "preflight":
             if (!flags.TryGetValue("project", out var preflightProject) ||
-                (flags.ContainsKey("draft") ? positionals.Count != 0 : positionals.Count != 1))
-                return Usage("Usage: motif preflight --project <fwdata> <proposalId> [--json] OR " +
-                    "motif preflight --project <fwdata> --draft <name> [--json]", asJson);
-            result = flags.TryGetValue("draft", out var preflightDraft)
-                ? RenderProposal(AnalysisDraftChanges.PreflightDraft(new PreflightDraftRequest(
-                    preflightProject, CliProductVersion(), preflightDraft)))
-                : RenderProposal(ProposalCommands.Preflight(new PreflightRequest(
-                    preflightProject, CliProductVersion(), positionals[0])));
+                positionals.Count != 1 || flags.ContainsKey("draft"))
+                return Usage("Usage: motif preflight --project <fwdata> <proposalId> [--json]", asJson);
+            result = RenderProposal(ProposalCommands.Preflight(new PreflightRequest(
+                preflightProject, CliProductVersion(), positionals[0])));
             break;
 
         case "dry-run":
@@ -948,8 +912,6 @@ static string ResolveCommandName(string[] invocation)
 
     if (first is "report" && invocation.Contains("--list-kinds", StringComparer.Ordinal))
         return "report --list-kinds";
-    if (first is "preflight" && invocation.Contains("--draft", StringComparer.Ordinal))
-        return "preflight --draft";
     if (first is "dry-run" or "trial" && invocation.Contains("--wait", StringComparer.Ordinal))
         return first + " --wait";
     return first;

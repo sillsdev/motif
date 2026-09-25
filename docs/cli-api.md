@@ -19,11 +19,11 @@ lives in `Project.motif.db` beside the project, and a resident job runner picks 
 motif <verb> [--project <path.fwdata>] [--store <dir>] [flags] [--json]
 ```
 
-The command catalog contains 55 descriptors. The table below is regenerated from
+The table below is regenerated from
 `CommandCatalog.All` and `CliVerbCatalog.All`; the usage cells preserve the catalogued strings used by
 `UsageLineFor(...)` and the CLI dispatch. `dry-run --wait`, `trial --wait`, and `report --list-kinds`
 are selector descriptors with no independent usage line, so they repeat the parent invocation line
-that dispatches them. `preflight --draft` selects the Draft handler of the `preflight` verb.
+that dispatches them.
 
 | Catalog descriptor | Surface | Usage line |
 | --- | --- | --- |
@@ -33,9 +33,6 @@ that dispatches them. `preflight --draft` selects the Draft handler of the `pref
 | `pending-changes` | Developer | `pending-changes --project <fwdata> [--json]` |
 | `put-pending-change` | Developer | `put-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> --kind <kind> --word <word> [--wordform-id <id>] [--assessment <id> --reading-json <json>] [--stored-analysis-id <id>] [--json]` |
 | `remove-pending-change` | Developer | `remove-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
-| `collect-change` | Developer | `collect-change --project <fwdata> --draft <name> --kind <kind> --word <word> [--assessment <assessmentId>] [--reading <text>]` |
-| `remove-collected-change` | Developer | `remove-collected-change --project <fwdata> --draft <name> --word <word>` |
-| `remove-nonfitting-changes` | Developer | `remove-nonfitting-changes --project <fwdata> --draft <name>` |
 | `add-set-gloss` | Developer | `add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> --text <text> [--depends-on <opId>[,<opId>...]]` |
 | `add-delete-lexeme-form` | Developer | `add-delete-lexeme-form --project <fwdata> --draft <name> --target <canonicalId>` |
 | `compose-author-lexeme-form` | Developer | `compose-author-lexeme-form --draft <name> --project <fwdata> --intent '{"entry":...,"morphType":...,"ws":...,"text":...}'` |
@@ -55,7 +52,6 @@ that dispatches them. `preflight --draft` selects the Draft handler of the `pref
 | `list` | Developer | `list --project <fwdata> [--json]` |
 | `show` | Developer | `show --project <fwdata> <proposalId> [--json]` |
 | `preflight` | Developer | `preflight --project <fwdata> <proposalId> [--json]` |
-| `preflight --draft` | Developer | `preflight --project <fwdata> --draft <name> [--json]` |
 | `apply` | Developer | `apply <proposalId> --project <fwdata> --user <name> [--force] [--json]` |
 | `log` | Developer | `log --project <fwdata> [--json]` |
 | `config show` | Released | `Usage: motif config show --project <fwdata> [--json]` |
@@ -100,24 +96,23 @@ The Released surface contains `open`, `analyses`, `config show`, `report`, `repo
 `jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
 
 The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
-`remove-pending-change`, `collect-change`, `remove-collected-change`,
-`remove-nonfitting-changes`, `add-set-gloss`, `add-delete-lexeme-form`,
+`remove-pending-change`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
-`supersede`, `list`, `show`, `preflight`, `preflight --draft`, `apply`, `log`, `dry-run`,
+`supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`,
 `dry-run --wait`, `trial`, and `trial --wait`.
 
 `preflight` reads the live project and reports each collected change as `still fits` or
 `no longer fits`, with an operation id and reason. `--json` returns the same entries as structured
 `changes`. A deleted wordform, changed wordform form, missing or moved analysis, changed analysis
 reading, a missing morph reference, an older Baseline, or a parser reading that has since been stored
-is `no longer fits`. The `--draft` selector checks pending changes before finalization, and
-`remove-nonfitting-changes` removes those changes from the Draft. Apply checks fit again
+is `no longer fits`. `pending-changes` checks the persistent Draft before finalization, and
+`remove-pending-change` removes a change by id and expected revision. Apply checks fit again
 and refuses a nonfitting change even with `--force`; `--force` only bypasses Readiness reasons.
 An Apply that succeeds records a durable Receipt in the paired project database.
 
 The App and the pending-change CLI verbs use `PendingChanges` in Commands to load, put, and remove
-changes in one persistent Draft. Each change has its own id, so several changes can address one word.
+changes in one persistent Draft. Each change has its own id, so distinct slots can address one word.
 Put and remove require the revision returned by the last load; a stale revision is refused. A parser
 change carries the exact reading chosen from an Assessment, or identifies a stored analysis. Display
 text is never an identity. A current Baseline is required, and the snapshot reports fit for every

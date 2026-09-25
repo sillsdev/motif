@@ -43,7 +43,6 @@ public static class ProposalCommandRenderer
             PreflightResponse p => RenderPreflight(p),
             PendingChangesSnapshot p => $"Draft '{p.DraftId ?? "none"}' has {p.Changes.Count} pending change(s) " +
                 $"at revision {p.Revision}.{Environment.NewLine}",
-            CollectedChangeResponse r => $"Draft '{r.DraftName}' now has {r.OperationCount} operation(s).{Environment.NewLine}",
             ApplyProjection p => ProjectionText.Render(p),
             AppliedLogProjection p => ProjectionText.Render(p),
             DraftCreatedResponse r => RenderDraftCreated(r),

@@ -143,4 +143,26 @@ public sealed class PendingChangesTests
         Assert.Equal(changeId, outcome.Refusal?.Facts["changeId"]);
         Assert.Equal("same-form", outcome.Refusal?.Facts["word"]);
     }
+
+    [Fact]
+    public void WordformLookupAcceptsCanonicallyEquivalentUnicode()
+    {
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("a\u0301", cache.DefaultVernWs)));
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path),
+            Path.Combine(Path.GetDirectoryName(_path)!, "unicode-managed")).Succeeded);
+        var current = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+
+        var put = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", current.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling", "", "\u00e1")));
+
+        Assert.True(put.Succeeded, put.Refusal?.Message);
+        Assert.True(Assert.Single(put.Value!.FitSummary).StillFits);
+    }
 }
