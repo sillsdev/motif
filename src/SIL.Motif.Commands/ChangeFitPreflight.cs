@@ -13,7 +13,8 @@ namespace SIL.Motif.Commands;
 /// <summary>The identities and observed form against which a collected change was composed.</summary>
 public sealed record ChangeFitFingerprint(
     string WordformId, string? AnalysisId, string WordformForm, string BaselineToken,
-    string? AnalysisContentDigest = null, string? ReadingContentDigest = null, ParseAnalysis? Reading = null);
+    string? AnalysisContentDigest = null, string? ReadingContentDigest = null, ParseAnalysis? Reading = null,
+    string? HumanOpinion = null);
 
 /// <summary>Checks collected changes against the saved project used by Review and Apply.</summary>
 public static class ChangeFitPreflight
@@ -104,6 +105,15 @@ public static class ChangeFitPreflight
                 {
                     result.Add(new ChangeFitResult(operation.OperationId.Value, false,
                         $"Analysis {parsed.Value} changed its reading.", fingerprint.BaselineToken));
+                    continue;
+                }
+                if (operation.Kind is WfiAnalysisOperationKinds.AddRefEvaluations or
+                    WfiAnalysisOperationKinds.RemoveRefEvaluations &&
+                    !string.Equals(analysis.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString(),
+                        fingerprint.HumanOpinion, StringComparison.Ordinal))
+                {
+                    result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                        $"Analysis {parsed.Value} changed its human opinion.", fingerprint.BaselineToken));
                     continue;
                 }
             }

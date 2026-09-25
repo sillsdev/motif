@@ -233,7 +233,8 @@ public static class PendingChanges
                     analysis is null ? null : CanonicalId.FromGuid(analysis.Guid).Value,
                     form.Normalize(NormalizationForm.FormD), token,
                     analysis is null ? null : ChangeFitPreflight.ContentDigest(analysis),
-                    reading is null ? null : ChangeFitPreflight.ReadingDigest(reading), reading);
+                    reading is null ? null : ChangeFitPreflight.ReadingDigest(reading), reading,
+                    analysis?.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString());
                 draft.Operations.Add(ToDraft(operation, fingerprint, change.ChangeId));
                 draft.ContractVersions[OperationKind.GetGroup(operation.Kind)] = "1.0";
             }

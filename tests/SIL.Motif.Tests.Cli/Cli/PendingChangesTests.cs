@@ -134,6 +134,57 @@ public sealed class PendingChangesTests
     }
 
     [Fact]
+    public void PreflightFlagsStoredAnalysisWhoseHumanOpinionChanged()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        Guid analysisId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("opinion-word", cache.DefaultVernWs));
+                var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(analysis);
+                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                analysis.MorphBundlesOS.Add(bundle);
+                var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+                bundle.MorphRA = entry.LexemeFormOA;
+                bundle.MsaRA = entry.MorphoSyntaxAnalysesOC.First();
+                cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.approves);
+                wordformId = wordform.Guid;
+                analysisId = analysis.Guid;
+            });
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path),
+            Path.Combine(Path.GetDirectoryName(_path)!, "opinion-managed")).Succeeded);
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "candidate",
+                CanonicalId.FromGuid(wordformId).Value, "opinion-word",
+                StoredAnalysisId: CanonicalId.FromGuid(analysisId).Value)));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        using (var cache = loader.LoadCache(_path))
+        {
+            var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().GetObject(analysisId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.disapproves));
+            loader.Save(cache);
+        }
+
+        var refreshed = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+
+        Assert.True(refreshed.Succeeded, refreshed.Refusal?.Message);
+        Assert.All(refreshed.Value!.FitSummary, fit =>
+        {
+            Assert.False(fit.StillFits);
+            Assert.Contains(fit.Reasons, reason => reason.Contains("opinion", StringComparison.OrdinalIgnoreCase));
+        });
+    }
+
+    [Fact]
     public void ApplyRefusesAssessmentThatDidNotMeasureChangedWord()
     {
         var loader = new FwDataProjectLoader();
