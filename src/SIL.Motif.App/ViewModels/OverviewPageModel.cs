@@ -68,7 +68,6 @@ public sealed partial class OverviewPageModel : PageModel
     [ObservableProperty]
     private string? _overviewRefusalMessage;
 
-    /// <summary>Whether the response has a stored Assessment for its default Selection.</summary>
     /// <summary>Whether the response has an Assessment for its default Selection.</summary>
     public bool HasAssessment => Overview?.AssessmentId is not null;
 
@@ -145,7 +144,7 @@ public sealed partial class OverviewPageModel : PageModel
             new(Verdict.Agrees, overview.TextCoverage.ParsedWords, "parsed"),
             new(Verdict.NoResult, overview.TextCoverage.NoParseWords, "no parse"),
             new(Verdict.Limit, overview.TextCoverage.UnknownWords, "timed out"),
-            new(Verdict.Several, overview.TextCoverage.SkippedWords, "skipped"));
+            new(Verdict.Limit, overview.TextCoverage.SkippedWords, "skipped"));
 
     /// <summary>The approved words kept and total returned by the Overview command.</summary>
     public string AccuracyMain => !HasAssessment || Overview is not { } overview ? "No Assessment" :
@@ -162,7 +161,7 @@ public sealed partial class OverviewPageModel : PageModel
         NonZeroSegments(
             new(Verdict.Agrees, overview.Accuracy.ApprovedWordsKept, "kept"),
             new(Verdict.Differs, overview.Accuracy.ApprovedWordsNoMatch, "built another reading"),
-            new(Verdict.Differs, overview.Accuracy.ApprovedWordsNoParse, "no parse"),
+            new(Verdict.NoResult, overview.Accuracy.ApprovedWordsNoParse, "no parse"),
             new(Verdict.Limit, overview.Accuracy.ApprovedWordsUnknown, "timed out"),
             new(Verdict.Several, overview.Accuracy.ApprovedWordsSkipped, "skipped"));
 

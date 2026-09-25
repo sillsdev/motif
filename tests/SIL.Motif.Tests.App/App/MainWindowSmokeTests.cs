@@ -112,6 +112,11 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Largest kind: environment failed validation (4)", text);
                 Assert.Contains("FieldWorks has changed since the Baseline behind these numbers.", text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
+                var overviewModel = workspace.PageModel<OverviewPageModel>();
+                Assert.Equal(Verdict.Limit,
+                    Assert.Single(overviewModel.TextCoverageSegments, segment => segment.Label == "skipped").Meaning);
+                Assert.Equal(Verdict.NoResult,
+                    Assert.Single(overviewModel.AccuracySegments, segment => segment.Label == "no parse").Meaning);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
                     .Single(item => item.Text == "41 of 125 words in the default Selection").FontWeight);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
@@ -155,6 +160,11 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Refresh refused", refusalText);
                 Assert.Contains("FieldWorks still has the project open.", refusalText);
                 Assert.Contains("FieldWorks holds this project open right now.", refusalText);
+                var visibleText = window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Where(item => item.IsEffectivelyVisible).Select(item => item.Text).ToArray();
+                Assert.Equal(1, visibleText.Count(item => item?.Contains(
+                    "FieldWorks still has the project open.", StringComparison.Ordinal) == true));
+                Assert.Equal(1, visibleText.Count(item => item == "FieldWorks holds this project open right now."));
                 Assert.Empty(fake.AssessRequests);
 
                 void Click(string accessibleName)
@@ -221,6 +231,7 @@ public sealed class MainWindowSmokeTests
             {
                 workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with
                 {
+                    SelectionResolved = false,
                     SelectionWordCount = 0,
                     SelectionTextCount = 1,
                     SelectionAddedWordCount = 0,
@@ -231,10 +242,16 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
 
                 var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
-                var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
-                Assert.Contains("Selection could not be resolved", text);
-                Assert.DoesNotContain("0 words in Selection", text);
-                Assert.DoesNotContain("0 occurrences", text);
+                var counts = page.GetVisualDescendants().OfType<UniformGrid>()
+                    .Single(item => item.Classes.Contains("overviewCounts"));
+                var selectionCell = Assert.IsAssignableFrom<StackPanel>(counts.Children[0]);
+                var selectionCount = Assert.IsAssignableFrom<TextBlock>(selectionCell.Children[0]);
+                Assert.Equal("not resolved", selectionCount.Text);
+                Assert.True(selectionCount.IsEffectivelyVisible);
+
+                var unresolvedNotice = Assert.Single(page.GetVisualDescendants().OfType<CopyableTextBlock>(), item =>
+                    item.Text?.Contains("Selection could not be resolved", StringComparison.Ordinal) == true);
+                Assert.True(unresolvedNotice.IsEffectivelyVisible);
             }
             finally
             {

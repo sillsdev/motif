@@ -187,7 +187,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         get
         {
-            var detail = Baseline.RefusalMessage ?? Freshness switch
+            if (HasRefreshRefusal) return string.Empty;
+
+            var detail = Freshness switch
             {
                 ProjectFreshness.NoBaseline => "Refresh to capture one from FieldWorks' last save.",
                 ProjectFreshness.Current => BaselineAndSaveText(),
@@ -200,6 +202,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
                     : "A new Baseline, and the Selection assessed against it.",
                 _ => string.Empty,
             };
+            if (Baseline.FieldWorksHeldProject != true) return detail;
             return string.IsNullOrEmpty(detail) ? Baseline.HeldStatusText : $"{detail} · {Baseline.HeldStatusText}";
         }
     }

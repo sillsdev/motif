@@ -342,7 +342,7 @@ public sealed class WorkspacePageTests
         Assert.Equal("Current", workspace.FreshnessLabel);
         Assert.StartsWith("Baseline of ", workspace.FreshnessDetail);
         Assert.Contains(" · one saved ", workspace.FreshnessDetail);
-        Assert.Contains("FieldWorks does not currently hold this project.", workspace.FreshnessDetail);
+        Assert.DoesNotContain("FieldWorks does not currently hold this project.", workspace.FreshnessDetail);
         Assert.True(workspace.RefreshCommand.CanExecute(null));
     }
 
@@ -364,14 +364,16 @@ public sealed class WorkspacePageTests
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace, fieldWorksHeldProject: true);
+        Assert.Contains("FieldWorks holds this project open right now.", workspace.FreshnessDetail);
         var refusal = new Refusal("baseline.busy", FailureReason.Busy, "FieldWorks still has the project open.");
         fake.CaptureBaselineRefusesWith(refusal);
 
         await workspace.RefreshCommand.ExecuteAsync(null);
 
         Assert.Equal("Refresh refused", workspace.FreshnessLabel);
-        Assert.Contains(refusal.Message, workspace.FreshnessDetail);
-        Assert.Contains("FieldWorks holds this project open right now.", workspace.FreshnessDetail);
+        Assert.Equal(string.Empty, workspace.FreshnessDetail);
+        Assert.Equal(refusal.Message, workspace.Baseline.RefusalMessage);
+        Assert.Equal("FieldWorks holds this project open right now.", workspace.Baseline.HeldStatusText);
         Assert.Empty(fake.AssessRequests);
     }
 

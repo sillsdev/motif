@@ -262,14 +262,17 @@ public static class CommandTextRenderer
         var timestamps = baselineTime is null ? string.Empty
             : $" (Baseline {baselineTime}, FieldWorks saved {savedTime})";
         text.AppendLine($"{response.ProjectName}  {fileName}  {freshness}{timestamps}");
-        text.AppendLine($"Selection default: {response.SelectionTextCount:N0} text + " +
-            $"{response.SelectionAddedWordCount:N0} words = {response.SelectionWordCount:N0} words, " +
-            $"{response.TextOccurrenceCount:N0} occurrences");
+        if (response.SelectionResolved)
+            text.AppendLine($"Selection default: {response.SelectionTextCount:N0} text + " +
+                $"{response.SelectionAddedWordCount:N0} words = {response.SelectionWordCount:N0} words, " +
+                $"{response.TextOccurrenceCount:N0} occurrences");
+        else
+            text.AppendLine("Selection default: not resolved against this Baseline");
         text.AppendLine($"Project    {response.WordformCount:N0} wordforms  {response.RuleCount:N0} rules  {response.LexemeCount:N0} lexemes");
         text.AppendLine($"Fingerprints baseline {ShortHash(response.BaselineToken?.SemanticSnapshotDigest)}  " +
             $"grammar {ShortHash(response.GrammarFingerprint)}  Selection {ShortHash(response.SelectionFingerprint)}");
-        var coverage = Percent(response.TextCoverage.ParsedWords, response.SelectionWordCount);
-        var occurrenceCoverage = Percent(response.TextCoverage.ParsedOccurrences, response.TextCoverage.TotalOccurrences);
+        var coverage = FormatPercent(response.WordCoveragePercent);
+        var occurrenceCoverage = FormatPercent(response.TextCoverage.OccurrenceCoveragePercent);
         text.AppendLine($"Coverage   {response.TextCoverage.ParsedWords:N0}/{response.SelectionWordCount:N0} parse ({coverage})  " +
             $"{response.TextCoverage.NoParseWords:N0} no parse  {response.TextCoverage.UnknownWords:N0} limit  " +
             $"{response.TextCoverage.SkippedWords:N0} skipped");
@@ -321,7 +324,9 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
-    private static string Percent(int value, int total) => total == 0 ? "0%" : (100d * value / total).ToString("N0") + "%";
+    private static string FormatPercent(double? value) => value is { } percent
+        ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%"
+        : "not recorded";
 
     private static string FormatMs(double? value) => value is null ? "unknown" : value.Value.ToString("N0") + " ms";
 
