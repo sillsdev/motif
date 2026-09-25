@@ -1539,6 +1539,12 @@ public static partial class ProposalCommands
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                 "apply.reconciliation-needed", ReasonFor(ex), ex.Message, Fact(("proposalId", proposalId))));
         }
+        catch (AppliedContentMismatchException ex)
+        {
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                "apply.applied-content-mismatch", FailureReason.Refused, ex.Message,
+                Fact(("proposalId", proposalId))));
+        }
         catch (ArgumentException ex)
         {
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(

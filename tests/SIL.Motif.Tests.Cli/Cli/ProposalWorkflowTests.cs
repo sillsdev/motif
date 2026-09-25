@@ -13,6 +13,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Model.AppliedLog;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
@@ -486,6 +487,57 @@ public sealed class ProposalWorkflowTests
             _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
         Assert.True(retried.Succeeded);
         Assert.Equal("applied", GetRecord(proposalId).Status);
+    }
+
+    [Fact]
+    public void ApplyRefusesAnIdLoggedWithDifferentContentWithoutClaimingRollback()
+    {
+        var proposalId = FinalizeSetGloss("logged-elsewhere",
+            CanonicalId.FromGuid(_seed.FirstSenseId).Value, "new gloss");
+        Assert.True(RunDryRun(proposalId).Succeeded);
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                ProjectAppliedLog.WriteEntry(cache, new AppliedLogEntry(
+                    CanonicalId.Parse(proposalId).ToGuid(), 1, "20260925T000000Z",
+                    "other", new string('a', 64), "prior intent")));
+            loader.Save(cache);
+        }
+
+        var refused = ProposalCommands.Apply(new ApplyRequest(
+            _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal("apply.applied-content-mismatch", refused.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, refused.Refusal.Reason);
+        Assert.Contains("different content", refused.Refusal.Message);
+        Assert.DoesNotContain("rollback", refused.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("no longer trustworthy", refused.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        AssertAppliedLogEntryCount(1);
+        AssertReceiptCount(proposalId, GetRecord(proposalId).IntentDigest!, 0);
+
+        var start = new ProcessStartInfo(BuildOutput.Cli)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (var argument in new[] { "apply", proposalId, "--project", _fwDataPath,
+                     "--user", "tester", "--force", "--json" })
+            start.ArgumentList.Add(argument);
+        start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        Assert.True(process.WaitForExit(60000));
+        Assert.Equal(2, process.ExitCode);
+        Assert.Empty(output.GetAwaiter().GetResult());
+        var failure = JsonNode.Parse(error.GetAwaiter().GetResult())!;
+        Assert.Equal("apply.applied-content-mismatch", failure["code"]?.GetValue<string>());
+        Assert.DoesNotContain("rollback", failure["message"]?.GetValue<string>() ?? "",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

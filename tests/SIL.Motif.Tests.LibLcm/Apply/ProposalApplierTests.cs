@@ -165,7 +165,7 @@ public sealed class ProposalApplierTests : IDisposable
             replacement.Operations);
         var amendedAnchor = ScratchDryRun.Of(_cache, amended).Anchor;
 
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<AppliedContentMismatchException>(() =>
             ProposalApplier.Apply(_cache, amended, amendedAnchor, "tester"));
         var ws = _cache.WritingSystemFactory.GetWsFromStr(wsTag);
         Assert.Equal(originalGloss + " first", _cache.ServiceLocator.GetInstance<ILexSenseRepository>()

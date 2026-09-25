@@ -92,7 +92,7 @@ public static class ProposalApplier
         if (ProjectAppliedLog.TryFindByProposalId(cache, proposalGuid, out var existingEntry))
         {
             if (!string.Equals(existingEntry!.IntentDigest, intentDigestHex, StringComparison.Ordinal))
-                throw new InvalidOperationException(
+                throw new AppliedContentMismatchException(
                     $"Proposal {proposal.ProposalId.Value} was applied with different content. " +
                     "Create a new Proposal for the amended intent.");
             return BuildAlreadyAppliedReceipt(proposal, fullIntentDigest, existingEntry!);
