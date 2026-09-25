@@ -112,6 +112,8 @@
             <TextBlock Classes="overviewTileValue" Text="{Binding WarningsCount}" />
             <TextBlock Classes="overviewMuted" Text="findings in the grammar as PanGloss read it"
                        TextWrapping="Wrap" IsVisible="{Binding HasWarningSummary}" />
+            <TextBlock Classes="overviewTileDetail error" Text="{Binding WarningsLeftOut}" TextWrapping="Wrap"
+                       IsVisible="{Binding HasWarningSummary}" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding WarningsDetails}" TextWrapping="Wrap" />
           </StackPanel>
         </Button>

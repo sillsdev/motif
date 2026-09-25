@@ -85,6 +85,9 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("8.4 ms", text);
                 Assert.Contains("123.5 ms", text);
                 Assert.Contains("6 findings", text);
+                Assert.Contains("1 left out of the grammar", text);
+                Assert.Contains("5 worth a look", text);
+                Assert.Contains("Largest kind: environment failed validation (4)", text);
                 Assert.Contains("FieldWorks has changed since the Baseline behind these numbers.", text);
                 var tiles = window.GetLogicalDescendants().OfType<Button>()
                     .Where(item => AutomationProperties.GetName(item) is "Open Text Coverage in Texts" or
@@ -751,7 +754,11 @@ public sealed class MainWindowSmokeTests
         new OverviewTextCoverage(41, 23, 55, 6, 313, 183),
         new OverviewAccuracy(18, 39, 5, 55, 2, 4, 9, 18),
         new OverviewTiming(8.4, 123.5, [new SlowWordTiming("miboko", 1000)], 55),
-        new OverviewWarningsSummary(6, 1, "environment failed validation", 4))
+        new OverviewWarningsSummary(6, 1, "environment failed validation", 4)
+        {
+            WarningCount = 1,
+            InformationCount = 5,
+        })
     {
         ProjectFileName = "aweti.fwdata",
     };

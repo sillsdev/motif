@@ -55,6 +55,7 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(SlowestWords))]
     [NotifyPropertyChangedFor(nameof(HasWarningSummary))]
     [NotifyPropertyChangedFor(nameof(WarningsCount))]
+    [NotifyPropertyChangedFor(nameof(WarningsLeftOut))]
     [NotifyPropertyChangedFor(nameof(WarningsDetails))]
     private OverviewResponse? _overview;
 
@@ -151,11 +152,14 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The warning count returned by the Overview command or its empty state.</summary>
     public string WarningsCount => Overview?.Warnings?.Count is { } count ? $"{count:N0} findings" : "Not recorded";
 
-    /// <summary>The warning details returned by the Overview command or its empty state.</summary>
+    /// <summary>The warning findings that were left out of the grammar.</summary>
+    public string WarningsLeftOut => Overview?.Warnings is { } warnings && WarningCount(warnings) is { } count
+        ? $"{count:N0} left out of the grammar" : string.Empty;
+
+    /// <summary>The informational findings and largest kind returned by the Overview command.</summary>
     public string WarningsDetails => Overview?.Warnings is not { } warnings ? "No warning summary is available."
         : warnings.Count is null ? "No findings count was recorded."
-        : $"{warnings.LeftOut:N0} left out · Largest kind: {warnings.LargestKind ?? "not recorded"}" +
-          (warnings.LargestKindCount is { } largestCount ? $" ({largestCount:N0})" : string.Empty);
+        : FormatWarningDetails(warnings);
 
     /// <summary>Opens the Texts matrix that shows the words behind Text Coverage.</summary>
     public IRelayCommand OpenTextCoverageCommand { get; }
@@ -171,6 +175,23 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>Opens AI Handoff.</summary>
     public IRelayCommand OpenAiHandoffCommand { get; }
+
+    private static string FormatWarningDetails(OverviewWarningsSummary warnings)
+    {
+        var parts = new List<string>();
+        if (InformationCount(warnings) is { } informationCount)
+            parts.Add($"{informationCount:N0} worth a look");
+        if (warnings.LargestKind is { } kind)
+            parts.Add($"Largest kind: {kind}" +
+                (warnings.LargestKindCount is { } largestCount ? $" ({largestCount:N0})" : string.Empty));
+        return parts.Count == 0 ? "No additional warning details are available." : string.Join(" · ", parts);
+    }
+
+    private static int? WarningCount(OverviewWarningsSummary warnings) => warnings.WarningCount ?? warnings.LeftOut;
+
+    private static int? InformationCount(OverviewWarningsSummary warnings) => warnings.InformationCount ??
+        (warnings.Count is { } total && WarningCount(warnings) is { } warningCount
+            ? Math.Max(0, total - warningCount) : null);
 
     protected override void OnProjectCleared()
     {
