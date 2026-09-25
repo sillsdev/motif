@@ -1,4 +1,5 @@
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
@@ -65,18 +66,6 @@ public sealed partial class CommandClient
     {
         ArgumentNullException.ThrowIfNull(progress);
         progress.Report(new ReviewTrialProgress(0, request.Words.Count, null));
-        string? before = null;
-        IReadOnlyList<string>? previousWords = null;
-        if (request.CurrentCorrectnessAssessmentId is { } currentId)
-        {
-            var current = await Task.Run(() => ReportCommands.Produce(new ProduceReportRequest(
-                request.ProjectPath, MotifProductVersion.CurrentText, currentId, "correctness", null, null)));
-            if (current.Succeeded)
-            {
-                before = current.Value!.Text.TrimEnd();
-                previousWords = current.Value.SelectionWords;
-            }
-        }
         var queued = await Task.Run(() => JobCommands.EnqueueTrial(new EnqueueTrialRequest(
             request.ProjectPath, MotifProductVersion.CurrentText, request.DraftId, Words: request.Words)));
         if (!queued.Succeeded) return CommandOutcome<ReviewTrialResult>.Refused(queued.Refusal!);
@@ -118,22 +107,13 @@ public sealed partial class CommandClient
         if (!recorded.Succeeded) return CommandOutcome<ReviewTrialResult>.Refused(recorded.Refusal!);
         var correctness = recorded.Value!.Assessments.LastOrDefault(item => item.Kind == "Correctness");
         if (correctness is null) return RefuseTrial("The check did not measure approved analyses.");
-        var report = await Task.Run(() => ReportCommands.Produce(new ProduceReportRequest(
-            request.ProjectPath, MotifProductVersion.CurrentText, correctness.AssessmentId,
-            "correctness", null, null)));
-        if (!report.Succeeded) return CommandOutcome<ReviewTrialResult>.Refused(report.Refusal!);
+        var numbers = await Task.Run(() => ReviewNumbersCommand.Read(new ReviewNumbersCommand.Request(
+            request.ProjectPath, request.CurrentCorrectnessAssessmentId, correctness.AssessmentId,
+            request.Words.Count)));
+        if (!numbers.Succeeded) return CommandOutcome<ReviewTrialResult>.Refused(numbers.Refusal!);
         progress.Report(new ReviewTrialProgress(request.Words.Count, request.Words.Count, null));
-        var complete = report.Value!.TotalSearches == request.Words.Count &&
-            report.Value.CompletedSearches == request.Words.Count;
-        var trialHeading = $"With these changes ({request.Words.Count} touched words):\n";
-        var numbers = before is null ? trialHeading + report.Value.Text.TrimEnd() :
-            "Existing Assessment (its Selection):\n" + before + "\n" + trialHeading +
-            report.Value.Text.TrimEnd();
-        if (previousWords is not null && !previousWords.Intersect(
-                report.Value.SelectionWords, StringComparer.Ordinal).Any())
-            numbers += "\nThe regression check could not compare these Assessments because they share no words.";
         return CommandOutcome<ReviewTrialResult>.Success(new ReviewTrialResult(
-            jobId, request.Revision, numbers, complete));
+            jobId, request.Revision, numbers.Value!.Text, numbers.Value.EvidenceComplete));
     }
 
     private static CommandOutcome<ReviewTrialResult> RefuseTrial(string message) =>
