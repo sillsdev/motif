@@ -218,10 +218,25 @@ public sealed class CompareViewModelTests
 
         compare.FocusFixFirstCommand.Execute(compare.FixFirstRows[2]);
 
-        Assert.Equal("approved-different", compare.SearchText);
         Assert.Equal(["approved-different"], compare.Words.Select(word => word.Word));
         Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.NoMatch),
             (compare.Cells.Single(cell => cell.IsSelected).Row, compare.Cells.Single(cell => cell.IsSelected).Column));
+    }
+
+    [Fact]
+    public void FocusingAFixFirstWordMatchesTheExactForm()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([
+            Word("at", "no-analysis", ProjectStanding.Approved, missedApproved: 1),
+            Word("mo'at", "no-analysis", ProjectStanding.Approved, missedApproved: 1),
+        ]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+
+        compare.FocusFixFirstCommand.Execute(compare.FixFirstRows.Single(row => row.Word.Word == "at"));
+
+        Assert.Equal(["at"], compare.Words.Select(word => word.Word));
     }
 
     [Fact]

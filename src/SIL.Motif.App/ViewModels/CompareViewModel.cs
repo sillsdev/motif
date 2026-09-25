@@ -16,6 +16,7 @@ public sealed partial class CompareViewModel : ObservableObject
 {
     private readonly List<CompareWordViewModel> _all = [];
     private ChangesViewModel _changes = new();
+    private string? _focusedWordSearch;
 
     public CompareViewModel()
     {
@@ -259,7 +260,11 @@ public sealed partial class CompareViewModel : ObservableObject
         var count => $"{count:N0} words selected",
     };
 
-    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnSearchTextChanged(string value)
+    {
+        if (!string.Equals(value, _focusedWordSearch, StringComparison.Ordinal)) _focusedWordSearch = null;
+        ApplyFilter();
+    }
     partial void OnSortChanged(CompareSort value) => ApplyFilter();
     partial void OnCountModeChanged(CompareCountMode value)
     {
@@ -310,6 +315,7 @@ public sealed partial class CompareViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(word);
         foreach (var item in _all) item.IsFocused = ReferenceEquals(item, word);
         word.IsExpanded = true;
+        _focusedWordSearch = word.Word;
         SearchText = word.Word;
         Select([Cells.Single(cell => cell.Row == word.Row && cell.Column == word.Column)], additive: false);
     }
@@ -317,6 +323,8 @@ public sealed partial class CompareViewModel : ObservableObject
     public void SelectCells(IEnumerable<TextsListCell> cells)
     {
         ArgumentNullException.ThrowIfNull(cells);
+        _focusedWordSearch = null;
+        SearchText = string.Empty;
         var keys = cells.ToHashSet();
         Select(Cells.Where(cell => keys.Contains(new TextsListCell(cell.Row, cell.Column))), additive: false);
     }
@@ -430,7 +438,9 @@ public sealed partial class CompareViewModel : ObservableObject
         var chosen = Cells.Where(cell => cell.IsSelected).Select(cell => (cell.Row, cell.Column)).ToHashSet();
         var matches = _all.AsEnumerable();
         if (chosen.Count > 0) matches = matches.Where(word => chosen.Contains((word.Row, word.Column)));
-        if (!string.IsNullOrWhiteSpace(SearchText))
+        if (_focusedWordSearch is { } focusedWord)
+            matches = matches.Where(word => word.Word == focusedWord);
+        else if (!string.IsNullOrWhiteSpace(SearchText))
             matches = matches.Where(word => word.Word.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
         matches = Sort switch
         {

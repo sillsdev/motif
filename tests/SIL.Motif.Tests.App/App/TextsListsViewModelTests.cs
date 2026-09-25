@@ -68,6 +68,19 @@ public sealed class TextsListsViewModelTests
         Assert.Equal(["approved-empty"], compare.Words.Select(word => word.Word));
     }
 
+    [Fact]
+    public void ChoosingAListClearsTheFixFirstSearchAndShowsItsWholeCell()
+    {
+        var (compare, lists) = Loaded();
+        compare.FocusFixFirstCommand.Execute(compare.FixFirstRows.Single(item => item.Word.Word == "approved-empty"));
+
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Approved, parsed differently"));
+
+        Assert.Equal(string.Empty, compare.SearchText);
+        Assert.Equal(["approved-other"], compare.Words.Select(word => word.Word));
+        Assert.Equal(1, lists.SelectedList!.WordCount);
+    }
+
     [Theory]
     [InlineData("Approved, not parsed", "approved-empty")]
     [InlineData("Approved, parsed differently", "approved-other")]
