@@ -39,11 +39,6 @@ public static class ChangeKinds
         _ => kind,
     };
 
-    /// <summary>
-    /// Whether the current change language can express this kind of analysis or spelling change.
-    /// </summary>
-    public static bool CanBeProposed(string kind) => kind is Approve or Reject or Candidate or
-        IncorrectSpelling or AddCandidate;
 }
 
 /// <summary>
@@ -51,13 +46,12 @@ public static class ChangeKinds
 /// </summary>
 public sealed partial class ChangesViewModel : ObservableObject
 {
-    private readonly ICommandClient? _client;
+    private readonly ICommandClient _client;
     private readonly List<string> _collectionNotices = [];
-    public ChangesViewModel(ICommandClient? client = null)
+    public ChangesViewModel(ICommandClient client)
     {
-        _client = client;
+        _client = client ?? throw new ArgumentNullException(nameof(client));
         RemoveCommand = new AsyncRelayCommand<ChangeViewModel>(RemoveAsync);
-        ClearCommand = new AsyncRelayCommand(ClearAsync);
         Items.CollectionChanged += (_, _) => Raise();
     }
 
@@ -79,7 +73,6 @@ public sealed partial class ChangesViewModel : ObservableObject
     public int Count => Items.Count;
 
     public IAsyncRelayCommand<ChangeViewModel> RemoveCommand { get; }
-    public IAsyncRelayCommand ClearCommand { get; }
 
     public PendingChangesSnapshot Snapshot { get; private set; } = new(null, "none", [], []);
 
@@ -101,19 +94,16 @@ public sealed partial class ChangesViewModel : ObservableObject
 
     public string? AssessmentId { get; set; }
 
-    public async Task SetProjectAsync(string path, CancellationToken cancellationToken = default)
-        => await OpenProjectAsync(path, cancellationToken).ConfigureAwait(true);
-
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
-        if (_client is null || ProjectPath is null) return;
+        if (ProjectPath is null) return;
         Accept(await _client.LoadPendingChangesAsync(new PendingChangesRequest(
             ProjectPath, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true));
     }
 
     public async Task PutAsync(ChangeIntent change, CancellationToken cancellationToken = default)
     {
-        if (_client is null || ProjectPath is null) return;
+        if (ProjectPath is null) throw new InvalidOperationException("Open a project before collecting changes.");
         var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
             ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision, change),
             cancellationToken).ConfigureAwait(true);
@@ -151,14 +141,6 @@ public sealed partial class ChangesViewModel : ObservableObject
     public async Task AddFromTextAsync(string kind, ResultsTokenViewModel token, ResultsReadingViewModel? reading = null)
     {
         ArgumentNullException.ThrowIfNull(token);
-        if (_client is null || ProjectPath is null)
-        {
-            Items.Add(new ChangeViewModel(kind, token.Form, token.ProjectStatusLabel,
-                reading?.Text ?? string.Empty));
-            Raise();
-            return;
-        }
-
         await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", token.Form,
             AssessmentId, reading?.Analysis, DisplayReading: reading?.Text,
             ReadingIndex: reading?.Index)).ConfigureAwait(true);
@@ -167,11 +149,6 @@ public sealed partial class ChangesViewModel : ObservableObject
     private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice,
         WorkspacePage originPage)
     {
-        if (_client is null || ProjectPath is null)
-        {
-            Add(kind, word, choice?.Label ?? word.FirstReading);
-            return;
-        }
         await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", word.Word,
             AssessmentId, choice?.Reading, DisplayReading: choice?.Label ?? word.FirstReading,
             ReadingIndex: choice?.Index, OriginPage: originPage.ToString())).ConfigureAwait(true);
@@ -180,12 +157,7 @@ public sealed partial class ChangesViewModel : ObservableObject
     private async Task RemoveAsync(ChangeViewModel? change)
     {
         if (change is null) return;
-        if (_client is null || ProjectPath is null)
-        {
-            Items.Remove(change);
-            Raise();
-            return;
-        }
+        if (ProjectPath is null) return;
         var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
             ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId),
             CancellationToken.None).ConfigureAwait(true);
@@ -202,11 +174,6 @@ public sealed partial class ChangesViewModel : ObservableObject
         OnPropertyChanged(nameof(LastRefusal));
         OnPropertyChanged(nameof(ErrorText));
         OnPropertyChanged(nameof(HasError));
-    }
-
-    private async Task ClearAsync()
-    {
-        foreach (var change in Items.ToArray()) await RemoveAsync(change).ConfigureAwait(true);
     }
 
     public void Reset()
@@ -242,7 +209,7 @@ public sealed partial class ChangesViewModel : ObservableObject
         foreach (var change in snapshot.Changes)
         {
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
-            Items.Add(new ChangeViewModel(change.Kind, change.Word, "Project analysis",
+            Items.Add(new ChangeViewModel(change.Kind, change.Word,
                 change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage));
         }
         Raise();
@@ -260,50 +227,16 @@ public sealed partial class ChangesViewModel : ObservableObject
     /// <summary>How many changes wait, as the Texts page's strip says it.</summary>
     public string CountText => Items.Count == 1 ? "1 change not applied yet" : $"{Items.Count:N0} changes not applied yet";
 
-    public string Summary => Items.Count switch
-    {
-        0 => "No changes collected yet. Tick words below, then choose what should happen to them.",
-        1 => "1 change collected",
-        var count => $"{count:N0} changes collected",
-    };
-
-    /// <summary>What applying now could write to FieldWorks, or why the list needs attention first.</summary>
-    public string ApplyStatus
-    {
-        get
-        {
-            var stale = Items.Count(item => item.Fit is { StillFits: false });
-            if (stale > 0)
-                return stale == 1 ? "1 change no longer fits the project. Review is blocked."
-                    : $"{stale:N0} changes no longer fit the project. Review is blocked.";
-            var ready = Items.Count(item => item.CanBeProposed);
-            var waiting = Items.Count - ready;
-            return waiting == 0
-                ? "All of these can be applied to the FieldWorks project."
-                : $"{ready:N0} can be applied today; {waiting:N0} wait until Motif can apply approvals and new analyses.";
-        }
-    }
-
-    /// <summary>Shows a change locally before a project is open.</summary>
-    public void Add(string kind, CompareWordViewModel word, string? reading = null)
-    {
-        ArgumentNullException.ThrowIfNull(word);
-        Items.Add(new ChangeViewModel(kind, word.Word, word.RowLabel, reading ?? word.FirstReading));
-        Raise();
-    }
-
     private void Raise()
     {
         OnPropertyChanged(nameof(Count));
         OnPropertyChanged(nameof(HasItems));
-        OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(CountText));
-        OnPropertyChanged(nameof(ApplyStatus));
     }
 }
 
 /// <summary>One collected change: what should happen to one word, and what it held when the change was chosen.</summary>
-public sealed class ChangeViewModel(string kind, string word, string heldLabel, string reading,
+public sealed class ChangeViewModel(string kind, string word, string reading,
     string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null,
     string? originPage = null)
 {
@@ -319,7 +252,6 @@ public sealed class ChangeViewModel(string kind, string word, string heldLabel, 
     public string ReviewLabel => kind == ChangeKinds.Approve && analyses is { Count: > 1 }
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
-    public string HeldLabel { get; } = heldLabel;
 
     /// <summary>The parser's reading, for a change that sends it to FieldWorks or judges it.</summary>
     public string Reading { get; } = reading;
@@ -330,7 +262,6 @@ public sealed class ChangeViewModel(string kind, string word, string heldLabel, 
 
     public bool HasAnalyses => Analyses.Count > 0;
 
-    public bool CanBeProposed { get; } = ChangeKinds.CanBeProposed(kind);
 
     public string Summary => $"{Word}: {Label}";
 }

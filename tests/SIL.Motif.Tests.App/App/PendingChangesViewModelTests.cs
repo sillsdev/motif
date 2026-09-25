@@ -14,7 +14,7 @@ public sealed class PendingChangesViewModelTests
     {
         var fake = new FakeCommandClient();
         var changes = new ChangesViewModel(fake);
-        await changes.SetProjectAsync("project.fwdata");
+        await changes.OpenProjectAsync("project.fwdata");
         var existing = new PendingChange("older", "wordform", "word", "approve", null, null, ["operation"]);
         fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [existing], [])
         {
@@ -47,7 +47,7 @@ public sealed class PendingChangesViewModelTests
     {
         var fake = new FakeCommandClient();
         var changes = new ChangesViewModel(fake);
-        await changes.SetProjectAsync("project.fwdata");
+        await changes.OpenProjectAsync("project.fwdata");
         changes.AssessmentId = "assessment/one";
         var assessmentWord = new AssessmentWordResult("word", "analysed", false, "Done", 1, null)
         {
@@ -80,7 +80,7 @@ public sealed class PendingChangesViewModelTests
             PendingPutRefusalOnCall = 1,
         };
         var changes = new ChangesViewModel(fake);
-        await changes.SetProjectAsync("project.fwdata");
+        await changes.OpenProjectAsync("project.fwdata");
         var result = new AssessmentWordResult("word", "analysed", false, "Done", 1, null)
         {
             Morphology = new ParseWordEvidence("v1", 0, "word", 1, false, false, false,
@@ -107,7 +107,7 @@ public sealed class PendingChangesViewModelTests
             [new ChangeFit("change/one", true, [])]));
         var changes = new ChangesViewModel(fake);
 
-        await changes.SetProjectAsync("project.fwdata");
+        await changes.OpenProjectAsync("project.fwdata");
 
         Assert.Equal("change/one", Assert.Single(changes.Items).ChangeId);
         Assert.Equal("revision/one", changes.Snapshot.Revision);
@@ -123,9 +123,9 @@ public sealed class PendingChangesViewModelTests
             [new ChangeFit("change/two", false, ["Wordform was deleted."])]));
         var changes = new ChangesViewModel(fake);
 
-        await changes.SetProjectAsync("project.fwdata");
+        await changes.OpenProjectAsync("project.fwdata");
 
-        Assert.Contains("no longer fits", changes.ApplyStatus);
+        Assert.False(Assert.Single(changes.Snapshot.FitSummary).StillFits);
         Assert.Contains("deleted", Assert.Single(changes.Items).FitStatus);
     }
 
@@ -135,7 +135,7 @@ public sealed class PendingChangesViewModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
         var changes = new ChangesViewModel(fake);
-        await changes.SetProjectAsync("project.fwdata");
+        await changes.OpenProjectAsync("project.fwdata");
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
             [new PendingChange("change/other", "wordform/one", "word", "approve", null, null,
                 ["operation/other"])], [new ChangeFit("change/other", true, [])]));

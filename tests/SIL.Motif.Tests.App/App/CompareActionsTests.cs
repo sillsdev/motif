@@ -33,10 +33,18 @@ public sealed class CompareActionsTests
     {
         var table = new AssessWordsViewModel();
         table.Load(Sample);
-        var compare = new CompareViewModel();
+        var compare = NewCompare();
         compare.ChosenCellsChanged += (_, _) => table.ShowOnly(compare.ChosenWords);
         compare.Load(table.AllRows);
         return (table, compare);
+    }
+
+    private static CompareViewModel NewCompare()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        changes.OpenProjectAsync("project.fwdata").GetAwaiter().GetResult();
+        return new CompareViewModel { Changes = changes };
     }
 
     [Fact]
@@ -104,33 +112,32 @@ public sealed class CompareActionsTests
     }
 
     [Fact]
-    public void SpellingAndCandidateUseDistinctSlotsForTheSameWord()
+    public async Task SpellingAndCandidateUseDistinctSlotsForTheSameWord()
     {
         var (_, compare) = Loaded();
         var mwalimu = compare.Words.Single(word => word.Word == "mwalimu");
 
         mwalimu.IsChecked = true;
-        compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
         mwalimu.IsChecked = true;
-        compare.ProposeCommand.Execute(ChangeKinds.IncorrectSpelling);
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
 
         Assert.Equal(2, compare.Changes.Items.Count);
         var change = compare.Changes.Items.Last();
         Assert.Equal("mwalimu: Incorrect spelling", change.Summary);
-        Assert.True(change.CanBeProposed);
         Assert.False(mwalimu.IsChecked);
-        Assert.Equal("All of these can be applied to the FieldWorks project.", compare.Changes.ApplyStatus);
+        Assert.All(compare.Changes.Items, item => Assert.True(item.Fit?.StillFits));
     }
 
     [Fact]
-    public void AnAddedCandidateCanBeAppliedWithTheOtherAnalysisChanges()
+    public async Task AnAddedCandidateCanBeAppliedWithTheOtherAnalysisChanges()
     {
         var (_, compare) = Loaded();
         compare.Words.Single(word => word.Word == "mwalimu").IsChecked = true;
 
-        compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
 
-        Assert.Equal("All of these can be applied to the FieldWorks project.", compare.Changes.ApplyStatus);
+        Assert.True(Assert.Single(compare.Changes.Items).Fit?.StillFits);
     }
 
     [Fact]
@@ -138,7 +145,7 @@ public sealed class CompareActionsTests
     {
         var table = new AssessWordsViewModel();
         table.Load([Word("ambiguous", "analysed", ProjectStanding.NotPresent, readingCount: 2)]);
-        var compare = new CompareViewModel();
+        var compare = NewCompare();
         compare.Load(table.AllRows);
         compare.Words.Single().IsChecked = true;
 
@@ -169,7 +176,7 @@ public sealed class CompareActionsTests
     {
         var table = new AssessWordsViewModel();
         table.Load([Word("pasted-word", "analysed", ProjectStanding.Approved, readingCount: 2)]);
-        var compare = new CompareViewModel();
+        var compare = NewCompare();
         compare.Load(table.AllRows);
         var word = compare.Words.Single();
         word.IsChecked = true;
@@ -193,7 +200,7 @@ public sealed class CompareActionsTests
         var table = new AssessWordsViewModel();
         table.Load([Word("one", "analysed", ProjectStanding.NotPresent),
             Word("two", "analysed", ProjectStanding.NotPresent)]);
-        var compare = new CompareViewModel();
+        var compare = NewCompare();
         compare.Load(table.AllRows);
         foreach (var word in compare.Words)
         {

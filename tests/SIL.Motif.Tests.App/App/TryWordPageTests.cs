@@ -244,7 +244,7 @@ public sealed class TryWordPageTests
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
-        return (new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(), fake,
+        return (new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
             new NoFolderPicker(), new NoDragSource()), fake);
     }
 

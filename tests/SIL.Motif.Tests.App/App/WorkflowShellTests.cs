@@ -223,7 +223,7 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
-                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Approve, "kitabu", "Candidate", "kitabu"));
+                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Approve, "kitabu", "kitabu"));
                 window.Width = 1240;
                 window.Show();
                 window.UpdateLayout();
@@ -427,7 +427,7 @@ public sealed class WorkflowShellTests
                 Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
                 Assert.Same(workspace.Context.Changes.Items, list.ItemsSource);
 
-                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "Approved", "kitabu"));
+                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "kitabu"));
                 window.UpdateLayout();
 
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "kitabu");

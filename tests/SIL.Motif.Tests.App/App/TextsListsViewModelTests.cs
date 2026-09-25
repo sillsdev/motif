@@ -135,11 +135,11 @@ public sealed class TextsListsViewModelTests
     public void APendingChangeIsSharedWithTheNamedListAndTheMatrixSelection()
     {
         var (compare, lists) = Loaded();
-        var changes = new ChangesViewModel();
+        var changes = new ChangesViewModel(new FakeCommandClient());
         compare.Changes = changes;
         var list = lists.Lists.Single(item => item.Name == "Approved, not parsed");
 
-        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "approved-empty", "Approved", ""));
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "approved-empty", ""));
         lists.SelectListCommand.Execute(list);
 
         Assert.True(list.HasPendingChanges);

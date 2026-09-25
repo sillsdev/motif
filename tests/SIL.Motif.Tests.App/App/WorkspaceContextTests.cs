@@ -190,6 +190,7 @@ public sealed class WorkspaceContextTests
         _ = new OverviewPageModel(context);
         var texts = new TextsPageModel(context);
         var handoff = new AiHandoffPageModel(context);
+        Assert.Same(context.Changes, texts.Assess.Compare.Changes);
         var baseline = new BaselineRecord("project-1", Token, "root", ProjectPath,
             DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
         var assessment = StoredAssessment() with
@@ -485,7 +486,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal(ProjectPath, context.Changes.ProjectPath);
         Assert.Equal(string.Empty, review.Badge);
 
-        context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "dogz", "Approved", string.Empty));
+        context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "dogz", string.Empty));
         Assert.Equal("1", review.Badge);
 
         context.ClearProject();
@@ -640,6 +641,7 @@ public sealed class WorkspaceContextTests
     {
         var (fake, context) = NewContextWithFake();
         var texts = new TextsPageModel(context);
+        await context.Changes.OpenProjectAsync(ProjectPath);
         fake.ListTextWordsCompletesWith(new TextWordsResponse(
             [new TextWord("kitabu", null,
                 [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], [])],
@@ -661,7 +663,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal("Not applied yet", Assert.Single(texts.Assess.Compare.Words).PendingChangeStatus);
         Assert.Equal("Not applied yet", list.PendingChangeStatus);
 
-        context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "kitabu", "Approved", "",
+        context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "kitabu", "",
             fit: new ChangeFit("stale-change", false, ["The project changed."])));
 
         Assert.Equal(PendingChangeState.NoLongerFits, token.PendingState);

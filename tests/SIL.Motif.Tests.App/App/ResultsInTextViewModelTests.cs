@@ -45,7 +45,9 @@ public sealed class ResultsInTextViewModelTests
         var texts = new TextWordsViewModel(fake, selection);
         var assess = new AssessViewModel(fake, selection) { ProjectPath = ProjectPath };
         var shown = new List<string>();
-        var inText = new ResultsInTextViewModel(texts, assess, shown.Add, _ => { });
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync(ProjectPath);
+        var inText = new ResultsInTextViewModel(texts, assess, shown.Add, _ => { }, changes);
 
         fake.ListTextWordsCompletesWith(new TextWordsResponse([],
             [new TextLines(TextId, "Alpha",
@@ -185,7 +187,8 @@ public sealed class ResultsInTextViewModelTests
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var inText = new ResultsInTextViewModel(
-            new TextWordsViewModel(fake, selection), new AssessViewModel(fake, selection), _ => { }, _ => { });
+            new TextWordsViewModel(fake, selection), new AssessViewModel(fake, selection), _ => { }, _ => { },
+            new ChangesViewModel(fake));
 
         Assert.StartsWith("Run an Assessment", inText.Message, StringComparison.Ordinal);
         Assert.Empty(inText.VisibleLines);
@@ -197,7 +200,8 @@ public sealed class ResultsInTextViewModelTests
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var texts = new TextWordsViewModel(fake, selection);
-        var inText = new ResultsInTextViewModel(texts, new AssessViewModel(fake, selection), _ => { }, _ => { });
+        var inText = new ResultsInTextViewModel(texts, new AssessViewModel(fake, selection), _ => { }, _ => { },
+            new ChangesViewModel(fake));
         fake.ListTextWordsCompletesWith(new TextWordsResponse([], [new TextLines(TextId, "Alpha",
             [new TextLine(1, [Word("kitabu", null)])])], HasBaseline: true));
 

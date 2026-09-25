@@ -56,11 +56,11 @@ public sealed class PendingChangesCliAppTests(PristineProjectFixture pristine)
         }
 
         var first = new ChangesViewModel(new CommandClient());
-        await first.SetProjectAsync(path);
+        await first.OpenProjectAsync(path);
         Assert.Equal(id, Assert.Single(first.Items).ChangeId);
 
         var reopened = new ChangesViewModel(new CommandClient());
-        await reopened.SetProjectAsync(path);
+        await reopened.OpenProjectAsync(path);
         Assert.Equal(id, Assert.Single(reopened.Items).ChangeId);
     }
 }

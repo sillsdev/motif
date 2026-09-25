@@ -282,10 +282,10 @@ public sealed class CompareViewModelTests
         ]);
         var compare = new CompareViewModel();
         compare.Load(words.AllRows);
-        var changes = new ChangesViewModel();
+        var changes = new ChangesViewModel(new FakeCommandClient());
         compare.Changes = changes;
-        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "first", "Approved", ""));
-        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "second", "Approved", "", "stale",
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "first", ""));
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "second", "", "stale",
             new SIL.Motif.Contract.Responses.ChangeFit("stale", false, ["The project changed."])));
 
         Assert.Equal("No longer fits", compare.Cells.Single(cell =>
@@ -296,11 +296,11 @@ public sealed class CompareViewModelTests
     public void PendingChangesMarkTheirCellsAndSurfaceWhenTheyNoLongerFit()
     {
         var (_, compare) = Loaded();
-        var changes = new ChangesViewModel();
+        var changes = new ChangesViewModel(new FakeCommandClient());
         compare.Changes = changes;
         var word = compare.Words.Single(item => item.Word == "kitabu");
 
-        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, word.Word, "Approved", "", "change-1",
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, word.Word, "", "change-1",
             new SIL.Motif.Contract.Responses.ChangeFit("change-1", false, ["The project changed."])));
 
         Assert.True(word.HasPendingChange);

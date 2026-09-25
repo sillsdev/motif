@@ -58,7 +58,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     public ResultsInTextViewModel(
         TextWordsViewModel texts, AssessViewModel assess, Action<string> showWord, Action<string> tryWord,
-        ChangesViewModel? changes = null)
+        ChangesViewModel changes)
     {
         ArgumentNullException.ThrowIfNull(texts);
         ArgumentNullException.ThrowIfNull(assess);
@@ -68,7 +68,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         _assess = assess;
         _showWord = showWord;
         _tryWord = tryWord;
-        _changes = changes ?? new ChangesViewModel();
+        _changes = changes ?? throw new ArgumentNullException(nameof(changes));
         SetFilterCommand = new RelayCommand<ResultsInTextFilter>(filter => Filter = filter);
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
         TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });

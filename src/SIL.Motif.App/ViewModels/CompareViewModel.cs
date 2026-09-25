@@ -15,7 +15,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class CompareViewModel : ObservableObject
 {
     private readonly List<CompareWordViewModel> _all = [];
-    private ChangesViewModel _changes = new();
+    private ChangesViewModel? _changes;
     private string? _focusedWordSearch;
 
     public CompareViewModel()
@@ -72,17 +72,16 @@ public sealed partial class CompareViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The changes collected so far, to become one Proposal. A list of its own until an owner hands it the one every
-    /// page of the window shares.
+    /// The changes collected so far, to become one Proposal, supplied by the workspace.
     /// </summary>
     public ChangesViewModel Changes
     {
-        get => _changes;
+        get => _changes ?? throw new InvalidOperationException("The shared change list has not been assigned.");
         set
         {
             ArgumentNullException.ThrowIfNull(value);
             if (ReferenceEquals(_changes, value)) return;
-            _changes.Items.CollectionChanged -= OnChangesChanged;
+            if (_changes is not null) _changes.Items.CollectionChanged -= OnChangesChanged;
             _changes = value;
             _changes.Items.CollectionChanged += OnChangesChanged;
             UpdatePendingMarkers();
@@ -404,7 +403,7 @@ public sealed partial class CompareViewModel : ObservableObject
 
     private void UpdatePendingMarkers()
     {
-        var pending = Changes.Items.GroupBy(change => change.Word, StringComparer.Ordinal)
+        var pending = (_changes?.Items ?? []).GroupBy(change => change.Word, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
         foreach (var word in _all)
         {
