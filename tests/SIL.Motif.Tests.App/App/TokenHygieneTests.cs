@@ -68,6 +68,13 @@ public sealed class TokenHygieneTests
         Assert.Equal(["literal-size"], Categories(View, xaml));
     }
 
+    [Fact]
+    public void ARawValueResourceIsReportedAsWritten()
+    {
+        var xaml = Styles("<Styles.Resources><Thickness x:Key=\"Component.Sample.Gap\">4,3</Thickness></Styles.Resources>");
+        Assert.Equal("<Thickness>4,3</Thickness>", Assert.Single(TokenHygiene.ScanFile(Component, xaml)).Detail);
+    }
+
     [Theory]
     [InlineData("Margin=\"{DynamicResource Primitive.Inset.0_0_8_0}\"")]
     [InlineData("Tag=\"{StaticResource Primitive.Space.4}\"")]

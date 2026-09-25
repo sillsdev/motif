@@ -262,8 +262,9 @@ internal static class TokenHygiene
                 found.Add(new(path, elementLine, "literal-value", $"<{name}>{text}</{name}>: Intent refers to a Primitive or a Semi role"));
                 continue;
             }
-            if (ValueElements.Contains(name)) CheckValue(found, path, layer, name is "Color" or "SolidColorBrush" ? "Color" : "Width", text, elementLine);
-            else if (name.Contains('.')) CheckValue(found, path, layer, LastSegment(name), text, elementLine);
+            var shown = $"<{name}>{text}</{name}>";
+            if (ValueElements.Contains(name)) CheckValue(found, path, layer, name is "Color" or "SolidColorBrush" ? "Color" : "Width", text, elementLine, shown);
+            else if (name.Contains('.')) CheckValue(found, path, layer, LastSegment(name), text, elementLine, shown);
         }
         return found;
     }
@@ -294,9 +295,11 @@ internal static class TokenHygiene
         found.Add(new(path, line, "wrong-layer", $"Intent names '{key}'; it may name only a Primitive or a Semi role"));
     }
 
-    private static void CheckValue(List<Violation> found, string path, Layer layer, string property, string rawValue, int line)
+    private static void CheckValue(List<Violation> found, string path, Layer layer, string property, string rawValue, int line,
+        string? shown = null)
     {
         var value = rawValue.Trim();
+        var literal = shown ?? $"{property}=\"{value}\"";
         var colour = ColourProperties.Contains(property);
         var size = SizeProperties.Contains(property);
         var markup = Markup.Match(value);
@@ -321,12 +324,12 @@ internal static class TokenHygiene
 
         if (colour)
         {
-            if (value.Length > 0) found.Add(new(path, line, "literal-colour", $"{property}=\"{value}\""));
+            if (value.Length > 0) found.Add(new(path, line, "literal-colour", literal));
             return;
         }
         if (size)
         {
-            if (!IsNeutralSize(value)) found.Add(new(path, line, "literal-size", $"{property}=\"{value}\""));
+            if (!IsNeutralSize(value)) found.Add(new(path, line, "literal-size", literal));
             return;
         }
         if (HexColour.IsMatch(value)) found.Add(new(path, line, "literal-colour", $"{property}=\"{value}\""));
