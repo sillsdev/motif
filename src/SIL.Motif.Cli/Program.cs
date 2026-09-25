@@ -393,6 +393,26 @@ try
                 removePendingProject, CliProductVersion(), removePendingRevision, removePendingId)));
             break;
 
+        case "recheck-pending-changes":
+            if (!flags.TryGetValue("project", out var recheckProject) ||
+                !flags.TryGetValue("expected-revision", out var recheckRevision))
+                return Usage("Usage: motif recheck-pending-changes --project <fwdata> " +
+                    "--expected-revision <revision> [--json]", asJson);
+            result = RenderProposal(PendingChanges.Recheck(new RecheckPendingChangesRequest(
+                recheckProject, CliProductVersion(), recheckRevision)));
+            break;
+
+        case "review-numbers":
+            if (!flags.TryGetValue("project", out var reviewProject) ||
+                !flags.TryGetValue("to", out var reviewTrial) ||
+                !flags.TryGetValue("touched-words", out var touchedWordsText) ||
+                !int.TryParse(touchedWordsText, out var touchedWords) || touchedWords < 0)
+                return Usage("Usage: motif review-numbers --project <fwdata> " +
+                    "[--from <assessmentId>] --to <assessmentId> --touched-words <count> [--json]", asJson);
+            result = RenderCommand(ReviewNumbersCommand.Read(new ReviewNumbersCommand.Request(
+                reviewProject, flags.GetValueOrDefault("from"), reviewTrial, touchedWords)));
+            break;
+
         case "preflight":
             if (!flags.TryGetValue("project", out var preflightProject) ||
                 positionals.Count != 1 || flags.ContainsKey("draft"))

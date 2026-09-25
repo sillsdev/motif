@@ -13,7 +13,8 @@ namespace SIL.Motif.Commands.Catalog;
 /// The sole enumeration of Motif's command handlers (ADR 0043 decision 3): one entry per public
 /// handler in <see cref="ProposalCommands"/>, <see cref="PendingChanges"/>,
 /// <see cref="CorpusCommands"/>, <see cref="ConfigCommands"/>,
-/// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, <see cref="BaselineCaptureCommand"/>,
+/// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, <see cref="ReviewNumbersCommand"/>,
+/// <see cref="BaselineCaptureCommand"/>,
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
 /// <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>, and
@@ -44,6 +45,10 @@ public static class CommandCatalog
             typeof(PendingChangesSnapshot), CommandSurface.Developer),
         new CommandDescriptor("remove-pending-change", typeof(RemovePendingChangeRequest),
             typeof(PendingChangesSnapshot), CommandSurface.Developer),
+        new CommandDescriptor("recheck-pending-changes", typeof(RecheckPendingChangesRequest),
+            typeof(PendingChangesSnapshot), CommandSurface.Developer),
+        new CommandDescriptor("review-numbers", typeof(ReviewNumbersCommand.Request),
+            typeof(ReviewNumbersCommand.Response), CommandSurface.Developer),
         new CommandDescriptor("add-set-gloss", typeof(AddSetGlossRequest), typeof(SetGlossAddedResponse), CommandSurface.Developer),
         new CommandDescriptor(
             "add-delete-lexeme-form", typeof(AddDeleteLexemeFormRequest), typeof(DeleteLexemeFormAddedResponse), CommandSurface.Developer),

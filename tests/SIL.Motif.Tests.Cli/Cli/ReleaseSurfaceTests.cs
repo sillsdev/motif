@@ -30,6 +30,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
     private static readonly string[] DeveloperNames =
     [
         "new", "pending-changes", "put-pending-change", "remove-pending-change",
+        "recheck-pending-changes", "review-numbers",
         "add-set-gloss", "add-delete-lexeme-form", "compose-author-lexeme-form",
         "compose-author-feature-structure", "promote-gloss", "label", "comment", "finalize",
         "discard-draft", "reopen", "duplicate", "remove-operations", "split", "defer", "reject",
@@ -93,6 +94,17 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.DoesNotContain("Unknown command", result.Error, StringComparison.Ordinal);
             Assert.DoesNotContain("command.not-in-release", result.Error, StringComparison.Ordinal);
         }
+    }
+
+    [Theory]
+    [InlineData("recheck-pending-changes", "--expected-revision")]
+    [InlineData("review-numbers", "--touched-words")]
+    public void ReviewCommandsHaveDeveloperCliUsage(string verb, string requiredFlag)
+    {
+        var result = Run(verb, developerCommands: true);
+
+        Assert.Contains("Usage: motif " + verb, result.Error, StringComparison.Ordinal);
+        Assert.Contains(requiredFlag, result.Error, StringComparison.Ordinal);
     }
 
     [Fact]

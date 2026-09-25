@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Worker.Jobs;
 using ProjectionText = SIL.Motif.Projection.Rendering.CommandTextRenderer;
 
@@ -45,6 +46,7 @@ public static class CommandTextRenderer
             CorpusBundleAddedResponse r => RenderCorpusBundleAdded(r),
             ReportKindListResponse r => RenderReportKindList(r),
             ReportResponse r => RenderReport(r),
+            ReviewNumbersCommand.Response r => r.Text + Environment.NewLine,
             CompareResponse r => RenderCompare(r),
             JobEnqueuedResponse r => r.JobId + Environment.NewLine,
             JobStatusResponse r => RenderJobStatus(r),

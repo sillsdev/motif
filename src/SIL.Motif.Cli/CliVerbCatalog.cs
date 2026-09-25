@@ -48,6 +48,11 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "remove-pending-change", "remove-pending-change",
             new[] { "remove-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> [--json]" }),
+        new CliVerbDescriptor("Commands", "recheck-pending-changes", "recheck-pending-changes",
+            new[] { "recheck-pending-changes --project <fwdata> --expected-revision <revision> [--json]" }),
+        new CliVerbDescriptor("Commands", "review-numbers", "review-numbers",
+            new[] { "review-numbers --project <fwdata> [--from <assessmentId>] " +
+                "--to <assessmentId> --touched-words <count> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "add-set-gloss", "add-set-gloss",
             new[]

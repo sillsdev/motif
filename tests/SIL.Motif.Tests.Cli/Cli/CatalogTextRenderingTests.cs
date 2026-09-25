@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Cli.Rendering;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -9,6 +10,18 @@ namespace SIL.Motif.Tests.Cli;
 
 public sealed class CatalogTextRenderingTests
 {
+    [Fact]
+    public void ReviewNumbersTextIsTheCommandResponse()
+    {
+        var response = new ReviewNumbersCommand.Response(
+            "Among 1 shared word, approved kept: 0 → 1.", true);
+
+        var rendered = CommandTextRenderer.Render(
+            CommandOutcome<ReviewNumbersCommand.Response>.Success(response), asJson: false);
+
+        Assert.Equal(response.Text + Environment.NewLine, rendered.Output);
+    }
+
     [Fact]
     public void OverviewTextShowsSelectionSourcesCoverageAccuracyAndTiming()
     {
