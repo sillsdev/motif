@@ -223,6 +223,25 @@ public sealed class WorkspaceContextTests
         Assert.Equal("invocation/one", handoff.Handoff.InvocationId);
     }
 
+    [Fact]
+    public async Task RestoredTimedOutWordRemainsIncomplete()
+    {
+        var (fake, context) = NewContextWithFake();
+        _ = new OverviewPageModel(context);
+        _ = new TextsPageModel(context);
+        var baseline = new BaselineRecord("project-1", Token, "root", ProjectPath,
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+        fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
+            null, EvidenceFreshness.Current, baseline, null, null, null,
+            StoredAssessment() with { Words = [new AssessedWord("dogs", "timed-out", [])] }));
+        fake.OverviewCompletesWith(Overview());
+
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        Assert.True(Assert.Single(context.Assess.Words.AllRows).IsIncomplete);
+        Assert.Contains("1 incomplete", context.Assess.Result!.CompletionSummary);
+    }
+
     [Theory]
     [InlineData("step-limit", 10)]
     [InlineData("slowest", 20)]

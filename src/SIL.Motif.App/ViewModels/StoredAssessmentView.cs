@@ -40,18 +40,23 @@ internal static class StoredAssessmentView
 
     private static AssessmentWordResult ToWord(AssessedWord word)
     {
+        var incomplete = word.IsIncomplete || word.Outcome is "timed-out" or "capped" ||
+            word.Morphology is { Capped: true } or { TimedOut: true };
         var missed = word.Correctness?.Unmatched.Select(index => word.Correctness.Expectations[index])
             .Select(expected => new ParserReading(expected.Morphs.Select(morph =>
                 new ParserReadingMorph(morph.Forms.FirstOrDefault() ?? "?", "", "", null, false, null))
                 .ToArray())).ToArray();
-        var status = word.Outcome switch
+        var status = word.Morphology switch
         {
-            "timed-out" => "INCOMPLETE — parsing did not finish (time limit)",
-            "capped" => "INCOMPLETE — parsing did not finish (step limit)",
-            "skipped" => "Not attempted",
+            { Capped: true, TimedOut: true } => "INCOMPLETE — parsing did not finish (step and time limits)",
+            { Capped: true } => "INCOMPLETE — parsing did not finish (step limit)",
+            { TimedOut: true } => "INCOMPLETE — parsing did not finish (time limit)",
+            _ when word.Outcome == "timed-out" => "INCOMPLETE — parsing did not finish (time limit)",
+            _ when word.Outcome == "capped" => "INCOMPLETE — parsing did not finish (step limit)",
+            _ when word.Outcome == "skipped" => "Not attempted",
             _ => "Search completed",
         };
-        return new AssessmentWordResult(word.Word, word.Outcome, word.IsIncomplete, status,
+        return new AssessmentWordResult(word.Word, word.Outcome, incomplete, status,
             word.ElapsedMs, word.RawSignature)
         {
             Morphology = word.Morphology,
@@ -61,7 +66,7 @@ internal static class StoredAssessmentView
             MissedApproved = missed,
             OccurrenceCount = word.OccurrenceCount,
             FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(word.ProjectStanding,
-                word.Outcome, word.IsIncomplete, word.Morphology, word.ReadingGrades,
+                word.Outcome, incomplete, word.Morphology, word.ReadingGrades,
                 word.MissedApprovedCount ?? 0), missed),
         };
     }
