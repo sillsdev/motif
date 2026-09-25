@@ -93,8 +93,11 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private readonly ICommandClient _commandClient;
     private readonly SelectionViewModel _selection;
     private readonly List<TextWordRowViewModel> _all = [];
+    private readonly object _loadGate = new();
+    private readonly HashSet<Task> _activeLoads = [];
     private string? _projectPath;
     private int _generation;
+    private bool _acceptLoads = true;
 
     public TextWordsViewModel(ICommandClient commandClient, SelectionViewModel selection)
     {
@@ -207,12 +210,17 @@ public sealed partial class TextWordsViewModel : ObservableObject
     /// <summary>Sets the project to read words from and immediately reloads for whatever is checked now.</summary>
     public async Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
     {
-        _projectPath = fwDataPath;
-        _generation++;
+        lock (_loadGate)
+        {
+            _acceptLoads = true;
+            _projectPath = fwDataPath;
+            _generation++;
+        }
         foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
         _all.Clear();
         Rows.Clear();
         HasBaseline = true;
+        IsLoading = false;
         OccurrenceCount = 0;
         ApprovedCount = 0;
         Response = null;
@@ -224,42 +232,74 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
-        if (_projectPath is not { } path) return;
-
-        var textIds = _selection.ChosenTextIds;
-        var generation = ++_generation;
-        IsLoading = true;
-        var outcome = await _commandClient.ListTextWordsAsync(new TextWordsRequest(path, textIds), cancellationToken)
-            .ConfigureAwait(true);
-        if (generation != _generation) return;
-
-        IsLoading = false;
-        if (!outcome.Succeeded) return;
-
-        HasBaseline = outcome.Value!.HasBaseline;
-        Response = outcome.Value;
-
-        foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
-        _all.Clear();
-        _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word)));
-        foreach (var row in _all) row.PropertyChanged += OnWordRowPropertyChanged;
-        OnPropertyChanged(nameof(CheckedWordCount));
-        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(ProjectWords));
-        if (_assessed is { } assessed)
-            foreach (var row in _all) row.ShowAssessment(assessed(row.Form));
-        OccurrenceCount = outcome.Value.OccurrenceCount;
-        ApprovedCount = _all.Count(row => row.HasApproved);
-        RaiseCounts();
-        ApplyFilter();
-
-        _selection.ClearTextCounts();
-        foreach (var textId in textIds)
+        TaskCompletionSource completed;
+        string path;
+        IReadOnlyList<Guid> textIds;
+        int generation;
+        lock (_loadGate)
         {
-            var occurrences = _all.Sum(row => row.Occurrences.Count(occurrence => occurrence.TextId == textId));
-            var distinct = _all.Count(row => row.Occurrences.Any(occurrence => occurrence.TextId == textId));
-            _selection.SetTextCounts(textId, occurrences, distinct);
+            if (!_acceptLoads || _projectPath is not { } projectPath) return;
+            path = projectPath;
+            textIds = _selection.ChosenTextIds;
+            generation = ++_generation;
+            completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _activeLoads.Add(completed.Task);
+            IsLoading = true;
         }
+
+        try
+        {
+            var outcome = await _commandClient.ListTextWordsAsync(new TextWordsRequest(path, textIds), cancellationToken)
+                .ConfigureAwait(true);
+            if (generation != _generation) return;
+
+            IsLoading = false;
+            if (!outcome.Succeeded) return;
+
+            HasBaseline = outcome.Value!.HasBaseline;
+            Response = outcome.Value;
+
+            foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
+            _all.Clear();
+            _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word)));
+            foreach (var row in _all) row.PropertyChanged += OnWordRowPropertyChanged;
+            OnPropertyChanged(nameof(CheckedWordCount));
+            HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(ProjectWords));
+            if (_assessed is { } assessed)
+                foreach (var row in _all) row.ShowAssessment(assessed(row.Form));
+            OccurrenceCount = outcome.Value.OccurrenceCount;
+            ApprovedCount = _all.Count(row => row.HasApproved);
+            RaiseCounts();
+            ApplyFilter();
+
+            _selection.ClearTextCounts();
+            foreach (var textId in textIds)
+            {
+                var occurrences = _all.Sum(row => row.Occurrences.Count(occurrence => occurrence.TextId == textId));
+                var distinct = _all.Count(row => row.Occurrences.Any(occurrence => occurrence.TextId == textId));
+                _selection.SetTextCounts(textId, occurrences, distinct);
+            }
+        }
+        finally
+        {
+            lock (_loadGate) _activeLoads.Remove(completed.Task);
+            completed.SetResult();
+        }
+    }
+
+    /// <summary>Stops accepting word reads and returns once every active read has finished.</summary>
+    public async Task StopAsync()
+    {
+        Task[] activeLoads;
+        lock (_loadGate)
+        {
+            _acceptLoads = false;
+            _generation++;
+            IsLoading = false;
+            activeLoads = _activeLoads.ToArray();
+        }
+        await Task.WhenAll(activeLoads).ConfigureAwait(true);
     }
 
     private void ApplyFilter()
