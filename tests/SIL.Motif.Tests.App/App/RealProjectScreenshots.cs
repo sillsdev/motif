@@ -95,6 +95,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 walkthrough.Show();
                 Drive(walkthrough, original);
                 SaveEveryPage(walkthrough, folder);
+                SaveTimingStepLimit(walkthrough, folder);
                 SaveGrammarWithAKindChosen(walkthrough, folder);
                 SaveCompareWithCellsChosen(walkthrough, folder);
                 SaveWhatChangedAfterARerun(walkthrough, folder);
@@ -214,6 +215,21 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         {
             Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
         }
+    }
+
+    private static void SaveTimingStepLimit(WalkthroughWindow walkthrough, string folder)
+    {
+        var timing = walkthrough.Workspace.PageModel<TimingPageModel>();
+        timing.SelectWordSetCommand.Execute("step-limit");
+        walkthrough.WaitUntil(() => !timing.SelectWordSetCommand.IsRunning && timing.HasTiming,
+            TimeSpan.FromMinutes(2), "Step-limit timing did not load");
+        foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+        {
+            Application.Current!.RequestedThemeVariant = variant;
+            walkthrough.Workspace.CurrentPage = WorkspacePage.Timing;
+            Save(walkthrough.Window, Path.Combine(folder, $"4b-timing-step-limit-{theme}.png"));
+        }
+        Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
     }
 
     // The matrix filtering the list: the violations preset, then the single largest cell.
