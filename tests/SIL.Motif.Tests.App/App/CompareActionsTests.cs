@@ -119,18 +119,18 @@ public sealed class CompareActionsTests
         Assert.Equal("mwalimu: Incorrect spelling", change.Summary);
         Assert.True(change.CanBeProposedToday);
         Assert.False(mwalimu.IsChecked);
-        Assert.StartsWith("1 can be applied today", compare.Changes.ApplyStatus);
+        Assert.Equal("All of these can be applied to the FieldWorks project.", compare.Changes.ApplyStatus);
     }
 
     [Fact]
-    public void AChangeMotifCannotYetProposeIsSaidToWait()
+    public void AnAddedCandidateCanBeAppliedWithTheOtherAnalysisChanges()
     {
         var (_, compare) = Loaded();
         compare.Words.Single(word => word.Word == "mwalimu").IsChecked = true;
 
         compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
 
-        Assert.StartsWith("0 can be applied today; 1 wait", compare.Changes.ApplyStatus);
+        Assert.Equal("All of these can be applied to the FieldWorks project.", compare.Changes.ApplyStatus);
     }
 
     [Fact]

@@ -30,7 +30,11 @@ public sealed record WorkspaceEvidence(AssessCommandResponse Assessment, DateTim
 /// <param name="RefusalMessage">Why the last capture was refused, or <see langword="null"/>.</param>
 public sealed record WorkspaceBaseline(
     bool HasBaseline, string CapturedTimeText, string SavedText, string CapturedAtText, string HeldStatusText,
-    string? RefusalMessage);
+    string? RefusalMessage)
+{
+    /// <summary>Whether FieldWorks holds the project open, preventing a direct Apply.</summary>
+    public bool FieldWorksHeldProject { get; init; }
+}
 
 /// <summary>The grammar check's findings in one line, for pages that summarise them.</summary>
 /// <param name="SummaryText">The check's state or its count of findings.</param>
@@ -104,6 +108,10 @@ public sealed partial class WorkspaceContext : ObservableObject
 
     /// <summary>The changes collected on any page and not applied yet; the Review changes page lists them.</summary>
     public ChangesViewModel Changes { get; }
+
+    /// <summary>Whether applying changes has made the visible numbers older than the saved project.</summary>
+    [ObservableProperty]
+    private bool _appliedSinceRefresh;
 
     /// <summary>The command seam a page runs its own queries through.</summary>
     public ICommandClient Commands { get; }
@@ -201,6 +209,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(evidence);
         Evidence = evidence;
+        AppliedSinceRefresh = false;
         Changes.AssessmentId = evidence.Assessment.Measurements
             .SingleOrDefault(measurement => measurement.Kind == "ParseTime")?.AssessmentId;
         foreach (var page in _pages.ToArray()) page.EvidencePublished(evidence);

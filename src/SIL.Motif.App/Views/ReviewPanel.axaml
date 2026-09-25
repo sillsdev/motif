@@ -4,60 +4,111 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ReviewPanel"
              x:DataType="vm:ReviewPageModel">
-  <Grid ColumnDefinitions="*,300" ColumnSpacing="14" Margin="20,12,20,16">
-
-    <!-- Left: every change collected on any page, one card each. -->
+  <Grid Classes="reviewLayout" ColumnDefinitions="*,Auto">
     <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="10">
+      <StackPanel Classes="reviewStack">
+        <views:CopyableTextBlock Classes="section-title" Text="{Binding Changes.CountText}" />
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Changes.HasItems}"
-                                 Text="No changes yet. Choose words on the Texts page, then say what should happen to them; they wait here, not applied yet, until you apply them to the FieldWorks project." />
-        <ItemsControl x:Name="ChangeList" ItemsSource="{Binding Changes.Items}" AutomationProperties.Name="Changes to review">
+                                 Text="No changes yet. Choose a word in Texts, then choose what should happen to its analysis." />
+        <ItemsControl x:Name="ChangeList" ItemsSource="{Binding Changes.Items}"
+                      AutomationProperties.Name="Changes to review">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ChangeViewModel">
-              <Border Classes="card" Padding="14,12" Margin="0,0,0,10">
-                <DockPanel LastChildFill="True">
-                  <HyperlinkButton DockPanel.Dock="Right" Content="Remove" FontSize="12" VerticalAlignment="Top" Padding="0"
-                                   Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
-                                   CommandParameter="{Binding}"
-                                   AutomationProperties.Name="{Binding Word, StringFormat='Remove the change to {0}'}" />
-                  <StackPanel Spacing="4">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <views:CopyableTextBlock Text="{Binding Word}" FontSize="15" FontWeight="Bold" />
-                      <views:CopyableTextBlock Text="{Binding Label}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                      <views:CopyableTextBlock Classes="muted" FontSize="12" VerticalAlignment="Center"
-                                               Text="{Binding HeldLabel, StringFormat='was {0}'}" />
+              <Border Classes="card reviewCard">
+                <StackPanel Classes="reviewRelated">
+                  <DockPanel LastChildFill="True">
+                    <HyperlinkButton Classes="reviewLink" DockPanel.Dock="Right" Content="Remove"
+                                     VerticalAlignment="Top"
+                                     Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
+                                     CommandParameter="{Binding}"
+                                     AutomationProperties.Name="{Binding Word, StringFormat='Remove the change to {0}'}" />
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                      <views:CopyableTextBlock Classes="reviewWord" Text="{Binding Word}" />
+                      <views:CopyableTextBlock Text="{Binding ReviewLabel}" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" />
                     </StackPanel>
-                    <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Reading}"
-                                             IsVisible="{Binding Reading, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                    <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}"
-                                             TextWrapping="Wrap" Text="{Binding FitStatus}" />
-                  </StackPanel>
-                </DockPanel>
+                  </DockPanel>
+                  <ItemsControl ItemsSource="{Binding Analyses}" IsVisible="{Binding HasAnalyses}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ReviewAnalysisViewModel">
+                        <Grid>
+                          <Border Classes="reviewReading" Classes.parser="{Binding ParserBuilt}"
+                                  Classes.touched="{Binding Touched}">
+                            <StackPanel Classes="reviewCompact">
+                              <ItemsControl ItemsSource="{Binding Morphs}">
+                                <ItemsControl.ItemsPanel>
+                                  <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                  </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                                    <Border Classes="reviewMorph">
+                                      <StackPanel>
+                                        <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold" />
+                                        <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}" />
+                                        <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Category}" />
+                                      </StackPanel>
+                                    </Border>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                                <views:CopyableTextBlock Text="{Binding Opinion}" FontWeight="SemiBold" />
+                                <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Source}" />
+                              </StackPanel>
+                            </StackPanel>
+                          </Border>
+                          <Rectangle Classes="reviewParserOutline" IsVisible="{Binding ParserBuilt}" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Reading}"
+                                           IsVisible="{Binding !HasAnalyses}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Classes="reviewSmall" Classes.reviewDanger="{Binding IsNoLongerFits}"
+                                           Text="{Binding FitStatus}" TextWrapping="Wrap" />
+                </StackPanel>
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>
     </ScrollViewer>
-
-    <!-- Right: what saving would do, and the one place a change is saved from. -->
-    <StackPanel Grid.Column="1" Spacing="12">
-      <Border Classes="card" Padding="14">
-        <StackPanel Spacing="8">
-          <views:CopyableTextBlock Text="{Binding ProjectName, StringFormat='Apply to {0}'}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Changes.Summary}" />
-          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Changes.ApplyStatus}"
-                                   IsVisible="{Binding Changes.HasItems}" />
-          <views:CopyableTextBlock Classes="error" FontSize="{DynamicResource Intent.Type.Small}"
-                                   TextWrapping="Wrap" Text="{Binding Changes.ErrorText}" />
-          <Button Content="Apply to FieldWorks project" IsEnabled="False" HorizontalAlignment="Stretch"
-                  ToolTip.Tip="Motif cannot yet write approvals, rejections or new analyses to FieldWorks."
-                  AutomationProperties.Name="Apply the changes to the FieldWorks project" />
-          <Button Content="Keep editing" HorizontalAlignment="Stretch"
-                  Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Texts}"
-                  AutomationProperties.Name="Keep editing on the Texts page" />
-          <HyperlinkButton Content="Clear every change" Padding="0" FontSize="12" IsVisible="{Binding Changes.HasItems}"
-                           Command="{Binding Changes.ClearCommand}" />
+    <StackPanel Grid.Column="1" Classes="reviewStack reviewRight">
+      <Border Classes="card">
+        <StackPanel Classes="reviewRelated">
+          <views:CopyableTextBlock Classes="reviewSection" Text="What applying does to the numbers"
+                                   TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
+                                   IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="error" Text="{Binding MeasurementError}" TextWrapping="Wrap" />
+          <Button Content="Check these changes" Command="{Binding MeasureCommand}"
+                  AutomationProperties.Name="Check what applying does to the numbers" />
+          <Button Content="Cancel" Command="{Binding CancelMeasureCommand}"
+                  IsVisible="{Binding IsMeasuring}" />
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel Classes="reviewRelated">
+          <views:CopyableTextBlock Classes="reviewSection" Text="{Binding ProjectName, StringFormat='Apply to {0}'}"
+                                   TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Changes.CountText}" />
+          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ApplyBlockReason}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="error" Text="{Binding ApplyError}" TextWrapping="Wrap" />
+          <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
+                  IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project" />
+          <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" />
+          <HyperlinkButton Classes="reviewLink" Content="Remove the ones that no longer fit"
+                           Command="{Binding RemoveNonFittingCommand}"
+                           IsVisible="{Binding HasNonFittingChanges}" />
+        </StackPanel>
+      </Border>
+      <Border Classes="card" IsVisible="{Binding HasReceipt}">
+        <StackPanel Classes="reviewCompact">
+          <views:CopyableTextBlock Classes="reviewSection" Text="Changes saved" />
+          <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
     </StackPanel>

@@ -1,3 +1,4 @@
+using SIL.Motif.App.Services;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -6,6 +7,29 @@ namespace SIL.Motif.Tests.App;
 
 public sealed partial class FakeCommandClient
 {
+    public List<ReviewTrialRequest> ReviewTrialRequests { get; } = [];
+    public List<ReviewApplyRequest> ReviewApplyRequests { get; } = [];
+    private ReviewTrialResult? _reviewTrial;
+    private ApplyProjection? _reviewApply;
+
+    public void ReviewTrialCompletesWith(ReviewTrialResult result) => _reviewTrial = result;
+    public void ReviewApplyCompletesWith(ApplyProjection result) => _reviewApply = result;
+
+    public Task<CommandOutcome<ApplyProjection>> ApplyReviewAsync(
+        ReviewApplyRequest request, CancellationToken cancellationToken)
+    {
+        ReviewApplyRequests.Add(request);
+        if (_reviewApply is not { } result) throw NotConfigured(nameof(ApplyReviewAsync));
+        _pending = new PendingChangesSnapshot(null, "none", [], []);
+        return Completed(result);
+    }
+
+    public Task<CommandOutcome<ReviewTrialResult>> RunReviewTrialAsync(
+        ReviewTrialRequest request, IProgress<ReviewTrialProgress> progress, CancellationToken cancellationToken)
+    {
+        ReviewTrialRequests.Add(request);
+        return _reviewTrial is { } result ? Completed(result) : throw NotConfigured(nameof(RunReviewTrialAsync));
+    }
     private PendingChangesSnapshot _pending = new(null, "none", [], []);
 
     public Refusal? PendingPutRefusal { get; set; }

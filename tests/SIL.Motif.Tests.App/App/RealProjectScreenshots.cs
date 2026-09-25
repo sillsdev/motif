@@ -180,13 +180,33 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var inText = tokens.FirstOrDefault(token => token.Verdict == OccurrenceVerdict.Differs) ?? tokens.FirstOrDefault();
         if (inText is not null) workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(inText);
 
-        // A few words given a change each, so the Review page and its badge have something to show.
         var compare = workspace.Assess.Compare;
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation));
-        foreach (var (word, kind) in compare.Words.Take(3).Zip([ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.IncorrectSpelling]))
+        if (compare.Words.FirstOrDefault() is { } spelling)
         {
-            word.IsChecked = true;
-            compare.ProposeCommand.Execute(kind);
+            spelling.IsChecked = true;
+            compare.ProposeCommand.Execute(ChangeKinds.IncorrectSpelling);
+            walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning,
+                TimeSpan.FromMinutes(2), "The spelling change did not finish");
+        }
+        compare.ClearSelectionCommand.Execute(null);
+        var reading = compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0);
+        if (reading is not null)
+        {
+            reading.SelectedReading = reading.ReadingChoices[0];
+            reading.IsChecked = true;
+            compare.ProposeCommand.Execute(ChangeKinds.Approve);
+            walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning,
+                TimeSpan.FromMinutes(2), "The analysis change did not finish");
+        }
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.New));
+        if (compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0 && word.Word != reading?.Word)
+            is { } candidate)
+        {
+            candidate.IsChecked = true;
+            compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
+            walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning,
+                TimeSpan.FromMinutes(2), "The candidate change did not finish");
         }
         compare.ClearSelectionCommand.Execute(null);
 

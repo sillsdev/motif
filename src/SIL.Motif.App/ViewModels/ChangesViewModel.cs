@@ -40,10 +40,10 @@ public static class ChangeKinds
     };
 
     /// <summary>
-    /// Whether Motif's Proposal language can already express this change. Spelling status is an operation today;
-    /// opinions on analyses and new analyses are classified for Proposals but not yet built.
+    /// Whether the current change language can express this kind of analysis or spelling change.
     /// </summary>
-    public static bool CanBeProposedToday(string kind) => kind == IncorrectSpelling;
+    public static bool CanBeProposedToday(string kind) => kind is Approve or Reject or Candidate or
+        IncorrectSpelling or AddCandidate;
 }
 
 /// <summary>
@@ -199,7 +199,7 @@ public sealed partial class ChangesViewModel : ObservableObject
         {
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
             Items.Add(new ChangeViewModel(change.Kind, change.Word, "Project analysis",
-                change.DisplayReading ?? "", change.ChangeId, fit));
+                change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses));
         }
         Raise();
     }
@@ -216,7 +216,7 @@ public sealed partial class ChangesViewModel : ObservableObject
         var count => $"{count:N0} changes collected",
     };
 
-    /// <summary>What applying now could write to FieldWorks, and what has to wait for Motif to learn it.</summary>
+    /// <summary>What applying now could write to FieldWorks, or why the list needs attention first.</summary>
     public string ApplyStatus
     {
         get
@@ -253,21 +253,60 @@ public sealed partial class ChangesViewModel : ObservableObject
 
 /// <summary>One collected change: what should happen to one word, and what it held when the change was chosen.</summary>
 public sealed class ChangeViewModel(string kind, string word, string heldLabel, string reading,
-    string? changeId = null, ChangeFit? fit = null)
+    string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null)
 {
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
     public ChangeFit? Fit { get; } = fit;
     public string FitStatus => Fit is null ? string.Empty : Fit.StillFits
         ? "Still fits the project." : "No longer fits: " + string.Join(" ", Fit.Reasons);
+    public bool IsNoLongerFits => Fit is { StillFits: false };
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
+    public string ReviewLabel => kind == ChangeKinds.Approve && analyses is { Count: > 1 }
+        ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
     public string HeldLabel { get; } = heldLabel;
 
     /// <summary>The parser's reading, for a change that sends it to FieldWorks or judges it.</summary>
     public string Reading { get; } = reading;
 
+    /// <summary>The morphs and glosses of each reading, with the chosen reading marked.</summary>
+    public IReadOnlyList<ReviewAnalysisViewModel> Analyses { get; } = analyses?
+        .Select(analysis => new ReviewAnalysisViewModel(analysis, kind)).ToArray() ?? [];
+
+    public bool HasAnalyses => Analyses.Count > 0;
+
     public bool CanBeProposedToday { get; } = ChangeKinds.CanBeProposedToday(kind);
 
     public string Summary => $"{Word}: {Label}";
+}
+
+/// <summary>A reading as the Review page displays its morphs, prior opinion and proposed opinion.</summary>
+public sealed class ReviewAnalysisViewModel
+{
+    public ReviewAnalysisViewModel(ReviewAnalysis analysis, string changeKind)
+    {
+        Morphs = analysis.Reading.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
+        Touched = analysis.Touched;
+        ParserBuilt = !analysis.Stored;
+        Opinion = analysis.Touched ? changeKind switch
+        {
+            ChangeKinds.Approve => "Approved",
+            ChangeKinds.Reject => "Rejected",
+            ChangeKinds.Candidate or ChangeKinds.AddCandidate => "Candidate",
+            _ => analysis.Opinion,
+        } : analysis.Opinion switch
+        {
+            "approved" => "Approved",
+            "disapproved" => "Rejected",
+            "candidate" => "Candidate",
+            _ => "No opinion",
+        };
+    }
+
+    public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
+    public bool Touched { get; }
+    public bool ParserBuilt { get; }
+    public string Opinion { get; }
+    public string Source => ParserBuilt ? "Parser reading" : "Stored analysis";
 }

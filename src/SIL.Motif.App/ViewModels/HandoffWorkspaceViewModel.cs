@@ -160,7 +160,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public ProjectFreshness Freshness =>
         !HasProject ? ProjectFreshness.NoProject
         : _isRefreshing ? ProjectFreshness.Refreshing
-        : IsSavedSinceTheNumbers ? ProjectFreshness.SavedSince
+        : Context.AppliedSinceRefresh || IsSavedSinceTheNumbers ? ProjectFreshness.SavedSince
         : !Baseline.HasBaseline ? ProjectFreshness.NoBaseline
         : _refreshed ? ProjectFreshness.Refreshed
         : ProjectFreshness.Current;
@@ -239,6 +239,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private string SavedSinceText()
     {
+        if (Context.AppliedSinceRefresh)
+            return "Changes were applied to the FieldWorks project. The numbers are stale until you refresh.";
         var stem = Path.GetFileNameWithoutExtension(Context.ProjectPath);
         return $"{stem} saved {When(LatestSaveUtc!.Value)}; the numbers still describe {When(NumbersSavedUtc!.Value)} " +
             "until you refresh.";
@@ -390,7 +392,10 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private void PublishBaseline() => Context.Baseline = new WorkspaceBaseline(
         Baseline.HasBaseline, Baseline.CapturedTimeText, Baseline.SavedText, Baseline.CapturedAtText,
-        Baseline.HeldStatusText, Baseline.RefusalMessage);
+        Baseline.HeldStatusText, Baseline.RefusalMessage)
+    {
+        FieldWorksHeldProject = Baseline.FieldWorksHeldProject,
+    };
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -408,6 +413,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             case nameof(WorkspaceContext.Evidence):
                 // Freshness describes the evidence on screen, whether a run just produced it or the store held it.
                 if (Context.HasEvidence) Baseline.HasAssessment = true;
+                RaiseFreshness();
+                break;
+            case nameof(WorkspaceContext.AppliedSinceRefresh):
                 RaiseFreshness();
                 break;
         }
