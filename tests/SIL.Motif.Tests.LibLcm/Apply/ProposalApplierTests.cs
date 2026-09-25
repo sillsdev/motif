@@ -313,7 +313,7 @@ public sealed class ProposalApplierTests : IDisposable
         ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
 
         var amendedContent = WithRequirements(proposal, CanonicalId.Mint());
-        var failure = Assert.Throws<InvalidOperationException>(() =>
+        var failure = Assert.Throws<AppliedContentMismatchException>(() =>
             ProposalApplier.Apply(_cache, amendedContent, dryRun.Anchor, "motif-tests"));
 
         Assert.Contains("different content", failure.Message, StringComparison.Ordinal);

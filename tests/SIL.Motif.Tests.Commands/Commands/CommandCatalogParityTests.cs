@@ -74,7 +74,8 @@ public sealed class CommandCatalogParityTests
     // Pinned so a colliding or typo'd near-copy of an existing refusal code shows up as a named diff.
     private static readonly string[] ExpectedRefusalCodes =
     {
-        "apply.change-no-longer-fits", "apply.drift", "apply.dry-run-missing", "apply.not-ready", "apply.project-in-use",
+        "apply.applied-content-mismatch", "apply.change-no-longer-fits", "apply.drift", "apply.dry-run-missing",
+        "apply.not-ready", "apply.project-in-use",
         "apply.regression",
         "apply.reconciliation-needed",
         "assess.baseline-changed", "assess.invalid-limit", "assess.invocation-inconsistent", "assess.measurements-incomplete",
