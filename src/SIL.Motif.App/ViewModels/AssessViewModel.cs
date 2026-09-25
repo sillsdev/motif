@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using SIL.Motif.App.Services;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -36,6 +37,19 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     private int? _rerunLimitMs;
     private StepCap? _rerunStepLimit;
     private AssessCommandResponse? _mergeInto;
+    private bool _runDefaultSelection;
+    private int? _defaultPerWordLimitMs;
+    private StepCap? _defaultStepLimit;
+
+    /// <summary>Runs the project's stored default Selection with the limits chosen during setup.</summary>
+    public Task RunDefaultSelectionAsync(int? perWordLimitMs, StepCap? perWordStepLimit)
+    {
+        if (perWordLimitMs is <= 0) throw new ArgumentOutOfRangeException(nameof(perWordLimitMs));
+        _runDefaultSelection = true;
+        _defaultPerWordLimitMs = perWordLimitMs;
+        _defaultStepLimit = perWordStepLimit;
+        return RunCommand.ExecuteAsync(null);
+    }
 
     /// <summary>
     /// Runs <paramref name="words"/> again with <paramref name="limitMs"/> per word, and folds each fresh answer into
@@ -180,8 +194,15 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         (_rerunWords, _rerunLimitMs, _rerunStepLimit, _mergeInto) = (null, null, null, null);
         if (words is null)
         {
-            var request = new AssessRequest(ProjectPath!, _selection.BuildRequest(),
-                _selection.PerWordTimeLimitSeconds is > 0 and var seconds ? (int)(seconds * 1000) : null);
+            var runDefault = _runDefaultSelection;
+            var timeLimitMs = runDefault ? _defaultPerWordLimitMs
+                : _selection.PerWordTimeLimitSeconds is > 0 and var seconds ? (int)(seconds * 1000) : null;
+            var stepLimit = runDefault ? _defaultStepLimit : null;
+            _runDefaultSelection = false;
+            _defaultPerWordLimitMs = null;
+            _defaultStepLimit = null;
+            var request = new AssessRequest(ProjectPath!, runDefault ? null : _selection.BuildRequest(),
+                timeLimitMs, stepLimit);
             return await _commandClient.AssessAsync(request, this, cancellationToken).ConfigureAwait(true);
         }
 

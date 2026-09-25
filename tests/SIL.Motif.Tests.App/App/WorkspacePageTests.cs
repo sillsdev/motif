@@ -303,17 +303,21 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task ConfigureOpensTheSelectionEditorUnlessSomethingElseTakesTheHook()
+    public async Task ConfigureOpensTheSetupDialogUnlessSomethingElseTakesTheHook()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Context.Setup!.SkipCommand.Execute(null);
+        workspace.CurrentPage = WorkspacePage.Overview;
 
         workspace.ConfigureCommand.Execute(null);
 
-        Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowTexts);
+        Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+        Assert.True(workspace.Context.Setup.IsOpen);
+        Assert.Equal(0, workspace.Context.Setup.Step);
 
         var opened = 0;
+        workspace.Context.Setup.SkipCommand.Execute(null);
         workspace.ShowPageCommand.Execute(WorkspacePage.Overview);
         workspace.OpenConfiguration = () => opened++;
         workspace.ConfigureCommand.Execute(null);

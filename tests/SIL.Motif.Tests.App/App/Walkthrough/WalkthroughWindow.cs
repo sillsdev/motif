@@ -60,6 +60,14 @@ public sealed class WalkthroughWindow : IDisposable
         RealizeEveryStage();
     }
 
+    public void SkipSetup()
+    {
+        if (Workspace.Context.Setup is not { IsOpen: true } setup) return;
+        setup.SkipCommand.Execute(null);
+        Window.UpdateLayout();
+        Pump();
+    }
+
     public void LoadKnownProjects()
     {
         var loading = Workspace.Project.LoadKnownProjectsAsync();

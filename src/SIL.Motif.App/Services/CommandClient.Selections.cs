@@ -1,0 +1,23 @@
+using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Host;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
+
+namespace SIL.Motif.App.Services;
+
+public sealed partial class CommandClient
+{
+    public Task<CommandOutcome<DefaultSelectionResponse>> ReadDefaultSelectionAsync(
+        ReadDefaultSelectionRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => SelectionCommands.ReadDefault(request));
+
+    public Task<CommandOutcome<DefaultSelectionResponse>> SetDefaultSelectionAsync(
+        SetDefaultSelectionRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => SelectionCommands.SetDefault(request));
+
+    public Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
+        ShowConfigRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => ConfigCommands.Show(request));
+}

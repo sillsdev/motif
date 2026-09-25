@@ -5,6 +5,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -65,6 +66,9 @@ public sealed partial class SelectionViewModel : ObservableObject
     private decimal? _perWordStepLimit;
 
     [ObservableProperty]
+    private bool _perWordStepLimitUnbounded;
+
+    [ObservableProperty]
     private decimal? _retrySlowerThanMilliseconds;
 
     [ObservableProperty]
@@ -94,15 +98,18 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     partial void OnPerWordStepLimitChanged(decimal? value) => Recompute();
 
+    partial void OnPerWordStepLimitUnboundedChanged(bool value) => Recompute();
+
     /// <summary>Composes the current state into the one request every source agrees to combine into.</summary>
     public SelectionRequest BuildRequest()
     {
         var threshold = ThresholdValidationMessage is null && RetrySlowerThanMilliseconds is { } ms
             ? TimeSpan.FromMilliseconds((double)ms)
             : (TimeSpan?)null;
-        var stepLimit = StepLimitValidationMessage is null && PerWordStepLimit is { } steps
-            ? new StepCap(decimal.ToInt64(steps))
-            : null;
+        var stepLimit = PerWordStepLimitUnbounded ? StepCap.Unbounded
+            : StepLimitValidationMessage is null && PerWordStepLimit is { } steps
+                ? new StepCap(decimal.ToInt64(steps))
+                : null;
         return new SelectionRequest(AllWordforms, ChosenTextIds, PastedWordEntries, RetryFailed, threshold,
             PerWordStepLimit: stepLimit);
     }
@@ -121,6 +128,7 @@ public sealed partial class SelectionViewModel : ObservableObject
         RetrySlowerThanMilliseconds = null;
         PerWordTimeLimitSeconds = null;
         PerWordStepLimit = null;
+        PerWordStepLimitUnbounded = false;
         RefusalMessage = null;
         TextsEmptyMessage = null;
         Recompute();
@@ -152,7 +160,9 @@ public sealed partial class SelectionViewModel : ObservableObject
         _allTexts.Clear();
         foreach (var choice in outcome.Value!.Texts)
         {
-            var textChoice = new TextChoiceViewModel(choice.Id, choice.Title) { IsChecked = previouslyChecked.Contains(choice.Id) };
+            var textChoice = new TextChoiceViewModel(
+                choice.Id, choice.Title, choice.WordCount, choice.InterlinearizedWordCount)
+            { IsChecked = previouslyChecked.Contains(choice.Id) };
             textChoice.PropertyChanged += OnTextChoicePropertyChanged;
             _allTexts.Add(textChoice);
         }
@@ -162,6 +172,18 @@ public sealed partial class SelectionViewModel : ObservableObject
             ? null
             : outcome.Value!.HasBaseline ? "This Baseline has no Texts." : "Capture a Baseline to choose Texts.";
         ApplyFilter();
+        Recompute();
+    }
+
+    /// <summary>Loads the saved default Selection into the controls used to edit the next run.</summary>
+    public void ApplyDefaultSelection(NamedSelectionProjection? saved)
+    {
+        var selected = saved?.TextIds.ToHashSet() ?? [];
+        foreach (var text in _allTexts) text.IsChecked = selected.Contains(text.Id);
+        PastedWords = saved is null ? string.Empty : string.Join(Environment.NewLine, saved.AddedWords);
+        AllWordforms = false;
+        RetryFailed = false;
+        RetrySlowerThanMilliseconds = null;
         Recompute();
     }
 
@@ -212,7 +234,7 @@ public sealed partial class SelectionViewModel : ObservableObject
         var hasThreshold = RetrySlowerThanMilliseconds is not null;
         var thresholdValid = !hasThreshold || RetrySlowerThanMilliseconds >= 0;
         ThresholdValidationMessage = thresholdValid ? null : NegativeThresholdMessage;
-        var stepLimitValid = PerWordStepLimit is null ||
+        var stepLimitValid = PerWordStepLimitUnbounded || PerWordStepLimit is null ||
             PerWordStepLimit is > 0 and <= long.MaxValue && decimal.Truncate(PerWordStepLimit.Value) == PerWordStepLimit;
         StepLimitValidationMessage = stepLimitValid ? null : InvalidStepLimitMessage;
 
@@ -233,7 +255,9 @@ public sealed partial class SelectionViewModel : ObservableObject
         if (PastedWordEntries.Count > 0) parts.Add(Pluralize(PastedWordEntries.Count, "pasted word"));
         if (RetryFailed) parts.Add("retry failed");
         if (includeThreshold) parts.Add($"retry slower than {RetrySlowerThanMilliseconds} ms");
-        if (StepLimitValidationMessage is null && PerWordStepLimit is { } steps)
+        if (PerWordStepLimitUnbounded)
+            parts.Add("no step limit");
+        else if (StepLimitValidationMessage is null && PerWordStepLimit is { } steps)
             parts.Add($"step cap {steps:N0}");
         return string.Join(", ", parts);
     }

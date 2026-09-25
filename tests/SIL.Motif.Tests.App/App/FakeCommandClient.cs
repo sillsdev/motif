@@ -2,6 +2,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -39,12 +40,30 @@ public sealed partial class FakeCommandClient : ICommandClient
     private Func<TextInventoryRequest, CancellationToken, Task<CommandOutcome<TextInventoryResponse>>>
         _listTexts = (_, _) => throw NotConfigured(nameof(ListTextsAsync));
 
+    private Func<ReadDefaultSelectionRequest, CancellationToken,
+        Task<CommandOutcome<DefaultSelectionResponse>>> _readDefaultSelection =
+        (_, _) => Completed(new DefaultSelectionResponse(null));
+
+    private Func<SetDefaultSelectionRequest, CancellationToken,
+        Task<CommandOutcome<DefaultSelectionResponse>>> _setDefaultSelection =
+        (request, _) => Completed(new DefaultSelectionResponse(new NamedSelectionProjection(
+            request.Name, request.TextIds, request.AddedWords, string.Empty, string.Empty)));
+
+    private Func<ShowConfigRequest, CancellationToken,
+        Task<CommandOutcome<ProjectConfigurationProjection>>> _showConfig =
+        (_, _) => Completed(new ProjectConfigurationProjection(true, true,
+            [new AssessmentScopeProjection("default", "all words", "pangloss", [], 1000,
+                SIL.Motif.Contract.Assess.StepCap.Default)]));
+
     public List<BaselineCaptureRequest> CaptureBaselineRequests { get; } = [];
     public List<AssessRequest> AssessRequests { get; } = [];
     public List<StatsRequest> StatsRequests { get; } = [];
     public List<HandoffRequest> HandoffRequests { get; } = [];
     public List<CurrentBaselineRequest> CurrentBaselineRequests { get; } = [];
     public List<TextInventoryRequest> ListTextsRequests { get; } = [];
+    public List<ReadDefaultSelectionRequest> DefaultSelectionRequests { get; } = [];
+    public List<SetDefaultSelectionRequest> SetDefaultSelectionRequests { get; } = [];
+    public List<ShowConfigRequest> ShowConfigRequests { get; } = [];
 
     public void OnCaptureBaseline(
         Func<BaselineCaptureRequest, CancellationToken, Task<CommandOutcome<BaselineCaptureResponse>>> behavior) =>
@@ -139,6 +158,22 @@ public sealed partial class FakeCommandClient : ICommandClient
     public void ListTextsRefusesWith(Refusal refusal) =>
         OnListTexts((_, _) => Refused<TextInventoryResponse>(refusal));
 
+    public void DefaultSelectionIs(NamedSelectionProjection? selection) =>
+        _readDefaultSelection = (_, _) => Completed(new DefaultSelectionResponse(selection));
+
+    public void OnSetDefaultSelection(
+        Func<SetDefaultSelectionRequest, CancellationToken,
+            Task<CommandOutcome<DefaultSelectionResponse>>> behavior) =>
+        _setDefaultSelection = behavior;
+
+    public void SetDefaultSelectionRefusesWith(Refusal refusal) =>
+        OnSetDefaultSelection((_, _) => Refused<DefaultSelectionResponse>(refusal));
+
+    public void OnShowConfig(
+        Func<ShowConfigRequest, CancellationToken,
+            Task<CommandOutcome<ProjectConfigurationProjection>>> behavior) =>
+        _showConfig = behavior;
+
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken)
     {
@@ -161,6 +196,27 @@ public sealed partial class FakeCommandClient : ICommandClient
     {
         ListTextsRequests.Add(request);
         return _listTexts(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<DefaultSelectionResponse>> ReadDefaultSelectionAsync(
+        ReadDefaultSelectionRequest request, CancellationToken cancellationToken)
+    {
+        DefaultSelectionRequests.Add(request);
+        return _readDefaultSelection(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<DefaultSelectionResponse>> SetDefaultSelectionAsync(
+        SetDefaultSelectionRequest request, CancellationToken cancellationToken)
+    {
+        SetDefaultSelectionRequests.Add(request);
+        return _setDefaultSelection(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
+        ShowConfigRequest request, CancellationToken cancellationToken)
+    {
+        ShowConfigRequests.Add(request);
+        return _showConfig(request, cancellationToken);
     }
 
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(

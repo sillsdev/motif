@@ -53,11 +53,12 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             RefreshBaselineCommand = baseline.RefreshCommand,
         };
         PublishBaseline();
-        OpenConfiguration = () => Context.OpenTexts(TextsTab.Texts);
-
         Pages = PageRegistry.Entries
             .Select(entry => new PageViewModel(entry.Page, entry.Title, entry.Icon, entry.CreateModel(Context)))
             .ToArray();
+        var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
+        Context.AttachSetup(setup);
+        OpenConfiguration = setup.OpenForConfiguration;
         ShowPageCommand = new RelayCommand<WorkspacePage>(Context.OpenPage);
 
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
@@ -152,10 +153,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Runs <see cref="OpenConfiguration"/>: the project menu's Configure.</summary>
     public IRelayCommand ConfigureCommand { get; }
 
-    /// <summary>
-    /// What Configure opens. By default the Texts page's Texts tab, where the texts, added words and time limits
-    /// an Assessment uses are chosen; a setup dialog replaces it by setting this.
-    /// </summary>
+    /// <summary>What the project menu's Configure entry opens.</summary>
     public Action? OpenConfiguration { get; set; }
 
     /// <summary>Whether the numbers on screen describe the project as FieldWorks last saved it.</summary>

@@ -2,6 +2,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -40,6 +41,18 @@ internal sealed partial class HoldingCommandClient : ICommandClient
     public Task<CommandOutcome<TextInventoryResponse>> ListTextsAsync(
         TextInventoryRequest request, CancellationToken cancellationToken) =>
         _inner.ListTextsAsync(request, cancellationToken);
+
+    public Task<CommandOutcome<DefaultSelectionResponse>> ReadDefaultSelectionAsync(
+        ReadDefaultSelectionRequest request, CancellationToken cancellationToken) =>
+        _inner.ReadDefaultSelectionAsync(request, cancellationToken);
+
+    public Task<CommandOutcome<DefaultSelectionResponse>> SetDefaultSelectionAsync(
+        SetDefaultSelectionRequest request, CancellationToken cancellationToken) =>
+        _inner.SetDefaultSelectionAsync(request, cancellationToken);
+
+    public Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
+        ShowConfigRequest request, CancellationToken cancellationToken) =>
+        _inner.ShowConfigAsync(request, cancellationToken);
 
     public async Task<CommandOutcome<AssessCommandResponse>> AssessAsync(
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)

@@ -124,6 +124,7 @@ public sealed class WorkflowShellTests
             {
                 window.Show();
                 await workspace.SetProjectAsync(@"C:\projects\one.fwdata");
+                workspace.Context.Setup?.SkipCommand.Execute(null);
                 workspace.CurrentPage = WorkspacePage.Warnings;
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();

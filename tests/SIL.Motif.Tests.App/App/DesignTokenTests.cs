@@ -159,6 +159,21 @@ public sealed class DesignTokenTests
         Assert.Empty(named);
     }
 
+    [Theory]
+    [InlineData("SelectionPanel.axaml")]
+    [InlineData("SetupDialog.axaml")]
+    public void SelectionAndSetupViewsUseTokensForTheirStyleValues(string viewName)
+    {
+        var path = Path.Combine(AppDirectory(), "Views", viewName);
+        var raw = XDocument.Load(path).Descendants().Attributes()
+            .Where(attribute => StyleProperties.Contains(attribute.Name.LocalName))
+            .Where(attribute => !IsTokenOrLayout(attribute.Value))
+            .Select(attribute => $"{attribute.Name.LocalName}=\"{attribute.Value}\"")
+            .ToList();
+
+        Assert.Empty(raw);
+    }
+
     [Fact]
     public void EveryIntentKeyAViewNamesResolves()
     {
@@ -211,6 +226,19 @@ public sealed class DesignTokenTests
         "Padding", "Margin", "Spacing", "FontSize", "CornerRadius", "BorderThickness", "Width", "Height", "MinWidth",
         "MinHeight", "MaxWidth", "MaxHeight", "StrokeThickness", "Opacity",
     ];
+
+    private static readonly HashSet<string> StyleProperties =
+    [
+        "Background", "Foreground", "BorderBrush", "Fill", "Stroke", "Margin", "Padding", "Spacing",
+        "FontSize", "CornerRadius", "BorderThickness", "Width", "Height", "MinWidth", "MinHeight",
+        "MaxWidth", "MaxHeight", "RowSpacing", "ColumnSpacing", "ColumnDefinitions",
+    ];
+
+    private static bool IsTokenOrLayout(string value) =>
+        value.StartsWith("{DynamicResource Intent.", StringComparison.Ordinal)
+        || value.StartsWith("{DynamicResource Component.", StringComparison.Ordinal)
+        || value is "Auto" or "*"
+        || value.Split(',').All(part => part == "Auto" || part.Contains('*') || string.IsNullOrWhiteSpace(part));
 
     private static IEnumerable<(string File, string Property, string Value)> ComponentSetters() =>
         ComponentFiles().SelectMany(file => XDocument.Load(file).Descendants()

@@ -1,0 +1,108 @@
+<!-- The modal setup flow: token-sized layout, with color roles supplied by Intent. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Setup.DialogWidth" ResourceKey="Primitive.Size.780" />
+    <StaticResource x:Key="Component.Setup.DialogHeightLimit" ResourceKey="Primitive.Size.600" />
+    <StaticResource x:Key="Component.Setup.DialogRadius" ResourceKey="Primitive.Radius.12" />
+    <StaticResource x:Key="Component.Setup.DialogPadding" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Setup.TextListHeight" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.Setup.AddedWordsHeight" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.Setup.NumberWidth" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.Setup.MarkerSize" ResourceKey="Primitive.Size.8" />
+    <StaticResource x:Key="Component.Setup.MarkerActiveWidth" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.Setup.TextRowPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.Setup.SummaryPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+  </Styles.Resources>
+  <Style Selector="Grid.setupOverlay">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Border.setupScrim">
+    <Setter Property="Background" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
+  </Style>
+  <Style Selector="Border.setupDialog">
+    <Setter Property="Width" Value="{DynamicResource Component.Setup.DialogWidth}" />
+    <Setter Property="MaxHeight" Value="{DynamicResource Component.Setup.DialogHeightLimit}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Setup.DialogRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Setup.DialogPadding}" />
+  </Style>
+  <Style Selector="TextBlock.setupCaption">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="TextBlock.setupTitle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.setupDescription">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
+  </Style>
+  <Style Selector="TextBlock.setupProjectName">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.setupMuted">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="TextBlock.setupCoverage">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
+  </Style>
+  <Style Selector="Border.setupTextList">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Setup.DialogRadius}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.setupTextRow">
+    <Setter Property="Padding" Value="{DynamicResource Component.Setup.TextRowPadding}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Border.setupSummary">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Setup.SummaryPadding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+  </Style>
+  <Style Selector="TextBlock.setupSummaryText">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector="NumericUpDown.setupNumber">
+    <Setter Property="Width" Value="{DynamicResource Component.Setup.NumberWidth}" />
+  </Style>
+  <Style Selector="Border.setupStepMarker">
+    <Setter Property="Width" Value="{DynamicResource Component.Setup.MarkerSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Setup.MarkerSize}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Pill}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Border}" />
+  </Style>
+  <Style Selector="Border.setupStepMarker.current">
+    <Setter Property="Width" Value="{DynamicResource Component.Setup.MarkerActiveWidth}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
+  </Style>
+  <Style Selector="TextBlock.setupError">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+  </Style>
+  <Style Selector="Button.setupPrimary">
+    <Setter Property="Padding" Value="{DynamicResource Component.Setup.TextRowPadding}" />
+    <Setter Property="Theme" Value="{DynamicResource SolidButton}" />
+  </Style>
+  <Style Selector="Button.setupSkip">
+    <Setter Property="Theme" Value="{DynamicResource BorderlessButton}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+  <Style Selector="Button.setupSecondary">
+    <Setter Property="Theme" Value="{DynamicResource OutlineButton}" />
+  </Style>
+</Styles>

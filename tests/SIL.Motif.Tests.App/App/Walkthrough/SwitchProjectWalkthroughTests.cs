@@ -52,6 +52,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                     walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                     walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.";
             }, WalkthroughSteps.Remaining(deadline), "browsing to the second project did not clear the first run");
+            walkthrough.SkipSetup();
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(existing, appeared);

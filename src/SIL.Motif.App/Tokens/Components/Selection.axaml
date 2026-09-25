@@ -1,0 +1,53 @@
+<!-- The Selection editor's dense controls, with colors from Intent and sizes from token aliases. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Selection.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Selection.TextColumn" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.Selection.TextListHeight" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.Selection.WordsBoxHeight" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.Selection.CountColumn" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.Selection.ResultColumn" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.Selection.IconColumn" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.Selection.DetailColumn" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.Selection.WordHeaderMargin" ResourceKey="Primitive.Inset.16_12_16_0" />
+    <StaticResource x:Key="Component.Selection.DetailMargin" ResourceKey="Primitive.Inset.4_2_4_2" />
+    <StaticResource x:Key="Component.Selection.ReaderMessageMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
+    <StaticResource x:Key="Component.Selection.CountMargin" ResourceKey="Primitive.Inset.0_0_0_2" />
+    <StaticResource x:Key="Component.Selection.DenseRowMargin" ResourceKey="Primitive.Inset.4_2_4_2" />
+    <StaticResource x:Key="Component.Selection.DensePadding" ResourceKey="Primitive.Inset.4_0_4_0" />
+    <StaticResource x:Key="Component.Selection.ChipPadding" ResourceKey="Primitive.Inset.12_4_12_4" />
+  </Styles.Resources>
+  <Style Selector=":is(TextBlock).columnHeader">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).smallText">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector=":is(TextBlock).textCount">
+    <Setter Property="Margin" Value="{DynamicResource Component.Selection.CountMargin}" />
+  </Style>
+  <Style Selector="ListBox.denseWords ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.None}" />
+  </Style>
+  <Style Selector="Expander.denseWord">
+    <Setter Property="Padding" Value="{DynamicResource Component.Selection.DensePadding}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.None}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+  </Style>
+  <Style Selector="Button.viewChip">
+    <Setter Property="Padding" Value="{DynamicResource Component.Selection.ChipPadding}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+  </Style>
+  <Style Selector="Button.viewChip.active">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+</Styles>

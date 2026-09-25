@@ -108,6 +108,9 @@ public sealed partial class WorkspaceContext : ObservableObject
     /// <summary>The command seam a page runs its own queries through.</summary>
     public ICommandClient Commands { get; }
 
+    /// <summary>The project setup dialog displayed over the current page.</summary>
+    public SetupViewModel? Setup { get; private set; }
+
     /// <summary>The open project's <c>.fwdata</c> path, or <see langword="null"/> before one is chosen.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasProject))]
@@ -156,11 +159,15 @@ public sealed partial class WorkspaceContext : ObservableObject
     // Called by each page model's constructor, so the context reaches a page only through its hooks.
     internal void Attach(PageModel page) => _pages.Add(page);
 
+    /// <summary>Registers the setup dialog that is shared by the shell.</summary>
+    internal void AttachSetup(SetupViewModel setup) => Setup = setup;
+
     /// <summary>Forgets the evidence and tells every page to drop what it showed for the previous project.</summary>
     public void ClearProject()
     {
         Evidence = null;
         CurrentEvidence = null;
+        Setup?.ProjectCleared();
         foreach (var page in _pages) page.ProjectCleared();
     }
 
@@ -172,6 +179,7 @@ public sealed partial class WorkspaceContext : ObservableObject
         await Changes.OpenProjectAsync(projectPath, cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
+        if (Setup is not null) await Setup.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>Tells every page a new Baseline was captured, and returns once each has reloaded.</summary>

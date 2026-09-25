@@ -63,7 +63,7 @@ public static class TextInventoryQuery
             var repository = cache.ServiceLocator.GetInstance<ITextRepository>();
             var texts = repository.AllInstances()
                 .Select(text => ReadChoice(cache, text))
-                .OrderByDescending(choice => choice.OccurrenceCoveragePercent)
+                .OrderByDescending(choice => choice.WordCoveragePercent)
                 .ThenBy(choice => choice.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
             return CommandOutcome<TextInventoryResponse>.Success(new TextInventoryResponse(texts, HasBaseline: true));

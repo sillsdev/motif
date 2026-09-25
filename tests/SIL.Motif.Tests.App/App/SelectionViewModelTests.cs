@@ -1,6 +1,7 @@
 using System.Linq;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -114,6 +115,57 @@ public sealed class SelectionViewModelTests
         Assert.Equal("Alpha", viewModel.Texts[0].Title);
         Assert.Equal(BetaId, viewModel.Texts[1].Id);
         Assert.Equal(ProjectPath, Assert.Single(fake.ListTextsRequests).ProjectPath);
+    }
+
+    [Fact]
+    public async Task TextChoicesShowCommandReportedInterlinearizationCoverage()
+    {
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(AlphaId, "Alpha", 10, 6)], HasBaseline: true));
+        var selection = new SelectionViewModel(fake);
+
+        await selection.SetProjectAsync(ProjectPath);
+
+        var text = Assert.Single(selection.Texts);
+        Assert.Equal("10 distinct", text.DistinctCountText);
+        Assert.Equal("60% interlinearized", text.InterlinearizedText);
+    }
+
+    [Fact]
+    public void TextWithoutAnyAnalysesShowsZeroPercentInterlinearized()
+    {
+        var text = new TextChoiceViewModel(AlphaId, "Alpha", 10, 0);
+
+        Assert.Equal("0% interlinearized", text.InterlinearizedText);
+    }
+
+    [Fact]
+    public async Task ApplyingTheSavedDefaultChecksItsTextsAndAddsItsWords()
+    {
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(AlphaId, "Alpha"), new TextChoiceSummary(BetaId, "Beta")], HasBaseline: true));
+        var selection = new SelectionViewModel(fake);
+        await selection.SetProjectAsync(ProjectPath);
+
+        selection.ApplyDefaultSelection(new NamedSelectionProjection(
+            "Default", [BetaId], ["one", "two"], "created", "updated"));
+
+        Assert.Equal([BetaId], selection.ChosenTextIds);
+        Assert.Equal("one\ntwo", selection.PastedWords);
+        Assert.True(selection.CanAssess);
+    }
+
+    [Fact]
+    public void AnUnboundedStepChoiceIsExplicitInTheSelectionRequest()
+    {
+        var selection = new SelectionViewModel(new FakeCommandClient())
+        {
+            PerWordStepLimitUnbounded = true,
+        };
+
+        Assert.Equal(StepCap.Unbounded, selection.BuildRequest().PerWordStepLimit);
     }
 
     [Fact]

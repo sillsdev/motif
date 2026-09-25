@@ -5,6 +5,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -99,6 +100,116 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.Equal(ProjectPath, workspace.Assess.ProjectPath);
         Assert.Equal(ProjectPath, workspace.PageModel<TimingPageModel>().Statistics.ProjectPath);
         Assert.Equal(ProjectPath, workspace.PageModel<AiHandoffPageModel>().Handoff.ProjectPath);
+    }
+
+    [Fact]
+    public async Task ConfigureOpensSetupWithoutNavigatingAwayFromTheCurrentPage()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionIs(new NamedSelectionProjection(
+            "Default", [TextId], ["one", "two"], "created", "updated"));
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(TextId, "Alpha", 10, 6)], HasBaseline: true));
+        fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Success(
+            new ProjectConfigurationProjection(true, true,
+                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 750, new StepCap(321))]))));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        Assert.False(workspace.Context.Setup!.IsOpen);
+        workspace.CurrentPage = WorkspacePage.Overview;
+
+        workspace.ConfigureCommand.Execute(null);
+
+        Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+        Assert.True(workspace.Context.Setup!.IsOpen);
+        Assert.Equal(0, workspace.Context.Setup.Step);
+        Assert.True(Assert.Single(workspace.Selection.Texts).IsChecked);
+        Assert.Equal("one\ntwo", workspace.Selection.PastedWords);
+        Assert.Equal(0.75m, workspace.Selection.PerWordTimeLimitSeconds);
+        Assert.Equal(321m, workspace.Selection.PerWordStepLimit);
+        Assert.Equal(new StepCap(321), workspace.Selection.BuildRequest().PerWordStepLimit);
+    }
+
+    [Fact]
+    public async Task AProjectWithoutADefaultSelectionOpensSetupOnItsFirstStep()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+
+        var setup = workspace.Context.Setup;
+        Assert.NotNull(setup);
+        Assert.True(setup.IsOpen);
+        Assert.Equal(0, setup.Step);
+    }
+
+    [Fact]
+    public async Task SkippingFirstSetupDoesNotSaveADefaultSelection()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+
+        workspace.Context.Setup!.SkipCommand.Execute(null);
+
+        Assert.False(workspace.Context.Setup.IsOpen);
+        Assert.Empty(fake.SetDefaultSelectionRequests);
+    }
+
+    [Fact]
+    public async Task FirstRunSavesTheSelectionAndUsesItWithTheChosenStepLimit()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+        workspace.Selection.PastedWords = "added word";
+        workspace.Selection.PerWordTimeLimitSeconds = 0.5m;
+        workspace.Context.Setup!.StepLimitSteps = 2345;
+        workspace.Context.Setup.Step = 3;
+        fake.AssessCompletesWith(NewAssessResponse("first run"));
+
+        await workspace.Context.Setup.FinishCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(fake.SetDefaultSelectionRequests);
+        Assert.Equal(ProjectPath, saved.ProjectPath);
+        Assert.Equal([TextId], saved.TextIds);
+        Assert.Equal(["added word"], saved.AddedWords);
+        var assess = Assert.Single(fake.AssessRequests);
+        Assert.Null(assess.Selection);
+        Assert.Equal(500, assess.PerWordLimitMs);
+        Assert.Equal(new StepCap(2345), assess.PerWordStepLimit);
+        Assert.False(workspace.Context.Setup.IsOpen);
+    }
+
+    [Fact]
+    public async Task FirstRunCanUseNoStepLimit()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+        workspace.Context.Setup!.IsStepLimitUnbounded = true;
+        workspace.Context.Setup.Step = 3;
+        fake.AssessCompletesWith(NewAssessResponse("first run"));
+
+        await workspace.Context.Setup.FinishCommand.ExecuteAsync(null);
+
+        Assert.Equal(StepCap.Unbounded, Assert.Single(fake.AssessRequests).PerWordStepLimit);
+    }
+
+    [Fact]
+    public async Task FirstRunCannotStartBeforeTheLastSetupStep()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+
+        await workspace.Context.Setup!.FinishCommand.ExecuteAsync(null);
+
+        Assert.Empty(fake.SetDefaultSelectionRequests);
+        Assert.Empty(fake.AssessRequests);
+        Assert.True(workspace.Context.Setup.IsOpen);
     }
 
     // The owner's first run: a project chosen before any capture showed no Texts even after Refresh succeeded.

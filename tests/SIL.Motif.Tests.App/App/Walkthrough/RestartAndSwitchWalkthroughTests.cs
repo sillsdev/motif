@@ -37,6 +37,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                     restartedWalkthrough.Workspace.Selection.Texts.Count == 1,
                 WalkthroughSteps.Remaining(deadline),
                 "restarting and choosing the first project did not reload its Baseline and Texts");
+            restartedWalkthrough.SkipSetup();
             Assert.Equal(firstToken, restartedWalkthrough.Workspace.Baseline.Token);
             Assert.Equal(
                 SeededProject.TextTitle,
@@ -55,6 +56,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                     restartedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
                 WalkthroughSteps.Remaining(deadline),
                 "switching to the second project did not clear the Baseline and its Texts");
+            restartedWalkthrough.SkipSetup();
             Assert.Empty(restartedWalkthrough.Workspace.Selection.Texts);
             Assert.Equal(
                 "Capture a Baseline to choose Texts.",
@@ -73,6 +75,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                     restartedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
                 WalkthroughSteps.Remaining(deadline),
                 "choosing the held second project did not observe its lock file");
+            restartedWalkthrough.SkipSetup();
             restartedWalkthrough.Click("Refresh the Baseline");
             restartedWalkthrough.WaitUntil(
                 () => restartedWalkthrough.Workspace.Baseline.HasBaseline &&

@@ -153,5 +153,7 @@
       <!-- Every page's own view, built from the page registry; only the current one shows. -->
       <Panel x:Name="PageHost" Grid.Column="1" />
     </Grid>
+
+    <views:SetupDialog Grid.RowSpan="3" DataContext="{Binding Context.Setup}" />
   </Grid>
 </Window>

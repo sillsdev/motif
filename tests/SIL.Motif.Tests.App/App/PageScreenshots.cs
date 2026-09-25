@@ -136,6 +136,7 @@ public sealed class PageScreenshots
         window.Show();
 
         await workspace.SetProjectAsync(ProjectPath);
+        workspace.Context.Setup?.SkipCommand.Execute(null);
         foreach (var text in selection.Texts) text.IsChecked = true;
         await Task.Yield();
         await workspace.PageModel<TextsPageModel>().Words.ReloadAsync();

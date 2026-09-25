@@ -21,6 +21,7 @@ internal static class WalkthroughSteps
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
             Remaining(deadline), "choosing the project did not load its initial window state");
+        walkthrough.SkipSetup();
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
         Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
         Assert.True(walkthrough.Find<Button>("Refresh the Baseline").IsEffectivelyEnabled);
@@ -58,6 +59,7 @@ internal static class WalkthroughSteps
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
             Remaining(deadline), "choosing the conformance project did not show its initial state");
+        walkthrough.SkipSetup();
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
         Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
 

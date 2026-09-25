@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.SetupDialog"
+             x:DataType="vm:SetupViewModel"
+             IsVisible="{Binding IsOpen}">
+  <Grid Classes="setupOverlay">
+    <Border Classes="setupScrim" />
+    <Border Classes="setupDialog" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Intent.Space.Group}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+          <TextBlock Classes="setupCaption" Text="{Binding StepCaption}" VerticalAlignment="Center" />
+          <ItemsControl Grid.Column="1" ItemsSource="{Binding Indicators}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SetupStepIndicator">
+                <Border Classes="setupStepMarker" Classes.current="{Binding IsCurrent}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
+          <TextBlock Classes="setupTitle" IsVisible="{Binding IsProjectStep}" Text="Found the project" />
+          <TextBlock Classes="setupTitle" IsVisible="{Binding IsSelectionStep}" Text="What should Motif measure every time?" />
+          <TextBlock Classes="setupTitle" IsVisible="{Binding IsLimitsStep}" Text="How much time should each word get?" />
+          <TextBlock Classes="setupTitle" IsVisible="{Binding IsFirstRunStep}" Text="{Binding FinishTitle}" />
+
+          <TextBlock Classes="setupDescription" IsVisible="{Binding IsProjectStep}"
+                     Text="Motif found this project. Choose the texts and words to include in every run." TextWrapping="Wrap" />
+          <TextBlock Classes="setupDescription" IsVisible="{Binding IsSelectionStep}"
+                     Text="The default Selection is parsed on every run, so today's results can be compared with yesterday's. Interlinearized texts are a good start because their approved analyses are what accuracy is measured against."
+                     TextWrapping="Wrap" />
+          <TextBlock Classes="setupDescription" IsVisible="{Binding IsLimitsStep}"
+                     Text="Set a per-word time limit and a parser step limit. The project defaults are already filled in." TextWrapping="Wrap" />
+          <TextBlock Classes="setupDescription" IsVisible="{Binding IsFirstRunStep}"
+                     Text="{Binding FinishDescription}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Grid Grid.Row="2">
+          <StackPanel IsVisible="{Binding IsProjectStep}" Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
+            <TextBlock Classes="setupProjectName" Text="{Binding ProjectName}" />
+            <TextBlock Classes="setupMuted" Text="Your choices are kept with this project and can be changed later." TextWrapping="Wrap" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsSelectionStep}" Spacing="{DynamicResource Intent.Space.Related}">
+            <TextBlock Classes="setupMuted" Text="Texts, most interlinearized first" />
+            <Border Classes="setupTextList">
+              <ScrollViewer MaxHeight="{DynamicResource Component.Setup.TextListHeight}">
+                <ItemsControl ItemsSource="{Binding Selection.Texts}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TextChoiceViewModel">
+                      <Border Classes="setupTextRow">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                          <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Classes="setupMuted" Text="{Binding DistinctCountText}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Classes="setupCoverage" Text="{Binding InterlinearizedText}" VerticalAlignment="Center" />
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+            <TextBlock Classes="setupMuted" Text="{Binding Selection.TextsEmptyMessage}"
+                       IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                       TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+              <TextBlock Text="Add words:" FontWeight="SemiBold" VerticalAlignment="Top" />
+              <TextBox Grid.Column="1" Text="{Binding Selection.PastedWords}" AcceptsReturn="True"
+                       TextWrapping="Wrap" MinHeight="{DynamicResource Component.Setup.AddedWordsHeight}"
+                       PlaceholderText="One word per line" AutomationProperties.Name="Words to add" />
+            </Grid>
+            <Border Classes="setupSummary">
+              <TextBlock Classes="setupSummaryText" Text="{Binding RunSummary}" TextWrapping="Wrap" />
+            </Border>
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsLimitsStep}" Spacing="{DynamicResource Intent.Space.Group}" VerticalAlignment="Center">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                <TextBlock Text="Time limit per word" FontWeight="SemiBold" />
+                <TextBlock Classes="setupMuted" Text="A word that runs out of time shows as Limit." TextWrapping="Wrap" />
+              </StackPanel>
+              <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding Selection.PerWordTimeLimitSeconds}"
+                             Minimum="0.1" Increment="0.1" FormatString="0.#"
+                             AutomationProperties.Name="Time limit per word, in seconds" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                <TextBlock Text="Parser step limit per word" FontWeight="SemiBold" />
+                <TextBlock Classes="setupMuted" Text="50,000,000 steps is the default. Choose no limit to let parsing continue until it finishes." TextWrapping="Wrap" />
+              </StackPanel>
+              <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding StepLimitSteps}"
+                             Minimum="1" Increment="1000000" FormatString="N0"
+                             IsEnabled="{Binding !IsStepLimitUnbounded}"
+                             AutomationProperties.Name="Parser step limit per word" />
+            </Grid>
+            <CheckBox Content="No step limit" IsChecked="{Binding IsStepLimitUnbounded}" />
+            <TextBlock Classes="setupError" Text="{Binding StepLimitValidationMessage}"
+                       IsVisible="{Binding StepLimitValidationMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsFirstRunStep}" Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
+            <TextBlock Classes="setupProjectName" Text="{Binding FinishButtonText}" />
+            <TextBlock Classes="setupMuted" Text="{Binding AddedWordsText}" TextWrapping="Wrap" />
+            <Border Classes="setupSummary">
+              <TextBlock Classes="setupSummaryText" Text="{Binding RunSummary}" TextWrapping="Wrap" />
+            </Border>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+          <Button Classes="setupSkip" Content="Skip for now" Command="{Binding SkipCommand}"
+                  AutomationProperties.Name="Skip setup for now" />
+          <TextBlock Grid.Column="1" Classes="setupError" Text="{Binding RefusalMessage}"
+                     IsVisible="{Binding HasRefusal}" VerticalAlignment="Center" TextWrapping="Wrap" />
+          <Button Grid.Column="2" Classes="setupSecondary" Content="Back" Command="{Binding BackCommand}"
+                  IsVisible="{Binding IsBackVisible}" />
+          <Button Grid.Column="3" Classes="setupPrimary" Content="{Binding NextButtonText}" Command="{Binding NextCommand}"
+                  IsVisible="{Binding IsNextVisible}" />
+          <Button Grid.Column="3" Classes="setupPrimary" Content="{Binding FinishButtonText}"
+                  Command="{Binding FinishCommand}" IsVisible="{Binding IsFirstRunStep}"
+                  AutomationProperties.Name="{Binding FinishButtonText}" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

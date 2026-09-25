@@ -95,7 +95,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 walkthrough.Window.Width = 1240;
                 walkthrough.Window.Height = 780;
                 walkthrough.Show();
-                Drive(walkthrough, original);
+                Drive(walkthrough, original, folder);
                 SaveEveryPage(walkthrough, folder);
                 SaveTimingStepLimit(walkthrough, folder);
                 SaveGrammarWithAKindChosen(walkthrough, folder);
@@ -111,12 +111,18 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         }
     }
 
-    private void Drive(WalkthroughWindow walkthrough, string original)
+    private void Drive(WalkthroughWindow walkthrough, string original, string folder)
     {
         var workspace = walkthrough.Workspace;
         walkthrough.Click("Browse for a FieldWorks project file");
         walkthrough.WaitUntil(() => workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts." ||
             workspace.Baseline.HasBaseline, TimeSpan.FromMinutes(2), "the project did not open");
+
+        walkthrough.WaitUntil(() => workspace.Context.Setup?.IsOpen == true,
+            TimeSpan.FromMinutes(1), "first-open setup did not appear");
+        var setup = workspace.Context.Setup!;
+        CaptureSetupStep(walkthrough, folder, "project");
+        setup.NextCommand.Execute(null);
 
         workspace.Baseline.RefreshCommand.Execute(null);
         walkthrough.WaitUntil(() => workspace.Baseline.HasBaseline && !workspace.Baseline.RefreshCommand.IsRunning,
@@ -126,6 +132,14 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
 
         walkthrough.WaitUntil(() => workspace.Selection.Texts.Count > 0 ||
             workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts.", TimeSpan.FromMinutes(2), "the Texts did not load");
+        if (workspace.Selection.Texts.FirstOrDefault() is { } text) text.IsChecked = true;
+        else workspace.Selection.PastedWords = "setup sample";
+        CaptureSetupStep(walkthrough, folder, "selection");
+        setup.NextCommand.Execute(null);
+        CaptureSetupStep(walkthrough, folder, "limits");
+        setup.NextCommand.Execute(null);
+        CaptureSetupStep(walkthrough, folder, "first-run");
+        setup.SkipCommand.Execute(null);
 
         // Texts first, so In text has something to show; the sample's word list when the project has none.
         foreach (var text in workspace.Selection.Texts.ToList())
@@ -185,6 +199,16 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
             walkthrough.WaitUntil(() => !workspace.Assess.Trace.TryCommand.IsRunning, TimeSpan.FromMinutes(3), "Try a Word did not finish");
             output.WriteLine($"Tried '{tried.Word}': {workspace.Assess.Trace.AnswerText}");
         }
+    }
+
+    private static void CaptureSetupStep(WalkthroughWindow walkthrough, string folder, string step)
+    {
+        foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+        {
+            Application.Current!.RequestedThemeVariant = variant;
+            Save(walkthrough.Window, Path.Combine(folder, $"setup-{step}-{theme}.png"));
+        }
+        Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
     }
 
     private static void SaveEveryPage(WalkthroughWindow walkthrough, string folder)
