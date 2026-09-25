@@ -161,7 +161,6 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         Evidence = null;
         CurrentEvidence = null;
-        Changes.Reset();
         foreach (var page in _pages) page.ProjectCleared();
     }
 
