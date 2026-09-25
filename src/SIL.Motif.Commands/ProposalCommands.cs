@@ -753,6 +753,11 @@ public static partial class ProposalCommands
                 var canonicalId = CanonicalId.Parse(id);
                 var (record, envelope) = repository.GetFinalized(canonicalId);
                 var manifest = ProposalRecordMapping.ToManifest(record);
+                if (record.Status == ManifestStatus.Applied)
+                    return CommandOutcome<ReopenedResponse>.Refused(new Refusal(
+                        "proposal.already-applied", FailureReason.Refused,
+                        "An applied Proposal cannot be amended under the same ID. Create a new Proposal.",
+                        Fact(("proposalId", id))));
 
                 // Loads the envelope's content into a new draft with the SAME proposalId; finalize then produces an amend.
                 var draft = new DraftDocument

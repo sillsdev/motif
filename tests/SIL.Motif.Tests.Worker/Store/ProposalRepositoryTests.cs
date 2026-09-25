@@ -2,6 +2,9 @@ using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Model.AppliedLog;
+using SIL.Motif.Model.Effects;
+using SIL.Motif.Model.Receipts;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -12,6 +15,35 @@ public sealed class ProposalRepositoryTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-proposals-" + Guid.NewGuid().ToString("N"));
 
     public ProposalRepositoryTests() => Directory.CreateDirectory(_root);
+
+    [Fact]
+    public void ExistingReceiptCannotMarkAChangedRevisionApplied()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "receipt.fwdata"), "receipt");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "receipt.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var id = CanonicalId.Mint("proposal/");
+        var repository = new ProposalRepository(database);
+        var firstDigest = "sha256:" + new string('a', 64);
+        var secondDigest = "sha256:" + new string('b', 64);
+        repository.SaveRevision(new ProposalRevisionRecord(id, firstDigest, "{}", "proposed", null, null, null));
+        repository.RecordAppliedReceipt(ReceiptFor(id, firstDigest));
+        repository.SaveRevision(new ProposalRevisionRecord(id, secondDigest, "{\"amended\":true}",
+            "proposed", null, null, null));
+
+        Assert.Throws<InvalidDataException>(() =>
+            repository.RecordAppliedReceipt(ReceiptFor(id, secondDigest)));
+        Assert.Equal("proposed", repository.Get(id).Status);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT IntentDigest FROM Receipts WHERE ProposalId = $id;";
+        command.Parameters.AddWithValue("$id", id.Value);
+        Assert.Equal(firstDigest, command.ExecuteScalar());
+    }
+
+    private static Receipt ReceiptFor(CanonicalId id, string digest) => new(id, digest, false,
+        "baseline", "applied", Array.Empty<ExpectedEffect>(), "sha256:effect",
+        new AppliedLogEntry(id.ToGuid(), 1, "2026-09-25T00:00:00Z", "tester", digest[7..], "test"));
 
     [Fact]
     public void SavesRevisionDecisionAndListsCurrentProposal()

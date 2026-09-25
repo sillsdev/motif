@@ -14,9 +14,8 @@ namespace SIL.Motif.Model.Receipts;
 /// </summary>
 /// <param name="ProposalId">The Proposal's stable, frozen id (see "Proposal identity vs content digest").</param>
 /// <param name="IntentDigest">
-/// The full <c>sha256:</c>-prefixed intent digest of the Proposal actually presented to this
-/// call (not necessarily the one recorded in <see cref="AppliedLogEntry"/>, which stores only the
-/// hex — see <see cref="AppliedLog.AppliedLogFormat"/>).
+/// The full <c>sha256:</c>-prefixed intent digest of the Proposal applied to the project. The
+/// <see cref="AppliedLogEntry"/> stores the same digest without the prefix.
 /// </param>
 /// <param name="AlreadyApplied">
 /// <c>true</c> when <see cref="ProposalId"/> was already present in the applied-change log: Apply
@@ -30,10 +29,7 @@ namespace SIL.Motif.Model.Receipts;
 /// idempotence check short-circuited before any unit of work opened.
 /// </param>
 /// <param name="ResultNote">
-/// Human-readable summary of the outcome: what was applied, or why nothing was (already applied,
-/// including a content-check note if the supplied Proposal's intent digest differs from the one
-/// recorded at the prior apply — the same stored <c>changeSetId</c> identity with different content, surfaced
-/// rather than reported as a clean "already applied").
+/// Human-readable summary of what was applied, or that the same content was already applied.
 /// </param>
 /// <param name="ActualEffects">
 /// The actual effect closure: the observed effects, read back from LibLCM after commit — as

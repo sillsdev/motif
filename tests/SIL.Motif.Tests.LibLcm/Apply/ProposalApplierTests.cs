@@ -304,7 +304,7 @@ public sealed class ProposalApplierTests : IDisposable
     }
 
     [Fact]
-    public void Apply_AlreadyAppliedProposal_ShortCircuitsBeforeMissingPrerequisiteCheck()
+    public void Apply_ChangedPrerequisitesWithAppliedId_RefusesBeforeMissingPrerequisiteCheck()
     {
         var (senseGuid, wsTag, originalGloss) = FindSenseWithKnownGloss(_cache);
         var proposal = BuildSetGlossProposal(
@@ -313,9 +313,10 @@ public sealed class ProposalApplierTests : IDisposable
         ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
 
         var amendedContent = WithRequirements(proposal, CanonicalId.Mint());
-        var receipt = ProposalApplier.Apply(_cache, amendedContent, dryRun.Anchor, "motif-tests");
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            ProposalApplier.Apply(_cache, amendedContent, dryRun.Anchor, "motif-tests"));
 
-        Assert.True(receipt.AlreadyApplied);
+        Assert.Contains("different content", failure.Message, StringComparison.Ordinal);
         Assert.Single(ProjectAppliedLog.ReadAll(_cache));
     }
 

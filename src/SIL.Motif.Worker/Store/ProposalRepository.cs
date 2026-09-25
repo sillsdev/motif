@@ -583,11 +583,24 @@ public sealed class ProposalRepository : IProposalRepository
         ArgumentNullException.ThrowIfNull(receipt);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        using var current = connection.CreateCommand();
+        current.Transaction = transaction;
+        current.CommandText = "SELECT CurrentIntentDigest FROM Proposals WHERE ProposalId = $id;";
+        current.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
+        if (!string.Equals(current.ExecuteScalar() as string, receipt.IntentDigest, StringComparison.Ordinal))
+            throw new InvalidDataException("The Receipt digest does not match the Proposal's current revision.");
+        if (!receipt.IntentDigest.StartsWith("sha256:", StringComparison.Ordinal) ||
+            !string.Equals(receipt.AppliedLogEntry.IntentDigest, receipt.IntentDigest[7..], StringComparison.Ordinal))
+            throw new InvalidDataException("The Receipt digest does not match the project's applied log entry.");
         using var existing = connection.CreateCommand();
         existing.Transaction = transaction;
-        existing.CommandText = "SELECT 1 FROM Receipts WHERE ProposalId = $id;";
+        existing.CommandText = "SELECT IntentDigest FROM Receipts WHERE ProposalId = $id;";
         existing.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
-        if (existing.ExecuteScalar() is null)
+        var recordedDigest = existing.ExecuteScalar() as string;
+        if (recordedDigest is not null &&
+            !string.Equals(recordedDigest, receipt.IntentDigest, StringComparison.Ordinal))
+            throw new InvalidDataException("The Proposal already has a Receipt for different content.");
+        if (recordedDigest is null)
         {
             using var insert = connection.CreateCommand();
             insert.Transaction = transaction;
@@ -646,7 +659,7 @@ public sealed class ProposalRepository : IProposalRepository
         update.Transaction = transaction;
         update.CommandText = """
             UPDATE Proposals SET DraftName = $name, DraftJson = $json
-            WHERE ProposalId = $id AND CurrentIntentDigest IS NOT NULL;
+            WHERE ProposalId = $id AND CurrentIntentDigest IS NOT NULL AND Status != 'applied';
             """;
         update.Parameters.AddWithValue("$name", draftName);
         update.Parameters.AddWithValue("$json", draftJson);

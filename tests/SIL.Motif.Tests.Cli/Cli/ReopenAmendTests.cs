@@ -33,7 +33,7 @@ public sealed class ReopenAmendTests
     }
 
     [Fact]
-    public void Commit_Reopen_Amend_KeepsId_MovesDigest_RetainsBothObjectVersions_ResetsStatusToProposed()
+    public void Commit_Reopen_Amend_KeepsId_MovesDigest_RetainsBothObjectVersions()
     {
         var senseGuid = _seed.FirstSenseId;
         var wsTag = NewLangProjFixture.AnalysisTag;
@@ -56,10 +56,6 @@ public sealed class ReopenAmendTests
 
         Assert.Equal("proposed", GetRecord(proposalId).Status);
         Assert.Equal(1, CountRevisions(proposalId));
-
-        // Simulate a real prior "applied" status, so amend's reset to "proposed" is a real transition.
-        SetStatusRaw(proposalId, "applied");
-        Assert.Equal("applied", GetRecord(proposalId).Status);
 
         // --- reopen: loads v1's content into a NEW draft carrying the SAME frozen proposalId ---
         var reopenResult = ProposalCommands.Reopen(new ReopenRequest(_fwDataPath, ProductVersion, "v2", proposalId));
@@ -105,6 +101,28 @@ public sealed class ReopenAmendTests
 
         // Only one Proposals row exists for this id: it's the movable pointer, updated in place, never re-created.
         Assert.Equal(1, CountProposalRows(proposalId));
+    }
+
+    [Fact]
+    public void ReopenAppliedProposalRefusesBeforeCreatingDraft()
+    {
+        var target = CanonicalId.FromGuid(_seed.FirstSenseId).Value;
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion,
+            "applied-source", "source")).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion,
+            "applied-source", target, "en", "applied gloss")).Succeeded);
+        DraftRationale.Author(_fwDataPath, "applied-source", "Clarify gloss",
+            "Apply a new gloss to this sense.");
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion,
+            "applied-source"));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        SetStatusRaw(finalized.Value!.ProposalId, "applied");
+
+        var reopened = ProposalCommands.Reopen(new ReopenRequest(_fwDataPath, ProductVersion,
+            "amended-applied", finalized.Value.ProposalId));
+
+        Assert.Equal("proposal.already-applied", reopened.Refusal?.Code);
+        Assert.False(DraftExists("amended-applied"));
     }
 
     [Fact]
