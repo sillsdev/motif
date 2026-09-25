@@ -8,6 +8,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -123,7 +124,7 @@ public sealed class TryWordPageTests
 
         context.TryWord("typed-only");
         await page.Trace.TryCommand.ExecutionTask!;
-        page.OpenRuleTimingCommand.Execute(Assert.Single(page.RulesOnBestPath));
+        Assert.Single(page.RulesOnBestPath).OpenTimingCommand.Execute(null);
         Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
         Assert.Equal("Plural", timing.Focus!.Rule);
         Assert.Equal(["typed-only"], timing.Focus.Words);

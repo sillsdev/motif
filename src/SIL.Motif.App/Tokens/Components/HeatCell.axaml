@@ -11,7 +11,7 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Warning}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
   </Style>
-  <Style Selector="HeatCell.cell > :is(TextBlock)">
+  <Style Selector=".cell > :is(TextBlock)">
     <Setter Property="Margin" Value="{DynamicResource Component.HeatCell.TextInset}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>

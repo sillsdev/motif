@@ -3,7 +3,7 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              x:Class="SIL.Motif.App.Views.TryAWordPage"
-             x:Name="TryAWordPage"
+             x:Name="Root"
              x:DataType="vm:TryWordPageModel">
   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Section}"
         Margin="{DynamicResource Component.TryWord.PageInset}">
