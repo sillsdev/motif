@@ -31,6 +31,10 @@
     <InternalsVisibleTo Include="@(MotifTestAssembly)" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.App'">
+    <InternalsVisibleTo Include="SIL.Motif.Tests.App" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Host' or '$(MSBuildProjectName)' == 'SIL.Motif.Worker'">
     <InternalsVisibleTo Include="SIL.Motif.Tests.Support" />
   </ItemGroup>
