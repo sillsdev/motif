@@ -10,6 +10,8 @@
     <DockPanel LastChildFill="False">
       <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextWrapping="Wrap"
                                VerticalAlignment="Center" />
+      <Button DockPanel.Dock="Right" Content="AI Handoff" Command="{Binding Words.HandOffCheckedWordsCommand}"
+              AutomationProperties.Name="AI Handoff for ticked words in Analyze texts" />
       <TextBox DockPanel.Dock="Right" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
                AutomationProperties.Name="Search words" />
     </DockPanel>
@@ -46,17 +48,21 @@
         <DataTemplate x:DataType="vm:TextWordRowViewModel">
           <Expander Classes="denseWord">
             <Expander.Header>
-              <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <views:CopyableTextBlock Grid.Column="1" Classes="muted"
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                <CheckBox Width="{DynamicResource Component.TextsPage.WordCheckWidth}"
+                          Grid.Column="0" IsChecked="{Binding IsChecked}"
+                          AutomationProperties.Name="{Binding Form, StringFormat='Tick {0} for AI Handoff'}" />
+                <views:CopyableTextBlock Grid.Column="1" Text="{Binding Form}"
+                                         FontWeight="SemiBold" VerticalAlignment="Center" />
+                <views:CopyableTextBlock Grid.Column="2" Classes="muted"
                                          Text="{Binding OccurrenceCount, StringFormat='×{0}'}"
                                          VerticalAlignment="Center" />
-                <views:VerdictChip Grid.Column="2" Verdict="{Binding Verdict}" Text="{Binding StatusLabel}"
+                <views:VerdictChip Grid.Column="3" Verdict="{Binding Verdict}" Text="{Binding StatusLabel}"
                                    Compact="True" HorizontalAlignment="Left" />
-                <views:VerdictChip Grid.Column="3" Verdict="{Binding LastResultMeaning}"
+                <views:VerdictChip Grid.Column="4" Verdict="{Binding LastResultMeaning}"
                                    Text="{Binding LastResultLabel}" Compact="True"
                                    IsVisible="{Binding HasLastResult}" />
-                <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="—"
+                <views:CopyableTextBlock Grid.Column="4" Classes="muted" Text="—"
                                          IsVisible="{Binding !HasLastResult}" VerticalAlignment="Center" />
               </Grid>
             </Expander.Header>

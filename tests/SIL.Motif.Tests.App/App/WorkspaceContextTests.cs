@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -25,6 +26,8 @@ public sealed class WorkspaceContextTests
     private const string ProjectPath = @"C:\projects\one.fwdata";
 
     private const string OtherProjectPath = @"C:\projects\two.fwdata";
+
+    private static readonly Guid TextId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private static readonly BaselineToken Token = new(
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
@@ -489,6 +492,159 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
+    public void ListsCanHandOffEveryWordInTheSelectedList()
+    {
+        var (fake, context) = NewContextWithFake();
+        var texts = new TextsPageModel(context);
+        var handoff = new AiHandoffPageModel(context);
+        context.Assess.Result = Assessment() with
+        {
+            Words = [ApprovedUnparsed("dogs"), ApprovedUnparsed("cats")],
+        };
+        texts.TextsLists.SelectListCommand.Execute(texts.TextsLists.Lists.Single(list =>
+            list.Name == "Approved, not parsed"));
+
+        Assert.True(texts.TextsLists.HandOffListCommand.CanExecute(null));
+        texts.TextsLists.HandOffListCommand.Execute(null);
+
+        Assert.Equal(["dogs", "cats"], handoff.Handoff.ChosenWords);
+    }
+
+    [Fact]
+    public void ListsCanHandOffOnlyTheTickedWordsInTheSelectedList()
+    {
+        var (fake, context) = NewContextWithFake();
+        var texts = new TextsPageModel(context);
+        var handoff = new AiHandoffPageModel(context);
+        context.Assess.Result = Assessment() with
+        {
+            Words = [ApprovedUnparsed("dogs"), ApprovedUnparsed("cats")],
+        };
+        texts.TextsLists.SelectListCommand.Execute(texts.TextsLists.Lists.Single(list =>
+            list.Name == "Approved, not parsed"));
+        texts.Assess.Compare.Words.Single(word => word.Word == "cats").IsChecked = true;
+
+        Assert.True(texts.TextsLists.HandOffCheckedWordsCommand.CanExecute(null));
+        texts.TextsLists.HandOffCheckedWordsCommand.Execute(null);
+
+        Assert.Equal(["cats"], handoff.Handoff.ChosenWords);
+    }
+
+    [Fact]
+    public async Task AnalyzeTextsCanHandOffOnlyTheTickedWords()
+    {
+        var (fake, context) = NewContextWithFake();
+        var texts = new TextsPageModel(context);
+        var handoff = new AiHandoffPageModel(context);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("dogs", null,
+                    [new WordOccurrence(TextId, "Alpha", 1, "dogs", "unanalysed", null)], [], []),
+                new TextWord("cats", null,
+                    [new WordOccurrence(TextId, "Alpha", 2, "cats", "unanalysed", null)], [], [])],
+            [], HasBaseline: true, OccurrenceCount: 2));
+        await texts.Words.SetProjectAsync(ProjectPath);
+        texts.Words.Rows.Single(row => row.Form == "cats").IsChecked = true;
+
+        Assert.True(texts.Words.HandOffCheckedWordsCommand.CanExecute(null));
+        texts.Words.HandOffCheckedWordsCommand.Execute(null);
+
+        Assert.Equal(["cats"], handoff.Handoff.ChosenWords);
+    }
+
+    [Fact]
+    public async Task MatrixAnalyzeTextsAndListsShowTheSameWords()
+    {
+        var (fake, context) = NewContextWithFake();
+        var texts = new TextsPageModel(context);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("kitabu", null,
+                [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], [])],
+            [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("kitabu", "kitabu", null, null)])])],
+            HasBaseline: true, OccurrenceCount: 1));
+        await texts.Words.SetProjectAsync(ProjectPath);
+        context.Assess.Result = Assessment() with { Words = [ApprovedUnparsed("kitabu")] };
+        var matrixWord = Assert.Single(texts.Assess.Compare.Words);
+        var list = Assert.Single(texts.TextsLists.Lists, candidate =>
+            candidate.Cells.Contains(new TextsListCell(matrixWord.Row, matrixWord.Column)));
+        texts.TextsLists.SelectListCommand.Execute(list);
+
+        Assert.Equal(["kitabu"], texts.Words.Rows.Select(row => row.Form));
+        Assert.Equal(["kitabu"], texts.ResultsInText.Texts.SelectMany(text => text.Lines)
+            .SelectMany(line => line.Tokens).Where(token => token.IsWord).Select(token => token.Form));
+        Assert.Equal(["kitabu"], texts.Assess.Compare.Words.Select(word => word.Word));
+        Assert.Equal(["kitabu"], texts.TextsLists.Compare.Words.Select(word => word.Word));
+    }
+
+    [Fact]
+    public async Task AnAnalyzeChangeShowsNotAppliedYetInTheMatrixAndItsList()
+    {
+        var (fake, context) = NewContextWithFake();
+        var texts = new TextsPageModel(context);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("kitabu", null,
+                [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], [])],
+            [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("kitabu", "kitabu", null, null)])])],
+            HasBaseline: true, OccurrenceCount: 1));
+        await texts.Words.SetProjectAsync(ProjectPath);
+        context.Assess.Result = Assessment() with { Words = [ApprovedUnparsed("kitabu")] };
+        var matrixWord = Assert.Single(texts.Assess.Compare.Words);
+        var list = Assert.Single(texts.TextsLists.Lists, candidate =>
+            candidate.Cells.Contains(new TextsListCell(matrixWord.Row, matrixWord.Column)));
+        texts.TextsLists.SelectListCommand.Execute(list);
+        var token = Assert.Single(texts.ResultsInText.Texts.SelectMany(text => text.Lines)
+            .SelectMany(line => line.Tokens), item => item.IsWord);
+        texts.ResultsInText.SelectToken(token);
+
+        await texts.ResultsInText.AddChangeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
+
+        Assert.Equal("Not applied yet", token.PendingChangeStatus);
+        Assert.Equal("Not applied yet", Assert.Single(texts.Assess.Compare.Words).PendingChangeStatus);
+        Assert.Equal("Not applied yet", list.PendingChangeStatus);
+    }
+
+    [Fact]
+    public async Task AnalyzeOpinionSendsTheChosenAnalysisAndReadingIndex()
+    {
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake);
+        var changes = new ChangesViewModel(fake);
+        var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection), changes, fake,
+            new NoFolderPicker(), new NoDragSource());
+        var texts = new TextsPageModel(context);
+        var first = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
+        var second = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000002", null, null)]);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse([], [], HasBaseline: true));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        changes.AssessmentId = "assessment/one";
+        context.Assess.Result = Assessment() with
+        {
+            Words =
+            [
+                new AssessmentWordResult("typed-only", "analysed", false, "Search completed", 3, null)
+                {
+                    Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, "typed-only", 3,
+                        false, false, false, [first, second], []),
+                    Readings =
+                    [
+                        new ParserReading([new ParserReadingMorph("typed-only", "first", "n", null, false, null)]),
+                        new ParserReading([new ParserReadingMorph("typed-only", "second", "n", null, false, null)]),
+                    ],
+                    ReadingGrades = ["no-opinion", "no-opinion"],
+                },
+            ],
+        };
+        texts.ResultsInText.SelectWord("typed-only");
+        var token = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
+        token.SelectedReading = token.Readings[1];
+
+        await texts.ResultsInText.AddChangeCommand.ExecuteAsync(ChangeKinds.Approve);
+
+        var change = Assert.Single(fake.PendingPutRequests).Change;
+        Assert.Equal(second, change.Reading);
+        Assert.Equal(1, change.ReadingIndex);
+    }
+
+    [Fact]
     public void HandingOffWordsThroughTheContextOpensTheAiHandoffPageOnThoseWords()
     {
         var context = NewContext();
@@ -644,6 +800,13 @@ public sealed class WorkspaceContextTests
         Measurements = [new ProducedAssessmentReference("assessment-1", "ObjectTiming", "invocation/one"),
             new ProducedAssessmentReference("assessment-parse", "ParseTime", "invocation/one")],
     };
+
+    private static AssessmentWordResult ApprovedUnparsed(string form) =>
+        new(form, "no-analysis", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            OccurrenceCount = 1,
+        };
 
     private static AssessmentRecord StoredAssessment() => new(
         "assessment-1", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope",

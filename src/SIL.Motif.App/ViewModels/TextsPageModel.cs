@@ -29,6 +29,7 @@ public sealed partial class TextsPageModel : PageModel
     {
         Words = new TextWordsViewModel(context.Commands, context.Selection);
         Words.OpenWord = context.OpenWord;
+        Words.HandOff = context.HandOff;
         Assess.TextWords = Words;
         ShowTabCommand = new RelayCommand<TextsTab>(tab => Tab = tab);
         ShowAnalyzeViewCommand = new RelayCommand<AnalyzeTextsView>(view => AnalyzeView = view);
@@ -38,6 +39,7 @@ public sealed partial class TextsPageModel : PageModel
         };
         Assess.Compare.Changes = context.Changes;
         TextsLists = new TextsListsViewModel(Assess.Compare);
+        TextsLists.HandOff = context.HandOff;
         Assess.Compare.ChosenCellsChanged += OnChosenCellsChanged;
         Assess.Compare.OpenWord = context.OpenWord;
         Assess.Difference.OpenWord = context.OpenWord;
