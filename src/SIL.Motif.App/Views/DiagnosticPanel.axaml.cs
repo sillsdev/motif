@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -129,23 +130,7 @@ public sealed partial class DiagnosticPanel : UserControl
 
     private async void OnOpenClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        try
-        {
-            var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel is null) return;
-            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "Open diagnostic JSON",
-                AllowMultiple = false,
-                FileTypeFilter = [new FilePickerFileType("Motif diagnostic JSON") { Patterns = ["*.json"] }],
-            });
-            if (files.Count == 0) return;
-
-            await using var stream = await files[0].OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            var loaded = TraceWordViewModel.FromDiagnosticJson(await reader.ReadToEndAsync());
-            new DiagnosticWindow(loaded).Show();
-        }
-        catch (Exception exception) { ShowError(exception.Message); }
+        if (TopLevel.GetTopLevel(this) is not { } owner) return;
+        await SavedDiagnosticOpener.OpenFromPickerAsync(owner, trace => new DiagnosticWindow(trace).Show(), ShowError);
     }
 }
