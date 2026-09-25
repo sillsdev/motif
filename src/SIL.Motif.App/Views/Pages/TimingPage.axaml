@@ -16,19 +16,23 @@
         <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Snug}"
                    LineSpacing="{DynamicResource Intent.Space.Snug}">
           <views:CopyableTextBlock Classes="muted" Text="Look at" VerticalAlignment="Center" />
-          <Button Classes="filterChip" Content="Step limit" Command="{Binding SelectWordSetCommand}"
+          <Button Classes="filterChip" Classes.active="{Binding IsStepLimitSelected}"
+                  Content="Step limit" Command="{Binding SelectWordSetCommand}"
                   CommandParameter="step-limit" />
-          <Button Classes="filterChip" Content="Slowest" Command="{Binding SelectWordSetCommand}"
+          <Button Classes="filterChip" Classes.active="{Binding IsSlowestSelected}"
+                  Content="Slowest" Command="{Binding SelectWordSetCommand}"
                   CommandParameter="slowest" />
           <NumericUpDown Value="{Binding SlowestCount}" Minimum="1" Increment="1"
                          AutomationProperties.Name="Number of slowest words" />
-          <Button Classes="filterChip" Content="All" Command="{Binding SelectWordSetCommand}"
+          <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
+                  Content="All" Command="{Binding SelectWordSetCommand}"
                   CommandParameter="all" />
           <Button Classes="filterChip" Content="Chosen in Texts" Command="{Binding UseCheckedWordsCommand}" />
         </WrapPanel>
 
         <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
                    LineSpacing="{DynamicResource Intent.Space.Snug}">
+          <views:CopyableTextBlock Classes="muted" Text="Matrix cell" VerticalAlignment="Center" />
           <ComboBox ItemsSource="{Binding MatrixCells}" SelectedItem="{Binding SelectedMatrixCell}"
                     AutomationProperties.Name="Matrix cell from Texts">
             <ComboBox.ItemTemplate>
@@ -38,6 +42,7 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
           <Button Content="Use cell" Command="{Binding UseMatrixCellCommand}" />
+          <views:CopyableTextBlock Classes="muted" Text="List from Texts" VerticalAlignment="Center" />
           <ComboBox ItemsSource="{Binding TextsLists}" SelectedItem="{Binding SelectedTextsList}"
                     AutomationProperties.Name="List from Texts">
             <ComboBox.ItemTemplate>

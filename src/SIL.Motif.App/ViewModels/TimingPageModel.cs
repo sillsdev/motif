@@ -117,6 +117,9 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasTimingError => TimingError is not null;
     public string? TimingError { get; private set; }
     public string WordSet { get; private set; } = "all";
+    public bool IsStepLimitSelected => WordSet == "step-limit" && _explicitWords is null;
+    public bool IsSlowestSelected => WordSet == "slowest" && _explicitWords is null;
+    public bool IsAllSelected => WordSet == "all" && _explicitWords is null;
     public string ScopeLabel => KindTiming is null ? "No stored timing for these words" :
         $"Where the time went, for these {KindTiming.WordCount:N0} words: by kind of rule";
     public string PercentileSummary => KindTiming is null ? string.Empty :
@@ -200,8 +203,7 @@ public sealed partial class TimingPageModel : PageModel
         SelectedRule = null;
         WordSet = "all";
         _explicitWords = null;
-        RaiseFocusState();
-        RaiseStoredTimingState();
+        RaiseTimingState();
         Statistics.Reset();
     }
 
@@ -440,7 +442,8 @@ public sealed partial class TimingPageModel : PageModel
         foreach (var property in new[]
         {
             nameof(KindTiming), nameof(RuleTiming), nameof(RuleDetail), nameof(TimingError),
-            nameof(WordSet), nameof(SelectedRule), nameof(SelectedRuleRow), nameof(CostliestRuleWords),
+            nameof(WordSet), nameof(IsStepLimitSelected), nameof(IsSlowestSelected),
+            nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleRow), nameof(CostliestRuleWords),
             nameof(SelectedWords),
             nameof(SlowestWords), nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),

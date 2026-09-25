@@ -126,6 +126,9 @@ public sealed class WorkspaceContextTests
             request.Top == top);
         Assert.Contains(fake.TimingRequests, request => request.WordSet == wordSet && request.By == "rule" &&
             request.Top == top);
+        Assert.Equal(wordSet == "step-limit", timing.IsStepLimitSelected);
+        Assert.Equal(wordSet == "slowest", timing.IsSlowestSelected);
+        Assert.Equal(wordSet == "all", timing.IsAllSelected);
         Assert.Empty(fake.AssessRequests);
         Assert.Empty(fake.StatsRequests);
     }
