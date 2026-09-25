@@ -207,7 +207,7 @@
       <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="IN THE PROJECT" />
       <views:CopyableTextBlock Grid.Column="4" Classes="columnHeader" Text="PARSER" />
       <views:CopyableTextBlock Grid.Column="5" Classes="columnHeader" Text="MEANING" />
-      <views:CopyableTextBlock Grid.Column="6" Classes="columnHeader" Text="FIRST READING" />
+      <views:CopyableTextBlock Grid.Column="6" Classes="columnHeader" Text="CHOOSE AN ANALYSIS" />
     </Grid>
     <ListBox Grid.Row="4" Classes="denseWords" ItemsSource="{Binding Compare.Words}" AutomationProperties.Name="Words in the chosen cells">
       <ListBox.ItemTemplate>
@@ -221,8 +221,15 @@
             <views:VerdictChip Grid.Column="4" Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}" Compact="True" HorizontalAlignment="Left" />
             <views:CopyableTextBlock Grid.Column="5" Text="{Binding Meaning}" FontSize="12" VerticalAlignment="Center"
                                      Classes.error="{Binding IsViolation}" TextTrimming="CharacterEllipsis" />
-            <views:CopyableTextBlock Grid.Column="6" Classes="muted" Text="{Binding FirstReading}" FontSize="12"
-                                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <ComboBox Grid.Column="6" ItemsSource="{Binding ReadingChoices}" SelectedItem="{Binding SelectedReading}"
+                      PlaceholderText="Choose an analysis for an opinion" VerticalAlignment="Center"
+                      AutomationProperties.Name="{Binding Word, StringFormat='Analysis for {0}'}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CompareReadingChoice">
+                  <views:CopyableTextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
             <HyperlinkButton Grid.Column="7" Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
                              Command="{Binding $parent[views:ComparePanel].Compare.OpenWordCommand}" CommandParameter="{Binding}"
                              AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Words'}" />
@@ -265,6 +272,7 @@
         <StackPanel Spacing="6">
           <views:CopyableTextBlock Text="Changes" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.Summary}" />
+          <views:CopyableTextBlock Classes="error" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.ErrorText}" />
           <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
                                    Text="{Binding Compare.ProposeReadingNotice}" />
           <WrapPanel>

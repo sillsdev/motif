@@ -13,7 +13,7 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>The kinds of change a person can collect about a word's analyses, before any is written.</summary>
 public static class ChangeKinds
 {
-    /// <summary>Approve the analysis: the project's candidate, or the parser's reading.</summary>
+    /// <summary>Approve the analysis the person selected from one word's reading list.</summary>
     public const string Approve = "approve";
 
     /// <summary>Reject the analysis, so FieldWorks never offers it as a guess.</summary>
@@ -111,13 +111,38 @@ public sealed partial class ChangesViewModel : ObservableObject
 
     public async Task AddAsync(string kind, CompareWordViewModel word)
     {
+        ArgumentNullException.ThrowIfNull(word);
+        var readings = kind == ChangeKinds.AddCandidate ? word.ReadingChoices :
+            word.SelectedReading is { } selected ? [selected] : [];
+        if (kind == ChangeKinds.IncorrectSpelling)
+        {
+            await AddOneAsync(kind, word, null).ConfigureAwait(true);
+            return;
+        }
+        Refusal? firstRefusal = null;
+        foreach (var reading in readings)
+        {
+            await AddOneAsync(kind, word, reading).ConfigureAwait(true);
+            firstRefusal ??= LastRefusal;
+        }
+        if (firstRefusal is not null)
+        {
+            LastRefusal = firstRefusal;
+            OnPropertyChanged(nameof(LastRefusal));
+            OnPropertyChanged(nameof(ErrorText));
+        }
+    }
+
+    private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice)
+    {
         if (_client is null || ProjectPath is null)
         {
-            Add(kind, word);
+            Add(kind, word, choice?.Label ?? word.FirstReading);
             return;
         }
         await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", word.Word,
-            AssessmentId, word.Reading, DisplayReading: word.FirstReading)).ConfigureAwait(true);
+            AssessmentId, choice?.Reading, DisplayReading: choice?.Label ?? word.FirstReading,
+            ReadingIndex: choice?.Index)).ConfigureAwait(true);
     }
 
     private async Task RemoveAsync(ChangeViewModel? change)
@@ -208,12 +233,11 @@ public sealed partial class ChangesViewModel : ObservableObject
         }
     }
 
-    /// <summary>Collects a change for <paramref name="word"/>, replacing any change already collected for it.</summary>
-    public void Add(string kind, CompareWordViewModel word)
+    /// <summary>Shows a change locally before a project is open.</summary>
+    public void Add(string kind, CompareWordViewModel word, string? reading = null)
     {
         ArgumentNullException.ThrowIfNull(word);
-        if (Items.FirstOrDefault(item => item.Word == word.Word) is { } existing) Items.Remove(existing);
-        Items.Add(new ChangeViewModel(kind, word.Word, word.RowLabel, word.FirstReading));
+        Items.Add(new ChangeViewModel(kind, word.Word, word.RowLabel, reading ?? word.FirstReading));
         Raise();
     }
 

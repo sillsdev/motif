@@ -9,6 +9,9 @@ public sealed partial class FakeCommandClient
     private PendingChangesSnapshot _pending = new(null, "none", [], []);
 
     public Refusal? PendingPutRefusal { get; set; }
+    public int? PendingPutRefusalOnCall { get; set; }
+
+    public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
 
     public void PendingChangesIs(PendingChangesSnapshot snapshot) => _pending = snapshot;
 
@@ -18,7 +21,9 @@ public sealed partial class FakeCommandClient
     public Task<CommandOutcome<PendingChangesSnapshot>> PutPendingChangeAsync(
         PutPendingChangeRequest request, CancellationToken cancellationToken)
     {
-        if (PendingPutRefusal is { } refusal)
+        PendingPutRequests.Add(request);
+        if (PendingPutRefusal is { } refusal &&
+            (PendingPutRefusalOnCall is null || PendingPutRefusalOnCall == PendingPutRequests.Count))
             return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));
         var change = request.Change;
         var changes = _pending.Changes.Where(item => item.ChangeId != change.ChangeId).ToList();

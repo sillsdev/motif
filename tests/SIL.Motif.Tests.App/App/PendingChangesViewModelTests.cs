@@ -1,4 +1,5 @@
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -8,6 +9,61 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class PendingChangesViewModelTests
 {
+    [Fact]
+    public async Task BulkCandidatesSendEveryParserReadingWithItsAssessmentIndex()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.SetProjectAsync("project.fwdata");
+        changes.AssessmentId = "assessment/one";
+        var assessmentWord = new AssessmentWordResult("word", "analysed", false, "Done", 1, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, "word", 1, false, false, false,
+                [new ParseAnalysis([new ParseMorph(null, null, null, "first")]),
+                 new ParseAnalysis([new ParseMorph(null, null, null, "second")])], []),
+        };
+        var row = new AssessWordRowViewModel(assessmentWord);
+        var word = new CompareWordViewModel(row, (WordProjectStatus.NotPresent, CompareColumnKind.NoMatch));
+
+        await changes.AddAsync(ChangeKinds.AddCandidate, word);
+
+        Assert.Equal([0, 1], fake.PendingPutRequests.Select(request => request.Change.ReadingIndex));
+        Assert.All(fake.PendingPutRequests, request => Assert.Equal("assessment/one", request.Change.AssessmentId));
+        Assert.Equal(2, changes.Items.Count);
+
+        word.SelectedReading = word.ReadingChoices[1];
+        await changes.AddAsync(ChangeKinds.Approve, word);
+        Assert.Equal(1, fake.PendingPutRequests.Last().Change.ReadingIndex);
+        Assert.Equal("second", fake.PendingPutRequests.Last().Change.Reading!.Morphs.Single().GuessedString);
+    }
+
+    [Fact]
+    public async Task ARefusedCandidateDoesNotHideLaterParserReadings()
+    {
+        var fake = new FakeCommandClient
+        {
+            PendingPutRefusal = new Refusal("change.cannot-compose", FailureReason.Refused,
+                "The reading is already stored."),
+            PendingPutRefusalOnCall = 1,
+        };
+        var changes = new ChangesViewModel(fake);
+        await changes.SetProjectAsync("project.fwdata");
+        var result = new AssessmentWordResult("word", "analysed", false, "Done", 1, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, "word", 1, false, false, false,
+                [new ParseAnalysis([new ParseMorph(null, null, null, "first")]),
+                 new ParseAnalysis([new ParseMorph(null, null, null, "second")])], []),
+        };
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(result),
+            (WordProjectStatus.NotPresent, CompareColumnKind.NoMatch));
+
+        await changes.AddAsync(ChangeKinds.AddCandidate, word);
+
+        Assert.Equal(2, fake.PendingPutRequests.Count);
+        Assert.Single(changes.Items);
+        Assert.Equal("change.cannot-compose", changes.LastRefusal?.Code);
+    }
+
     [Fact]
     public async Task ReloadDisplaysTheDraftWrittenThroughTheCommandClient()
     {

@@ -58,7 +58,7 @@ public sealed partial class CompareViewModel : ObservableObject
             foreach (var word in chosen)
             {
                 await Changes.AddAsync(kind, word);
-                word.IsChecked = false;
+                if (Changes.LastRefusal is null) word.IsChecked = false;
             }
         }, CanPropose);
     }
@@ -69,23 +69,31 @@ public sealed partial class CompareViewModel : ObservableObject
     /// </summary>
     public ChangesViewModel Changes { get; set; } = new();
 
-    /// <summary>Adds a change of one kind (see <see cref="ChangeKinds"/>) for every checked word in the list.</summary>
+    /// <summary>Adds the chosen change for checked words, with opinions restricted to one selected analysis.</summary>
     public IAsyncRelayCommand<string> ProposeCommand { get; }
 
-    /// <summary>Why analysis actions are unavailable when a checked word has several parser readings.</summary>
+    /// <summary>Explains which changes can act on checked words and which require an analysis choice.</summary>
     public string ProposeReadingNotice =>
-        "Approve, Reject, Back to candidate, and Add as candidate need exactly one parser reading per checked word.";
+        "Add as candidate collects all parser readings for each checked word. Incorrect spelling can mark many words. " +
+        "Approve, Reject, and Back to candidate require one word checked and one analysis chosen from its reading list.";
 
     private bool CanPropose(string? kind)
     {
         var chosen = Words.Where(word => word.IsChecked).ToArray();
-        return kind is not null && chosen.Length > 0 &&
-            (kind == ChangeKinds.IncorrectSpelling || chosen.All(word => word.ReadingCount == 1));
+        return kind switch
+        {
+            ChangeKinds.IncorrectSpelling => chosen.Length > 0,
+            ChangeKinds.AddCandidate => chosen.Length > 0 && chosen.All(word => word.ReadingCount > 0),
+            ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate =>
+                chosen.Length == 1 && chosen[0].SelectedReading is not null,
+            _ => false,
+        };
     }
 
     private void OnWordPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(CompareWordViewModel.IsChecked)) ProposeCommand.NotifyCanExecuteChanged();
+        if (e.PropertyName is nameof(CompareWordViewModel.IsChecked) or
+            nameof(CompareWordViewModel.SelectedReading)) ProposeCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>Runs words again with a longer limit and folds the answers into this Assessment; set by its owner.</summary>
@@ -471,7 +479,10 @@ public sealed partial class CompareWordViewModel : ObservableObject
         ColumnVerdict = CompareViewModel.VerdictOf(Column);
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
-        Reading = ReadingCount == 1 ? word.Morphology!.Analyses[0] : null;
+        ReadingChoices = word.Morphology?.Analyses.Select((reading, index) =>
+            new CompareReadingChoice(index, reading,
+                $"Reading {index + 1}: {(index < word.Readings.Count ? word.Readings[index].Text : "Unresolved")}"))
+            .ToArray() ?? [];
     }
 
     public string Word { get; }
@@ -492,7 +503,10 @@ public sealed partial class CompareWordViewModel : ObservableObject
     /// <summary>The parser's first reading, so a listed word shows what was just calculated for it.</summary>
     public string FirstReading { get; }
 
-    public ParseAnalysis? Reading { get; }
+    public IReadOnlyList<CompareReadingChoice> ReadingChoices { get; }
+
+    [ObservableProperty]
+    private CompareReadingChoice? _selectedReading;
 
     public int ReadingCount { get; }
 
@@ -500,3 +514,6 @@ public sealed partial class CompareWordViewModel : ObservableObject
     [ObservableProperty]
     private bool _isChecked;
 }
+
+/// <summary>A parser reading chosen by its position in one recorded Assessment word.</summary>
+public sealed record CompareReadingChoice(int Index, ParseAnalysis Reading, string Label);

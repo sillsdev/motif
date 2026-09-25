@@ -104,7 +104,7 @@ public sealed class CompareActionsTests
     }
 
     [Fact]
-    public void TickedWordsCollectOneChangeEachAndALaterChoiceReplacesTheFirst()
+    public void SpellingAndCandidateUseDistinctSlotsForTheSameWord()
     {
         var (_, compare) = Loaded();
         var mwalimu = compare.Words.Single(word => word.Word == "mwalimu");
@@ -114,11 +114,12 @@ public sealed class CompareActionsTests
         mwalimu.IsChecked = true;
         compare.ProposeCommand.Execute(ChangeKinds.IncorrectSpelling);
 
-        var change = Assert.Single(compare.Changes.Items);
+        Assert.Equal(2, compare.Changes.Items.Count);
+        var change = compare.Changes.Items.Last();
         Assert.Equal("mwalimu: Incorrect spelling", change.Summary);
         Assert.True(change.CanBeProposedToday);
         Assert.False(mwalimu.IsChecked);
-        Assert.Equal("All of these can be applied to the FieldWorks project.", compare.Changes.ApplyStatus);
+        Assert.StartsWith("1 can be applied today", compare.Changes.ApplyStatus);
     }
 
     [Fact]
@@ -133,7 +134,7 @@ public sealed class CompareActionsTests
     }
 
     [Fact]
-    public void ProposeRequiresExactlyOneParserReadingForAnalysisChanges()
+    public async Task BulkCandidatesIncludeEveryReadingButOpinionsNeedOneExplicitChoice()
     {
         var table = new AssessWordsViewModel();
         table.Load([Word("ambiguous", "analysed", ProjectStanding.NotPresent, readingCount: 2)]);
@@ -141,11 +142,40 @@ public sealed class CompareActionsTests
         compare.Load(table.AllRows);
         compare.Words.Single().IsChecked = true;
 
-        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
         Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
-        Assert.Contains("exactly one parser reading", compare.ProposeReadingNotice, StringComparison.Ordinal);
-        Assert.Empty(compare.Changes.Items);
+        Assert.Contains("one word", compare.ProposeReadingNotice, StringComparison.Ordinal);
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
+        Assert.Equal(2, compare.Changes.Items.Count);
+
+        var chosen = compare.Words.Single();
+        chosen.IsChecked = true;
+        chosen.SelectedReading = chosen.ReadingChoices[1];
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.Approve);
+        Assert.Contains("form-1", compare.Changes.Items.Last().Reading, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OpinionActionsRefuseSeveralCheckedWordsEvenWhenEachHasASelectedReading()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([Word("one", "analysed", ProjectStanding.NotPresent),
+            Word("two", "analysed", ProjectStanding.NotPresent)]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+        foreach (var word in compare.Words)
+        {
+            word.IsChecked = true;
+            word.SelectedReading = word.ReadingChoices.Single();
+        }
+
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
     }
 
     [Fact]
