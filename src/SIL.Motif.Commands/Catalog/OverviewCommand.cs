@@ -1,5 +1,7 @@
 using System.Globalization;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -32,6 +34,10 @@ public static class OverviewCommand
             var assessedWords = assessment?.Words ?? Array.Empty<AssessedWord>();
             var metrics = OverviewMetrics.Build(words, occurrenceSnapshot, assessedWords);
             var elapsedMs = assessment?.Words?.Where(word => word.ElapsedMs is not null).Sum(word => word.ElapsedMs!.Value);
+            var storedCheck = evidence.Baseline is null ? null : new GrammarCheckRepository(database).GetLatest(
+                System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
+            var warningCounts = WarningsCommand.FromCheck(storedCheck);
+            var largestKind = warningCounts.ByKind.FirstOrDefault();
             return CommandOutcome<OverviewResponse>.Success(new OverviewResponse(
                 evidence.ProjectName, evidence.MotifStoreCreatedUtc, evidence.LastFieldWorksSaveUtc,
                 words.Count, selection?.TextCount ?? evidence.DefaultSelection?.TextIds.Count ?? 0,
@@ -45,7 +51,14 @@ public static class OverviewCommand
                 metrics.TextCoverage, metrics.Accuracy,
                 assessment is null ? TimingAggregation.SummarizeWords(Array.Empty<AssessedWord>())
                     : TimingAggregation.SummarizeWords(assessedWords),
-                Warnings: null)
+                Warnings: storedCheck is null ? null : new OverviewWarningsSummary(
+                    warningCounts.TotalCount, warningCounts.WarningCount, largestKind?.GroupName,
+                    largestKind?.Count)
+                {
+                    WarningCount = warningCounts.WarningCount,
+                    InformationCount = warningCounts.InformationCount,
+                    ByKind = warningCounts.ByKind,
+                })
             {
                 ProjectFileName = Path.GetFileName(project.FullFwDataPath),
                 BaselineCapturedUtc = evidence.Baseline is null

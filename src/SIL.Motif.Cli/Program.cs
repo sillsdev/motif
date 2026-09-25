@@ -629,6 +629,14 @@ try
             result = RenderCommand(OverviewCommand.Overview(new OverviewRequest(overviewProject)));
             break;
 
+        case "warnings":
+            if (!flags.TryGetValue("project", out var warningsProject) ||
+                (flags.TryGetValue("kind", out var warningKind) && string.IsNullOrWhiteSpace(warningKind)))
+                return Usage(UsageLineFor("warnings"), asJson);
+            result = RenderCommand(WarningsCommand.Warnings(new WarningsRequest(
+                warningsProject, flags.GetValueOrDefault("kind"), flags.ContainsKey("left-out"))));
+            break;
+
         case "timing":
             if (!flags.TryGetValue("project", out var timingProject))
                 return Usage(UsageLineFor("timing"), asJson);

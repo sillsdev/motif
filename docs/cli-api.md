@@ -64,6 +64,7 @@ that dispatches them.
 | `selection show` | Released | `selection show --project <fwdata> [--json]` |
 | `selection set-default` | Released | `selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] [--add-words <word,word>] [--json]` |
 | `overview` | Released | `overview --project <fwdata> [--json]` |
+| `warnings` | Released | `warnings --project <fwdata> [--kind <code>] [--left-out] [--json]` |
 | `timing` | Released | `timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind\|rule] [--rule <name>] [--top N] [--json]` |
 | `handoff` | Released | `handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]` |
 | `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |
@@ -91,7 +92,7 @@ through the working directory.
 
 The Released surface contains `open`, `analyses`, `config show`, `report`, `report --list-kinds`,
 `compare`, `baseline capture`, `assess`, `stats`, `selection show`, `selection set-default`,
-`overview`, `timing`, `handoff`, `add-corpus`, `add-document`,
+`overview`, `warnings`, `timing`, `handoff`, `add-corpus`, `add-document`,
 `add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
 `jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
 
@@ -390,8 +391,9 @@ timestamps and counts, Selection word and Text-occurrence counts, wordforms, rul
 Selection fingerprints, Text Coverage, Accuracy, and parse-time median, p95, slowest words, and step-limited
 count. A rule is each distinct affix allomorph on a lexeme or alternate form, plus each compound and
 phonological rule; morphemes are not counted. Text Coverage and Accuracy use the same Compare placement rules as the App. A time- or step-limited
-word is Unknown, not a verdict. `Warnings` is a typed field in `OverviewResponse`; it is `null` until warning
-facts are retained. With no matching Assessment the response still has the project and Selection facts, while
+word is Unknown, not a verdict. `Warnings` is a typed field in `OverviewResponse`; it is `null` until the
+current Baseline has a stored grammar check. It counts warning and information findings and groups them by
+diagnostic code using the same data as `warnings`. With no matching Assessment the response still has the project and Selection facts, while
 Assessment metrics are empty. `--json` emits `OverviewResponse`.
 
 **`timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind|rule]
@@ -407,10 +409,19 @@ its statistics cache. Motif reads that cache directly, without starting more Pan
 the normalized rows with the ParseTime Assessment. A missing selected-word row or unreadable cache refuses
 the Assessment, so partial statistics cannot look complete. Opening Overview or Timing makes no parser call.
 
-### Grammar-stage findings
+### Grammar findings
 
-The Warnings page reads PanGloss's grammar-health report for the current Baseline. This report feeds the App;
-`grammar-health` is not a catalogued `motif` CLI verb.
+The Warnings page reads PanGloss's grammar-health report last stored for the current Baseline. Opening the page
+or running `warnings` never invokes PanGloss. The person can start a new check with **Reload grammar**; successful
+findings replace the stored result. The store records the Baseline token and the resolved default Selection
+digest when one exists, but grammar findings remain valid for the Baseline after the Selection changes.
+`grammar-health` itself is not a catalogued `motif` CLI verb.
+
+**`warnings --project <fwdata> [--kind <code>] [--left-out] [--json]`** reads those stored findings.
+`--kind` matches one stable diagnostic code exactly, ignoring case. `--left-out` keeps only findings whose
+level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result.
+Without a check, text says the grammar has not been checked and JSON has `hasCheck: false` with empty findings.
+`--json` emits `WarningsResponse`, including each finding's description, origin, guidance, subjects, and links.
 
 PanGloss v2 writes an object with `schema_version: 2`, `fieldworks_project`, `summary`, and `diagnostics`.
 The summary groups by `code` and includes `group_name`, `level` (`warning` or `info`), and `count`. Each

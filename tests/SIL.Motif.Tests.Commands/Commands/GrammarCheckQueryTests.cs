@@ -183,7 +183,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
-    public void ASecondCheckOfTheSameBaselineByTheSameParserAnswersFromTheCacheWithoutRunningIt()
+    public void EveryRequestedReloadChecksTheParserAgain()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
@@ -205,7 +205,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.True(second.Succeeded, second.Refusal?.Message);
         Assert.Equal(first.Value!.Findings.Single().Text, second.Value!.Findings.Single().Text);
         Assert.True(otherParser.Succeeded, otherParser.Refusal?.Message);
-        Assert.Equal(2, invoker.Requests.Count);
+        Assert.Equal(3, invoker.Requests.Count);
     }
 
     [Fact]

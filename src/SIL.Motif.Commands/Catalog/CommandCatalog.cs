@@ -102,6 +102,7 @@ public static class CommandCatalog
 
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released),
+        new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released),
         new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released),
 
         // HandoffCommand

@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 18;
+    public const int CurrentSchema = 19;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -30,7 +30,7 @@ public static class MotifSchema
         {
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
-                BaselineDdl + RetainedInvocationDdl;
+                BaselineDdl + RetainedInvocationDdl + GrammarCheckDdl;
             command.ExecuteNonQuery();
         }
 
@@ -57,7 +57,7 @@ public static class MotifSchema
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
-            "BaselineSummaries"
+            "BaselineSummaries", "GrammarChecks"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -319,6 +319,9 @@ public static class MotifSchema
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
+        "GrammarChecks" =>
+        [C("BaselineToken", "TEXT", true, 1), C("SelectionSha256", "TEXT", true, 2),
+            C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true), C("CheckedUtc", "TEXT", true)],
         "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true)],
         "CorpusDocuments" =>
         [C("CorpusId", "TEXT", true, 1), C("DocumentId", "TEXT", true, 2), C("OrdinalIndex", "INTEGER", true),
@@ -712,5 +715,16 @@ public static class MotifSchema
             UNIQUE (AssessmentId)
         );
         CREATE INDEX IX_RetainedInvocationMembers_Assessment ON RetainedInvocationMembers(AssessmentId);
+        """;
+
+    private const string GrammarCheckDdl = """
+        CREATE TABLE GrammarChecks (
+            BaselineToken TEXT NOT NULL,
+            SelectionSha256 TEXT NOT NULL,
+            ParserStamp TEXT NULL,
+            ResponseJson TEXT NOT NULL,
+            CheckedUtc TEXT NOT NULL,
+            PRIMARY KEY (BaselineToken, SelectionSha256)
+        );
         """;
 }

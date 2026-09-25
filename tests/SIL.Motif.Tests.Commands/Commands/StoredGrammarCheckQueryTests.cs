@@ -12,7 +12,7 @@ namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
 /// Pins <see cref="StoredGrammarCheckQuery"/>: it answers with the grammar check stored for the current
-/// Baseline by the same parser, says when there is none, and never runs the parser itself.
+/// Baseline, says when there is none, and never runs the parser itself.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class StoredGrammarCheckQueryTests : IDisposable
@@ -48,7 +48,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         var checkedNow = GrammarCheckQuery.Query(request, invoker, CancellationToken.None, parserStamp: "build-1");
         Assert.True(checkedNow.Succeeded, checkedNow.Refusal?.Message);
 
-        var stored = StoredGrammarCheckQuery.Query(request, parserStamp: "build-1");
+        var stored = StoredGrammarCheckQuery.Query(request);
 
         Assert.True(stored.Succeeded, stored.Refusal?.Message);
         Assert.Equal(checkedNow.Value!.Findings.Single().Text, stored.Value!.Check!.Findings.Single().Text);
@@ -56,7 +56,29 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
-    public void NothingStoredForThisParserMeansNotCheckedYet()
+    public void StoredFindingsSurviveRemovalOfTheBaselineSideCache()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var request = new GrammarCheckRequest(fwDataPath);
+        var checkedNow = GrammarCheckQuery.Query(request, new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(ReportWithOneFinding, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None, parserStamp: "build-1");
+        Assert.True(checkedNow.Succeeded, checkedNow.Refusal?.Message);
+
+        foreach (var path in Directory.GetFiles(_managedRootsParent, "grammar-check.json", SearchOption.AllDirectories))
+            File.Delete(path);
+
+        var stored = StoredGrammarCheckQuery.Query(request);
+
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(checkedNow.Value),
+            System.Text.Json.JsonSerializer.Serialize(stored.Value!.Check));
+    }
+
+    [Fact]
+    public void StoredFindingsDoNotRequireTheParserStamp()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
@@ -66,8 +88,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
             Respond = _ => new PanGlossOutcome.Completed(EmptyReport, string.Empty, TimeSpan.Zero),
         }, CancellationToken.None, parserStamp: "build-1");
 
-        Assert.Null(StoredGrammarCheckQuery.Query(request, parserStamp: "build-2").Value!.Check);
-        Assert.Null(StoredGrammarCheckQuery.Query(request, parserStamp: null).Value!.Check);
+        Assert.NotNull(StoredGrammarCheckQuery.Query(request).Value!.Check);
     }
 
     [Fact]
@@ -76,20 +97,10 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
 
-        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), parserStamp: "build-1");
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath));
 
         Assert.True(stored.Succeeded, stored.Refusal?.Message);
         Assert.Null(stored.Value!.Check);
-    }
-
-    [Fact]
-    public void TheStoredReadStampsTheParserExactlyAsTheCheckDoes()
-    {
-        static string? StampOf(Type query) => (string?)query
-            .GetMethod("ParserStamp", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-            .Invoke(null, null);
-
-        Assert.Equal(StampOf(typeof(GrammarCheckQuery)), StampOf(typeof(StoredGrammarCheckQuery)));
     }
 
     [Fact]
@@ -97,7 +108,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
     {
         var fwDataPath = _pristine.CopyProjectFile();
 
-        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), parserStamp: "build-1");
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath));
 
         Assert.True(stored.Succeeded, stored.Refusal?.Message);
         Assert.False(stored.Value!.Check!.HasBaseline);

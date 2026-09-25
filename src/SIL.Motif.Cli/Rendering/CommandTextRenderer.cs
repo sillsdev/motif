@@ -54,6 +54,7 @@ public static class CommandTextRenderer
             StatsCommandResponse r => RenderStats(r),
             DefaultSelectionResponse r => RenderDefaultSelection(r),
             OverviewResponse r => RenderOverview(r),
+            WarningsResponse r => RenderWarnings(r),
             TimingResponse r => RenderTiming(r),
             HandoffCommandResponse r => RenderHandoff(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
@@ -266,6 +267,20 @@ public static class CommandTextRenderer
             (slowest is null ? "slowest (none)" : $"slowest {slowest.Word} {slowest.ElapsedMs:N0} ms"));
         if (response.Warnings is not null)
             text.AppendLine($"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings");
+        return text.ToString();
+    }
+
+    private static string RenderWarnings(WarningsResponse response)
+    {
+        if (!response.HasBaseline) return "No Baseline has been captured." + Environment.NewLine;
+        if (!response.HasCheck) return "Grammar not checked yet for this Baseline." + Environment.NewLine;
+        var text = new StringBuilder();
+        text.AppendLine($"Grammar findings: {response.TotalCount:N0} " +
+            $"({response.WarningCount:N0} warnings, {response.InformationCount:N0} information)");
+        foreach (var kind in response.ByKind)
+            text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}");
+        foreach (var finding in response.Findings)
+            text.AppendLine($"  {finding.Text}");
         return text.ToString();
     }
 

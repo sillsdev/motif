@@ -75,4 +75,14 @@ public sealed record OverviewTiming(
 public sealed record SlowWordTiming(string Word, int ElapsedMs);
 
 /// <summary>Counts of grammar warning findings and the largest warning category.</summary>
-public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? LargestKind, int? LargestKindCount);
+public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? LargestKind, int? LargestKindCount)
+{
+    /// <summary>The number of findings whose report level is warning.</summary>
+    public int? WarningCount { get; init; }
+
+    /// <summary>The number of findings whose report level is information.</summary>
+    public int? InformationCount { get; init; }
+
+    /// <summary>Finding counts by the report's stable diagnostic code.</summary>
+    public IReadOnlyList<GrammarWarningSummary> ByKind { get; init; } = [];
+}

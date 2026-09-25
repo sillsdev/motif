@@ -9,10 +9,17 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Commands.Assess;
+using SIL.Motif.Commands.Store;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -20,11 +27,7 @@ namespace SIL.Motif.Commands.Queries;
 /// Checks a project's grammar as a whole through <c>pangloss grammar-health</c>, reading findings from the
 /// project's current Baseline. Never involves a Text, a word, or an Assessment.
 /// </summary>
-/// <remarks>
-/// The report carries its own subject names and FieldWorks links, so the check does not reopen the project
-/// through LibLCM. Its answer depends only on the Baseline and the parser, so it is cached beside the Baseline
-/// in <see cref="CacheFileName"/>, stamped with both.
-/// </remarks>
+/// <remarks>The report carries its own subject names and FieldWorks links and is stored with the Baseline.</remarks>
 public static class GrammarCheckQuery
 {
     /// <summary>Checks the project's current Baseline grammar with the installed PanGloss executable.</summary>
@@ -35,11 +38,8 @@ public static class GrammarCheckQuery
         return Query(request, invoker, cancellationToken, ParserStamp());
     }
 
-    /// <summary>The file beside a Baseline's scratch copy that holds its last grammar check.</summary>
-    public const string CacheFileName = "grammar-check.json";
-
     /// <summary>Checks through an explicitly supplied invoker, which allows tests to stand in for PanGloss.</summary>
-    /// <param name="parserStamp">Identifies the parser build, or disables caching when null.</param>
+    /// <param name="parserStamp">Identifies the parser build recorded with the findings.</param>
     internal static CommandOutcome<GrammarCheckResponse> Query(
         GrammarCheckRequest request,
         IPanGlossInvoker invoker,
@@ -56,13 +56,6 @@ public static class GrammarCheckQuery
             if (baseline is null)
                 return CommandOutcome<GrammarCheckResponse>.Success(
                     new GrammarCheckResponse(Array.Empty<GrammarWarning>(), HasBaseline: false));
-
-            var cachePath = Path.Combine(Path.GetDirectoryName(baseline.FwDataPath)!, CacheFileName);
-            // Bump this salt whenever the cached response shape changes.
-            var stamp = parserStamp is null ? null
-                : "grammar-health-v2-import-findings|" + baseline.Token.BundleDigest + "|" + parserStamp;
-            if (stamp is not null && ReadCache(cachePath, stamp) is { } cached)
-                return CommandOutcome<GrammarCheckResponse>.Success(cached);
 
             var outcome = invoker.RunAsync(
                     new PanGlossRequest.GrammarHealth(baseline.FwDataPath, project.FieldWorksProjectIdentity),
@@ -105,38 +98,22 @@ public static class GrammarCheckQuery
                 Summary = report.Summary.Select(row => new GrammarWarningSummary(
                     row!.Code!, row.GroupName, row.Level, row.Count)).ToArray(),
             };
-            if (stamp is not null) WriteCache(cachePath, stamp, response);
+            var baselineToken = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
+            var selectionSha256 = SelectionDigest(database, baseline.FwDataPath, baselineToken);
+            new GrammarCheckRepository(database).Save(baselineToken, selectionSha256, parserStamp, response);
             return CommandOutcome<GrammarCheckResponse>.Success(response);
         });
     }
 
-    private sealed record CachedCheck(string Stamp, GrammarCheckResponse Response);
-
-    private static GrammarCheckResponse? ReadCache(string path, string stamp)
+    private static string SelectionDigest(SIL.Motif.Host.Store.MotifDatabase database, string fwDataPath,
+        string baselineToken)
     {
-        try
-        {
-            if (!File.Exists(path)) return null;
-            var cached = JsonSerializer.Deserialize<CachedCheck>(File.ReadAllText(path));
-            return cached is not null && cached.Stamp == stamp ? cached.Response : null;
-        }
-        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
-        {
-            // A stale or unreadable cache can be recomputed from the Baseline.
-            return null;
-        }
-    }
-
-    private static void WriteCache(string path, string stamp, GrammarCheckResponse response)
-    {
-        try
-        {
-            File.WriteAllText(path, JsonSerializer.Serialize(new CachedCheck(stamp, response)));
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // Cache persistence only affects the next check's speed.
-        }
+        var saved = new NamedSelectionRepository(database).GetDefault();
+        if (saved is null) return string.Empty;
+        using var cache = new FwDataProjectLoader().LoadScratchCache(fwDataPath);
+        var request = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null);
+        var composed = SelectionComposer.Compose(cache, request, new AssessmentRepository(database), baselineToken);
+        return composed.Succeeded ? composed.Value!.Selection.Sha256 : string.Empty;
     }
 
     private static string? ParserStamp()
