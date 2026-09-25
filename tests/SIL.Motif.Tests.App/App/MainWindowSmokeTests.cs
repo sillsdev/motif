@@ -790,6 +790,9 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(list) == "Words to test").ItemCount);
                 Assert.Contains(wordListHost.GetLogicalDescendants().OfType<CopyableTextBlock>(), text =>
                     text.Text == "kitabu");
+                var handOff = Assert.Single(wordListHost.GetLogicalDescendants().OfType<Button>(), button =>
+                    Equals(button.Content, "AI Handoff"));
+                Assert.Same(page.Words.HandOffCheckedWordsCommand, handOff.Command);
 
                 ClickButton(window, readText);
                 window.UpdateLayout();
@@ -806,6 +809,55 @@ public sealed class MainWindowSmokeTests
                 window.Close();
             }
         }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void ListsShowSeparateAiHandoffsForTheListAndItsTickedWords()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.Assess.Result = new AssessCommandResponse(
+                    new BaselineCaptureResponse(
+                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
+                    new SelectionProjection([], []), [], "1 word assessed")
+                {
+                    Words =
+                    [
+                        new AssessmentWordResult("dogs", "no-analysis", false, "Search completed", 1, null)
+                        {
+                            ProjectStanding = ProjectStanding.Approved,
+                        },
+                    ],
+                };
+                var page = workspace.PageModel<TextsPageModel>();
+                page.TextsLists.SelectListCommand.Execute(page.TextsLists.Lists.Single(list =>
+                    list.Name == "Approved, not parsed"));
+                workspace.Context.OpenTexts(TextsTab.Lists);
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
+                var listHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "AI Handoff for the whole selected list");
+                var checkedHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "AI Handoff for ticked words in the selected list");
+
+                Assert.Equal("AI Handoff", listHandoff.Content);
+                Assert.Equal("AI Handoff", checkedHandoff.Content);
+                Assert.Same(page.TextsLists.HandOffListCommand, listHandoff.Command);
+                Assert.Same(page.TextsLists.HandOffCheckedWordsCommand, checkedHandoff.Command);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
     }
 
     [Fact]
