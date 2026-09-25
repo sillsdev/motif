@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Tests.App;
@@ -22,11 +23,16 @@ public sealed partial class FakeCommandClient
         _traceWord = (_, _) => Refused<WordTraceResponse>(
             new Refusal("trace.not-configured", FailureReason.Refused, "No trace configured."));
 
+    private Func<TimingRequest, CancellationToken, Task<CommandOutcome<TimingResponse>>> _timing =
+        (_, _) => Refused<TimingResponse>(
+            new Refusal("timing.not-configured", FailureReason.Refused, "No timing configured."));
+
     public List<ProjectHistoryRequest> ProjectHistoryRequests { get; } = [];
     public List<GrammarCheckRequest> CheckGrammarRequests { get; } = [];
     public List<GrammarCheckRequest> StoredGrammarCheckRequests { get; } = [];
     public List<TextWordsRequest> ListTextWordsRequests { get; } = [];
     public List<WordTraceRequest> TraceWordRequests { get; } = [];
+    public List<TimingRequest> TimingRequests { get; } = [];
 
     public void OnProjectHistory(
         Func<ProjectHistoryRequest, CancellationToken, Task<CommandOutcome<ProjectHistoryResponse>>> behavior) =>
@@ -59,6 +65,15 @@ public sealed partial class FakeCommandClient
         _traceWord = behavior;
 
     public void TraceWordCompletesWith(WordTraceResponse response) => OnTraceWord((_, _) => Completed(response));
+
+    public void TimingCompletesWith(TimingResponse response) =>
+        _timing = (_, _) => Completed(response);
+
+    public Task<CommandOutcome<TimingResponse>> TimingAsync(TimingRequest request, CancellationToken cancellationToken)
+    {
+        TimingRequests.Add(request);
+        return _timing(request, cancellationToken);
+    }
 
     public Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken)

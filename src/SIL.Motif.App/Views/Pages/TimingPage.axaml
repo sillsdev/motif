@@ -2,14 +2,53 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:responses="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              x:Class="SIL.Motif.App.Views.TimingPage"
              x:DataType="vm:TimingPageModel">
   <Panel>
     <views:CopyableTextBlock Classes="muted"
                Text="Run an Assessment to see where the parse time went."
-               IsVisible="{Binding Context.HasNoEvidence}"
+               IsVisible="{Binding ShowNoEvidence}"
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
-    <ContentControl x:Name="StatisticsHost" IsVisible="{Binding Context.HasEvidence}" />
+    <ContentControl x:Name="StatisticsHost" IsVisible="{Binding ShowStatistics}" />
+    <ScrollViewer IsVisible="{Binding HasFocus}">
+      <StackPanel>
+        <Border Classes="card">
+          <StackPanel>
+            <views:CopyableTextBlock Text="{Binding FocusSummary}" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Classes="muted" Text="Loading stored timing..."
+                                     IsVisible="{Binding LoadFocusedTimingCommand.IsRunning}" />
+            <views:CopyableTextBlock Classes="error" Text="{Binding FocusedTimingError}"
+                                     IsVisible="{Binding HasFocusedTimingError}" />
+            <StackPanel IsVisible="{Binding HasFocusedTiming}">
+              <views:CopyableTextBlock Text="{Binding FocusedTiming.WordCount, StringFormat='{}{0} words measured'}" />
+              <views:CopyableTextBlock Text="{Binding FocusedTiming.MedianMs, StringFormat='Median: {0:F1} ms'}" />
+              <views:CopyableTextBlock Text="{Binding FocusedTiming.Percentile95Ms, StringFormat='95th percentile: {0:F1} ms'}" />
+              <ItemsControl ItemsSource="{Binding FocusedTiming.Aggregates}" AutomationProperties.Name="Timing by rule">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="responses:TimingAggregateRow">
+                    <StackPanel Orientation="Horizontal">
+                      <views:CopyableTextBlock Text="{Binding Name}" />
+                      <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0:F1} ms'}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding FocusedTiming.CostliestWords}" AutomationProperties.Name="Words under this rule">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="responses:WordRuleTiming">
+                    <StackPanel Orientation="Horizontal">
+                      <views:CopyableTextBlock Text="{Binding Word}" />
+                      <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0:F1} ms'}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
   </Panel>
 </UserControl>

@@ -1,5 +1,7 @@
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.Services;
 
@@ -24,4 +26,8 @@ public partial interface ICommandClient
     /// <summary>Traces one word against the current Baseline's grammar.</summary>
     Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Reads stored Assessment timing for the requested words and optional rule.</summary>
+    Task<CommandOutcome<TimingResponse>> TimingAsync(
+        TimingRequest request, CancellationToken cancellationToken);
 }

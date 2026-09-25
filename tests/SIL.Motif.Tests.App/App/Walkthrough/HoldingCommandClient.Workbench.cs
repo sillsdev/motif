@@ -1,5 +1,7 @@
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
@@ -24,4 +26,8 @@ internal sealed partial class HoldingCommandClient
     public Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken) =>
         _inner.TraceWordAsync(request, cancellationToken);
+
+    public Task<CommandOutcome<TimingResponse>> TimingAsync(
+        TimingRequest request, CancellationToken cancellationToken) =>
+        _inner.TimingAsync(request, cancellationToken);
 }
