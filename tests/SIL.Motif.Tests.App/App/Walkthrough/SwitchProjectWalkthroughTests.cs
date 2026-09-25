@@ -69,6 +69,10 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                     walkthrough.Workspace.Context.Setup?.IsOpen == true,
                 WalkthroughSteps.Remaining(deadline), "the second project Baseline did not show setup");
             walkthrough.SkipSetup();
+            walkthrough.WaitUntil(
+                () => !walkthrough.Workspace.RefreshCommand.IsRunning &&
+                    walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled,
+                WalkthroughSteps.Remaining(deadline), "the second project's Texts selection did not become ready");
             walkthrough.Check(SeededProject.TextTitle);
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
             Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
