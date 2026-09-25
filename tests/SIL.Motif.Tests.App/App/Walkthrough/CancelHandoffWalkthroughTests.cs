@@ -31,12 +31,10 @@ public sealed class CancelHandoffWalkthroughTests
                 using var walkthrough = new WalkthroughWindow(
                     project.ManagedRoot, project.FwDataPath, outputDirectory, holdingClient);
                 WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);
-                walkthrough.Type(
-                    "Pasted words",
-                    string.Join(Environment.NewLine,
-                        ConformanceProject.OneAnalysisShort,
-                        ConformanceProject.OneAnalysisShort,
-                        ConformanceProject.OneAnalysisShort));
+                walkthrough.TypePastedWords(string.Join(Environment.NewLine,
+                    ConformanceProject.OneAnalysisShort,
+                    ConformanceProject.OneAnalysisShort,
+                    ConformanceProject.OneAnalysisShort));
                 walkthrough.Click("Run the Assessment");
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Refused,

@@ -132,9 +132,14 @@ public sealed class WalkthroughWindow : IDisposable
 
         var name = tab switch
         {
-            _ => $"{tab} tab",
+            TextsTab.Matrix => "Matrix tab",
+            TextsTab.AnalyzeTexts => "Analyze texts tab",
+            TextsTab.Lists => "Lists tab",
+            _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, null),
         };
         ClickControl(Find<Button>(name), name);
+        Window.UpdateLayout();
+        Pump();
         Assert.Equal(tab, Workspace.PageModel<TextsPageModel>().Tab);
     }
 
@@ -147,7 +152,21 @@ public sealed class WalkthroughWindow : IDisposable
         var entry = Window.GetLogicalDescendants().OfType<ListBoxItem>().Single(item =>
             string.Equals(Avalonia.Automation.AutomationProperties.GetName(item), name, StringComparison.Ordinal));
         ClickControl(entry, name);
+        Window.UpdateLayout();
+        Pump();
         Assert.Equal(page, Workspace.CurrentPage);
+    }
+
+    public void TypePastedWords(string text)
+    {
+        ShowPage(WorkspacePage.Texts);
+        ShowTextsTab(TextsTab.AnalyzeTexts);
+        var addWords = Window.GetLogicalDescendants().OfType<Expander>().Single(expander =>
+            Equals(expander.Header, "Add words"));
+        addWords.IsExpanded = true;
+        Window.UpdateLayout();
+        Pump();
+        Type("Words to analyze, one per line", text);
     }
 
     // A page nobody has opened has no template applied, so its controls are not in the tree until it is.

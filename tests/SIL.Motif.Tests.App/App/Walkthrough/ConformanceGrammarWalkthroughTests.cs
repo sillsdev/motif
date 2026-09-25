@@ -62,12 +62,10 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                     "the Baseline and Overview refresh did not finish before choosing words");
                 walkthrough.SkipSetup();
 
-                walkthrough.Type(
-                    "Pasted words",
-                    string.Join(Environment.NewLine,
-                        ConformanceProject.OneAnalysisShort,
-                        ConformanceProject.OneAnalysisLong,
-                        ConformanceProject.NineHundredTwentyFour));
+                walkthrough.TypePastedWords(string.Join(Environment.NewLine,
+                    ConformanceProject.OneAnalysisShort,
+                    ConformanceProject.OneAnalysisLong,
+                    ConformanceProject.NineHundredTwentyFour));
                 Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
                 var runStarted = Stopwatch.GetTimestamp();

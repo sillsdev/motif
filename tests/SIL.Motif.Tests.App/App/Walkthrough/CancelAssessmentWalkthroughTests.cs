@@ -51,7 +51,7 @@ public sealed class CancelAssessmentWalkthroughTests
             Assert.NotNull(walkthrough.Workspace.Baseline.Token);
             var baselineToken = walkthrough.Workspace.Baseline.Token!;
 
-            walkthrough.Type("Pasted words", ConformanceProject.OneAnalysisShort);
+            walkthrough.TypePastedWords(ConformanceProject.OneAnalysisShort);
             walkthrough.Click("Run the Assessment");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Completed,

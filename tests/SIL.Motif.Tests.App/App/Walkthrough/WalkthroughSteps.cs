@@ -119,7 +119,7 @@ internal static class WalkthroughSteps
 
     internal static void StartSlowAssessment(WalkthroughWindow walkthrough, long deadline)
     {
-        walkthrough.Type("Pasted words", string.Join(Environment.NewLine, ConformanceProject.SlowWords));
+        walkthrough.TypePastedWords(string.Join(Environment.NewLine, ConformanceProject.SlowWords));
         Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
         walkthrough.Click("Run the Assessment");
@@ -134,7 +134,7 @@ internal static class WalkthroughSteps
     internal static void StartAssessmentOverPastedWords(
         WalkthroughWindow walkthrough, long deadline, HoldingCommandClient? holdingClient = null)
     {
-        walkthrough.Type("Pasted words", "motifa\nmotifb\nmofita");
+        walkthrough.TypePastedWords("motifa\nmotifb\nmofita");
         Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
         walkthrough.Click("Run the Assessment");
