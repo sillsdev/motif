@@ -41,7 +41,7 @@ public static class PageRegistry
             context => new TextsPageModel(context), model => new TextsPage(model)),
         PageEntry.Of(WorkspacePage.TryAWord, "Try a Word",
             Of(Circle(10.5, 10.5, 6.5), "M15.5 15.5L21 21 M7.5 10.5h6M10.5 8v5"),
-            context => new TryWordPageModel(context), model => new TryWordPanel(model.Trace)),
+            context => new TryWordPageModel(context), model => new TryAWordPage(model)),
         PageEntry.Of(WorkspacePage.Timing, "Timing",
             Of(Circle(12, 13, 7), "M12 13V9M10 3h4M12 3v3M18 6l1.5-1.5"),
             context => new TimingPageModel(context), model => new TimingPage(model)),

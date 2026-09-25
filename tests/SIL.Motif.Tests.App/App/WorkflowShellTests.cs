@@ -440,12 +440,13 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
+                var tryPage = Assert.Single(window.GetLogicalDescendants().OfType<TryAWordPage>());
                 var tryWord = Assert.Single(window.GetLogicalDescendants().OfType<TryWordPanel>());
                 Assert.Same(workspace.Assess.Trace, tryWord.Trace);
                 Assert.Single(window.GetLogicalDescendants().OfType<DiagnosticPanel>());
                 var assess = Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>());
                 Assert.Empty(assess.GetLogicalDescendants().OfType<DiagnosticPanel>());
-                Assert.Equal("TryAWordPage", tryWord.Name);
+                Assert.Equal("TryAWordPage", tryPage.Name);
             }
             finally
             {

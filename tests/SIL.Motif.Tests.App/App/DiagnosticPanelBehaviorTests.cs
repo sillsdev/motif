@@ -107,7 +107,35 @@ public sealed class DiagnosticPanelBehaviorTests
                 window.UpdateLayout();
                 var details = panel.FindControl<Border>("DetailHost")!;
                 Assert.Equal(0, Grid.GetColumn(details));
-                Assert.Equal(2, Grid.GetRow(details));
+                Assert.Equal(1, Grid.GetRow(details));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void HidingThePageSummaryKeepsLiveDiagnosticToolsAvailable()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var model = new TraceWordViewModel
+            {
+                Result = new WordTraceResponse("word", true, true, null, 1, null, 1, [],
+                    new TraceStep("WordAnalysis", null, null, null, null, [])),
+            };
+            var panel = new DiagnosticPanel(model, showResultSummary: false);
+            var window = new Window { Content = panel, Width = 1000, Height = 800 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+
+                var tools = window.GetVisualDescendants().OfType<Button>()
+                    .Single(button => AutomationProperties.GetName(button) == "Diagnostic tools");
+                var summary = window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Single(block => AutomationProperties.GetName(block) == "Diagnostic result");
+                Assert.True(tools.IsVisible);
+                Assert.False(summary.IsVisible);
             }
             finally { window.Close(); }
         });

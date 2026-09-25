@@ -21,8 +21,8 @@ public sealed class HeatCell : Panel
     public static readonly StyledProperty<HorizontalAlignment> TextAlignmentProperty =
         AvaloniaProperty.Register<HeatCell, HorizontalAlignment>(nameof(TextAlignment), HorizontalAlignment.Right);
 
-    private readonly Border _shade = new() { CornerRadius = new CornerRadius(3) };
-    private readonly CopyableTextBlock _text = new() { Margin = new Thickness(6, 3), FontSize = 12 };
+    private readonly Border _shade = new();
+    private readonly CopyableTextBlock _text = new();
 
     static HeatCell()
     {
@@ -33,6 +33,7 @@ public sealed class HeatCell : Panel
 
     public HeatCell()
     {
+        Classes.Add("cell");
         _shade.Classes.Add("heat");
         Children.Add(_shade);
         Children.Add(_text);

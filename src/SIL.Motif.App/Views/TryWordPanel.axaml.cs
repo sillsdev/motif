@@ -12,16 +12,19 @@ namespace SIL.Motif.App.Views;
 /// </summary>
 public sealed partial class TryWordPanel : UserControl
 {
-    public TryWordPanel(TraceWordViewModel trace)
+    public TryWordPanel(TryWordPageModel model)
     {
-        ArgumentNullException.ThrowIfNull(trace);
-        Trace = trace;
-        DataContext = trace;
+        ArgumentNullException.ThrowIfNull(model);
+        Model = model;
+        Trace = model.Trace;
+        DataContext = model;
         AvaloniaXamlLoader.Load(this);
-        this.FindControl<ContentControl>("RichDiagnosticHost")!.Content = new DiagnosticPanel(trace);
+        this.FindControl<ContentControl>("RichDiagnosticHost")!.Content = new DiagnosticPanel(Trace, showResultSummary: false);
     }
 
     public TraceWordViewModel Trace { get; }
+
+    public TryWordPageModel Model { get; }
 
     private async void OnOpenDiagnosticClick(object? sender, RoutedEventArgs e)
     {

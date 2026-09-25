@@ -1,0 +1,43 @@
+<!-- Shared sizing and diagnostic roles for the Try a Word page and recorded diagnostic. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.TryWord.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.TryWord.InputMaxWidth" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.TryWord.InputMinWidth" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.TryWord.ProgressWidth" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.TryWord.SmallInset" ResourceKey="Primitive.Inset.7_1_7_1" />
+    <StaticResource x:Key="Component.TryWord.SmallRowInset" ResourceKey="Primitive.Inset.1_1_1_1" />
+    <StaticResource x:Key="Component.TryWord.SmallBottomInset" ResourceKey="Primitive.Inset.0_0_4_4" />
+    <StaticResource x:Key="Component.TryWord.ToolButtonInset" ResourceKey="Primitive.Inset.9_3_9_3" />
+    <StaticResource x:Key="Component.TryWord.SidebarWidth" ResourceKey="Primitive.Size.280" />
+  </Styles.Resources>
+  <Style Selector=":is(TextBlock).status">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).failed">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+  </Style>
+  <Style Selector=":is(TextBlock).succeeded">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
+  </Style>
+  <Style Selector="Button.stopGroup">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+  </Style>
+  <Style Selector="Button.stopGroup.chosen">
+    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
+  </Style>
+  <Style Selector="Button.stopGroup TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector="Button.stopGroup TextBlock.stopReason">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector=":is(TextBlock).number">
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+</Styles>

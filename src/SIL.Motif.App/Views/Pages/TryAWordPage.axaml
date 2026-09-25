@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             x:Class="SIL.Motif.App.Views.TryAWordPage"
+             x:Name="TryAWordPage"
+             x:DataType="vm:TryWordPageModel">
+  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Section}"
+        Margin="{DynamicResource Component.TryWord.PageInset}">
+    <ContentControl x:Name="TryWordPanelHost" Grid.Column="0" />
+    <ScrollViewer Grid.Column="1" Width="{DynamicResource Component.TryWord.SidebarWidth}"
+                  VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Section}">
+        <Border Classes="card">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <TextBlock Text="Recent words" FontSize="{DynamicResource Intent.Type.Section}"
+                         FontWeight="SemiBold" />
+              <TextBlock Classes="muted" Text="Choose one to trace it again."
+                         TextWrapping="Wrap" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <Button Content="{Binding}"
+                          Command="{Binding $parent[views:TryAWordPage].((vm:TryWordPageModel)DataContext).OpenRecentWordCommand}"
+                          CommandParameter="{Binding}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                          AutomationProperties.Name="{Binding}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+            <TextBlock Text="From here" FontSize="{DynamicResource Intent.Type.Section}"
+                       FontWeight="SemiBold" />
+            <Button Content="Open in Texts" Command="{Binding OpenInTextsCommand}"
+                    AutomationProperties.Name="Open in Texts" />
+            <Button Content="Timing for this word" Command="{Binding OpenTimingCommand}"
+                    AutomationProperties.Name="Timing for this word" />
+            <Button Content="Add expected analysis to Review changes"
+                    Command="{Binding AddExpectedAnalysisToReviewCommand}"
+                    ToolTip.Tip="Adding an expected analysis to Review changes is not available yet."
+                    AutomationProperties.Name="Add expected analysis to Review changes" />
+            <Button Content="AI Handoff for this word" Command="{Binding HandOffCommand}"
+                    AutomationProperties.Name="AI Handoff for this word" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="notice">
+          <TextBlock Text="Also a word not in the texts: type any word to try it against the current grammar."
+                     TextWrapping="Wrap" />
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

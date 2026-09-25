@@ -4,33 +4,116 @@
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TryWordPanel"
-             x:DataType="vm:TraceWordViewModel">
-  <!-- Try a Word: trace any typed word against the current Baseline's grammar, in the texts or not. -->
+             x:DataType="vm:TryWordPageModel">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Spacing="10" Margin="20,12,20,16">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Group}"
+                Margin="{DynamicResource Component.TryWord.PageInset}">
       <DockPanel LastChildFill="True">
         <Button DockPanel.Dock="Right" Content="Open a saved diagnostic..." Click="OnOpenDiagnosticClick"
-                Margin="8,0,0,0" AutomationProperties.Name="Open a saved diagnostic" />
-        <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding TryCommand}"
+                Margin="{DynamicResource Intent.Gap.AfterRelated}" AutomationProperties.Name="Open a saved diagnostic" />
+        <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding Trace.TryCommand}"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"
-                AutomationProperties.Name="Try the word" Margin="8,0,0,0" />
-        <TextBox Text="{Binding WordToTry}" PlaceholderText="Type any word..." MaxWidth="420"
-                 HorizontalAlignment="Left" MinWidth="260"
+                AutomationProperties.Name="Try the word" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+        <TextBox Text="{Binding Trace.WordToTry}" PlaceholderText="Type any word..."
+                 MaxWidth="{DynamicResource Component.TryWord.InputMaxWidth}"
+                 HorizontalAlignment="Left" MinWidth="{DynamicResource Component.TryWord.InputMinWidth}"
                  AutomationProperties.Name="Word to try" />
       </DockPanel>
 
-      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !HasResult}"
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Trace.HasResult}"
                                Text="Type a word to see how the grammar parses it, where it stops, and the rules on its way. Choosing a word on the Texts page brings it here." />
 
-      <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsLoading}">
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Trace.IsLoading}">
         <views:CopyableTextBlock Classes="muted" Text="Tracing... this can take up to two minutes." VerticalAlignment="Center" />
-        <Button Content="Cancel" Command="{Binding CancelCommand}"
+        <Button Content="Cancel" Command="{Binding Trace.CancelCommand}"
                 AutomationProperties.Name="Cancel the trace" />
       </StackPanel>
-      <views:CopyableTextBlock Classes="error" Text="{Binding Refusal.Message}"
-                               IsVisible="{Binding Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Classes="error" Text="{Binding Trace.Refusal.Message}"
+                               IsVisible="{Binding Trace.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
 
-      <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding HasResult}" />
+      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding Trace.HasResult}">
+        <DockPanel LastChildFill="False">
+          <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Trace.AnswerText}"
+                                   FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold"
+                                   Margin="{DynamicResource Intent.Gap.AfterRelated}"
+                                   AutomationProperties.Name="Try a Word result" />
+          <views:VerdictChip DockPanel.Dock="Left" Verdict="{Binding Trace.AnswerVerdict}"
+                             Text="{Binding Trace.AnswerText}" />
+        </DockPanel>
+        <views:CopyableTextBlock Text="{Binding Trace.SummaryText}" Classes="muted" TextWrapping="Wrap"
+                                 AutomationProperties.Name="Try a Word summary" />
+        <views:CopyableTextBlock Text="{Binding Trace.SearchStatusText}" Classes="status" TextWrapping="Wrap"
+                                 IsVisible="{Binding Trace.HasStopReason}" AutomationProperties.Name="Search completeness" />
+      </StackPanel>
+
+      <Border Classes="card" IsVisible="{Binding Trace.HasComparison}"
+              AutomationProperties.Name="Expected beside the furthest try">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
+          <views:CopyableTextBlock Text="What the project expects, beside the parser's furthest try"
+                                   FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
+                ColumnSpacing="{DynamicResource Intent.Space.Group}"
+                RowSpacing="{DynamicResource Intent.Space.Group}">
+            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="verdictText agrees" Text="Project approves" FontWeight="SemiBold" />
+              <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}"
+                                       Text="the analysis the parser missed" TextWrapping="Wrap" />
+            </StackPanel>
+            <views:MorphemeRow Grid.Row="0" Grid.Column="1" Morphs="{Binding Trace.ExpectedMorphs}" Separators="True" />
+            <StackPanel Grid.Row="1" Grid.Column="0" Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="verdictText differs" Text="Parser got to" FontWeight="SemiBold" />
+              <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}"
+                                       Text="the attempt that built the most" TextWrapping="Wrap" />
+            </StackPanel>
+            <views:MorphemeRow Grid.Row="1" Grid.Column="1" Morphs="{Binding Trace.FurthestAttempt.Morphs, FallbackValue={x:Null}}" Separators="True" />
+          </Grid>
+          <views:CopyableTextBlock Classes="failed" FontWeight="SemiBold" TextWrapping="Wrap"
+                                   Text="{Binding Trace.FurthestAttempt.StopHeadline, FallbackValue=''}" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Trace.FurthestAttempt.StopReason, FallbackValue=''}" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card" IsVisible="{Binding HasRulesOnBestPath}"
+              AutomationProperties.Name="Rules on this word's best path">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+            <TextBlock Text="Rules on this word's best path, with where its time went"
+                       FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+            <TextBlock Classes="muted" Text="Saved rule timing appears when stored measurements include this word."
+                       TextWrapping="Wrap" />
+          </StackPanel>
+          <Grid ColumnDefinitions="1.2*,*,*,2*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+            <TextBlock Classes="muted" Text="Rule" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Classes="muted" Text="Kind" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="2" Classes="muted" Text="Outcome" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="3" Classes="muted" Text="Explanation" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="4" Classes="muted" Text="Stored time" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="5" Classes="muted" Text="Attempts" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="6" Classes="muted" Text="Word share" FontWeight="SemiBold" />
+          </Grid>
+          <ItemsControl ItemsSource="{Binding RulesOnBestPath}" AutomationProperties.Name="Best path rules">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TryWordRuleRowViewModel">
+                <Button Command="{Binding OpenTimingCommand}" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch" Padding="{DynamicResource Intent.Inset.None}"
+                        ToolTip.Tip="Open stored Timing for this rule and word">
+                  <Grid ColumnDefinitions="1.2*,*,*,2*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                    <TextBlock Text="{Binding Rule}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding Kind}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="2" Text="{Binding Outcome}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="3" Text="{Binding Explanation}" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="4" Text="{Binding StoredTime}" TextAlignment="Right" />
+                    <TextBlock Grid.Column="5" Text="{Binding Attempts}" TextAlignment="Right" />
+                    <TextBlock Grid.Column="6" Text="{Binding Share}" TextAlignment="Right" />
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.HasResult}" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

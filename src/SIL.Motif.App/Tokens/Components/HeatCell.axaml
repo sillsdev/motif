@@ -4,7 +4,18 @@
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.HeatCell.TextInset" ResourceKey="Primitive.Inset.7_1_7_1" />
+  </Styles.Resources>
   <Style Selector="Border.heat">
     <Setter Property="Background" Value="{DynamicResource Intent.Warning}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+  </Style>
+  <Style Selector="HeatCell.cell > :is(TextBlock)">
+    <Setter Property="Margin" Value="{DynamicResource Component.HeatCell.TextInset}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+  </Style>
+  <Style Selector=":is(TextBlock).number">
+    <Setter Property="HorizontalAlignment" Value="Right" />
   </Style>
 </Styles>

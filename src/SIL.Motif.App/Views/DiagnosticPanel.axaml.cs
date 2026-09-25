@@ -14,11 +14,31 @@ public sealed partial class DiagnosticPanel : UserControl
     private const string FormatGuide =
         "https://github.com/sillsdev/motif/blob/main/docs/handoff/trace-diagnostic-format.md";
 
+    /// <summary>Controls whether the panel shows its standalone result summary.</summary>
+    public static readonly StyledProperty<bool> ShowResultSummaryProperty =
+        AvaloniaProperty.Register<DiagnosticPanel, bool>(nameof(ShowResultSummary), defaultValue: true);
+
     public DiagnosticPanel(TraceWordViewModel trace)
+        : this(trace, showResultSummary: true)
+    {
+    }
+
+    /// <summary>Builds the diagnostic view with its result summary optionally hidden for a page with its own summary.</summary>
+    /// <param name="trace">The trace and recorded diagnostic details to display.</param>
+    /// <param name="showResultSummary">Whether this panel displays the trace's result summary.</param>
+    public DiagnosticPanel(TraceWordViewModel trace, bool showResultSummary)
     {
         ArgumentNullException.ThrowIfNull(trace);
+        ShowResultSummary = showResultSummary;
         DataContext = trace;
         AvaloniaXamlLoader.Load(this);
+    }
+
+    /// <summary>Whether the panel shows the trace summary above its diagnostic details.</summary>
+    public bool ShowResultSummary
+    {
+        get => GetValue(ShowResultSummaryProperty);
+        set => SetValue(ShowResultSummaryProperty, value);
     }
 
     private TraceWordViewModel Trace => (TraceWordViewModel)DataContext!;
@@ -33,19 +53,19 @@ public sealed partial class DiagnosticPanel : UserControl
         if (e.NewSize.Width < 760)
         {
             detailGrid.ColumnDefinitions = new ColumnDefinitions("1*");
-            detailGrid.RowDefinitions = new RowDefinitions("Auto,12,Auto");
+            detailGrid.RowDefinitions = new RowDefinitions("Auto,Auto");
             Grid.SetColumn(tree, 0);
             Grid.SetRow(tree, 0);
             Grid.SetColumn(details, 0);
-            Grid.SetRow(details, 2);
+            Grid.SetRow(details, 1);
         }
         else
         {
-            detailGrid.ColumnDefinitions = new ColumnDefinitions("2*,12,1*");
+            detailGrid.ColumnDefinitions = new ColumnDefinitions("2*,1*");
             detailGrid.RowDefinitions = new RowDefinitions("*");
             Grid.SetColumn(tree, 0);
             Grid.SetRow(tree, 0);
-            Grid.SetColumn(details, 2);
+            Grid.SetColumn(details, 1);
             Grid.SetRow(details, 0);
         }
     }
