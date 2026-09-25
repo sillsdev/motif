@@ -4,7 +4,7 @@ using SIL.Motif.Contract.Parsing;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>Enforces one operation per analysis-change slot in a Proposal.</summary>
+/// <summary>Enforces one operation per addressed field slot in a Proposal.</summary>
 public static class AnalysisOpinionSlotValidator
 {
     public static void Validate(Proposal proposal)
@@ -18,7 +18,7 @@ public static class AnalysisOpinionSlotValidator
     public static (OperationEnvelope Existing, OperationEnvelope Duplicate)? FindConflict(
         IEnumerable<OperationEnvelope> operations)
     {
-        var seen = new Dictionary<(CanonicalId Target, string Field, CanonicalId? Member), OperationEnvelope>();
+        var seen = new Dictionary<(CanonicalId Target, string Field, string? Discriminator), OperationEnvelope>();
         foreach (var operation in operations)
         {
             if (SlotOf(operation) is not { } slot) continue;
@@ -28,9 +28,15 @@ public static class AnalysisOpinionSlotValidator
         return null;
     }
 
-    private static (CanonicalId Target, string Field, CanonicalId? Member)? SlotOf(OperationEnvelope operation) =>
+    private static (CanonicalId Target, string Field, string? Discriminator)? SlotOf(OperationEnvelope operation) =>
         operation.Kind switch
         {
+            LexicalSenseOperationKinds.SetGloss when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, "gloss", SetGlossPayload.Parse(after).WritingSystemTag),
+            LexicalSenseOperationKinds.ClearGloss when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, "gloss", ClearGlossPayload.Parse(after)),
             WfiWordformSpellingStatusOperationKinds.SetSpellingStatus or
                 WfiWordformSpellingStatusOperationKinds.ClearSpellingStatus when operation.Target is { } target =>
                 (target, "spellingStatus", null),
@@ -38,7 +44,7 @@ public static class AnalysisOpinionSlotValidator
                 WfiAnalysisOperationKinds.RemoveRefEvaluations when operation.Target is { } target =>
                 (target, "defaultUserOpinion", null),
             WfiAnalysisOperationKinds.CreateAnalysis when operation.Target is { } target &&
-                operation.EntityId is { } member => (target, "analyses", member),
+                operation.EntityId is { } member => (target, "analyses", member.Value),
             _ => null,
         };
 }

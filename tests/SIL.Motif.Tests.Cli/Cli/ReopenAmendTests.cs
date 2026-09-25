@@ -71,7 +71,7 @@ public sealed class ReopenAmendTests
         Assert.Equal("Clarify the first sense gloss", reopenedDraft.Label);
         Assert.Equal("Replace the ambiguous gloss with the intended analysis.", reopenedDraft.Comment);
 
-        // Amend the content: add a second operation so the intent digest necessarily moves.
+        // Amend the gloss value so the intent digest necessarily moves.
         Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(
             _fwDataPath, ProductVersion, "v2", canonicalId.Value, wsTag,
             originalGloss + " v2 (amended)")).Succeeded);
@@ -88,7 +88,7 @@ public sealed class ReopenAmendTests
         // (1) The id is unchanged.
         Assert.Equal(proposalId, amendedProposalId);
 
-        // (2) The digest changed (different content: two operations, not one).
+        // (2) The digest changed with the replacement gloss.
         Assert.NotEqual(firstDigest, secondDigest);
 
         // (3) BOTH revision versions exist — the amend never touched the original write-once revision.
@@ -105,6 +105,33 @@ public sealed class ReopenAmendTests
 
         // Only one Proposals row exists for this id: it's the movable pointer, updated in place, never re-created.
         Assert.Equal(1, CountProposalRows(proposalId));
+    }
+
+    [Fact]
+    public void LaterSetGlossForSameSenseAndWritingSystemReplacesPriorValue()
+    {
+        var target = CanonicalId.FromGuid(_seed.FirstSenseId).Value;
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion,
+            "replace-gloss", "gloss")).Succeeded);
+        var first = ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion,
+            "replace-gloss", target, "en", "first"));
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var second = ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion,
+            "replace-gloss", target, "en", "second"));
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.True(second.Value!.ReplacedPriorValue);
+        Assert.Equal(1, second.Value.OperationCount);
+        DraftRationale.Author(_fwDataPath, "replace-gloss", "Clarify gloss",
+            "Keep the last authored gloss for this sense and writing system.");
+
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion,
+            "replace-gloss"));
+
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        Assert.Equal(1, finalized.Value!.OperationCount);
+        var revision = GetRevisionJson(finalized.Value.ProposalId, finalized.Value.IntentDigest);
+        Assert.Contains("second", revision, StringComparison.Ordinal);
+        Assert.DoesNotContain("first", revision, StringComparison.Ordinal);
     }
 
     [Fact]

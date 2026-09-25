@@ -287,9 +287,13 @@ public static partial class ProposalCommands
                         Fact(("draftName", request.DraftName))));
                 }
 
-                var operationId = CanonicalId.Mint();
-
-                draft.Operations.Add(new DraftOperation
+                var previous = draft.Operations.LastOrDefault(operation =>
+                    operation.Kind == LexicalSenseOperationKinds.SetGloss &&
+                    operation.Target == targetId.Value &&
+                    operation.After.TryGetValue("ws", out var ws) &&
+                    ws.ValueKind == JsonValueKind.String && ws.GetString() == request.Ws);
+                var operationId = previous is null ? CanonicalId.Mint() : CanonicalId.Parse(previous.OperationId);
+                var authored = new DraftOperation
                 {
                     OperationId = operationId.Value,
                     Kind = LexicalSenseOperationKinds.SetGloss,
@@ -300,14 +304,20 @@ public static partial class ProposalCommands
                         ["ws"] = JsonSerializer.SerializeToElement(request.Ws),
                         ["text"] = JsonSerializer.SerializeToElement(request.Text),
                     },
-                });
+                };
+                if (previous is null) draft.Operations.Add(authored);
+                else
+                {
+                    previous.After = authored.After;
+                    previous.DependsOn = authored.DependsOn;
+                }
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
 
                 repository.SaveDraft(request.DraftName, SerializeDraft(draft));
 
                 return CommandOutcome<SetGlossAddedResponse>.Success(new SetGlossAddedResponse(
                     request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
-                    resolvedDependsOn, draft.Operations.Count));
+                    resolvedDependsOn, draft.Operations.Count, previous is not null));
             }
             catch (Exception ex)
             {

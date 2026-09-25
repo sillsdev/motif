@@ -8,7 +8,7 @@ public sealed record OperationSummary(string OperationId, string Kind);
 /// <summary>A freshly created Draft, not yet finalized.</summary>
 public sealed record DraftCreatedResponse(string DraftName, string ProposalId, string? Label);
 
-/// <summary>A <c>lexical/lexSense/setGloss</c> operation appended to a Draft by <c>add-set-gloss</c>.</summary>
+/// <summary>A <c>lexical/lexSense/setGloss</c> value authored in a Draft by <c>add-set-gloss</c>.</summary>
 public sealed record SetGlossAddedResponse(
     string DraftName,
     string OperationId,
@@ -16,7 +16,8 @@ public sealed record SetGlossAddedResponse(
     string Ws,
     string Text,
     IReadOnlyList<string> DependsOn,
-    int OperationCount);
+    int OperationCount,
+    bool ReplacedPriorValue = false);
 
 /// <summary>A <c>lexical/lexEntry/deleteLexemeForm</c> operation appended by <c>add-delete-lexeme-form</c>.</summary>
 public sealed record DeleteLexemeFormAddedResponse(
