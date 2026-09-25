@@ -152,6 +152,28 @@ public sealed class ProposalApplierTests : IDisposable
     }
 
     [Fact]
+    public void Apply_AmendedContentWithAppliedId_RefusesWithoutWritingOrClaimingSuccess()
+    {
+        var (senseGuid, wsTag, originalGloss) = FindSenseWithKnownGloss(_cache);
+        var target = CanonicalId.FromGuid(senseGuid);
+        var first = BuildSetGlossProposal(target, wsTag, originalGloss + " first");
+        var firstAnchor = ScratchDryRun.Of(_cache, first).Anchor;
+        ProposalApplier.Apply(_cache, first, firstAnchor, "tester");
+
+        var replacement = BuildSetGlossProposal(target, wsTag, originalGloss + " second");
+        var amended = new Proposal(replacement.ContractVersions, first.ProposalId, null,
+            replacement.Operations);
+        var amendedAnchor = ScratchDryRun.Of(_cache, amended).Anchor;
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ProposalApplier.Apply(_cache, amended, amendedAnchor, "tester"));
+        var ws = _cache.WritingSystemFactory.GetWsFromStr(wsTag);
+        Assert.Equal(originalGloss + " first", _cache.ServiceLocator.GetInstance<ILexSenseRepository>()
+            .GetObject(senseGuid).Gloss.get_String(ws).Text);
+        Assert.Single(ProjectAppliedLog.ReadAll(_cache));
+    }
+
+    [Fact]
     public void Apply_UnknownTarget_ThrowsAndRollsBack_AndWritesNoAppliedLogEntry()
     {
         var bogusTarget = CanonicalId.FromGuid(Guid.NewGuid());

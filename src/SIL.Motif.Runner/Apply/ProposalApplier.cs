@@ -91,7 +91,11 @@ public static class ProposalApplier
         // Idempotence first: reading the applied-log needs no unit of work (docs/adr/0006 decision 1).
         if (ProjectAppliedLog.TryFindByProposalId(cache, proposalGuid, out var existingEntry))
         {
-            return BuildAlreadyAppliedReceipt(proposal, fullIntentDigest, intentDigestHex, existingEntry!);
+            if (!string.Equals(existingEntry!.IntentDigest, intentDigestHex, StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    $"Proposal {proposal.ProposalId.Value} was applied with different content. " +
+                    "Create a new Proposal for the amended intent.");
+            return BuildAlreadyAppliedReceipt(proposal, fullIntentDigest, existingEntry!);
         }
 
         var appliedProposalIds = new HashSet<Guid>(
@@ -187,26 +191,16 @@ public static class ProposalApplier
     }
 
     private static Receipt BuildAlreadyAppliedReceipt(
-        Proposal proposal, string fullIntentDigest, string intentDigestHex, AppliedLogEntry existingEntry)
+        Proposal proposal, string fullIntentDigest, AppliedLogEntry existingEntry)
     {
-        // Content check: same proposalId is "already applied" only if the digest matches too; else it's surfaced.
-        var contentMatches = string.Equals(existingEntry.IntentDigest, intentDigestHex, StringComparison.Ordinal);
-
-        var resultNote = contentMatches
-            ? $"Already applied at {existingEntry.TimestampUtc} by '{existingEntry.User}'; no mutation " +
-              "performed (idempotent)."
-            : $"Already applied at {existingEntry.TimestampUtc} by '{existingEntry.User}', but the " +
-              $"supplied Proposal's intent digest ({intentDigestHex}) differs from the one recorded " +
-              $"at that apply ({existingEntry.IntentDigest}) — same proposalId, different content. " +
-              "No mutation performed.";
-
         return new Receipt(
             proposal.ProposalId,
             fullIntentDigest,
             AlreadyApplied: true,
             BaselineNote: "No baseline read: the idempotence check short-circuited before any unit of " +
                           "work opened.",
-            ResultNote: resultNote,
+            ResultNote: $"Already applied at {existingEntry.TimestampUtc} by '{existingEntry.User}'; " +
+                        "no mutation performed (idempotent).",
             ActualEffects: Array.Empty<ExpectedEffect>(),
             EffectDigest: ExpectedEffectSetDigest.Compute(Array.Empty<ExpectedEffect>()),
             AppliedLogEntry: existingEntry);
