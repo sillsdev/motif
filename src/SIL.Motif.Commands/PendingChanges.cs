@@ -14,6 +14,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.Composers;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -168,6 +169,15 @@ public static class PendingChanges
                     ("changeId", change.ChangeId));
 
             RemoveChange(draft, change.ChangeId);
+            var existingOperations = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
+            if (AnalysisOpinionSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
+            {
+                var existingChangeId = collision.Existing.Extensions is { ValueKind: JsonValueKind.Object } extension &&
+                    extension.TryGetProperty("changeId", out var id) ? id.GetString() : null;
+                return Refuse("change.slot-occupied", "Another change already addresses that project slot.",
+                    ("changeId", change.ChangeId), ("existingChangeId", existingChangeId),
+                    ("wordformId", change.WordformId));
+            }
             var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
             foreach (var operation in operations)
             {

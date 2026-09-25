@@ -28,7 +28,7 @@ public sealed class PendingChangesTests
     }
 
     [Fact]
-    public void TwoChangesOnOneWordSurviveReloadAndRejectAnOldRevision()
+    public void ASecondChangeForTheSameSlotIsRefusedWithoutLosingTheFirst()
     {
         var loader = new FwDataProjectLoader();
         Guid wordformId = Guid.Empty;
@@ -52,19 +52,20 @@ public sealed class PendingChangesTests
         Assert.True(first.Succeeded, first.Refusal?.Message);
         var second = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0",
             first.Value!.Revision, new ChangeIntent(secondId, "incorrect-spelling", wordId, "pending-word")));
-        Assert.True(second.Succeeded, second.Refusal?.Message);
-        Assert.Equal(2, second.Value!.Changes.Count);
-        Assert.All(second.Value.FitSummary, fit => Assert.True(fit.StillFits,
+        Assert.Equal("change.slot-occupied", second.Refusal?.Code);
+        Assert.Equal(secondId, second.Refusal?.Facts["changeId"]);
+        Assert.Equal(firstId, second.Refusal?.Facts["existingChangeId"]);
+        Assert.All(first.Value.FitSummary, fit => Assert.True(fit.StillFits,
             string.Join(" ", fit.Reasons)));
-        Assert.Equal(2, PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes.Count);
+        Assert.Single(PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes);
 
         var stale = PendingChanges.Remove(new RemovePendingChangeRequest(_path, "1.0",
             initial.Value.Revision, firstId));
         Assert.Equal("change.revision-conflict", stale.Refusal?.Code);
         Assert.Equal(firstId, stale.Refusal?.Facts["changeId"]);
-        Assert.Equal(2, PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes.Count);
+        Assert.Single(PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes);
 
-        var json = JsonSerializer.Serialize(second.Value);
+        var json = JsonSerializer.Serialize(first.Value);
         Assert.Equal(json, JsonSerializer.Serialize(JsonSerializer.Deserialize<PendingChangesSnapshot>(json)));
 
         using (var cache = loader.LoadCache(_path))
@@ -91,7 +92,7 @@ public sealed class PendingChangesTests
         }
         var unmapped = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
         Assert.True(unmapped.Succeeded, unmapped.Refusal?.Message);
-        Assert.Equal(2, unmapped.Value!.Changes.Count);
+        Assert.Single(unmapped.Value!.Changes);
         Assert.All(unmapped.Value.FitSummary, fit =>
             Assert.Contains(fit.Reasons, reason => reason.Contains("mapping or fingerprint", StringComparison.Ordinal)));
 
@@ -109,11 +110,11 @@ public sealed class PendingChangesTests
             repository.SaveDraft(PendingChanges.DraftName, stored.ToJsonString());
         }
         var orphaned = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
-        Assert.Equal(2, orphaned.Value!.Changes.Count);
+        Assert.Single(orphaned.Value!.Changes);
         var removedOrphan = PendingChanges.Remove(new RemovePendingChangeRequest(_path, "1.0",
             orphaned.Value.Revision, firstId));
         Assert.True(removedOrphan.Succeeded, removedOrphan.Refusal?.Message);
-        Assert.Single(removedOrphan.Value!.Changes);
+        Assert.Empty(removedOrphan.Value!.Changes);
     }
 
     [Fact]

@@ -4,21 +4,41 @@ using SIL.Motif.Contract.Parsing;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>Enforces one default-user opinion slot per analysis in a Proposal.</summary>
+/// <summary>Enforces one operation per analysis-change slot in a Proposal.</summary>
 public static class AnalysisOpinionSlotValidator
 {
     public static void Validate(Proposal proposal)
     {
-        var seen = new HashSet<CanonicalId>();
-        foreach (var operation in proposal.Operations)
-        {
-            if (operation.Kind != WfiAnalysisOperationKinds.AddRefEvaluations &&
-                operation.Kind != WfiAnalysisOperationKinds.RemoveRefEvaluations) continue;
-            if (operation.Target is not { } target) continue;
-            if (!seen.Add(target))
-                throw new ContractParseException(
-                    $"Analysis {target.Value} has more than one default-user opinion operation. " +
-                    "A Proposal may decide that opinion only once.");
-        }
+        if (FindConflict(proposal.Operations) is not { } collision) return;
+        throw new ContractParseException(
+            $"Operations {collision.Existing.OperationId.Value} and {collision.Duplicate.OperationId.Value} " +
+            "address the same target, field, and member slot.");
     }
+
+    public static (OperationEnvelope Existing, OperationEnvelope Duplicate)? FindConflict(
+        IEnumerable<OperationEnvelope> operations)
+    {
+        var seen = new Dictionary<(CanonicalId Target, string Field, CanonicalId? Member), OperationEnvelope>();
+        foreach (var operation in operations)
+        {
+            if (SlotOf(operation) is not { } slot) continue;
+            if (seen.TryGetValue(slot, out var existing)) return (existing, operation);
+            seen.Add(slot, operation);
+        }
+        return null;
+    }
+
+    private static (CanonicalId Target, string Field, CanonicalId? Member)? SlotOf(OperationEnvelope operation) =>
+        operation.Kind switch
+        {
+            WfiWordformSpellingStatusOperationKinds.SetSpellingStatus or
+                WfiWordformSpellingStatusOperationKinds.ClearSpellingStatus when operation.Target is { } target =>
+                (target, "spellingStatus", null),
+            WfiAnalysisOperationKinds.AddRefEvaluations or
+                WfiAnalysisOperationKinds.RemoveRefEvaluations when operation.Target is { } target =>
+                (target, "defaultUserOpinion", null),
+            WfiAnalysisOperationKinds.CreateAnalysis when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, "analyses", member),
+            _ => null,
+        };
 }
