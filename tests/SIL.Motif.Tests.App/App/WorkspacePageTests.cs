@@ -505,6 +505,7 @@ public sealed class WorkspacePageTests
         await ChooseProjectAsync(fake, projectPicker, workspace);
 
         Assert.False(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
+        Assert.Empty(fake.CheckGrammarRequests);
         Assert.Equal("1 finding", workspace.PageModel<WarningsPageModel>().Grammar.SummaryText);
         Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.CanExecute(null));
     }

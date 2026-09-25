@@ -26,6 +26,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Sidebar.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Badge.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TabStrip.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Warnings.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>

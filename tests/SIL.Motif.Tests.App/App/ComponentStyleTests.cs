@@ -153,6 +153,15 @@ public sealed class ComponentStyleTests
         yield return new("TabStrip", "a tab", host => Add(host, Press("tab")), Button.PaddingProperty, "Component.TabStrip.TabPadding");
         yield return new("TabStrip", "a tab", host => Add(host, Press("tab")), Button.BorderBrushProperty, "Intent.Clear");
         yield return new("TabStrip", "the active tab", host => Add(host, Press("tab", "active")), Button.BorderBrushProperty, "Intent.Accent");
+
+        yield return new("Warnings", "the page", host => Add(host, With(new Grid(), ["warningPanel"])),
+            Grid.MarginProperty, "Component.Warnings.PageMargin");
+        yield return new("Warnings", "the empty state", host => Add(host, Box("warningEmpty")),
+            Border.MarginProperty, "Component.Warnings.EmptyMargin");
+        yield return new("Warnings", "a selected kind", host => Add(host, Press("findingGroup", "chosen")),
+            Button.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Warnings", "warning severity", host => Add(host, Text("warningSeverity", "warning")),
+            TextBlock.ForegroundProperty, "Intent.Warning");
     }
 
     private static T Add<T>(Panel host, T control) where T : Control

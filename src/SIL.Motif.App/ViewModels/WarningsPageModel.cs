@@ -36,13 +36,11 @@ public sealed class WarningsPageModel : PageModel
     // Opening shows the check stored for this Baseline, and never starts one of its own.
     protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
-        await Grammar.SetProjectAsync(null, cancellationToken).ConfigureAwait(true);
+        Grammar.Clear();
         var stored = await Context.Commands
             .ReadStoredGrammarCheckAsync(new GrammarCheckRequest(projectPath), cancellationToken).ConfigureAwait(true);
         if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
-        // A stored hit is read, not rerun: pinned by `TheStoredReadStampsTheParserExactlyAsTheCheckDoes`.
-        if (stored.Succeeded && stored.Value?.Check is not null)
-            await Grammar.SetProjectAsync(projectPath, cancellationToken).ConfigureAwait(true);
+        if (stored.Succeeded) Grammar.LoadStored(projectPath, stored.Value?.Check);
     }
 
     // A person asked for the new Baseline, so its grammar is checked rather than only read.

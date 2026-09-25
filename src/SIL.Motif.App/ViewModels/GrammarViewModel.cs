@@ -3,12 +3,13 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// Checks a project's grammar as a whole, independently of any Text or word: once when a project is
-/// chosen, and again after every successful Baseline refresh. Holds no dependency on
+/// Checks a project's grammar as a whole, independently of any Text or word, when requested or after a
+/// successful Baseline refresh. Holds no dependency on
 /// <see cref="AssessViewModel"/> — a grammar finding never comes from running an Assessment.
 /// </summary>
 public sealed partial class GrammarViewModel : ObservableObject
@@ -103,6 +104,16 @@ public sealed partial class GrammarViewModel : ObservableObject
 
     /// <summary>Forgets the previous project's grammar while the next project opens.</summary>
     public void Clear() => ResetProject(null);
+
+    /// <summary>Shows a stored check and enables Reload grammar without running the parser.</summary>
+    public void LoadStored(string projectPath, GrammarCheckResponse? check)
+    {
+        ResetProject(projectPath);
+        if (check is null) return;
+        Warnings.Load(check.Findings);
+        HasBaseline = check.HasBaseline;
+        HasChecked = true;
+    }
 
     private void ResetProject(string? projectPath)
     {

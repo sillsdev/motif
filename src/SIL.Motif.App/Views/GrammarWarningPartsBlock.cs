@@ -15,10 +15,6 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
     public static readonly StyledProperty<IReadOnlyList<GrammarWarningPart>?> PartsProperty =
         AvaloniaProperty.Register<GrammarWarningPartsBlock, IReadOnlyList<GrammarWarningPart>?>(nameof(Parts));
 
-    internal static readonly IBrush ObjectBrush = new SolidColorBrush(Color.Parse("#2F7FD8"));
-    internal static readonly IBrush MissingBrush = new SolidColorBrush(Color.Parse("#D64545"));
-    internal static readonly IBrush ValueBrush = new SolidColorBrush(Color.Parse("#2E9E6B"));
-
     static GrammarWarningPartsBlock()
     {
         PartsProperty.Changed.AddClassHandler<GrammarWarningPartsBlock>((block, _) => block.Rebuild());
@@ -53,22 +49,19 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         var block = new CopyableTextBlock
         {
             Text = text,
-            Margin = new Thickness(0, 0, 4, 0),
             TextWrapping = TextWrapping.Wrap,
         };
+        block.Classes.Add("warningPart");
         switch (part.Role)
         {
             case GrammarWarningPartRole.Object:
-                block.Foreground = ObjectBrush;
-                block.FontWeight = FontWeight.SemiBold;
+                block.Classes.Add("warningObject");
                 break;
             case GrammarWarningPartRole.Missing:
-                block.Foreground = MissingBrush;
-                block.FontWeight = FontWeight.SemiBold;
+                block.Classes.Add("warningMissing");
                 break;
             case GrammarWarningPartRole.Value:
-                block.Foreground = ValueBrush;
-                block.FontFamily = new FontFamily("Cascadia Mono, Consolas, monospace");
+                block.Classes.Add("warningValue");
                 break;
         }
         return block;
@@ -89,11 +82,8 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         {
             Content = part.Text,
             NavigateUri = new Uri(link),
-            Padding = new Thickness(0),
-            Margin = new Thickness(0, 0, 4, 0),
-            Foreground = ObjectBrush,
-            FontWeight = FontWeight.SemiBold,
         };
+        button.Classes.Add("warningObjectLink");
         ToolTip.SetTip(button, $"Open this {part.FieldWorksKind?.ToLowerInvariant() ?? "object"} in FieldWorks");
         return button;
     }

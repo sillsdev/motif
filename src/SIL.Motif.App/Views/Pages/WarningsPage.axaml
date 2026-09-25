@@ -6,13 +6,13 @@
              x:DataType="vm:WarningsPageModel">
   <Grid RowDefinitions="Auto,*">
     <!-- Opening a project never checks the grammar; until someone asks, the page says so and offers the check. -->
-    <Border Classes="card" Margin="20,16,20,0" IsVisible="{Binding IsGrammarNotChecked}"
+    <Border Classes="card warningEmpty" IsVisible="{Binding IsGrammarNotChecked}"
             AutomationProperties.Name="Grammar not checked yet">
       <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="Check the grammar" VerticalAlignment="Center" Margin="12,0,0,0"
-                Classes="Primary" Theme="{DynamicResource SolidButton}"
+        <Button DockPanel.Dock="Right" Content="Check the grammar" VerticalAlignment="Center" Classes="warningAction Primary"
+                Theme="{DynamicResource SolidButton}"
                 Command="{Binding CheckGrammarCommand}" AutomationProperties.Name="Check the grammar" />
-        <StackPanel Spacing="2">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
           <views:CopyableTextBlock Text="Not checked yet" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                                    Text="Checking reads the whole grammar, so it can take a minute on a large project. It runs only when you ask." />
