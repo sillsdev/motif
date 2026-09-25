@@ -95,12 +95,32 @@ public sealed class DesignTokenTests
         });
     }
 
+    [Fact]
+    public void EveryIntentAliasOfASemiRoleIsInTheCompatibilityMatrix()
+    {
+        var aliases = XDocument.Load(IntentFile()).Descendants()
+            .Where(element => element.Name.LocalName == "StaticResource")
+            .Select(element => (
+                Intent: (string?)element.Attribute(Xaml + "Key"),
+                Semi: (string?)element.Attribute("ResourceKey")))
+            .Where(alias => alias.Intent?.StartsWith("Intent.", StringComparison.Ordinal) == true
+                && alias.Semi?.StartsWith("SemiColor", StringComparison.Ordinal) == true)
+            .Select(alias => (alias.Intent!, alias.Semi!))
+            .Distinct()
+            .OrderBy(alias => alias.Item1, StringComparer.Ordinal)
+            .ThenBy(alias => alias.Item2, StringComparer.Ordinal)
+            .ToList();
+
+        var testedAliases = SemiRoleAliases
+            .OrderBy(alias => alias.Intent, StringComparer.Ordinal)
+            .ThenBy(alias => alias.Semi, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(aliases, testedAliases);
+    }
+
     [Theory]
-    [InlineData("Intent.TextMuted", "SemiColorText2")]
-    [InlineData("Intent.Border", "SemiColorBorder")]
-    [InlineData("Intent.Danger", "SemiColorDanger")]
-    [InlineData("Intent.Focus", "SemiColorFocusBorder")]
-    [InlineData("Intent.Surface", "SemiColorBackground0")]
+    [MemberData(nameof(SemiRoleAliasCases))]
     public void AnIntentAliasOfASemiRoleIsThatRolesBrushInEachTheme(string intent, string semi)
     {
         _avalonia.Invoke(() =>
@@ -272,6 +292,30 @@ public sealed class DesignTokenTests
         "FontSize", "CornerRadius", "BorderThickness", "Width", "Height", "MinWidth", "MinHeight",
         "MaxWidth", "MaxHeight", "RowSpacing", "ColumnSpacing", "ColumnDefinitions",
     ];
+
+    private static readonly (string Intent, string Semi)[] SemiRoleAliases =
+    [
+        ("Intent.Surface", "SemiColorBackground0"),
+        ("Intent.Surface.Hover", "SemiColorFill0"),
+        ("Intent.Surface.Neutral", "SemiColorFill1"),
+        ("Intent.Text", "SemiColorText0"),
+        ("Intent.TextMuted", "SemiColorText2"),
+        ("Intent.TextFaint", "SemiColorText3"),
+        ("Intent.Border", "SemiColorBorder"),
+        ("Intent.Focus", "SemiColorFocusBorder"),
+        ("Intent.Primary", "SemiColorPrimary"),
+        ("Intent.Primary.Fill", "SemiColorPrimaryLight"),
+        ("Intent.Link", "SemiColorLink"),
+        ("Intent.Success", "SemiColorSuccess"),
+        ("Intent.Success.Fill", "SemiColorSuccessLight"),
+        ("Intent.Warning", "SemiColorWarning"),
+        ("Intent.Warning.Fill", "SemiColorWarningLight"),
+        ("Intent.Danger", "SemiColorDanger"),
+        ("Intent.Danger.Fill", "SemiColorDangerLight"),
+    ];
+
+    public static IEnumerable<object[]> SemiRoleAliasCases =>
+        SemiRoleAliases.Select(alias => new object[] { alias.Intent, alias.Semi });
 
     private static bool IsTokenOrLayout(string value) =>
         value.StartsWith("{DynamicResource Intent.", StringComparison.Ordinal)
