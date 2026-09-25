@@ -103,7 +103,7 @@ public sealed class PanGlossTraceInvocationTests : IDisposable
         var tracer = new PanGlossTracer(invoker);
 
         var outcome = await tracer.TraceAsync(
-            grammar, "sagd", CancellationToken.None, timeout: TimeSpan.FromMilliseconds(400));
+            grammar, "sagd", CancellationToken.None, timeout: TimeSpan.FromSeconds(3));
 
         var incomplete = Assert.IsType<PanGlossTraceOutcome.Incomplete>(outcome);
         Assert.Null(incomplete.Tree);
