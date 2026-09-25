@@ -452,7 +452,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         {
             RefreshCommand.NotifyCanExecuteChanged();
             // A run started from Refresh leaves the person where they are; the top bar says how it is going.
-            if (Assess.IsActive && !_isRefreshing) Context.OpenPage(WorkspacePage.Texts);
+            if (Assess.IsActive && !_isRefreshing &&
+                !(Assess.LastRunWasRerun && Context.CurrentPage == WorkspacePage.Timing))
+                Context.OpenPage(WorkspacePage.Texts);
         }
 
         if (_isRefreshing) RaiseFreshness();
