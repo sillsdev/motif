@@ -6,7 +6,7 @@
              x:Class="SIL.Motif.App.Views.TextWordsPanel"
              x:DataType="views:TextWordsPanel">
   <Grid Margin="{DynamicResource Component.TextsPage.PageInset}"
-        RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+        RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
     <DockPanel LastChildFill="False">
       <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextWrapping="Wrap"
                                VerticalAlignment="Center" />
@@ -42,7 +42,11 @@
                         Command="{Binding Words.ShowSeveralCommand}" />
     </WrapPanel>
 
-    <ListBox Grid.Row="2" Classes="denseWords" ItemsSource="{Binding Words.Rows}"
+    <views:CopyableTextBlock Grid.Row="2" Classes="error" Text="{Binding Words.Refusal.Message}"
+                             IsVisible="{Binding Words.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                             TextWrapping="Wrap" />
+
+    <ListBox Grid.Row="3" Classes="denseWords" ItemsSource="{Binding Words.Rows}"
              AutomationProperties.Name="Words to test">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:TextWordRowViewModel">
