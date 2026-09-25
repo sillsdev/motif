@@ -705,7 +705,12 @@ public sealed class MainWindowSmokeTests
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
                 var word = Assert.Single(workspace.Assess.Compare.Words);
                 word.IsChecked = true;
-                word.SelectedReading = Assert.Single(word.ReadingChoices);
+                var chooser = Assert.Single(panel.GetLogicalDescendants().OfType<ComboBox>(), candidate =>
+                    AutomationProperties.GetName(candidate) == "Analysis for pasted-word");
+                Assert.Null(word.SelectedReading);
+                chooser.SelectedIndex = 0;
+                window.UpdateLayout();
+                Assert.Same(chooser.SelectedItem, word.SelectedReading);
 
                 foreach (var kind in new[] { ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.Candidate })
                 {

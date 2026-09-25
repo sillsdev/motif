@@ -25,10 +25,11 @@ public sealed class TextsListsViewModelTests
             word.ReadingGrades, word.MissedApproved?.Count ?? 0), word.MissedApproved),
     };
 
-    private static (CompareViewModel Compare, TextsListsViewModel Lists) Loaded()
+    private static (CompareViewModel Compare, TextsListsViewModel Lists) Loaded(bool withSecondApprovedNoParse = false)
     {
         var words = new AssessWordsViewModel();
-        words.Load([
+        var rows = new List<AssessmentWordResult>
+        {
             Word("approved-empty", "no-analysis", ProjectStanding.Approved),
             Word("approved-other", "analysed", ProjectStanding.Approved, "no-opinion"),
             Word("candidate-kept", "analysed", ProjectStanding.Candidate, "candidate"),
@@ -39,7 +40,10 @@ public sealed class TextsListsViewModelTests
             Word("timeout-two", "capped", ProjectStanding.Candidate),
             Word("candidate-empty", "no-analysis", ProjectStanding.Candidate),
             Word("skipped", "skipped", ProjectStanding.NotPresent),
-        ]);
+        };
+        if (withSecondApprovedNoParse)
+            rows.Add(Word("approved-empty-too", "no-analysis", ProjectStanding.Approved));
+        words.Load(rows);
         var compare = new CompareViewModel();
         compare.Load(words.AllRows);
         return (compare, new TextsListsViewModel(compare));
@@ -86,6 +90,20 @@ public sealed class TextsListsViewModelTests
         Assert.Equal(string.Empty, compare.SearchText);
         Assert.Equal(["approved-other"], compare.Words.Select(word => word.Word));
         Assert.Equal(1, lists.SelectedList!.WordCount);
+    }
+
+    [Fact]
+    public void OpeningListsAfterFixFirstRestoresEveryWordInTheSelectedCell()
+    {
+        var (compare, lists) = Loaded(withSecondApprovedNoParse: true);
+        compare.FocusFixFirstCommand.Execute(compare.FixFirstRows.Single(item => item.Word.Word == "approved-empty"));
+
+        lists.SelectFirstIfNeeded();
+
+        Assert.Equal(string.Empty, compare.SearchText);
+        Assert.Equal(["approved-empty", "approved-empty-too"], compare.Words.Select(word => word.Word).Order());
+        Assert.Equal(2, lists.SelectedList!.WordCount);
+        Assert.Equal(lists.SelectedList.WordCount, compare.Words.Count);
     }
 
     [Theory]

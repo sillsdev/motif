@@ -711,6 +711,7 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(["disapproved", "no-opinion"], word.ReadingGrades);
         Assert.Equal(ProjectStanding.Approved, word.ProjectStanding);
         var missed = Assert.Single(word.MissedApproved!);
+        Assert.NotNull(word.FixFirst);
         Assert.Equal(2, missed.Morphs.Count);
         Assert.Equal(SeededProject.FirstForm, missed.Morphs[0].Form);
         Assert.Equal(SeededProject.FirstGloss, missed.Morphs[0].Gloss);

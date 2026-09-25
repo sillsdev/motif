@@ -600,6 +600,13 @@ public sealed class WorkspaceContextTests
         Assert.Equal("Not applied yet", token.PendingChangeStatus);
         Assert.Equal("Not applied yet", Assert.Single(texts.Assess.Compare.Words).PendingChangeStatus);
         Assert.Equal("Not applied yet", list.PendingChangeStatus);
+
+        context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "kitabu", "Approved", "",
+            fit: new ChangeFit("stale-change", false, ["The project changed."])));
+
+        Assert.Equal(PendingChangeState.NoLongerFits, token.PendingState);
+        Assert.Equal(PendingChangeState.NoLongerFits, Assert.Single(texts.Assess.Compare.Words).PendingState);
+        Assert.Equal(PendingChangeState.NoLongerFits, list.PendingState);
     }
 
     [Fact]
