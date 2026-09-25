@@ -7,6 +7,9 @@ public sealed record PendingChange(
 {
     /// <summary>The word's readings, including the one this change addresses.</summary>
     public IReadOnlyList<ReviewAnalysis> Analyses { get; init; } = [];
+
+    /// <summary>The page on which this change was collected.</summary>
+    public string? OriginPage { get; init; }
 }
 
 /// <summary>One reading shown beside a change, with its previous opinion and whether the change touches it.</summary>

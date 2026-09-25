@@ -400,8 +400,23 @@ public sealed class ProposalRepository : IProposalRepository
             proposalId = reader.GetString(0);
             wasAmend = !reader.IsDBNull(1);
         }
-        using (var revision = connection.CreateCommand())
+        var bytes = Encoding.UTF8.GetBytes(proposalJson);
+        bool revisionExists;
+        using (var existing = connection.CreateCommand())
         {
+            existing.Transaction = transaction;
+            existing.CommandText = "SELECT ProposalJson FROM ProposalRevisions WHERE ProposalId = $id AND IntentDigest = $digest;";
+            existing.Parameters.AddWithValue("$id", proposalId);
+            existing.Parameters.AddWithValue("$digest", intentDigest);
+            var stored = existing.ExecuteScalar();
+            revisionExists = stored is not null;
+            if (stored is not null && (stored is not byte[] storedBytes || !storedBytes.SequenceEqual(bytes)))
+                throw new InvalidDataException(
+                    $"Proposal revision '{intentDigest}' already exists with different content.");
+        }
+        if (!revisionExists)
+        {
+            using var revision = connection.CreateCommand();
             revision.Transaction = transaction;
             revision.CommandText = """
                 INSERT INTO ProposalRevisions (ProposalId, IntentDigest, ProposalJson, CreatedUtc)
@@ -409,7 +424,7 @@ public sealed class ProposalRepository : IProposalRepository
                 """;
             revision.Parameters.AddWithValue("$id", proposalId);
             revision.Parameters.AddWithValue("$digest", intentDigest);
-            revision.Parameters.AddWithValue("$bytes", Encoding.UTF8.GetBytes(proposalJson));
+            revision.Parameters.AddWithValue("$bytes", bytes);
             revision.Parameters.AddWithValue(
                 "$created", _clock.UtcNow.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
             revision.ExecuteNonQuery();

@@ -117,7 +117,7 @@ public sealed class CompareActionsTests
         Assert.Equal(2, compare.Changes.Items.Count);
         var change = compare.Changes.Items.Last();
         Assert.Equal("mwalimu: Incorrect spelling", change.Summary);
-        Assert.True(change.CanBeProposedToday);
+        Assert.True(change.CanBeProposed);
         Assert.False(mwalimu.IsChecked);
         Assert.Equal("All of these can be applied to the FieldWorks project.", compare.Changes.ApplyStatus);
     }

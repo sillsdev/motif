@@ -64,7 +64,12 @@ public static class PendingChanges
                 return Refuse("change.baseline-missing", "Capture a Baseline before collecting changes.",
                     ("changeId", change.ChangeId));
 
-            var draft = current is null ? new DraftDocument { ProposalId = CanonicalId.Mint().Value } :
+            var draft = current is null ? new DraftDocument
+            {
+                ProposalId = CanonicalId.Mint().Value,
+                Label = "Changes to word analyses",
+                Comment = "Changes to word analyses and spelling.",
+            } :
                 ParseDraft(current.ProposalJson!);
             using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
             IWfiWordform wordform;
@@ -223,6 +228,7 @@ public static class PendingChanges
             {
                 composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
                 change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
+                change.OriginPage,
                 operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
             }, JsonOptions));
             var json = JsonSerializer.Serialize(draft, JsonOptions);
@@ -295,7 +301,10 @@ public static class PendingChanges
             return new PendingChange(id, wordformId, Property(entry, "word") ??
                 Property(fingerprint, "wordformForm") ?? "", Property(entry, "kind") ??
                 operations.FirstOrDefault()?.Kind ?? "", Property(entry, "assessmentId"),
-                Property(entry, "displayReading"), operationIds);
+                Property(entry, "displayReading"), operationIds)
+            {
+                OriginPage = Property(entry, "originPage"),
+            };
         }).ToArray();
         if (changes.Length == 0)
             return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);

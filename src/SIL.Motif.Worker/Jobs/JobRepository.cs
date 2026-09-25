@@ -247,8 +247,35 @@ public sealed class JobRepository
 
     public JobRecord RequestCancellation(string jobId)
     {
-        var current = GetRequired(jobId);
-        return RequestCancellation(jobId, current.Version);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var current = ReadRequired(connection, transaction, jobId);
+        var changed = _stateMachine.RequestCancellation(current);
+        if (changed == current) return current;
+        UpdateCancellation(connection, transaction, changed);
+        transaction.Commit();
+        return changed;
+    }
+
+    public JobRecord CancelActive(string jobId)
+    {
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var current = ReadRequired(connection, transaction, jobId);
+        if (JobStateMachine.IsTerminal(current.Status)) return current;
+        var changed = current.Status == JobStatus.Running
+            ? _stateMachine.RequestCancellation(current)
+            : PrepareTransition(current, _stateMachine.Transition(current, JobStatus.Cancelled)) with
+            {
+                FailureCategory = JobFailureCategory.Cancellation,
+            };
+        if (changed == current) return current;
+        if (current.Status == JobStatus.Running)
+            UpdateCancellation(connection, transaction, changed);
+        else
+            UpdateTransition(connection, transaction, changed);
+        transaction.Commit();
+        return changed;
     }
 
     public JobRecord UpdateProgress(string jobId, string progressJson, long expectedVersion)

@@ -42,7 +42,7 @@ public static class ChangeKinds
     /// <summary>
     /// Whether the current change language can express this kind of analysis or spelling change.
     /// </summary>
-    public static bool CanBeProposedToday(string kind) => kind is Approve or Reject or Candidate or
+    public static bool CanBeProposed(string kind) => kind is Approve or Reject or Candidate or
         IncorrectSpelling or AddCandidate;
 }
 
@@ -109,20 +109,21 @@ public sealed partial class ChangesViewModel : ObservableObject
             await ReloadAfterConflictAsync(outcome.Refusal, cancellationToken);
     }
 
-    public async Task AddAsync(string kind, CompareWordViewModel word)
+    public async Task AddAsync(string kind, CompareWordViewModel word,
+        WorkspacePage originPage = WorkspacePage.Texts)
     {
         ArgumentNullException.ThrowIfNull(word);
         var readings = kind == ChangeKinds.AddCandidate ? word.ReadingChoices :
             word.SelectedReading is { } selected ? [selected] : [];
         if (kind == ChangeKinds.IncorrectSpelling)
         {
-            await AddOneAsync(kind, word, null).ConfigureAwait(true);
+            await AddOneAsync(kind, word, null, originPage).ConfigureAwait(true);
             return;
         }
         Refusal? firstRefusal = null;
         foreach (var reading in readings)
         {
-            await AddOneAsync(kind, word, reading).ConfigureAwait(true);
+            await AddOneAsync(kind, word, reading, originPage).ConfigureAwait(true);
             firstRefusal ??= LastRefusal;
         }
         if (firstRefusal is not null)
@@ -133,7 +134,8 @@ public sealed partial class ChangesViewModel : ObservableObject
         }
     }
 
-    private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice)
+    private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice,
+        WorkspacePage originPage)
     {
         if (_client is null || ProjectPath is null)
         {
@@ -142,7 +144,7 @@ public sealed partial class ChangesViewModel : ObservableObject
         }
         await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", word.Word,
             AssessmentId, choice?.Reading, DisplayReading: choice?.Label ?? word.FirstReading,
-            ReadingIndex: choice?.Index)).ConfigureAwait(true);
+            ReadingIndex: choice?.Index, OriginPage: originPage.ToString())).ConfigureAwait(true);
     }
 
     private async Task RemoveAsync(ChangeViewModel? change)
@@ -199,7 +201,7 @@ public sealed partial class ChangesViewModel : ObservableObject
         {
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
             Items.Add(new ChangeViewModel(change.Kind, change.Word, "Project analysis",
-                change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses));
+                change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage));
         }
         Raise();
     }
@@ -225,7 +227,7 @@ public sealed partial class ChangesViewModel : ObservableObject
             if (stale > 0)
                 return stale == 1 ? "1 change no longer fits the project. Review is blocked."
                     : $"{stale:N0} changes no longer fit the project. Review is blocked.";
-            var ready = Items.Count(item => item.CanBeProposedToday);
+            var ready = Items.Count(item => item.CanBeProposed);
             var waiting = Items.Count - ready;
             return waiting == 0
                 ? "All of these can be applied to the FieldWorks project."
@@ -253,8 +255,11 @@ public sealed partial class ChangesViewModel : ObservableObject
 
 /// <summary>One collected change: what should happen to one word, and what it held when the change was chosen.</summary>
 public sealed class ChangeViewModel(string kind, string word, string heldLabel, string reading,
-    string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null)
+    string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null,
+    string? originPage = null)
 {
+    public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
+        page != WorkspacePage.Review ? page : WorkspacePage.Texts;
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
     public ChangeFit? Fit { get; } = fit;
     public string FitStatus => Fit is null ? string.Empty : Fit.StillFits
@@ -276,7 +281,7 @@ public sealed class ChangeViewModel(string kind, string word, string heldLabel, 
 
     public bool HasAnalyses => Analyses.Count > 0;
 
-    public bool CanBeProposedToday { get; } = ChangeKinds.CanBeProposedToday(kind);
+    public bool CanBeProposed { get; } = ChangeKinds.CanBeProposed(kind);
 
     public string Summary => $"{Word}: {Label}";
 }
@@ -300,7 +305,7 @@ public sealed class ReviewAnalysisViewModel
             "approved" => "Approved",
             "disapproved" => "Rejected",
             "candidate" => "Candidate",
-            _ => "No opinion",
+            _ => "Not present",
         };
     }
 

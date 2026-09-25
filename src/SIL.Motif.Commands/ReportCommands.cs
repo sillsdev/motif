@@ -109,7 +109,11 @@ public static class ReportCommands
                 rendered.Text));
 
             return CommandOutcome<ReportResponse>.Success(
-                new ReportResponse(reportId, request.AssessmentId, rendered.Kind, rendered.Text));
+                new ReportResponse(reportId, request.AssessmentId, rendered.Kind, rendered.Text)
+                {
+                    TotalSearches = rendered.TotalSearches,
+                    CompletedSearches = rendered.CompletedSearches,
+                });
         });
     }
 

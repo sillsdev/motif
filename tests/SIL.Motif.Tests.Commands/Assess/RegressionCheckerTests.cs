@@ -63,19 +63,12 @@ public sealed class RegressionCheckerTests
     }
 
     [Fact]
-    public void CoverageDropping_WithNoWordLevelLoss_IsStillARegression()
+    public void TrialsOfDifferentTouchedWordsCannotEstablishARegression()
     {
-        // A fourth, failing word dilutes the fraction even though every shared word parses identically.
-        var previous = Build("previous", ("alpha", true), ("beta", true), ("gamma", true));
-        var candidate = Build("candidate", ("alpha", true), ("beta", true), ("gamma", true), ("delta", false));
+        var previous = Build("previous", ("alpha", true));
+        var candidate = Build("candidate", ("beta", true), ("gamma", false));
 
-        var finding = RegressionChecker.Check(previous, candidate);
-
-        Assert.NotNull(finding);
-        Assert.True(finding!.CoverageDropped);
-        Assert.True(finding.IsRegression);
-        Assert.Empty(finding.LostAnalyses);
-        Assert.Contains("coverage dropped", finding.Describe());
+        Assert.Null(RegressionChecker.Check(previous, candidate));
     }
 
     [Fact]

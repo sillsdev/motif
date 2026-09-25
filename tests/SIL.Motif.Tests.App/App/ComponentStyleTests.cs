@@ -64,6 +64,30 @@ public sealed class ComponentStyleTests
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
+    [Fact]
+    public void ReviewParserOutlineUsesItsDashToken()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var outline = new Rectangle();
+            outline.Classes.Add("reviewParserOutline");
+            var window = new Window { Content = outline };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(Application.Current!.TryGetResource(
+                    "Component.Review.ParserDash", ThemeVariant.Light, out var token));
+                Assert.Equal([3d, 2d], Assert.IsAssignableFrom<IEnumerable<double>>(token));
+                Assert.Equal([3d, 2d], outline.StrokeDashArray);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static IEnumerable<Case> Cases()
     {
         yield return new("Text", "a muted line", host => Add(host, Text("muted")), TextBlock.ForegroundProperty, "Intent.TextMuted");
@@ -162,6 +186,10 @@ public sealed class ComponentStyleTests
             Button.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("Warnings", "warning severity", host => Add(host, Text("warningSeverity", "warning")),
             TextBlock.ForegroundProperty, "Intent.Warning");
+        yield return new("Review", "a reading", host => Add(host, Box("reviewReading")),
+            Border.BorderBrushProperty, "Intent.Border");
+        yield return new("Review", "a parser outline", host => Add(host, With(new Rectangle(), ["reviewParserOutline"])),
+            Rectangle.StrokeProperty, "Intent.TextFaint");
         yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
             TextBlock.ForegroundProperty, "Intent.Danger");
         yield return new("Timing", "the page", host => Add(host, Box("timingPage")), Border.PaddingProperty,

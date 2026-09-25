@@ -14,19 +14,19 @@ namespace SIL.Motif.App.ViewModels;
 public sealed class ReviewPageModel : PageModel
 {
     private CancellationTokenSource? _measurementCancellation;
-    private WorkspacePage _originPage = WorkspacePage.Texts;
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
         Changes.PropertyChanged += OnChangesChanged;
         context.PropertyChanged += OnContextPropertyChanged;
         RemoveNonFittingCommand = new AsyncRelayCommand(RemoveNonFittingAsync,
-            () => Changes.Items.Any(item => item.Fit is { StillFits: false }));
+            () => Changes.Items.Any(item => item.IsNoLongerFits));
         MeasureCommand = new AsyncRelayCommand(MeasureAsync,
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
         CancelMeasureCommand = new RelayCommand(() => _measurementCancellation?.Cancel(), () => IsMeasuring);
         ApplyCommand = new AsyncRelayCommand(ApplyAsync, () => CanApply);
-        KeepEditingCommand = new RelayCommand(() => Context.OpenPage(_originPage));
+        KeepEditingCommand = new RelayCommand(() => Context.OpenPage(
+            Changes.Items.FirstOrDefault()?.OriginPage ?? WorkspacePage.Texts));
     }
 
     public ChangesViewModel Changes => Context.Changes;
@@ -34,7 +34,7 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>The open project's file name, which the apply card names.</summary>
     public string ProjectName => Context.ProjectName;
 
-    /// <summary>Removes only the changes that no longer fit the saved project.</summary>
+    /// <summary>Removes only the changes that no longer fit the FieldWorks project.</summary>
     public IAsyncRelayCommand RemoveNonFittingCommand { get; }
 
     /// <summary>Starts a Trial of the touched words only when the person asks for one.</summary>
@@ -46,26 +46,26 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>Writes the measured changes as one atomic Apply.</summary>
     public IAsyncRelayCommand ApplyCommand { get; }
 
-    /// <summary>Returns to the page used before Review changes.</summary>
+    /// <summary>Returns to the page where the first pending change was collected.</summary>
     public IRelayCommand KeepEditingCommand { get; }
 
     /// <summary>Whether the requested measurement is still running.</summary>
     public bool IsMeasuring { get; private set; }
 
-    /// <summary>Whether Apply is still saving and recording the reviewed changes.</summary>
+    /// <summary>Whether Apply is writing the pending changes to FieldWorks.</summary>
     public bool IsApplying { get; private set; }
 
     /// <summary>Completed words, total words, and current word while measuring.</summary>
     public string MeasurementProgressText { get; private set; } = string.Empty;
 
-    /// <summary>The result recorded when Apply saved the project.</summary>
+    /// <summary>The result recorded when Apply wrote the changes.</summary>
     public ApplyProjection? Receipt { get; private set; }
 
     public bool HasReceipt => Receipt is not null;
 
     public bool HasNonFittingChanges => Changes.Items.Any(item => item.IsNoLongerFits);
 
-    /// <summary>The save result in words without internal command vocabulary.</summary>
+    /// <summary>The Apply result in words without internal command vocabulary.</summary>
     public string ReceiptText => Receipt is null ? string.Empty :
         $"Changes applied to {ProjectName}. Receipt recorded at {Receipt.AppliedLogEntry.TimestampUtc}.";
 
@@ -81,14 +81,14 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>Why the last requested measurement could not complete.</summary>
     public string? MeasurementError { get; private set; }
 
-    /// <summary>Whether the measured changes can be applied to the saved project.</summary>
+    /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
     public bool CanApply => Changes.HasItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
         Context.Baseline?.FieldWorksHeldProject != true && EvidenceComplete && !IsMeasuring && !IsApplying;
 
     /// <summary>What prevents Apply, in words shown beside the action.</summary>
     public string ApplyBlockReason => IsApplying ? "Applying changes to FieldWorks..." :
         !Changes.HasItems ? "Choose a change in Texts to begin." :
-        Changes.Items.Any(item => item.Fit is { StillFits: false })
+        Changes.Items.Any(item => item.IsNoLongerFits)
             ? "No longer fits: remove the changes that no longer fit before applying."
             : Context.Baseline?.FieldWorksHeldProject == true
                 ? "FieldWorks has this project open. Close it before applying changes."
@@ -135,7 +135,7 @@ public sealed class ReviewPageModel : PageModel
         EvidenceComplete = result.Succeeded && result.Value is { EvidenceComplete: true } measured &&
             measured.Revision == revision;
         MeasurementError = result.Refusal is { } measureRefusal
-            ? UserFacingError(measureRefusal.Code)
+            ? UserFacingError(measureRefusal)
             : !EvidenceComplete ? "Some words did not finish or their analysis could not be checked." : null;
         if (result.Value is { } evidence) NumbersText = evidence.NumbersText;
         OnPropertyChanged(nameof(NumbersText));
@@ -176,7 +176,7 @@ public sealed class ReviewPageModel : PageModel
         }
         if (!result.Succeeded)
         {
-            ApplyError = UserFacingError(result.Refusal!.Code);
+            ApplyError = UserFacingError(result.Refusal!);
             OnPropertyChanged(nameof(ApplyError));
             await Changes.ReloadAsync().ConfigureAwait(true);
             return;
@@ -191,17 +191,19 @@ public sealed class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(ApplyError));
     }
 
-    private static string UserFacingError(string code) => code switch
+    private static string UserFacingError(Refusal refusal) => refusal.Code switch
     {
         "apply.project-in-use" => "FieldWorks has this project open. Close it before applying changes.",
         "apply.change-no-longer-fits" or "review.change-no-longer-fits" =>
             "One or more changes no longer fit. Remove those changes first.",
         "apply.reconciliation-needed" =>
-            "The save may have completed, but its receipt could not be recorded. Check the project before retrying.",
+            "Applying may have completed, but its receipt could not be recorded. Check the project before retrying.",
+        "apply.not-ready" when refusal.Message.Contains("regression", StringComparison.OrdinalIgnoreCase) =>
+            "The check found worse results for words already measured. Review them before applying.",
         "apply.not-ready" => "The check did not give enough evidence to apply these changes. Check them again.",
         "review.changes-changed" => "The changes have changed. Check the numbers again before applying.",
         "review.reopen-failed" =>
-            "The changes could not be applied or reopened. Inspect the saved project before trying again.",
+            "The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.",
         "review.measurement-incomplete" => "The check did not finish. Try it again.",
         "review.measurement-cancelled" => "The check was cancelled.",
         _ => "The changes could not be checked or applied. Check the project and try again.",
@@ -209,7 +211,7 @@ public sealed class ReviewPageModel : PageModel
 
     private async Task RemoveNonFittingAsync()
     {
-        foreach (var change in Changes.Items.Where(item => item.Fit is { StillFits: false }).ToArray())
+        foreach (var change in Changes.Items.Where(item => item.IsNoLongerFits).ToArray())
             await Changes.RemoveCommand.ExecuteAsync(change).ConfigureAwait(true);
     }
 
@@ -236,9 +238,6 @@ public sealed class ReviewPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) &&
-            Context.CurrentPage != WorkspacePage.Review)
-            _originPage = Context.CurrentPage;
         if (e.PropertyName == nameof(WorkspaceContext.ProjectName)) OnPropertyChanged(nameof(ProjectName));
         if (e.PropertyName == nameof(WorkspaceContext.Baseline))
         {

@@ -24,7 +24,7 @@
                                      AutomationProperties.Name="{Binding Word, StringFormat='Remove the change to {0}'}" />
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
                       <views:CopyableTextBlock Classes="reviewWord" Text="{Binding Word}" />
-                      <views:CopyableTextBlock Text="{Binding ReviewLabel}" FontWeight="SemiBold"
+                      <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding ReviewLabel}"
                                                VerticalAlignment="Center" />
                     </StackPanel>
                   </DockPanel>
@@ -45,7 +45,7 @@
                                   <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
                                     <Border Classes="reviewMorph">
                                       <StackPanel>
-                                        <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold" />
+                                        <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding Form}" />
                                         <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}" />
                                         <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Category}" />
                                       </StackPanel>
@@ -54,7 +54,7 @@
                                 </ItemsControl.ItemTemplate>
                               </ItemsControl>
                               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                                <views:CopyableTextBlock Text="{Binding Opinion}" FontWeight="SemiBold" />
+                                <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding Opinion}" />
                                 <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Source}" />
                               </StackPanel>
                             </StackPanel>
@@ -66,7 +66,7 @@
                   </ItemsControl>
                   <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Reading}"
                                            IsVisible="{Binding !HasAnalyses}" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Classes="reviewSmall" Classes.reviewDanger="{Binding IsNoLongerFits}"
+                  <views:CopyableTextBlock Classes="reviewSmall" Classes.error="{Binding IsNoLongerFits}"
                                            Text="{Binding FitStatus}" TextWrapping="Wrap" />
                 </StackPanel>
               </Border>
@@ -78,7 +78,7 @@
     <StackPanel Grid.Column="1" Classes="reviewStack reviewRight">
       <Border Classes="card">
         <StackPanel Classes="reviewRelated">
-          <views:CopyableTextBlock Classes="reviewSection" Text="What applying does to the numbers"
+          <views:CopyableTextBlock Classes="section-title" Text="What applying does to the numbers"
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
@@ -92,7 +92,7 @@
       </Border>
       <Border Classes="card">
         <StackPanel Classes="reviewRelated">
-          <views:CopyableTextBlock Classes="reviewSection" Text="{Binding ProjectName, StringFormat='Apply to {0}'}"
+          <views:CopyableTextBlock Classes="section-title" Text="{Binding ProjectName, StringFormat='Apply to {0}'}"
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Changes.CountText}" />
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ApplyBlockReason}" TextWrapping="Wrap" />
@@ -107,7 +107,7 @@
       </Border>
       <Border Classes="card" IsVisible="{Binding HasReceipt}">
         <StackPanel Classes="reviewCompact">
-          <views:CopyableTextBlock Classes="reviewSection" Text="Changes saved" />
+          <views:CopyableTextBlock Classes="section-title" Text="Applied to the FieldWorks project" />
           <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>

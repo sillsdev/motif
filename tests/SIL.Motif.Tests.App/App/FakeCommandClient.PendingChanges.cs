@@ -11,6 +11,7 @@ public sealed partial class FakeCommandClient
     public List<ReviewApplyRequest> ReviewApplyRequests { get; } = [];
     private ReviewTrialResult? _reviewTrial;
     private ApplyProjection? _reviewApply;
+    public Refusal? ReviewApplyRefusal { get; set; }
 
     public void ReviewTrialCompletesWith(ReviewTrialResult result) => _reviewTrial = result;
     public void ReviewApplyCompletesWith(ApplyProjection result) => _reviewApply = result;
@@ -19,6 +20,8 @@ public sealed partial class FakeCommandClient
         ReviewApplyRequest request, CancellationToken cancellationToken)
     {
         ReviewApplyRequests.Add(request);
+        if (ReviewApplyRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<ApplyProjection>.Refused(refusal));
         if (_reviewApply is not { } result) throw NotConfigured(nameof(ApplyReviewAsync));
         _pending = new PendingChangesSnapshot(null, "none", [], []);
         return Completed(result);
@@ -52,7 +55,10 @@ public sealed partial class FakeCommandClient
         var change = request.Change;
         var changes = _pending.Changes.Where(item => item.ChangeId != change.ChangeId).ToList();
         changes.Add(new PendingChange(change.ChangeId, change.WordformId, change.Word, change.Kind,
-            change.AssessmentId, change.DisplayReading, [change.ChangeId]));
+            change.AssessmentId, change.DisplayReading, [change.ChangeId])
+        {
+            OriginPage = change.OriginPage,
+        });
         _pending = _pending with { DraftId = _pending.DraftId ?? "draft/test", Revision = Guid.NewGuid().ToString("N"),
             Changes = changes, FitSummary = changes.Select(item => new ChangeFit(item.ChangeId, true, [])).ToArray() };
         return Completed(_pending);

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -104,6 +105,11 @@ public static class JobCommands
     /// </summary>
     public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request, UsageLog? usage = null)
     {
+        if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
+                !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
+            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                "job.invalid-words", FailureReason.InvalidArgument,
+                "Trial words must be nonblank and have no surrounding whitespace."));
         usage?.Record(TrialKind,
             new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("proposalId") });
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
@@ -123,8 +129,12 @@ public static class JobCommands
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
+            var proposalJson = record.DraftName is null ? record.ProposalJson! :
+                ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(
+                    record.ProposalJson!, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+                    ?? throw new InvalidDataException("The Draft has no content."));
             var inputJson = JsonSerializer.Serialize(
-                new TrialJobInput(record.ProposalJson!, request.Scope, request.Words), MotifJson.CreateOptions());
+                new TrialJobInput(proposalJson, request.Scope, request.Words), MotifJson.CreateOptions());
             var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
@@ -336,9 +346,13 @@ public static class JobCommands
                     Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(current.Status)))));
             }
 
-            var changed = current.Status == JobStatus.Running
-                ? jobs.RequestCancellation(request.JobId, current.Version)
-                : jobs.Transition(request.JobId, JobStatus.Cancelled, current.Version, JobFailureCategory.Cancellation);
+            var changed = jobs.CancelActive(request.JobId);
+            if (JobStateMachine.IsTerminal(changed.Status) && changed.Status != JobStatus.Cancelled)
+                return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                    "job.already-finished", FailureReason.Refused,
+                    "Job '" + request.JobId + "' already finished as " + JobStatusJson.ToWire(changed.Status) +
+                    "; there is nothing to cancel.",
+                    Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(changed.Status)))));
 
             return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(changed.JobId, changed.ProjectKey,
                 true, changed.Kind, changed.Status, changed.Attempt, changed.UpdatedUtc,

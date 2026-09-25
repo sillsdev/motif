@@ -114,7 +114,11 @@ public sealed class CorrectnessReportProducer : IReportProducer
             text.AppendLine($"{word.Word}: {completion}; {result.Matched}/{result.Expected} approved readings matched; {result.Status}");
             foreach (var reason in result.Unavailable) text.AppendLine($"  Unavailable: {reason}");
         }
-        return new RenderedReport(KindName, text.ToString());
+        return new RenderedReport(KindName, text.ToString())
+        {
+            TotalSearches = rows.Length,
+            CompletedSearches = complete,
+        };
     }
 }
 

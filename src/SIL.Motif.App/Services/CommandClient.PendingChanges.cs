@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using SIL.Motif.Cli;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
@@ -12,7 +12,7 @@ namespace SIL.Motif.App.Services;
 public sealed partial class CommandClient
 {
     public Task<CommandOutcome<ApplyProjection>> ApplyReviewAsync(
-        ReviewApplyRequest request, CancellationToken cancellationToken) => Task.Run(() =>
+        ReviewApplyRequest request, CancellationToken cancellationToken) => OneAtATime(() =>
     {
         var version = MotifProductVersion.CurrentText;
         var pending = PendingChanges.Load(new PendingChangesRequest(request.ProjectPath, version));
@@ -25,12 +25,6 @@ public sealed partial class CommandClient
             return RefuseApply("review.change-no-longer-fits",
                 "One or more changes no longer fit the project. Remove those changes first.");
 
-        var label = ProposalCommands.Label(new LabelRequest(request.ProjectPath, version,
-            PendingChanges.DraftName, "Changes reviewed in Motif"));
-        if (!label.Succeeded) return CommandOutcome<ApplyProjection>.Refused(label.Refusal!);
-        var comment = ProposalCommands.Comment(new CommentRequest(request.ProjectPath, version,
-            PendingChanges.DraftName, "Apply the reviewed changes to the FieldWorks project."));
-        if (!comment.Succeeded) return CommandOutcome<ApplyProjection>.Refused(comment.Refusal!);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(
             request.ProjectPath, version, PendingChanges.DraftName));
         if (!finalized.Succeeded) return CommandOutcome<ApplyProjection>.Refused(finalized.Refusal!);
@@ -44,7 +38,7 @@ public sealed partial class CommandClient
 
         var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(request.ProjectPath, version, proposalId));
         if (!queued.Succeeded) return ReopenAfterRefusal(request, queued.Refusal!);
-        WakeRunner();
+        RunnerKick.After();
         var dryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(
             request.ProjectPath, version, proposalId, queued.Value!.JobId, TimeSpan.FromMinutes(2)));
         if (!dryRun.Succeeded) return ReopenAfterRefusal(request, dryRun.Refusal!);
@@ -77,13 +71,13 @@ public sealed partial class CommandClient
         {
             var current = await Task.Run(() => ReportCommands.Produce(new ProduceReportRequest(
                 request.ProjectPath, MotifProductVersion.CurrentText, currentId, "correctness", null, null)));
-            if (current.Succeeded) before = SummaryLines(current.Value!.Text);
+            if (current.Succeeded) before = current.Value!.Text.TrimEnd();
         }
         var queued = await Task.Run(() => JobCommands.EnqueueTrial(new EnqueueTrialRequest(
             request.ProjectPath, MotifProductVersion.CurrentText, request.DraftId, Words: request.Words)));
         if (!queued.Succeeded) return CommandOutcome<ReviewTrialResult>.Refused(queued.Refusal!);
         var jobId = queued.Value!.JobId;
-        WakeRunner();
+        RunnerKick.After();
         ReviewTrialProgress? lastProgress = null;
         try
         {
@@ -125,44 +119,20 @@ public sealed partial class CommandClient
             "correctness", null, null)));
         if (!report.Succeeded) return CommandOutcome<ReviewTrialResult>.Refused(report.Refusal!);
         progress.Report(new ReviewTrialProgress(request.Words.Count, request.Words.Count, null));
-        var complete = report.Value!.Text.StartsWith(
-            $"{request.Words.Count} searches completed; 0 incomplete.", StringComparison.Ordinal);
+        var complete = report.Value!.TotalSearches == request.Words.Count &&
+            report.Value.CompletedSearches == request.Words.Count;
         var trialHeading = $"With these changes ({request.Words.Count} touched words):\n";
-        var numbers = before is null ? trialHeading + SummaryLines(report.Value.Text) :
+        var numbers = before is null ? trialHeading + report.Value.Text.TrimEnd() :
             "Existing Assessment (its Selection):\n" + before + "\n" + trialHeading +
-            SummaryLines(report.Value.Text);
+            report.Value.Text.TrimEnd();
         return CommandOutcome<ReviewTrialResult>.Success(new ReviewTrialResult(
             jobId, request.Revision, numbers, complete));
     }
-
-    private static string SummaryLines(string report) =>
-        string.Join("\n", report.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(3));
 
     private static CommandOutcome<ReviewTrialResult> RefuseTrial(string message) =>
         CommandOutcome<ReviewTrialResult>.Refused(new Refusal(
             "review.measurement-incomplete", FailureReason.Refused, message));
 
-    private static void WakeRunner()
-    {
-        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MOTIF_SUPPRESS_KICK"))) return;
-        var executable = Environment.GetEnvironmentVariable("MOTIF_WORKER_EXE");
-        executable = string.IsNullOrWhiteSpace(executable)
-            ? Path.Combine(AppContext.BaseDirectory,
-                OperatingSystem.IsWindows() ? "SIL.Motif.Worker.exe" : "SIL.Motif.Worker")
-            : executable;
-        if (!File.Exists(executable)) return;
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo(executable)
-            {
-                UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden,
-            });
-        }
-        catch (Exception exception) when (exception is IOException or InvalidOperationException)
-        {
-            // The queued job stays durable and a later runner can still claim it.
-        }
-    }
     public Task<CommandOutcome<PendingChangesSnapshot>> LoadPendingChangesAsync(
         PendingChangesRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChanges.Load(request));

@@ -9,7 +9,7 @@ public sealed record PendingChangesRequest(string FwDataPath, string ProductVers
 public sealed record ChangeIntent(
     string ChangeId, string Kind, string WordformId, string Word,
     string? AssessmentId = null, ParseAnalysis? Reading = null, string? StoredAnalysisId = null,
-    string? DisplayReading = null, int? ReadingIndex = null);
+    string? DisplayReading = null, int? ReadingIndex = null, string? OriginPage = null);
 
 /// <summary>Writes one change only if the Draft still has the revision the caller read.</summary>
 public sealed record PutPendingChangeRequest(

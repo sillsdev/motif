@@ -20,7 +20,11 @@ public sealed record ReportableAssessment(
 public sealed record ReportQuery(string? Word = null, string? Text = null);
 
 /// <summary>One Report's rendered, storable form — what <c>Reports.RenderedText</c> keeps.</summary>
-public sealed record RenderedReport(string Kind, string Text);
+public sealed record RenderedReport(string Kind, string Text)
+{
+    public int? TotalSearches { get; init; }
+    public int? CompletedSearches { get; init; }
+}
 
 /// <summary>
 /// Raised when a report kind cannot be produced from the Assessment it was asked about — ADR 0042 decision

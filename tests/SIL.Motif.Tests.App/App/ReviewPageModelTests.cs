@@ -1,6 +1,7 @@
 using Avalonia.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -92,16 +93,38 @@ public sealed class ReviewPageModelTests
     }
 
     [Fact]
-    public async Task FieldWorksHoldingTheProjectBlocksApplyAndKeepEditingReturnsToTheOrigin()
+    public async Task ARegressionRefusalExplainsTheWorseResult()
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
         fake.ReviewTrialCompletesWith(new ReviewTrialResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
+        fake.ReviewApplyRefusal = new Refusal("apply.not-ready", FailureReason.Refused,
+            "it would be a regression: approved readings matched less often");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.PublishProjectOpenedAsync(ProjectPath);
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        await page.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Contains("worse results", page.ApplyError);
+    }
+
+    [Fact]
+    public async Task FieldWorksHoldingTheProjectBlocksApplyAndKeepEditingReturnsToTheOrigin()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first") with { OriginPage = "Warnings" }],
+            [new ChangeFit("kept", true, [])]));
+        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+            "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.OpenPage(WorkspacePage.Texts);
         context.OpenPage(WorkspacePage.Warnings);
         context.OpenPage(WorkspacePage.Review);
         await page.MeasureCommand.ExecuteAsync(null);

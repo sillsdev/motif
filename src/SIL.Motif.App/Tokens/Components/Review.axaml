@@ -1,11 +1,17 @@
+<!-- Review page spacing, reading outlines, and type roles use shared intent tokens. -->
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:collections="clr-namespace:Avalonia.Collections;assembly=Avalonia.Base">
   <Styles.Resources>
     <StaticResource x:Key="Component.Review.PageMargin" ResourceKey="Primitive.Inset.16_12_16_0" />
     <StaticResource x:Key="Component.Review.CardMargin" ResourceKey="Primitive.Inset.0_0_8_0" />
     <StaticResource x:Key="Component.Review.ReadingPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
     <StaticResource x:Key="Component.Review.MorphPadding" ResourceKey="Primitive.Inset.4_2_4_2" />
     <StaticResource x:Key="Component.Review.RightWidth" ResourceKey="Primitive.Size.280" />
+    <collections:AvaloniaList x:TypeArguments="x:Double" x:Key="Component.Review.ParserDash">
+      <x:Double>3</x:Double>
+      <x:Double>2</x:Double>
+    </collections:AvaloniaList>
   </Styles.Resources>
   <Style Selector="Grid.reviewLayout">
     <Setter Property="Margin" Value="{DynamicResource Component.Review.PageMargin}" />
@@ -47,7 +53,7 @@
   <Style Selector="Rectangle.reviewParserOutline">
     <Setter Property="Stroke" Value="{DynamicResource Intent.TextFaint}" />
     <Setter Property="StrokeThickness" Value="{DynamicResource Intent.Stroke.Icon}" />
-    <Setter Property="StrokeDashArray" Value="3,2" />
+    <Setter Property="StrokeDashArray" Value="{DynamicResource Component.Review.ParserDash}" />
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterRelated}" />
     <Setter Property="IsHitTestVisible" Value="False" />
   </Style>
@@ -59,11 +65,7 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector=":is(TextBlock).reviewDanger">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
-  </Style>
-  <Style Selector=":is(TextBlock).reviewSection">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+  <Style Selector=":is(TextBlock).reviewEmphasis">
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="HyperlinkButton.reviewLink">

@@ -291,21 +291,24 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         CancellationToken cancellationToken)
     {
         TrialWordProgress? previous = null;
+        void Publish(TrialWordProgress? current)
+        {
+            if (current is null || current == previous) return;
+            try
+            {
+                batch.OnProgress!(current);
+                previous = current;
+            }
+            // A progress-store failure must not turn a completed parser run into an Assessment failure.
+            catch (Exception) { }
+        }
         while (!cancellationToken.IsCancellationRequested)
         {
-            var current = ReadBatchProgress(path, batch.Words);
-            if (current is not null && current != previous)
-            {
-                try
-                {
-                    batch.OnProgress!(current);
-                    previous = current;
-                }
-                catch (Exception) { }
-            }
+            Publish(ReadBatchProgress(path, batch.Words));
             try { await Task.Delay(100, cancellationToken).ConfigureAwait(false); }
             catch (OperationCanceledException) { break; }
         }
+        Publish(ReadBatchProgress(path, batch.Words));
     }
 
     internal static TrialWordProgress? ReadBatchProgress(string path, IReadOnlyList<string> words)
@@ -332,7 +335,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         {
             var cells = line.TrimEnd('\r').Split('\t');
             if (cells.Length < 3 || !int.TryParse(cells[0], out var index) ||
-                index < 0 || index >= words.Count || !string.Equals(cells[1], words[index], StringComparison.Ordinal))
+                index < 0 || index >= words.Count || !string.Equals(cells[1], words[index].Trim(), StringComparison.Ordinal))
                 continue;
             if (cells.Length == 3 && cells[2] == "STARTED")
             {

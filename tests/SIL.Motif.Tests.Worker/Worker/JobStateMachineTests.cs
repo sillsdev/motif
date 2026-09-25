@@ -178,6 +178,38 @@ public sealed class JobStateMachineTests : IDisposable
     }
 
     [Fact]
+    public async Task CancellationSurvivesConcurrentTrialProgressWrites()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "progress-cancel.fwdata"), "progress-cancel");
+        var path = Path.Combine(_root, "progress-cancel.motif.db");
+        using var database = MotifDatabase.OpenOwned(path,
+            project, MotifSchema.CurrentSchema, new Version(1, 0));
+        var jobs = new JobRepository(database);
+        var running = jobs.Transition(jobs.Create(NewJob()).JobId, JobStatus.Running);
+        using var start = new ManualResetEventSlim();
+        var writer = Task.Run(() =>
+        {
+            using var writerDatabase = MotifDatabase.OpenOwned(path, project, MotifSchema.CurrentSchema,
+                new Version(1, 0));
+            var writerJobs = new JobRepository(writerDatabase);
+            start.Wait();
+            for (var i = 0; i < 500; i++)
+            {
+                try
+                {
+                    var current = writerJobs.Get(running.JobId)!;
+                    writerJobs.UpdateProgress(running.JobId, "{\"completed\":" + i + "}", current.Version);
+                }
+                catch (InvalidOperationException) { }
+            }
+        });
+        start.Set();
+        for (var i = 0; i < 100; i++)
+            Assert.True(jobs.RequestCancellation(running.JobId).CancellationRequested);
+        await writer;
+    }
+
+    [Fact]
     public void QueuedCancellationRequestSurvivesReopen()
     {
         var project = new ProjectLocator(Path.Combine(_root, "queued-cancel.fwdata"), "queued-cancel");

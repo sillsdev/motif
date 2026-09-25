@@ -63,6 +63,30 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public void ProgressMatchesTheParserTrimmedWord()
+    {
+        var path = Path.Combine(_root, "trimmed-progress.tsv");
+        File.WriteAllText(path, "0\tone\tSTARTED\n");
+
+        Assert.Equal(" one ", PanGlossInvoker.ReadBatchProgress(path, [" one "])?.CurrentWord);
+    }
+
+    [Fact]
+    public async Task FastBatchPublishesItsFinalWordCount()
+    {
+        var project = Project("fast-batch-progress");
+        using var invoker = Invoker();
+        var seen = new ConcurrentQueue<TrialWordProgress>();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(project,
+            ["one", "two"], TimeSpan.FromSeconds(1)) { OnProgress = seen.Enqueue },
+            "test:fast-batch-progress", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Contains(seen, item => item.Completed == 2 && item.Total == 2 && item.CurrentWord is null);
+    }
+
+    [Fact]
     public async Task Stats_ArgvIsStatsGrammarCacheThenForwardedInOrder_AndCompletedCarriesBothStreams()
     {
         var grammar = Project("stats");

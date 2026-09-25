@@ -115,6 +115,8 @@ public sealed class ReportProducerTests
 
         Assert.Equal("correctness", rendered.Kind);
         Assert.Contains("1/3 approved readings matched", rendered.Text, StringComparison.Ordinal);
+        Assert.Equal(3, rendered.TotalSearches);
+        Assert.Equal(3, rendered.CompletedSearches);
     }
 
     [Fact]
@@ -130,6 +132,8 @@ public sealed class ReportProducerTests
         Assert.Contains("0 searches completed; 1 incomplete", rendered.Text);
         Assert.Contains("INCOMPLETE — parsing did not finish (step limit and time limit)", rendered.Text);
         Assert.Contains("1/1 approved readings matched", rendered.Text);
+        Assert.Equal(1, rendered.TotalSearches);
+        Assert.Equal(0, rendered.CompletedSearches);
     }
 
     [Fact]

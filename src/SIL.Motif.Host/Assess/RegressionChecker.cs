@@ -70,6 +70,9 @@ public static class RegressionChecker
     {
         ArgumentNullException.ThrowIfNull(candidate);
         if (previous is null) return null;
+        if (!previous.Words.Select(word => word.Word).Order(StringComparer.Ordinal).SequenceEqual(
+                candidate.Words.Select(word => word.Word).Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            return null;
 
         AssessmentComparison comparison;
         try
