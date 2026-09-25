@@ -4,7 +4,13 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- Compiles the token gate as a library here, so its tests call it directly rather than as a process. -->
+    <DefineConstants>$(DefineConstants);TOKEN_HYGIENE_UNDER_TEST</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\tools\TokenHygiene\token-hygiene.cs" Link="TokenHygiene\token-hygiene.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <SupportedPlatform Include="windows" />
