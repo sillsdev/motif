@@ -28,9 +28,6 @@ public enum FailureReason
 
     /// <summary>The store disagrees with itself. Not the caller's doing, and not fixed by retrying.</summary>
     StoreInconsistent,
-
-    /// <summary>The requested operation had no pending work, so the caller can continue successfully.</summary>
-    NoChanges,
 }
 
 /// <summary>The single object a failed command emits under <c>--json</c>.</summary>
@@ -85,7 +82,6 @@ public sealed record FailureEnvelope
         FailureReason.Cancelled => 2,
         FailureReason.Busy => 3,
         FailureReason.StoreInconsistent => 4,
-        FailureReason.NoChanges => 0,
         _ => 4,
     };
 }

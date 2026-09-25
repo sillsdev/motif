@@ -1,5 +1,10 @@
 namespace SIL.Motif.Contract.Responses;
 
+/// <summary>The outcome of applying the current pending changes.</summary>
+/// <param name="Applied">Whether Motif applied a Proposal.</param>
+/// <param name="Receipt">The recorded apply result, or <see langword="null"/> when nothing was pending.</param>
+public sealed record ApplyPendingResult(bool Applied, ApplyProjection? Receipt);
+
 /// <summary>The outcome of measuring one pending revision.</summary>
 /// <param name="JobId">The Trial job that produced this outcome.</param>
 /// <param name="Revision">The pending revision used for the Trial.</param>

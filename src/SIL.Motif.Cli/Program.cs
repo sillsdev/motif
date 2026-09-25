@@ -67,6 +67,12 @@ try
         return ProposalCommandRenderer.Render(outcome, asJson, successAsJson);
     }
 
+    CommandResult RenderPendingApply(CommandOutcome<ApplyPendingResult> outcome)
+    {
+        alreadyRendered = true;
+        return ProposalCommandRenderer.RenderPendingApply(outcome, asJson);
+    }
+
     CommandResult RenderCommand<T>(CommandOutcome<T> outcome, bool successAsJson = true) where T : class
     {
         alreadyRendered = true;
@@ -427,6 +433,11 @@ try
                 return Usage(
                     "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] [--json]", asJson);
             }
+            var dryRunWaitTimeout = JobCommands.DefaultWaitTimeout;
+            if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
+                "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] " +
+                "[--wait-timeout-ms <ms>] [--json]", asJson, out dryRunWaitTimeout) is { } dryRunUsage)
+                return dryRunUsage;
             result = RenderCommand(
                 JobCommands.EnqueueDryRun(
                     new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0]), usage),
@@ -436,12 +447,8 @@ try
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var dryRunJobId = result.Output.Trim();
-                var waitTimeout = flags.TryGetValue("wait-timeout-ms", out var waitTimeoutRaw) &&
-                    int.TryParse(waitTimeoutRaw, out var waitTimeoutMs)
-                    ? TimeSpan.FromMilliseconds(waitTimeoutMs)
-                    : JobCommands.DefaultWaitTimeout;
                 result = RenderCommand(JobCommands.WaitForDryRun(new WaitForDryRunRequest(
-                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, waitTimeout)));
+                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, dryRunWaitTimeout)));
             }
             break;
 
@@ -454,44 +461,25 @@ try
                 {
                     return Usage(
                         "Usage: motif trial --pending --project <fwdata> [--draft <id>] [--revision <r>] " +
-                        "--words <w,…> --wait (always waits) [--wait-timeout-ms <ms>] " +
+                        "--words <w,…> --wait [--wait-timeout-ms <ms>] " +
                         "[--before-correctness <assessmentId>] [--json]", asJson);
                 }
                 var words = pendingTrialWords.Split(',',
                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 if (words.Length == 0)
                     return Usage("Usage: motif trial --pending requires at least one --words value.", asJson);
-                var pendingTrial = PendingChanges.Load(new PendingChangesRequest(
-                    pendingTrialProject, CliProductVersion()));
-                if (!pendingTrial.Succeeded)
-                {
-                    result = RenderProposal(pendingTrial);
-                    break;
-                }
-                var current = pendingTrial.Value!;
-                if (current.DraftId is not { } currentDraft || current.Changes.Count == 0)
-                {
-                    result = RenderCommand(CommandOutcome<MeasurePendingResult>.Refused(new Refusal(
-                        "trial.nothing-pending", FailureReason.Refused, "There are no pending changes to measure.")));
-                    break;
-                }
-                if (flags.TryGetValue("draft", out var requestedDraft) && requestedDraft != currentDraft ||
-                    flags.TryGetValue("revision", out var requestedRevision) && requestedRevision != current.Revision)
-                {
-                    result = RenderCommand(CommandOutcome<MeasurePendingResult>.Refused(new Refusal(
-                        "trial.changes-changed", FailureReason.Refused,
-                        "The changes changed. Reload them before measuring.")));
-                    break;
-                }
-                var waitTimeout = flags.TryGetValue("wait-timeout-ms", out var waitTimeoutRaw) &&
-                    int.TryParse(waitTimeoutRaw, out var waitTimeoutMs)
-                    ? TimeSpan.FromMilliseconds(waitTimeoutMs)
-                    : JobCommands.DefaultWaitTimeout;
+                if (ParseWaitTimeout(flags,
+                    "Usage: motif trial --pending --project <fwdata> [--draft <id>] [--revision <r>] " +
+                    "--words <w,…> --wait [--wait-timeout-ms <ms>] " +
+                    "[--before-correctness <assessmentId>] [--json]", asJson, out var pendingWaitTimeout)
+                    is { } pendingTrialUsage)
+                    return pendingTrialUsage;
                 result = RunWithConsoleCancellation(cancellationToken => RenderCommand(
                     PendingChangesWorkflow.Measure(new MeasurePendingRequest(
-                        pendingTrialProject, currentDraft, current.Revision, words,
+                        pendingTrialProject, flags.GetValueOrDefault("draft"),
+                        flags.GetValueOrDefault("revision"), words,
                         flags.GetValueOrDefault("before-correctness")), new Progress<MeasureProgress>(),
-                        cancellationToken, waitTimeout).GetAwaiter().GetResult()));
+                        cancellationToken, pendingWaitTimeout).GetAwaiter().GetResult()));
                 break;
             }
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var trialProject))
@@ -499,6 +487,11 @@ try
                 return Usage(
                     "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]", asJson);
             }
+            var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
+            if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
+                "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] " +
+                "[--wait] [--wait-timeout-ms <ms>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
+                return trialUsage;
             result = RenderCommand(
                 JobCommands.EnqueueTrial(
                     new EnqueueTrialRequest(
@@ -511,10 +504,6 @@ try
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var trialJobId = result.Output.Trim();
-                var trialWaitTimeout = flags.TryGetValue("wait-timeout-ms", out var trialWaitTimeoutRaw) &&
-                    int.TryParse(trialWaitTimeoutRaw, out var trialWaitTimeoutMs)
-                    ? TimeSpan.FromMilliseconds(trialWaitTimeoutMs)
-                    : JobCommands.DefaultWaitTimeout;
                 result = RenderCommand(JobCommands.WaitForJob(
                     new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout)));
             }
@@ -530,7 +519,7 @@ try
                 var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
                     DraftId: null, Revision: flags.GetValueOrDefault("revision"),
                     User: flags.GetValueOrDefault("user") ?? Environment.UserName);
-                result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
+                result = RunWithConsoleCancellation(cancellationToken => RenderPendingApply(
                     PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
                 break;
             }
@@ -970,6 +959,16 @@ int Usage(string message, bool asJson = false, bool withUsageBanner = false)
     Console.Error.WriteLine(message);
     if (withUsageBanner) PrintUsage(Console.Error, commandPolicy);
     return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
+}
+
+int? ParseWaitTimeout(Dictionary<string, string> flags, string usageLine, bool asJson, out TimeSpan timeout)
+{
+    timeout = JobCommands.DefaultWaitTimeout;
+    if (!flags.TryGetValue("wait-timeout-ms", out var raw)) return null;
+    if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var milliseconds))
+        return Usage(usageLine, asJson);
+    timeout = TimeSpan.FromMilliseconds(milliseconds);
+    return null;
 }
 
 static string ConfigUsage() => UsageLineFor("config show");

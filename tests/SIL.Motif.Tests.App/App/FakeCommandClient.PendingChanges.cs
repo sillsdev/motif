@@ -13,22 +13,22 @@ public sealed partial class FakeCommandClient
     private ApplyProjection? _apply;
     public Refusal? ApplyPendingRefusal { get; set; }
     public Refusal? MeasurePendingRefusal { get; set; }
-    public Func<ApplyPendingRequest, CancellationToken, Task<CommandOutcome<ApplyProjection>>>? ApplyPendingHandler
+    public Func<ApplyPendingRequest, CancellationToken, Task<CommandOutcome<ApplyPendingResult>>>? ApplyPendingHandler
         { get; set; }
 
     public void MeasurePendingCompletesWith(MeasurePendingResult result) => _measurement = result;
     public void ApplyPendingCompletesWith(ApplyProjection result) => _apply = result;
 
-    public Task<CommandOutcome<ApplyProjection>> ApplyPendingAsync(
+    public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken)
     {
         ApplyPendingRequests.Add(request);
         if (ApplyPendingHandler is { } handler) return handler(request, cancellationToken);
         if (ApplyPendingRefusal is { } refusal)
-            return Task.FromResult(CommandOutcome<ApplyProjection>.Refused(refusal));
+            return Task.FromResult(CommandOutcome<ApplyPendingResult>.Refused(refusal));
         if (_apply is not { } result) throw NotConfigured(nameof(ApplyPendingAsync));
         _pending = new PendingChangesSnapshot(null, "none", [], []);
-        return Completed(result);
+        return Completed(new ApplyPendingResult(true, result));
     }
 
     public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(

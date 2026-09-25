@@ -101,8 +101,10 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         }
     }
 
-    [Fact]
-    public async Task ApplyAllPendingWithNothingPendingSucceedsWithoutWritingAReceipt()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApplyAllPendingWithNothingPendingSucceedsWithoutWritingAReceipt(bool asJson)
     {
         using var scratch = pristine.NewScratch();
         var path = scratch.ProjectId.Path;
@@ -127,7 +129,9 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             Assert.True(captured.Succeeded, captured.Refusal?.Message);
 
             var apply = new ProcessStartInfo(BuildOutput.Cli) { UseShellExecute = false };
-            foreach (var argument in new[] { "apply", "--all-pending", "--project", path, "--json" })
+            var arguments = new List<string> { "apply", "--all-pending", "--project", path };
+            if (asJson) arguments.Add("--json");
+            foreach (var argument in arguments)
                 apply.ArgumentList.Add(argument);
             apply.Environment[RunnerKick.SuppressVariable] = "1";
             apply.RedirectStandardOutput = true;
@@ -141,10 +145,18 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
 
             Assert.Equal(0, process.ExitCode);
             Assert.Empty(error);
-            using var response = JsonDocument.Parse(output);
-            Assert.False(response.RootElement.GetProperty("ok").GetBoolean());
-            Assert.Equal("apply.nothing-pending", response.RootElement.GetProperty("code").GetString());
-            Assert.Equal("NoChanges", response.RootElement.GetProperty("reason").GetString());
+            if (asJson)
+            {
+                Assert.Equal("{\"ok\":true,\"applied\":false}", output.Trim());
+                using var response = JsonDocument.Parse(output);
+                Assert.True(response.RootElement.GetProperty("ok").GetBoolean());
+                Assert.False(response.RootElement.GetProperty("applied").GetBoolean());
+                Assert.DoesNotContain("code", response.RootElement.EnumerateObject().Select(property => property.Name));
+            }
+            else
+            {
+                Assert.Equal("Nothing to apply.", output.Trim());
+            }
             using var database = ProjectMotifDatabase.Open(path);
             using var connection = database.OpenConnection();
             using var command = connection.CreateCommand();

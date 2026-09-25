@@ -46,7 +46,7 @@ public static class CommandCatalog
         new CommandDescriptor("recheck-pending-changes", typeof(RecheckPendingChangesRequest),
             typeof(PendingChangesSnapshot), CommandSurface.Developer),
         new CommandDescriptor("apply --all-pending", typeof(ApplyPendingRequest),
-            typeof(ApplyProjection), CommandSurface.Released),
+            typeof(ApplyPendingResult), CommandSurface.Released),
         new CommandDescriptor("trial --pending", typeof(MeasurePendingRequest),
             typeof(MeasurePendingResult), CommandSurface.Developer),
         new CommandDescriptor("review-numbers", typeof(ReviewNumbersCommand.Request),

@@ -56,7 +56,8 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
 
         Assert.Equal(1, result.ExitCode);
         Assert.Equal(FailureReason.InvalidArgument, Envelope(result.Error).Reason);
-        Assert.Contains("always waits", result.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Usage: motif trial --pending", Envelope(result.Error).Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("always waits", Envelope(result.Error).Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<CliRun> RunAsync(string? root, params string[] arguments)

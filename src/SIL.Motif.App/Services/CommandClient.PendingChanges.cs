@@ -8,10 +8,10 @@ namespace SIL.Motif.App.Services;
 
 public sealed partial class CommandClient
 {
-    public Task<CommandOutcome<ApplyProjection>> ApplyPendingAsync(
+    public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChangesWorkflow.Apply(request, cancellationToken), cancellationToken,
-            () => CommandOutcome<ApplyProjection>.Refused(new Refusal(
+            () => CommandOutcome<ApplyPendingResult>.Refused(new Refusal(
                 "project.wait-cancelled", FailureReason.Cancelled, "Waiting to use the project was cancelled.")));
 
     public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(

@@ -8,7 +8,7 @@ public partial interface ICommandClient
 {
     Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken);
-    Task<CommandOutcome<ApplyProjection>> ApplyPendingAsync(
+    Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken);
     Task<CommandOutcome<PendingChangesSnapshot>> LoadPendingChangesAsync(
         PendingChangesRequest request, CancellationToken cancellationToken);

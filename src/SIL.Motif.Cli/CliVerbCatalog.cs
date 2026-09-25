@@ -138,7 +138,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> " +
-                "--wait (always waits) [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]",
+                "--wait [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",

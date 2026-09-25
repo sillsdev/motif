@@ -15,7 +15,7 @@ internal sealed partial class HoldingCommandClient : ICommandClient
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken) =>
         _inner.MeasurePendingAsync(request, progress, cancellationToken);
 
-    public Task<CommandOutcome<ApplyProjection>> ApplyPendingAsync(
+    public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken) =>
         _inner.ApplyPendingAsync(request, cancellationToken);
     private readonly ICommandClient _inner;

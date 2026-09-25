@@ -174,7 +174,7 @@ public sealed class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(IsApplying));
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
-        CommandOutcome<ApplyProjection> result;
+        CommandOutcome<ApplyPendingResult> result;
         try
         {
             result = await Context.Commands.ApplyPendingAsync(new ApplyPendingRequest(
@@ -200,9 +200,9 @@ public sealed class ReviewPageModel : PageModel
             await Changes.ReloadAsync().ConfigureAwait(true);
             return;
         }
-        Receipt = result.Value;
+        Receipt = result.Value!.Receipt;
         ApplyError = null;
-        Context.AppliedSinceRefresh = true;
+        if (result.Value.Applied) Context.AppliedSinceRefresh = true;
         await Changes.ReloadAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));

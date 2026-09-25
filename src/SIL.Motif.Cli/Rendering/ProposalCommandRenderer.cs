@@ -17,6 +17,24 @@ namespace SIL.Motif.Cli.Rendering;
 /// </summary>
 public static class ProposalCommandRenderer
 {
+    /// <summary>Renders pending Apply while keeping an empty save-boundary call successful.</summary>
+    public static CommandResult RenderPendingApply(CommandOutcome<ApplyPendingResult> outcome, bool asJson)
+    {
+        if (!outcome.Succeeded) return RenderRefusal(outcome.Refusal!, asJson);
+        var result = outcome.Value!;
+        if (!result.Applied)
+        {
+            if (result.Receipt is not null)
+                throw new InvalidOperationException("A no-work Apply result cannot include a Receipt.");
+            return new CommandResult(0, asJson
+                ? "{\"ok\":true,\"applied\":false}" + Environment.NewLine
+                : "Nothing to apply." + Environment.NewLine);
+        }
+        if (result.Receipt is null)
+            throw new InvalidOperationException("An applied result must include its Receipt.");
+        return Render(CommandOutcome<ApplyProjection>.Success(result.Receipt), asJson);
+    }
+
     /// <param name="successAsJson">
     /// Whether a successful result renders as JSON. Several verbs never grew a JSON success shape
     /// (their usage text does not advertise <c>--json</c>) and must keep printing human text on

@@ -37,7 +37,9 @@ internal static class UserFacingRefusal
             "The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.",
         "trial.measurement-incomplete" => "The check did not finish. Try it again.",
         "job.wait-cancelled" => "The check was cancelled.",
-        "job.wait-timeout" => "The check is taking longer than expected. Check the job before trying again.",
+        "job.wait-timeout" => "The check took too long and was stopped. Your changes are unchanged; try applying again.",
+        "trial.nothing-pending" => "There are no pending changes to measure.",
+        "trial.changes-changed" => "The changes changed. Reload them before measuring.",
         "project.wait-cancelled" => "Waiting to use the project was cancelled.",
         _ => "Motif could not complete this request. Review the project and try again.",
     };

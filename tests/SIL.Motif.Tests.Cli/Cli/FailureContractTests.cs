@@ -124,7 +124,6 @@ public sealed class FailureContractTests : IDisposable
         Assert.Equal(2, FailureEnvelope.ExitCodeFor(FailureReason.Refused));
         Assert.Equal(2, FailureEnvelope.ExitCodeFor(FailureReason.NotFound));
         Assert.Equal(4, FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent));
-        Assert.Equal(0, FailureEnvelope.ExitCodeFor(FailureReason.NoChanges));
     }
 
     private static FailureEnvelope Envelope(string stderr) =>

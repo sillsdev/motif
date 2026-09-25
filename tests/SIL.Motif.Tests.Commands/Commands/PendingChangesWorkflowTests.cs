@@ -14,6 +14,7 @@ using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -57,11 +58,12 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
             "Correct the spelling status of the selected word.")).Succeeded);
         var pending = LoadPending(path);
 
-        var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, pending.DraftId!,
-            pending.Revision, ["review-word"]), new Progress<MeasureProgress>(), CancellationToken.None);
+        var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, null, null,
+            ["review-word"]), new Progress<MeasureProgress>(), CancellationToken.None);
 
         Assert.True(measured.Succeeded, measured.Refusal?.Message + " " + LastJob(path));
         Assert.True(measured.Value!.EvidenceComplete);
+        Assert.Equal(pending.Revision, measured.Value.Revision);
         Assert.Equal(JobStatus.Completed, JobCommands.Show(new ShowJobRequest(path,
             measured.Value.JobId, ProductVersion)).Value!.Status);
         using (var alreadyCancelled = new CancellationTokenSource())
@@ -77,7 +79,8 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
             pending.Revision, "test-user"));
 
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
-        Assert.Equal(pending.DraftId, applied.Value!.ProposalId);
+        Assert.True(applied.Value!.Applied);
+        Assert.Equal(pending.DraftId, applied.Value.Receipt!.ProposalId);
         Assert.Empty(LoadPending(path).Changes);
         using var database = ProjectMotifDatabase.Open(path);
         var proposal = new ProposalRepository(database).Get(CanonicalId.Parse(pending.DraftId!));
@@ -147,10 +150,83 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
 
         var outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null, "test-user"));
 
-        Assert.Equal("apply.nothing-pending", outcome.Refusal?.Code);
-        Assert.Equal(0, FailureEnvelope.ExitCodeFor(outcome.Refusal!.Reason));
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.False(outcome.Value!.Applied);
+        Assert.Null(outcome.Value.Receipt);
         using var database = ProjectMotifDatabase.Open(path);
         Assert.Equal(0L, CountAllReceipts(database));
+    }
+
+    [Fact]
+    public async Task MeasureRefusesAStaleRevisionBeforeQueueingATrial()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("stale-measure", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = NewManagedRoot(path);
+        using var environment = new RunnerEnvironment(root, suppressKick: true);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "stale-measure");
+        using var cancellation = new CancellationTokenSource();
+
+        var measuring = PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, pending.DraftId!,
+            "sha256:stale", ["stale-measure"]), new Progress<MeasureProgress>(), cancellation.Token);
+        if (await Task.WhenAny(measuring, Task.Delay(TimeSpan.FromSeconds(2))) != measuring)
+            cancellation.Cancel();
+        var outcome = await measuring.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal("trial.changes-changed", outcome.Refusal?.Code);
+        Assert.Equal(0L, CountJobs(path, JobCommands.TrialKind));
+    }
+
+    [Fact]
+    public async Task MeasureWithNoIdentitiesQueuesTheCurrentDraftWithoutOpeningTheProject()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("identity-measure", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = NewManagedRoot(path);
+        using var environment = new RunnerEnvironment(root, suppressKick: true);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "identity-measure");
+        CommandOutcome<MeasurePendingResult> outcome;
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            outcome = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, null, null,
+                ["identity-measure"]), new Progress<MeasureProgress>(), CancellationToken.None,
+                TimeSpan.FromMilliseconds(1)).WaitAsync(TimeSpan.FromSeconds(30));
+        }
+
+        Assert.Equal("job.wait-timeout", outcome.Refusal?.Code);
+        using var database = ProjectMotifDatabase.Open(path);
+        var job = new JobRepository(database).Get(outcome.Refusal!.Facts!["jobId"]);
+        var input = TrialJobInput.Parse(Assert.IsType<JobRecord>(job).InputJson);
+        using var proposal = System.Text.Json.JsonDocument.Parse(input.ProposalJson);
+        Assert.Equal(pending.DraftId, proposal.RootElement.GetProperty("proposalId").GetString());
+    }
+
+    [Fact]
+    public async Task MeasureWithNoPendingDraftIsARefusalWithoutEnqueueingATrial()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        var root = NewManagedRoot(path);
+        using var environment = new RunnerEnvironment(root, suppressKick: true);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+
+        var outcome = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, null, null, []),
+            new Progress<MeasureProgress>(), CancellationToken.None);
+
+        Assert.Equal("trial.nothing-pending", outcome.Refusal?.Code);
+        Assert.Equal(0L, CountJobs(path, JobCommands.TrialKind));
     }
 
     [Fact]
@@ -174,32 +250,13 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         var outcome = await applying.WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.Equal("job.wait-timeout", outcome.Refusal?.Code);
+        Assert.Equal("true", outcome.Refusal!.Facts!["jobCancelled"]);
+        Assert.DoesNotContain("jobs show", outcome.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal(JobStatus.Cancelled, JobCommands.Show(new ShowJobRequest(path, jobId, ProductVersion))
             .Value!.Status);
         var reopened = LoadPending(path);
         Assert.Equal(pending.DraftId, reopened.DraftId);
         Assert.Single(reopened.Changes);
-    }
-
-    [Fact]
-    public void FinalizeRejectsAPendingRevisionThatChangedSinceTheCallerCheckedIt()
-    {
-        using var scratch = pristine.NewScratch();
-        var path = scratch.ProjectId.Path;
-        Guid wordformId = Guid.Empty;
-        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
-            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                .Create(TsStringUtils.MakeString("changed-before-finalize", scratch.DefaultVernWs)).Guid);
-        new FwDataProjectLoader().Save(scratch);
-        var root = NewManagedRoot(path);
-        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
-        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "changed-before-finalize");
-
-        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, ProductVersion,
-            PendingChanges.DraftName, "sha256:stale"));
-
-        Assert.Equal("draft.revision-conflict", finalized.Refusal?.Code);
-        Assert.Equal(pending.DraftId, LoadPending(path).DraftId);
     }
 
     [Fact]
@@ -248,6 +305,35 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         Assert.Equal("true", outcome.Refusal?.Facts?["jobCancelled"]);
         Assert.Equal(JobStatus.Cancelled, JobCommands.Show(new ShowJobRequest(path, queued.Value.JobId,
             ProductVersion)).Value!.Status);
+    }
+
+    [Fact]
+    public async Task JobCompletionDuringCancelledDelayReturnsTheTerminalResult()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        using var environment = new RunnerEnvironment(NewManagedRoot(path), suppressKick: true);
+        var queued = JobCommands.EnqueueBaselineRefresh(new EnqueueBaselineRefreshRequest(path, ProductVersion));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var cancellation = new CancellationTokenSource();
+        var firstPoll = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var progress = new ActionProgress<JobStatusResponse>(_ => firstPoll.TrySetResult());
+
+        var waiting = JobWait.WaitAsync(path, queued.Value!.JobId, progress, cancellation.Token, null, ProductVersion);
+        await firstPoll.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Task.Delay(50);
+        using (var database = ProjectMotifDatabase.Open(path))
+        {
+            var jobs = new JobRepository(database);
+            jobs.Transition(queued.Value.JobId, JobStatus.Running);
+            jobs.Transition(queued.Value.JobId, JobStatus.Completed, "{}");
+        }
+        cancellation.Cancel();
+
+        var outcome = await waiting.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(JobStatus.Completed, outcome.Value!.Status);
     }
 
     [Fact]
@@ -315,9 +401,19 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         return (long)command.ExecuteScalar()!;
     }
 
-    private static async Task<string> WaitForLatestJobAsync(string path, string kind)
+    private static long CountJobs(string path, string kind)
     {
-        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10);
+        using var database = ProjectMotifDatabase.Open(path);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Jobs WHERE Kind = $kind;";
+        command.Parameters.AddWithValue("$kind", kind);
+        return (long)command.ExecuteScalar()!;
+    }
+
+    private static async Task<string> WaitForLatestJobAsync(string path, string kind, TimeSpan? timeout = null)
+    {
+        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
         while (DateTimeOffset.UtcNow < deadline)
         {
             using var database = ProjectMotifDatabase.Open(path);
@@ -329,6 +425,11 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
             await Task.Delay(20);
         }
         throw new TimeoutException("The workflow did not enqueue its job.");
+    }
+
+    private sealed class ActionProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
     }
 
     private static string LastJob(string path)

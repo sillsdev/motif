@@ -75,7 +75,7 @@ public sealed class CommandCatalogParityTests
     private static readonly string[] ExpectedRefusalCodes =
     {
         "apply.applied-content-mismatch", "apply.change-no-longer-fits", "apply.drift", "apply.dry-run-missing",
-        "apply.changes-changed", "apply.nothing-pending", "apply.not-ready", "apply.project-in-use",
+        "apply.changes-changed", "apply.not-ready", "apply.project-in-use",
         "apply.regression",
         "apply.reopen-failed",
         "apply.reconciliation-needed",
@@ -122,7 +122,7 @@ public sealed class CommandCatalogParityTests
         "timing.invalid-override", "timing.invalid-request", "timing.invalid-word-set",
         "timing.no-assessment", "timing.no-baseline", "timing.override-not-found",
         "timing.wrong-kind", "timing.word-set-not-found",
-        "trial.measurement-incomplete",
+        "trial.changes-changed", "trial.measurement-incomplete", "trial.nothing-pending",
         "store.inconsistent", "store.unsupported",
         "grammarcheck.cancelled", "grammarcheck.malformed-findings", "grammarcheck.unsupported-schema", "grammarcheck.parser-refused",
         "grammarcheck.parser-unavailable", "grammarcheck.timed-out",
