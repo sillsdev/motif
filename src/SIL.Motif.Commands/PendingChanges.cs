@@ -242,7 +242,9 @@ public static class PendingChanges
                     form.Normalize(NormalizationForm.FormD), token,
                     analysis is null ? null : ChangeFitPreflight.ContentDigest(analysis),
                     reading is null ? null : ChangeFitPreflight.ReadingDigest(reading), reading,
-                    analysis?.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString());
+                    analysis?.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString(),
+                    operation.Kind == WfiWordformSpellingStatusOperationKinds.SetSpellingStatus
+                        ? wordform.SpellingStatus : null);
                 draft.Operations.Add(ToDraft(operation, fingerprint, change.ChangeId));
                 draft.ContractVersions[OperationKind.GetGroup(operation.Kind)] = "1.0";
             }

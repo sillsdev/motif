@@ -10,7 +10,9 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
@@ -139,6 +141,181 @@ public sealed class PendingChangesTests
 
         var checkedAgain = PendingChanges.Recheck(new RecheckPendingChangesRequest(_path, "1.0",
             drifted.Value!.Revision));
+
+        Assert.True(checkedAgain.Succeeded, checkedAgain.Refusal?.Message);
+        Assert.False(Assert.Single(checkedAgain.Value!.FitSummary).StillFits);
+        Assert.Equal(drifted.Value.Revision, checkedAgain.Value.Revision);
+    }
+
+    [Fact]
+    public void CheckingAgainDoesNotRenewAChangedSpellingStatus()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("spelling-decision", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        var managed = Path.Combine(Path.GetDirectoryName(_path)!, "spelling-decision-managed");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "spelling-decision")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        using (var cache = loader.LoadCache(_path))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => wordform.SpellingStatus = 1);
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+        var drifted = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        Assert.False(Assert.Single(drifted.Value!.FitSummary).StillFits);
+        Assert.Contains("spelling status", string.Join(" ", drifted.Value.FitSummary[0].Reasons),
+            StringComparison.OrdinalIgnoreCase);
+
+        var checkedAgain = PendingChanges.Recheck(new RecheckPendingChangesRequest(_path, "1.0",
+            drifted.Value.Revision));
+
+        Assert.True(checkedAgain.Succeeded, checkedAgain.Refusal?.Message);
+        Assert.False(Assert.Single(checkedAgain.Value!.FitSummary).StillFits);
+        Assert.Equal(drifted.Value.Revision, checkedAgain.Value.Revision);
+    }
+
+    [Fact]
+    public void PreflightRefusesAChangedSpellingStatus()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("preflight-spelling", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        var managed = Path.Combine(Path.GetDirectoryName(_path)!, "preflight-spelling-managed");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "preflight-spelling")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_path, "1.0", PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        using (var cache = loader.LoadCache(_path))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => wordform.SpellingStatus = 1);
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+
+        var preflight = ProposalCommands.Preflight(new PreflightRequest(_path, "1.0",
+            finalized.Value!.ProposalId));
+
+        Assert.True(preflight.Succeeded, preflight.Refusal?.Message);
+        var fit = Assert.Single(preflight.Value!.Changes);
+        Assert.False(fit.StillFits);
+        Assert.Contains("spelling status", fit.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("approve")]
+    [InlineData("reject")]
+    [InlineData("candidate")]
+    [InlineData("add-candidate")]
+    public void CheckingAgainDoesNotRenewAChangedAnalysisDecision(string kind)
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        Guid analysisId = Guid.Empty;
+        string? morphId = null;
+        string? msaId = null;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("analysis-decision", cache.DefaultVernWs));
+                wordformId = wordform.Guid;
+                var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+                morphId = entry.LexemeFormOA!.Guid.ToString("D");
+                msaId = entry.MorphoSyntaxAnalysesOC.First().Guid.ToString("D");
+                if (kind == "add-candidate") return;
+                var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(analysis);
+                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                analysis.MorphBundlesOS.Add(bundle);
+                bundle.MorphRA = entry.LexemeFormOA;
+                bundle.MsaRA = entry.MorphoSyntaxAnalysesOC.First();
+                analysisId = analysis.Guid;
+                if (kind == "candidate")
+                    cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.approves);
+            });
+            loader.Save(cache);
+        }
+        var managed = Path.Combine(Path.GetDirectoryName(_path)!, kind + "-decision-managed");
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        string? assessmentId = null;
+        if (kind == "add-candidate")
+        {
+            assessmentId = CanonicalId.Mint().Value;
+            var reading = new ParseAnalysis([new ParseMorph(morphId, msaId, null, null)]);
+            using var database = ProjectMotifDatabase.Open(_path);
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                assessmentId, null, null, "test", "ParseTime", "{}", "sha256:scope",
+                "whitespace-and-punctuation", "1", JsonSerializer.Serialize(captured.Value!.Token),
+                Selection.Create("parser-change", ["analysis-decision"]), "sha256:outcome", "sha256:semantic",
+                "sha256:grammar", "model", "pipeline", 0,
+                [new AssessedWord("analysis-decision", "parsed", [], 0)
+                {
+                    Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0,
+                        "analysis-decision", 0, false, false, false, [reading], []),
+                }]));
+        }
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, kind, CanonicalId.FromGuid(wordformId).Value,
+                "analysis-decision", AssessmentId: assessmentId, Reading: kind == "add-candidate"
+                    ? new ParseAnalysis([new ParseMorph(morphId, msaId, null, null)]) : null,
+                StoredAnalysisId: kind == "add-candidate" ? null : CanonicalId.FromGuid(analysisId).Value)));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                if (kind == "add-candidate")
+                {
+                    var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformId);
+                    var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+                    var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                    wordform.AnalysesOC.Add(analysis);
+                    var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                    analysis.MorphBundlesOS.Add(bundle);
+                    bundle.MorphRA = entry.LexemeFormOA;
+                    bundle.MsaRA = entry.MorphoSyntaxAnalysesOC.First();
+                }
+                else
+                {
+                    var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().GetObject(analysisId);
+                    cache.LangProject.DefaultUserAgent.SetEvaluation(analysis,
+                        kind == "reject" ? Opinions.approves : Opinions.disapproves);
+                }
+            });
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+        var drifted = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        Assert.False(Assert.Single(drifted.Value!.FitSummary).StillFits);
+
+        var checkedAgain = PendingChanges.Recheck(new RecheckPendingChangesRequest(_path, "1.0",
+            drifted.Value.Revision));
 
         Assert.True(checkedAgain.Succeeded, checkedAgain.Refusal?.Message);
         Assert.False(Assert.Single(checkedAgain.Value!.FitSummary).StillFits);

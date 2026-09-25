@@ -14,7 +14,7 @@ namespace SIL.Motif.Commands;
 public sealed record ChangeFitFingerprint(
     string WordformId, string? AnalysisId, string WordformForm, string BaselineToken,
     string? AnalysisContentDigest = null, string? ReadingContentDigest = null, ParseAnalysis? Reading = null,
-    string? HumanOpinion = null);
+    string? HumanOpinion = null, int? SpellingStatus = null);
 
 /// <summary>Checks collected changes against the saved project used by Review and Apply.</summary>
 public static class ChangeFitPreflight
@@ -82,6 +82,21 @@ public static class ChangeFitPreflight
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
                     $"Wordform {wordId.Value} changed form.", fingerprint.BaselineToken));
+                continue;
+            }
+            if (operation.Kind == WfiWordformSpellingStatusOperationKinds.SetSpellingStatus &&
+                fingerprint.SpellingStatus is null)
+            {
+                result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                    "The collected change has no spelling status evidence. Remove it and collect it again.",
+                    fingerprint.BaselineToken));
+                continue;
+            }
+            if (operation.Kind == WfiWordformSpellingStatusOperationKinds.SetSpellingStatus &&
+                wordform.SpellingStatus != fingerprint.SpellingStatus)
+            {
+                result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                    $"Wordform {wordId.Value} changed spelling status.", fingerprint.BaselineToken));
                 continue;
             }
             if (fingerprint.AnalysisId is { } analysisId)
