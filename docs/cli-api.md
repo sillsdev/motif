@@ -53,6 +53,7 @@ that dispatches them.
 | `show` | Developer | `show --project <fwdata> <proposalId> [--json]` |
 | `preflight` | Developer | `preflight --project <fwdata> <proposalId> [--json]` |
 | `apply` | Developer | `apply <proposalId> --project <fwdata> --user <name> [--force] [--json]` |
+| `apply --all-pending` | Released | `apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]` |
 | `log` | Developer | `log --project <fwdata> [--json]` |
 | `config show` | Released | `Usage: motif config show --project <fwdata> [--json]` |
 | `report` | Released | `Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]` |
@@ -77,6 +78,7 @@ that dispatches them.
 | `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
 | `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
 | `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
+| `trial --pending` | Developer | `trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> --wait (always waits) [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]` |
 | `jobs show` | Released | `jobs show <jobId> --project <fwdata> [--json]` |
 | `jobs assessments` | Released | `jobs assessments <jobId> --project <fwdata> [--json]` |
 | `jobs list` | Released | `jobs list --all [--json]` |
@@ -99,7 +101,7 @@ and limits.
 The Released surface contains `open`, `analyses`, `config show`, `report`, `report --list-kinds`,
 `compare`, `baseline capture`, `assess`, `stats`, `selection show`, `selection set-default`,
 `overview`, `warnings`, `timing`, `handoff`, `add-corpus`, `add-document`,
-`add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
+`add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `apply --all-pending`, `jobs show`, `jobs assessments`,
 `jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
 
 The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
@@ -107,7 +109,15 @@ The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
 `supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`,
-`dry-run --wait`, `trial`, and `trial --wait`.
+`dry-run --wait`, `trial`, `trial --wait`, and `trial --pending`.
+
+`apply --all-pending` is the Released save-boundary entry point specified for FieldWorks: FieldWorks releases
+the project, calls the verb, then reloads the project. It accepts an optional `--revision` to require the exact
+revision FieldWorks previously checked and an optional `--user` for the Receipt; without `--user`, Motif uses
+the current account. Exit code `0` means the save-boundary call completed, including when there was nothing to
+apply. With `--json`, that no-work case writes a failure envelope with code `apply.nothing-pending` and reason
+`NoChanges`; callers can use the exit code to continue and the code to describe what happened. Other nonzero
+exit codes indicate a refusal or an error.
 
 `preflight` reads the live project and reports each collected change as `still fits` or
 `no longer fits`, with an operation id and reason. `--json` returns the same entries as structured
@@ -125,14 +135,17 @@ change carries the exact reading chosen from an Assessment, or identifies a stor
 text is never an identity. A current Baseline is required, and the snapshot reports fit for every
 change. The Draft stays in `Project.motif.db` when the App closes.
 
+`trial --pending` resolves the current pending Draft when `--draft` and `--revision` are omitted, and always
+waits for its Trial. The default wait timeout is two minutes; `--wait-timeout-ms` changes it. A timed-out
+Trial is cancelled, and the refusal remains available through the job commands if cancellation was not accepted.
+
 `CommandSurfacePolicy.IsAvailable` exposes a command when its surface is Released or when developer
 commands are enabled. Set `MOTIF_DEVELOPER_COMMANDS=1` exactly to re-enable the Developer commands for
 both help and dispatch; other values leave them unavailable.
 
-`FailureEnvelope.ExitCodeFor` maps `InvalidArgument` to `1`, `NotFound` and `Refused` to `2`, `Busy` to
-`3`, and `StoreInconsistent` to `4`; its fallback also returns `4`. A `Cancelled` reason is being added
-by another lane and is intended to map to the same code as `Refused`; it is not part of the current
-mapping yet.
+`FailureEnvelope.ExitCodeFor` maps `InvalidArgument` to `1`, `NotFound`, `Refused`, and `Cancelled` to `2`,
+`Busy` to `3`, and `StoreInconsistent` to `4`; its fallback also returns `4`. `NoChanges` maps to `0` for
+the save-boundary apply outcome described above.
 
 The verb set is expected to churn. [ADR 0021](adr/0021-cli-is-the-full-surface-layer-1-churns.md) settles
 that churn is welcome in this surface and forbidden in the hashed operation vocabulary and canonical JSON

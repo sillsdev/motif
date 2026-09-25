@@ -137,15 +137,15 @@ public static class CliVerbCatalog
             "Commands", "trial", "trial --pending",
             new[]
             {
-                "trial --pending --project <fwdata> --draft <id> --revision <r> --words <w,…> --wait " +
-                "[--before-correctness <assessmentId>] [--json]",
+                "trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> " +
+                "--wait (always waits) [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",
             new[] { "apply <proposalId> --project <fwdata> --user <name> [--force] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply --all-pending",
-            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--json]" }),
+            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]" }),
         new CliVerbDescriptor("Commands", "log", "log", new[] { "log --project <fwdata> [--json]" }),
 
         new CliVerbDescriptor(

@@ -74,6 +74,18 @@ public sealed class JobVerbArgvTests : IDisposable
     }
 
     [Fact]
+    public void DryRunWaitWithZeroTimeoutReturnsATypedRefusal()
+    {
+        var proposalId = FinalizeOneOperationProposal();
+
+        var result = Run($"dry-run --project \"{Project}\" {proposalId} --wait --wait-timeout-ms 0 --json");
+
+        Assert.Equal(3, result.ExitCode);
+        Assert.Equal("job.wait-timeout", Envelope(result.Error).Code);
+        Assert.Equal(FailureReason.Busy, Envelope(result.Error).Reason);
+    }
+
+    [Fact]
     public void EnqueueingATrialOfAFinalizedProposalPrintsAJobIdAndSucceeds()
     {
         var proposalId = FinalizeOneOperationProposal();

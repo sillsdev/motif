@@ -450,22 +450,48 @@ try
             {
                 if (positionals.Count != 0 || !flags.ContainsKey("wait") ||
                     !flags.TryGetValue("project", out var pendingTrialProject) ||
-                    !flags.TryGetValue("draft", out var pendingTrialDraft) ||
-                    !flags.TryGetValue("revision", out var pendingTrialRevision) ||
                     !flags.TryGetValue("words", out var pendingTrialWords))
                 {
                     return Usage(
-                        "Usage: motif trial --pending --project <fwdata> --draft <id> --revision <r> " +
-                        "--words <w,…> --wait [--before-correctness <assessmentId>] [--json]", asJson);
+                        "Usage: motif trial --pending --project <fwdata> [--draft <id>] [--revision <r>] " +
+                        "--words <w,…> --wait (always waits) [--wait-timeout-ms <ms>] " +
+                        "[--before-correctness <assessmentId>] [--json]", asJson);
                 }
                 var words = pendingTrialWords.Split(',',
                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 if (words.Length == 0)
                     return Usage("Usage: motif trial --pending requires at least one --words value.", asJson);
-                result = RenderCommand(PendingChangesWorkflow.Measure(new MeasurePendingRequest(
-                    pendingTrialProject, pendingTrialDraft, pendingTrialRevision, words,
-                    flags.GetValueOrDefault("before-correctness")), new Progress<MeasureProgress>(),
-                    CancellationToken.None).GetAwaiter().GetResult());
+                var pendingTrial = PendingChanges.Load(new PendingChangesRequest(
+                    pendingTrialProject, CliProductVersion()));
+                if (!pendingTrial.Succeeded)
+                {
+                    result = RenderProposal(pendingTrial);
+                    break;
+                }
+                var current = pendingTrial.Value!;
+                if (current.DraftId is not { } currentDraft || current.Changes.Count == 0)
+                {
+                    result = RenderCommand(CommandOutcome<MeasurePendingResult>.Refused(new Refusal(
+                        "trial.nothing-pending", FailureReason.Refused, "There are no pending changes to measure.")));
+                    break;
+                }
+                if (flags.TryGetValue("draft", out var requestedDraft) && requestedDraft != currentDraft ||
+                    flags.TryGetValue("revision", out var requestedRevision) && requestedRevision != current.Revision)
+                {
+                    result = RenderCommand(CommandOutcome<MeasurePendingResult>.Refused(new Refusal(
+                        "trial.changes-changed", FailureReason.Refused,
+                        "The changes changed. Reload them before measuring.")));
+                    break;
+                }
+                var waitTimeout = flags.TryGetValue("wait-timeout-ms", out var waitTimeoutRaw) &&
+                    int.TryParse(waitTimeoutRaw, out var waitTimeoutMs)
+                    ? TimeSpan.FromMilliseconds(waitTimeoutMs)
+                    : JobCommands.DefaultWaitTimeout;
+                result = RunWithConsoleCancellation(cancellationToken => RenderCommand(
+                    PendingChangesWorkflow.Measure(new MeasurePendingRequest(
+                        pendingTrialProject, currentDraft, current.Revision, words,
+                        flags.GetValueOrDefault("before-correctness")), new Progress<MeasureProgress>(),
+                        cancellationToken, waitTimeout).GetAwaiter().GetResult()));
                 break;
             }
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var trialProject))
@@ -499,17 +525,13 @@ try
             {
                 if (positionals.Count != 0 || !flags.TryGetValue("project", out var pendingApplyProject))
                     return Usage(
-                        "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] [--json]", asJson);
-                var pending = PendingChanges.Load(new PendingChangesRequest(
-                    pendingApplyProject, CliProductVersion()));
-                if (!pending.Succeeded)
-                {
-                    result = RenderProposal(pending);
-                    break;
-                }
-                result = RenderProposal(PendingChangesWorkflow.Apply(new ApplyPendingRequest(
-                    pendingApplyProject, pending.Value!.DraftId ?? string.Empty,
-                    flags.GetValueOrDefault("revision") ?? pending.Value.Revision, Environment.UserName)));
+                        "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] " +
+                        "[--user <name>] [--json]", asJson);
+                var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
+                    DraftId: null, Revision: flags.GetValueOrDefault("revision"),
+                    User: flags.GetValueOrDefault("user") ?? Environment.UserName);
+                result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
+                    PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
                 break;
             }
             if (positionals.Count != 1 ||
@@ -983,6 +1005,25 @@ static string JobsUsage() =>
     "motif jobs assessments <jobId> --project <fwdata> [--json] OR motif jobs list --all [--json] OR " +
     "motif jobs cancel <jobId> --project <fwdata> [--json] OR motif jobs requeue <jobId> --project <fwdata> " +
     "[--json] OR " + JobsMoveUsage();
+
+static CommandResult RunWithConsoleCancellation(Func<CancellationToken, CommandResult> run)
+{
+    using var cancellation = new CancellationTokenSource();
+    ConsoleCancelEventHandler handler = (_, eventArgs) =>
+    {
+        eventArgs.Cancel = true;
+        cancellation.Cancel();
+    };
+    Console.CancelKeyPress += handler;
+    try
+    {
+        return run(cancellation.Token);
+    }
+    finally
+    {
+        Console.CancelKeyPress -= handler;
+    }
+}
 
 static string JobsMoveUsage() => UsageLineFor("jobs move");
 
