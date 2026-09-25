@@ -187,11 +187,7 @@ public static class PendingChanges
                 return Refuse("change.cannot-compose", exception.Message,
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
             }
-            if (operations.Count == 0)
-                return Refuse("change.no-effect", "The chosen analysis already has that state.",
-                    ("changeId", change.ChangeId));
-
-            RemoveChange(draft, change.ChangeId);
+            var removed = RemoveChange(draft, change.ChangeId);
             if (reading is not null)
             {
                 var readingDigest = ChangeFitPreflight.ReadingDigest(reading);
@@ -209,13 +205,18 @@ public static class PendingChanges
                     if (occupied.ChangeId is null)
                         return Refuse("change.slot-occupied", "An unmapped change addresses this word and reading.",
                             ("changeId", change.ChangeId), ("wordformId", change.WordformId));
-                    RemoveChange(draft, occupied.ChangeId);
+                    removed += RemoveChange(draft, occupied.ChangeId);
                 }
             }
             foreach (var group in draft.ContractVersions.Keys.ToArray())
                 if (!draft.Operations.Any(operation => OperationKind.GetGroup(operation.Kind) == group))
                     draft.ContractVersions.Remove(group);
-            var existingOperations = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
+            if (operations.Count == 0 && removed == 0)
+                return Refuse("change.no-effect", "The chosen analysis already has that state.",
+                    ("changeId", change.ChangeId));
+            var existingOperations = draft.Operations.Count == 0
+                ? Array.Empty<OperationEnvelope>()
+                : ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
             if (AnalysisOpinionSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
             {
                 var existingChangeId = collision.Existing.Extensions is { ValueKind: JsonValueKind.Object } extension &&
@@ -238,13 +239,14 @@ public static class PendingChanges
                 draft.Operations.Add(ToDraft(operation, fingerprint, change.ChangeId));
                 draft.ContractVersions[OperationKind.GetGroup(operation.Kind)] = "1.0";
             }
-            draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
-            {
-                composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
-                change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
-                change.OriginPage,
-                operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
-            }, JsonOptions));
+            if (operations.Count > 0)
+                draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
+                {
+                    composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
+                    change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
+                    change.OriginPage,
+                    operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
+                }, JsonOptions));
             var json = JsonSerializer.Serialize(draft, JsonOptions);
             var saved = current is null
                 ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)

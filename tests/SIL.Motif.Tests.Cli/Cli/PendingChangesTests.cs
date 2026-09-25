@@ -131,6 +131,13 @@ public sealed class PendingChangesTests
         var draft = JsonNode.Parse(new ProposalRepository(database).GetDraft(PendingChanges.DraftName).ProposalJson!)!;
         Assert.Single(draft["operations"]!.AsArray());
         Assert.Equal("defaultUserDisapproves", draft["operations"]![0]!["after"]!["member"]!.GetValue<string>());
+
+        var returned = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", second.Value.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "candidate", wordId, "chosen-word",
+                StoredAnalysisId: storedId)));
+        Assert.True(returned.Succeeded, returned.Refusal?.Message);
+        Assert.NotEqual(second.Value.Revision, returned.Value!.Revision);
+        Assert.Empty(returned.Value.Changes);
     }
 
     [Fact]
