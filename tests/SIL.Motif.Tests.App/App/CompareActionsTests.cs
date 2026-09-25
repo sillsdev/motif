@@ -7,12 +7,18 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class CompareActionsTests
 {
-    private static AssessmentWordResult Word(string word, string outcome, string standing, bool incomplete = false) =>
+    private static AssessmentWordResult Word(string word, string outcome, string standing, bool incomplete = false,
+        int readingCount = 1) =>
         new(word, outcome, incomplete, "Search completed", 10, null)
         {
-            Readings = outcome == "analysed" ? [new ParserReading([new ParserReadingMorph("form", "gloss", "n", null, false, null)])] : null,
+            Readings = outcome == "analysed" ? Enumerable.Range(0, readingCount)
+                .Select(index => new ParserReading([new ParserReadingMorph(
+                    $"form-{index}", "gloss", "n", null, false, null)])).ToArray() : null,
             ReadingGrades = outcome == "analysed" ? ["no-opinion"] : null,
             ProjectStanding = standing,
+            Morphology = outcome == "analysed" ? new ParseWordEvidence("v1", 0, word, 10,
+                false, false, false, Enumerable.Range(0, readingCount).Select(index =>
+                    new ParseAnalysis([new ParseMorph(null, null, null, $"form-{index}")])).ToArray(), []) : null,
         };
 
     private static readonly AssessmentWordResult[] Sample =
@@ -124,6 +130,22 @@ public sealed class CompareActionsTests
         compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
 
         Assert.StartsWith("0 can be applied today; 1 wait", compare.Changes.ApplyStatus);
+    }
+
+    [Fact]
+    public void ProposeRequiresExactlyOneParserReadingForAnalysisChanges()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([Word("ambiguous", "analysed", ProjectStanding.NotPresent, readingCount: 2)]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+        compare.Words.Single().IsChecked = true;
+
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
+        Assert.Contains("exactly one parser reading", compare.ProposeReadingNotice, StringComparison.Ordinal);
+        Assert.Empty(compare.Changes.Items);
     }
 
     [Fact]

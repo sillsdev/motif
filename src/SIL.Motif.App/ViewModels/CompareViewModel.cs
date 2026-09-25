@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Queries;
@@ -59,7 +60,7 @@ public sealed partial class CompareViewModel : ObservableObject
                 await Changes.AddAsync(kind, word);
                 word.IsChecked = false;
             }
-        });
+        }, CanPropose);
     }
 
     /// <summary>
@@ -70,6 +71,22 @@ public sealed partial class CompareViewModel : ObservableObject
 
     /// <summary>Adds a change of one kind (see <see cref="ChangeKinds"/>) for every checked word in the list.</summary>
     public IAsyncRelayCommand<string> ProposeCommand { get; }
+
+    /// <summary>Why analysis actions are unavailable when a checked word has several parser readings.</summary>
+    public string ProposeReadingNotice =>
+        "Approve, Reject, Back to candidate, and Add as candidate need exactly one parser reading per checked word.";
+
+    private bool CanPropose(string? kind)
+    {
+        var chosen = Words.Where(word => word.IsChecked).ToArray();
+        return kind is not null && chosen.Length > 0 &&
+            (kind == ChangeKinds.IncorrectSpelling || chosen.All(word => word.ReadingCount == 1));
+    }
+
+    private void OnWordPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CompareWordViewModel.IsChecked)) ProposeCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>Runs words again with a longer limit and folds the answers into this Assessment; set by its owner.</summary>
     public Func<IReadOnlyList<string>, int, Task>? Rerun { get; set; }
@@ -184,9 +201,11 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>Places every word in its cell and clears the selection; <see langword="null"/> empties the matrix.</summary>
     public void Load(IEnumerable<AssessWordRowViewModel>? rows)
     {
+        foreach (var word in _all) word.PropertyChanged -= OnWordPropertyChanged;
         _all.Clear();
         if (rows is not null)
             _all.AddRange(rows.Select(row => new CompareWordViewModel(row, Place(row))));
+        foreach (var word in _all) word.PropertyChanged += OnWordPropertyChanged;
         foreach (var cell in Cells)
         {
             cell.Count = _all.Count(word => word.Row == cell.Row && word.Column == cell.Column);
@@ -261,6 +280,7 @@ public sealed partial class CompareViewModel : ObservableObject
         foreach (var word in matches) Words.Add(word);
         OnPropertyChanged(nameof(ListSummary));
         HandOffCommand.NotifyCanExecuteChanged();
+        ProposeCommand.NotifyCanExecuteChanged();
         ChosenCellsChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -450,7 +470,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
         ColumnLabel = CompareViewModel.ColumnLabelOf(Column);
         ColumnVerdict = CompareViewModel.VerdictOf(Column);
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
-        Reading = word.Morphology?.Analyses.FirstOrDefault();
+        ReadingCount = word.Morphology?.Analyses.Count ?? 0;
+        Reading = ReadingCount == 1 ? word.Morphology!.Analyses[0] : null;
     }
 
     public string Word { get; }
@@ -472,6 +493,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public string FirstReading { get; }
 
     public ParseAnalysis? Reading { get; }
+
+    public int ReadingCount { get; }
 
     /// <summary>Whether the word is ticked, to receive the next change chosen for ticked words.</summary>
     [ObservableProperty]
