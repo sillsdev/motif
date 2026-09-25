@@ -154,7 +154,8 @@ The tokens come in three layers, each built only from the layers below it:
 | Component | `src/SIL.Motif.App/Tokens/Components/*.axaml` | colours from `{DynamicResource Intent.*}` only; sizes from Intent, its own `Component.<File>.*` keys, or Primitives |
 
 A view (`src/SIL.Motif.App/Views/**`, the `.axaml` and the `.cs` beside it) names Intent and Component
-keys only, never a Primitive or Semi key.
+keys only, never a Primitive or Semi key, and takes a colour through `DynamicResource` so it follows a theme
+change.
 
 In a view or a component the gate fails on a literal colour (hex, or a name such as `White` or
 `Transparent`) and on a literal Margin, Padding, Spacing, FontSize, CornerRadius, BorderThickness,
