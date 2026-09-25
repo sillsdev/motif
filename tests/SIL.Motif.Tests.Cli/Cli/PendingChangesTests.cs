@@ -7,11 +7,13 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -29,6 +31,44 @@ public sealed class PendingChangesTests
         _seed = pristine.Seed;
         using var scratch = pristine.NewScratch();
         _path = scratch.ProjectId.Path;
+    }
+
+    [Fact]
+    public void RecapturingAnUnchangedProjectKeepsPendingChangeFitting()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId;
+        using (var cache = loader.LoadCache(_path))
+        {
+            wordformId = Guid.Empty;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("same-save", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        var managed = Path.Combine(Path.GetDirectoryName(_path)!, "same-save-managed");
+        var first = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "same-save")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+
+        File.SetLastWriteTimeUtc(_path, File.GetLastWriteTimeUtc(_path).AddMinutes(1));
+        var second = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed);
+        var reloaded = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.True(first.Value!.Token.HasSameSemanticIdentity(second.Value!.Token));
+        Assert.NotEqual(first.Value.Token.BundleDigest, second.Value.Token.BundleDigest);
+        using var database = ProjectMotifDatabase.Open(_path);
+        var project = new ProjectLocator(
+            Path.GetFullPath(_path), Path.GetFileNameWithoutExtension(_path));
+        var current = new BaselineRepository(database)
+            .GetCurrent(SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(project));
+        Assert.Equal(second.Value.Token, current!.Token);
+        Assert.True(Assert.Single(reloaded.Value!.FitSummary).StillFits);
     }
 
     [Fact]

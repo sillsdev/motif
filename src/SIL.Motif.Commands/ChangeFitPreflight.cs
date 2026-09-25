@@ -153,7 +153,7 @@ public static class ChangeFitPreflight
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
             catch (Exception exception) when (exception is JsonException or ArgumentException) { captured = null; }
-            if (currentBaseline is null || captured is null || captured != currentBaseline)
+            if (captured is null || !captured.HasSameSemanticIdentity(currentBaseline))
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
                     "The collected change's Baseline is no longer current.", fingerprint.BaselineToken));
