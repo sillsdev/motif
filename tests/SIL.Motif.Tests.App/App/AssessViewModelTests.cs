@@ -92,6 +92,37 @@ public sealed class AssessViewModelTests
     }
 
     [Fact]
+    public async Task RerunningCanUseALargerStepCapForTheChosenWords()
+    {
+        var (fake, _, assess) = NewViewModel();
+        fake.AssessCompletesWith(NewResponse());
+
+        await assess.RerunAsync(["kitabu"], 45000, new StepCap(1000000));
+
+        var request = Assert.Single(fake.AssessRequests);
+        Assert.Equal(["kitabu"], request.Selection!.Words);
+        Assert.Equal(new StepCap(1000000), request.Selection.PerWordStepLimit);
+        Assert.Equal(45000, request.PerWordLimitMs);
+    }
+
+    [Fact]
+    public void RerunningAnotherWordAddsItToTheWordsAlreadyMeasured()
+    {
+        var first = NewResponse() with
+        {
+            Words = [new AssessmentWordResult("dogs", "analysed", false, "Finished", 5, null)],
+        };
+        var second = NewResponse() with
+        {
+            Words = [new AssessmentWordResult("cats", "analysed", false, "Finished", 8, null)],
+        };
+
+        var merged = AssessViewModel.Merge(first, second);
+
+        Assert.Equal(["dogs", "cats"], merged.Words.Select(word => word.Word));
+    }
+
+    [Fact]
     public async Task CancellingWhileRunningReachesCancelledWithTheCommandsOwnRefusalCode()
     {
         var (fake, _, assess) = NewViewModel();

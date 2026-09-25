@@ -45,6 +45,23 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
+    public async Task CompletingAnAssessmentRefreshesTheTimingPageFromStoredRows()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        var response = new TimingResponse("assessment-parse", "all", "kind", 1, 5, 8, [], [], []);
+        fake.TimingCompletesWith(response);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        Assert.Same(response, timing.KindTiming);
+        Assert.Contains(fake.TimingRequests, request => request.AssessmentId == "assessment-parse" &&
+            request.WordSet == "all" && request.By == "kind");
+        Assert.Empty(fake.AssessRequests);
+    }
+
+    [Fact]
     public async Task OpeningAProjectReadsItsStoredOverviewThroughThePageContext()
     {
         var (fake, context) = NewContextWithFake();
@@ -78,13 +95,246 @@ public sealed class WorkspaceContextTests
 
         await context.PublishProjectOpenedAsync(ProjectPath);
 
-        var request = Assert.Single(fake.TimingRequests);
+        var request = Assert.Single(fake.TimingRequests.Where(item => item.By == "kind"));
         Assert.Equal(ProjectPath, request.ProjectPath);
         Assert.Equal("assessment-1", request.AssessmentId);
         Assert.Equal("all", request.WordSet);
         Assert.Equal("kind", request.By);
         Assert.Same(response, timing.StoredTiming);
         Assert.True(timing.ShowStoredTiming);
+        Assert.Empty(fake.AssessRequests);
+        Assert.Empty(fake.StatsRequests);
+    }
+
+    [Theory]
+    [InlineData("step-limit", 10)]
+    [InlineData("slowest", 20)]
+    [InlineData("all", 10)]
+    [InlineData("cell:approved:no-parse", 10)]
+    public async Task TimingWordSetsUseTheStoredCommandWithoutStartingAParser(string wordSet, int top)
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", wordSet, "kind", 1, 5, 8, [], [], []));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        timing.SlowestCount = 20;
+        await timing.SelectWordSetCommand.ExecuteAsync(wordSet);
+
+        Assert.Contains(fake.TimingRequests, request => request.WordSet == wordSet && request.By == "kind" &&
+            request.Top == top);
+        Assert.Contains(fake.TimingRequests, request => request.WordSet == wordSet && request.By == "rule" &&
+            request.Top == top);
+        Assert.Empty(fake.AssessRequests);
+        Assert.Empty(fake.StatsRequests);
+    }
+
+    [Fact]
+    public async Task TimingPageShowsTheCommandsKindAndRuleAggregatesUnchanged()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        var kindRows = new[] { new TimingAggregateRow("morph_rule", 12, 1, 30, 2) };
+        var ruleRows = new[] { new TimingAggregateRow("Verb template", 10, 10d / 12, 26, 2)
+            { Kind = "morph_rule" } };
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            new TimingResponse("assessment-1", request.WordSet, request.By, 2, 5, 8, [],
+                request.By == "kind" ? kindRows : ruleRows, []))));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+
+        Assert.Equal(kindRows, timing.KindTiming!.Aggregates);
+        Assert.Equal(ruleRows, timing.RuleTiming!.Aggregates);
+        Assert.Equal("morph_rule", timing.SelectedRuleRow!.Kind);
+        Assert.Equal("83% of these words' time · 26 attempts · 2 words touched", timing.RuleSummary);
+    }
+
+    [Fact]
+    public async Task TimingShowsFiveCostliestWordsButHandsOffEveryWordUnderTheRule()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        var handoff = new AiHandoffPageModel(context);
+        var costliest = Enumerable.Range(1, 6).Select(index =>
+            new WordRuleTiming($"word{index}", 10 - index, index)).ToArray();
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            new TimingResponse("assessment-1", request.WordSet, request.By, 6, 5, 8, [],
+                request.By == "rule" ? [new TimingAggregateRow("Verb template", 10, 1, 20, 6)] : [],
+                request.Rule is null ? [] : costliest))));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        await timing.SelectWordSetCommand.ExecuteAsync("all");
+
+        Assert.Equal(costliest.Take(5), timing.CostliestRuleWords);
+        timing.HandOffRuleCommand.Execute(null);
+        Assert.Equal(costliest.Select(word => word.Word), handoff.Handoff.ChosenWords);
+    }
+
+    [Fact]
+    public async Task TimingPickedAndTextsWordsUseExactExplicitWordsAndHandOffTheCommandSelectedWords()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        var handoff = new AiHandoffPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
+        {
+            Words = [new TimingWordRow("dogs", 5, 2, "Finished"),
+                new TimingWordRow("cats", 8, 4, "Step limit")],
+        });
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        timing.PickedWords = "dogs\ncats";
+        await timing.UsePickedWordsCommand.ExecuteAsync(null);
+        Assert.Equal(["dogs", "cats"], fake.TimingRequests[^1].ExplicitWords);
+        timing.HandOffWordsCommand.Execute(null);
+        Assert.Equal(["dogs", "cats"], handoff.Handoff.ChosenWords);
+    }
+
+    [Fact]
+    public async Task TimingMatrixCellUsesTheCommandsCellWordSet()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "cell:approved:no-parse", "kind",
+            1, 5, 8, [], [], []));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        timing.SelectedMatrixCell = new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.NoParse);
+
+        await timing.UseMatrixCellCommand.ExecuteAsync(null);
+
+        Assert.Contains(fake.TimingRequests, request => request.WordSet == "cell:approved:no-parse" &&
+            request.By == "kind" && request.ExplicitWords is null);
+    }
+
+    [Fact]
+    public async Task TimingChosenInTextsIncludesCheckedWordsHiddenByTheTextsFilter()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 1, 5, 8, [], [], []));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        context.Assess.Compare.Load([
+            new AssessWordRowViewModel(new AssessmentWordResult("dogs", "analysed", false, "Finished", 5, null)),
+            new AssessWordRowViewModel(new AssessmentWordResult("cats", "analysed", false, "Finished", 8, null)),
+        ]);
+        context.Assess.Compare.Words.Single(word => word.Word == "dogs").IsChecked = true;
+        context.Assess.Compare.SearchText = "cats";
+
+        await timing.UseCheckedWordsCommand.ExecuteAsync(null);
+
+        Assert.Equal(["dogs"], fake.TimingRequests.Last(request => request.By == "kind").ExplicitWords);
+    }
+
+    [Fact]
+    public async Task TimingListFromTextsUsesThatListsWords()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 1, 5, 8, [], [], []));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.Assess.Compare.Load([
+            new AssessWordRowViewModel(new AssessmentWordResult("dogs", "analysed", false, "Finished", 5, null)),
+            new AssessWordRowViewModel(new AssessmentWordResult("cats", "no-parse", false, "Finished", 8, null)),
+        ]);
+        timing.SelectedTextsList = context.Assess.Compare.Presets.First(preset => preset.Count > 0);
+        var expected = context.Assess.Compare.Words.Where(word =>
+            word.Family == timing.SelectedTextsList.Family).Select(word => word.Word).ToArray();
+        Assert.NotEmpty(expected);
+        context.Assess.Compare.SearchText = "no matching words";
+        Assert.Empty(context.Assess.Compare.Words);
+
+        await timing.UseTextsListCommand.ExecuteAsync(null);
+
+        Assert.Equal(expected, fake.TimingRequests[0].ExplicitWords);
+    }
+
+    [Fact]
+    public async Task EmptyTimingSelectionExplainsTheAbsenceOfPercentilesAndCannotHandOffWords()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "step-limit", "kind", 0, null, null,
+            [], [], []));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+
+        Assert.True(timing.ShowEmptySelection);
+        Assert.Equal("No words in this selection have recorded parse time.", timing.PercentileSummary);
+        Assert.False(timing.HandOffWordsCommand.CanExecute(null));
+        Assert.False(timing.RerunWordsCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task TimingRerunReportsEachWordAndPassesTimeAndStepLimitsThroughSelection()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
+        {
+            Words = [new TimingWordRow("dogs", 5, 2, "Step limit"),
+                new TimingWordRow("cats", 8, 4, "Finished")],
+        });
+        fake.AssessCompletesWith(Assessment());
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.Assess.ProjectPath = ProjectPath;
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        timing.PickedWords = "dogs\ncats";
+        await timing.UsePickedWordsCommand.ExecuteAsync(null);
+        timing.RerunSeconds = 45;
+        timing.RerunSteps = 1000000;
+        var progress = new List<string>();
+        timing.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(TimingPageModel.RerunWord) && timing.RerunWord is not null)
+                progress.Add(timing.RerunProgressText);
+        };
+
+        await timing.RerunWordsCommand.ExecuteAsync(null);
+
+        Assert.Equal(["0 of 2 words done · parsing dogs", "1 of 2 words done · parsing cats"], progress);
+        Assert.Equal(2, timing.RerunCompleted);
+        Assert.Equal("Re-run complete.", timing.RerunMessage);
+        Assert.Equal(["dogs", "cats"], fake.AssessRequests.Select(request => Assert.Single(request.Selection!.Words)));
+        Assert.All(fake.AssessRequests, request =>
+        {
+            Assert.Equal(45000, request.PerWordLimitMs);
+            Assert.Equal(new SIL.Motif.Contract.Assess.StepCap(1000000), request.Selection!.PerWordStepLimit);
+        });
+    }
+
+    [Fact]
+    public async Task TimingCancelStopsTheCurrentWordAndDoesNotStartTheNextOne()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
+        {
+            Words = [new TimingWordRow("dogs", 5, 2, "Step limit"),
+                new TimingWordRow("cats", 8, 4, "Finished")],
+        });
+        fake.AssessBlocksUntilCancelled(new Refusal("assessment.cancelled", FailureReason.Cancelled, "Cancelled."));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.Assess.ProjectPath = ProjectPath;
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        timing.PickedWords = "dogs\ncats";
+        await timing.UsePickedWordsCommand.ExecuteAsync(null);
+
+        var running = timing.RerunWordsCommand.ExecuteAsync(null);
+        Assert.Equal("dogs", timing.RerunWord);
+        timing.CancelRerunCommand.Execute(null);
+        await running;
+
+        Assert.Equal("Re-run cancelled.", timing.RerunMessage);
+        Assert.Equal(0, timing.RerunCompleted);
+        Assert.Single(fake.AssessRequests);
+        Assert.Equal(RunState.Cancelled, context.Assess.State);
     }
 
     [Fact]
@@ -176,8 +426,9 @@ public sealed class WorkspaceContextTests
         await timing.LoadFocusedTimingCommand.ExecutionTask!;
 
         Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
-        var request = Assert.Single(fake.TimingRequests);
-        Assert.Equal("assessment-1", request.AssessmentId);
+        var request = Assert.Single(fake.TimingRequests.Where(item => item.By == "kind" &&
+            item.ExplicitWords is { Count: > 0 }));
+        Assert.Equal("assessment-parse", request.AssessmentId);
         Assert.Equal("kind", request.By);
         Assert.Equal(["dogs"], request.ExplicitWords);
         Assert.Same(result, timing.FocusedTiming);
@@ -199,7 +450,8 @@ public sealed class WorkspaceContextTests
         await timing.LoadFocusedTimingCommand.ExecutionTask!;
 
         Assert.Equal(["dogs"], timing.Focus!.Words);
-        var request = Assert.Single(fake.TimingRequests);
+        var request = Assert.Single(fake.TimingRequests.Where(item => item.Rule == "Plural" &&
+            item.ExplicitWords is { Count: > 0 }));
         Assert.Equal("rule", request.By);
         Assert.Equal("Plural", request.Rule);
         Assert.Equal(["dogs"], request.ExplicitWords);
@@ -300,7 +552,8 @@ public sealed class WorkspaceContextTests
         new SelectionProjection([], []), [], "summary")
     {
         InvocationId = "invocation/one",
-        Measurements = [new ProducedAssessmentReference("assessment-1", "ObjectTiming", "invocation/one")],
+        Measurements = [new ProducedAssessmentReference("assessment-1", "ObjectTiming", "invocation/one"),
+            new ProducedAssessmentReference("assessment-parse", "ParseTime", "invocation/one")],
     };
 
     private static AssessmentRecord StoredAssessment() => new(

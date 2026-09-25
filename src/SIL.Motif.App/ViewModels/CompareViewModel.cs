@@ -157,6 +157,14 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>The words in the chosen cells, or every word when none is chosen, searched and sorted.</summary>
     public ObservableCollection<CompareWordViewModel> Words { get; } = [];
 
+    /// <summary>Every ticked word, including rows hidden by the current list filter.</summary>
+    public IReadOnlyList<string> CheckedWords => _all.Where(word => word.IsChecked)
+        .Select(word => word.Word).ToArray();
+
+    /// <summary>Every word in a Texts list, regardless of the current search or matrix filter.</summary>
+    public IReadOnlyList<string> WordsInFamily(CompareFamilyKind family) => _all
+        .Where(word => word.Family == family).Select(word => word.Word).ToArray();
+
     public IRelayCommand ClearSelectionCommand { get; }
     public IRelayCommand<ComparePresetViewModel> SelectPresetCommand { get; }
     public IRelayCommand<CompareRowViewModel> SelectRowCommand { get; }

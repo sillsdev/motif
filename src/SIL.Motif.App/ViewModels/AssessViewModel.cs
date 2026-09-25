@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SIL.Motif.App.Services;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -33,18 +34,23 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
     private IReadOnlyList<string>? _rerunWords;
     private int? _rerunLimitMs;
+    private StepCap? _rerunStepLimit;
     private AssessCommandResponse? _mergeInto;
 
     /// <summary>
     /// Runs <paramref name="words"/> again with <paramref name="limitMs"/> per word, and folds each fresh answer into
     /// the current Assessment in place of the old one, so the rest of the result is kept.
     /// </summary>
-    public Task RerunAsync(IReadOnlyList<string> words, int limitMs)
+    public Task RerunAsync(IReadOnlyList<string> words, int limitMs) => RerunAsync(words, limitMs, null);
+
+    /// <summary>Runs chosen words again with an optional step cap for this Selection.</summary>
+    public Task RerunAsync(IReadOnlyList<string> words, int limitMs, StepCap? stepLimit)
     {
         ArgumentNullException.ThrowIfNull(words);
         if (words.Count == 0) return Task.CompletedTask;
         _rerunWords = words;
         _rerunLimitMs = limitMs;
+        _rerunStepLimit = stepLimit;
         _rerunDescription = $"{words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} again at {limitMs / 1000.0:0.#} s each";
         return RunCommand.ExecuteAsync(null);
     }
@@ -55,7 +61,12 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         ArgumentNullException.ThrowIfNull(into);
         ArgumentNullException.ThrowIfNull(rerun);
         var fresh = rerun.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
-        return into with { Words = into.Words.Select(word => fresh.GetValueOrDefault(word.Word) ?? word).ToArray() };
+        var existing = into.Words.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
+        return into with
+        {
+            Words = into.Words.Select(word => fresh.GetValueOrDefault(word.Word) ?? word)
+                .Concat(rerun.Words.Where(word => !existing.Contains(word.Word))).ToArray(),
+        };
     }
 
     // The result is cleared as a run starts, so the one a re-run folds into is kept here first.
@@ -162,8 +173,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     protected override async Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(
         CancellationToken cancellationToken)
     {
-        var (words, limitMs, into) = (_rerunWords, _rerunLimitMs, _mergeInto);
-        (_rerunWords, _rerunLimitMs, _mergeInto) = (null, null, null);
+        var (words, limitMs, stepLimit, into) = (_rerunWords, _rerunLimitMs, _rerunStepLimit, _mergeInto);
+        (_rerunWords, _rerunLimitMs, _rerunStepLimit, _mergeInto) = (null, null, null, null);
         if (words is null)
         {
             var request = new AssessRequest(ProjectPath!, _selection.BuildRequest(),
@@ -173,7 +184,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
         var rerun = new AssessRequest(ProjectPath!,
             new SelectionRequest(false, [], words, false, null,
-                PerWordStepLimit: _selection.BuildRequest().PerWordStepLimit), limitMs);
+                PerWordStepLimit: stepLimit ?? _selection.BuildRequest().PerWordStepLimit), limitMs);
         var outcome = await _commandClient.AssessAsync(rerun, this, cancellationToken).ConfigureAwait(true);
         return outcome.Succeeded && into is not null
             ? CommandOutcome<AssessCommandResponse>.Success(Merge(into, outcome.Value!))
