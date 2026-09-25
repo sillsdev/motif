@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsListsPanel"
@@ -69,8 +70,13 @@
                 CommandParameter="add-candidate" AutomationProperties.Name="Add checked words as candidates" />
         <Button Grid.Column="4" Content="Incorrect spelling" Command="{Binding Lists.Compare.ProposeCommand}"
                 CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark checked words as incorrect spelling" />
-        <views:CopyableTextBlock Grid.Row="1" Grid.ColumnSpan="5" Classes="error" Text="{Binding Lists.Compare.Changes.ErrorText}"
-                                 TextWrapping="Wrap" IsVisible="{Binding Lists.Compare.Changes.HasError}" />
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="5" Spacing="{DynamicResource Intent.Space.Compact}">
+          <views:CopyableTextBlock Classes="error" Text="{Binding Lists.Compare.Changes.ErrorText}"
+                                   TextWrapping="Wrap" IsVisible="{Binding Lists.Compare.Changes.HasError}" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.Compare.Changes.CollectionNotice}"
+                                   TextWrapping="Wrap"
+                                   IsVisible="{Binding Lists.Compare.Changes.CollectionNotice, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+        </StackPanel>
       </Grid>
     </Border>
 

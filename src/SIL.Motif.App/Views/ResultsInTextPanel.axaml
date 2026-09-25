@@ -7,7 +7,7 @@
              x:DataType="views:ResultsInTextPanel">
   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}"
         Margin="{DynamicResource Component.TextsPage.PageInset}">
-    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
       <ComboBox ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
                 IsVisible="{Binding InText.HasTexts}"
                 MinWidth="{DynamicResource Component.TextsPage.SelectionPanelWidth}"
@@ -44,14 +44,17 @@
         </WrapPanel>
       </StackPanel>
 
-      <StackPanel Grid.Row="2" Spacing="{DynamicResource Intent.Space.Related}"
+      <views:CopyableTextBlock Grid.Row="2" Classes="muted"
+                               Text="{Binding InText.Changes.CollectionNotice}" TextWrapping="Wrap"
+                               IsVisible="{Binding InText.Changes.CollectionNotice, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+      <StackPanel Grid.Row="3" Spacing="{DynamicResource Intent.Space.Related}"
                   Margin="{DynamicResource Component.TextsPage.EmptyStateMargin}"
                   IsVisible="{Binding InText.HasMessage}">
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.Message}" TextWrapping="Wrap" />
         <Button Content="Choose texts" HorizontalAlignment="Left" IsVisible="{Binding InText.NeedsTexts}"
                 Click="OnGoToTextsClick" AutomationProperties.Name="Choose texts to analyze" />
       </StackPanel>
-      <ScrollViewer Grid.Row="2" IsVisible="{Binding !InText.HasMessage}">
+      <ScrollViewer Grid.Row="3" IsVisible="{Binding !InText.HasMessage}">
         <ItemsControl ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Text lines and parser results">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
