@@ -5,78 +5,66 @@
              x:Class="SIL.Motif.App.Views.TryAWordPage"
              x:Name="Root"
              x:DataType="vm:TryWordPageModel">
-  <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Section}"
         Margin="{DynamicResource Component.TryWord.PageInset}">
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-      <views:CopyableTextBlock Text="Try a Word moves out of Results into its own page, where parsing, rules and timing meet: the word's best path, the rules it passed through, and each rule's share of the time, linking to Timing, Texts and Review changes."
-                               TextWrapping="Wrap" AutomationProperties.Name="Try a Word page description" />
-      <views:CopyableTextBlock Grid.Column="1" Classes="muted"
-                               Width="{DynamicResource Component.TryWord.HeaderNoteWidth}"
-                               Text="Numbers shaped on the aweti sample; illustrative."
-                               TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Label}"
-                               AutomationProperties.Name="Try a Word screenshot note" />
-    </Grid>
+    <ContentControl x:Name="TryWordPanelHost" Grid.Column="0" />
+    <ScrollViewer Grid.Column="1" Width="{DynamicResource Component.TryWord.SidebarWidth}"
+                  VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+        <Border Classes="card">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Text="Recent words" FontSize="{DynamicResource Intent.Type.Section}"
+                                     FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <Button Content="{Binding}"
+                          Command="{Binding $parent[views:TryAWordPage].((vm:TryWordPageModel)DataContext).OpenRecentWordCommand}"
+                          CommandParameter="{Binding}"
+                          Theme="{DynamicResource BorderlessButton}" Classes="recentWord"
+                          HorizontalAlignment="Left" HorizontalContentAlignment="Left"
+                          AutomationProperties.Name="{Binding}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Section}">
-      <ContentControl x:Name="TryWordPanelHost" Grid.Column="0" />
-      <ScrollViewer Grid.Column="1" Width="{DynamicResource Component.TryWord.SidebarWidth}"
-                    VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-          <Border Classes="card">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-              <views:CopyableTextBlock Text="Recent words" FontSize="{DynamicResource Intent.Type.Section}"
-                                       FontWeight="SemiBold" />
-              <ItemsControl ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <WrapPanel Orientation="Horizontal" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="x:String">
-                    <Button Content="{Binding}"
-                            Command="{Binding $parent[views:TryAWordPage].((vm:TryWordPageModel)DataContext).OpenRecentWordCommand}"
-                            CommandParameter="{Binding}"
-                            Theme="{DynamicResource BorderlessButton}" Classes="recentWord"
-                            HorizontalAlignment="Left" HorizontalContentAlignment="Left"
-                            AutomationProperties.Name="{Binding}" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
+        <Border Classes="card">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Text="From here" FontSize="{DynamicResource Intent.Type.Section}"
+                                     FontWeight="SemiBold" />
+            <Button Content="{Binding TimingLinkText}" Command="{Binding OpenTimingCommand}"
+                    Theme="{DynamicResource OutlineButton}"
+                    AutomationProperties.Name="{Binding TimingLinkText}" />
+            <Button Command="{Binding AddExpectedAnalysisToReviewCommand}"
+                    Theme="{DynamicResource OutlineButton}"
+                    ToolTip.Tip="This expected analysis has no stored analysis ID for Review changes."
+                    AutomationProperties.Name="Add expected analysis to Review changes">
+              <TextBlock Text="Add expected analysis to Review changes" TextWrapping="Wrap"
+                         TextAlignment="Center" />
+            </Button>
+            <Button Content="AI Handoff for this word" Command="{Binding HandOffCommand}"
+                    Theme="{DynamicResource OutlineButton}"
+                    AutomationProperties.Name="AI Handoff for this word" />
+          </StackPanel>
+        </Border>
 
-          <Border Classes="card">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-              <views:CopyableTextBlock Text="From here" FontSize="{DynamicResource Intent.Type.Section}"
-                                       FontWeight="SemiBold" />
-              <Button Content="{Binding TimingLinkText}" Command="{Binding OpenTimingCommand}"
-                      Theme="{DynamicResource OutlineButton}"
-                      AutomationProperties.Name="{Binding TimingLinkText}" />
-              <Button Command="{Binding AddExpectedAnalysisToReviewCommand}"
-                      Theme="{DynamicResource OutlineButton}"
-                      ToolTip.Tip="This expected analysis has no stored analysis ID for Review changes."
-                      AutomationProperties.Name="Add expected analysis to Review changes">
-                <TextBlock Text="Add expected analysis to Review changes" TextWrapping="Wrap"
-                           TextAlignment="Center" />
-              </Button>
-              <Button Content="AI Handoff for this word" Command="{Binding HandOffCommand}"
-                      Theme="{DynamicResource OutlineButton}"
-                      AutomationProperties.Name="AI Handoff for this word" />
-            </StackPanel>
-          </Border>
-
-          <Border Classes="card">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-              <views:CopyableTextBlock Text="Also a word not in the texts"
-                                       FontSize="{DynamicResource Intent.Type.Section}"
-                                       FontWeight="SemiBold" />
-              <views:CopyableTextBlock Text="Type any word; it is parsed against the current Baseline's grammar whether or not the project has it."
-                                       TextWrapping="Wrap" />
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </ScrollViewer>
-    </Grid>
+        <Border Classes="card">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Text="Also a word not in the texts"
+                                     FontSize="{DynamicResource Intent.Type.Section}"
+                                     FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="Type any word; it is parsed against the current Baseline's grammar whether or not the project has it."
+                                     TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
   </Grid>
 </UserControl>
