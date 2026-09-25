@@ -45,6 +45,13 @@ public sealed class AiHandoffPageModel : PageModel
             Context.Selection.ChosenTextIds.Count, Context.Selection.PastedWordEntries.Count);
     }
 
+    protected override Task OnCurrentEvidencePublishedAsync(
+        SIL.Motif.Commands.Queries.CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken)
+    {
+        if (Context.Evidence is { } restored) OnEvidencePublished(restored);
+        return Task.CompletedTask;
+    }
+
     protected override void OnRequested(PageRequest request)
     {
         if (request is HandOffRequest handOff) Handoff.UseWords(handOff.Words);

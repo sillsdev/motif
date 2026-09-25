@@ -28,7 +28,15 @@ public sealed record CurrentEvidenceSnapshot(
     ProjectSummarySnapshot? ProjectSummary,
     NamedSelectionRecord? DefaultSelection,
     ResolvedSelectionSnapshot? Selection,
-    AssessmentRecord? MatchingAssessment);
+    AssessmentRecord? MatchingAssessment)
+{
+    /// <summary>The later subset runs applied to words of the current default Selection.</summary>
+    public IReadOnlyList<AssessmentRecord> RerunAssessments { get; init; } = [];
+
+    /// <summary>The current word outcomes after later subset runs replace their earlier answers.</summary>
+    public IReadOnlyList<AssessedWord> EffectiveWords => AssessmentWordOverlay.Apply(
+        MatchingAssessment?.Words ?? [], RerunAssessments);
+}
 
 /// <summary>Whether the current project file matches its recorded Baseline.</summary>
 public enum EvidenceFreshness { NoBaseline, Current, Stale }
@@ -68,6 +76,7 @@ public static class CurrentEvidenceQuery
                 : EvidenceFreshness.Current;
         ResolvedSelectionSnapshot? selection = null;
         AssessmentRecord? assessment = null;
+        IReadOnlyList<AssessmentRecord> reruns = [];
         if (current is not null && saved is not null)
         {
             var resolved = ResolveSelection(current.Summary, saved);
@@ -80,11 +89,20 @@ public static class CurrentEvidenceQuery
                 resolvedSelection.Selection.Words);
             if (assessment is not null)
             {
+                var original = assessment.Selection.Words.ToHashSet(StringComparer.Ordinal);
+                reruns = new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind())
+                    .Where(candidate => candidate.BaselineToken == tokenJson &&
+                        string.CompareOrdinal(candidate.SavedUtc, assessment.SavedUtc) > 0 &&
+                        candidate.Selection.Words.Count < original.Count &&
+                        candidate.Selection.Words.All(original.Contains))
+                    .OrderBy(candidate => candidate.SavedUtc, StringComparer.Ordinal)
+                    .ThenBy(candidate => candidate.AssessmentId, StringComparer.Ordinal).ToArray();
                 resolvedSelection = resolvedSelection with
                 {
                     Selection = resolvedSelection.Selection with { Provenance = assessment.Selection.Provenance },
                     OccurrencesByWord = MergeRecordedOccurrences(
-                        resolvedSelection.OccurrencesByWord, assessment.Words),
+                        resolvedSelection.OccurrencesByWord,
+                        AssessmentWordOverlay.Apply(assessment.Words ?? [], reruns)),
                 };
             }
             selection = resolvedSelection;
@@ -92,7 +110,10 @@ public static class CurrentEvidenceQuery
 
         return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
-            current?.Baseline, current?.Summary, saved, selection, assessment));
+            current?.Baseline, current?.Summary, saved, selection, assessment)
+        {
+            RerunAssessments = reruns,
+        });
     }
 
     /// <summary>Resolves one saved Selection from the project inventory captured with its Baseline.</summary>

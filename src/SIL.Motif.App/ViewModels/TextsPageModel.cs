@@ -114,6 +114,13 @@ public sealed partial class TextsPageModel : PageModel
         if (evidence.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
     }
 
+    protected override Task OnCurrentEvidencePublishedAsync(
+        SIL.Motif.Commands.Queries.CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken)
+    {
+        if (Context.Evidence is not null) Words.ShowAssessment(Assess.Words.Find);
+        return Task.CompletedTask;
+    }
+
     protected override void OnRequested(PageRequest request)
     {
         switch (request)

@@ -10,8 +10,11 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Baselines;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -178,6 +181,40 @@ public sealed class WorkspaceContextTests
         Assert.True(timing.ShowStoredTiming);
         Assert.Empty(fake.AssessRequests);
         Assert.Empty(fake.StatsRequests);
+    }
+
+    [Fact]
+    public async Task OpeningAProjectRestoresTheStoredMatrixAndHandoff()
+    {
+        var (fake, context) = NewContextWithFake();
+        _ = new OverviewPageModel(context);
+        var texts = new TextsPageModel(context);
+        var handoff = new AiHandoffPageModel(context);
+        var baseline = new BaselineRecord("project-1", Token, "root", ProjectPath,
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+        var assessment = StoredAssessment() with
+        {
+            Words = [new AssessedWord("dogs", "no-analysis", [], 10)
+            {
+                ProjectStanding = ProjectStanding.Approved,
+                OccurrenceCount = 2,
+            }],
+            Invocation = new BatchInvocationEvidence("invocation/one", "source", "digest", "digest",
+                "words", "digest", "tsv", "digest", "stderr", "digest", 1000,
+                StepCap.Default, 1, false),
+        };
+        fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
+            null, EvidenceFreshness.Current, baseline, null, null, null, assessment));
+        fake.OverviewCompletesWith(Overview());
+
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        Assert.Equal("dogs", Assert.Single(context.Assess.Words.AllRows).Word);
+        Assert.Equal(1, texts.Assess.Compare.TotalCount);
+        Assert.Equal(assessment.AssessmentId, context.Changes.AssessmentId);
+        Assert.False(texts.ShowEmptyResults);
+        Assert.NotNull(handoff.Handoff.LatestAssessmentAt);
+        Assert.Equal("invocation/one", handoff.Handoff.InvocationId);
     }
 
     [Theory]

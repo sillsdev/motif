@@ -222,6 +222,12 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(evidence);
         CurrentEvidence = evidence;
+        if (Evidence is null && StoredAssessmentView.From(evidence) is { } restored)
+        {
+            Assess.Restore(restored);
+            Evidence = restored;
+            Changes.AssessmentId = evidence.MatchingAssessment?.AssessmentId;
+        }
         foreach (var page in _pages.ToArray())
             await page.CurrentEvidencePublishedAsync(evidence, cancellationToken).ConfigureAwait(true);
     }

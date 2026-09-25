@@ -2,13 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
+using System.Text.Json;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -60,6 +65,69 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
         Assert.Equal(2, result.Value.Selection.OccurrencesByWord["motifa"]);
         Assert.Equal(0, result.Value.Selection.OccurrencesByWord["pasted"]);
     }
+
+    [Fact]
+    public void LaterSubsetAssessmentReplacesOnlyItsWords()
+    {
+        var baseline = new AssessmentRecord("base", null, null, "pangloss",
+            AssessmentKind.ParseTime.ToStoredKind(), "{}", "scope", "whitespace", "1", "token",
+            Selection.Create("Default", ["cat", "dog"]), null, null, "grammar", null, null, null,
+            "2026-09-24T12:00:00Z", Words: [new AssessedWord("cat", "timed-out", []),
+                new AssessedWord("dog", "analysed", [])]);
+        var rerun = baseline with
+        {
+            AssessmentId = "rerun",
+            Selection = Selection.Create("subset", ["cat"]),
+            SavedUtc = "2026-09-24T12:05:00Z",
+            Words = [new AssessedWord("cat", "analysed", [])],
+        };
+
+        var effective = AssessmentWordOverlay.Apply(baseline.Words!, [rerun]);
+
+        Assert.Equal("analysed", effective.Single(word => word.Word == "cat").Outcome);
+        Assert.Equal("analysed", effective.Single(word => word.Word == "dog").Outcome);
+        Assert.Equal(2, effective.Count);
+    }
+
+    [Fact]
+    public void CurrentEvidenceIncludesLaterSubsetResultsForTheDefaultSelection()
+    {
+        var fwDataPath = Path.Combine(_root, "project.fwdata");
+        File.WriteAllText(fwDataPath, "synthetic project marker");
+        var project = new ProjectLocator(fwDataPath, "project");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "project.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var token = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
+            "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64));
+        var root = Path.Combine(_root, "baseline");
+        new BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+            new BaselinePublication(root, Path.Combine(root, "project.fwdata"), token),
+            DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse("2026-09-24T10:00:00Z"),
+            new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
+        new NamedSelectionRepository(database).SetDefault("Default", [], ["cat", "dog"]);
+        var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
+        var repository = new AssessmentRepository(database);
+        repository.Record(Record("base", ["cat", "dog"], [
+            new AssessedWord("cat", "timed-out", []), new AssessedWord("dog", "analysed", [])],
+            "2026-09-24T11:00:00Z", tokenJson));
+        repository.Record(Record("rerun", ["cat"], [new AssessedWord("cat", "analysed", [])],
+            "2026-09-24T11:05:00Z", tokenJson));
+
+        var result = CurrentEvidenceQuery.ReadCurrentEvidence(database, project);
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal("base", result.Value!.MatchingAssessment?.AssessmentId);
+        Assert.Equal("rerun", Assert.Single(result.Value.RerunAssessments).AssessmentId);
+        Assert.Equal("analysed", result.Value.EffectiveWords.Single(word => word.Word == "cat").Outcome);
+        Assert.Equal(2, result.Value.EffectiveWords.Count);
+    }
+
+    private static NewAssessmentRecord Record(string id, IReadOnlyList<string> words,
+        IReadOnlyList<AssessedWord> results, string savedUtc, string token) => new(
+        id, null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope",
+        "whitespace", "1", token, Selection.Create("run", words), "sha256:outcome",
+        "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0, results,
+        SavedUtc: savedUtc);
 
     public void Dispose()
     {

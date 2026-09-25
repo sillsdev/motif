@@ -31,9 +31,10 @@ public static class OverviewCommand
                     new Dictionary<string, int>(StringComparer.Ordinal), selection.TotalOccurrences, 0);
             var words = selection?.Selection.Words ?? evidence.DefaultSelection?.AddedWords ?? Array.Empty<string>();
             var assessment = evidence.MatchingAssessment;
-            var assessedWords = assessment?.Words ?? Array.Empty<AssessedWord>();
+            var assessedWords = evidence.EffectiveWords;
             var metrics = OverviewMetrics.Build(words, occurrenceSnapshot, assessedWords);
-            var elapsedMs = assessment?.Words?.Where(word => word.ElapsedMs is not null).Sum(word => word.ElapsedMs!.Value);
+            int? elapsedMs = assessment is null ? null : assessedWords.Where(word => word.ElapsedMs is not null)
+                .Sum(word => word.ElapsedMs!.Value);
             var storedCheck = evidence.Baseline is null ? null : new GrammarCheckRepository(database).GetLatest(
                 System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
             var warningCounts = WarningsCommand.FromCheck(storedCheck);

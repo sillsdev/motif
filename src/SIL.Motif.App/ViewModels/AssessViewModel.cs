@@ -85,6 +85,16 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         };
     }
 
+    internal void Restore(WorkspaceEvidence evidence)
+    {
+        _previous = null;
+        _previousAt = null;
+        _rerunDescription = null;
+        Result = evidence.Assessment;
+        CompletedAt = evidence.CompletedAt;
+        State = RunState.Completed;
+    }
+
     // The result is cleared as a run starts, so the one a re-run folds into is kept here first.
     protected override Task<bool> PrepareRunAsync()
     {
