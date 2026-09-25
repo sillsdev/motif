@@ -97,7 +97,7 @@ public static class PendingChanges
         ProposalRepository repository, ProposalRecord? current, DraftDocument draft,
         ChangeIntent change, BaselineRecord baseline, string expectedRevision)
     {
-        using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+        using var cache = LoadBaselineCache(baseline.FwDataPath);
         IWfiWordform wordform;
         try
         {
@@ -333,8 +333,7 @@ public static class PendingChanges
                 return Refuse("change.refresh-required", "Refresh the project before checking changes again.");
             var draft = ParseDraft(current.ProposalJson!);
             var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
-            return WithFitCache(project, baseline, liveLastWriteTicks, allowOlderThanBaseline: true,
-                (cache, _) =>
+            return WithFitCache(project, baseline, liveLastWriteTicks, (cache, cacheLastWriteTicks) =>
             {
                 var fits = ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false)
                     .ToDictionary(fit => fit.OperationId, StringComparer.Ordinal);
@@ -358,7 +357,7 @@ public static class PendingChanges
                     JsonSerializer.Serialize(draft, JsonOptions)))
                     return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
                 return CommandOutcome<PendingChangesSnapshot>.Success(
-                    Snapshot(database, project, repository, cache, liveLastWriteTicks, baseline));
+                    Snapshot(database, project, repository, cache, cacheLastWriteTicks, baseline));
             });
         });
 
@@ -423,7 +422,7 @@ public static class PendingChanges
         if (fits is null)
         {
             fits = fitCache is null
-                ? WithFitCache(project, currentBaseline, lastWriteTicks, allowOlderThanBaseline: false,
+                ? WithFitCache(project, currentBaseline, lastWriteTicks,
                     (cache, cacheLastWriteTicks) => SaveFit(cache, cacheLastWriteTicks))
                 : SaveFit(fitCache, lastWriteTicks);
 
@@ -513,18 +512,29 @@ public static class PendingChanges
     }
 
     private static T WithFitCache<T>(ProjectLocator project, BaselineRecord? baseline,
-        long liveLastWriteTicks, bool allowOlderThanBaseline, Func<LcmCache, long, T> action)
+        long liveLastWriteTicks, Func<LcmCache, long, T> action)
     {
         ArgumentNullException.ThrowIfNull(action);
         var baselineLastWriteTicks = baseline?.SourceLastWriteUtc.UtcDateTime.Ticks;
-        if (baseline is not null && (liveLastWriteTicks == baselineLastWriteTicks ||
-            allowOlderThanBaseline && liveLastWriteTicks <= baselineLastWriteTicks))
+        if (baseline is not null && liveLastWriteTicks == baselineLastWriteTicks)
         {
-            using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+            using var cache = LoadBaselineCache(baseline.FwDataPath);
             return action(cache, liveLastWriteTicks);
         }
         return WithLiveProjectCopy(project, (copy, cache) =>
             action(cache, copy.SourceLastWriteUtc.UtcDateTime.Ticks));
+    }
+
+    private static LcmCache LoadBaselineCache(string path)
+    {
+        try
+        {
+            return new FwDataProjectLoader().LoadScratchCache(path);
+        }
+        catch (LcmFileLockedException)
+        {
+            throw new ProjectBaselineBusyException();
+        }
     }
 
     private static T WithLiveProjectCopy<T>(ProjectLocator project,

@@ -85,6 +85,12 @@ public static class ProjectStoreCommand
             {
                 return act(database, project);
             }
+            catch (ProjectBaselineBusyException)
+            {
+                return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
+                    "Another Motif task is using this project's Baseline. Try again in a moment.",
+                    Fact(fwDataPath)));
+            }
             catch (ProjectSavingException)
             {
                 return CommandOutcome<T>.Refused(new Refusal("change.project-saving", FailureReason.Busy,
@@ -139,6 +145,7 @@ public static class ProjectStoreCommand
             "The exception is not a recognized project-store failure."),
     };
 
+    /// <summary>Gives the caller an actionable message after a live-project lock refusal (ADR 0030).</summary>
     internal static string ProjectInUseMessage(string fwDataPath, string verb) =>
         $"Cannot {verb}: the project '{Path.GetFileNameWithoutExtension(fwDataPath)}' is in use by " +
         "another program — most likely FieldWorks, or another Motif command that has not finished. " +
@@ -160,3 +167,4 @@ public static class ProjectStoreCommand
 }
 
 internal sealed class ProjectSavingException : Exception { }
+internal sealed class ProjectBaselineBusyException : Exception { }
