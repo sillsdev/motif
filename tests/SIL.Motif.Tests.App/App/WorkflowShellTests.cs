@@ -24,9 +24,8 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Pins the page shell as a headless platform can see it: one page's controls showing at a time, a sidebar
 /// entry that opens its page, the collapsed sidebar, the project menu, the freshness line, the one changes
-/// list, and the AI Handoff drag source that a keyboard can also reach. Also pins that every Semi colour key a
-/// view names resolves to a brush in both theme variants, because an unknown key in a <c>DynamicResource</c> is
-/// not an error — the setter silently does nothing.
+/// list, and the AI Handoff drag source that a keyboard can also reach. Also pins that no view names a Semi colour
+/// key: a view's colours come from Intent keys, which alias Semi roles in one place.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WorkflowShellTests
@@ -38,25 +37,13 @@ public sealed class WorkflowShellTests
     public WorkflowShellTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
-    public void EverySemiColourKeyAViewNamesResolvesToABrushInBothThemeVariants()
+    public void NoViewNamesASemiColourKey()
     {
         var keys = ViewSources()
-            .SelectMany(text => Regex.Matches(text, @"DynamicResource\s+(SemiColor\w+)").Select(match => match.Groups[1].Value))
+            .SelectMany(text => Regex.Matches(text, @"Resource\s+(SemiColor\w+)").Select(match => match.Groups[1].Value))
             .Distinct()
-            .Order()
             .ToList();
-        Assert.NotEmpty(keys);
-
-        _avalonia.Invoke(() =>
-        {
-            var application = Application.Current!;
-            foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
-            foreach (var key in keys)
-            {
-                Assert.True(application.TryGetResource(key, variant, out var value), $"{key} is not a Semi resource.");
-                Assert.True(value is IBrush, $"{key} is a {value?.GetType().Name}, not a brush, in {variant}.");
-            }
-        });
+        Assert.Empty(keys);
     }
 
     [Fact]
