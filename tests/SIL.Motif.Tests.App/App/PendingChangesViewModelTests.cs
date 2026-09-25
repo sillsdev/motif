@@ -27,6 +27,7 @@ public sealed class PendingChangesViewModelTests
 
         Assert.Equal("Replaced an earlier pending change.", changes.CollectionNotice);
         Assert.DoesNotContain(InternalId, changes.CollectionNotice);
+        changes.BeginCollection();
         fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [], [])
         {
             CancelledChangeId = InternalId,
@@ -36,6 +37,7 @@ public sealed class PendingChangesViewModelTests
 
         Assert.Equal("Cancelled the pending choice.", changes.CollectionNotice);
         Assert.DoesNotContain(InternalId, changes.CollectionNotice);
+        changes.BeginCollection();
         fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [existing], [])
         {
             SkippedWord = "word",
