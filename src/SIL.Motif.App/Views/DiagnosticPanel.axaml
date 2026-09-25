@@ -278,7 +278,7 @@
                 </TreeDataTemplate>
               </TreeView.ItemTemplate>
             </TreeView>
-            <Border x:Name="DetailHost" Grid.Column="2" Classes="card"
+            <Border x:Name="DetailHost" Grid.Column="1" Classes="card"
                     IsVisible="{Binding SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" DataContext="{Binding SelectedStep}">
                 <views:CopyableTextBlock Text="Selected step" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />

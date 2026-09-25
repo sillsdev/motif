@@ -114,6 +114,25 @@ public sealed class DiagnosticPanelBehaviorTests
     }
 
     [Fact]
+    public void WidePanelStartsSelectedDetailsInTheSecondColumn()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var model = new TraceWordViewModel
+            {
+                Result = new WordTraceResponse("word", false, true, null, 1, null, 1, [],
+                    new TraceStep("WordAnalysis", null, null, null, null, [])),
+            };
+            var panel = new DiagnosticPanel(model);
+
+            var details = panel.FindControl<Border>("DetailHost")!;
+
+            Assert.Equal(1, Grid.GetColumn(details));
+            Assert.Equal(0, Grid.GetRow(details));
+        });
+    }
+
+    [Fact]
     public void HidingThePageSummaryKeepsLiveDiagnosticToolsAvailable()
     {
         _avalonia.Invoke(() =>
@@ -135,7 +154,7 @@ public sealed class DiagnosticPanelBehaviorTests
                 var summary = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Single(block => AutomationProperties.GetName(block) == "Diagnostic result");
                 Assert.True(tools.IsVisible);
-                Assert.False(summary.IsVisible);
+                Assert.False(summary.IsEffectivelyVisible);
             }
             finally { window.Close(); }
         });
