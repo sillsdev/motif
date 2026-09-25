@@ -1,6 +1,5 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using System.Text;
 using SIL.LCModel;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Commands.Queries;
@@ -343,8 +342,7 @@ public static class PendingChanges
         JsonSerializer.Deserialize<DraftDocument>(json, JsonOptions)
         ?? throw new InvalidDataException("The pending Draft has no content.");
 
-    private static string Revision(string? json) => json is null ? "none" :
-        "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
+    internal static string Revision(string? json) => DraftRevision.Compute(json);
 
     private static PendingChangesSnapshot Snapshot(MotifDatabase database, ProjectLocator project,
         ProposalRepository repository)

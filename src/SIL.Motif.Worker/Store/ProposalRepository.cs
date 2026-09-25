@@ -50,7 +50,8 @@ public interface IProposalRepository
     /// effects is observable without all of them.
     /// </summary>
     /// <returns><c>true</c> when this id already carried a committed revision — an amend, not a first commit.</returns>
-    bool Finalize(string draftName, string intentDigest, string proposalJson, string label, string comment);
+    bool? Finalize(string draftName, string intentDigest, string proposalJson, string label, string comment,
+        string? expectedDraftRevision = null);
     /// <summary>
     /// Loads one finalized Proposal, verifying that its recorded revision exists and that the
     /// revision's own embedded id and recomputed digest agree with the pointer that named it.
@@ -382,7 +383,8 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     /// <inheritdoc />
-    public bool Finalize(string draftName, string intentDigest, string proposalJson, string label, string comment)
+    public bool? Finalize(string draftName, string intentDigest, string proposalJson, string label, string comment,
+        string? expectedDraftRevision = null)
     {
         if (string.IsNullOrWhiteSpace(intentDigest) || string.IsNullOrWhiteSpace(proposalJson))
             throw new ArgumentException("Finalize requires an intent digest and Proposal content.", nameof(intentDigest));
@@ -390,16 +392,20 @@ public sealed class ProposalRepository : IProposalRepository
         using var transaction = connection.BeginTransaction();
         string proposalId;
         bool wasAmend;
+        string? draftJson;
         using (var find = connection.CreateCommand())
         {
             find.Transaction = transaction;
-            find.CommandText = "SELECT ProposalId, CurrentIntentDigest FROM Proposals WHERE DraftName = $name;";
+            find.CommandText = "SELECT ProposalId, CurrentIntentDigest, DraftJson FROM Proposals WHERE DraftName = $name;";
             find.Parameters.AddWithValue("$name", draftName);
             using var reader = find.ExecuteReader();
             if (!reader.Read()) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
             proposalId = reader.GetString(0);
             wasAmend = !reader.IsDBNull(1);
+            draftJson = reader.IsDBNull(2) ? null : reader.GetString(2);
         }
+        if (expectedDraftRevision is not null && DraftRevision.Compute(draftJson) != expectedDraftRevision)
+            return null;
         var bytes = Encoding.UTF8.GetBytes(proposalJson);
         bool revisionExists;
         using (var existing = connection.CreateCommand())

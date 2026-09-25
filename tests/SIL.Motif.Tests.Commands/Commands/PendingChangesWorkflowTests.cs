@@ -64,6 +64,14 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         Assert.True(measured.Value!.EvidenceComplete);
         Assert.Equal(JobStatus.Completed, JobCommands.Show(new ShowJobRequest(path,
             measured.Value.JobId, ProductVersion)).Value!.Status);
+        using (var alreadyCancelled = new CancellationTokenSource())
+        {
+            alreadyCancelled.Cancel();
+            var completed = await JobWait.WaitAsync(path, measured.Value.JobId, null,
+                alreadyCancelled.Token, JobCommands.DefaultWaitTimeout, ProductVersion);
+            Assert.True(completed.Succeeded);
+            Assert.Equal(JobStatus.Completed, completed.Value!.Status);
+        }
         Assert.Equal(pending.Revision, LoadPending(path).Revision);
         var applied = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, pending.DraftId!,
             pending.Revision, "test-user"));
@@ -81,7 +89,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         var second = PutChange(path, empty.Revision, secondWordformId, "review-second");
         var stale = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, second.DraftId!,
             "stale-revision", "test-user"));
-        Assert.Equal("review.changes-changed", stale.Refusal?.Code);
+        Assert.Equal("apply.changes-changed", stale.Refusal?.Code);
         var withoutTrial = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, second.DraftId!,
             second.Revision, "test-user"));
         Assert.Equal("apply.not-ready", withoutTrial.Refusal?.Code);
@@ -127,6 +135,119 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         var reopened = LoadPending(path);
         Assert.Equal(pending.DraftId, reopened.DraftId);
         Assert.Single(reopened.Changes);
+    }
+
+    [Fact]
+    public void ApplyingWhenNoChangesArePendingReturnsTheNoWorkOutcome()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        var root = NewManagedRoot(path);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+
+        var outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null, "test-user"));
+
+        Assert.Equal("apply.nothing-pending", outcome.Refusal?.Code);
+        Assert.Equal(0, FailureEnvelope.ExitCodeFor(outcome.Refusal!.Reason));
+        using var database = ProjectMotifDatabase.Open(path);
+        Assert.Equal(0L, CountAllReceipts(database));
+    }
+
+    [Fact]
+    public async Task ATimedOutDryRunIsCancelledBeforeItsDraftIsReopened()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("timed-out-dry-run", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = NewManagedRoot(path);
+        using var environment = new RunnerEnvironment(root, suppressKick: true);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "timed-out-dry-run");
+
+        var applying = Task.Run(() => PendingChangesWorkflow.Apply(new ApplyPendingRequest(path,
+            pending.DraftId!, pending.Revision, "test-user"), dryRunTimeout: TimeSpan.FromMilliseconds(1)));
+        var jobId = await WaitForLatestJobAsync(path, JobCommands.DryRunKind);
+        var outcome = await applying.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal("job.wait-timeout", outcome.Refusal?.Code);
+        Assert.Equal(JobStatus.Cancelled, JobCommands.Show(new ShowJobRequest(path, jobId, ProductVersion))
+            .Value!.Status);
+        var reopened = LoadPending(path);
+        Assert.Equal(pending.DraftId, reopened.DraftId);
+        Assert.Single(reopened.Changes);
+    }
+
+    [Fact]
+    public void FinalizeRejectsAPendingRevisionThatChangedSinceTheCallerCheckedIt()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("changed-before-finalize", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = NewManagedRoot(path);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "changed-before-finalize");
+
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, ProductVersion,
+            PendingChanges.DraftName, "sha256:stale"));
+
+        Assert.Equal("draft.revision-conflict", finalized.Refusal?.Code);
+        Assert.Equal(pending.DraftId, LoadPending(path).DraftId);
+    }
+
+    [Fact]
+    public async Task CancellingAMeasurementCancelsTheTrialJob()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("cancelled-trial", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = NewManagedRoot(path);
+        using var environment = new RunnerEnvironment(root, suppressKick: true);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "cancelled-trial");
+        using var cancellation = new CancellationTokenSource();
+        var measuring = PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, pending.DraftId!,
+            pending.Revision, ["cancelled-trial"]), new Progress<MeasureProgress>(), cancellation.Token);
+        var jobId = await WaitForLatestJobAsync(path, JobCommands.TrialKind);
+        await Task.Delay(450);
+        cancellation.Cancel();
+        var outcome = await measuring.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal("job.wait-cancelled", outcome.Refusal?.Code);
+        Assert.Equal(JobStatus.Cancelled, JobCommands.Show(new ShowJobRequest(path, jobId, ProductVersion))
+            .Value!.Status);
+    }
+
+    [Fact]
+    public async Task AnUnboundedWaitKeepsPollingUntilTheCallerCancels()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        using var environment = new RunnerEnvironment(NewManagedRoot(path), suppressKick: true);
+        var queued = JobCommands.EnqueueBaselineRefresh(new EnqueueBaselineRefreshRequest(path, ProductVersion));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var cancellation = new CancellationTokenSource();
+
+        var waiting = JobWait.WaitAsync(path, queued.Value!.JobId, null, cancellation.Token, null, ProductVersion);
+        await Task.Delay(450);
+        cancellation.Cancel();
+        var outcome = await waiting.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal("job.wait-cancelled", outcome.Refusal?.Code);
+        Assert.Equal("true", outcome.Refusal?.Facts?["jobCancelled"]);
+        Assert.Equal(JobStatus.Cancelled, JobCommands.Show(new ShowJobRequest(path, queued.Value.JobId,
+            ProductVersion)).Value!.Status);
     }
 
     [Fact]
@@ -183,6 +304,14 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
         command.Parameters.AddWithValue("$proposal", proposalId);
+        return (long)command.ExecuteScalar()!;
+    }
+
+    private static long CountAllReceipts(SIL.Motif.Host.Store.MotifDatabase database)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Receipts;";
         return (long)command.ExecuteScalar()!;
     }
 

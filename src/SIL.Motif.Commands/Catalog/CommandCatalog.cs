@@ -21,12 +21,13 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="JobCommands"/>, and <see cref="PendingChangesWorkflow"/>.
 /// </summary>
 /// <remarks>
-/// CLI flags select another handler for <c>report</c>, <c>dry-run</c>, <c>trial</c>, and <c>apply</c>.
-/// The report list, waited Dry Run, waited Trial, pending Trial, and pending apply each have their own
-/// entry. Every other name is the literal
-/// CLI verb (or, for a nested subcommand, its complete space-separated form, e.g. <c>"jobs show"</c>)
-/// that reaches exactly the one handler it names — pinned equal to the CLI's own <c>CliVerbCatalog.All</c>,
-/// by <c>CommandCatalogParityTests.EveryCataloguedCommandHasExactlyOneCliVerb</c>.
+/// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
+/// <see cref="JobCommands.WaitForDryRun"/>, waited Trials reach <see cref="JobCommands.WaitForJob"/>,
+/// pending Trials reach <see cref="PendingChangesWorkflow.Measure"/>, and pending Apply reaches
+/// <see cref="PendingChangesWorkflow.Apply"/>. Each has its own entry. Every other name is the literal CLI
+/// verb (or its complete space-separated nested form, such as <c>"jobs show"</c>) that reaches its one named
+/// handler, pinned equal to <c>CliVerbCatalog.All</c> by
+/// <c>CommandCatalogParityTests.EveryCataloguedCommandHasExactlyOneCliVerb</c>.
 /// </remarks>
 public static class CommandCatalog
 {

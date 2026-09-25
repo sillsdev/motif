@@ -650,8 +650,18 @@ public static partial class ProposalCommands
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                if (!repository.DraftNameExists(request.DraftName))
                     return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftNotFound(request.DraftName));
+                var draftRecord = repository.GetDraft(request.DraftName);
+                if (request.ExpectedRevision is not null &&
+                    DraftRevision.Compute(draftRecord.ProposalJson) != request.ExpectedRevision)
+                {
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(new Refusal(
+                        "draft.revision-conflict", FailureReason.Refused,
+                        "The Draft changed after it was checked. Reload it before finalizing.",
+                        Fact(("draftName", request.DraftName))));
+                }
+                var draft = DeserializeDraft(draftRecord.ProposalJson!);
 
                 if (string.IsNullOrWhiteSpace(draft.Label) || string.IsNullOrWhiteSpace(draft.Comment))
                 {
@@ -691,11 +701,18 @@ public static partial class ProposalCommands
                 var intentDigest = IntentDigest.Compute(envelope);
 
                 // Whether a committed revision already existed under this id decides "Finalized" vs "Amended".
-                var isAmend = repository.Finalize(
-                    request.DraftName, intentDigest, proposalJson, draft.Label!, draft.Comment!);
+                var finalized = repository.Finalize(request.DraftName, intentDigest, proposalJson,
+                    draft.Label!, draft.Comment!, request.ExpectedRevision);
+                if (finalized is null)
+                {
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(new Refusal(
+                        "draft.revision-conflict", FailureReason.Refused,
+                        "The Draft changed after it was checked. Reload it before finalizing.",
+                        Fact(("draftName", request.DraftName))));
+                }
 
                 return CommandOutcome<ProposalFinalizedResponse>.Success(new ProposalFinalizedResponse(
-                    request.DraftName, draft.ProposalId, intentDigest, envelope.Operations.Count, isAmend));
+                    request.DraftName, draft.ProposalId, intentDigest, envelope.Operations.Count, finalized.Value));
             }
             catch (Exception ex)
             {

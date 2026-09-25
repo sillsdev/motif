@@ -149,10 +149,11 @@ public static class JobCommands
     /// own distinct refusal rather than as though the Dry Run had failed.
     /// </summary>
     public static CommandOutcome<DryRunProjection> WaitForDryRun(
-        WaitForDryRunRequest request, CancellationToken cancellationToken = default)
+        WaitForDryRunRequest request, CancellationToken cancellationToken = default,
+        bool cancelOnTimeout = false)
     {
         var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellationToken,
-            request.Timeout, request.ProductVersion).GetAwaiter().GetResult();
+            request.Timeout, request.ProductVersion, cancelOnTimeout).GetAwaiter().GetResult();
         if (!waited.Succeeded) return CommandOutcome<DryRunProjection>.Refused(waited.Refusal!);
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>

@@ -3,7 +3,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The outcome of measuring one pending revision.</summary>
 /// <param name="JobId">The Trial job that produced this outcome.</param>
 /// <param name="Revision">The pending revision used for the Trial.</param>
-/// <param name="NumbersText">The current CLI presentation of the measured numbers.</param>
+/// <param name="NumbersText">The measured numbers as one English sentence.</param>
 /// <param name="EvidenceComplete">Whether every requested word produced complete correctness evidence.</param>
 public sealed record MeasurePendingResult(
     string JobId, string Revision, string NumbersText, bool EvidenceComplete);
