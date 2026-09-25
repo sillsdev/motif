@@ -21,4 +21,11 @@ public sealed record ChangeFit(string ChangeId, bool StillFits, IReadOnlyList<st
 /// <summary>The durable pending Draft and its per-change fit against the saved project.</summary>
 public sealed record PendingChangesSnapshot(
     string? DraftId, string Revision, IReadOnlyList<PendingChange> Changes,
-    IReadOnlyList<ChangeFit> FitSummary);
+    IReadOnlyList<ChangeFit> FitSummary)
+{
+    /// <summary>The word a bulk Candidate action skipped to preserve an explicit pending choice.</summary>
+    public string? SkippedWord { get; init; }
+
+    /// <summary>The earlier pending change replaced by this authoring action.</summary>
+    public string? ReplacedChangeId { get; init; }
+}

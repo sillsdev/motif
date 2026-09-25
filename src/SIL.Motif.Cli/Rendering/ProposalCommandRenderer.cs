@@ -41,8 +41,7 @@ public static class ProposalCommandRenderer
             ProposalListProjection p => ProjectionText.Render(p),
             ProposalDetailProjection p => ProjectionText.Render(p),
             PreflightResponse p => RenderPreflight(p),
-            PendingChangesSnapshot p => $"Draft '{p.DraftId ?? "none"}' has {p.Changes.Count} pending change(s) " +
-                $"at revision {p.Revision}.{Environment.NewLine}",
+            PendingChangesSnapshot p => RenderPendingChanges(p),
             ApplyProjection p => ProjectionText.Render(p),
             AppliedLogProjection p => ProjectionText.Render(p),
             DraftCreatedResponse r => RenderDraftCreated(r),
@@ -61,6 +60,17 @@ public static class ProposalCommandRenderer
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
+    }
+
+    private static string RenderPendingChanges(PendingChangesSnapshot snapshot)
+    {
+        var text = $"Draft '{snapshot.DraftId ?? "none"}' has {snapshot.Changes.Count} pending change(s) " +
+            $"at revision {snapshot.Revision}.{Environment.NewLine}";
+        if (snapshot.ReplacedChangeId is { } replaced)
+            text += $"Replaced pending change {replaced}.{Environment.NewLine}";
+        if (snapshot.SkippedWord is { } skipped)
+            text += $"Skipped {skipped}: an explicit choice is already pending for this word.{Environment.NewLine}";
+        return text;
     }
 
     private static CommandResult RenderRefusal(Refusal refusal, bool asJson)

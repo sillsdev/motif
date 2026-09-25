@@ -272,6 +272,7 @@
         <StackPanel Spacing="6">
           <views:CopyableTextBlock Text="Changes" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.Summary}" />
+          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.CollectionNotice}" />
           <views:CopyableTextBlock Classes="error" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.ErrorText}" />
           <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
                                    Text="{Binding Compare.ProposeReadingNotice}" />

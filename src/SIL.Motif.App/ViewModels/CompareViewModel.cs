@@ -55,10 +55,12 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             if (kind is null) return;
             var chosen = Words.Where(word => word.IsChecked).ToList();
+            Changes.BeginCollection();
             foreach (var word in chosen)
             {
                 await Changes.AddAsync(kind, word);
-                if (Changes.LastRefusal is null) word.IsChecked = false;
+                if (Changes.LastRefusal is null && Changes.Snapshot.SkippedWord != word.Word)
+                    word.IsChecked = false;
             }
         }, CanPropose);
     }

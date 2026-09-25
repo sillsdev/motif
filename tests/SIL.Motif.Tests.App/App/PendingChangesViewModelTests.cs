@@ -10,6 +10,31 @@ namespace SIL.Motif.Tests.App;
 public sealed class PendingChangesViewModelTests
 {
     [Fact]
+    public async Task CollectionReportsReplacementsAndSkippedBulkWords()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.SetProjectAsync("project.fwdata");
+        var existing = new PendingChange("older", "wordform", "word", "approve", null, null, ["operation"]);
+        fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [existing], [])
+        {
+            ReplacedChangeId = "older",
+        };
+
+        await changes.PutAsync(new ChangeIntent("newer", "reject", "wordform", "word"));
+
+        Assert.Contains("Replaced pending change older", changes.CollectionNotice);
+        fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [existing], [])
+        {
+            SkippedWord = "word",
+        };
+
+        await changes.PutAsync(new ChangeIntent("bulk", "add-candidate", "wordform", "word"));
+
+        Assert.Contains("Skipped word", changes.CollectionNotice);
+    }
+
+    [Fact]
     public async Task BulkCandidatesSendEveryParserReadingWithItsAssessmentIndex()
     {
         var fake = new FakeCommandClient();

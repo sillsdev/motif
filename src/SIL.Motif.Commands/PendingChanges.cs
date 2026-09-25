@@ -110,6 +110,13 @@ public static class PendingChanges
                 return Refuse("change.wordform-changed", "The selected wordform changed its form.",
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
 
+            if (change.Kind == AnalysisChangeKinds.AddCandidate &&
+                draft.ComposerProvenance.Any(entry => Property(entry, "wordformId") == change.WordformId &&
+                    Property(entry, "kind") is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or
+                        AnalysisChangeKinds.Candidate))
+                return CommandOutcome<PendingChangesSnapshot>.Success(
+                    Snapshot(database, project, repository) with { SkippedWord = change.Word });
+
             var reading = change.Reading;
             if (reading is null && change.StoredAnalysisId is { } storedId)
             {
@@ -174,10 +181,28 @@ public static class PendingChanges
                 return Refuse("change.reading-missing", "Choose an exact reading for this change.",
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
 
+            var occupied = reading is null ? default : draft.Operations.Select(operation =>
+            {
+                if (operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
+                    !extensions.TryGetProperty("changeFit", out var fit) ||
+                    fit.ValueKind != JsonValueKind.Object) return (ChangeId: (string?)null, Fits: false);
+                return (ChangeId: ChangeIdOf(operation), Fits:
+                    Property(fit, "wordformId") == change.WordformId &&
+                    Property(fit, "readingContentDigest") == ChangeFitPreflight.ReadingDigest(reading!));
+            }).FirstOrDefault(item => item.Fits);
+            if (occupied.Fits && occupied.ChangeId is null)
+                return Refuse("change.slot-occupied", "An unmapped change addresses this word and reading.",
+                    ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+            var priorKind = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) == occupied.ChangeId)
+                .Select(entry => Property(entry, "kind")).LastOrDefault();
+            var composeKind = change.Kind == AnalysisChangeKinds.Candidate && occupied.Fits &&
+                priorKind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.Candidate &&
+                !wordform.AnalysesOC.Any(analysis => AnalysisChangeComposer.Matches(analysis, reading!))
+                    ? AnalysisChangeKinds.AddCandidate : change.Kind;
             IReadOnlyList<OperationEnvelope> operations;
             try
             {
-                operations = AnalysisChangeComposer.Build(cache, new AnalysisChangeIntent(change.Kind,
+                operations = AnalysisChangeComposer.Build(cache, new AnalysisChangeIntent(composeKind,
                     CanonicalId.Parse(change.WordformId), reading,
                     change.StoredAnalysisId is null ? null : CanonicalId.Parse(change.StoredAnalysisId),
                     change.ChangeId));
@@ -188,26 +213,8 @@ public static class PendingChanges
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
             }
             var removed = RemoveChange(draft, change.ChangeId);
-            if (reading is not null)
-            {
-                var readingDigest = ChangeFitPreflight.ReadingDigest(reading);
-                var occupied = draft.Operations.Select(operation =>
-                {
-                    if (operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
-                        !extensions.TryGetProperty("changeFit", out var fit) ||
-                        fit.ValueKind != JsonValueKind.Object) return (ChangeId: (string?)null, Fits: false);
-                    return (ChangeId: ChangeIdOf(operation), Fits:
-                        Property(fit, "wordformId") == change.WordformId &&
-                        Property(fit, "readingContentDigest") == readingDigest);
-                }).FirstOrDefault(item => item.Fits);
-                if (occupied.Fits)
-                {
-                    if (occupied.ChangeId is null)
-                        return Refuse("change.slot-occupied", "An unmapped change addresses this word and reading.",
-                            ("changeId", change.ChangeId), ("wordformId", change.WordformId));
-                    removed += RemoveChange(draft, occupied.ChangeId);
-                }
-            }
+            if (occupied.ChangeId is { } occupiedId && occupiedId != change.ChangeId)
+                removed += RemoveChange(draft, occupiedId);
             foreach (var group in draft.ContractVersions.Keys.ToArray())
                 if (!draft.Operations.Any(operation => OperationKind.GetGroup(operation.Kind) == group))
                     draft.ContractVersions.Remove(group);
@@ -255,7 +262,10 @@ public static class PendingChanges
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("changeId", change.ChangeId), ("expectedRevision", request.ExpectedRevision));
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project, repository));
+                Snapshot(database, project, repository) with
+                {
+                    ReplacedChangeId = occupied.ChangeId != change.ChangeId ? occupied.ChangeId : null,
+                });
         });
 
     public static CommandOutcome<PendingChangesSnapshot> Remove(RemovePendingChangeRequest request) =>

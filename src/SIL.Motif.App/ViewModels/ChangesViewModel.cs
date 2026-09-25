@@ -52,6 +52,7 @@ public static class ChangeKinds
 public sealed partial class ChangesViewModel : ObservableObject
 {
     private readonly ICommandClient? _client;
+    private readonly List<string> _collectionNotices = [];
     public ChangesViewModel(ICommandClient? client = null)
     {
         _client = client;
@@ -85,6 +86,16 @@ public sealed partial class ChangesViewModel : ObservableObject
     public Refusal? LastRefusal { get; private set; }
 
     public string? ErrorText => LastRefusal?.Message;
+
+    /// <summary>Replacement and skipped-word results from the current collection action.</summary>
+    public string? CollectionNotice => _collectionNotices.Count == 0
+        ? null : string.Join(" ", _collectionNotices);
+
+    public void BeginCollection()
+    {
+        _collectionNotices.Clear();
+        OnPropertyChanged(nameof(CollectionNotice));
+    }
 
     public string? AssessmentId { get; set; }
 
@@ -183,6 +194,7 @@ public sealed partial class ChangesViewModel : ObservableObject
         Items.Clear();
         Snapshot = new PendingChangesSnapshot(null, "none", [], []);
         LastRefusal = null;
+        BeginCollection();
         AssessmentId = null;
         OnPropertyChanged(nameof(Snapshot));
         Raise();
@@ -196,6 +208,10 @@ public sealed partial class ChangesViewModel : ObservableObject
         if (outcome.Value is not { } snapshot) return;
         Snapshot = snapshot;
         OnPropertyChanged(nameof(Snapshot));
+        if (snapshot.ReplacedChangeId is { } replaced)
+            AddCollectionNotice($"Replaced pending change {replaced}.");
+        if (snapshot.SkippedWord is { } skipped)
+            AddCollectionNotice($"Skipped {skipped}: an explicit choice is already pending for this word.");
         Items.Clear();
         foreach (var change in snapshot.Changes)
         {
@@ -204,6 +220,13 @@ public sealed partial class ChangesViewModel : ObservableObject
                 change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage));
         }
         Raise();
+    }
+
+    private void AddCollectionNotice(string notice)
+    {
+        if (!_collectionNotices.Contains(notice, StringComparer.Ordinal))
+            _collectionNotices.Add(notice);
+        OnPropertyChanged(nameof(CollectionNotice));
     }
 
     public bool HasItems => Items.Count > 0;

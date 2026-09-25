@@ -37,6 +37,7 @@ public sealed partial class FakeCommandClient
 
     public Refusal? PendingPutRefusal { get; set; }
     public int? PendingPutRefusalOnCall { get; set; }
+    public PendingChangesSnapshot? PendingPutResponse { get; set; }
 
     public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
 
@@ -52,6 +53,12 @@ public sealed partial class FakeCommandClient
         if (PendingPutRefusal is { } refusal &&
             (PendingPutRefusalOnCall is null || PendingPutRefusalOnCall == PendingPutRequests.Count))
             return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));
+        if (PendingPutResponse is { } response)
+        {
+            _pending = response;
+            PendingPutResponse = null;
+            return Completed(response);
+        }
         var change = request.Change;
         var changes = _pending.Changes.Where(item => item.ChangeId != change.ChangeId).ToList();
         changes.Add(new PendingChange(change.ChangeId, change.WordformId, change.Word, change.Kind,
