@@ -115,6 +115,10 @@ public sealed partial class TextWordsViewModel : ObservableObject
         _selection = selection;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
         SetViewCommand = new RelayCommand<TextsView>(view => View = view);
+        OpenWordCommand = new RelayCommand<string>(word =>
+        {
+            if (!string.IsNullOrWhiteSpace(word)) OpenWord?.Invoke(word);
+        });
         SetStatusFilterCommand = new RelayCommand<WordProjectStatus?>(status =>
         {
             SeveralOnly = false;
@@ -140,6 +144,12 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     /// <summary>Chooses the Words or In Text view, replacing whichever was chosen before.</summary>
     public IRelayCommand<TextsView> SetViewCommand { get; }
+
+    /// <summary>Opens a word's detail in the Analyze text reader.</summary>
+    public IRelayCommand<string> OpenWordCommand { get; }
+
+    /// <summary>The navigation action used when someone opens a word from the list.</summary>
+    public Action<string>? OpenWord { get; set; }
 
     /// <summary>Chooses one of the Words table's status filter chips, or <see langword="null"/> for All.</summary>
     public IRelayCommand<WordProjectStatus?> SetStatusFilterCommand { get; }

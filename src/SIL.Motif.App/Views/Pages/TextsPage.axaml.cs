@@ -15,7 +15,8 @@ public sealed partial class TextsPage : UserControl
 
         Host("CompareHost").Content = new ComparePanel(page.Assess.Compare);
         Host("SelectionHost").Content = new SelectionPanel(page.Selection, page.Words);
-        Host("ResultsInTextHost").Content = new ResultsInTextPanel(page.ResultsInText);
+        Host("AnalyzeReaderHost").Content = new ResultsInTextPanel(page.ResultsInText);
+        Host("WordListHost").Content = new TextWordsPanel(page.Words);
         Host("ListsHost").Content = new TextsListsPanel(page.TextsLists);
         Host("DifferenceHost").Content = new DifferencePanel(page.Assess.Difference);
     }

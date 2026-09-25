@@ -652,6 +652,74 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
+    public void AnalyzeTextsSwitchesBetweenTheReaderAndWordList()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                var page = workspace.PageModel<TextsPageModel>();
+                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
+                var textId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+                var stored = new ProjectAnalysis("analysis-1",
+                    [new ParserReadingMorph("motif-", "book", "n", null, false, null)]);
+                fake.ListTextWordsCompletesWith(new TextWordsResponse(
+                    [new TextWord("kitabu", null,
+                        [new WordOccurrence(textId, "Alpha", 1, "kitabu.", "approved", stored)], [stored], [])],
+                    [new TextLines(textId, "Alpha",
+                        [new TextLine(1, [new TextToken("kitabu", "kitabu", null, "approved")
+                            { Analysis = stored }])])],
+                    HasBaseline: true));
+                await page.Words.SetProjectAsync(@"C:\projects\one.fwdata");
+                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var readText = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Show the text reader");
+                var wordList = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Show the word list");
+                Assert.True(readText.IsEffectivelyVisible);
+                Assert.True(wordList.IsEffectivelyVisible);
+                Assert.Equal(AnalyzeTextsView.WordList, wordList.CommandParameter);
+                var pageView = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var readerHost = pageView.FindControl<ContentControl>("AnalyzeReaderHost");
+                var wordListHost = pageView.FindControl<ContentControl>("WordListHost");
+                Assert.NotNull(readerHost);
+                Assert.NotNull(wordListHost);
+                Assert.True(readerHost!.IsEffectivelyVisible);
+                Assert.False(wordListHost!.IsEffectivelyVisible);
+
+                ClickButton(window, wordList);
+                window.UpdateLayout();
+                Assert.Equal(AnalyzeTextsView.WordList, page.AnalyzeView);
+                Assert.True(wordListHost.IsEffectivelyVisible);
+                Assert.False(readerHost.IsEffectivelyVisible);
+                Assert.Equal(1, Assert.Single(wordListHost.GetLogicalDescendants().OfType<ListBox>(), list =>
+                    AutomationProperties.GetName(list) == "Words to test").ItemCount);
+                Assert.Contains(wordListHost.GetLogicalDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.Text == "kitabu");
+
+                ClickButton(window, readText);
+                window.UpdateLayout();
+                Assert.False(wordListHost.IsEffectivelyVisible);
+                Assert.True(readerHost.IsEffectivelyVisible);
+                var lines = Assert.Single(readerHost.GetLogicalDescendants().OfType<ItemsControl>(), control =>
+                    AutomationProperties.GetName(control) == "Text lines and parser results");
+                Assert.Equal(1, lines.ItemCount);
+                Assert.Contains(readerHost.GetLogicalDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.Text == "kitabu");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public void TextsPageShowsAssessmentRefusalsAndDetails()
     {
         _avalonia.Invoke(() =>
@@ -773,6 +841,13 @@ public sealed class MainWindowSmokeTests
             PointerUpdateKind.LeftButtonPressed);
         target.RaiseEvent(new PointerPressedEventArgs(
             target, pointer, window, new Point(), 0, properties, KeyModifiers.None));
+    }
+
+    private static void ClickButton(Window window, Button button)
+    {
+        var centre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(centre, MouseButton.Left);
+        window.MouseUp(centre, MouseButton.Left);
     }
 
     private static void AssertSelectableCells(DataGrid grid)

@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.TextWordsPanel"
+             x:DataType="views:TextWordsPanel">
+  <Grid Margin="{DynamicResource Component.TextsPage.PageInset}"
+        RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+    <DockPanel LastChildFill="False">
+      <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+      <TextBox DockPanel.Dock="Right" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
+               AutomationProperties.Name="Search words" />
+    </DockPanel>
+
+    <WrapPanel Grid.Row="1">
+      <views:FilterChip Label="All" Count="{Binding Words.AllCount}" IsActive="{Binding Words.IsAllFilter}"
+                        Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Null}" />
+      <views:FilterChip Label="Approved" Count="{Binding Words.ApprovedFilterCount}" Verdict="Approved"
+                        IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
+                        Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Approved}" />
+      <views:FilterChip Label="Candidate" Count="{Binding Words.CandidateFilterCount}" Verdict="Candidate"
+                        IsVisible="{Binding Words.CandidateFilterCount}"
+                        IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Candidate}}"
+                        Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Candidate}" />
+      <views:FilterChip Label="Rejected" Count="{Binding Words.RejectedFilterCount}" Verdict="Differs"
+                        IsVisible="{Binding Words.RejectedFilterCount}"
+                        IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Rejected}}"
+                        Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Rejected}" />
+      <views:FilterChip Label="Not stored yet" Count="{Binding Words.NotPresentFilterCount}" Verdict="New"
+                        IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.NotPresent}}"
+                        Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.NotPresent}" />
+      <views:FilterChip Label="Incorrect spelling" Count="{Binding Words.IncorrectSpellingFilterCount}" Verdict="Several"
+                        IsVisible="{Binding Words.IncorrectSpellingFilterCount}"
+                        IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.IncorrectSpelling}}"
+                        Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.IncorrectSpelling}" />
+      <views:FilterChip Label="Several analyses" Count="{Binding Words.SeveralFilterCount}" Verdict="Several"
+                        IsVisible="{Binding Words.SeveralFilterCount}" IsActive="{Binding Words.SeveralOnly}"
+                        Command="{Binding Words.ShowSeveralCommand}" />
+    </WrapPanel>
+
+    <ListBox Grid.Row="2" Classes="denseWords" ItemsSource="{Binding Words.Rows}"
+             AutomationProperties.Name="Words to test">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:TextWordRowViewModel">
+          <Expander Classes="denseWord">
+            <Expander.Header>
+              <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <views:CopyableTextBlock Grid.Column="1" Classes="muted"
+                                         Text="{Binding OccurrenceCount, StringFormat='×{0}'}"
+                                         VerticalAlignment="Center" />
+                <views:VerdictChip Grid.Column="2" Verdict="{Binding Verdict}" Text="{Binding StatusLabel}"
+                                   Compact="True" HorizontalAlignment="Left" />
+                <views:VerdictChip Grid.Column="3" Verdict="{Binding LastResultMeaning}"
+                                   Text="{Binding LastResultLabel}" Compact="True"
+                                   IsVisible="{Binding HasLastResult}" />
+                <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="—"
+                                         IsVisible="{Binding !HasLastResult}" VerticalAlignment="Center" />
+              </Grid>
+            </Expander.Header>
+            <StackPanel Spacing="{DynamicResource Intent.Space.Snug}"
+                        Margin="{DynamicResource Component.TextsPage.DenseRowPadding}">
+              <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectSummary}" TextWrapping="Wrap" />
+              <ItemsControl ItemsSource="{Binding ApprovedAnalyses}" IsVisible="{Binding HasApproved}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ProjectAnalysisViewModel">
+                    <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <views:CopyableTextBlock Classes="muted" Text="Where it appears:" />
+              <ItemsControl ItemsSource="{Binding Occurrences}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
+                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                      <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
+                      <views:CopyableTextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Content="Open in text reader" Command="{Binding $parent[views:TextWordsPanel].Words.OpenWordCommand}"
+                      CommandParameter="{Binding Form}"
+                      AutomationProperties.Name="{Binding Form, StringFormat='Open {0} in text reader'}" />
+            </StackPanel>
+          </Expander>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </Grid>
+</UserControl>

@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -434,15 +435,45 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
-    public void OpeningAWordThroughTheContextShowsTheTextsPageOnItsWordsTab()
+    public void OpeningATypedAssessedWordThroughTheContextSelectsItsReadingDetail()
     {
         var context = NewContext();
         var texts = new TextsPageModel(context);
+        texts.AnalyzeView = AnalyzeTextsView.WordList;
+        var analysis = new ParseAnalysis(
+            [new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
+        context.Assess.Result = Assessment() with
+        {
+            Words =
+            [
+                new AssessmentWordResult("typed-only", "analysed", false, "Search completed", 3, null)
+                {
+                    Morphology = new ParseWordEvidence(
+                        ParseMorphEvidence.Schema, 0, "typed-only", 3, false, false, false, [analysis], []),
+                    Readings = [new ParserReading([new ParserReadingMorph(
+                        "typed-only", "gloss", "n", null, false, null)])],
+                    ReadingGrades = ["no-opinion"],
+                },
+            ],
+        };
 
-        context.OpenWord("dogs");
+        context.OpenWord("typed-only");
 
         Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
         Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
+        Assert.Equal(AnalyzeTextsView.TextReader, texts.AnalyzeView);
+        Assert.True(texts.ResultsInText.HasSelectedToken);
+        var selected = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
+        Assert.Equal("typed-only", selected.Form);
+        Assert.DoesNotContain(texts.ResultsInText.Texts.SelectMany(text => text.Lines)
+            .SelectMany(line => line.Tokens), token => token.Form == "typed-only");
+        var reading = Assert.Single(selected.Readings);
+        Assert.Equal(analysis, reading.Analysis);
+        Assert.False(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Approve));
+        selected.SelectedReading = reading;
+        Assert.True(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Approve));
+        Assert.True(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Reject));
+        Assert.True(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Candidate));
     }
 
     [Fact]

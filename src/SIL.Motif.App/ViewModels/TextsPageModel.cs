@@ -12,6 +12,13 @@ public sealed record OpenTextsRequest(TextsTab Tab) : PageRequest(WorkspacePage.
 /// <param name="Word">The word to select.</param>
 public sealed record OpenWordRequest(string Word) : PageRequest(WorkspacePage.Texts);
 
+/// <summary>The two views inside Analyze texts.</summary>
+public enum AnalyzeTextsView
+{
+    TextReader,
+    WordList,
+}
+
 /// <summary>
 /// The Texts page's model: which of its <see cref="TextsTab"/>s is showing, the word views it hosts, and the links
 /// from those views to the other pages.
@@ -21,8 +28,10 @@ public sealed partial class TextsPageModel : PageModel
     public TextsPageModel(WorkspaceContext context) : base(context)
     {
         Words = new TextWordsViewModel(context.Commands, context.Selection);
+        Words.OpenWord = context.OpenWord;
         Assess.TextWords = Words;
         ShowTabCommand = new RelayCommand<TextsTab>(tab => Tab = tab);
+        ShowAnalyzeViewCommand = new RelayCommand<AnalyzeTextsView>(view => AnalyzeView = view);
         ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord, context.Changes)
         {
             OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
@@ -62,6 +71,11 @@ public sealed partial class TextsPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(ShowWhatChanged))]
     private TextsTab _tab;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowTextReader))]
+    [NotifyPropertyChangedFor(nameof(ShowWordList))]
+    private AnalyzeTextsView _analyzeView = AnalyzeTextsView.TextReader;
+
     public bool ShowMatrix => Tab == TextsTab.Matrix;
 
     public bool ShowAnalyzeTexts => Tab == TextsTab.AnalyzeTexts;
@@ -70,12 +84,19 @@ public sealed partial class TextsPageModel : PageModel
 
     public bool ShowWhatChanged => Tab == TextsTab.WhatChanged;
 
+    public bool ShowTextReader => AnalyzeView == AnalyzeTextsView.TextReader;
+
+    public bool ShowWordList => AnalyzeView == AnalyzeTextsView.WordList;
+
     public bool ShowAssessStatus => Assess.IsActive || Assess.Refusal is not null;
 
     public bool ShowAssessRefusal => Assess.Refusal is not null;
 
     /// <summary>Opens the tab passed as the command parameter.</summary>
     public IRelayCommand<TextsTab> ShowTabCommand { get; }
+
+    /// <summary>Opens the text reader or the word list inside Analyze texts.</summary>
+    public IRelayCommand<AnalyzeTextsView> ShowAnalyzeViewCommand { get; }
 
     /// <summary>Whether the word views have nothing to show and nothing to explain yet: no run, no refusal.</summary>
     public bool ShowEmptyResults => Context.HasNoEvidence && !Assess.IsActive && Assess.Refusal is null;
@@ -100,6 +121,8 @@ public sealed partial class TextsPageModel : PageModel
                 break;
             case OpenWordRequest word:
                 Assess.SelectWord(word.Word);
+                ResultsInText.SelectWord(word.Word);
+                AnalyzeView = AnalyzeTextsView.TextReader;
                 Tab = TextsTab.AnalyzeTexts;
                 break;
         }

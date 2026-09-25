@@ -35,11 +35,11 @@ People need to see which words moved after a rerun and why. The existing Differe
 
 The checked texts must remain readable before an Assessment, and their project analyses and last Assessment must remain visible. Analyze texts will expose the word list beside the existing in-place reader.
 
-- [ ] Add failing tests proving `ResultsInTextViewModel` renders `TextWordsResponse.Texts` before an Assessment, and the Texts page exposes a word list and reader control.
-- [ ] Run the required build and filtered App tests; confirm the reader is currently empty and the word-list control is absent.
-- [ ] Build reader tokens whenever a TextWords response exists, using `NotAssessed` until an Assessment exists. Add a clear Analyze subview switch for the word table and reader, retaining the status filters, project analyses, occurrences, and last Assessment.
-- [ ] Add a runtime test that opens each subview and verifies the rendered word forms and reader lines.
-- [ ] Rebuild, rerun the focused tests, and commit the restored capabilities.
+- [x] Add failing tests proving `ResultsInTextViewModel` renders `TextWordsResponse.Texts` before an Assessment, and the Texts page exposes a word list and reader control.
+- [x] Run the required build and filtered App tests; confirm the reader is currently empty and the word-list control is absent.
+- [x] Build reader tokens whenever a TextWords response exists, using `NotAssessed` until an Assessment exists. Add a clear Analyze subview switch for the word table and reader, retaining the status filters, project analyses, occurrences, and last Assessment.
+- [x] Add a runtime test that opens each subview and verifies the rendered word forms and reader lines.
+- [x] Rebuild, rerun the focused tests, and commit the restored capabilities.
 
 ## Task 3: Route any assessed word to its detail and individual actions
 

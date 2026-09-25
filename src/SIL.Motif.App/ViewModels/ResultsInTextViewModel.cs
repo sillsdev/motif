@@ -119,7 +119,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
     public string? Message =>
-        _assess.Result is null ? "Run an Assessment to compare its answers with the words in your texts."
+        _assess.Result is null && _texts.Response is null
+            ? "Run an Assessment to compare its answers with the words in your texts."
         : Texts.Count == 0 ? "Check a text in Texts to read the results in place."
         : SelectedText is null ? "Choose a text to read."
         : SelectedText.Lines.Count == 0
@@ -130,7 +131,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public bool HasMessage => Message is not null;
 
     /// <summary>Whether there is a text to read, so the text picker and filters have something to act on.</summary>
-    public bool HasTexts => _assess.Result is not null && Texts.Count > 0;
+    public bool HasTexts => Texts.Count > 0;
 
     /// <summary>Whether the only thing missing is a checked Text, which the Texts stage can supply.</summary>
     public bool NeedsTexts => _assess.Result is not null && Texts.Count == 0;
@@ -147,6 +148,30 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             SelectedToken = token;
             AddChangeCommand.NotifyCanExecuteChanged();
         }
+    }
+
+    /// <summary>Selects a word from any page, building its detail even when it has no chosen-text occurrence.</summary>
+    public void SelectWord(string word)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(word);
+        var token = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .FirstOrDefault(candidate => candidate.IsWord && candidate.Form == word);
+        if (token is not null)
+        {
+            SelectToken(token);
+            return;
+        }
+
+        var result = _assess.Result?.Words.FirstOrDefault(candidate => candidate.Word == word);
+        if (result is null)
+        {
+            SelectedToken = null;
+            return;
+        }
+
+        var projectWord = _texts.ProjectWords.FirstOrDefault(candidate => candidate.Form == word);
+        SelectToken(new ResultsTokenViewModel("Assessment", 0, new TextToken(word, word, null, null), result,
+            projectWord, "Not in a chosen text"));
     }
 
     partial void OnSelectedTextChanged(ResultsTextViewModel? value) => RefreshLines();
@@ -176,10 +201,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             .GroupBy(word => word.Word, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         var projectWords = _texts.ProjectWords.ToDictionary(row => row.Form, StringComparer.Ordinal);
-        var hasAssessment = _assess.Result is not null;
 
         Texts.Clear();
-        if (hasAssessment && _texts.Response is { } response)
+        if (_texts.Response is { } response)
         {
             foreach (var text in response.Texts) Texts.Add(new ResultsTextViewModel(text, results, projectWords));
         }
@@ -323,13 +347,13 @@ public sealed class ResultsLineViewModel
 public sealed partial class ResultsTokenViewModel : ObservableObject
 {
     public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
-        TextWordRowViewModel? projectWord = null)
+        TextWordRowViewModel? projectWord = null, string? location = null)
     {
         ArgumentNullException.ThrowIfNull(token);
         Text = token.Text;
         Form = token.Form ?? token.Text;
         IsWord = token.Form is not null;
-        Location = $"{title}, line {line}";
+        Location = location ?? $"{title}, line {line}";
         WordLink = token.WordLink is { } link ? new Uri(link) : null;
         Stored = token.Analysis?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
         ProjectSummary = projectWord?.ProjectSummary ?? "No project entry is loaded for this word.";

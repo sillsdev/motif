@@ -166,4 +166,24 @@ public sealed class ResultsInTextViewModelTests
         Assert.StartsWith("Run an Assessment", inText.Message, StringComparison.Ordinal);
         Assert.Empty(inText.VisibleLines);
     }
+
+    [Fact]
+    public async Task BeforeAssessmentTheReaderShowsChosenTextAndItsWords()
+    {
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake);
+        var texts = new TextWordsViewModel(fake, selection);
+        var inText = new ResultsInTextViewModel(texts, new AssessViewModel(fake, selection), _ => { }, _ => { });
+        fake.ListTextWordsCompletesWith(new TextWordsResponse([], [new TextLines(TextId, "Alpha",
+            [new TextLine(1, [Word("kitabu", null)])])], HasBaseline: true));
+
+        await texts.SetProjectAsync(ProjectPath);
+
+        Assert.True(inText.HasTexts);
+        Assert.Equal("Alpha", Assert.Single(inText.Texts).Title);
+        Assert.Equal("kitabu", Assert.Single(Assert.Single(inText.VisibleLines).Tokens).Form);
+        Assert.Equal(OccurrenceVerdict.NotAssessed,
+            Assert.Single(Assert.Single(inText.VisibleLines).Tokens).Verdict);
+        Assert.Null(inText.Message);
+    }
 }
