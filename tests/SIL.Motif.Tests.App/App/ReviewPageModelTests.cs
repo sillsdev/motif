@@ -85,7 +85,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult("job/one", "revision/one", "complete", true));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one", "complete", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.PublishProjectOpenedAsync(ProjectPath);
@@ -110,7 +110,7 @@ public sealed class ReviewPageModelTests
         context.OpenPage(WorkspacePage.Review);
 
         Assert.Empty(fake.AssessRequests);
-        Assert.Empty(fake.ReviewTrialRequests);
+        Assert.Empty(fake.MeasurePendingRequests);
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -130,7 +130,7 @@ public sealed class ReviewPageModelTests
         await page.MeasureCommand.ExecuteAsync(null);
 
         Assert.True(page.CanApply);
-        Assert.Equal(["first"], Assert.Single(fake.ReviewTrialRequests).Words);
+        Assert.Equal(["first"], Assert.Single(fake.MeasurePendingRequests).Words);
         Assert.Contains("1 search completed", page.NumbersText);
     }
 
@@ -140,9 +140,9 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
-        fake.ReviewApplyCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
+        fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -153,7 +153,7 @@ public sealed class ReviewPageModelTests
 
         Assert.Empty(context.Changes.Items);
         Assert.Equal("draft/one", page.Receipt!.ProposalId);
-        Assert.Equal("revision/one", Assert.Single(fake.ReviewApplyRequests).Revision);
+        Assert.Equal("revision/one", Assert.Single(fake.ApplyPendingRequests).Revision);
         Assert.True(context.AppliedSinceRefresh);
     }
 
@@ -163,9 +163,9 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
-        fake.ReviewApplyRefusal = new Refusal("apply.regression", FailureReason.Refused,
+        fake.ApplyPendingRefusal = new Refusal("apply.regression", FailureReason.Refused,
             "Approved readings matched less often.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -193,7 +193,7 @@ public sealed class ReviewPageModelTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first") with { OriginPage = "Warnings" }],
             [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);

@@ -446,6 +446,28 @@ try
             break;
 
         case "trial":
+            if (flags.ContainsKey("pending"))
+            {
+                if (positionals.Count != 0 || !flags.ContainsKey("wait") ||
+                    !flags.TryGetValue("project", out var pendingTrialProject) ||
+                    !flags.TryGetValue("draft", out var pendingTrialDraft) ||
+                    !flags.TryGetValue("revision", out var pendingTrialRevision) ||
+                    !flags.TryGetValue("words", out var pendingTrialWords))
+                {
+                    return Usage(
+                        "Usage: motif trial --pending --project <fwdata> --draft <id> --revision <r> " +
+                        "--words <w,…> --wait [--before-correctness <assessmentId>] [--json]", asJson);
+                }
+                var words = pendingTrialWords.Split(',',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (words.Length == 0)
+                    return Usage("Usage: motif trial --pending requires at least one --words value.", asJson);
+                result = RenderCommand(PendingChangesWorkflow.Measure(new MeasurePendingRequest(
+                    pendingTrialProject, pendingTrialDraft, pendingTrialRevision, words,
+                    flags.GetValueOrDefault("before-correctness")), new Progress<MeasureProgress>(),
+                    CancellationToken.None).GetAwaiter().GetResult());
+                break;
+            }
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var trialProject))
             {
                 return Usage(
@@ -473,6 +495,23 @@ try
             break;
 
         case "apply":
+            if (flags.ContainsKey("all-pending"))
+            {
+                if (positionals.Count != 0 || !flags.TryGetValue("project", out var pendingApplyProject))
+                    return Usage(
+                        "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] [--json]", asJson);
+                var pending = PendingChanges.Load(new PendingChangesRequest(
+                    pendingApplyProject, CliProductVersion()));
+                if (!pending.Succeeded)
+                {
+                    result = RenderProposal(pending);
+                    break;
+                }
+                result = RenderProposal(PendingChangesWorkflow.Apply(new ApplyPendingRequest(
+                    pendingApplyProject, pending.Value!.DraftId ?? string.Empty,
+                    flags.GetValueOrDefault("revision") ?? pending.Value.Revision, Environment.UserName)));
+                break;
+            }
             if (positionals.Count != 1 ||
                 !flags.TryGetValue("project", out var applyProject) ||
                 !flags.TryGetValue("user", out var applyUser))
@@ -968,6 +1007,10 @@ static string ResolveCommandName(string[] invocation)
     if (invocation.Length == 0) return string.Empty;
 
     var first = invocation[0];
+    if (first == "apply" && invocation.Contains("--all-pending", StringComparer.Ordinal))
+        return "apply --all-pending";
+    if (first == "trial" && invocation.Contains("--pending", StringComparer.Ordinal))
+        return "trial --pending";
     if (first is "config" or "baseline" or "jobs" or "selection" or "texts" or "setup")
     {
         var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;

@@ -11,13 +11,13 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal sealed partial class HoldingCommandClient : ICommandClient
 {
-    public Task<CommandOutcome<ReviewTrialResult>> RunReviewTrialAsync(
-        ReviewTrialRequest request, IProgress<ReviewTrialProgress> progress, CancellationToken cancellationToken) =>
-        _inner.RunReviewTrialAsync(request, progress, cancellationToken);
+    public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
+        MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken) =>
+        _inner.MeasurePendingAsync(request, progress, cancellationToken);
 
-    public Task<CommandOutcome<ApplyProjection>> ApplyReviewAsync(
-        ReviewApplyRequest request, CancellationToken cancellationToken) =>
-        _inner.ApplyReviewAsync(request, cancellationToken);
+    public Task<CommandOutcome<ApplyProjection>> ApplyPendingAsync(
+        ApplyPendingRequest request, CancellationToken cancellationToken) =>
+        _inner.ApplyPendingAsync(request, cancellationToken);
     private readonly ICommandClient _inner;
     private readonly TaskCompletionSource _assessGate;
     private readonly TaskCompletionSource _handoffGate;

@@ -6,10 +6,10 @@ namespace SIL.Motif.App.Services;
 
 public partial interface ICommandClient
 {
-    Task<CommandOutcome<ReviewTrialResult>> RunReviewTrialAsync(
-        ReviewTrialRequest request, IProgress<ReviewTrialProgress> progress, CancellationToken cancellationToken);
-    Task<CommandOutcome<ApplyProjection>> ApplyReviewAsync(
-        ReviewApplyRequest request, CancellationToken cancellationToken);
+    Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
+        MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken);
+    Task<CommandOutcome<ApplyProjection>> ApplyPendingAsync(
+        ApplyPendingRequest request, CancellationToken cancellationToken);
     Task<CommandOutcome<PendingChangesSnapshot>> LoadPendingChangesAsync(
         PendingChangesRequest request, CancellationToken cancellationToken);
 

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -123,14 +124,14 @@ public sealed class ReviewPageModel : PageModel
         var revision = Changes.Snapshot.Revision;
         var words = Changes.Snapshot.Changes.Select(change => change.Word)
             .Distinct(StringComparer.Ordinal).ToArray();
-        CommandOutcome<ReviewTrialResult> result;
+        CommandOutcome<MeasurePendingResult> result;
         try
         {
-            result = await Context.Commands.RunReviewTrialAsync(
-                new ReviewTrialRequest(project, draft, revision, words,
+            result = await Context.Commands.MeasurePendingAsync(
+                new MeasurePendingRequest(project, draft, revision, words,
                     Context.Evidence?.Assessment.Measurements.FirstOrDefault(measurement =>
                         measurement.Kind == "Correctness")?.AssessmentId),
-                new Progress<ReviewTrialProgress>(OnMeasurementProgress),
+                new Progress<MeasureProgress>(OnMeasurementProgress),
                 _measurementCancellation.Token).ConfigureAwait(true);
         }
         finally
@@ -155,7 +156,7 @@ public sealed class ReviewPageModel : PageModel
         ApplyCommand.NotifyCanExecuteChanged();
     }
 
-    private void OnMeasurementProgress(ReviewTrialProgress progress)
+    private void OnMeasurementProgress(MeasureProgress progress)
     {
         MeasurementProgressText = $"{progress.Completed} of {progress.Total} words checked" +
             (progress.CurrentWord is { Length: > 0 } word ? $" · {word}" : string.Empty);
@@ -173,8 +174,9 @@ public sealed class ReviewPageModel : PageModel
         CommandOutcome<ApplyProjection> result;
         try
         {
-            result = await Context.Commands.ApplyReviewAsync(new ReviewApplyRequest(
-                project, draft, Changes.Snapshot.Revision), CancellationToken.None).ConfigureAwait(true);
+            result = await Context.Commands.ApplyPendingAsync(new ApplyPendingRequest(
+                project, draft, Changes.Snapshot.Revision, Environment.UserName),
+                CancellationToken.None).ConfigureAwait(true);
         }
         finally
         {

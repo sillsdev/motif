@@ -17,16 +17,13 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="BaselineCaptureCommand"/>,
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
-/// <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>, and
-/// <see cref="JobCommands"/>.
+/// <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>,
+/// <see cref="JobCommands"/>, and <see cref="PendingChangesWorkflow"/>.
 /// </summary>
 /// <remarks>
-/// Four names each cover two entries because one CLI verb reaches two distinct handlers under
-/// different flags: <c>report</c> reaches <see cref="ReportCommands.Produce"/> by default and
-/// <see cref="ReportCommands.ListKinds"/> under <c>--list-kinds</c>; <c>dry-run</c> reaches
-/// <see cref="JobCommands.EnqueueDryRun"/> and then, under <c>--wait</c>,
-/// <see cref="JobCommands.WaitForDryRun"/>; <c>trial</c> reaches <see cref="JobCommands.EnqueueTrial"/>
-/// and then, under <c>--wait</c>, <see cref="JobCommands.WaitForJob"/>. Every other name is the literal
+/// CLI flags select another handler for <c>report</c>, <c>dry-run</c>, <c>trial</c>, and <c>apply</c>.
+/// The report list, waited Dry Run, waited Trial, pending Trial, and pending apply each have their own
+/// entry. Every other name is the literal
 /// CLI verb (or, for a nested subcommand, its complete space-separated form, e.g. <c>"jobs show"</c>)
 /// that reaches exactly the one handler it names — pinned equal to the CLI's own <c>CliVerbCatalog.All</c>,
 /// by <c>CommandCatalogParityTests.EveryCataloguedCommandHasExactlyOneCliVerb</c>.
@@ -47,6 +44,10 @@ public static class CommandCatalog
             typeof(PendingChangesSnapshot), CommandSurface.Developer),
         new CommandDescriptor("recheck-pending-changes", typeof(RecheckPendingChangesRequest),
             typeof(PendingChangesSnapshot), CommandSurface.Developer),
+        new CommandDescriptor("apply --all-pending", typeof(ApplyPendingRequest),
+            typeof(ApplyProjection), CommandSurface.Released),
+        new CommandDescriptor("trial --pending", typeof(MeasurePendingRequest),
+            typeof(MeasurePendingResult), CommandSurface.Developer),
         new CommandDescriptor("review-numbers", typeof(ReviewNumbersCommand.Request),
             typeof(ReviewNumbersCommand.Response), CommandSurface.Developer),
         new CommandDescriptor("add-set-gloss", typeof(AddSetGlossRequest), typeof(SetGlossAddedResponse), CommandSurface.Developer),
