@@ -162,6 +162,8 @@ public sealed class ComponentStyleTests
             Button.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("Warnings", "warning severity", host => Add(host, Text("warningSeverity", "warning")),
             TextBlock.ForegroundProperty, "Intent.Warning");
+        yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
+            TextBlock.ForegroundProperty, "Intent.Danger");
     }
 
     private static T Add<T>(Panel host, T control) where T : Control

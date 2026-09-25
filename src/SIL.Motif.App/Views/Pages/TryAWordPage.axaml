@@ -14,10 +14,10 @@
         <Border Classes="card">
           <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <TextBlock Text="Recent words" FontSize="{DynamicResource Intent.Type.Section}"
-                         FontWeight="SemiBold" />
-              <TextBlock Classes="muted" Text="Choose one to trace it again."
-                         TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="Recent words" FontSize="{DynamicResource Intent.Type.Section}"
+                                       FontWeight="SemiBold" />
+              <views:CopyableTextBlock Classes="muted" Text="Choose one to trace it again."
+                                       TextWrapping="Wrap" />
             </StackPanel>
             <ItemsControl ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
               <ItemsControl.ItemTemplate>
@@ -35,15 +35,15 @@
 
         <Border Classes="card">
           <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-            <TextBlock Text="From here" FontSize="{DynamicResource Intent.Type.Section}"
-                       FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="From here" FontSize="{DynamicResource Intent.Type.Section}"
+                                     FontWeight="SemiBold" />
             <Button Content="Open in Texts" Command="{Binding OpenInTextsCommand}"
                     AutomationProperties.Name="Open in Texts" />
-            <Button Content="Timing for this word" Command="{Binding OpenTimingCommand}"
-                    AutomationProperties.Name="Timing for this word" />
+            <Button Content="{Binding TimingLinkText}" Command="{Binding OpenTimingCommand}"
+                    AutomationProperties.Name="{Binding TimingLinkText}" />
             <Button Content="Add expected analysis to Review changes"
                     Command="{Binding AddExpectedAnalysisToReviewCommand}"
-                    ToolTip.Tip="Adding an expected analysis to Review changes is not available yet."
+                    ToolTip.Tip="This expected analysis has no stored analysis ID for Review changes."
                     AutomationProperties.Name="Add expected analysis to Review changes" />
             <Button Content="AI Handoff for this word" Command="{Binding HandOffCommand}"
                     AutomationProperties.Name="AI Handoff for this word" />
@@ -51,8 +51,8 @@
         </Border>
 
         <Border Classes="notice">
-          <TextBlock Text="Also a word not in the texts: type any word to try it against the current grammar."
-                     TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="Also a word not in the texts: type any word to try it against the current grammar."
+                                   TextWrapping="Wrap" />
         </Border>
       </StackPanel>
     </ScrollViewer>

@@ -24,7 +24,7 @@ public sealed class TryWordPageModel : PageModel
         Trace.PropertyChanged += OnTracePropertyChanged;
         OpenInTextsCommand = new RelayCommand(() => Context.OpenWord(Trace.WordToTry.Trim()), CanOpenCurrentWord);
         HandOffCommand = new RelayCommand(() => Context.HandOff([Trace.WordToTry.Trim()]), CanOpenCurrentWord);
-        OpenTimingCommand = new RelayCommand(() => Context.OpenTiming([Trace.WordToTry.Trim()], null), CanOpenCurrentWord);
+        OpenTimingCommand = new RelayCommand(OpenTimingForCurrentWord, CanOpenCurrentWord);
         OpenRecentWordCommand = new RelayCommand<string?>(word =>
         {
             if (!string.IsNullOrWhiteSpace(word)) Context.TryWord(word);
@@ -44,8 +44,9 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Whether the current trace has named rules on its successful or furthest attempt.</summary>
     public bool HasRulesOnBestPath => RulesOnBestPath.Count > 0;
 
-    /// <summary>The heading that makes parser effort's category totals read as aggregate counts and time.</summary>
-    public string AggregateTimingHeading => "Aggregate parser effort by category";
+    /// <summary>The sidebar link to the first named rule on the current trace, or its general Timing link.</summary>
+    public string TimingLinkText => RulesOnBestPath.FirstOrDefault() is { } rule
+        ? $"See {rule.Rule} in Timing" : "Timing for this word";
 
     /// <summary>Opens Texts on the current word, even when the word is absent from its list.</summary>
     public IRelayCommand OpenInTextsCommand { get; }
@@ -100,6 +101,9 @@ public sealed class TryWordPageModel : PageModel
 
     private bool CanOpenCurrentWord() => !string.IsNullOrWhiteSpace(Trace.WordToTry);
 
+    private void OpenTimingForCurrentWord() => Context.OpenTiming(
+        [Trace.WordToTry.Trim()], RulesOnBestPath.FirstOrDefault()?.Rule);
+
     private void OnTracePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(TraceWordViewModel.WordToTry))
@@ -147,7 +151,7 @@ public sealed class TryWordPageModel : PageModel
         {
             var attempt = result.Parsed
                 ? Trace.Candidates.FirstOrDefault(candidate => candidate.Succeeded)
-                : Trace.FurthestAttempt;
+                : Trace.ClosestAttempts.FirstOrDefault();
             if (attempt is not null)
             {
                 foreach (var rule in attempt.Steps
@@ -165,6 +169,7 @@ public sealed class TryWordPageModel : PageModel
         }
         OnPropertyChanged(nameof(RulesOnBestPath));
         OnPropertyChanged(nameof(HasRulesOnBestPath));
+        OnPropertyChanged(nameof(TimingLinkText));
     }
 
     private static string Explain(TraceStepViewModel step) =>

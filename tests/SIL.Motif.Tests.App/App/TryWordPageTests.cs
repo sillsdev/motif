@@ -18,151 +18,211 @@ namespace SIL.Motif.Tests.App;
 public sealed class TryWordPageTests
 {
     private const string ProjectPath = @"C:\projects\one.fwdata";
+    private readonly AvaloniaHeadlessFixture _avalonia;
+
+    public TryWordPageTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
     public void RegistryBuildsTheTryAWordPageWithNamedLinksAndADeferredReviewAction()
     {
-        var context = NewContext(out _);
-        var model = new TryWordPageModel(context);
-        var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
-        var window = new Window { Content = view, Width = 1200, Height = 800 };
-        try
+        _avalonia.Invoke(() =>
         {
-            window.Show();
-            window.UpdateLayout();
+            var context = NewContext(out _);
+            var model = new TryWordPageModel(context);
+            var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
+            var window = new Window { Content = view, Width = 1200, Height = 800 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
 
-            Assert.Equal("TryAWordPage", view.GetType().Name);
-            Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
-                AutomationProperties.GetName(button) == "Open in Texts");
-            Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
-                AutomationProperties.GetName(button) == "AI Handoff for this word");
-            var review = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
-                AutomationProperties.GetName(button) == "Add expected analysis to Review changes");
-            Assert.False(review.IsEnabled);
-            Assert.NotNull(ToolTip.GetTip(review));
-            Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(), expander =>
-                Equals(expander.Header, "Aggregate parser effort by category"));
-        }
-        finally
-        {
-            window.Close();
-        }
-    }
-
-    [Fact]
-    public async Task ATypedWordCanBeTriedWithoutTextDataAndItsRuleRowsUseOnlyStoredPerRuleTiming()
-    {
-        var (context, fake) = NewContext();
-        context.ProjectPath = ProjectPath;
-        context.Assess.ProjectPath = ProjectPath;
-        var page = new TryWordPageModel(context);
-        var step = new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])
-        {
-            OutcomeStatus = "succeeded",
-        };
-        fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
-            [new TraceCandidate([], true, null, "Built the word", [step])],
-            new TraceStep("WordAnalysis", null, null, null, null, [])));
-        fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
-            [new TimingAggregateRow("Plural", 4, 0.4, 2, 1)], []));
-        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
-
-        context.TryWord("dogs");
-        await page.Trace.TryCommand.ExecutionTask!;
-
-        var row = Assert.Single(page.RulesOnBestPath);
-        Assert.Equal("Plural", row.Rule);
-        Assert.Equal("MorphologicalRule", row.Kind);
-        Assert.Equal("succeeded", row.Outcome);
-        Assert.Equal("40%", row.Share);
-        Assert.Contains("dogs", page.RecentWords);
-        var request = Assert.Single(fake.TimingRequests);
-        Assert.Equal("rule", request.By);
-        Assert.Equal("assessment-1", request.AssessmentId);
-        Assert.Equal(["dogs"], request.ExplicitWords);
-        Assert.Equal("Aggregate parser effort by category", page.AggregateTimingHeading);
-    }
-
-    [Fact]
-    public async Task AStoredAssessmentSuppliesRuleTimingForANewTrace()
-    {
-        var (context, fake) = NewContext();
-        context.ProjectPath = ProjectPath;
-        context.Assess.ProjectPath = ProjectPath;
-        var page = new TryWordPageModel(context);
-        fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
-            [new TraceCandidate([], true, null, "Built the word", [
-                new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])],
-            new TraceStep("WordAnalysis", null, null, null, null, [])));
-        fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
-            [new TimingAggregateRow("Plural", 4, 0.4, 2, 1)], []));
-
-        await context.PublishCurrentEvidenceAsync(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
-            EvidenceFreshness.Current, null, null, null, null, StoredAssessment()));
-        context.TryWord("dogs");
-        await page.Trace.TryCommand.ExecutionTask!;
-
-        Assert.Equal("4.0 ms", Assert.Single(page.RulesOnBestPath).StoredTime);
-        Assert.Equal("assessment-1", Assert.Single(fake.TimingRequests).AssessmentId);
-    }
-
-    [Fact]
-    public async Task RuleTimingAndWordLinksRouteThroughTheWorkspaceContext()
-    {
-        var (context, fake) = NewContext();
-        context.ProjectPath = ProjectPath;
-        context.Assess.ProjectPath = ProjectPath;
-        var page = new TryWordPageModel(context);
-        var timing = new TimingPageModel(context);
-        var texts = new TextsPageModel(context);
-        var handoff = new AiHandoffPageModel(context);
-        fake.TraceWordCompletesWith(new WordTraceResponse("typed-only", false, true, null, 1, null, 1,
-            [new TraceCandidate([], false, "failure", "Stopped", [
-                new TraceStep("MorphologicalRule", "Plural", "typed-only", null, "failure", [])
-                { OutcomeStatus = "failed" }])],
-            new TraceStep("WordAnalysis", null, null, null, null, [])));
-
-        context.TryWord("typed-only");
-        await page.Trace.TryCommand.ExecutionTask!;
-        Assert.Single(page.RulesOnBestPath).OpenTimingCommand.Execute(null);
-        Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
-        Assert.Equal("Plural", timing.Focus!.Rule);
-        Assert.Equal(["typed-only"], timing.Focus.Words);
-
-        page.OpenInTextsCommand.Execute(null);
-        Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
-        Assert.Equal(TextsTab.Words, texts.Tab);
-
-        page.HandOffCommand.Execute(null);
-        Assert.Equal(WorkspacePage.AiHandoff, context.CurrentPage);
-        Assert.Equal(["typed-only"], handoff.Handoff.ChosenWords);
-    }
-
-    [Fact]
-    public async Task CategoryTotalsRemainAggregateAndAreNeverCopiedToARuleStep()
-    {
-        var (context, fake) = NewContext();
-        context.ProjectPath = ProjectPath;
-        context.Assess.ProjectPath = ProjectPath;
-        var page = new TryWordPageModel(context);
-        var effort = new TraceEffort("Morphology", 3, 1, 0, 0, 0, 2, 8);
-        fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
-            [new TraceCandidate([], true, null, "Built the word", [
-                new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])],
-            new TraceStep("WordAnalysis", null, null, null, null, []))
-        {
-            Effort = [effort],
+                Assert.Equal("TryAWordPage", view.GetType().Name);
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Open in Texts");
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "AI Handoff for this word");
+                var review = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Add expected analysis to Review changes");
+                Assert.False(review.IsEffectivelyEnabled);
+                Assert.NotNull(ToolTip.GetTip(review));
+                Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(), expander =>
+                    Equals(expander.Header, "Aggregate parser effort by category"));
+            }
+            finally
+            {
+                window.Close();
+            }
         });
-        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
-
-        context.TryWord("dogs");
-        await page.Trace.TryCommand.ExecutionTask!;
-
-        var row = Assert.Single(page.RulesOnBestPath);
-        Assert.Equal("Not recorded", row.StoredTime);
-        Assert.Equal("8.0 ms", Assert.Single(page.Trace.Effort).Time);
-        Assert.Equal("—", row.Attempts);
     }
+
+    [Fact]
+    public void ATypedWordCanBeTriedWithoutTextDataAndItsRuleRowsUseOnlyStoredPerRuleTiming()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            var step = new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])
+            {
+                OutcomeStatus = "succeeded",
+            };
+            fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
+                [new TraceCandidate([], true, null, "Built the word", [step])],
+                new TraceStep("WordAnalysis", null, null, null, null, [])));
+            fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
+                [new TimingAggregateRow("Plural", 4, 0.4, 2, 1)], []));
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
+
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            var row = Assert.Single(page.RulesOnBestPath);
+            Assert.Equal("Plural", row.Rule);
+            Assert.Equal("MorphologicalRule", row.Kind);
+            Assert.Equal("succeeded", row.Outcome);
+            Assert.Equal("40%", row.Share);
+            Assert.Contains("dogs", page.RecentWords);
+            var request = Assert.Single(fake.TimingRequests);
+            Assert.Equal("rule", request.By);
+            Assert.Equal("assessment-1", request.AssessmentId);
+            Assert.Equal(["dogs"], request.ExplicitWords);
+        });
+    }
+
+    [Fact]
+    public void AStoredAssessmentSuppliesRuleTimingForANewTrace()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
+                [new TraceCandidate([], true, null, "Built the word", [
+                    new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])],
+                new TraceStep("WordAnalysis", null, null, null, null, [])));
+            fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
+                [new TimingAggregateRow("Plural", 4, 0.4, 2, 1)], []));
+
+            await context.PublishCurrentEvidenceAsync(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
+                EvidenceFreshness.Current, null, null, null, null, StoredAssessment()));
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            Assert.Equal("4.0 ms", Assert.Single(page.RulesOnBestPath).StoredTime);
+            Assert.Equal("assessment-1", Assert.Single(fake.TimingRequests).AssessmentId);
+        });
+    }
+
+    [Fact]
+    public void RuleTimingAndWordLinksRouteThroughTheWorkspaceContext()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            var timing = new TimingPageModel(context);
+            var texts = new TextsPageModel(context);
+            var handoff = new AiHandoffPageModel(context);
+            fake.TraceWordCompletesWith(new WordTraceResponse("typed-only", false, true, null, 1, null, 1,
+                [new TraceCandidate([], false, "failure", "Stopped", [
+                    new TraceStep("MorphologicalRule", "Plural", "typed-only", null, "failure", [])
+                    { OutcomeStatus = "failed" }])],
+                new TraceStep("WordAnalysis", null, null, null, null, [])));
+
+            context.TryWord("typed-only");
+            await page.Trace.TryCommand.ExecutionTask!;
+            Assert.Single(page.RulesOnBestPath).OpenTimingCommand.Execute(null);
+            Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
+            Assert.Equal("Plural", timing.Focus!.Rule);
+            Assert.Equal(["typed-only"], timing.Focus.Words);
+
+            page.OpenInTextsCommand.Execute(null);
+            Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
+            Assert.Equal(TextsTab.Words, texts.Tab);
+
+            page.HandOffCommand.Execute(null);
+            Assert.Equal(WorkspacePage.AiHandoff, context.CurrentPage);
+            Assert.Equal(["typed-only"], handoff.Handoff.ChosenWords);
+        });
+    }
+
+    [Fact]
+    public void SidebarTimingLinkNamesAndOpensTheFirstRuleOnTheBestPath()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            var timing = new TimingPageModel(context);
+            fake.TraceWordCompletesWith(new WordTraceResponse("verb", true, true, null, 1, null, 1,
+                [new TraceCandidate([], true, null, "Built the word", [
+                    new TraceStep("MorphologicalRule", "Verb template", "stem", "verb", null, [])
+                    { OutcomeStatus = "succeeded" }])],
+                new TraceStep("WordAnalysis", null, null, null, null, [])));
+
+            context.TryWord("verb");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
+            var window = new Window { Content = view, Width = 1200, Height = 800 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "See Verb template in Timing");
+
+                page.OpenTimingCommand.Execute(null);
+
+                Assert.Equal("Verb template", timing.Focus!.Rule);
+                Assert.Equal(["verb"], timing.Focus.Words);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void CategoryTotalsRemainAggregateAndAreNeverCopiedToARuleStep()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            var effort = new TraceEffort("Morphology", 3, 1, 0, 0, 0, 2, 8);
+            fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
+                [new TraceCandidate([], true, null, "Built the word", [
+                    new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])],
+                new TraceStep("WordAnalysis", null, null, null, null, []))
+            {
+                Effort = [effort],
+            });
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
+
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            var row = Assert.Single(page.RulesOnBestPath);
+            Assert.Equal("Not recorded", row.StoredTime);
+            Assert.Equal("8.0 ms", Assert.Single(page.Trace.Effort).Time);
+            Assert.Equal("—", row.Attempts);
+        });
+    }
+
+    private static void RunOnAvalonia(Func<Task> work) =>
+        AvaloniaHeadlessFixture.RunUntilComplete(work, TimeSpan.FromSeconds(10));
 
     private static (WorkspaceContext Context, FakeCommandClient Fake) NewContext()
     {

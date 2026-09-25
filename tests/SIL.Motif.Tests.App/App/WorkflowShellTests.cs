@@ -446,7 +446,7 @@ public sealed class WorkflowShellTests
                 Assert.Single(window.GetLogicalDescendants().OfType<DiagnosticPanel>());
                 var assess = Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>());
                 Assert.Empty(assess.GetLogicalDescendants().OfType<DiagnosticPanel>());
-                Assert.Equal("Root", tryPage.Name);
+                Assert.Equal("TryAWordPage", tryPage.Name);
             }
             finally
             {
