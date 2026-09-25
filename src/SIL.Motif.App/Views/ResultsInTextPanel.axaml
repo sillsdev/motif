@@ -154,19 +154,24 @@
 
           <views:CopyableTextBlock Classes="section-title" Text="Parser readings" FontSize="{DynamicResource Intent.Type.Body}" />
           <views:CopyableTextBlock Classes="muted" Text="No readings." IsVisible="{Binding !HasReadings}" />
-          <ComboBox ItemsSource="{Binding Readings}" SelectedItem="{Binding SelectedReading}"
-                    IsVisible="{Binding HasReadings}" PlaceholderText="Choose one reading for an opinion"
-                    AutomationProperties.Name="Choose one parser reading for this word">
-            <ComboBox.ItemTemplate>
+          <views:CopyableTextBlock Classes="muted" Text="Choose one reading for an opinion."
+                                    IsVisible="{Binding HasReadings}" />
+          <ListBox ItemsSource="{Binding Readings}" SelectedItem="{Binding SelectedReading}"
+                   IsVisible="{Binding HasReadings}"
+                   AutomationProperties.Name="Choose one parser reading for this word">
+            <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:ResultsReadingViewModel">
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                  <views:CopyableTextBlock Text="{Binding Text}" />
-                  <views:CopyableTextBlock Classes="muted" Text="{Binding GradeLabel}" IsVisible="{Binding HasGrade}" />
-                  <views:CopyableTextBlock Classes="muted" Text="(stored here)" IsVisible="{Binding IsStoredHere}" />
+                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                    <views:CopyableTextBlock Text="{Binding Text}" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding GradeLabel}" IsVisible="{Binding HasGrade}" />
+                    <views:CopyableTextBlock Classes="muted" Text="(stored here)" IsVisible="{Binding IsStoredHere}" />
+                  </StackPanel>
+                  <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasMorphs}" ShowCategory="False" />
                 </StackPanel>
               </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
+            </ListBox.ItemTemplate>
+          </ListBox>
           <views:CopyableTextBlock Classes="muted" Text="These changes apply to this word form everywhere, not just this occurrence."
                                      TextWrapping="Wrap" />
           <WrapPanel>

@@ -643,6 +643,24 @@ public sealed class MainWindowSmokeTests
                     workspace.Assess.Compare.Words.Select(word => word.Word));
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
+
+                var open = panel.GetLogicalDescendants().OfType<HyperlinkButton>().Single(button =>
+                    AutomationProperties.GetName(button) == "Analyze motifa in its texts");
+                Assert.True(open.Command?.CanExecute(open.CommandParameter));
+                open.Command!.Execute(open.CommandParameter);
+                var selected = workspace.PageModel<TextsPageModel>().ResultsInText.SelectedToken;
+                Assert.NotNull(selected);
+                Assert.Equal("motif-", Assert.Single(selected.Readings).Morphs.Single().Form);
+                window.UpdateLayout();
+
+                var visibleMorphLinks = window.GetLogicalDescendants().OfType<HyperlinkButton>()
+                    .Where(button => AutomationProperties.GetName(button) == "Open the entry for motif- in FieldWorks" &&
+                        button.IsEffectivelyVisible)
+                    .ToArray();
+                Assert.NotEmpty(visibleMorphLinks);
+                Assert.Contains(visibleMorphLinks, button => Equals(button.Content, "motif-"));
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
             }
             finally
             {

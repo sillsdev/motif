@@ -368,7 +368,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         Readings = keys.Select((key, index) => new ResultsReadingViewModel(
                 ReadingText(resolved is not null && index < resolved.Count ? resolved[index] : null),
                 grades is not null && index < grades.Count ? grades[index] : null,
-                storedKey is not null && key == storedKey, analyses[index], index))
+                storedKey is not null && key == storedKey, analyses[index], index,
+                resolved is not null && index < resolved.Count ? resolved[index] : null))
             .ToArray();
 
         Verdict = !IsWord || result is null || result.Outcome == "skipped" ? OccurrenceVerdict.NotAssessed
@@ -497,7 +498,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 public sealed class ResultsReadingViewModel
 {
     public ResultsReadingViewModel(string text, string? grade, bool isStoredHere,
-        ParseAnalysis? analysis = null, int index = -1)
+        ParseAnalysis? analysis = null, int index = -1, ParserReading? reading = null)
     {
         Text = text;
         IsStoredHere = isStoredHere;
@@ -512,6 +513,7 @@ public sealed class ResultsReadingViewModel
         IsDisapproved = grade == "disapproved";
         Analysis = analysis;
         Index = index;
+        Morphs = reading?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
     }
 
     public string Text { get; }
@@ -525,4 +527,8 @@ public sealed class ResultsReadingViewModel
 
     /// <summary>Whether this is the analysis stored at the occurrence being looked at.</summary>
     public bool IsStoredHere { get; }
+
+    public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
+
+    public bool HasMorphs => Morphs.Count > 0;
 }
