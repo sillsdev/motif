@@ -338,6 +338,58 @@ public sealed class ProposalWorkflowTests
     }
 
     [Fact]
+    public void MissingChangeFingerprintBlocksApplyEvenWithForce()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformGuid;
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            IWfiWordform wordform = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("unverified-word", cache.DefaultVernWs)));
+            wordformGuid = wordform.Guid;
+            loader.Save(cache);
+        }
+
+        const string draftName = "missing-change-fit";
+        var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null));
+        Assert.True(created.Succeeded);
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var repository = new ProposalRepository(database);
+            var draft = JsonNode.Parse(repository.GetDraft(draftName).ProposalJson!)!.AsObject();
+            draft["contractVersions"]!["analysis"] = "1.0";
+            draft["operations"]!.AsArray().Add(new JsonObject
+            {
+                ["operationId"] = CanonicalId.Mint().Value,
+                ["kind"] = "analysis/wfiWordform/setSpellingStatus",
+                ["target"] = CanonicalId.FromGuid(wordformGuid).Value,
+                ["after"] = new JsonObject { ["value"] = 2 },
+                ["extensions"] = new JsonObject
+                {
+                    ["changeId"] = CanonicalId.Mint().Value,
+                    ["changeFit"] = null,
+                },
+            });
+            repository.SaveDraft(draftName, draft.ToJsonString());
+        }
+        DraftRationale.Author(_fwDataPath, draftName, "Mark spelling incorrect", "The word is misspelled.");
+        Assert.True(ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName)).Succeeded);
+        Assert.True(RunDryRun(created.Value!.ProposalId).Succeeded);
+
+        var preflight = ProposalCommands.Preflight(new PreflightRequest(
+            _fwDataPath, ProductVersion, created.Value.ProposalId));
+        Assert.True(preflight.Succeeded);
+        var fit = Assert.Single(preflight.Value!.Changes);
+        Assert.False(fit.StillFits);
+        Assert.Contains("fingerprint", fit.Reason, StringComparison.OrdinalIgnoreCase);
+        var apply = ProposalCommands.Apply(new ApplyRequest(
+            _fwDataPath, ProductVersion, created.Value.ProposalId, "tester", Force: true));
+        Assert.Equal("apply.change-no-longer-fits", apply.Refusal?.Code);
+    }
+
+    [Fact]
     public void DeletedWordform_IsNoLongerFitAndBlocksApplyEvenWithForce()
     {
         var loader = new FwDataProjectLoader();

@@ -25,22 +25,42 @@ public static class ChangeFitPreflight
         var objects = cache.ServiceLocator.ObjectRepository;
         foreach (var operation in proposal.Operations)
         {
-            if (operation.Extensions is not { } extensions ||
-                extensions.ValueKind != JsonValueKind.Object ||
-                !extensions.TryGetProperty("changeFit", out var fit) ||
-                fit.ValueKind != JsonValueKind.Object)
+            if (operation.Extensions is not { } extensions) continue;
+            if (extensions.ValueKind != JsonValueKind.Object)
+            {
+                result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                    "Change fingerprint is missing or invalid.", ""));
                 continue;
+            }
+            var hasFit = extensions.TryGetProperty("changeFit", out var fit);
+            if (!hasFit && !extensions.TryGetProperty("changeId", out _)) continue;
+            if (!hasFit || fit.ValueKind != JsonValueKind.Object)
+            {
+                result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                    "Change fingerprint is missing or invalid.", ""));
+                continue;
+            }
             ChangeFitFingerprint? fingerprint;
             try
             {
                 fingerprint = JsonSerializer.Deserialize<ChangeFitFingerprint>(fit.GetRawText(),
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
-            catch (JsonException) { continue; }
+            catch (JsonException)
+            {
+                result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                    "Change fingerprint is malformed.", ""));
+                continue;
+            }
             if (fingerprint is null || !CanonicalId.TryParse(fingerprint.WordformId, out var wordId) ||
                 string.IsNullOrWhiteSpace(fingerprint.WordformForm) ||
                 string.IsNullOrWhiteSpace(fingerprint.BaselineToken))
+            {
+                result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                    "Change fingerprint has missing or invalid identity, form, or Baseline evidence.",
+                    fingerprint?.BaselineToken ?? ""));
                 continue;
+            }
             if (!objects.TryGetObject(wordId.ToGuid(), out var wordObject) || wordObject is not IWfiWordform wordform)
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
@@ -57,7 +77,12 @@ public static class ChangeFitPreflight
             }
             if (fingerprint.AnalysisId is { } analysisId)
             {
-                if (!CanonicalId.TryParse(analysisId, out var parsed)) continue;
+                if (!CanonicalId.TryParse(analysisId, out var parsed))
+                {
+                    result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                        "Change fingerprint has an invalid analysis identity.", fingerprint.BaselineToken));
+                    continue;
+                }
                 if (!wordform.AnalysesOC.Any(analysis => analysis.Guid == parsed.ToGuid()))
                 {
                     result.Add(new ChangeFitResult(operation.OperationId.Value, false,
