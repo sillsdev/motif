@@ -27,8 +27,10 @@ public static class Readiness
         CorrectnessAssessment? current,
         string? currentBaselineToken,
         string candidateBaselineToken,
-        bool gateOnRegression) =>
-        Evaluate(candidate, current, currentBaselineToken, candidateBaselineToken, gateOnRegression).Reasons;
+        bool gateOnRegression,
+        IReadOnlyCollection<string>? changedWords = null) =>
+        Evaluate(candidate, current, currentBaselineToken, candidateBaselineToken, gateOnRegression,
+            changedWords).Reasons;
 
     /// <summary>Evaluates Readiness while retaining whether a regression caused the refusal.</summary>
     public static Decision Evaluate(
@@ -36,12 +38,25 @@ public static class Readiness
         CorrectnessAssessment? current,
         string? currentBaselineToken,
         string candidateBaselineToken,
-        bool gateOnRegression)
+        bool gateOnRegression,
+        IReadOnlyCollection<string>? changedWords = null)
     {
         if (candidate is null)
             return new Decision(["no Assessment covers its current content, so nothing has measured what it would do"], false);
 
         var reasons = new List<string>();
+        if (changedWords is { Count: > 0 })
+        {
+            var selected = candidate.Selection.Words.Select(word =>
+                word.Normalize(System.Text.NormalizationForm.FormD)).ToHashSet(StringComparer.Ordinal);
+            var measured = candidate.Words.Select(word =>
+                word.Word.Normalize(System.Text.NormalizationForm.FormD)).ToHashSet(StringComparer.Ordinal);
+            var missing = changedWords.Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
+                .Where(word => !selected.Contains(word) || !measured.Contains(word))
+                .Distinct(StringComparer.Ordinal).OrderBy(word => word, StringComparer.Ordinal).ToArray();
+            if (missing.Length > 0)
+                reasons.Add($"its Assessment did not measure changed word(s): {string.Join(", ", missing)}");
+        }
         var unavailable = candidate.Words.Any(word => word.Correctness is null || word.Morphology is null ||
                 CorrectnessCoverage.Require(word, "readiness").Status is "incomplete" or "unavailable");
         if (unavailable)

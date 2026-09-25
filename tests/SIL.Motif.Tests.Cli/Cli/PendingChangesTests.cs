@@ -85,6 +85,54 @@ public sealed class PendingChangesTests
     }
 
     [Fact]
+    public void ApplyRefusesAssessmentThatDidNotMeasureChangedWord()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("changed-word", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path),
+            Path.Combine(Path.GetDirectoryName(_path)!, "coverage-managed"));
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "changed-word")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        Assert.True(ProposalCommands.Label(new LabelRequest(_path, "1.0", PendingChanges.DraftName,
+            "Correct spelling")).Succeeded);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(_path, "1.0", PendingChanges.DraftName,
+            "Mark the chosen word's spelling as incorrect.")).Succeeded);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_path, "1.0", PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var proposalId = finalized.Value!.ProposalId;
+        Assert.True(DryRunJobRunner.Run(_path, "1.0", proposalId).Succeeded);
+        using (var database = ProjectMotifDatabase.Open(_path))
+        {
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                CanonicalId.Mint("assessment/").Value, CanonicalId.Parse(proposalId),
+                finalized.Value.IntentDigest, "pangloss", "Correctness",
+                """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+                "sha256:scope", "none", "1", JsonSerializer.Serialize(captured.Value!.Token),
+                SIL.Motif.Host.Corpus.Selection.Create("other", ["other-word"]),
+                "sha256:outcome", "sha256:semantic", "sha256:grammar", "model", "pipeline", 0,
+                [CorrectnessFixture.Word("other-word", true)]));
+        }
+
+        var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId, "reviewer"));
+
+        Assert.Equal("apply.not-ready", applied.Refusal?.Code);
+        Assert.Contains("changed-word", applied.Refusal!.Message, StringComparison.Ordinal);
+        using var stored = ProjectMotifDatabase.Open(_path);
+        Assert.Equal("proposed", new ProposalRepository(stored).Get(CanonicalId.Parse(proposalId)).Status);
+    }
+
+    [Fact]
     public void ASecondChangeForTheSameSlotIsRefusedWithoutLosingTheFirst()
     {
         var loader = new FwDataProjectLoader();

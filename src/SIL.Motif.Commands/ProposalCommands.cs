@@ -1387,6 +1387,18 @@ public static partial class ProposalCommands
         return candidateId is null ? null : assessments.Get(candidateId);
     }
 
+    private static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
+        proposal.Operations.Select(operation => operation.Extensions)
+            .Where(extension => extension is { ValueKind: JsonValueKind.Object } &&
+                extension.Value.TryGetProperty("changeFit", out _))
+            .Select(extension => extension!.Value.GetProperty("changeFit"))
+            .Where(fit => fit.ValueKind == JsonValueKind.Object &&
+                fit.TryGetProperty("wordformForm", out _))
+            .Select(fit => fit.GetProperty("wordformForm").GetString())
+            .Where(word => !string.IsNullOrWhiteSpace(word))
+            .Select(word => word!)
+            .Distinct(StringComparer.Ordinal).ToArray();
+
     private static CommandOutcome<ApplyProjection> BuildApplyProjection(
         MotifDatabase database, ProjectLocator project, string proposalId, string user, bool force = false)
     {
@@ -1423,7 +1435,8 @@ public static partial class ProposalCommands
             // Checked before loading the project, same as the anchor check above.
             var readiness = Readiness.Evaluate(
                 candidate?.ToCorrectness(), currentCorrectness, current?.BaselineToken,
-                candidate?.BaselineToken ?? "", configuration.GateOnRegression);
+                candidate?.BaselineToken ?? "", configuration.GateOnRegression,
+                ChangedWords(envelope));
             if (readiness.Reasons.Count > 0 && !force)
             {
                 var guidance = candidate is null
