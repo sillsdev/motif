@@ -8,7 +8,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class TextsListsViewModelTests
 {
     private static AssessmentWordResult Word(string form, string outcome, string standing, string? grade = null) =>
-        new(form, outcome, outcome is "timed-out" or "capped", "Search completed", 10, null)
+        WithPriority(new AssessmentWordResult(form, outcome, outcome is "timed-out" or "capped", "Search completed", 10, null)
         {
             ProjectStanding = standing,
             OccurrenceCount = 1,
@@ -16,7 +16,14 @@ public sealed class TextsListsViewModelTests
             Readings = grade is null ? null : [new ParserReading([])],
             Morphology = grade is null ? null : new ParseWordEvidence("v1", 0, form, 10,
                 false, false, false, [new ParseAnalysis([])], []),
-        };
+        });
+
+    private static AssessmentWordResult WithPriority(AssessmentWordResult word) => word with
+    {
+        FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(
+            word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
+            word.ReadingGrades, word.MissedApproved?.Count ?? 0), word.MissedApproved),
+    };
 
     private static (CompareViewModel Compare, TextsListsViewModel Lists) Loaded()
     {
