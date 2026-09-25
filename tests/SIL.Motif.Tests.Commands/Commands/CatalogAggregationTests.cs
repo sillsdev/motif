@@ -43,9 +43,11 @@ public sealed class CatalogAggregationTests
         Assert.Equal(10d / 12d, byKind.Aggregates[0].ShareOfTotal, precision: 6);
         Assert.Equal(30, byKind.Aggregates[0].Attempts);
         Assert.Equal(2, byKind.Aggregates[0].WordsTouched);
+        Assert.Equal("affix", byKind.Aggregates[0].Kind);
 
         var byRule = TimingAggregation.Aggregate(rows, "rule", "Verb template", top: 1);
         Assert.Equal(["Verb template", "Nasal harmony"], byRule.Aggregates.Select(row => row.Name));
+        Assert.Equal(["affix", "phonology"], byRule.Aggregates.Select(row => row.Kind));
         var costliest = Assert.Single(byRule.CostliestWords);
         Assert.Equal("b", costliest.Word);
         Assert.Equal(6, costliest.ElapsedMs);

@@ -55,12 +55,18 @@ public static class TimingCommand
             var objectRows = assessment.ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
             var aggregates = TimingAggregation.Aggregate(objectRows, request.By, request.Rule, request.Top);
             var summary = TimingAggregation.SummarizeWords(selectedWords, request.Top);
+            var attempts = objectRows.GroupBy(row => row.Word, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.Sum(row => row.Attempts ?? 0), StringComparer.Ordinal);
             return CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 assessment.AssessmentId, request.WordSet, request.By, selectedWords.Count,
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,
                 aggregates.Aggregates, aggregates.CostliestWords)
             {
                 IsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
+                Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
+                    attempts.GetValueOrDefault(word.Word), IsStepLimited(word) ? "Step limit" :
+                    word.Outcome == "timeout" || word.Morphology?.TimedOut == true ? "Time limit" :
+                    word.Outcome == "skipped" ? "Skipped" : "Finished")).ToArray(),
             });
         });
     }

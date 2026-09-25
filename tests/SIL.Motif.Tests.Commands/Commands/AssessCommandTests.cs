@@ -178,14 +178,18 @@ public sealed class AssessCommandTests : IDisposable
         Assert.True(isStale.GetBoolean());
         Assert.Equal(2, timing.Value!.WordCount);
         Assert.Equal("Verb template", Assert.Single(timing.Value.Aggregates).Name);
+        Assert.Equal("morph_rule", Assert.Single(timing.Value.Aggregates).Kind);
         Assert.Equal(2, Assert.Single(timing.Value.Aggregates).Attempts);
         Assert.Single(timing.Value.CostliestWords);
+        Assert.Contains(timing.Value.Words, word => word.Word == SeededProject.AnalysedWordForm &&
+            word.Completion == "Step limit");
 
         var stepLimited = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             parseAssessment.AssessmentId, "step-limit", "rule", "Verb template", 5));
         Assert.True(stepLimited.Succeeded, stepLimited.Refusal?.Message);
         Assert.Equal(1, stepLimited.Value!.WordCount);
         Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(stepLimited.Value.SlowestWords).Word);
+        Assert.Equal("Step limit", Assert.Single(stepLimited.Value.Words).Completion);
 
         var slowest = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             parseAssessment.AssessmentId, "slowest", "rule", "Verb template", 1));

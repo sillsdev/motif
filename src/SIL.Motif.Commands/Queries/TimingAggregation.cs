@@ -44,7 +44,10 @@ public static class TimingAggregation
             {
                 var elapsed = group.Sum(row => row.ElapsedMs);
                 return new TimingAggregateRow(group.Key, elapsed, total == 0 ? 0 : elapsed / total,
-                    group.Sum(row => row.Attempts ?? 0), group.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count());
+                    group.Sum(row => row.Attempts ?? 0), group.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count())
+                {
+                    Kind = by == "kind" ? group.Key : group.First().Kind,
+                };
             })
             .OrderByDescending(row => row.ElapsedMs).ThenBy(row => row.Name, StringComparer.Ordinal).ToArray();
         var costliest = rule is null
