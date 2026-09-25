@@ -16,7 +16,8 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Pins that the controls a view builds in code take their gaps, sizes and type from design tokens through
 /// component styles, in the light and the dark theme, rather than from values set on the control; and that every
-/// Component key a view names resolves, since an unknown key in a <c>DynamicResource</c> silently does nothing.
+/// Component key a view names resolves in both themes. The token gate reads keys by name and layer only, so
+/// whether a named key exists is checked here.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class ViewTokenTests
