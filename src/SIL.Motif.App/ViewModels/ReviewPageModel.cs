@@ -145,7 +145,7 @@ public sealed class ReviewPageModel : PageModel
         EvidenceComplete = result.Succeeded && result.Value is { EvidenceComplete: true } measured &&
             measured.Revision == revision;
         MeasurementError = result.Refusal is { } measureRefusal
-            ? UserFacingError(measureRefusal)
+            ? UserFacingRefusal.MessageOf(measureRefusal)
             : !EvidenceComplete ? "Some words did not finish or their analysis could not be checked." : null;
         if (result.Value is { } evidence) NumbersText = evidence.NumbersText;
         OnPropertyChanged(nameof(NumbersText));
@@ -186,7 +186,7 @@ public sealed class ReviewPageModel : PageModel
         }
         if (!result.Succeeded)
         {
-            ApplyError = UserFacingError(result.Refusal!);
+            ApplyError = UserFacingRefusal.MessageOf(result.Refusal!);
             OnPropertyChanged(nameof(ApplyError));
             await Changes.ReloadAsync().ConfigureAwait(true);
             return;
@@ -200,24 +200,6 @@ public sealed class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(ReceiptText));
         OnPropertyChanged(nameof(ApplyError));
     }
-
-    private static string UserFacingError(Refusal refusal) => refusal.Code switch
-    {
-        "apply.project-in-use" => "FieldWorks has this project open. Close it before applying changes.",
-        "apply.change-no-longer-fits" or "review.change-no-longer-fits" =>
-            "One or more changes no longer fit. Remove those changes first.",
-        "apply.reconciliation-needed" =>
-            "Applying may have completed, but its receipt could not be recorded. Check the project before retrying.",
-        "apply.regression" =>
-            "The check found worse results for words already measured. Review them before applying.",
-        "apply.not-ready" => "The check did not give enough evidence to apply these changes. Check them again.",
-        "review.changes-changed" => "The changes have changed. Check the numbers again before applying.",
-        "review.reopen-failed" =>
-            "The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.",
-        "review.measurement-incomplete" => "The check did not finish. Try it again.",
-        "review.measurement-cancelled" => "The check was cancelled.",
-        _ => "The changes could not be checked or applied. Check the project and try again.",
-    };
 
     private async Task RemoveNonFittingAsync()
     {

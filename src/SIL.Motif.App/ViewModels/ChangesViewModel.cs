@@ -42,7 +42,7 @@ public static class ChangeKinds
 }
 
 /// <summary>
-/// The observable view of the pending Draft and each change's current fit with the FieldWorks project.
+/// The observable view of pending changes and each change's current fit with the FieldWorks project.
 /// </summary>
 public sealed partial class ChangesViewModel : ObservableObject
 {
@@ -78,7 +78,7 @@ public sealed partial class ChangesViewModel : ObservableObject
 
     public Refusal? LastRefusal { get; private set; }
 
-    public string? ErrorText => LastRefusal?.Message;
+    public string? ErrorText => LastRefusal is { } refusal ? UserFacingRefusal.MessageOf(refusal) : null;
 
     /// <summary>Replacement and skipped-word results from the current collection action.</summary>
     public string? CollectionNotice => _collectionNotices.Count == 0
@@ -210,12 +210,12 @@ public sealed partial class ChangesViewModel : ObservableObject
         if (outcome.Value is not { } snapshot) return;
         Snapshot = snapshot;
         OnPropertyChanged(nameof(Snapshot));
-        if (snapshot.ReplacedChangeId is { } replaced)
-            AddCollectionNotice($"Replaced pending change {replaced}.");
-        if (snapshot.CancelledChangeId is { } cancelled)
-            AddCollectionNotice($"Cancelled pending change {cancelled}.");
-        if (snapshot.SkippedWord is { } skipped)
-            AddCollectionNotice($"Skipped {skipped}: an explicit choice is already pending for this word.");
+        if (snapshot.ReplacedChangeId is not null)
+            AddCollectionNotice("Replaced an earlier pending change.");
+        if (snapshot.CancelledChangeId is not null)
+            AddCollectionNotice("Cancelled the pending choice.");
+        if (snapshot.SkippedWord is not null)
+            AddCollectionNotice("Skipped one word because a choice is already pending.");
         Items.Clear();
         foreach (var change in snapshot.Changes)
         {
@@ -256,7 +256,7 @@ public sealed class ChangeViewModel(string kind, string word, string reading,
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
     public ChangeFit? Fit { get; } = fit;
     public string FitStatus => Fit is null ? string.Empty : Fit.StillFits
-        ? "Still fits the project." : "No longer fits: " + string.Join(" ", Fit.Reasons);
+        ? "Still fits the project." : "No longer fits the current project. Remove this change before review.";
     public bool IsNoLongerFits => Fit is { StillFits: false };
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
