@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -28,7 +29,7 @@ public sealed partial class TryWordPanel : UserControl
     private async void OnOpenDiagnosticClick(object? sender, RoutedEventArgs e)
     {
         if (TopLevel.GetTopLevel(this) is not Window owner) return;
-        await DiagnosticPanel.OpenSavedDiagnosticAsync(
+        await SavedDiagnosticOpener.OpenFromPickerAsync(
             owner,
             trace => new DiagnosticWindow(trace).Show(owner),
             message =>

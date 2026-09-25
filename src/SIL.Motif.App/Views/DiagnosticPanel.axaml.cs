@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -39,52 +40,6 @@ public sealed partial class DiagnosticPanel : UserControl
     {
         get => GetValue(ShowResultSummaryProperty);
         set => SetValue(ShowResultSummaryProperty, value);
-    }
-
-    /// <summary>Opens a saved diagnostic and sends its result or error to the caller.</summary>
-    /// <param name="owner">The top-level window that owns the file picker.</param>
-    /// <param name="showDiagnostic">Displays the diagnostic after it has been read and validated.</param>
-    /// <param name="showError">Displays an error encountered while choosing, reading, or parsing the file.</param>
-    public static Task OpenSavedDiagnosticAsync(
-        TopLevel owner,
-        Action<TraceWordViewModel> showDiagnostic,
-        Action<string> showError)
-    {
-        ArgumentNullException.ThrowIfNull(owner);
-        ArgumentNullException.ThrowIfNull(showDiagnostic);
-        ArgumentNullException.ThrowIfNull(showError);
-
-        return OpenSavedDiagnosticAsync(async () =>
-        {
-            var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "Open diagnostic JSON",
-                AllowMultiple = false,
-                FileTypeFilter = [new FilePickerFileType("Motif diagnostic JSON") { Patterns = ["*.json"] }],
-            });
-            if (files.Count == 0) return null;
-
-            await using var stream = await files[0].OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            return await reader.ReadToEndAsync();
-        }, showDiagnostic, showError);
-    }
-
-    private static async Task OpenSavedDiagnosticAsync(
-        Func<Task<string?>> readDiagnostic,
-        Action<TraceWordViewModel> showDiagnostic,
-        Action<string> showError)
-    {
-        try
-        {
-            var json = await readDiagnostic();
-            if (json is null) return;
-            showDiagnostic(TraceWordViewModel.FromDiagnosticJson(json));
-        }
-        catch (Exception exception)
-        {
-            showError(exception.Message);
-        }
     }
 
     private TraceWordViewModel Trace => (TraceWordViewModel)DataContext!;
@@ -176,6 +131,6 @@ public sealed partial class DiagnosticPanel : UserControl
     private async void OnOpenClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (TopLevel.GetTopLevel(this) is not { } owner) return;
-        await OpenSavedDiagnosticAsync(owner, trace => new DiagnosticWindow(trace).Show(), ShowError);
+        await SavedDiagnosticOpener.OpenFromPickerAsync(owner, trace => new DiagnosticWindow(trace).Show(), ShowError);
     }
 }
