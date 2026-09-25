@@ -105,7 +105,7 @@
 
             <Border Classes="card">
               <StackPanel>
-                <Grid Classes="timingTableHeader" ColumnDefinitions="2*,*,*,*,*">
+                <Grid Classes="timingTableHeader" ColumnDefinitions="2*,1.7*,1.1*,1.1*,0.7*">
                   <views:CopyableTextBlock Grid.Column="0" Text="RULE" />
                   <views:CopyableTextBlock Grid.Column="1" Text="KIND" />
                   <views:CopyableTextBlock Grid.Column="2" Text="SHARE OF TIME" />
@@ -120,7 +120,7 @@
                               HorizontalContentAlignment="Stretch"
                               Command="{Binding $parent[views:TimingPage].Page.ChooseRuleCommand}"
                               CommandParameter="{Binding}">
-                        <Grid ColumnDefinitions="2*,*,*,*,*">
+                        <Grid ColumnDefinitions="2*,1.7*,1.1*,1.1*,0.7*">
                           <views:CopyableTextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" />
                           <views:CopyableTextBlock Grid.Column="1" Classes="muted"
                                                    Text="{Binding Kind, Converter={StaticResource KindLabel}}" />
