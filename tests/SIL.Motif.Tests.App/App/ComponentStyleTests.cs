@@ -199,6 +199,14 @@ public sealed class ComponentStyleTests
             TextBlock.MarginProperty, "Component.Selection.CountMargin");
         yield return new("Setup", "the dialog", host => Add(host, Box("setupDialog")),
             Border.WidthProperty, "Component.Setup.DialogWidth");
+        yield return new("Overview", "the header", host => Add(host, Box("overviewHeader")),
+            Border.PaddingProperty, "Component.Overview.HeaderPadding");
+        yield return new("Overview", "a summary tile", host => Add(host, Press("overviewTile")),
+            Button.BackgroundProperty, "Intent.Surface");
+        yield return new("Overview", "a summary tile", host => Add(host, Press("overviewTile")),
+            Button.PaddingProperty, "Component.Overview.TilePadding");
+        yield return new("Overview", "a tile value", host => Add(host, Text("overviewTileValue")),
+            TextBlock.FontSizeProperty, "Intent.Type.Title");
     }
 
     private static T Add<T>(Panel host, T control) where T : Control

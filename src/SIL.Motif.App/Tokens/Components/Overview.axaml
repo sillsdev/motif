@@ -1,0 +1,126 @@
+<!--
+  The project summary page: each card shows one stored Overview response and routes to its detail page.
+  Colours come from Intent keys; sizes and gaps come from Intent keys or this file's Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Overview.PageMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Overview.HeaderPadding" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Overview.TilePadding" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Overview.HandoffPadding" ResourceKey="Primitive.Inset.12_4_12_4" />
+    <StaticResource x:Key="Component.Overview.CardRadius" ResourceKey="Primitive.Radius.12" />
+    <StaticResource x:Key="Component.Overview.HeaderGap" ResourceKey="Primitive.Space.16" />
+    <StaticResource x:Key="Component.Overview.HandoffGap" ResourceKey="Primitive.Space.12" />
+    <StaticResource x:Key="Component.Overview.CountMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
+    <StaticResource x:Key="Component.Overview.HistoryEntryBorder" ResourceKey="Primitive.Inset.0_0_0_1" />
+    <StaticResource x:Key="Component.Overview.HistoryEntryPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
+  </Styles.Resources>
+  <Style Selector="StackPanel.overviewPage">
+    <Setter Property="Margin" Value="{DynamicResource Component.Overview.PageMargin}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Section}" />
+  </Style>
+  <Style Selector="StackPanel.overviewHeaderContent">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Section}" />
+  </Style>
+  <Style Selector="Border.overviewHeader">
+    <Setter Property="Padding" Value="{DynamicResource Component.Overview.HeaderPadding}" />
+  </Style>
+  <Style Selector="StackPanel.overviewProject">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="StackPanel.overviewFingerprints">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="UniformGrid.overviewCounts">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterGroup}" />
+  </Style>
+  <Style Selector="StackPanel.overviewCount">
+    <Setter Property="Margin" Value="{DynamicResource Component.Overview.CountMargin}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewCountValue">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewProjectName">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewAssessment">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewMuted">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Button.overviewTile">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Overview.CardRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Overview.TilePadding}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.overviewTile:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+  <Style Selector="Button.overviewTile:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
+  </Style>
+  <Style Selector="StackPanel.overviewTileContent">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewTileTitle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewTileLink">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewTileValue">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewTileDetail">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+  </Style>
+  <Style Selector="Border.overviewHandoff">
+    <Setter Property="Padding" Value="{DynamicResource Component.Overview.HandoffPadding}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Overview.CardRadius}" />
+  </Style>
+  <Style Selector="PathIcon.overviewHandoffIcon">
+    <Setter Property="Width" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="Height" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewHandoffText">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
+  </Style>
+  <Style Selector="Expander.overviewHistory">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterRelated}" />
+  </Style>
+  <Style Selector="StackPanel.overviewHistoryContent">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="Border.overviewHistoryEntry">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.Overview.HistoryEntryBorder}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Overview.HistoryEntryPadding}" />
+  </Style>
+  <Style Selector="StackPanel.overviewHistoryRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewHistoryKind">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+</Styles>

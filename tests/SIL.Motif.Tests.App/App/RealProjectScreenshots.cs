@@ -90,20 +90,19 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
 
         try
         {
-            AvaloniaHeadlessFixture.RunUntilComplete(() =>
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
             {
                 using var walkthrough = new WalkthroughWindow(managedRoot, fwDataPath, handoffFolder);
                 walkthrough.Window.Width = 1240;
                 walkthrough.Window.Height = 780;
                 walkthrough.Show();
-                Drive(walkthrough, original, folder);
+                await Drive(walkthrough, original, folder);
                 SaveEveryPage(walkthrough, folder);
                 SaveTimingStepLimit(walkthrough, folder);
                 SaveGrammarWithAKindChosen(walkthrough, folder);
                 SaveCompareWithCellsChosen(walkthrough, folder);
                 SaveWhatChangedAfterARerun(walkthrough, folder);
                 SaveInTextWithNoTextChecked(walkthrough, folder);
-                return Task.CompletedTask;
             }, TimeSpan.FromMinutes(30));
         }
         finally
@@ -112,10 +111,10 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         }
     }
 
-    private void Drive(WalkthroughWindow walkthrough, string original, string folder)
+    private async Task Drive(WalkthroughWindow walkthrough, string original, string folder)
     {
         var workspace = walkthrough.Workspace;
-        walkthrough.Click("Browse for a FieldWorks project file");
+        await workspace.SetProjectAsync(walkthrough.ProjectPath);
         walkthrough.WaitUntil(() => workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts." ||
             workspace.Baseline.HasBaseline, TimeSpan.FromMinutes(2), "the project did not open");
 

@@ -125,6 +125,10 @@ public sealed partial class WorkspaceContext : ObservableObject
     [NotifyPropertyChangedFor(nameof(ProjectName))]
     private string? _projectPath;
 
+    /// <summary>When the current project was opened in this window.</summary>
+    [ObservableProperty]
+    private DateTimeOffset? _projectOpenedUtc;
+
     /// <summary>Whether a project has been chosen.</summary>
     public bool HasProject => ProjectPath is not null;
 
@@ -184,6 +188,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         ProjectPath = projectPath;
+        ProjectOpenedUtc = DateTimeOffset.UtcNow;
         await Changes.OpenProjectAsync(projectPath, cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);

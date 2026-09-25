@@ -4,7 +4,7 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Overview page: where the project stands, shown today by the project summary panel.</summary>
+/// <summary>The project summary page, built from its response and its own page model.</summary>
 public sealed partial class OverviewPage : UserControl
 {
     public OverviewPage(OverviewPageModel page)
@@ -12,6 +12,5 @@ public sealed partial class OverviewPage : UserControl
         ArgumentNullException.ThrowIfNull(page);
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        this.FindControl<ContentControl>("ProjectHost")!.Content = new ProjectPanel(page);
     }
 }

@@ -49,8 +49,8 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
 
             Assert.Same(workspace, window.DataContext);
-            Assert.Same(
-                workspace.PageModel<OverviewPageModel>(), Assert.Single(window.GetLogicalDescendants().OfType<ProjectPanel>()).Page);
+            Assert.Same(workspace.PageModel<OverviewPageModel>(),
+                Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>()).DataContext);
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
             Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
             Assert.Same(workspace.PageModel<TextsPageModel>().Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
@@ -58,6 +58,110 @@ public sealed class MainWindowSmokeTests
             Assert.Same(
                 workspace.PageModel<TimingPageModel>().Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
             Assert.Same(workspace.PageModel<AiHandoffPageModel>().Handoff, Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>()).Handoff);
+        });
+    }
+
+    [Fact]
+    public void OverviewShowsStoredNumbersAndItsTilesNavigateWithoutRunningAnAssessment()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.Context.ProjectPath = @"C:\projects\aweti.fwdata";
+                workspace.Context.ProjectOpenedUtc = DateTimeOffset.Parse("2026-09-24T11:02:00Z");
+                workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with { IsStale = true };
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<UserControl>(),
+                    control => control.GetType().Name == "ProjectPanel");
+                var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
+                var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
+                Assert.Contains("41 of 125", text);
+                Assert.Contains("18 of 39", text);
+                Assert.Contains("8.4 ms", text);
+                Assert.Contains("123.5 ms", text);
+                Assert.Contains("6 findings", text);
+                Assert.Contains("FieldWorks has changed since the Baseline behind these numbers.", text);
+                var tiles = window.GetLogicalDescendants().OfType<Button>()
+                    .Where(item => AutomationProperties.GetName(item) is "Open Text Coverage in Texts" or
+                        "Open accuracy in Texts" or "Open Timing" or "Open Warnings");
+                Assert.All(tiles, tile =>
+                {
+                    Assert.Equal(Avalonia.Layout.HorizontalAlignment.Stretch, tile.HorizontalAlignment);
+                    Assert.Equal(Avalonia.Layout.VerticalAlignment.Stretch, tile.VerticalAlignment);
+                });
+
+                Click("Open Text Coverage in Texts");
+                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
+
+                Click("Open accuracy in Texts");
+                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
+
+                Click("Open Timing");
+                Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
+
+                Click("Open Warnings");
+                Assert.Equal(WorkspacePage.Warnings, workspace.CurrentPage);
+
+                Click("Start an AI Handoff");
+                Assert.Equal(WorkspacePage.AiHandoff, workspace.CurrentPage);
+                Assert.Empty(((FakeCommandClient)workspace.Context.Commands).AssessRequests);
+
+                void Click(string accessibleName)
+                {
+                    var button = window.GetLogicalDescendants().OfType<Button>()
+                        .Single(item => AutomationProperties.GetName(item) == accessibleName);
+                    button.Command!.Execute(button.CommandParameter);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void OverviewWithoutStoredAssessmentDoesNotShowZeroesAsResults()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with
+                {
+                    AssessmentId = null,
+                    AssessedUtc = null,
+                    AssessmentElapsedSeconds = null,
+                    TextCoverage = new OverviewTextCoverage(0, 0, 0, 0, 0, 0),
+                    Accuracy = new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0),
+                    Timing = new OverviewTiming(null, null, [], 0),
+                    Warnings = null,
+                };
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
+                var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
+                Assert.Contains("No Assessment for the default Selection.", text);
+                Assert.Contains("No Assessment", text);
+                Assert.Contains("Not recorded", text);
+                Assert.Contains("No warning summary is available.", text);
+                Assert.DoesNotContain("0 of 0", text);
+                Assert.DoesNotContain("words hit the step limit", text);
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 
@@ -639,6 +743,18 @@ public sealed class MainWindowSmokeTests
         window.Compose(workspace);
         return (workspace, window, dragSource);
     }
+
+    private static OverviewResponse SampleOverview() => new(
+        "Aweti", DateTimeOffset.Parse("2026-09-24T11:02:00Z"), DateTimeOffset.Parse("2026-09-24T10:58:00Z"),
+        125, 3, 2, 313, 812, 38, 167, "assessment-1", DateTimeOffset.Parse("2026-09-24T11:04:00Z"), 130,
+        "grammar-fingerprint", "selection-fingerprint",
+        new OverviewTextCoverage(41, 23, 55, 6, 313, 183),
+        new OverviewAccuracy(18, 39, 5, 55, 2, 4, 9, 18),
+        new OverviewTiming(8.4, 123.5, [new SlowWordTiming("miboko", 1000)], 55),
+        new OverviewWarningsSummary(6, 1, "environment failed validation", 4))
+    {
+        ProjectFileName = "aweti.fwdata",
+    };
 
     private sealed class FakeProjectPicker : IProjectPicker
     {

@@ -1,7 +1,158 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:queries="clr-namespace:SIL.Motif.Commands.Queries;assembly=SIL.Motif.Commands"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.OverviewPage"
              x:DataType="vm:OverviewPageModel">
-  <ContentControl x:Name="ProjectHost" IsEnabled="{Binding Context.ProjectAndSelectionEnabled}" />
+  <ScrollViewer Classes="overviewScroll" VerticalScrollBarVisibility="Auto">
+    <StackPanel Classes="overviewPage">
+      <Border Classes="card overviewHeader" AutomationProperties.Name="Project summary">
+        <StackPanel Classes="overviewHeaderContent">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Component.Overview.HeaderGap}">
+            <StackPanel Grid.Column="0" Classes="overviewProject">
+              <views:CopyableTextBlock Classes="overviewProjectName" Text="{Binding ProjectTitle}" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding ProjectDetails}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Classes="overviewAssessment" Text="{Binding AssessmentDetails}"
+                                       IsVisible="{Binding HasAssessment}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Classes="overviewFingerprints" HorizontalAlignment="Right">
+              <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding FingerprintSummary}" TextAlignment="Right" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding BaselineDetails}" TextAlignment="Right" />
+              <views:CopyableTextBlock Classes="error" Text="{Binding OverviewRefusalMessage}" TextWrapping="Wrap"
+                                       IsVisible="{Binding OverviewRefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Grid>
+          <UniformGrid Classes="overviewCounts" Rows="1" Columns="5">
+            <StackPanel Classes="overviewCount">
+              <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding SelectionWordCountText}" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="words in Selection" />
+            </StackPanel>
+            <StackPanel Classes="overviewCount">
+              <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding TextOccurrenceCountText}" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="occurrences" />
+            </StackPanel>
+            <StackPanel Classes="overviewCount">
+              <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding WordformCountText}" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="wordforms" />
+            </StackPanel>
+            <StackPanel Classes="overviewCount">
+              <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding RuleCountText}" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="rules" />
+            </StackPanel>
+            <StackPanel Classes="overviewCount">
+              <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding LexemeCountText}" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="lexemes" />
+            </StackPanel>
+          </UniformGrid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="notice" IsVisible="{Binding OverviewIsStale}">
+        <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers. Refresh to update them."
+                                 TextWrapping="Wrap" />
+      </Border>
+      <Border Classes="notice" IsVisible="{Binding ShowNoAssessment}">
+        <views:CopyableTextBlock Text="No Assessment for the default Selection. Press Refresh when you are ready to measure it."
+                                 TextWrapping="Wrap" />
+      </Border>
+
+      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+            ColumnSpacing="{DynamicResource Intent.Space.Group}"
+            RowSpacing="{DynamicResource Intent.Space.Group}">
+        <Button Grid.Row="0" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTextCoverageCommand}"
+                AutomationProperties.Name="Open Text Coverage in Texts">
+          <StackPanel Classes="overviewTileContent">
+            <DockPanel LastChildFill="False">
+              <TextBlock Classes="overviewTileTitle" Text="Text Coverage" DockPanel.Dock="Left" />
+              <TextBlock Classes="overviewTileLink" Text="Texts →" DockPanel.Dock="Right" />
+            </DockPanel>
+            <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageWords}" />
+            <TextBlock Classes="overviewMuted" Text="words parsed from the default Selection" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileDetail" Text="{Binding TextCoverageOccurrences}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Button>
+
+        <Button Grid.Row="0" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenAccuracyCommand}"
+                AutomationProperties.Name="Open accuracy in Texts">
+          <StackPanel Classes="overviewTileContent">
+            <DockPanel LastChildFill="False">
+              <TextBlock Classes="overviewTileTitle" Text="Accuracy" DockPanel.Dock="Left" />
+              <TextBlock Classes="overviewTileLink" Text="Texts →" DockPanel.Dock="Right" />
+            </DockPanel>
+            <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" />
+            <TextBlock Classes="overviewMuted" Text="approved words kept; every approved analysis rebuilt"
+                       TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileDetail" Text="{Binding AccuracyBreakdown}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Button>
+
+        <Button Grid.Row="1" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTimingCommand}"
+                AutomationProperties.Name="Open Timing">
+          <StackPanel Classes="overviewTileContent">
+            <DockPanel LastChildFill="False">
+              <TextBlock Classes="overviewTileTitle" Text="Timing" DockPanel.Dock="Left" />
+              <TextBlock Classes="overviewTileLink" Text="Timing →" DockPanel.Dock="Right" />
+            </DockPanel>
+            <TextBlock Classes="overviewTileValue" Text="{Binding TimingMedian}" />
+            <TextBlock Classes="overviewMuted" Text="median parse time per word" />
+            <TextBlock Classes="overviewTileDetail" Text="{Binding TimingDetails}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileDetail" Text="{Binding SlowestWords}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Button>
+
+        <Button Grid.Row="1" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenWarningsCommand}"
+                AutomationProperties.Name="Open Warnings">
+          <StackPanel Classes="overviewTileContent">
+            <DockPanel LastChildFill="False">
+              <TextBlock Classes="overviewTileTitle" Text="Warnings" DockPanel.Dock="Left" />
+              <TextBlock Classes="overviewTileLink" Text="Warnings →" DockPanel.Dock="Right" />
+            </DockPanel>
+            <TextBlock Classes="overviewTileValue" Text="{Binding WarningsCount}" />
+            <TextBlock Classes="overviewMuted" Text="findings in the grammar as PanGloss read it"
+                       TextWrapping="Wrap" IsVisible="{Binding HasWarningSummary}" />
+            <TextBlock Classes="overviewTileDetail" Text="{Binding WarningsDetails}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Button>
+      </Grid>
+
+      <Border Classes="card overviewHandoff">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Component.Overview.HandoffGap}">
+          <PathIcon Classes="overviewHandoffIcon" Data="M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7z M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
+          <views:CopyableTextBlock Grid.Column="1" Classes="overviewHandoffText"
+                                   Text="Ask a chat model about anything on this page. AI Handoff writes the files and the question."
+                                   TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="2" Content="Start an AI Handoff" Command="{Binding OpenAiHandoffCommand}"
+                  AutomationProperties.Name="Start an AI Handoff" />
+        </Grid>
+      </Border>
+
+      <Expander Classes="overviewHistory" Header="Project history" AutomationProperties.Name="Project history">
+        <StackPanel Classes="overviewHistoryContent">
+          <views:CopyableTextBlock Classes="overviewMuted" Text="Loading history..." IsVisible="{Binding History.IsLoading}" />
+          <views:CopyableTextBlock Classes="error" Text="{Binding History.RefusalMessage}" TextWrapping="Wrap"
+                                   IsVisible="{Binding History.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          <views:CopyableTextBlock Classes="overviewMuted" Text="Nothing recorded for this project yet."
+                                   IsVisible="{Binding !History.HasEntries}" />
+          <ItemsControl ItemsSource="{Binding History.Entries}" AutomationProperties.Name="Project history entries">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="queries:ProjectHistoryEntry">
+                <Border Classes="overviewHistoryEntry">
+                  <StackPanel Classes="overviewHistoryRow">
+                    <DockPanel LastChildFill="False">
+                      <views:CopyableTextBlock DockPanel.Dock="Left" Classes="overviewHistoryKind" Text="{Binding Kind}" />
+                      <views:CopyableTextBlock DockPanel.Dock="Right" Classes="overviewMuted"
+                                               Text="{Binding At.LocalDateTime, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
+                    </DockPanel>
+                    <views:CopyableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Expander>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

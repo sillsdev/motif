@@ -33,6 +33,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Setup.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Selection.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Review.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Overview.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>
