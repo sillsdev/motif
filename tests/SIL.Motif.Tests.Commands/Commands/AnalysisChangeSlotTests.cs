@@ -9,6 +9,40 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class AnalysisChangeSlotTests
 {
+    [Theory]
+    [InlineData(LexicalSenseOperationKinds.SetGloss)]
+    [InlineData(LexicalSenseOperationKinds.ClearGloss)]
+    public void TwoGlossOperationsOnOneSenseAndWritingSystemAreRefused(string laterKind)
+    {
+        var sense = CanonicalId.Mint();
+        var first = new OperationEnvelope(CanonicalId.Mint(), LexicalSenseOperationKinds.SetGloss,
+            target: sense, after: JsonSerializer.SerializeToElement(new { ws = "en", text = "first" }));
+        var later = new OperationEnvelope(CanonicalId.Mint(), laterKind, target: sense,
+            after: laterKind == LexicalSenseOperationKinds.SetGloss
+                ? JsonSerializer.SerializeToElement(new { ws = "en", text = "second" })
+                : JsonSerializer.SerializeToElement(new { ws = "en" }));
+
+        Assert.Throws<ContractParseException>(() => AnalysisOpinionSlotValidator.Validate(
+            new Proposal(new Dictionary<string, string> { ["lexical"] = "1.0" },
+                CanonicalId.Mint(), null, [first, later])));
+    }
+
+    [Fact]
+    public void GlossOperationsForDifferentWritingSystemsHaveDistinctSlots()
+    {
+        var sense = CanonicalId.Mint();
+        var operations = new[]
+        {
+            new OperationEnvelope(CanonicalId.Mint(), LexicalSenseOperationKinds.SetGloss,
+                target: sense, after: JsonSerializer.SerializeToElement(new { ws = "en", text = "first" })),
+            new OperationEnvelope(CanonicalId.Mint(), LexicalSenseOperationKinds.ClearGloss,
+                target: sense, after: JsonSerializer.SerializeToElement(new { ws = "fr" })),
+        };
+
+        AnalysisOpinionSlotValidator.Validate(new Proposal(
+            new Dictionary<string, string> { ["lexical"] = "1.0" }, CanonicalId.Mint(), null, operations));
+    }
+
     [Fact]
     public void TwoSpellingOperationsOnOneWordformAreRefused()
     {
