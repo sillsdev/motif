@@ -20,6 +20,9 @@ public sealed record BaselineRecord(
 /// <summary>A current Baseline and the project inventory captured from the same saved state.</summary>
 public sealed record CurrentBaselineEvidence(BaselineRecord Baseline, ProjectSummarySnapshot Summary);
 
+/// <summary>A current Baseline and its complete stored Text words projection.</summary>
+public sealed record CurrentBaselineTextWords(BaselineRecord Baseline, TextWordsProjection Projection);
+
 /// <summary>Reads and writes the project's single current-Baseline pointer and its recorded metadata.</summary>
 public sealed class BaselineRepository
 {
@@ -68,10 +71,37 @@ public sealed class BaselineRepository
         }
     }
 
+    /// <summary>Reads the current Baseline and its matching Text words projection in one SQLite read.</summary>
+    public CurrentBaselineTextWords? GetCurrentTextWords(string projectKey)
+    {
+        RequireProjectKey(projectKey);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = TextWordsEvidenceSelectSql + " WHERE b.ProjectKey = $project;";
+        command.Parameters.AddWithValue("$project", projectKey);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+        var baseline = Read(reader);
+        if (reader.IsDBNull(12))
+            throw new InvalidDataException("The current Baseline has no matching Text words projection.");
+        try
+        {
+            var projection = JsonSerializer.Deserialize<TextWordsProjection>(reader.GetString(12), MotifJson.CreateOptions());
+            if (!IsValid(projection))
+                throw new JsonException("The stored Text words projection has an invalid shape.");
+            return new CurrentBaselineTextWords(baseline, projection!);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("The stored Baseline Text words projection is malformed.", exception);
+        }
+    }
+
     // BaselinePublication is internal: every caller (BaselineCapturePublisher, BaselineRefresh) lives here too.
     internal BaselineRecord Record(
         string projectKey, BaselinePublication publication, DateTimeOffset publishedUtc,
-        DateTimeOffset sourceLastWriteUtc, ProjectSummarySnapshot? projectSummary = null)
+        DateTimeOffset sourceLastWriteUtc, ProjectSummarySnapshot? projectSummary = null,
+        TextWordsProjection? textWordsProjection = null)
     {
         RequireProjectKey(projectKey);
         ArgumentNullException.ThrowIfNull(publication);
@@ -81,6 +111,13 @@ public sealed class BaselineRepository
             throw new ArgumentException("The source last-write time must be UTC.", nameof(sourceLastWriteUtc));
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        using (var deleteProjection = connection.CreateCommand())
+        {
+            deleteProjection.Transaction = transaction;
+            deleteProjection.CommandText = "DELETE FROM BaselineTextWords WHERE ProjectKey = $project;";
+            deleteProjection.Parameters.AddWithValue("$project", projectKey);
+            deleteProjection.ExecuteNonQuery();
+        }
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
@@ -118,6 +155,20 @@ public sealed class BaselineRepository
             summaryCommand.Parameters.AddWithValue("$summary", JsonSerializer.Serialize(
                 projectSummary ?? ProjectSummarySnapshot.Empty, MotifJson.CreateOptions()));
             summaryCommand.ExecuteNonQuery();
+        }
+        if (textWordsProjection is not null)
+        {
+            using var textWordsCommand = connection.CreateCommand();
+            textWordsCommand.Transaction = transaction;
+            textWordsCommand.CommandText = """
+                INSERT INTO BaselineTextWords (ProjectKey, BundleDigest, ProjectionJson)
+                VALUES ($project, $bundle, $projection);
+                """;
+            textWordsCommand.Parameters.AddWithValue("$project", projectKey);
+            textWordsCommand.Parameters.AddWithValue("$bundle", publication.Token.BundleDigest);
+            textWordsCommand.Parameters.AddWithValue("$projection",
+                JsonSerializer.Serialize(textWordsProjection, MotifJson.CreateOptions()));
+            textWordsCommand.ExecuteNonQuery();
         }
         command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
         using var reader = command.ExecuteReader();
@@ -173,6 +224,35 @@ public sealed class BaselineRepository
         }
     }
 
+    private static bool IsValid(TextWordsProjection? projection)
+    {
+        if (projection?.Texts is null || projection.Wordforms is null ||
+            projection.Texts.Any(text => text is null || text.Title is null || text.Lines is null) ||
+            projection.Texts.Select(text => text.TextId).Distinct().Count() != projection.Texts.Count ||
+            projection.Wordforms.Any(wordform => wordform is null || wordform.CandidateCount < 0 ||
+                wordform.Approved is null || wordform.Disapproved is null) ||
+            projection.Wordforms.Select(wordform => wordform.WordformId).Distinct().Count() != projection.Wordforms.Count)
+            return false;
+
+        foreach (var text in projection.Texts)
+        foreach (var line in text.Lines)
+        {
+            if (line is null || line.Number < 1 || line.Sentence is null || line.Tokens is null) return false;
+            foreach (var token in line.Tokens)
+                if (token is null || token.Text is null || token.Forms is null || token.Forms.Any(form => form is null) ||
+                    token.Analysis is not null && !IsValid(token.Analysis))
+                    return false;
+        }
+
+        return projection.Wordforms.SelectMany(wordform => wordform.Approved.Concat(wordform.Disapproved))
+            .All(IsValid);
+    }
+
+    private static bool IsValid(TextWordsProjectedAnalysis analysis) =>
+        !string.IsNullOrWhiteSpace(analysis.Key) && analysis.Morphs is not null &&
+        analysis.Morphs.All(morph => morph is not null && morph.Form is not null && morph.Gloss is not null &&
+            morph.Category is not null && (morph.LinkTarget is null || !string.IsNullOrWhiteSpace(morph.LinkTarget.Tool)));
+
     private static void RequireProjectKey(string projectKey)
     {
         if (string.IsNullOrWhiteSpace(projectKey))
@@ -187,4 +267,10 @@ public sealed class BaselineRepository
         "b.ProjectionVersion, b.CapturedUtc, b.BundleDigest, b.CapturedHostSessionId, b.CapturedEditGeneration, " +
         "b.RootDirectory, b.FwDataPath, b.PublishedUtc, b.SourceLastWriteUtc, s.SummaryJson " +
         "FROM Baselines b LEFT JOIN BaselineSummaries s ON s.ProjectKey = b.ProjectKey";
+
+    private const string TextWordsEvidenceSelectSql = "SELECT b.ProjectKey, b.ProjectIdentity, b.SemanticSnapshotDigest, " +
+        "b.ProjectionVersion, b.CapturedUtc, b.BundleDigest, b.CapturedHostSessionId, b.CapturedEditGeneration, " +
+        "b.RootDirectory, b.FwDataPath, b.PublishedUtc, b.SourceLastWriteUtc, p.ProjectionJson " +
+        "FROM Baselines b LEFT JOIN BaselineTextWords p ON p.ProjectKey = b.ProjectKey " +
+        "AND p.BundleDigest = b.BundleDigest";
 }

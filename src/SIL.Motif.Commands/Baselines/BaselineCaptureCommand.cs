@@ -75,12 +75,14 @@ public static class BaselineCaptureCommand
                 string projectIdentity;
                 string semanticDigest;
                 ProjectSummarySnapshot projectSummary;
+                TextWordsProjection textWordsProjection;
                 try
                 {
                     using var cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
                     projectIdentity = cache.LangProject.Guid.ToString("D");
                     semanticDigest = BaselineSemanticDigest.Compute(cache, CancellationToken.None);
                     projectSummary = ProjectSummaryReader.Read(cache);
+                    textWordsProjection = TextWordsProjectionBuilder.Build(cache);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -107,7 +109,7 @@ public static class BaselineCaptureCommand
 
                     publication = new BaselineCapturePublisher(database, managedRoot)
                         .PublishAsync(project, bundlePath, declaredToken, copy.SourceLastWriteUtc,
-                            CancellationToken.None, projectSummary)
+                            CancellationToken.None, projectSummary, textWordsProjection)
                         .GetAwaiter().GetResult();
                 }
                 catch (InvalidDataException ex)

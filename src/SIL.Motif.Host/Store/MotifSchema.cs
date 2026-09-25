@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 22;
+    public const int CurrentSchema = 23;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -30,7 +30,7 @@ public static class MotifSchema
         {
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
-                BaselineDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl;
+                BaselineDdl + BaselineTextWordsDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl;
             command.ExecuteNonQuery();
         }
 
@@ -57,7 +57,7 @@ public static class MotifSchema
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
-            "BaselineSummaries", "GrammarChecks", "PendingChangeFits"
+            "BaselineSummaries", "BaselineTextWords", "GrammarChecks", "PendingChangeFits"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -298,6 +298,7 @@ public static class MotifSchema
         "DefaultSelection" => [new("NamedSelections", "SelectionName", "SelectionName", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentObjectTimings" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineSummaries" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
+        "BaselineTextWords" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -353,6 +354,8 @@ public static class MotifSchema
             C("Object", "TEXT", true), C("Word", "TEXT", true), C("Attempts", "INTEGER"), C("Passes", "INTEGER"),
             C("ElapsedMs", "REAL", true)],
         "BaselineSummaries" => [C("ProjectKey", "TEXT", false, 1), C("SummaryJson", "TEXT", true)],
+        "BaselineTextWords" => [C("ProjectKey", "TEXT", false, 1), C("BundleDigest", "TEXT", true),
+            C("ProjectionJson", "TEXT", true)],
         "ParsedAnalyses" =>
         [C("AssessedWordId", "INTEGER", true), C("OrdinalIndex", "INTEGER", true), C("CategoryGuid", "TEXT"),
             C("MorphemeGuidsJson", "TEXT", true), C("RootIndex", "INTEGER", true), C("IdentityDigest", "TEXT", true)],
@@ -691,6 +694,14 @@ public static class MotifSchema
         CREATE TABLE BaselineSummaries (
             ProjectKey TEXT PRIMARY KEY REFERENCES Baselines(ProjectKey),
             SummaryJson TEXT NOT NULL
+        );
+        """;
+
+    private const string BaselineTextWordsDdl = """
+        CREATE TABLE BaselineTextWords (
+            ProjectKey TEXT PRIMARY KEY REFERENCES Baselines(ProjectKey),
+            BundleDigest TEXT NOT NULL,
+            ProjectionJson TEXT NOT NULL
         );
         """;
 
