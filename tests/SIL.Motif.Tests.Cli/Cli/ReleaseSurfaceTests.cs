@@ -20,7 +20,8 @@ public sealed class ReleaseSurfaceTests : IDisposable
     private static readonly string[] ReleasedNames =
     [
         "open", "analyses", "config show", "report", "report --list-kinds", "compare",
-        "baseline capture", "assess", "stats", "selection show", "selection set-default", "overview", "timing", "warnings",
+        "baseline capture", "assess", "stats", "selection show", "selection set-default", "setup skip", "texts list",
+        "overview", "timing", "warnings",
         "handoff", "add-corpus", "add-document",
         "add-corpus-bundle", "corpora", "show-corpus", "baseline-refresh", "jobs show",
         "jobs assessments", "jobs list", "jobs cancel", "jobs requeue", "jobs move",

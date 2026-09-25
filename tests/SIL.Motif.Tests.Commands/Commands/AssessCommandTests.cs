@@ -98,7 +98,7 @@ public sealed class AssessCommandTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var set = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
-            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], []));
+            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], [], 1200, new StepCap(4321)));
 
         Assert.True(set.Succeeded, set.Refusal?.Message);
         var read = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(seeded.FwDataPath));
@@ -110,6 +110,7 @@ public sealed class AssessCommandTests : IDisposable
             (SeededProject.AnalysedWordForm, 4, 1, 2, 2_000_000L),
             (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
+        AssessmentScope? observedScope = null;
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
@@ -120,8 +121,11 @@ public sealed class AssessCommandTests : IDisposable
             _ => new AssessmentRaw.WordMeasurements([]),
         })
         {
-            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
-                _managedRootsParent, scope, candidate),
+            CaptureEvidence = (scope, candidate) =>
+            {
+                observedScope = scope;
+                return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
+            },
         };
         var invoker = new FakeInvoker
         {
@@ -133,6 +137,8 @@ public sealed class AssessCommandTests : IDisposable
             invoker, null, CancellationToken.None);
 
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        Assert.Equal(TimeSpan.FromMilliseconds(1200), observedScope!.PerWordLimit);
+        Assert.Equal(4321, observedScope.PerWordStepLimit);
         Assert.Equal([SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm], assessed.Value!.Selection.Words);
         var parseAssessment = assessed.Value.AssessmentIds
             .Select(OpenRepository(seeded.FwDataPath).Get)

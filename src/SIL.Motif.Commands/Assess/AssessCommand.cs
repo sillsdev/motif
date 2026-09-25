@@ -127,6 +127,7 @@ public static class AssessCommand
 
             SelectionRequest selectionRequest;
             string? namedSelection = null;
+            int? defaultPerWordLimitMs = null;
             if (request.Selection is null)
             {
                 var saved = namedSelections.GetDefault();
@@ -135,7 +136,9 @@ public static class AssessCommand
                         "selection.default-missing", FailureReason.Refused,
                         "No default Selection is saved for this project. Save one with `motif selection set-default` first."));
                 namedSelection = saved.Name;
-                selectionRequest = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null);
+                defaultPerWordLimitMs = saved.PerWordLimitMs;
+                selectionRequest = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null,
+                    PerWordStepLimit: saved.PerWordStepLimit);
             }
             else
             {
@@ -173,7 +176,8 @@ public static class AssessCommand
                         $"The Assessor does not declare required Assessment kind '{unsupported[0]}'.",
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
                 scope = new AssessmentScope(composition.Selection.Words, collected,
-                    request.PerWordLimitMs is { } ms ? TimeSpan.FromMilliseconds(ms) : configured.PerWordLimit,
+                    request.PerWordLimitMs is { } ms ? TimeSpan.FromMilliseconds(ms)
+                        : defaultPerWordLimitMs is { } savedMs ? TimeSpan.FromMilliseconds(savedMs) : configured.PerWordLimit,
                     request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ?? configured.PerWordStepLimit);
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
             }

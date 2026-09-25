@@ -17,6 +17,10 @@ public sealed partial class CommandClient
         SetDefaultSelectionRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => SelectionCommands.SetDefault(request));
 
+    public Task<CommandOutcome<ProjectSetupResponse>> SkipSetupAsync(
+        SkipSetupRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProjectSetupCommands.Skip(request));
+
     public Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
         ShowConfigRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => ConfigCommands.Show(request));

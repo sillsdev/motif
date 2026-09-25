@@ -1,7 +1,9 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Styling;
+using SIL.Motif.App.Views;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -45,6 +47,57 @@ public sealed class DesignTokenTests
         var themed = ThemedIntentKeys();
         Assert.NotEmpty(themed["Light"]);
         Assert.Equal(themed["Light"].Order(), themed["Dark"].Order());
+    }
+
+    [Fact]
+    public void SetupScrimUsesItsOwnDarkBrushInBothThemes()
+    {
+        var setupStyles = File.ReadAllText(Path.Combine(AppDirectory(), "Tokens", "Components", "Setup.axaml"));
+        Assert.Contains("{DynamicResource Intent.Scrim}", setupStyles, StringComparison.Ordinal);
+
+        _avalonia.Invoke(() =>
+        {
+            foreach (var variant in Variants)
+            {
+                Assert.True(Application.Current!.TryGetResource("Intent.Scrim", variant, out var value));
+                var brush = Assert.IsType<Avalonia.Media.SolidColorBrush>(value);
+                Assert.True(brush.Color.R < 100 && brush.Color.G < 100 && brush.Color.B < 100);
+            }
+        });
+    }
+
+    [Fact]
+    public void SelectionColumnSizesConvertToGridLengths()
+    {
+        var keys = new[]
+        {
+            "Component.Selection.TextColumn",
+            "Component.Selection.CountColumn",
+            "Component.Selection.ResultColumn",
+            "Component.Selection.IconColumn",
+            "Component.Selection.DetailColumn",
+        };
+        var selectionView = XDocument.Load(Path.Combine(AppDirectory(), "Views", "SelectionPanel.axaml"));
+        var columnWidths = selectionView.Descendants()
+            .Where(element => element.Name.LocalName == "ColumnDefinition")
+            .Select(element => (string?)element.Attribute("Width"))
+            .Where(value => value?.Contains("Component.Selection.", StringComparison.Ordinal) == true)
+            .ToList();
+        Assert.NotEmpty(columnWidths);
+        Assert.All(columnWidths, value => Assert.Contains(
+            "Converter={x:Static views:SelectionPanel.SizeToGridLength}", value, StringComparison.Ordinal));
+
+        _avalonia.Invoke(() =>
+        {
+            foreach (var key in keys)
+            {
+                Assert.True(Application.Current!.TryGetResource(key, ThemeVariant.Light, out var value));
+                var size = Assert.IsType<double>(value);
+                var gridLength = SelectionPanel.SizeToGridLength.Convert(
+                    size, typeof(GridLength), null!, System.Globalization.CultureInfo.InvariantCulture);
+                Assert.Equal(new GridLength(size), Assert.IsType<GridLength>(gridLength));
+            }
+        });
     }
 
     [Fact]
@@ -237,6 +290,8 @@ public sealed class DesignTokenTests
     private static bool IsTokenOrLayout(string value) =>
         value.StartsWith("{DynamicResource Intent.", StringComparison.Ordinal)
         || value.StartsWith("{DynamicResource Component.", StringComparison.Ordinal)
+        || value.StartsWith("{Binding Source={StaticResource Component.Selection.", StringComparison.Ordinal)
+            && value.EndsWith("Converter={x:Static views:SelectionPanel.SizeToGridLength}}", StringComparison.Ordinal)
         || value is "Auto" or "*"
         || value.Split(',').All(part => part == "Auto" || part.Contains('*') || string.IsNullOrWhiteSpace(part));
 

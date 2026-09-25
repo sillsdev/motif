@@ -19,8 +19,9 @@ public static class SelectionCommands
         ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
         {
             var saved = new NamedSelectionRepository(database).GetDefault();
+            var setupSkipped = new ProjectSetupRepository(database).IsSkipped();
             return CommandOutcome<DefaultSelectionResponse>.Success(new DefaultSelectionResponse(
-                saved is null ? null : Project(saved)));
+                saved is null ? null : Project(saved), setupSkipped));
         });
 
     /// <summary>Saves named inputs and makes that Selection the default for Assessments.</summary>
@@ -31,6 +32,10 @@ public static class SelectionCommands
             return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
                 "selection.invalid", FailureReason.InvalidArgument,
                 "A Selection name and non-null Text and word lists are required."));
+        if (request.PerWordLimitMs <= 0)
+            return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
+                "selection.invalid-time-limit", FailureReason.InvalidArgument,
+                "The per-word time limit must be a positive number of milliseconds."));
         if (request.TextIds.Count == 0 && request.AddedWords.All(string.IsNullOrWhiteSpace))
             return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
                 "selection.empty", FailureReason.InvalidArgument,
@@ -50,11 +55,13 @@ public static class SelectionCommands
                         "selection.text-not-found", FailureReason.InvalidArgument,
                         $"No Text with GUID '{missing:D}' exists in the current Baseline."));
             }
-            var saved = new NamedSelectionRepository(database).SetDefault(request.Name, request.TextIds, request.AddedWords);
+            var saved = new NamedSelectionRepository(database).SetDefault(request.Name, request.TextIds,
+                request.AddedWords, request.PerWordLimitMs, request.PerWordStepLimit);
             return CommandOutcome<DefaultSelectionResponse>.Success(new DefaultSelectionResponse(Project(saved)));
         });
     }
 
     private static NamedSelectionProjection Project(NamedSelectionRecord saved) => new(
-        saved.Name, saved.TextIds, saved.AddedWords, saved.CreatedUtc, saved.UpdatedUtc);
+        saved.Name, saved.TextIds, saved.AddedWords, saved.CreatedUtc, saved.UpdatedUtc,
+        saved.PerWordLimitMs, saved.PerWordStepLimit);
 }

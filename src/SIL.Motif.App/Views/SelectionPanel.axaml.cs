@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data.Converters;
 using Avalonia.VisualTree;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -11,6 +12,10 @@ namespace SIL.Motif.App.Views;
 /// <summary>Text and word Selection editor, and the checked Texts' words, bound to their own view models.</summary>
 public sealed partial class SelectionPanel : UserControl
 {
+    /// <summary>Converts a token size into the type required by a grid column.</summary>
+    public static readonly IValueConverter SizeToGridLength = new FuncValueConverter<double, GridLength>(
+        size => new GridLength(size));
+
     public SelectionPanel(SelectionViewModel selection, TextWordsViewModel words)
     {
         ArgumentNullException.ThrowIfNull(selection);

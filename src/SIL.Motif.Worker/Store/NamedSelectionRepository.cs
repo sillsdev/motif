@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Store;
@@ -10,7 +11,9 @@ public sealed record NamedSelectionRecord(
     IReadOnlyList<Guid> TextIds,
     IReadOnlyList<string> AddedWords,
     string CreatedUtc,
-    string UpdatedUtc);
+    string UpdatedUtc,
+    int PerWordLimitMs,
+    StepCap PerWordStepLimit);
 
 /// <summary>Stores named Selections and the one that is resolved by default for an Assessment.</summary>
 public sealed class NamedSelectionRepository(MotifDatabase database)
@@ -23,7 +26,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc
+            SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc,
+                s.PerWordLimitMs, s.PerWordStepLimit
             FROM DefaultSelection d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
             WHERE d.Id = 1;
             """;
@@ -38,7 +42,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc
+            SELECT SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc,
+                PerWordLimitMs, PerWordStepLimit
             FROM NamedSelections WHERE SelectionName = $name;
             """;
         command.Parameters.AddWithValue("$name", name.Trim());
@@ -47,12 +52,16 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
     }
 
     /// <summary>Saves or replaces one named Selection and makes it the project's default atomically.</summary>
-    public NamedSelectionRecord SetDefault(string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords)
+    public NamedSelectionRecord SetDefault(
+        string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
+        int perWordLimitMs = 1000, StepCap? perWordStepLimit = null)
     {
         RequireName(name);
         ArgumentNullException.ThrowIfNull(textIds);
         ArgumentNullException.ThrowIfNull(addedWords);
+        if (perWordLimitMs <= 0) throw new ArgumentOutOfRangeException(nameof(perWordLimitMs));
         name = name.Trim();
+        var stepLimit = perWordStepLimit ?? StepCap.Default;
         var canonicalTextIds = textIds.Distinct().OrderBy(id => id.ToString("D"), StringComparer.Ordinal).ToArray();
         var canonicalWords = addedWords.Select(word => word.Trim()).Where(word => word.Length > 0)
             .Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
@@ -73,18 +82,23 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         {
             upsert.Transaction = transaction;
             upsert.CommandText = """
-                INSERT INTO NamedSelections (SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc)
-                VALUES ($name, $texts, $words, $created, $updated)
+                INSERT INTO NamedSelections
+                    (SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc, PerWordLimitMs, PerWordStepLimit)
+                VALUES ($name, $texts, $words, $created, $updated, $timeLimit, $stepLimit)
                 ON CONFLICT (SelectionName) DO UPDATE SET
                     TextIdsJson = excluded.TextIdsJson,
                     AddedWordsJson = excluded.AddedWordsJson,
-                    UpdatedUtc = excluded.UpdatedUtc;
+                    UpdatedUtc = excluded.UpdatedUtc,
+                    PerWordLimitMs = excluded.PerWordLimitMs,
+                    PerWordStepLimit = excluded.PerWordStepLimit;
                 """;
             upsert.Parameters.AddWithValue("$name", name);
             upsert.Parameters.AddWithValue("$texts", JsonSerializer.Serialize(canonicalTextIds));
             upsert.Parameters.AddWithValue("$words", JsonSerializer.Serialize(canonicalWords));
             upsert.Parameters.AddWithValue("$created", createdUtc);
             upsert.Parameters.AddWithValue("$updated", now);
+            upsert.Parameters.AddWithValue("$timeLimit", perWordLimitMs);
+            upsert.Parameters.AddWithValue("$stepLimit", stepLimit.Steps is { } steps ? steps : DBNull.Value);
             upsert.ExecuteNonQuery();
         }
         using (var set = connection.CreateCommand())
@@ -97,8 +111,15 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             set.Parameters.AddWithValue("$name", name);
             set.ExecuteNonQuery();
         }
+        using (var clearSkipped = connection.CreateCommand())
+        {
+            clearSkipped.Transaction = transaction;
+            clearSkipped.CommandText = "UPDATE MotifMetadata SET SetupSkippedUtc = NULL WHERE Id = 1;";
+            clearSkipped.ExecuteNonQuery();
+        }
         transaction.Commit();
-        return new NamedSelectionRecord(name, canonicalTextIds, canonicalWords, createdUtc, now);
+        return new NamedSelectionRecord(name, canonicalTextIds, canonicalWords, createdUtc, now,
+            perWordLimitMs, stepLimit);
     }
 
     private static NamedSelectionRecord Read(SqliteDataReader reader)
@@ -107,9 +128,10 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         {
             return new NamedSelectionRecord(
                 reader.GetString(0), JsonSerializer.Deserialize<Guid[]>(reader.GetString(1))!,
-                JsonSerializer.Deserialize<string[]>(reader.GetString(2))!, reader.GetString(3), reader.GetString(4));
+                JsonSerializer.Deserialize<string[]>(reader.GetString(2))!, reader.GetString(3), reader.GetString(4),
+                reader.GetInt32(5), reader.IsDBNull(6) ? StepCap.Unbounded : new StepCap(reader.GetInt64(6)));
         }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentOutOfRangeException)
         {
             throw new InvalidDataException("A saved Selection has invalid stored inputs.", exception);
         }

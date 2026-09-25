@@ -175,8 +175,14 @@ public static class CliVerbCatalog
             new[]
             {
                 "selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] " +
-                "[--add-words <word,word>] [--json]",
+                "[--add-words <word,word>] [--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]",
             }),
+        new CliVerbDescriptor(
+            "Project", "texts", "texts list",
+            new[] { "texts list --project <fwdata> [--json]" }),
+        new CliVerbDescriptor(
+            "Project", "setup", "setup skip",
+            new[] { "setup skip --project <fwdata> [--json]" }),
         new CliVerbDescriptor(
             "Project", "overview", "overview",
             new[] { "overview --project <fwdata> [--json]" }),

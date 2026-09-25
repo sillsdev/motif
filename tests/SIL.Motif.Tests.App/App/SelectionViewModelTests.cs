@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
@@ -122,7 +123,7 @@ public sealed class SelectionViewModelTests
     {
         var fake = new FakeCommandClient();
         fake.ListTextsCompletesWith(new TextInventoryResponse(
-            [new TextChoiceSummary(AlphaId, "Alpha", 10, 6)], HasBaseline: true));
+            [new TextChoiceSummary(AlphaId, "Alpha", 10, 6) { InterlinearizationPercent = 60 }], HasBaseline: true));
         var selection = new SelectionViewModel(fake);
 
         await selection.SetProjectAsync(ProjectPath);
@@ -130,6 +131,22 @@ public sealed class SelectionViewModelTests
         var text = Assert.Single(selection.Texts);
         Assert.Equal("10 distinct", text.DistinctCountText);
         Assert.Equal("60% interlinearized", text.InterlinearizedText);
+    }
+
+    [Fact]
+    public async Task TextChoicesDisplayTheInterlinearizationShareFromTheCommandResponse()
+    {
+        var response = JsonSerializer.Deserialize<TextInventoryResponse>("""
+            {"Texts":[{"Id":"11111111-1111-1111-1111-111111111111","Title":"Alpha",
+             "WordCount":10,"InterlinearizedWordCount":0,"InterlinearizationPercent":65}],"HasBaseline":true}
+            """)!;
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(response);
+        var selection = new SelectionViewModel(fake);
+
+        await selection.SetProjectAsync(ProjectPath);
+
+        Assert.Equal("65% interlinearized", Assert.Single(selection.Texts).InterlinearizedText);
     }
 
     [Fact]
@@ -153,7 +170,7 @@ public sealed class SelectionViewModelTests
             "Default", [BetaId], ["one", "two"], "created", "updated"));
 
         Assert.Equal([BetaId], selection.ChosenTextIds);
-        Assert.Equal("one\ntwo", selection.PastedWords);
+        Assert.Equal(string.Join(Environment.NewLine, "one", "two"), selection.PastedWords);
         Assert.True(selection.CanAssess);
     }
 

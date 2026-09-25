@@ -55,6 +55,9 @@ public sealed class TextInventoryQueryTests : IDisposable
         var choice = Assert.Single(outcome.Value!.Texts);
         Assert.Equal(seededText.TextId, choice.Id);
         Assert.Equal(SeededProject.TextTitle, choice.Title);
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(choice));
+        Assert.True(json.RootElement.TryGetProperty("InterlinearizationPercent", out var share));
+        Assert.Equal(50d, share.GetDouble());
     }
 
     [Fact]

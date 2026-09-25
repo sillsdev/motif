@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -14,7 +15,8 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="CorpusCommands"/>, <see cref="ConfigCommands"/>,
 /// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, <see cref="BaselineCaptureCommand"/>,
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
-/// <see cref="OverviewCommand"/>, <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>, and
+/// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
+/// <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>, and
 /// <see cref="JobCommands"/>.
 /// </summary>
 /// <remarks>
@@ -99,6 +101,8 @@ public static class CommandCatalog
         // Saved default Selection
         new CommandDescriptor("selection show", typeof(ReadDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released),
         new CommandDescriptor("selection set-default", typeof(SetDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released),
+        new CommandDescriptor("setup skip", typeof(SkipSetupRequest), typeof(ProjectSetupResponse), CommandSurface.Released),
+        new CommandDescriptor("texts list", typeof(TextInventoryRequest), typeof(TextInventoryResponse), CommandSurface.Released),
 
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released),

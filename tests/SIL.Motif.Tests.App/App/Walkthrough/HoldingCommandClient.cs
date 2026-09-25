@@ -50,6 +50,10 @@ internal sealed partial class HoldingCommandClient : ICommandClient
         SetDefaultSelectionRequest request, CancellationToken cancellationToken) =>
         _inner.SetDefaultSelectionAsync(request, cancellationToken);
 
+    public Task<CommandOutcome<ProjectSetupResponse>> SkipSetupAsync(
+        SkipSetupRequest request, CancellationToken cancellationToken) =>
+        _inner.SkipSetupAsync(request, cancellationToken);
+
     public Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
         ShowConfigRequest request, CancellationToken cancellationToken) =>
         _inner.ShowConfigAsync(request, cancellationToken);

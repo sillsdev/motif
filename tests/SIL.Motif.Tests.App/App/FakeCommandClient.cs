@@ -38,7 +38,7 @@ public sealed partial class FakeCommandClient : ICommandClient
         _currentBaseline = (_, _) => throw NotConfigured(nameof(GetCurrentBaselineAsync));
 
     private Func<TextInventoryRequest, CancellationToken, Task<CommandOutcome<TextInventoryResponse>>>
-        _listTexts = (_, _) => throw NotConfigured(nameof(ListTextsAsync));
+        _listTexts = (_, _) => Completed(new TextInventoryResponse([], HasBaseline: true));
 
     private Func<ReadDefaultSelectionRequest, CancellationToken,
         Task<CommandOutcome<DefaultSelectionResponse>>> _readDefaultSelection =
@@ -47,7 +47,11 @@ public sealed partial class FakeCommandClient : ICommandClient
     private Func<SetDefaultSelectionRequest, CancellationToken,
         Task<CommandOutcome<DefaultSelectionResponse>>> _setDefaultSelection =
         (request, _) => Completed(new DefaultSelectionResponse(new NamedSelectionProjection(
-            request.Name, request.TextIds, request.AddedWords, string.Empty, string.Empty)));
+            request.Name, request.TextIds, request.AddedWords, string.Empty, string.Empty,
+            request.PerWordLimitMs, request.PerWordStepLimit ?? SIL.Motif.Contract.Assess.StepCap.Default)));
+
+    private Func<SkipSetupRequest, CancellationToken, Task<CommandOutcome<ProjectSetupResponse>>> _skipSetup =
+        (_, _) => Completed(new ProjectSetupResponse(true));
 
     private Func<ShowConfigRequest, CancellationToken,
         Task<CommandOutcome<ProjectConfigurationProjection>>> _showConfig =
@@ -63,6 +67,7 @@ public sealed partial class FakeCommandClient : ICommandClient
     public List<TextInventoryRequest> ListTextsRequests { get; } = [];
     public List<ReadDefaultSelectionRequest> DefaultSelectionRequests { get; } = [];
     public List<SetDefaultSelectionRequest> SetDefaultSelectionRequests { get; } = [];
+    public List<SkipSetupRequest> SkipSetupRequests { get; } = [];
     public List<ShowConfigRequest> ShowConfigRequests { get; } = [];
 
     public void OnCaptureBaseline(
@@ -161,10 +166,17 @@ public sealed partial class FakeCommandClient : ICommandClient
     public void DefaultSelectionIs(NamedSelectionProjection? selection) =>
         _readDefaultSelection = (_, _) => Completed(new DefaultSelectionResponse(selection));
 
+    public void DefaultSelectionResponseIs(DefaultSelectionResponse response) =>
+        _readDefaultSelection = (_, _) => Completed(response);
+
     public void OnSetDefaultSelection(
         Func<SetDefaultSelectionRequest, CancellationToken,
             Task<CommandOutcome<DefaultSelectionResponse>>> behavior) =>
         _setDefaultSelection = behavior;
+
+    public void OnSkipSetup(
+        Func<SkipSetupRequest, CancellationToken, Task<CommandOutcome<ProjectSetupResponse>>> behavior) =>
+        _skipSetup = behavior;
 
     public void SetDefaultSelectionRefusesWith(Refusal refusal) =>
         OnSetDefaultSelection((_, _) => Refused<DefaultSelectionResponse>(refusal));
@@ -210,6 +222,13 @@ public sealed partial class FakeCommandClient : ICommandClient
     {
         SetDefaultSelectionRequests.Add(request);
         return _setDefaultSelection(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<ProjectSetupResponse>> SkipSetupAsync(
+        SkipSetupRequest request, CancellationToken cancellationToken)
+    {
+        SkipSetupRequests.Add(request);
+        return _skipSetup(request, cancellationToken);
     }
 
     public Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(

@@ -4,6 +4,7 @@ using System.Text;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Worker.Jobs;
 using ProjectionText = SIL.Motif.Projection.Rendering.CommandTextRenderer;
 
@@ -53,6 +54,10 @@ public static class CommandTextRenderer
             AssessCommandResponse r => RenderAssessed(r),
             StatsCommandResponse r => RenderStats(r),
             DefaultSelectionResponse r => RenderDefaultSelection(r),
+            ProjectSetupResponse r => r.SetupSkipped
+                ? "Setup skipped for this project." + Environment.NewLine
+                : "Setup remains open." + Environment.NewLine,
+            TextInventoryResponse r => RenderTextInventory(r),
             OverviewResponse r => RenderOverview(r),
             WarningsResponse r => RenderWarnings(r),
             TimingResponse r => RenderTiming(r),
@@ -222,12 +227,24 @@ public static class CommandTextRenderer
 
     private static string RenderDefaultSelection(DefaultSelectionResponse response)
     {
-        if (response.Selection is null) return "No default Selection is saved." + Environment.NewLine;
+        if (response.Selection is null)
+            return "No default Selection is saved." + Environment.NewLine +
+                (response.SetupSkipped ? "Setup skipped for this project." + Environment.NewLine : string.Empty);
         var selection = response.Selection;
         return $"Default Selection: {selection.Name}{Environment.NewLine}" +
             $"  Texts:       {selection.TextIds.Count:N0}{Environment.NewLine}" +
             $"  Added words: {selection.AddedWords.Count:N0}{Environment.NewLine}" +
+            $"  Time limit:  {selection.PerWordLimitMs:N0} ms{Environment.NewLine}" +
+            $"  Step limit:  {selection.PerWordStepLimit?.ToArgument() ?? "project default"}{Environment.NewLine}" +
             $"  Updated:     {selection.UpdatedUtc}{Environment.NewLine}";
+    }
+
+    private static string RenderTextInventory(TextInventoryResponse response)
+    {
+        if (!response.HasBaseline) return "Capture a Baseline to choose Texts." + Environment.NewLine;
+        if (response.Texts.Count == 0) return "This Baseline has no Texts." + Environment.NewLine;
+        return string.Join(Environment.NewLine, response.Texts.Select(text =>
+            $"{text.Title}  {text.InterlinearizationPercent:0}% interlinearized  {text.Id:D}")) + Environment.NewLine;
     }
 
     private static string RenderOverview(OverviewResponse response)

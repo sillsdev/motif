@@ -9,12 +9,15 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed partial class TextChoiceViewModel : ObservableObject
 {
-    public TextChoiceViewModel(Guid id, string title, int wordCount = 0, int interlinearizedWordCount = 0)
+    public TextChoiceViewModel(
+        Guid id, string title, int wordCount = 0, int interlinearizedWordCount = 0,
+        double interlinearizationPercent = 0)
     {
         Id = id;
         Title = title;
         WordCount = wordCount;
         InterlinearizedWordCount = interlinearizedWordCount;
+        InterlinearizationPercent = interlinearizationPercent;
     }
 
     public Guid Id { get; }
@@ -25,11 +28,14 @@ public sealed partial class TextChoiceViewModel : ObservableObject
 
     public int InterlinearizedWordCount { get; }
 
+    /// <summary>The share computed by the Text inventory command.</summary>
+    public double InterlinearizationPercent { get; }
+
     public string DistinctCountText => $"{WordCount:N0} distinct";
 
     public string InterlinearizedText => WordCount == 0
         ? "no words"
-        : $"{100d * InterlinearizedWordCount / WordCount:0}% interlinearized";
+        : $"{InterlinearizationPercent:0}% interlinearized";
 
     [ObservableProperty]
     private bool _isChecked;

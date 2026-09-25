@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Avalonia.Input;
+using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
@@ -61,8 +62,8 @@ public sealed class HandoffWorkspaceViewModelTests
         FakeCommandClient fake, FakeProjectPicker projectPicker, HandoffWorkspaceViewModel workspace,
         string projectPath, BaselineToken? token = null)
     {
-        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, token is null ? null : DateTimeOffset.UtcNow, false));
-        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+        token ??= NewToken();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         projectPicker.PathToReturn = projectPath;
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
     }
@@ -106,8 +107,11 @@ public sealed class HandoffWorkspaceViewModelTests
     public async Task ConfigureOpensSetupWithoutNavigatingAwayFromTheCurrentPage()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
-        fake.DefaultSelectionIs(new NamedSelectionProjection(
-            "Default", [TextId], ["one", "two"], "created", "updated"));
+        fake.DefaultSelectionResponseIs(JsonSerializer.Deserialize<DefaultSelectionResponse>("""
+            {"Selection":{"Name":"Default","TextIds":["11111111-1111-1111-1111-111111111111"],
+             "AddedWords":["one","two"],"CreatedUtc":"created","UpdatedUtc":"updated",
+             "PerWordLimitMs":1250,"PerWordStepLimit":{"steps":987,"isUnbounded":false}},"SetupSkipped":false}
+            """)!);
         fake.ListTextsCompletesWith(new TextInventoryResponse(
             [new TextChoiceSummary(TextId, "Alpha", 10, 6)], HasBaseline: true));
         fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Success(
@@ -123,10 +127,10 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.True(workspace.Context.Setup!.IsOpen);
         Assert.Equal(0, workspace.Context.Setup.Step);
         Assert.True(Assert.Single(workspace.Selection.Texts).IsChecked);
-        Assert.Equal("one\ntwo", workspace.Selection.PastedWords);
-        Assert.Equal(0.75m, workspace.Selection.PerWordTimeLimitSeconds);
-        Assert.Equal(321m, workspace.Selection.PerWordStepLimit);
-        Assert.Equal(new StepCap(321), workspace.Selection.BuildRequest().PerWordStepLimit);
+        Assert.Equal(string.Join(Environment.NewLine, "one", "two"), workspace.Selection.PastedWords);
+        Assert.Equal(1.25m, workspace.Selection.PerWordTimeLimitSeconds);
+        Assert.Equal(987m, workspace.Selection.PerWordStepLimit);
+        Assert.Equal(new StepCap(987), workspace.Selection.BuildRequest().PerWordStepLimit);
     }
 
     [Fact]
@@ -142,6 +146,37 @@ public sealed class HandoffWorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task SetupDoesNotRestartWhenBaselineArrivesDuringProjectLoading()
+    {
+        var (fake, _, _, _, workspace) = NewWorkspace();
+        var setup = workspace.Context.Setup!;
+        workspace.Context.ProjectPath = ProjectPath;
+        workspace.Context.Baseline = new WorkspaceBaseline(true, "captured", "saved", "at", "not held", null);
+        var configStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var configGate = new TaskCompletionSource<CommandOutcome<ProjectConfigurationProjection>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnShowConfig((_, _) =>
+        {
+            configStarted.TrySetResult();
+            return configGate.Task;
+        });
+
+        var projectLoading = setup.ProjectOpenedAsync(ProjectPath);
+        await configStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await setup.BaselineCapturedAsync();
+        setup.NextCommand.Execute(null);
+        Assert.Equal(1, setup.Step);
+
+        configGate.SetResult(CommandOutcome<ProjectConfigurationProjection>.Success(
+            new ProjectConfigurationProjection(true, true,
+                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 1000, StepCap.Default)])));
+        await projectLoading;
+
+        Assert.True(setup.IsOpen);
+        Assert.Equal(1, setup.Step);
+    }
+
+    [Fact]
     public async Task SkippingFirstSetupDoesNotSaveADefaultSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -149,7 +184,8 @@ public sealed class HandoffWorkspaceViewModelTests
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         workspace.Selection.Texts[0].IsChecked = true;
 
-        workspace.Context.Setup!.SkipCommand.Execute(null);
+        var skip = Assert.IsAssignableFrom<IAsyncRelayCommand>(workspace.Context.Setup!.SkipCommand);
+        await skip.ExecuteAsync(null);
 
         Assert.False(workspace.Context.Setup.IsOpen);
         Assert.Empty(fake.SetDefaultSelectionRequests);
@@ -174,6 +210,9 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.Equal(ProjectPath, saved.ProjectPath);
         Assert.Equal([TextId], saved.TextIds);
         Assert.Equal(["added word"], saved.AddedWords);
+        using var savedJson = JsonDocument.Parse(JsonSerializer.Serialize(saved));
+        Assert.Equal(500, savedJson.RootElement.GetProperty("PerWordLimitMs").GetInt32());
+        Assert.Equal(2345, savedJson.RootElement.GetProperty("PerWordStepLimit").GetProperty("steps").GetInt64());
         var assess = Assert.Single(fake.AssessRequests);
         Assert.Null(assess.Selection);
         Assert.Equal(500, assess.PerWordLimitMs);
@@ -221,6 +260,9 @@ public sealed class HandoffWorkspaceViewModelTests
         fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
         projectPicker.PathToReturn = ProjectPath;
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        Assert.False(workspace.Context.Setup!.IsOpen);
+        workspace.ConfigureCommand.Execute(null);
+        Assert.False(workspace.Context.Setup.IsOpen);
         Assert.Equal("Capture a Baseline to choose Texts.", workspace.Selection.TextsEmptyMessage);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
@@ -228,10 +270,53 @@ public sealed class HandoffWorkspaceViewModelTests
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
         await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
+        Assert.True(workspace.Context.Setup.IsOpen);
+        Assert.Equal(0, workspace.Context.Setup.Step);
         Assert.Equal("Alpha", Assert.Single(workspace.Selection.Texts).Title);
         Assert.Null(workspace.Selection.TextsEmptyMessage);
         Assert.Equal(ProjectPath, Assert.Single(fake.ListTextsRequests.Skip(1)).ProjectPath);
         Assert.False(workspace.RerunOffered);
+    }
+
+    [Fact]
+    public async Task StoredSkipSuppressesFirstOpenButConfigureCanReopenSetup()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionResponseIs(JsonSerializer.Deserialize<DefaultSelectionResponse>("""
+            {"Selection":null,"SetupSkipped":true}
+            """)!);
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+
+        Assert.False(workspace.Context.Setup!.IsOpen);
+
+        workspace.ConfigureCommand.Execute(null);
+
+        Assert.True(workspace.Context.Setup.IsOpen);
+        Assert.Equal(0, workspace.Context.Setup.Step);
+    }
+
+    [Fact]
+    public async Task LaterRunsUseLimitsSavedWithTheDefaultSelection()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionResponseIs(JsonSerializer.Deserialize<DefaultSelectionResponse>("""
+            {"Selection":{"Name":"Default","TextIds":["11111111-1111-1111-1111-111111111111"],
+             "AddedWords":[],"CreatedUtc":"created","UpdatedUtc":"updated",
+             "PerWordLimitMs":450,"PerWordStepLimit":{"steps":1234,"isUnbounded":false}},"SetupSkipped":false}
+            """)!);
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Success(
+            new ProjectConfigurationProjection(true, true,
+                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 2000, new StepCap(9876))]))));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        fake.AssessCompletesWith(NewAssessResponse("saved limits"));
+
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        var request = Assert.Single(fake.AssessRequests);
+        Assert.Equal(450, request.PerWordLimitMs);
+        Assert.Equal(new StepCap(1234), request.Selection!.PerWordStepLimit);
     }
 
     [Fact]
@@ -255,7 +340,7 @@ public sealed class HandoffWorkspaceViewModelTests
 
         Assert.Equal([TextId], workspace.Selection.ChosenTextIds);
         Assert.Equal("kept", workspace.Selection.PastedWords);
-        Assert.Equal("1 text, 1 pasted word", workspace.Selection.SummaryText);
+        Assert.Equal("1 text, 1 pasted word, step cap 50,000,000", workspace.Selection.SummaryText);
     }
 
     [Fact]

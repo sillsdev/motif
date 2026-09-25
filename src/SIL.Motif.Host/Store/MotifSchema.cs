@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 19;
+    public const int CurrentSchema = 20;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -314,10 +314,11 @@ public static class MotifSchema
         "MotifMetadata" =>
         [C("Id", "INTEGER", false, 1), C("FullFwDataPath", "TEXT", true),
             C("FieldWorksProjectIdentity", "TEXT", true), C("MinimumWorkerVersion", "TEXT", true),
-            C("CreatedUtc", "TEXT", true), C("CurrentAssessmentId", "TEXT")],
+            C("CreatedUtc", "TEXT", true), C("CurrentAssessmentId", "TEXT"), C("SetupSkippedUtc", "TEXT")],
         "NamedSelections" =>
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
-            C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
+            C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
+            C("PerWordLimitMs", "INTEGER", true), C("PerWordStepLimit", "INTEGER")],
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "GrammarChecks" =>
         [C("BaselineToken", "TEXT", false, 1), C("SelectionSha256", "TEXT", true),
@@ -440,7 +441,8 @@ public static class MotifSchema
             FieldWorksProjectIdentity TEXT NOT NULL,
             MinimumWorkerVersion TEXT NOT NULL,
             CreatedUtc TEXT NOT NULL,
-            CurrentAssessmentId TEXT NULL
+            CurrentAssessmentId TEXT NULL,
+            SetupSkippedUtc TEXT NULL
         );
 
         """;
@@ -525,7 +527,9 @@ public static class MotifSchema
             TextIdsJson TEXT NOT NULL,
             AddedWordsJson TEXT NOT NULL,
             CreatedUtc TEXT NOT NULL,
-            UpdatedUtc TEXT NOT NULL
+            UpdatedUtc TEXT NOT NULL,
+            PerWordLimitMs INTEGER NOT NULL CHECK (PerWordLimitMs > 0),
+            PerWordStepLimit INTEGER NULL CHECK (PerWordStepLimit IS NULL OR PerWordStepLimit > 0)
         );
 
         CREATE TABLE DefaultSelection (

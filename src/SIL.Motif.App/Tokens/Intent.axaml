@@ -19,6 +19,7 @@
     Intent.Surface.Hover          what a row shows under the pointer (Semi's Fill0)
     Intent.Surface.Neutral        a chip or tag with no verdict of its own (Semi's Fill1)
     Intent.Clear                  no fill at all, where a style must set a brush but show nothing
+    Intent.Scrim                  the dark layer that dims a window beneath a modal
     Intent.Text                   body text (Semi's Text0)
     Intent.TextSecondary          navigation labels and badge counts, quieter than body text
     Intent.TextMuted              supporting text: details, captions, counts (Semi's Text2)
@@ -154,6 +155,7 @@
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
+      <SolidColorBrush x:Key="Intent.Scrim" Color="{StaticResource Primitive.Color.Grey900}" />
       <StaticResource x:Key="Intent.Surface" ResourceKey="SemiColorBackground0" />
       <SolidColorBrush x:Key="Intent.Surface.Subtle" Color="{StaticResource Primitive.Color.Grey25}" />
       <StaticResource x:Key="Intent.Surface.Hover" ResourceKey="SemiColorFill0" />
@@ -189,6 +191,7 @@
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
+      <SolidColorBrush x:Key="Intent.Scrim" Color="{StaticResource Primitive.Color.Grey900}" />
       <StaticResource x:Key="Intent.Surface" ResourceKey="SemiColorBackground0" />
       <SolidColorBrush x:Key="Intent.Surface.Subtle" Color="{StaticResource Primitive.Color.Grey900}" />
       <StaticResource x:Key="Intent.Surface.Hover" ResourceKey="SemiColorFill0" />

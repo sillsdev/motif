@@ -17,6 +17,7 @@ public sealed partial class SetupViewModel : ObservableObject
     private readonly TextWordsViewModel _words;
     private int _loadGeneration;
     private NamedSelectionProjection? _savedSelection;
+    private bool _setupSkipped;
     private SelectionSnapshot? _snapshot;
     private StepCap _configuredStepLimit = StepCap.Default;
 
@@ -28,7 +29,7 @@ public sealed partial class SetupViewModel : ObservableObject
         _words = words;
         Selection = context.Selection;
         Indicators = Enumerable.Range(0, 4).Select(step => new SetupStepIndicator(step, step == 0)).ToArray();
-        SkipCommand = new RelayCommand(Skip);
+        SkipCommand = new AsyncRelayCommand(SkipAsync);
         BackCommand = new RelayCommand(() => Step--, () => Step > 0);
         NextCommand = new RelayCommand(() => Step++, () => Step < 3);
         FinishCommand = new AsyncRelayCommand(FinishAsync, CanFinish);
@@ -97,8 +98,23 @@ public sealed partial class SetupViewModel : ObservableObject
         ? null
         : "Enter a positive whole number of steps, or choose no limit.";
 
+    public string? TimeLimitValidationMessage => IsTimeLimitValid
+        ? null
+        : "Enter a positive time limit no greater than 2,147,483 seconds.";
+
     private bool IsStepLimitValid => IsStepLimitUnbounded ||
         StepLimitSteps is > 0 and var steps && decimal.Truncate(steps) == steps && steps <= long.MaxValue;
+
+    private bool IsTimeLimitValid =>
+        Selection.PerWordTimeLimitSeconds is > 0 and <= int.MaxValue / 1000m;
+
+    private void OpenFirstTimeSetup()
+    {
+        if (IsOpen) return;
+        CaptureSnapshot();
+        Step = 0;
+        IsOpen = true;
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FinishButtonText))]
@@ -120,7 +136,7 @@ public sealed partial class SetupViewModel : ObservableObject
         ? "Save this Selection as the project default. The next Assessment will use it."
         : "Motif will save this Selection with the project, then assess the stored Default Selection.";
 
-    public IRelayCommand SkipCommand { get; }
+    public IAsyncRelayCommand SkipCommand { get; }
     public IRelayCommand BackCommand { get; }
     public IRelayCommand NextCommand { get; }
     public IAsyncRelayCommand FinishCommand { get; }
@@ -145,6 +161,7 @@ public sealed partial class SetupViewModel : ObservableObject
         }
 
         _savedSelection = saved.Value!.Selection;
+        _setupSkipped = saved.Value.SetupSkipped;
         Selection.ApplyDefaultSelection(_savedSelection);
 
         var config = await _context.Commands.ShowConfigAsync(
@@ -159,15 +176,23 @@ public sealed partial class SetupViewModel : ObservableObject
 
         var scope = config.Value!.Scopes.FirstOrDefault(candidate => candidate.Name == "default")
             ?? config.Value.Scopes.FirstOrDefault();
-        if (scope is not null) ApplyLimits(scope.PerWordLimitMs, scope.PerWordStepLimit);
+        var timeLimitMs = _savedSelection?.PerWordLimitMs ?? scope?.PerWordLimitMs ?? 1000;
+        var stepLimit = _savedSelection?.PerWordStepLimit ?? scope?.PerWordStepLimit ?? StepCap.Default;
+        ApplyLimits(timeLimitMs, stepLimit);
 
         IsEditingExistingSelection = _savedSelection is not null;
         CaptureSnapshot();
-        if (_savedSelection is null)
-        {
-            Step = 0;
-            IsOpen = true;
-        }
+        if (_savedSelection is null && !_setupSkipped && _context.Baseline?.HasBaseline == true)
+            OpenFirstTimeSetup();
+    }
+
+    /// <summary>Opens first-time setup after the project receives its first Baseline.</summary>
+    public Task BaselineCapturedAsync()
+    {
+        if (ProjectPath is not null && _context.Baseline?.HasBaseline == true &&
+            _savedSelection is null && !_setupSkipped)
+            OpenFirstTimeSetup();
+        return Task.CompletedTask;
     }
 
     /// <summary>Closes the dialog and drops the project values when the shell clears its project.</summary>
@@ -177,6 +202,7 @@ public sealed partial class SetupViewModel : ObservableObject
         IsOpen = false;
         ProjectPath = null;
         _savedSelection = null;
+        _setupSkipped = false;
         _snapshot = null;
         _configuredStepLimit = StepCap.Default;
         IsEditingExistingSelection = false;
@@ -186,12 +212,19 @@ public sealed partial class SetupViewModel : ObservableObject
     /// <summary>Reopens setup from the project menu at its first step and with the saved values.</summary>
     public void OpenForConfiguration()
     {
-        if (ProjectPath is null) return;
+        if (ProjectPath is null || _context.Baseline?.HasBaseline != true) return;
         RefusalMessage = null;
-        if (_savedSelection is not null) Selection.ApplyDefaultSelection(_savedSelection);
-        Selection.PerWordStepLimit = _configuredStepLimit.Steps;
-        Selection.PerWordStepLimitUnbounded = _configuredStepLimit.IsUnbounded;
-        SetStepLimit(_configuredStepLimit);
+        if (_savedSelection is { } saved)
+        {
+            Selection.ApplyDefaultSelection(saved);
+            ApplyLimits(saved.PerWordLimitMs, saved.PerWordStepLimit ?? _configuredStepLimit);
+        }
+        else
+        {
+            Selection.PerWordStepLimit = _configuredStepLimit.Steps;
+            Selection.PerWordStepLimitUnbounded = _configuredStepLimit.IsUnbounded;
+            SetStepLimit(_configuredStepLimit);
+        }
         IsEditingExistingSelection = _savedSelection is not null;
         CaptureSnapshot();
         Step = 0;
@@ -207,6 +240,11 @@ public sealed partial class SetupViewModel : ObservableObject
             OnPropertyChanged(nameof(StepLimitValidationMessage));
             return;
         }
+        if (!IsTimeLimitValid)
+        {
+            OnPropertyChanged(nameof(TimeLimitValidationMessage));
+            return;
+        }
         if (!Selection.CanAssess)
         {
             RefusalMessage = "Choose at least one text or add a word before continuing.";
@@ -214,10 +252,13 @@ public sealed partial class SetupViewModel : ObservableObject
         }
 
         var stepLimit = IsStepLimitUnbounded ? StepCap.Unbounded : new StepCap((long)StepLimitSteps!.Value);
+        var timeLimitMs = decimal.ToInt32(decimal.Round(
+            Selection.PerWordTimeLimitSeconds!.Value * 1000m, 0, MidpointRounding.AwayFromZero));
         Selection.PerWordStepLimit = stepLimit.Steps;
         Selection.PerWordStepLimitUnbounded = stepLimit.IsUnbounded;
         var saved = await _context.Commands.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
-            projectPath, DefaultSelectionName, Selection.ChosenTextIds, Selection.PastedWordEntries),
+            projectPath, DefaultSelectionName, Selection.ChosenTextIds, Selection.PastedWordEntries,
+            timeLimitMs, stepLimit),
             CancellationToken.None).ConfigureAwait(true);
         if (!saved.Succeeded)
         {
@@ -226,7 +267,9 @@ public sealed partial class SetupViewModel : ObservableObject
         }
 
         _savedSelection = saved.Value!.Selection;
+        _setupSkipped = false;
         _configuredStepLimit = stepLimit;
+        Selection.PerWordTimeLimitSeconds = timeLimitMs / 1000m;
         CaptureSnapshot();
 
         if (!runFirstAssessment)
@@ -236,9 +279,6 @@ public sealed partial class SetupViewModel : ObservableObject
             return;
         }
 
-        var timeLimitMs = Selection.PerWordTimeLimitSeconds is > 0 and var seconds
-            ? (int)(seconds * 1000)
-            : (int?)null;
         await _context.Assess.RunDefaultSelectionAsync(timeLimitMs, stepLimit).ConfigureAwait(true);
         if (_context.Assess.State == RunState.Completed)
         {
@@ -253,10 +293,20 @@ public sealed partial class SetupViewModel : ObservableObject
         }
     }
 
-    private bool CanFinish() => IsFirstRunStep && IsStepLimitValid && Selection.CanAssess && !_context.Assess.IsActive;
+    private bool CanFinish() => IsFirstRunStep && IsStepLimitValid && IsTimeLimitValid &&
+        Selection.CanAssess && !_context.Assess.IsActive;
 
-    private void Skip()
+    private async Task SkipAsync()
     {
+        if (ProjectPath is not { } projectPath) return;
+        var result = await _context.Commands.SkipSetupAsync(
+            new SkipSetupRequest(projectPath), CancellationToken.None).ConfigureAwait(true);
+        if (!result.Succeeded)
+        {
+            RefusalMessage = result.Refusal!.Message;
+            return;
+        }
+        _setupSkipped = result.Value!.SetupSkipped;
         if (_snapshot is not null) RestoreSnapshot(_snapshot);
         IsOpen = false;
         RefusalMessage = null;
@@ -318,10 +368,12 @@ public sealed partial class SetupViewModel : ObservableObject
 
     private void OnSelectionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(SelectionViewModel.CanAssess) or nameof(SelectionViewModel.PastedWords))
+        if (e.PropertyName is nameof(SelectionViewModel.CanAssess) or nameof(SelectionViewModel.PastedWords)
+            or nameof(SelectionViewModel.PerWordTimeLimitSeconds))
         {
             OnPropertyChanged(nameof(AddedWordsText));
             OnPropertyChanged(nameof(RunSummary));
+            OnPropertyChanged(nameof(TimeLimitValidationMessage));
             FinishCommand.NotifyCanExecuteChanged();
         }
     }

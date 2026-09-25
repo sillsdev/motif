@@ -19,7 +19,7 @@
     <Setter Property="VerticalAlignment" Value="Stretch" />
   </Style>
   <Style Selector="Border.setupScrim">
-    <Setter Property="Background" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Scrim}" />
     <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
   </Style>
   <Style Selector="Border.setupDialog">

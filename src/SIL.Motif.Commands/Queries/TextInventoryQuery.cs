@@ -26,6 +26,7 @@ public sealed record TextChoiceSummary(
     int OccurrenceCount = 0,
     int InterlinearizedOccurrenceCount = 0)
 {
+    public double InterlinearizationPercent { get; init; }
     public double WordCoveragePercent => WordCount == 0 ? 0 : 100d * InterlinearizedWordCount / WordCount;
     public double OccurrenceCoveragePercent => OccurrenceCount == 0 ? 0 : 100d * InterlinearizedOccurrenceCount / OccurrenceCount;
 }
@@ -40,7 +41,7 @@ public sealed record TextInventoryResponse(IReadOnlyList<TextChoiceSummary> Text
 
 /// <summary>
 /// Lists the Texts held in a project's current Baseline scratch copy, for the Selection editor's Text
-/// picker. Read-only and outside the command catalog: it changes nothing and has no CLI verb.
+/// picker. It reads the current Baseline and changes nothing.
 /// </summary>
 /// <remarks>
 /// Reads only the published Baseline bundle's own scratch copy — never the live project — the same
@@ -86,10 +87,17 @@ public static class TextInventoryQuery
         var words = projection.Paragraphs.SelectMany(paragraph => paragraph.Phrases)
             .SelectMany(phrase => phrase.Words).Where(word => word.WordformGuid is not null).ToArray();
         var interlinearized = words.Where(word => word.AnalysisStatus != InterlinearAnalysisStatus.Unanalysed).ToArray();
+        var wordCount = words.Select(word => word.WordformGuid!.Value).Distinct().Count();
+        var interlinearizedWordCount = interlinearized.Select(word => word.WordformGuid!.Value).Distinct().Count();
         return new TextChoiceSummary(text.Guid, ReadTitle(text),
-            words.Select(word => word.WordformGuid!.Value).Distinct().Count(),
-            interlinearized.Select(word => word.WordformGuid!.Value).Distinct().Count(),
-            words.Length, interlinearized.Length);
+            wordCount,
+            interlinearizedWordCount,
+            words.Length, interlinearized.Length)
+        {
+            InterlinearizationPercent = wordCount == 0
+                ? 0
+                : 100d * interlinearizedWordCount / wordCount,
+        };
     }
 
     private static string ResolveProductVersion() => MotifProductVersion.CurrentText;

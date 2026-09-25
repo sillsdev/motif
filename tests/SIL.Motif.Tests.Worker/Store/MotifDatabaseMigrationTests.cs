@@ -248,14 +248,16 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         var expected = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["MotifMetadata"] = ["Id|INTEGER|0|1|", "FullFwDataPath|TEXT|1|0|", "FieldWorksProjectIdentity|TEXT|1|0|",
-                "MinimumWorkerVersion|TEXT|1|0|", "CreatedUtc|TEXT|1|0|", "CurrentAssessmentId|TEXT|0|0|"],
+                "MinimumWorkerVersion|TEXT|1|0|", "CreatedUtc|TEXT|1|0|", "CurrentAssessmentId|TEXT|0|0|",
+                "SetupSkippedUtc|TEXT|0|0|"],
             ["Corpora"] = ["CorpusId|TEXT|0|1|", "ProvenanceJson|TEXT|1|0|"],
             ["CorpusDocuments"] = ["CorpusId|TEXT|1|1|", "DocumentId|TEXT|1|2|", "OrdinalIndex|INTEGER|1|0|",
                 "Title|TEXT|1|0|", "Source|TEXT|1|0|", "Text|TEXT|1|0|", "ContentSha256|TEXT|1|0|",
                 "IngestedUtc|TEXT|1|0|", "Licence|TEXT|0|0|", "CapabilitiesJson|TEXT|0|0|", "AttributesJson|TEXT|0|0|"],
             ["AssessmentInvocations"] = ["InvocationId|TEXT|0|1|", "EvidenceJson|TEXT|1|0|"],
             ["NamedSelections"] = ["SelectionName|TEXT|0|1|", "TextIdsJson|TEXT|1|0|", "AddedWordsJson|TEXT|1|0|",
-                "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|"],
+                "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "PerWordLimitMs|INTEGER|1|0|",
+                "PerWordStepLimit|INTEGER|0|0|"],
             ["DefaultSelection"] = ["Id|INTEGER|0|1|", "SelectionName|TEXT|1|0|"],
             ["Assessments"] = ["AssessmentId|TEXT|0|1|", "SelectionName|TEXT|1|0|", "SelectionWordsJson|TEXT|1|0|",
                 "SelectionSha256|TEXT|1|0|", "SelectionProvenanceJson|TEXT|0|0|", "OutcomeDigest|TEXT|0|0|",

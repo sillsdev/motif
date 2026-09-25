@@ -161,7 +161,8 @@ public sealed partial class SelectionViewModel : ObservableObject
         foreach (var choice in outcome.Value!.Texts)
         {
             var textChoice = new TextChoiceViewModel(
-                choice.Id, choice.Title, choice.WordCount, choice.InterlinearizedWordCount)
+                choice.Id, choice.Title, choice.WordCount, choice.InterlinearizedWordCount,
+                choice.InterlinearizationPercent)
             { IsChecked = previouslyChecked.Contains(choice.Id) };
             textChoice.PropertyChanged += OnTextChoicePropertyChanged;
             _allTexts.Add(textChoice);

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.Walkthrough;
@@ -118,15 +119,17 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         walkthrough.WaitUntil(() => workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts." ||
             workspace.Baseline.HasBaseline, TimeSpan.FromMinutes(2), "the project did not open");
 
+        workspace.Baseline.RefreshCommand.Execute(null);
+        walkthrough.WaitUntil(() => workspace.Baseline.HasBaseline && !workspace.Baseline.RefreshCommand.IsRunning,
+            TimeSpan.FromMinutes(10), "the Baseline was not captured");
+
         walkthrough.WaitUntil(() => workspace.Context.Setup?.IsOpen == true,
             TimeSpan.FromMinutes(1), "first-open setup did not appear");
         var setup = workspace.Context.Setup!;
         CaptureSetupStep(walkthrough, folder, "project");
         setup.NextCommand.Execute(null);
+        walkthrough.WaitUntil(() => setup.Step == 1, TimeSpan.FromSeconds(1), "setup did not advance to Text selection");
 
-        workspace.Baseline.RefreshCommand.Execute(null);
-        walkthrough.WaitUntil(() => workspace.Baseline.HasBaseline && !workspace.Baseline.RefreshCommand.IsRunning,
-            TimeSpan.FromMinutes(10), "the Baseline was not captured");
         walkthrough.WaitUntil(() => workspace.PageModel<WarningsPageModel>().Grammar.HasChecked && !workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.IsRunning,
             TimeSpan.FromMinutes(5), "the grammar check did not finish");
 
@@ -136,15 +139,18 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         else workspace.Selection.PastedWords = "setup sample";
         CaptureSetupStep(walkthrough, folder, "selection");
         setup.NextCommand.Execute(null);
+        walkthrough.WaitUntil(() => setup.Step == 2, TimeSpan.FromSeconds(1), $"setup did not advance to its limits (step {setup.Step})");
         CaptureSetupStep(walkthrough, folder, "limits");
         setup.NextCommand.Execute(null);
+        walkthrough.WaitUntil(() => setup.Step == 3, TimeSpan.FromSeconds(1), "setup did not advance to its first run");
         CaptureSetupStep(walkthrough, folder, "first-run");
         setup.SkipCommand.Execute(null);
+        walkthrough.WaitUntil(() => !setup.IsOpen, TimeSpan.FromMinutes(1), "setup did not close after Skip");
 
         // Texts first, so In text has something to show; the sample's word list when the project has none.
-        foreach (var text in workspace.Selection.Texts.ToList())
+        foreach (var textChoice in workspace.Selection.Texts.ToList())
         {
-            text.IsChecked = true;
+            textChoice.IsChecked = true;
             var settle = DateTime.Now.AddMilliseconds(500);
             walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.PageModel<TextsPageModel>().Words.IsLoading,
                 TimeSpan.FromMinutes(2), "the Texts' words did not load");

@@ -2,6 +2,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using SIL.Motif.Cli;
@@ -12,6 +13,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
@@ -672,12 +674,37 @@ try
                     var addedWords = flags.TryGetValue("add-words", out var addedWordsRaw)
                         ? addedWordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                         : Array.Empty<string>();
+                    var timeLimitMs = 1000;
+                    if (flags.TryGetValue("time-limit-ms", out var selectionTimeLimitRaw) &&
+                        (!int.TryParse(selectionTimeLimitRaw, NumberStyles.None, CultureInfo.InvariantCulture,
+                            out timeLimitMs) || timeLimitMs <= 0))
+                        return Usage(UsageLineFor("selection set-default"), asJson);
+                    StepCap? stepLimit = null;
+                    if (flags.TryGetValue("step-cap", out var selectionStepLimitRaw))
+                    {
+                        try { stepLimit = StepCap.Parse(selectionStepLimitRaw); }
+                        catch (FormatException) { return Usage(UsageLineFor("selection set-default"), asJson); }
+                    }
                     result = RenderCommand(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
-                        selectionProject, selectionName, selectionTexts, addedWords)));
+                        selectionProject, selectionName, selectionTexts, addedWords, timeLimitMs, stepLimit)));
                     break;
                 default:
                     return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default"), asJson);
             }
+            break;
+
+        case "texts":
+            if (positionals.Count != 1 || positionals[0] != "list" ||
+                !flags.TryGetValue("project", out var textsProject))
+                return Usage(UsageLineFor("texts list"), asJson);
+            result = RenderCommand(TextInventoryQuery.Query(new TextInventoryRequest(textsProject)));
+            break;
+
+        case "setup":
+            if (positionals.Count != 1 || positionals[0] != "skip" ||
+                !flags.TryGetValue("project", out var setupProject))
+                return Usage(UsageLineFor("setup skip"), asJson);
+            result = RenderCommand(ProjectSetupCommands.Skip(new SkipSetupRequest(setupProject)));
             break;
 
         case "assess":
@@ -920,7 +947,7 @@ static string ResolveCommandName(string[] invocation)
     if (invocation.Length == 0) return string.Empty;
 
     var first = invocation[0];
-    if (first is "config" or "baseline" or "jobs" or "selection")
+    if (first is "config" or "baseline" or "jobs" or "selection" or "texts" or "setup")
     {
         var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;

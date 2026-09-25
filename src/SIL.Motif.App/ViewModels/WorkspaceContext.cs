@@ -187,6 +187,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         foreach (var page in _pages.ToArray())
             await page.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
+        if (Setup is not null) await Setup.BaselineCapturedAsync().ConfigureAwait(true);
     }
 
     /// <summary>Stops whatever work any page has running, and returns once each has stopped.</summary>

@@ -8,7 +8,7 @@
   <Grid ColumnSpacing="{DynamicResource Intent.Space.Section}"
         Margin="{DynamicResource Component.Selection.PageInset}">
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="{DynamicResource Component.Selection.TextColumn}" />
+      <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.TextColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
       <ColumnDefinition Width="*" />
     </Grid.ColumnDefinitions>
 
@@ -140,10 +140,10 @@
           <Grid Margin="{DynamicResource Component.Selection.WordHeaderMargin}">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="2*" />
-              <ColumnDefinition Width="{DynamicResource Component.Selection.CountColumn}" />
-              <ColumnDefinition Width="{DynamicResource Component.Selection.ResultColumn}" />
-              <ColumnDefinition Width="{DynamicResource Component.Selection.ResultColumn}" />
-              <ColumnDefinition Width="{DynamicResource Component.Selection.IconColumn}" />
+              <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.CountColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
+              <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.ResultColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
+              <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.ResultColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
+              <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.IconColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
             </Grid.ColumnDefinitions>
             <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WORD" />
             <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="IN TEXTS" />
@@ -158,9 +158,9 @@
                     <Grid>
                       <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*" />
-                        <ColumnDefinition Width="{DynamicResource Component.Selection.CountColumn}" />
-                        <ColumnDefinition Width="{DynamicResource Component.Selection.ResultColumn}" />
-                        <ColumnDefinition Width="{DynamicResource Component.Selection.ResultColumn}" />
+                        <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.CountColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
+                        <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.ResultColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
+                        <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.ResultColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
                       </Grid.ColumnDefinitions>
                       <views:CopyableTextBlock Grid.Column="0" Text="{Binding Form}" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceCount, StringFormat='×{0}'}" VerticalAlignment="Center" />
@@ -205,7 +205,7 @@
       <Grid Grid.Row="2" ColumnSpacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Words.ShowInText}">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="{DynamicResource Component.Selection.DetailColumn}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.DetailColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
         </Grid.ColumnDefinitions>
         <Grid Grid.Column="0" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
           <ComboBox ItemsSource="{Binding Words.ReaderTexts}" SelectedItem="{Binding Words.SelectedReaderText}"
@@ -225,7 +225,7 @@
                 <DataTemplate x:DataType="vm:ReaderLineViewModel">
                   <DockPanel Margin="{DynamicResource Component.Selection.DenseRowMargin}" LastChildFill="True">
                     <views:CopyableTextBlock DockPanel.Dock="Left" Classes="muted" Text="{Binding Number}"
-                                             Width="{DynamicResource Component.Selection.IconColumn}" />
+                                             Width="{Binding Source={StaticResource Component.Selection.IconColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
                     <ItemsControl ItemsSource="{Binding Tokens}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>

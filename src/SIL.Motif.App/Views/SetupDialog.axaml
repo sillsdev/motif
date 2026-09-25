@@ -92,6 +92,8 @@
                              Minimum="0.1" Increment="0.1" FormatString="0.#"
                              AutomationProperties.Name="Time limit per word, in seconds" />
             </Grid>
+            <TextBlock Classes="setupError" Text="{Binding TimeLimitValidationMessage}"
+                       IsVisible="{Binding TimeLimitValidationMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                 <TextBlock Text="Parser step limit per word" FontWeight="SemiBold" />
