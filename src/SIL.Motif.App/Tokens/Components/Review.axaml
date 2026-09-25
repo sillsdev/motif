@@ -1,13 +1,13 @@
 <!-- Review page spacing, reading outlines, and type roles use shared intent tokens. -->
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:collections="clr-namespace:Avalonia.Collections;assembly=Avalonia.Base">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.Review.PageMargin" ResourceKey="Primitive.Inset.16_12_16_0" />
     <StaticResource x:Key="Component.Review.CardMargin" ResourceKey="Primitive.Inset.0_0_8_0" />
     <StaticResource x:Key="Component.Review.ReadingPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
     <StaticResource x:Key="Component.Review.MorphPadding" ResourceKey="Primitive.Inset.4_2_4_2" />
     <StaticResource x:Key="Component.Review.RightWidth" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.Review.ParserDash" ResourceKey="Primitive.Dash.3_2" />
   </Styles.Resources>
   <Style Selector="Grid.reviewLayout">
     <Setter Property="Margin" Value="{DynamicResource Component.Review.PageMargin}" />
@@ -49,14 +49,7 @@
   <Style Selector="Rectangle.reviewParserOutline">
     <Setter Property="Stroke" Value="{DynamicResource Intent.TextFaint}" />
     <Setter Property="StrokeThickness" Value="{DynamicResource Intent.Stroke.Icon}" />
-    <Setter Property="StrokeDashArray">
-      <Setter.Value>
-        <collections:AvaloniaList x:TypeArguments="x:Double">
-          <x:Double>3</x:Double>
-          <x:Double>2</x:Double>
-        </collections:AvaloniaList>
-      </Setter.Value>
-    </Setter>
+    <Setter Property="StrokeDashArray" Value="{DynamicResource Component.Review.ParserDash}" />
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterRelated}" />
     <Setter Property="IsHitTestVisible" Value="False" />
   </Style>
