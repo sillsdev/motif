@@ -41,6 +41,9 @@ public enum TextsTab
 
     /// <summary>Named questions about words, each one a selection of exact Compare cells.</summary>
     Lists,
+
+    /// <summary>Words that moved between cells in the two most recent Assessments.</summary>
+    WhatChanged,
 }
 
 /// <summary>

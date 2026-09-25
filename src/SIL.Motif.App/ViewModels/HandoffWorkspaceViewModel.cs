@@ -68,7 +68,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         CancelRefreshCommand = new RelayCommand(CancelRefresh, () => _isRefreshing);
-        SeeWhatChangedCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix), () => ShowsSeeWhatChanged);
+        SeeWhatChangedCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.WhatChanged), () => ShowsSeeWhatChanged);
 
         Project.ProjectChosen += OnProjectChosen;
         Project.KnownProjects.CollectionChanged += OnKnownProjectsChanged;

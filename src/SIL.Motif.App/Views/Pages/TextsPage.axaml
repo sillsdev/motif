@@ -34,6 +34,9 @@
             <Button Content="Lists" Classes="tab" Classes.active="{Binding ShowLists}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.Lists}" AutomationProperties.Name="Lists tab" />
+            <Button Content="What changed" Classes="tab" Classes.active="{Binding ShowWhatChanged}"
+                  Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.WhatChanged}" AutomationProperties.Name="What changed tab" />
           </StackPanel>
         </DockPanel>
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
@@ -78,6 +81,7 @@
         <ContentControl x:Name="ResultsInTextHost" Grid.Column="1" />
       </Grid>
       <ContentControl x:Name="ListsHost" IsVisible="{Binding ShowLists}" />
+      <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
     </Panel>
   </Grid>
 </UserControl>

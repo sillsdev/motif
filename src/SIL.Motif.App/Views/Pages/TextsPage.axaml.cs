@@ -17,6 +17,7 @@ public sealed partial class TextsPage : UserControl
         Host("SelectionHost").Content = new SelectionPanel(page.Selection, page.Words);
         Host("ResultsInTextHost").Content = new ResultsInTextPanel(page.ResultsInText);
         Host("ListsHost").Content = new TextsListsPanel(page.TextsLists);
+        Host("DifferenceHost").Content = new DifferencePanel(page.Assess.Difference);
     }
 
     private ContentControl Host(string name) =>

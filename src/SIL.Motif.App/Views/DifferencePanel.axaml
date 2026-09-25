@@ -4,68 +4,75 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.DifferencePanel"
              x:DataType="views:DifferencePanel">
-  <UserControl.Styles>
-    <Style Selector=":is(TextBlock).columnHeader">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-    </Style>
-    <Style Selector="ListBox.dense ListBoxItem">
-      <Setter Property="Padding" Value="8,3" />
-      <Setter Property="MinHeight" Value="0" />
-      <Setter Property="BorderThickness" Value="0,0,0,1" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-    </Style>
-  </UserControl.Styles>
+  <Grid ColumnSpacing="{DynamicResource Component.DifferencePanel.ColumnGap}"
+        Margin="{DynamicResource Component.DifferencePanel.PanelInset}"
+        IsVisible="{Binding Difference.HasDifference}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.InspectorWidth}" />
+    </Grid.ColumnDefinitions>
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
 
-  <Grid ColumnDefinitions="*,290" ColumnSpacing="14" Margin="16,10,16,16" IsVisible="{Binding Difference.HasDifference}">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="8">
-
-      <StackPanel Spacing="2">
-        <views:CopyableTextBlock Text="{Binding Difference.Summary}" FontSize="16" FontWeight="SemiBold" />
-        <views:CopyableTextBlock Classes="muted" FontSize="12" Text="{Binding Difference.OnlyInOneText}" />
+      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+        <views:CopyableTextBlock Text="{Binding Difference.Summary}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="{Binding Difference.OnlyInOneText}" />
       </StackPanel>
 
-      <!-- What is, and what the later run found: the same words in the same matrix, measured twice. -->
-      <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="16">
-        <Border Classes="card" Padding="10">
-          <StackPanel Spacing="4">
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Section}">
+        <Border Classes="card" Padding="{DynamicResource Component.DifferencePanel.CardPadding}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
             <views:CopyableTextBlock Text="Before" FontWeight="SemiBold" />
-            <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding Difference.BeforeLabel}" />
+            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="{Binding Difference.BeforeLabel}" />
             <views:MiniMatrix DataContext="{Binding Difference.Before}" IsInteractive="False" Hint="The chosen move starts in the outlined cell" />
           </StackPanel>
         </Border>
-        <TextBlock Text="→" FontSize="26" VerticalAlignment="Center" Classes="muted" />
-        <Border Classes="card" Padding="10">
-          <StackPanel Spacing="4">
+        <TextBlock Text="→" FontSize="{DynamicResource Component.DifferencePanel.MoveArrowSize}" VerticalAlignment="Center" Classes="muted" />
+        <Border Classes="card" Padding="{DynamicResource Component.DifferencePanel.CardPadding}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
             <views:CopyableTextBlock Text="After" FontWeight="SemiBold" />
-            <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding Difference.AfterLabel}" />
+            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="{Binding Difference.AfterLabel}" />
             <views:MiniMatrix DataContext="{Binding Difference.After}" IsInteractive="False" Hint="and ends in the outlined cell here" />
           </StackPanel>
         </Border>
       </StackPanel>
 
-      <Grid Grid.Row="2" ColumnDefinitions="110,210,24,110,210,60" Margin="12,6,8,0">
+      <Grid Grid.Row="2" Margin="{DynamicResource Component.DifferencePanel.MoveHeaderMargin}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.KindColumnWidth}" />
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CellColumnWidth}" />
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.ArrowColumnWidth}" />
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.KindColumnWidth}" />
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CellColumnWidth}" />
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CountColumnWidth}" />
+        </Grid.ColumnDefinitions>
         <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WHAT IT MEANS" />
         <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="FROM" />
         <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="" />
         <views:CopyableTextBlock Grid.Column="4" Classes="columnHeader" Text="TO" />
         <views:CopyableTextBlock Grid.Column="5" Classes="columnHeader" Text="WORDS" HorizontalAlignment="Right" />
       </Grid>
-      <ListBox Grid.Row="3" Classes="dense" MaxHeight="230" ItemsSource="{Binding Difference.Moves}"
+      <ListBox Grid.Row="3" Classes="dense" MaxHeight="{DynamicResource Component.DifferencePanel.MoveListHeight}" ItemsSource="{Binding Difference.Moves}"
                SelectedItem="{Binding Difference.SelectedMove}" AutomationProperties.Name="Moves between cells, worst first">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:MoveViewModel">
-            <Grid ColumnDefinitions="110,210,24,110,210,60" AutomationProperties.Name="{Binding AccessibleName}">
+            <Grid AutomationProperties.Name="{Binding AccessibleName}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.KindColumnWidth}" />
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CellColumnWidth}" />
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.ArrowColumnWidth}" />
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.KindColumnWidth}" />
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CellColumnWidth}" />
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CountColumnWidth}" />
+              </Grid.ColumnDefinitions>
               <views:VerdictChip Grid.Column="0" Verdict="{Binding Verdict}" Text="{Binding KindLabel}" Compact="True" HorizontalAlignment="Left" />
               <StackPanel Grid.Column="1">
-                <views:CopyableTextBlock Text="{Binding FromLabel}" FontSize="12.5" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding FromRow}" FontSize="11" />
+                <views:CopyableTextBlock Text="{Binding FromLabel}" FontSize="{DynamicResource Intent.Type.Status}" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding FromRow}" FontSize="{DynamicResource Intent.Type.Label}" />
               </StackPanel>
               <TextBlock Grid.Column="2" Classes="muted" Text="→" VerticalAlignment="Center" />
               <StackPanel Grid.Column="4">
-                <views:CopyableTextBlock Text="{Binding ToLabel}" FontSize="12.5" Classes.error="{Binding IsRegression}" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding ToRow}" FontSize="11" />
+                <views:CopyableTextBlock Text="{Binding ToLabel}" FontSize="{DynamicResource Intent.Type.Status}" Classes.error="{Binding IsRegression}" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding ToRow}" FontSize="{DynamicResource Intent.Type.Label}" />
               </StackPanel>
               <views:CopyableTextBlock Grid.Column="5" Text="{Binding CountText}" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
@@ -73,7 +80,15 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
-      <Grid Grid.Row="4" ColumnDefinitions="160,70,*,*,60" Margin="12,6,8,0" IsVisible="{Binding Difference.HasChosenMove}">
+      <Grid Grid.Row="4" Margin="{DynamicResource Component.DifferencePanel.MoveHeaderMargin}"
+            IsVisible="{Binding Difference.HasChosenMove}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.WordColumnWidth}" />
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.OccurrenceColumnWidth}" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CountColumnWidth}" />
+        </Grid.ColumnDefinitions>
         <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WORD" />
         <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="IN TEXTS" />
         <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="BEFORE" />
@@ -83,11 +98,18 @@
                IsVisible="{Binding Difference.HasChosenMove}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:MovedWordViewModel">
-            <Grid ColumnDefinitions="160,70,*,*,60" ColumnSpacing="8">
+            <Grid ColumnSpacing="{DynamicResource Intent.Space.Related}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.WordColumnWidth}" />
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.OccurrenceColumnWidth}" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CountColumnWidth}" />
+              </Grid.ColumnDefinitions>
               <views:CopyableTextBlock Grid.Column="0" Text="{Binding Word}" FontWeight="SemiBold" VerticalAlignment="Center" />
               <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
-              <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding BeforeText}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              <views:CopyableTextBlock Grid.Column="3" Text="{Binding AfterText}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding BeforeText}" FontSize="{DynamicResource Intent.Type.Small}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <views:CopyableTextBlock Grid.Column="3" Text="{Binding AfterText}" FontSize="{DynamicResource Intent.Type.Small}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
               <HyperlinkButton Grid.Column="4" Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
                                Command="{Binding $parent[views:DifferencePanel].Difference.OpenWordCommand}" CommandParameter="{Binding}"
                                AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Words'}" />
@@ -97,18 +119,18 @@
       </ListBox>
     </Grid>
 
-    <StackPanel Grid.Column="1" Spacing="10">
-      <Border Classes="card" Padding="12">
-        <StackPanel Spacing="6">
+    <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Group}">
+      <Border Classes="card" Padding="{DynamicResource Component.DifferencePanel.CardPadding}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <views:CopyableTextBlock Text="Where the two sides come from" FontWeight="SemiBold" />
-          <views:CopyableTextBlock FontSize="12" TextWrapping="Wrap"
+          <views:CopyableTextBlock FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                                    Text="The run before this one, and this one: the same words measured twice, joined word by word. After a re-run, only the re-run words can move; the rest are the same answers." />
         </StackPanel>
       </Border>
-      <Border Classes="card" Padding="12">
-        <StackPanel Spacing="6">
+      <Border Classes="card" Padding="{DynamicResource Component.DifferencePanel.CardPadding}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <views:CopyableTextBlock Text="Reading a move" FontWeight="SemiBold" />
-          <views:CopyableTextBlock FontSize="12" TextWrapping="Wrap"
+          <views:CopyableTextBlock FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                                    Text="Regressions come first: a word that now breaks a decision, or lost its analysis. A word leaving a timeout is settled, never a regression, unless it settles as a violation." />
         </StackPanel>
       </Border>

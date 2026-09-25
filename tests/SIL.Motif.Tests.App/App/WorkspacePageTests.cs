@@ -113,7 +113,7 @@ public sealed class WorkspacePageTests
     [Fact]
     public void TheTextsPageOffersMatrixAnalyzeTextsAndLists()
     {
-        Assert.Equal(["Matrix", "AnalyzeTexts", "Lists"], Enum.GetNames<TextsTab>());
+        Assert.Equal(["Matrix", "AnalyzeTexts", "Lists", "WhatChanged"], Enum.GetNames<TextsTab>());
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task ARunAndRerunStayOnTheMatrixTab()
+    public async Task ARunOpensTheMatrixAndARerunWithMovesOpensWhatChanged()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
@@ -180,7 +180,8 @@ public sealed class WorkspacePageTests
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RerunAsync(["alimpiga"], 30_000);
 
-        Assert.Equal("Matrix", workspace.PageModel<TextsPageModel>().Tab.ToString());
+        Assert.True(Enum.TryParse<TextsTab>("WhatChanged", out var whatChanged));
+        Assert.Equal(whatChanged, workspace.PageModel<TextsPageModel>().Tab);
         Assert.Equal(MoveKind.Settled, workspace.Assess.Difference.SelectedMove!.Kind);
 
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
@@ -456,10 +457,11 @@ public sealed class WorkspacePageTests
         Assert.False(workspace.RerunOffered);
         Assert.True(workspace.SeeWhatChangedCommand.CanExecute(null));
 
+        Assert.True(Enum.TryParse<TextsTab>("WhatChanged", out var whatChanged));
         workspace.SeeWhatChangedCommand.Execute(null);
 
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowMatrix);
+        Assert.Equal(whatChanged, workspace.PageModel<TextsPageModel>().Tab);
     }
 
     [Fact]

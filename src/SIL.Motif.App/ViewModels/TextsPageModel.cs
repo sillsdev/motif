@@ -59,6 +59,7 @@ public sealed partial class TextsPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(ShowMatrix))]
     [NotifyPropertyChangedFor(nameof(ShowAnalyzeTexts))]
     [NotifyPropertyChangedFor(nameof(ShowLists))]
+    [NotifyPropertyChangedFor(nameof(ShowWhatChanged))]
     private TextsTab _tab;
 
     public bool ShowMatrix => Tab == TextsTab.Matrix;
@@ -66,6 +67,8 @@ public sealed partial class TextsPageModel : PageModel
     public bool ShowAnalyzeTexts => Tab == TextsTab.AnalyzeTexts;
 
     public bool ShowLists => Tab == TextsTab.Lists;
+
+    public bool ShowWhatChanged => Tab == TextsTab.WhatChanged;
 
     public bool ShowAssessStatus => Assess.IsActive || Assess.Refusal is not null;
 
@@ -85,6 +88,7 @@ public sealed partial class TextsPageModel : PageModel
     protected override void OnEvidencePublished(WorkspaceEvidence evidence)
     {
         Words.ShowAssessment(Assess.Words.Find);
+        if (evidence.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
     }
 
     protected override void OnRequested(PageRequest request)

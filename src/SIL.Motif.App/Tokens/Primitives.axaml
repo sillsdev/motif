@@ -59,6 +59,7 @@
   <x:Double x:Key="Primitive.Space.6">6</x:Double>
   <StaticResource x:Key="Primitive.Space.8" ResourceKey="SemiSpacingTight" />
   <StaticResource x:Key="Primitive.Space.12" ResourceKey="SemiSpacingBaseTight" />
+  <x:Double x:Key="Primitive.Space.14">14</x:Double>
   <StaticResource x:Key="Primitive.Space.16" ResourceKey="SemiSpacingBase" />
   <StaticResource x:Key="Primitive.Space.20" ResourceKey="SemiSpacingBaseLoose" />
 
@@ -92,6 +93,10 @@
   <Thickness x:Key="Primitive.Inset.0_0_0_1">0,0,0,1</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_0_3">0,0,0,3</Thickness>
   <Thickness x:Key="Primitive.Inset.2_0_0_0">2,0,0,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.8_3_8_3">8,3,8,3</Thickness>
+  <Thickness x:Key="Primitive.Inset.10_10_10_10">10</Thickness>
+  <Thickness x:Key="Primitive.Inset.12_6_8_0">12,6,8,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.16_10_16_16">16,10,16,16</Thickness>
   <Thickness x:Key="Primitive.Inset.4x3">4,3</Thickness>
   <Thickness x:Key="Primitive.Inset.6x2">6,2</Thickness>
   <Thickness x:Key="Primitive.Inset.0x4">0,4</Thickness>
@@ -119,11 +124,13 @@
   <x:Double x:Key="Primitive.Type.15">15</x:Double>
   <StaticResource x:Key="Primitive.Type.16" ResourceKey="SemiFontSizeHeader6" />
   <x:Double x:Key="Primitive.Type.22">22</x:Double>
+  <x:Double x:Key="Primitive.Type.26">26</x:Double>
 
   <x:Double x:Key="Primitive.Size.0">0</x:Double>
   <x:Double x:Key="Primitive.Size.8">8</x:Double>
   <x:Double x:Key="Primitive.Size.18">18</x:Double>
   <x:Double x:Key="Primitive.Size.22">22</x:Double>
+  <x:Double x:Key="Primitive.Size.24">24</x:Double>
   <x:Double x:Key="Primitive.Size.28">28</x:Double>
   <x:Double x:Key="Primitive.Size.40">40</x:Double>
   <x:Double x:Key="Primitive.Size.52">52</x:Double>
@@ -140,6 +147,9 @@
   <x:Double x:Key="Primitive.Size.190">190</x:Double>
   <x:Double x:Key="Primitive.Size.204">204</x:Double>
   <x:Double x:Key="Primitive.Size.220">220</x:Double>
+  <x:Double x:Key="Primitive.Size.210">210</x:Double>
+  <x:Double x:Key="Primitive.Size.230">230</x:Double>
+  <x:Double x:Key="Primitive.Size.290">290</x:Double>
   <x:Double x:Key="Primitive.Size.240">240</x:Double>
   <x:Double x:Key="Primitive.Size.280">280</x:Double>
   <x:Double x:Key="Primitive.Size.300">300</x:Double>

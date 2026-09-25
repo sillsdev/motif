@@ -1,0 +1,31 @@
+<!-- The two-run moves view keeps its layout and tone across themes. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.DifferencePanel.PanelInset" ResourceKey="Primitive.Inset.16_10_16_16" />
+    <StaticResource x:Key="Component.DifferencePanel.CardPadding" ResourceKey="Primitive.Inset.10_10_10_10" />
+    <StaticResource x:Key="Component.DifferencePanel.MoveHeaderMargin" ResourceKey="Primitive.Inset.12_6_8_0" />
+    <StaticResource x:Key="Component.DifferencePanel.MoveRowPadding" ResourceKey="Primitive.Inset.8_3_8_3" />
+    <StaticResource x:Key="Component.DifferencePanel.InspectorWidth" ResourceKey="Primitive.Size.290" />
+    <StaticResource x:Key="Component.DifferencePanel.MoveListHeight" ResourceKey="Primitive.Size.230" />
+    <StaticResource x:Key="Component.DifferencePanel.KindColumnWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.DifferencePanel.CellColumnWidth" ResourceKey="Primitive.Size.210" />
+    <StaticResource x:Key="Component.DifferencePanel.ArrowColumnWidth" ResourceKey="Primitive.Size.24" />
+    <StaticResource x:Key="Component.DifferencePanel.CountColumnWidth" ResourceKey="Primitive.Size.60" />
+    <StaticResource x:Key="Component.DifferencePanel.WordColumnWidth" ResourceKey="Primitive.Size.160" />
+    <StaticResource x:Key="Component.DifferencePanel.OccurrenceColumnWidth" ResourceKey="Primitive.Size.70" />
+    <StaticResource x:Key="Component.DifferencePanel.MoveArrowSize" ResourceKey="Primitive.Type.26" />
+    <StaticResource x:Key="Component.DifferencePanel.ColumnGap" ResourceKey="Primitive.Space.14" />
+  </Styles.Resources>
+  <Style Selector=":is(TextBlock).columnHeader">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="ListBox.dense ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource Component.DifferencePanel.MoveRowPadding}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.None}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+  </Style>
+</Styles>
