@@ -87,6 +87,12 @@ public sealed class TokenHygieneTests
     public void AViewNamingASemiKeyForStylingFails(string attribute) =>
         Assert.Equal(["wrong-layer"], Categories(View, Element(attribute)));
 
+    [Theory]
+    [InlineData("Foreground=\"{StaticResource Intent.Text}\"")]
+    [InlineData("Background=\"{StaticResource Component.Card.Fill}\"")]
+    public void AViewTakingAColourByStaticResourceFails(string attribute) =>
+        Assert.Equal(["wrong-layer"], Categories(View, Element(attribute)));
+
     [Fact]
     public void AStaticValueOnAStylingPropertyInAViewFails() =>
         Assert.Equal(["not-a-token"], Categories(View, Element("Width=\"{x:Static local:Sizes.Wide}\"")));
@@ -129,6 +135,13 @@ public sealed class TokenHygieneTests
     [InlineData("var radius = new CornerRadius(compact ? 2 : 3);", "literal-size")]
     [InlineData("var bar = new Grid { Height = ShowLegend ? 14 : 10, ClipToBounds = true };", "literal-size")]
     [InlineData("FontSize = wide ? size : 12;", "literal-size")]
+    [InlineData("Width = 12 + 8;", "literal-size")]
+    [InlineData("var bar = new Grid { Height = baseline * 2, ClipToBounds = true };", "literal-size")]
+    [InlineData("FontSize = SizeFor(12),", "literal-size")]
+    [InlineData("Margin = new Thickness(Math.Max(4, inset));", "literal-size")]
+    [InlineData("var radius = new CornerRadius(Math.Min(radius, 3));", "literal-size")]
+    [InlineData("var stop = new GradientStop { Color = new Color(255, 255, 0, 0) };", "literal-colour")]
+    [InlineData("var tint = Color.FromHsv(120, 0.5, 0.5);", "literal-colour")]
     [InlineData("var column = new GridLength(wide ? 220 : 160);", "literal-size")]
     [InlineData("this.GetResourceObservable(\"Primitive.Space.4\");", "primitive-in-view")]
     [InlineData("this.GetResourceObservable(\"SemiColorText2\");", "wrong-layer")]
@@ -151,6 +164,12 @@ public sealed class TokenHygieneTests
     [InlineData("/* Brushes.White */ var ok = true;")]
     [InlineData("var url = \"https://example.org/#FFAA00x\"; // not a colour")]
     [InlineData("this.GetResourceObservable(\"Intent.Candidate.Fill\");")]
+    [InlineData("Width = Math.Max(bounds.Width, MinWidth);")]
+    [InlineData("Height = Math.Max(0, available - used);")]
+    [InlineData("var width = Bounds.Width - 2 * r;")]
+    [InlineData("public double Width => Bounds.Width;")]
+    [InlineData("Padding = new Thickness(Math.Max(0, inset));")]
+    [InlineData("var share = new GridLength(Math.Max(1, count), GridUnitType.Star);")]
     public void ViewCodeWithoutAVisualLiteralPasses(string line) =>
         Assert.Empty(Categories(ViewCode, line));
 

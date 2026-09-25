@@ -83,23 +83,17 @@ internal static class TokenHygiene
     private static readonly Regex AnyPrimitiveReference = new(@"Resource\s+(?:ResourceKey\s*=\s*)?Primitive\.");
     private static readonly Regex AllowedGridPart = new(@"^(?:Auto|\*|\d*\.?\d+\*|-?0*\.?0+)$", RegexOptions.IgnoreCase);
 
-    private const string Number = @"-?\d+(?:\.\d+)?";
     private static readonly Regex CodeColour = new(string.Join('|',
-        @"\bnew\s+SolidColorBrush\s*\(", @"\bnew\s+ImmutableSolidColorBrush\s*\(", @"\bColor\.FromRgb\s*\(",
-        @"\bColor\.FromArgb\s*\(", @"\bColor\.FromUInt32\s*\(", @"\bColor\.Parse\s*\(", @"\bSolidColorBrush\.Parse\s*\(",
-        @"\bBrush\.Parse\s*\(", @"(?<![\w.])Brushes\.[A-Za-z]+\b", @"(?<![\w.])Colors\.[A-Za-z]+\b",
-        "\"#[0-9A-Fa-f]{3,8}\""));
-    // Any literal among the arguments counts, so a ternary such as (last ? 0 : 12) cannot hide one.
-    private static readonly Regex CodeSizeConstructor = new(@"\bnew\s+(Thickness|CornerRadius|GridLength)\s*\(([^()]*)\)");
-    private static readonly Regex NumericLiteral = new(@"(?<![\w.])\d+(?:\.\d+)?(?![\w.])");
-    private static readonly Regex CodeAssignment = new(
-        @"\b(?:Margin|Padding|Spacing|RowSpacing|ColumnSpacing|FontSize|StrokeThickness|Width|Height|MinWidth|MinHeight" +
-        $@"|MaxWidth|MaxHeight)\s*(?<![=!<>+\-*/])=(?!=)\s*(?:\((?:double|float|int)\)\s*)?({Number})[dfmDFM]?(?=\s*[;,)}}]|\s*$)");
-    // A ternary between sizes, such as (ShowLegend ? 14 : 10), hides its literals from the plain assignment.
-    private static readonly Regex CodeConditionalAssignment = new(
-        @"\b(?:Margin|Padding|Spacing|RowSpacing|ColumnSpacing|FontSize|StrokeThickness|Width|Height|MinWidth|MinHeight" +
-        @"|MaxWidth|MaxHeight)\s*(?<![=!<>+\-*/])=(?!=)[^;,{}=?]*\?([^;,{}]*)");
-    private static readonly Regex CodeSetter = new($@"\bnew\s+Setter\s*\(\s*[^,()]+,\s*({Number})\s*\)");
+        @"\bnew\s+(?:Color|HslColor|HsvColor|SolidColorBrush|ImmutableSolidColorBrush)\s*\(",
+        @"\b(?:Color|HslColor|HsvColor)\.(?:From\w+|Parse)\s*\(", @"\b(?:SolidColorBrush|Brush)\.Parse\s*\(",
+        @"(?<![\w.])Brushes\.[A-Za-z]+\b", @"(?<![\w.])Colors\.[A-Za-z]+\b", "\"#[0-9A-Fa-f]{3,8}\""));
+    private static readonly Regex CodeSizeConstructor = new(@"\bnew\s+(Thickness|CornerRadius|GridLength|Setter)\s*\(");
+    // One list with the XAML check, so a property added there is policed in code too; grid strings are XAML only.
+    private static readonly Regex CodeSizeAssignment = new(
+        @"\b(?:" + string.Join('|', SizeProperties.Where(name => !name.EndsWith("Definitions", StringComparison.Ordinal)))
+        + @")\s*(?<![=!<>+\-*/])=(?![=>])");
+    private static readonly Regex NumericLiteral = new(@"(?<![\w.])\d+(?:\.\d+)?[dfmDFM]?(?![\w.])");
+    private static readonly Regex StringLiteral = new(@"""(?:[^""\\]|\\.)*""");
     private static readonly Regex CodePrimitiveKey = new("\"Primitive\\.");
     private static readonly Regex CodeResourceLookup = new(
         @"\b(?:TryGetResource|TryFindResource|FindResource|GetResourceObservable|DynamicResourceExtension|StaticResourceExtension)" +
@@ -349,6 +343,10 @@ internal static class TokenHygiene
             case Layer.View when !key.StartsWith("Intent.", StringComparison.Ordinal) && !key.StartsWith("Component.", StringComparison.Ordinal):
                 found.Add(new(path, line, "wrong-layer", $"{property} names '{key}'; a view names Intent or Component keys"));
                 break;
+            case Layer.View when colour && extension != "DynamicResource":
+                found.Add(new(path, line, "wrong-layer",
+                    $"{property} names {{{extension} {key}}}; a colour follows the theme only through DynamicResource"));
+                break;
             case Layer.Component when colour && !(key.StartsWith("Intent.", StringComparison.Ordinal) && extension == "DynamicResource"):
                 found.Add(new(path, line, "wrong-layer",
                     $"{property} names {{{extension} {key}}}; a component's colours are {{DynamicResource Intent.*}}"));
@@ -385,23 +383,25 @@ internal static class TokenHygiene
             var code = lines[i];
             var line = i + 1;
             foreach (Match m in CodeColour.Matches(code)) found.Add(new(path, line, "literal-colour", m.Value));
+            var sizeLiteral = false;
             foreach (Match m in CodeSizeConstructor.Matches(code))
             {
-                var arguments = m.Groups[2].Value;
+                var arguments = Enclosed(code, m.Index + m.Length);
                 if (m.Groups[1].Value == "GridLength" && arguments.Contains("GridUnitType.Star", StringComparison.Ordinal)) continue;
-                if (NumericLiteral.Matches(arguments).Any(literal => !IsNeutralSize(literal.Value)))
-                    found.Add(new(path, line, "literal-size", m.Value));
-            }
-            foreach (Match m in CodeConditionalAssignment.Matches(code))
-            {
-                if (NumericLiteral.Matches(m.Groups[1].Value).Any(literal => !IsNeutralSize(literal.Value)))
-                    found.Add(new(path, line, "literal-size", m.Value.Trim()));
-            }
-            foreach (var pattern in (Regex[])[CodeAssignment, CodeSetter])
-            {
-                foreach (Match m in pattern.Matches(code))
+                if (m.Groups[1].Value == "Setter") arguments = arguments[(TopLevelComma(arguments) + 1)..];
+                if (!sizeLiteral && HasSizeLiteral(arguments))
                 {
-                    if (!IsNeutralSize(m.Groups[1].Value.Replace(" ", ""))) found.Add(new(path, line, "literal-size", m.Value.Trim()));
+                    found.Add(new(path, line, "literal-size", $"{m.Value}{arguments})"));
+                    sizeLiteral = true;
+                }
+            }
+            foreach (Match m in CodeSizeAssignment.Matches(code))
+            {
+                var value = Enclosed(code, m.Index + m.Length, stopAtComma: true);
+                if (!sizeLiteral && HasSizeLiteral(value))
+                {
+                    found.Add(new(path, line, "literal-size", $"{m.Value}{value}".Trim()));
+                    sizeLiteral = true;
                 }
             }
             foreach (Match m in CodeResourceLookup.Matches(code))
@@ -414,6 +414,41 @@ internal static class TokenHygiene
             if (CodePrimitiveKey.IsMatch(code)) found.Add(new(path, line, "primitive-in-view", "a view names Intent or Component keys"));
         }
         return found;
+    }
+
+    // Any nonzero number counts, however it is combined: 12 + 8, Math.Max(4, inset) and last ? 0 : 12 all hide one.
+    private static bool HasSizeLiteral(string expression) =>
+        NumericLiteral.Matches(StringLiteral.Replace(expression, "\"\""))
+            .Any(literal => !IsNeutralSize(literal.Value.TrimEnd('d', 'f', 'm', 'D', 'F', 'M')));
+
+    // The text from start to the bracket that closes the enclosing one, or to a top-level ; , or } when asked.
+    private static string Enclosed(string code, int start, bool stopAtComma = false)
+    {
+        var depth = 0;
+        for (var i = start; i < code.Length; i++)
+        {
+            var c = code[i];
+            if (c is '(' or '[' or '{') depth++;
+            else if (c is ')' or ']' or '}')
+            {
+                if (depth == 0) return code[start..i];
+                depth--;
+            }
+            else if (depth == 0 && (c == ';' || (stopAtComma && c == ','))) return code[start..i];
+        }
+        return code[start..];
+    }
+
+    private static int TopLevelComma(string arguments)
+    {
+        var depth = 0;
+        for (var i = 0; i < arguments.Length; i++)
+        {
+            if (arguments[i] is '(' or '[' or '{') depth++;
+            else if (arguments[i] is ')' or ']' or '}') depth--;
+            else if (arguments[i] == ',' && depth == 0) return i;
+        }
+        return arguments.Length - 1;
     }
 
     // Blanks every comment and keeps the line count, so a comment that quotes a banned form is never scanned.
