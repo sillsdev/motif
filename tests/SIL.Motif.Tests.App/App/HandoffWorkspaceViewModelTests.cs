@@ -144,6 +144,9 @@ public sealed class HandoffWorkspaceViewModelTests
         Assert.Equal(1.25m, workspace.Selection.PerWordTimeLimitSeconds);
         Assert.Equal(987m, workspace.Selection.PerWordStepLimit);
         Assert.Equal(new StepCap(987), workspace.Selection.BuildRequest().PerWordStepLimit);
+        Assert.Equal("Use this Selection", workspace.Context.Setup.FinishButtonText);
+        Assert.Equal("Use this Selection as the project default", workspace.Context.Setup.FinishTitle);
+        Assert.DoesNotContain("Save", workspace.Context.Setup.FinishDescription);
     }
 
     [Fact]
