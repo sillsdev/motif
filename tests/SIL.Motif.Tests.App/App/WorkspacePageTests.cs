@@ -111,9 +111,27 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public void TheTextsPageOffersMatrixAnalyzeTextsAndLists()
+    public void TheTextsPageOpensOnMatrixAndEachTabShowsOnlyItsOwnContent()
     {
-        Assert.Equal(["Matrix", "AnalyzeTexts", "Lists", "WhatChanged"], Enum.GetNames<TextsTab>());
+        var (_, _, workspace) = NewWorkspace();
+        var texts = workspace.PageModel<TextsPageModel>();
+
+        Assert.Equal(TextsTab.Matrix, texts.Tab);
+        Assert.True(texts.ShowMatrix);
+        Assert.False(texts.ShowAnalyzeTexts);
+        Assert.False(texts.ShowLists);
+        Assert.False(texts.ShowWhatChanged);
+
+        foreach (var tab in Enum.GetValues<TextsTab>())
+        {
+            texts.ShowTabCommand.Execute(tab);
+
+            Assert.Equal(tab, texts.Tab);
+            Assert.Equal(tab == TextsTab.Matrix, texts.ShowMatrix);
+            Assert.Equal(tab == TextsTab.AnalyzeTexts, texts.ShowAnalyzeTexts);
+            Assert.Equal(tab == TextsTab.Lists, texts.ShowLists);
+            Assert.Equal(tab == TextsTab.WhatChanged, texts.ShowWhatChanged);
+        }
     }
 
     [Fact]
@@ -154,7 +172,7 @@ public sealed class WorkspacePageTests
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
         workspace.Selection.AllWordforms = true;
-        workspace.PageModel<TextsPageModel>().ShowTabCommand.Execute(Enum.Parse<TextsTab>("AnalyzeTexts"));
+        workspace.PageModel<TextsPageModel>().ShowTabCommand.Execute(TextsTab.AnalyzeTexts);
         fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
 
         var running = workspace.Assess.RunCommand.ExecuteAsync(null);
@@ -180,8 +198,7 @@ public sealed class WorkspacePageTests
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RerunAsync(["alimpiga"], 30_000);
 
-        Assert.True(Enum.TryParse<TextsTab>("WhatChanged", out var whatChanged));
-        Assert.Equal(whatChanged, workspace.PageModel<TextsPageModel>().Tab);
+        Assert.Equal(TextsTab.WhatChanged, workspace.PageModel<TextsPageModel>().Tab);
         Assert.Equal(MoveKind.Settled, workspace.Assess.Difference.SelectedMove!.Kind);
 
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
@@ -457,11 +474,10 @@ public sealed class WorkspacePageTests
         Assert.False(workspace.RerunOffered);
         Assert.True(workspace.SeeWhatChangedCommand.CanExecute(null));
 
-        Assert.True(Enum.TryParse<TextsTab>("WhatChanged", out var whatChanged));
         workspace.SeeWhatChangedCommand.Execute(null);
 
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.Equal(whatChanged, workspace.PageModel<TextsPageModel>().Tab);
+        Assert.Equal(TextsTab.WhatChanged, workspace.PageModel<TextsPageModel>().Tab);
     }
 
     [Fact]
