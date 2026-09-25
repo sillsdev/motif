@@ -27,7 +27,7 @@
   <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
         Margin="{DynamicResource Component.TextsPage.PageInset}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-      <views:CopyableTextBlock Classes="stage-title" Text="Word lists" />
+      <views:CopyableTextBlock Classes="section-title" Text="Word lists" />
       <ItemsControl ItemsSource="{Binding Lists.Lists}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>

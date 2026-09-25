@@ -4,10 +4,6 @@
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Style Selector=":is(TextBlock).stage-title">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-  </Style>
   <Style Selector=":is(TextBlock).section-title">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
     <Setter Property="FontWeight" Value="SemiBold" />
