@@ -219,7 +219,7 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
     public void CollectedChangeWithoutItsCurrentBaseline_IsNoLongerFit()
     {
         var fingerprint = new ChangeFitFingerprint(CanonicalId.FromGuid(_wordform.Guid).Value,
-            null, "motif-analysis-test", "captured-baseline");
+            null, "motif-analysis-test", "captured-baseline", SpellingStatus: _wordform.SpellingStatus);
         var operation = new OperationEnvelope(CanonicalId.Mint(), "analysis/wfiWordform/setSpellingStatus",
             target: CanonicalId.FromGuid(_wordform.Guid),
             after: JsonSerializer.SerializeToElement(new { value = 2 }),
@@ -240,7 +240,7 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         var current = new BaselineToken("project", "sha256:" + new string('c', 64), "1",
             "2026-01-02T00:00:00Z", "sha256:" + new string('d', 64));
         var fingerprint = new ChangeFitFingerprint(CanonicalId.FromGuid(_wordform.Guid).Value,
-            null, "motif-analysis-test", JsonSerializer.Serialize(old));
+            null, "motif-analysis-test", JsonSerializer.Serialize(old), SpellingStatus: _wordform.SpellingStatus);
         var operation = new OperationEnvelope(CanonicalId.Mint(), "analysis/wfiWordform/setSpellingStatus",
             target: CanonicalId.FromGuid(_wordform.Guid),
             after: JsonSerializer.SerializeToElement(new { value = 2 }),
@@ -249,7 +249,28 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
             CanonicalId.Mint(), null, [operation]);
 
         Assert.True(Assert.Single(ChangeFitPreflight.Check(_cache, proposal, old)).StillFits);
-        Assert.False(Assert.Single(ChangeFitPreflight.Check(_cache, proposal, current)).StillFits);
+        var fit = Assert.Single(ChangeFitPreflight.Check(_cache, proposal, current));
+        Assert.False(fit.StillFits);
+        Assert.Contains("Baseline", fit.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CollectedSpellingChangeWithoutStatusEvidence_IsNoLongerFit()
+    {
+        var current = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+            "2026-01-01T00:00:00Z", "sha256:" + new string('b', 64));
+        var fingerprint = new ChangeFitFingerprint(CanonicalId.FromGuid(_wordform.Guid).Value,
+            null, "motif-analysis-test", JsonSerializer.Serialize(current));
+        var operation = new OperationEnvelope(CanonicalId.Mint(), "analysis/wfiWordform/setSpellingStatus",
+            target: CanonicalId.FromGuid(_wordform.Guid),
+            after: JsonSerializer.SerializeToElement(new { value = 2 }),
+            extensions: JsonSerializer.SerializeToElement(new { changeFit = fingerprint }));
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" },
+            CanonicalId.Mint(), null, [operation]);
+
+        var fit = Assert.Single(ChangeFitPreflight.Check(_cache, proposal, current));
+        Assert.False(fit.StillFits);
+        Assert.Contains("spelling status evidence", fit.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
