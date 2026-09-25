@@ -217,13 +217,13 @@ public sealed class WorkspacePageTests
 
         Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
         foreach (var word in workspace.Assess.Compare.Words) word.IsChecked = true;
-        workspace.Assess.Compare.ProposeCommand.Execute(ChangeKinds.Reject);
+        await workspace.Assess.Compare.ProposeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
 
         Assert.Equal(2, workspace.Context.Changes.Items.Count);
         Assert.Equal("2", review.Badge);
         Assert.Equal("2 changes not applied yet", workspace.Context.Changes.CountText);
 
-        workspace.Context.Changes.RemoveCommand.Execute(workspace.Context.Changes.Items[0]);
+        await workspace.Context.Changes.RemoveCommand.ExecuteAsync(workspace.Context.Changes.Items[0]);
 
         Assert.Equal("1", review.Badge);
     }
