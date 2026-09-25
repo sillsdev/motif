@@ -205,10 +205,16 @@ public static class PendingChanges
                         Property(fit, "readingContentDigest") == readingDigest);
                 }).FirstOrDefault(item => item.Fits);
                 if (occupied.Fits)
-                    return Refuse("change.slot-occupied", "Another change already addresses this word and reading.",
-                        ("changeId", change.ChangeId), ("existingChangeId", occupied.ChangeId),
-                        ("wordformId", change.WordformId));
+                {
+                    if (occupied.ChangeId is null)
+                        return Refuse("change.slot-occupied", "An unmapped change addresses this word and reading.",
+                            ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+                    RemoveChange(draft, occupied.ChangeId);
+                }
             }
+            foreach (var group in draft.ContractVersions.Keys.ToArray())
+                if (!draft.Operations.Any(operation => OperationKind.GetGroup(operation.Kind) == group))
+                    draft.ContractVersions.Remove(group);
             var existingOperations = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
             if (AnalysisOpinionSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
             {

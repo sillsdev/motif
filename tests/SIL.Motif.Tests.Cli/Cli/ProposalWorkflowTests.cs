@@ -567,9 +567,11 @@ public sealed class ProposalWorkflowTests
             candidateChange.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "approve",
                 CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
                 ReadingIndex: 1)));
-        Assert.Equal("change.slot-occupied", sameReadingOpinion.Refusal?.Code);
+        Assert.True(sameReadingOpinion.Succeeded, sameReadingOpinion.Refusal?.Message);
+        Assert.Single(sameReadingOpinion.Value!.Changes);
+        Assert.NotEqual(candidateChange.Value.Revision, sameReadingOpinion.Value.Revision);
         var spellingChange = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
-            candidateChange.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+            sameReadingOpinion.Value.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
                 CanonicalId.FromGuid(wordformGuid).Value, word)));
         Assert.True(spellingChange.Succeeded, spellingChange.Refusal?.Message);
         Assert.Equal(2, spellingChange.Value!.Changes.Count);
