@@ -21,7 +21,7 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
 
             walkthrough.Check(SeededProject.TextTitle);
             Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
-            Assert.False(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
+            Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
             Assert.Equal("1 text, step cap 50,000,000", walkthrough.Workspace.Selection.SummaryText);
 
             Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));

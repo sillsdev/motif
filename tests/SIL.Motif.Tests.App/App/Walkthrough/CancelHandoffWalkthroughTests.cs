@@ -44,7 +44,7 @@ public sealed class CancelHandoffWalkthroughTests
                 var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
                 var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
-                walkthrough.Click("Write the Handoff folder");
+                walkthrough.Click("Write the AI Handoff folder");
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Running,
                     WalkthroughSteps.Remaining(deadline), "the Handoff did not reach Running");
@@ -62,7 +62,7 @@ public sealed class CancelHandoffWalkthroughTests
                 Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
                 Assert.NotNull(walkthrough.Workspace.Assess.Result);
 
-                walkthrough.Click("Write the Handoff folder");
+                walkthrough.Click("Write the AI Handoff folder");
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(deadline), "the retried Handoff did not complete");

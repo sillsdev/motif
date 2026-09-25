@@ -107,7 +107,7 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
                 var assessmentInvocationId = result.InvocationId;
 
-                walkthrough.Click("Write the Handoff folder");
+                walkthrough.Click("Write the AI Handoff folder");
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
                     TimeSpan.FromSeconds(300), "the conformance Handoff did not complete");

@@ -31,7 +31,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
 
             var assessmentDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, assessmentDeadline);
-            Assert.True(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
 
             var result = walkthrough.Workspace.Assess.Result;
             Assert.NotNull(result);

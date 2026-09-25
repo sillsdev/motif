@@ -523,7 +523,7 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
-                var button = ButtonNamed(window, "Drag all Handoff files");
+                var button = ButtonNamed(window, "Drag all AI Handoff files");
                 Assert.True(button.Focusable);
                 using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
                 var press = new PointerPressedEventArgs(

@@ -26,7 +26,7 @@ internal static class WalkthroughSteps
         Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
         Assert.True(walkthrough.Find<Button>("Refresh the project").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
-        Assert.False(walkthrough.Find<Button>("Write the Handoff folder").IsEffectivelyEnabled);
+        Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
         Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
         Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
 

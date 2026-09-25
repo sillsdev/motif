@@ -35,7 +35,7 @@ public sealed class HandoffWalkthroughTests(PristineProjectFixture pristine)
 
                 Assert.NotNull(walkthrough.Workspace.Baseline.Token);
                 var baselineToken = walkthrough.Workspace.Baseline.Token!;
-                walkthrough.Click("Write the Handoff folder");
+                walkthrough.Click("Write the AI Handoff folder");
                 var handoffDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,

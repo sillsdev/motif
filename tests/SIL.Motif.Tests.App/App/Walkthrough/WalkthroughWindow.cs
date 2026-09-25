@@ -244,7 +244,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void DragAllFiles()
     {
-        var allFiles = Find<Button>("Drag all Handoff files");
+        var allFiles = Find<Button>("Drag all AI Handoff files");
         using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
         var args = new PointerPressedEventArgs(
             allFiles, pointer, Window, new Point(), 0, PointerPointProperties.None, KeyModifiers.None);
