@@ -191,6 +191,13 @@ public sealed class DesignTokenTests
         Assert.Empty(named);
     }
 
+    [Fact]
+    public void NoViewKeepsTheRetiredStageTitleStyle()
+    {
+        Assert.All(AppSources("*.axaml"), text =>
+            Assert.DoesNotContain("stage-title", text, StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("SelectionPanel.axaml")]
     [InlineData("SetupDialog.axaml")]
