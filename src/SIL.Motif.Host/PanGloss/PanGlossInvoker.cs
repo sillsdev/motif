@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -171,6 +172,12 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 
             using (process)
             {
+                using var progressStop = new CancellationTokenSource();
+                var progressTask = request is PanGlossRequest.Batch { OnProgress: not null } batch
+                    ? MonitorBatchProgressAsync(batch, Path.Combine(scratch, "out.tsv"), progressStop.Token)
+                    : Task.CompletedTask;
+                try
+                {
                 contain(process);
                 var clock = Stopwatch.StartNew();
 
@@ -259,6 +266,12 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     Output = tsvText, BatchEvidence = evidence, MorphologyOutput = morphology,
                     ArtifactLease = new Assess.AssessmentArtifactLease(scratch)
                 };
+                }
+                finally
+                {
+                    progressStop.Cancel();
+                    await progressTask.ConfigureAwait(false);
+                }
             }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -272,6 +285,69 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
+    }
+
+    private static async Task MonitorBatchProgressAsync(PanGlossRequest.Batch batch, string path,
+        CancellationToken cancellationToken)
+    {
+        TrialWordProgress? previous = null;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var current = ReadBatchProgress(path, batch.Words);
+            if (current is not null && current != previous)
+            {
+                try
+                {
+                    batch.OnProgress!(current);
+                    previous = current;
+                }
+                catch (Exception) { }
+            }
+            try { await Task.Delay(100, cancellationToken).ConfigureAwait(false); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    internal static TrialWordProgress? ReadBatchProgress(string path, IReadOnlyList<string> words)
+    {
+        if (!File.Exists(path)) return null;
+        string content;
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            content = reader.ReadToEnd();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+        var end = content.LastIndexOf('\n');
+        if (end < 0) return null;
+        var completed = 0;
+        int? started = null;
+        var sawRow = false;
+        foreach (var line in content[..end].Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var cells = line.TrimEnd('\r').Split('\t');
+            if (cells.Length < 3 || !int.TryParse(cells[0], out var index) ||
+                index < 0 || index >= words.Count || !string.Equals(cells[1], words[index], StringComparison.Ordinal))
+                continue;
+            if (cells.Length == 3 && cells[2] == "STARTED")
+            {
+                started = index;
+                sawRow = true;
+            }
+            else if (cells.Length >= 5 && index == completed)
+            {
+                completed++;
+                started = null;
+                sawRow = true;
+            }
+        }
+        return sawRow ? new TrialWordProgress(completed, words.Count,
+            started is { } current && current >= completed ? words[current] : null) : null;
     }
 
     private static string MissingExecutableMessage =>

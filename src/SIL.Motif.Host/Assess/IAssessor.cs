@@ -1,6 +1,7 @@
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Jobs;
 
 namespace SIL.Motif.Host.Assess;
 
@@ -226,4 +227,9 @@ public interface IAssessor
     /// </exception>
     Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken);
+
+    /// <summary>Reports completed words when this Assessor exposes sequential batch progress.</summary>
+    Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+        AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
+        CancellationToken cancellationToken) => ProduceAsync(scope, exportedCandidate, cancellationToken);
 }

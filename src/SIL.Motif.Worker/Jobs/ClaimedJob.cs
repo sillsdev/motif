@@ -1,4 +1,6 @@
 using SIL.Motif.Contract.Jobs;
+using System.Text.Json;
+using SIL.Motif.Contract;
 
 namespace SIL.Motif.Worker.Jobs;
 
@@ -50,6 +52,15 @@ public sealed class ClaimedJob
     {
         var before = _jobs.Get(JobId) ?? throw new InvalidOperationException("The claimed job no longer exists.");
         Job = _jobs.PublishDryRun(JobId, dryRunJson, before.Version);
+        return Job;
+    }
+
+    /// <summary>Records the sequential Trial's most recent completed word and current word.</summary>
+    public JobRecord PublishTrialProgress(TrialWordProgress progress)
+    {
+        var before = _jobs.Get(JobId) ?? throw new InvalidOperationException("The claimed job no longer exists.");
+        Job = _jobs.UpdateProgress(JobId, JsonSerializer.Serialize(progress, MotifJson.CreateOptions()),
+            before.Version);
         return Job;
     }
 

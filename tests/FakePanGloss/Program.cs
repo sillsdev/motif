@@ -157,7 +157,19 @@ internal static class Program
                 return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
             default:
                 var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
-                File.WriteAllText(outPath, BatchTsv(behaviour, words));
+                if (behaviour.StreamProgress)
+                {
+                    var rows = BatchTsv(behaviour, words).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    using var stream = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+                    using var writer = new StreamWriter(stream) { AutoFlush = true };
+                    for (var index = 0; index < words.Length; index++)
+                    {
+                        writer.WriteLine($"{index}\t{words[index]}\tSTARTED");
+                        Thread.Sleep(behaviour.DelayMilliseconds);
+                        writer.WriteLine(rows[index]);
+                    }
+                }
+                else File.WriteAllText(outPath, BatchTsv(behaviour, words));
                 if (analysesPath is not null) File.WriteAllText(analysesPath, BatchMorphology(behaviour, words));
                 // Motif digests the cache and never reads it, so any bytes stand in for PanGloss's SQLite.
                 if (cachePath is not null) File.WriteAllText(cachePath, "fake stats cache");
@@ -505,6 +517,7 @@ internal static class Program
         public string Mode { get; init; } = "succeed";
         public int ExitCode { get; init; }
         public int DelayMilliseconds { get; init; }
+        public bool StreamProgress { get; init; }
         public string? HeartbeatPath { get; init; }
         public string? StandardError { get; init; }
         public string SemanticDigest { get; init; } = "sha256:" + new string('b', 64);

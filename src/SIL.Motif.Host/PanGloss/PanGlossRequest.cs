@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Jobs;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -41,6 +42,9 @@ public abstract record PanGlossRequest
         : PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
+
+        /// <summary>Receives progress from the sequential batch's flushed word rows.</summary>
+        public Action<TrialWordProgress>? OnProgress { get; init; }
 
         public override string Subcommand => "batch";
 

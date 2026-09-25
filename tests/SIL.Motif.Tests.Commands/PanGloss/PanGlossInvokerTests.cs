@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Collections.Concurrent;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -21,6 +23,43 @@ public sealed class PanGlossInvokerTests : IDisposable
         try { Directory.Delete(_root, true); }
         catch (DirectoryNotFoundException) { }
         catch (IOException) { }
+    }
+
+    [Fact]
+    public void SequentialBatchProgressNamesTheStartedWordAfterCompletedRows()
+    {
+        var path = Path.Combine(_root, "progress.tsv");
+        File.WriteAllText(path, "0\tone\tSTARTED\n0\tone\t12\tanalysed\tsig\n1\ttwo\tSTARTED\n");
+
+        var progress = PanGlossInvoker.ReadBatchProgress(path, ["one", "two"]);
+
+        Assert.Equal(1, progress?.Completed);
+        Assert.Equal(2, progress?.Total);
+        Assert.Equal("two", progress?.CurrentWord);
+
+        File.AppendAllText(path, "1\ttwo\t8\tanalysed\tsig");
+        Assert.Equal(1, PanGlossInvoker.ReadBatchProgress(path, ["one", "two"])?.Completed);
+
+        File.AppendAllText(path, "\n");
+        var finished = PanGlossInvoker.ReadBatchProgress(path, ["one", "two"]);
+        Assert.Equal(2, finished?.Completed);
+        Assert.Null(finished?.CurrentWord);
+    }
+
+    [Fact]
+    public async Task BatchReportsTheCurrentWordBeforeTheNextOneCompletes()
+    {
+        var project = Project("batch-progress");
+        FakeParser.Behave(_root, new { streamProgress = true, delayMilliseconds = 250 });
+        using var invoker = Invoker();
+        var seen = new ConcurrentQueue<TrialWordProgress>();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(project,
+            ["one", "two"], TimeSpan.FromSeconds(1)) { OnProgress = seen.Enqueue },
+            "test:batch-progress", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Contains(seen, item => item.Completed == 1 && item.CurrentWord == "two");
     }
 
     [Fact]

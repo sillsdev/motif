@@ -65,6 +65,10 @@ public sealed record JobStatusResponse
     /// <summary>This job's position in the single ordered run of work, when the caller asked for one.</summary>
     [JsonPropertyOrder(10)] public double? QueueOrder { get; }
 
+    /// <summary>The last word-level progress published by a sequential Trial, if available.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyOrder(11)] public TrialWordProgress? TrialProgress { get; init; }
+
     private static string RequireNonBlank(string? value, string parameterName) =>
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("A nonblank value is required.", parameterName)

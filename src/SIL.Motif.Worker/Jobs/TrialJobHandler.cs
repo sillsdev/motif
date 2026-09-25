@@ -171,7 +171,8 @@ internal sealed class TrialJobHandler
 
         try
         {
-            var produced = await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory, cancellationToken)
+            var produced = await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory,
+                    progress => claim.PublishTrialProgress(progress), cancellationToken)
                 .ConfigureAwait(false);
             var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
             try

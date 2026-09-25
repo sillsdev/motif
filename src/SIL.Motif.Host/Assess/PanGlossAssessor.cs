@@ -2,6 +2,7 @@ using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Contract.Jobs;
 
 namespace SIL.Motif.Host.Assess;
 
@@ -44,6 +45,12 @@ public sealed class PanGlossAssessor : IAssessor
 
     public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)
+        => await ProduceAsync(scope, exportedCandidate, null, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Runs the batch and reports each flushed word row while it is in progress.</summary>
+    public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+        AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress>? onProgress,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
         var wanted = scope.Collect.Count == 0 ? Supported : scope.Collect;
@@ -67,7 +74,7 @@ public sealed class PanGlossAssessor : IAssessor
         {
             var outcome = await _invoker.RunAsync(new PanGlossRequest.Batch(
                 sources[0], requestedWords, scope.PerWordLimit, cachePath, scope.PerWordStepLimit, directory)
-                { CollectAnalyses = true },
+                { CollectAnalyses = true, OnProgress = onProgress },
                 "assess:batch", cancellationToken).ConfigureAwait(false);
             artifactLease = (outcome as PanGlossOutcome.Completed)?.ArtifactLease;
             if (outcome is PanGlossOutcome.Cancelled)

@@ -117,6 +117,33 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void ATrialPublishesItsCurrentWordWhileTheAssessorRuns()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "progress text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform]);
+        TrialWordProgress? whileRunning = null;
+        var assessor = new FakeAssessor("pangloss", [AssessmentKind.Correctness])
+        {
+            EmitProgress = publish =>
+            {
+                publish(new TrialWordProgress(0, 1, UnanalysedWordform));
+                whileRunning = JsonSerializer.Deserialize<TrialWordProgress>(_jobs.Get(job.JobId)!.ProgressJson!);
+                publish(new TrialWordProgress(1, 1, null));
+            },
+        };
+        var handler = BuildHandler(lanes, assessor);
+
+        var completed = RunAndFinish(handler, job.JobId);
+
+        Assert.Equal(UnanalysedWordform, whileRunning?.CurrentWord);
+        Assert.Equal(0, whileRunning?.Completed);
+        Assert.Equal(1, JsonSerializer.Deserialize<TrialWordProgress>(completed.ProgressJson!)?.Completed);
+    }
+
+    [Fact]
     public void TrialDoesNotChangeTheProposalsStatus()
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);

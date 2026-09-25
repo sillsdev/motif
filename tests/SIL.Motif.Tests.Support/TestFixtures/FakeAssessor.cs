@@ -1,5 +1,6 @@
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Jobs;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
@@ -31,6 +32,16 @@ internal sealed class FakeAssessor : IAssessor
     public IReadOnlyList<AssessmentKind> SupportedKinds => _declaredKinds;
 
     public Func<AssessmentScope, string, BatchInvocationEvidence>? CaptureEvidence { get; init; }
+
+    public Action<Action<TrialWordProgress>>? EmitProgress { get; init; }
+
+    public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+        AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
+        CancellationToken cancellationToken)
+    {
+        EmitProgress?.Invoke(onProgress);
+        return ProduceAsync(scope, exportedCandidate, cancellationToken);
+    }
 
     public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)

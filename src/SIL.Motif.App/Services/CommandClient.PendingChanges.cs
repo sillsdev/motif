@@ -84,6 +84,7 @@ public sealed partial class CommandClient
         if (!queued.Succeeded) return CommandOutcome<ReviewTrialResult>.Refused(queued.Refusal!);
         var jobId = queued.Value!.JobId;
         WakeRunner();
+        ReviewTrialProgress? lastProgress = null;
         try
         {
             while (true)
@@ -92,6 +93,13 @@ public sealed partial class CommandClient
                 var state = await Task.Run(() => JobCommands.Show(new ShowJobRequest(
                     request.ProjectPath, jobId, MotifProductVersion.CurrentText)));
                 if (!state.Succeeded) return CommandOutcome<ReviewTrialResult>.Refused(state.Refusal!);
+                if (state.Value!.TrialProgress is { } wordProgress)
+                {
+                    var next = new ReviewTrialProgress(wordProgress.Completed, wordProgress.Total,
+                        wordProgress.CurrentWord);
+                    if (next != lastProgress) progress.Report(next);
+                    lastProgress = next;
+                }
                 if (state.Value!.Status == JobStatus.Completed) break;
                 if (state.Value.Status is JobStatus.Failed or JobStatus.Cancelled or
                     JobStatus.CompletedWithAssessmentFailure or JobStatus.Interrupted)

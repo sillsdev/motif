@@ -238,7 +238,11 @@ public static class JobCommands
             var job = entry.Value.Job;
             return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(job.JobId, job.ProjectKey, true,
                 job.Kind, job.Status, job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory,
-                job.Version, entry.Value.QueueOrder));
+                job.Version, entry.Value.QueueOrder)
+            {
+                TrialProgress = job.Kind == TrialKind && job.ProgressJson is { } progress
+                    ? JsonSerializer.Deserialize<TrialWordProgress>(progress, MotifJson.CreateOptions()) : null,
+            });
         });
     }
 
