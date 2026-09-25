@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using SIL.Motif.App.Services;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
-using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -197,12 +196,12 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
             var runDefault = _runDefaultSelection;
             var timeLimitMs = runDefault ? _defaultPerWordLimitMs
                 : _selection.PerWordTimeLimitSeconds is > 0 and var seconds ? (int)(seconds * 1000) : null;
-            var stepLimit = runDefault ? _defaultStepLimit : null;
+            var requestedStepLimit = runDefault ? _defaultStepLimit : null;
             _runDefaultSelection = false;
             _defaultPerWordLimitMs = null;
             _defaultStepLimit = null;
             var request = new AssessRequest(ProjectPath!, runDefault ? null : _selection.BuildRequest(),
-                timeLimitMs, stepLimit);
+                timeLimitMs, requestedStepLimit);
             return await _commandClient.AssessAsync(request, this, cancellationToken).ConfigureAwait(true);
         }
 

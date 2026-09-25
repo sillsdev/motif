@@ -50,6 +50,11 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
                 Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
 
+                walkthrough.WaitUntil(
+                    () => walkthrough.Workspace.Context.Setup?.IsOpen == true,
+                    TimeSpan.FromMinutes(1), "first-run setup did not appear after the Baseline was captured");
+                walkthrough.SkipSetup();
+
                 walkthrough.Type(
                     "Pasted words",
                     string.Join(Environment.NewLine,

@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins what a <see cref="WorkspaceContext"/> may carry: snapshots, the one shared Assessment run and its Selection,
-/// the pending changes, the command seam, desktop services and the shell's own actions; never a model one page owns.
+/// the pending changes, the shell setup dialog, desktop services and shell actions; never a model one page owns.
 /// </summary>
 public sealed class WorkspaceContextWidthTests
 {
@@ -21,6 +21,7 @@ public sealed class WorkspaceContextWidthTests
             typeof(string), typeof(bool), typeof(WorkspacePage), typeof(WorkspaceEvidence), typeof(WorkspaceBaseline),
             typeof(CurrentEvidenceSnapshot),
             typeof(GrammarSummary), typeof(ChangesViewModel), typeof(AssessViewModel), typeof(SelectionViewModel),
+            typeof(SetupViewModel),
             typeof(ICommandClient), typeof(IHandoffFolderPicker), typeof(IFileDragSource),
             typeof(IAsyncRelayCommand), typeof(IAsyncRelayCommand<string>),
             typeof(System.Collections.ObjectModel.ObservableCollection<KnownProjectSummary>),
@@ -28,6 +29,6 @@ public sealed class WorkspaceContextWidthTests
         var carried = typeof(WorkspaceContext).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Select(property => Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);
 
-        Assert.Empty(carried.Where(type => !allowed.Contains(type)));
+        Assert.DoesNotContain(carried, type => !allowed.Contains(type));
     }
 }

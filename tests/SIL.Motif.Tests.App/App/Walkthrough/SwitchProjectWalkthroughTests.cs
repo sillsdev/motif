@@ -66,8 +66,10 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             walkthrough.Click("Refresh the Baseline");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Baseline.HasBaseline &&
-                    walkthrough.Workspace.Selection.Texts.Count == 1,
-                WalkthroughSteps.Remaining(deadline), "the second project Baseline did not complete");
+                    walkthrough.Workspace.Selection.Texts.Count == 1 &&
+                    walkthrough.Workspace.Context.Setup?.IsOpen == true,
+                WalkthroughSteps.Remaining(deadline), "the second project Baseline did not show setup");
+            walkthrough.SkipSetup();
             walkthrough.Check(SeededProject.TextTitle);
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
             Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);

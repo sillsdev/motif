@@ -63,9 +63,8 @@ public sealed class WalkthroughWindow : IDisposable
     public void SkipSetup()
     {
         if (Workspace.Context.Setup is not { IsOpen: true } setup) return;
-        setup.SkipCommand.Execute(null);
-        Window.UpdateLayout();
-        Pump();
+        Click("Skip setup for now");
+        WaitUntil(() => !setup.IsOpen, TimeSpan.FromSeconds(30), "skipping setup did not close the dialog");
     }
 
     public void LoadKnownProjects()

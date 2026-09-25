@@ -21,7 +21,6 @@ internal static class WalkthroughSteps
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
             Remaining(deadline), "choosing the project did not load its initial window state");
-        walkthrough.SkipSetup();
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
         Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
         Assert.True(walkthrough.Find<Button>("Refresh the Baseline").IsEffectivelyEnabled);
@@ -33,8 +32,13 @@ internal static class WalkthroughSteps
         walkthrough.Click("Refresh the Baseline");
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.HasBaseline &&
-                walkthrough.Workspace.Selection.Texts.Count == 1,
-            Remaining(deadline), "refreshing the Baseline did not publish its Texts");
+                walkthrough.Workspace.Selection.Texts.Count == 1 &&
+                walkthrough.Workspace.Context.Setup?.IsOpen == true,
+            Remaining(deadline), "refreshing the Baseline did not publish its Texts and setup dialog");
+        Assert.True(walkthrough.Workspace.Context.Setup?.IsOpen,
+            "first-time setup did not open after the Baseline was captured");
+        walkthrough.SkipSetup();
+        Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
         Assert.NotEqual("No Baseline captured yet", walkthrough.Workspace.Baseline.CapturedTimeText);
         // The Baseline names the FieldWorks save it copies, so its date is not read as the capture time.
         var saved = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>().Single(text =>
@@ -59,15 +63,19 @@ internal static class WalkthroughSteps
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
             Remaining(deadline), "choosing the conformance project did not show its initial state");
-        walkthrough.SkipSetup();
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
         Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
 
         walkthrough.Click("Refresh the Baseline");
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.HasBaseline &&
-                walkthrough.Workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts.",
-            Remaining(deadline), "refreshing the conformance project did not complete");
+                walkthrough.Workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts." &&
+                walkthrough.Workspace.Context.Setup?.IsOpen == true,
+            Remaining(deadline), "refreshing the conformance project did not show setup");
+        Assert.True(walkthrough.Workspace.Context.Setup?.IsOpen,
+            "first-time setup did not open after the Baseline was captured");
+        walkthrough.SkipSetup();
+        Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
         Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
         Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
         Assert.Empty(walkthrough.Workspace.Selection.Texts);

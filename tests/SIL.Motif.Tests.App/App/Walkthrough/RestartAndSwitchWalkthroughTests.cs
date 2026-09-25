@@ -79,9 +79,11 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
             restartedWalkthrough.Click("Refresh the Baseline");
             restartedWalkthrough.WaitUntil(
                 () => restartedWalkthrough.Workspace.Baseline.HasBaseline &&
-                    restartedWalkthrough.Workspace.Selection.Texts.Count == 1,
+                    restartedWalkthrough.Workspace.Selection.Texts.Count == 1 &&
+                    restartedWalkthrough.Workspace.Context.Setup?.IsOpen == true,
                 WalkthroughSteps.Remaining(deadline),
-                "capturing a Baseline for the held second project did not complete");
+                "capturing a Baseline for the held second project did not show setup");
+            restartedWalkthrough.SkipSetup();
             Assert.Null(restartedWalkthrough.Workspace.Baseline.RefusalMessage);
             Assert.Null(restartedWalkthrough.Workspace.Selection.RefusalMessage);
             Assert.True(File.Exists(lockPath));
