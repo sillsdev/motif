@@ -75,7 +75,7 @@ public sealed class TryWordPageModel : PageModel
     protected override void OnEvidencePublished(WorkspaceEvidence evidence)
     {
         SetStoredAssessmentId(evidence.Assessment.Measurements
-            .SingleOrDefault(measurement => measurement.Kind == "ObjectTiming")?.AssessmentId);
+            .SingleOrDefault(measurement => measurement.Kind == "ParseTime")?.AssessmentId);
     }
 
     protected override Task OnCurrentEvidencePublishedAsync(

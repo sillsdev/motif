@@ -86,7 +86,7 @@ public sealed class TryWordPageTests
             Assert.Contains("dogs", page.RecentWords);
             var request = Assert.Single(fake.TimingRequests);
             Assert.Equal("rule", request.By);
-            Assert.Equal("assessment-1", request.AssessmentId);
+            Assert.Equal("assessment-parse", request.AssessmentId);
             Assert.Equal(["dogs"], request.ExplicitWords);
         });
     }
@@ -260,7 +260,8 @@ public sealed class TryWordPageTests
             false, false), new SelectionProjection([], []), [], "summary")
     {
         InvocationId = "invocation/one",
-            Measurements = [new ProducedAssessmentReference("assessment-1", "ObjectTiming", "invocation/one")],
+            Measurements = [new ProducedAssessmentReference("assessment-1", "ObjectTiming", "invocation/one"),
+                new ProducedAssessmentReference("assessment-parse", "ParseTime", "invocation/one")],
         };
 
     private static AssessmentRecord StoredAssessment() => new(
