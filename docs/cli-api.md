@@ -78,7 +78,7 @@ that dispatches them.
 | `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
 | `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
 | `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
-| `trial --pending` | Developer | `trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> --wait (always waits) [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]` |
+| `trial --pending` | Developer | `trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> --wait [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]` |
 | `jobs show` | Released | `jobs show <jobId> --project <fwdata> [--json]` |
 | `jobs assessments` | Released | `jobs assessments <jobId> --project <fwdata> [--json]` |
 | `jobs list` | Released | `jobs list --all [--json]` |
@@ -114,10 +114,10 @@ The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
 `apply --all-pending` is the Released save-boundary entry point specified for FieldWorks: FieldWorks releases
 the project, calls the verb, then reloads the project. It accepts an optional `--revision` to require the exact
 revision FieldWorks previously checked and an optional `--user` for the Receipt; without `--user`, Motif uses
-the current account. Exit code `0` means the save-boundary call completed, including when there was nothing to
-apply. With `--json`, that no-work case writes a failure envelope with code `apply.nothing-pending` and reason
-`NoChanges`; callers can use the exit code to continue and the code to describe what happened. Other nonzero
-exit codes indicate a refusal or an error.
+the current account. Nothing pending is a success, not a refusal: the verb exits `0`, writes nothing to
+stderr and records no Receipt, and prints `Nothing to apply.` or, with `--json`, `{"ok":true,"applied":false}`
+on stdout. An Apply that ran exits `0` and prints its Receipt. Every nonzero exit code is a refusal or an
+error, with its failure envelope on stderr, so FieldWorks can treat exit `0` alone as "continue".
 
 `preflight` reads the live project and reports each collected change as `still fits` or
 `no longer fits`, with an operation id and reason. `--json` returns the same entries as structured
@@ -135,17 +135,20 @@ change carries the exact reading chosen from an Assessment, or identifies a stor
 text is never an identity. A current Baseline is required, and the snapshot reports fit for every
 change. The Draft stays in `Project.motif.db` when the App closes.
 
-`trial --pending` resolves the current pending Draft when `--draft` and `--revision` are omitted, and always
-waits for its Trial. The default wait timeout is two minutes; `--wait-timeout-ms` changes it. A timed-out
-Trial is cancelled, and the refusal remains available through the job commands if cancellation was not accepted.
+`trial --pending` resolves the current pending Draft when `--draft` and `--revision` are omitted, reading only
+the paired project database, so it never opens the FieldWorks project to check them. A `--draft` or `--revision`
+that no longer matches is refused as `trial.changes-changed`, and an empty pending Draft as `trial.nothing-pending`,
+before any Trial is queued. The `--wait` flag is required and the verb always waits for its Trial. The default
+wait timeout is two minutes; `--wait-timeout-ms` changes it, and a value that is not a whole number is refused
+with the usage line. A timed-out Trial is cancelled; if cancellation is refused, the job keeps running and
+`jobs show` reports it.
 
 `CommandSurfacePolicy.IsAvailable` exposes a command when its surface is Released or when developer
 commands are enabled. Set `MOTIF_DEVELOPER_COMMANDS=1` exactly to re-enable the Developer commands for
 both help and dispatch; other values leave them unavailable.
 
 `FailureEnvelope.ExitCodeFor` maps `InvalidArgument` to `1`, `NotFound`, `Refused`, and `Cancelled` to `2`,
-`Busy` to `3`, and `StoreInconsistent` to `4`; its fallback also returns `4`. `NoChanges` maps to `0` for
-the save-boundary apply outcome described above.
+`Busy` to `3`, and `StoreInconsistent` to `4`; its fallback also returns `4`. No failure reason maps to `0`.
 
 The verb set is expected to churn. [ADR 0021](adr/0021-cli-is-the-full-surface-layer-1-churns.md) settles
 that churn is welcome in this surface and forbidden in the hashed operation vocabulary and canonical JSON
