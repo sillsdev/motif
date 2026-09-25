@@ -373,28 +373,31 @@ public static class AssessCommand
                     {
                         var readings = word.Morphology is null
                             ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology);
+                        var readingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
+                            wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
+                            wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
+                            wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>());
+                        var projectStanding = wordContext.Standings.GetValueOrDefault(word.Word);
+                        var missedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
+                            .Select(index => word.Correctness.Expectations[index])
+                            .Select(missed => new ParserReading(ParserReadingReader.ReadMorphs(namingCache, projectName,
+                                missed.Morphs.Select(morph => new ParseMorph(morph.Form, morph.Msa, morph.InflType, GuessedString: null)).ToArray())))
+                            .ToArray();
                         var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : ((int?)null, (int?)null);
                         return word with
                         {
                             Readings = readings,
                             TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
-                            ReadingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
-                                wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
-                                wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
-                                wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>()),
-                            ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
+                            ReadingGrades = readingGrades,
+                            ProjectStanding = projectStanding,
                             OccurrenceCount = wordContext.HasTextSelection
                                 ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
-                            MissedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
-                                .Select(index => word.Correctness.Expectations[index])
-                                .Select(missed => new ParserReading(ParserReadingReader.ReadMorphs(namingCache, projectName,
-                                    missed.Morphs.Select(morph => new ParseMorph(morph.Form, morph.Msa, morph.InflType, GuessedString: null)).ToArray())))
-                                .ToArray(),
+                            MissedApproved = missedApproved,
                             Attempts = stats.Item1,
                             Passes = stats.Item2,
                             FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(
-                                word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
-                                word.ReadingGrades, word.MissedApproved?.Count ?? 0), word.MissedApproved),
+                                projectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
+                                readingGrades, missedApproved?.Length ?? 0), missedApproved),
                         };
                     }).ToArray();
                 }

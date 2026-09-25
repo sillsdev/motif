@@ -297,9 +297,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         foreach (var token in Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord))
         {
             pending.TryGetValue(token.Form, out var changes);
-            token.PendingState = changes?.Any(change => change.Fit is { StillFits: false }) == true
-                ? PendingChangeState.NoLongerFits
-                : changes?.Length > 0 ? PendingChangeState.NotAppliedYet : PendingChangeState.None;
+            token.PendingState = PendingChangeStates.FromChanges(changes);
             token.IsPending = token.PendingState != PendingChangeState.None;
         }
         OnPropertyChanged(nameof(Changes));

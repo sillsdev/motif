@@ -13,6 +13,11 @@ public enum PendingChangeState
 
 internal static class PendingChangeStates
 {
+    public static PendingChangeState FromChanges(IReadOnlyCollection<ChangeViewModel>? changes) =>
+        changes?.Any(change => change.Fit is { StillFits: false }) == true
+            ? PendingChangeState.NoLongerFits
+            : changes?.Count > 0 ? PendingChangeState.NotAppliedYet : PendingChangeState.None;
+
     public static string? Label(PendingChangeState state) => state switch
     {
         PendingChangeState.NotAppliedYet => "Not applied yet",

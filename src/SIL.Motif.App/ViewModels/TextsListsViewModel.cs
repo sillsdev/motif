@@ -150,7 +150,10 @@ public sealed partial class TextsListsViewModel : ObservableObject
     /// <summary>Selects the first question when the chosen matrix cells do not match a named list.</summary>
     public void SelectFirstIfNeeded()
     {
-        if (SelectedList is null) SelectList(Lists.FirstOrDefault());
+        if (SelectedList is null)
+            SelectList(Lists.FirstOrDefault());
+        else if (!string.IsNullOrEmpty(Compare.SearchText))
+            SelectList(SelectedList);
     }
 
     private TextsListDefinitionViewModel Definition(string name, string question, params TextsListCell[] cells) =>

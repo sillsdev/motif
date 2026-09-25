@@ -409,7 +409,7 @@ public sealed partial class CompareViewModel : ObservableObject
         foreach (var word in _all)
         {
             pending.TryGetValue(word.Word, out var changes);
-            word.PendingState = PendingStateOf(changes);
+            word.PendingState = PendingChangeStates.FromChanges(changes);
             word.HasPendingChange = word.PendingState != PendingChangeState.None;
         }
         foreach (var cell in Cells)
@@ -421,11 +421,6 @@ public sealed partial class CompareViewModel : ObservableObject
                 : statuses.FirstOrDefault(status => status != PendingChangeState.None);
         }
     }
-
-    private static PendingChangeState PendingStateOf(IReadOnlyList<ChangeViewModel>? changes) =>
-        changes?.Any(change => change.Fit is { StillFits: false }) == true
-            ? PendingChangeState.NoLongerFits
-            : changes?.Count > 0 ? PendingChangeState.NotAppliedYet : PendingChangeState.None;
 
     private void ApplyFilter()
     {
