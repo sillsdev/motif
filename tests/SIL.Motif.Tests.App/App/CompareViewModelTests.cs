@@ -71,8 +71,19 @@ public sealed class CompareViewModelTests
         Assert.Equal(CompareFamilyKind.Violation, CompareViewModel.MeaningOf(WordProjectStatus.Approved, CompareColumnKind.NoParse).Family);
         Assert.Equal(CompareFamilyKind.Violation, CompareViewModel.MeaningOf(WordProjectStatus.Rejected, CompareColumnKind.Match).Family);
         Assert.Equal(CompareFamilyKind.New, CompareViewModel.MeaningOf(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch).Family);
+        Assert.Equal("Nobody can analyze it",
+            CompareViewModel.MeaningOf(WordProjectStatus.NotPresent, CompareColumnKind.NoParse).Label);
         foreach (var row in Enum.GetValues<WordProjectStatus>())
             Assert.Equal(CompareFamilyKind.Unknown, CompareViewModel.MeaningOf(row, CompareColumnKind.Timeout).Family);
+    }
+
+    [Fact]
+    public void NobodyPresetUsesTheAnalyzeSpelling()
+    {
+        var compare = new CompareViewModel();
+
+        Assert.Equal("Nobody can analyze", compare.Presets.Single(preset =>
+            preset.Family == CompareFamilyKind.Nobody).Label);
     }
 
     private static readonly AssessmentWordResult[] Sample =

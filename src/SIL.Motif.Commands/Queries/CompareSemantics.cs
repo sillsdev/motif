@@ -92,7 +92,7 @@ public static class CompareSemantics
         {
             (ProjectStanding.NotPresent, CompareColumnKind.Match) => ("Cannot happen", CompareFamilyKind.None),
             (ProjectStanding.NotPresent, CompareColumnKind.NoMatch) => ("New: the parser proposes", CompareFamilyKind.New),
-            (ProjectStanding.NotPresent, _) => ("Nobody can analyse it", CompareFamilyKind.Nobody),
+            (ProjectStanding.NotPresent, _) => ("Nobody can analyze it", CompareFamilyKind.Nobody),
             (ProjectStanding.Candidate, CompareColumnKind.Match) => ("Confirms the candidate", CompareFamilyKind.Good),
             (ProjectStanding.Candidate, CompareColumnKind.NoMatch) => ("Differs: review", CompareFamilyKind.Review),
             (ProjectStanding.Candidate, _) => ("Grammar can't build it", CompareFamilyKind.Review),

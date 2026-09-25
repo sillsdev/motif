@@ -216,6 +216,15 @@
         <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                 AutomationProperties.Name="Mark checked words as incorrect spelling" />
+        <Button Content="Approve" Command="{Binding Compare.ProposeCommand}" CommandParameter="approve"
+                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                AutomationProperties.Name="Approve the chosen analysis for the checked word" />
+        <Button Content="Reject" Command="{Binding Compare.ProposeCommand}" CommandParameter="reject"
+                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                AutomationProperties.Name="Reject the chosen analysis for the checked word" />
+        <Button Content="Back to candidate" Command="{Binding Compare.ProposeCommand}" CommandParameter="candidate"
+                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                AutomationProperties.Name="Return the chosen analysis to candidate" />
         <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10"
                        Width="{DynamicResource Component.TextsPage.RerunTimeWidth}" FormatString="0"
                        IsVisible="{Binding Compare.CanRerun}"
@@ -229,6 +238,7 @@
       </WrapPanel>
       <views:CopyableTextBlock Classes="error" Text="{Binding Compare.Changes.ErrorText}" TextWrapping="Wrap"
                                IsVisible="{Binding Compare.Changes.HasError}" />
+      <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.Changes.CollectionNotice}" TextWrapping="Wrap" />
     </StackPanel>
 
     <Grid Grid.Row="5" RowDefinitions="Auto,*">

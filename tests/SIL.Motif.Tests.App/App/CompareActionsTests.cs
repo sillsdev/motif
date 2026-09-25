@@ -134,7 +134,7 @@ public sealed class CompareActionsTests
     }
 
     [Fact]
-    public async Task MatrixOffersOnlyTheTwoAllowedBulkChanges()
+    public async Task MatrixAllowsBulkChangesAndOneExplicitOpinion()
     {
         var table = new AssessWordsViewModel();
         table.Load([Word("ambiguous", "analysed", ProjectStanding.NotPresent, readingCount: 2)]);
@@ -152,11 +152,39 @@ public sealed class CompareActionsTests
 
         var chosen = compare.Words.Single();
         chosen.IsChecked = true;
-        chosen.SelectedReading = chosen.ReadingChoices[1];
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
-        Assert.Equal(2, compare.Changes.Items.Count);
+        chosen.SelectedReading = chosen.ReadingChoices[1];
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
+    }
+
+    [Theory]
+    [InlineData(ChangeKinds.Approve)]
+    [InlineData(ChangeKinds.Reject)]
+    [InlineData(ChangeKinds.Candidate)]
+    public async Task ACheckedWordOpinionUsesItsOneChosenAnalysis(string kind)
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([Word("pasted-word", "analysed", ProjectStanding.Approved, readingCount: 2)]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+        var word = compare.Words.Single();
+        word.IsChecked = true;
+        var chosen = word.ReadingChoices[1];
+        word.SelectedReading = chosen;
+
+        Assert.True(compare.ProposeCommand.CanExecute(kind));
+
+        await compare.ProposeCommand.ExecuteAsync(kind);
+
+        var change = Assert.Single(compare.Changes.Items);
+        Assert.Equal(kind, change.Kind);
+        Assert.Equal("pasted-word", change.Word);
+        Assert.Equal(chosen.Label, change.Reading);
+        Assert.False(word.IsChecked);
     }
 
     [Fact]

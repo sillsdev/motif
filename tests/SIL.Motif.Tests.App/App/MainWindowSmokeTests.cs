@@ -671,6 +671,58 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
+    public void MatrixOffersOpinionsForAnAddedWordWithOneChosenAnalysis()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.Assess.Result = new AssessCommandResponse(
+                    new BaselineCaptureResponse(
+                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
+                    new SelectionProjection([], []), [], "1 word assessed")
+                {
+                    Words =
+                    [
+                        new AssessmentWordResult("pasted-word", "analysed", false, "Search completed", 1, null)
+                        {
+                            ProjectStanding = ProjectStanding.Approved,
+                            Morphology = new ParseWordEvidence(
+                                ParseMorphEvidence.Schema, 0, "pasted-word", 1, false, false, false,
+                                [new ParseAnalysis([new("11111111-1111-1111-1111-111111111111",
+                                    "22222222-2222-2222-2222-222222222222", null, null)])], []),
+                        },
+                    ],
+                };
+                workspace.Context.OpenTexts(TextsTab.Matrix);
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
+                var word = Assert.Single(workspace.Assess.Compare.Words);
+                word.IsChecked = true;
+                word.SelectedReading = Assert.Single(word.ReadingChoices);
+
+                foreach (var kind in new[] { ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.Candidate })
+                {
+                    var button = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
+                        Equals(candidate.Content, ChangeKinds.LabelOf(kind)));
+                    Assert.Equal(kind, button.CommandParameter);
+                    Assert.True(button.Command?.CanExecute(button.CommandParameter));
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void FixFirstCollapsesToItsCountAndHighlightsTheFocusedWordWithItsReasonVisible()
     {
         _avalonia.Invoke(() =>

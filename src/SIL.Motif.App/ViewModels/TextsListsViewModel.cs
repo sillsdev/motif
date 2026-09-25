@@ -98,7 +98,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
                 Cell(WordProjectStatus.Candidate, CompareColumnKind.Match)),
             Definition("Parsed, not in the project", "Which new words did the grammar parse that the project does not store?",
                 Cell(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch)),
-            Definition("Nobody can analyse", "Which unstored words had no parser reading?",
+            Definition("Nobody can analyze", "Which unstored words had no parser reading?",
                 Cell(WordProjectStatus.NotPresent, CompareColumnKind.NoParse)),
             Definition("Rejected but rebuilt", "Which words did the grammar rebuild after the project rejected them?",
                 Cell(WordProjectStatus.Rejected, CompareColumnKind.Match)),

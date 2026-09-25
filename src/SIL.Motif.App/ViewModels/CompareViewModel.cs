@@ -30,7 +30,7 @@ public sealed partial class CompareViewModel : ObservableObject
             new ComparePresetViewModel("Violations", CompareFamilyKind.Violation),
             new ComparePresetViewModel("Review", CompareFamilyKind.Review),
             new ComparePresetViewModel("New", CompareFamilyKind.New),
-            new ComparePresetViewModel("Nobody can analyse", CompareFamilyKind.Nobody),
+            new ComparePresetViewModel("Nobody can analyze", CompareFamilyKind.Nobody),
             new ComparePresetViewModel("Unknown", CompareFamilyKind.Unknown),
         ];
         ClearSelectionCommand = new RelayCommand(() => Select([], additive: false));
@@ -59,7 +59,7 @@ public sealed partial class CompareViewModel : ObservableObject
         });
         ProposeCommand = new AsyncRelayCommand<string>(async kind =>
         {
-            if (kind is null) return;
+            if (kind is null || !CanPropose(kind)) return;
             var chosen = Words.Where(word => word.IsChecked).ToList();
             Changes.BeginCollection();
             foreach (var word in chosen)
@@ -100,6 +100,8 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             ChangeKinds.IncorrectSpelling => chosen.Length > 0,
             ChangeKinds.AddCandidate => chosen.Length > 0 && chosen.All(word => word.ReadingCount > 0),
+            ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate =>
+                chosen.Length == 1 && chosen[0].SelectedReading is not null,
             _ => false,
         };
     }

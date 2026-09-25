@@ -52,7 +52,7 @@ public sealed class TextsListsViewModelTests
 
         Assert.Equal(
             ["Approved, not parsed", "Approved, parsed differently", "Candidate the parser confirms",
-                "Parsed, not in the project", "Nobody can analyse", "Rejected but rebuilt", "Timed out"],
+                "Parsed, not in the project", "Nobody can analyze", "Rejected but rebuilt", "Timed out"],
             lists.Lists.Select(list => list.Name));
 
         foreach (var list in lists.Lists)
@@ -93,7 +93,7 @@ public sealed class TextsListsViewModelTests
     [InlineData("Approved, parsed differently", "approved-other")]
     [InlineData("Candidate the parser confirms", "candidate-kept")]
     [InlineData("Parsed, not in the project", "new-parse")]
-    [InlineData("Nobody can analyse", "nobody")]
+    [InlineData("Nobody can analyze", "nobody")]
     [InlineData("Rejected but rebuilt", "rejected-rebuilt")]
     public void SelectingOneQuestionMakesItsWordsTheMatrixWordList(string name, string word)
     {
