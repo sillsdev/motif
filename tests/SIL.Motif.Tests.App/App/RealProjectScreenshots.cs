@@ -136,7 +136,12 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
 
         walkthrough.WaitUntil(() => workspace.Selection.Texts.Count > 0 ||
             workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts.", TimeSpan.FromMinutes(2), "the Texts did not load");
-        if (workspace.Selection.Texts.FirstOrDefault() is { } text) text.IsChecked = true;
+        if (workspace.Selection.Texts.FirstOrDefault() is { } text)
+        {
+            text.IsChecked = true;
+            walkthrough.WaitUntil(() => !workspace.PageModel<TextsPageModel>().Words.IsLoading,
+                TimeSpan.FromMinutes(2), "the setup word preview did not finish loading");
+        }
         else workspace.Selection.PastedWords = "setup sample";
         CaptureSetupStep(walkthrough, folder, "selection");
         setup.NextCommand.Execute(null);
