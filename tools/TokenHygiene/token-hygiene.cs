@@ -95,6 +95,10 @@ internal static class TokenHygiene
     private static readonly Regex CodeAssignment = new(
         @"\b(?:Margin|Padding|Spacing|RowSpacing|ColumnSpacing|FontSize|StrokeThickness|Width|Height|MinWidth|MinHeight" +
         $@"|MaxWidth|MaxHeight)\s*(?<![=!<>+\-*/])=(?!=)\s*(?:\((?:double|float|int)\)\s*)?({Number})[dfmDFM]?(?=\s*[;,)}}]|\s*$)");
+    // A ternary between sizes, such as (ShowLegend ? 14 : 10), hides its literals from the plain assignment.
+    private static readonly Regex CodeConditionalAssignment = new(
+        @"\b(?:Margin|Padding|Spacing|RowSpacing|ColumnSpacing|FontSize|StrokeThickness|Width|Height|MinWidth|MinHeight" +
+        @"|MaxWidth|MaxHeight)\s*(?<![=!<>+\-*/])=(?!=)[^;,{}=?]*\?([^;,{}]*)");
     private static readonly Regex CodeSetter = new($@"\bnew\s+Setter\s*\(\s*[^,()]+,\s*({Number})\s*\)");
     private static readonly Regex CodePrimitiveKey = new("\"Primitive\\.");
     private static readonly Regex CodeResourceLookup = new(
@@ -387,6 +391,11 @@ internal static class TokenHygiene
                 if (m.Groups[1].Value == "GridLength" && arguments.Contains("GridUnitType.Star", StringComparison.Ordinal)) continue;
                 if (NumericLiteral.Matches(arguments).Any(literal => !IsNeutralSize(literal.Value)))
                     found.Add(new(path, line, "literal-size", m.Value));
+            }
+            foreach (Match m in CodeConditionalAssignment.Matches(code))
+            {
+                if (NumericLiteral.Matches(m.Groups[1].Value).Any(literal => !IsNeutralSize(literal.Value)))
+                    found.Add(new(path, line, "literal-size", m.Value.Trim()));
             }
             foreach (var pattern in (Regex[])[CodeAssignment, CodeSetter])
             {
