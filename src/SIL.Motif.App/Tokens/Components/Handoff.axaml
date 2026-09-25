@@ -59,12 +59,12 @@
   </Style>
 
   <!-- A suggested question reads as a link: one click copies it for the chat. -->
-  <Style Selector="Button.question">
+  <Style Selector="Button.handoffQuestion">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Handoff.QuestionInset}" />
     <Setter Property="Margin" Value="{DynamicResource Component.Handoff.QuestionInset}" />
   </Style>
-  <Style Selector="Button.question TextBlock">
+  <Style Selector="Button.handoffQuestion TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
   </Style>
 

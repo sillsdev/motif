@@ -166,7 +166,7 @@
             <ItemsControl ItemsSource="{Binding Questions}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
-                  <Button Classes="question" Click="OnCopyQuestionClick" Tag="{Binding}"
+                  <Button Classes="handoffQuestion" Click="OnCopyQuestionClick" Tag="{Binding}"
                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                           ToolTip.Tip="Copy this question" AutomationProperties.Name="{Binding}">
                     <TextBlock Text="{Binding}" TextWrapping="Wrap" />
