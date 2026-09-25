@@ -1531,7 +1531,8 @@ public static partial class ProposalCommands
             // A held project is retryable once it is let go, which is what Busy tells a caller.
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                 "apply.project-in-use", FailureReason.Busy,
-                ProjectInUseMessage(project.FullFwDataPath, "apply"), Fact(("proposalId", proposalId))));
+                ProjectStoreCommand.ProjectInUseMessage(project.FullFwDataPath, "apply"),
+                Fact(("proposalId", proposalId))));
         }
         catch (NeedsReconciliationException ex)
         {
@@ -1599,13 +1600,6 @@ public static partial class ProposalCommands
             return CommandOutcome<AppliedLogProjection>.Refused(ProjectFileRefusal(ex));
         }
     }
-
-    /// <summary>Explains a refused open: LibLCM's own message is confusing and lacks the fix (ADR 0030).</summary>
-    private static string ProjectInUseMessage(string fwDataPath, string verb) =>
-        $"Cannot {verb}: the project '{Path.GetFileNameWithoutExtension(fwDataPath)}' is in use by " +
-        "another program — most likely FieldWorks, or another Motif command that has not finished. " +
-        "Only one program may hold a FieldWorks project at a time, and Motif takes the same lock " +
-        "FieldWorks does. Close the other program and try again.";
 
     internal static string BuildProposalJson(DraftDocument draft)
     {
