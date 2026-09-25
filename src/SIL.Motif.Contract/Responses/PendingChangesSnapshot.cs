@@ -3,7 +3,14 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>One authored change and all operations lowered from it.</summary>
 public sealed record PendingChange(
     string ChangeId, string WordformId, string Word, string Kind, string? AssessmentId,
-    string? DisplayReading, IReadOnlyList<string> OperationIds);
+    string? DisplayReading, IReadOnlyList<string> OperationIds)
+{
+    /// <summary>The word's readings, including the one this change addresses.</summary>
+    public IReadOnlyList<ReviewAnalysis> Analyses { get; init; } = [];
+}
+
+/// <summary>One reading shown beside a change, with its previous opinion and whether the change touches it.</summary>
+public sealed record ReviewAnalysis(ParserReading Reading, string Opinion, bool Touched, bool Stored);
 
 /// <summary>The fit of one authored change, including missing mapping or fingerprint evidence.</summary>
 public sealed record ChangeFit(string ChangeId, bool StillFits, IReadOnlyList<string> Reasons);

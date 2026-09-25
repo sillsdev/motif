@@ -498,8 +498,20 @@ public sealed class ProposalWorkflowTests
         {
             IWfiWordform wordform = null!;
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
                 wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                    .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs)));
+                    .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs));
+                var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+                var stored = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(stored);
+                for (var index = 0; index < 2; index++)
+                {
+                    var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                    stored.MorphBundlesOS.Add(bundle);
+                    bundle.MorphRA = entry.LexemeFormOA;
+                    bundle.MsaRA = entry.MorphoSyntaxAnalysesOC.First();
+                }
+            });
             wordformGuid = wordform.Guid;
             loader.Save(cache);
         }
@@ -543,6 +555,14 @@ public sealed class ProposalWorkflowTests
             pending.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "add-candidate",
                 CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading)));
         Assert.True(candidateChange.Succeeded, candidateChange.Refusal?.Message);
+        var review = Assert.Single(candidateChange.Value!.Changes);
+        Assert.Equal(3, review.Analyses.Count);
+        Assert.True(review.Analyses[1].Touched);
+        Assert.False(review.Analyses[1].Stored);
+        Assert.NotEmpty(review.Analyses[1].Reading.Morphs[0].Form);
+        Assert.True(review.Analyses[2].Stored);
+        Assert.Equal("candidate", review.Analyses[2].Opinion);
+        Assert.Equal(2, review.Analyses[2].Reading.Morphs.Count);
         var sameReadingOpinion = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
             candidateChange.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "approve",
                 CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,

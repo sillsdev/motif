@@ -32,7 +32,8 @@ namespace SIL.Motif.Worker.Jobs;
 /// <param name="Scope">The declared Assessment scope to use, or <c>null</c> for the project's default.</param>
 public sealed record TrialJobInput(
     [property: JsonPropertyName("proposalJson")] string ProposalJson,
-    [property: JsonPropertyName("scope")] string? Scope)
+    [property: JsonPropertyName("scope")] string? Scope,
+    [property: JsonPropertyName("words")] IReadOnlyList<string>? Words = null)
 {
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>
@@ -148,7 +149,7 @@ internal sealed class TrialJobHandler
         CandidateRun candidate;
         try
         {
-            candidate = await RunCandidateAsync(claim, lane, proposal, scopeConfiguration, baseline.FwDataPath,
+            candidate = await RunCandidateAsync(claim, lane, proposal, scopeConfiguration, input.Words, baseline.FwDataPath,
                 scratchRoot, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -208,7 +209,8 @@ internal sealed class TrialJobHandler
         string ExportedDirectory);
 
     private async Task<CandidateRun> RunCandidateAsync(ClaimedJob claim, ProjectLane lane,
-        Contract.Model.Proposal proposal, AssessmentScopeConfiguration scopeConfiguration, string baselineFwDataPath,
+        Contract.Model.Proposal proposal, AssessmentScopeConfiguration scopeConfiguration,
+        IReadOnlyList<string>? requestedWords, string baselineFwDataPath,
         string scratchRoot, CancellationToken cancellationToken)
     {
         CandidateRun? candidate = null;
@@ -224,9 +226,9 @@ internal sealed class TrialJobHandler
                 claim.PublishDryRun(DryRunJobHandler.BuildPublishedDryRunJson(dryRun));
 
                 var cache = scratch?.PeekCache();
-                var words = cache is null
-                    ? Array.Empty<string>()
-                    : WordQueryResolver.Resolve(scopeConfiguration.Query, cache).ToArray();
+                var words = requestedWords is not null
+                    ? requestedWords.Distinct(StringComparer.Ordinal).ToArray()
+                    : cache is null ? [] : WordQueryResolver.Resolve(scopeConfiguration.Query, cache).ToArray();
                 var scope = new AssessmentScope(words,
                     ParseCollect(scopeConfiguration.Collect), scopeConfiguration.PerWordLimit, scopeConfiguration.PerWordStepLimit);
                 candidate = new CandidateRun(dryRun, scope, Selection.Create(scopeConfiguration.Name, words),

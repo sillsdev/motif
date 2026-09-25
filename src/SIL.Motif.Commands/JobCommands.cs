@@ -124,7 +124,7 @@ public static class JobCommands
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var inputJson = JsonSerializer.Serialize(
-                new TrialJobInput(record.ProposalJson!, request.Scope), MotifJson.CreateOptions());
+                new TrialJobInput(record.ProposalJson!, request.Scope, request.Words), MotifJson.CreateOptions());
             var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));

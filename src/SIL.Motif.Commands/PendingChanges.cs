@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Commands.Store;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
@@ -12,6 +13,8 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
@@ -298,6 +301,56 @@ public static class PendingChanges
             return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);
 
         using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+        var assessments = new AssessmentRepository(database);
+        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
+        changes = changes.Select(change =>
+        {
+            var stored = StoredAnalyses(cache, projectName, change.WordformId);
+            if (change.AssessmentId is not { } assessmentId ||
+                !provenance.TryGetValue(change.ChangeId, out var entry))
+                return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
+            try
+            {
+                var word = assessments.Get(assessmentId).Words?.SingleOrDefault(item => item.Word == change.Word);
+                if (word?.Morphology is not { } morphology)
+                    return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
+                var readings = ParserReadingReader.Read(cache, projectName, morphology);
+                var selected = Number(entry, "readingIndex");
+                if (selected is null)
+                {
+                    var authored = draft.Operations.Where(operation => ChangeIdOf(operation) == change.ChangeId)
+                        .Select(operation => operation.Extensions)
+                        .Where(extensions => extensions is { ValueKind: JsonValueKind.Object })
+                        .Select(extensions => extensions!.Value.TryGetProperty("changeFit", out var fit) ? fit : default)
+                        .FirstOrDefault(fit => fit.ValueKind == JsonValueKind.Object);
+                    var readingDigest = Property(authored, "readingContentDigest");
+                    if (readingDigest is not null)
+                    {
+                        var matching = morphology.Analyses.Select((analysis, index) => (analysis, index))
+                            .Where(candidate => ChangeFitPreflight.ReadingDigest(candidate.analysis) == readingDigest)
+                            .Take(2).ToArray();
+                        if (matching.Length == 1) selected = matching[0].index;
+                    }
+                }
+                var parserKeys = morphology.Analyses.Select(ProjectAnalysisKey.For).ToHashSet(StringComparer.Ordinal);
+                return change with
+                {
+                    Analyses = readings.Select((reading, index) =>
+                    {
+                        var key = ProjectAnalysisKey.For(morphology.Analyses[index]);
+                        var match = stored.FirstOrDefault(item => item.Key == key);
+                        return new ReviewAnalysis(reading,
+                            match.Analysis?.Opinion ?? word.ReadingGrades?.ElementAtOrDefault(index) ?? "no-opinion",
+                            selected == index, match.Analysis is not null);
+                    }).Concat(stored.Where(item => !parserKeys.Contains(item.Key))
+                        .Select(item => item.Analysis)).ToArray(),
+                };
+            }
+            catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
+            {
+                return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
+            }
+        }).ToArray();
         var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
         var baseline = new BaselineRepository(database)
             .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
@@ -317,6 +370,26 @@ public static class PendingChanges
         return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, fits);
     }
 
+    private static IReadOnlyList<(string Key, ReviewAnalysis Analysis)> StoredAnalyses(
+        LcmCache cache, string projectName, string wordformId)
+    {
+        if (!CanonicalId.TryParse(wordformId, out var id) ||
+            !cache.ServiceLocator.GetInstance<IWfiWordformRepository>().TryGetObject(id.ToGuid(), out var wordform))
+            return [];
+        return wordform.AnalysesOC.Select(analysis =>
+        {
+            var morphs = analysis.MorphBundlesOS.Select(bundle => new ParseMorph(
+                bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"),
+                bundle.InflTypeRA?.Guid.ToString("D"), null)).ToArray();
+            var key = AnalysisContent.ComputeDigest(morphs.Select(morph =>
+                new MorphBundleContent(morph.Form, morph.Msa, morph.InflType)).ToArray());
+            var opinion = wordform.HumanApprovedAnalyses.Contains(analysis) ? "approved" :
+                wordform.HumanDisapprovedParses.Contains(analysis) ? "disapproved" : "candidate";
+            var reading = new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs));
+            return (key, new ReviewAnalysis(reading, opinion, false, true));
+        }).ToArray();
+    }
+
     private static string? ChangeIdOf(DraftOperation operation) =>
         operation.Extensions is { ValueKind: JsonValueKind.Object } extensions &&
         extensions.TryGetProperty("changeId", out var id)
@@ -328,7 +401,11 @@ public static class PendingChanges
 
     private static string? Property(JsonElement entry, string name) =>
         entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty(name, out var value) &&
-        value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    private static int? Number(JsonElement entry, string name) =>
+        entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty(name, out var value) &&
+        value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) ? number : null;
 
     private static int RemoveChange(DraftDocument draft, string changeId)
     {

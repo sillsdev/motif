@@ -5,6 +5,7 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -25,6 +26,62 @@ public sealed class PendingChangesTests
     {
         using var scratch = pristine.NewScratch();
         _path = scratch.ProjectId.Path;
+    }
+
+    [Fact]
+    public void ApplyingTheReviewedPendingChangeRecordsAReceiptAndClearsTheList()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("review-word", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path),
+            Path.Combine(Path.GetDirectoryName(_path)!, "review-managed"));
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var initial = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", initial.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "review-word")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        Assert.True(ProposalCommands.Label(new LabelRequest(_path, "1.0", PendingChanges.DraftName,
+            "Correct word spelling")).Succeeded);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(_path, "1.0", PendingChanges.DraftName,
+            "The project's spelling status needs correction.")).Succeeded);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_path, "1.0", PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var proposalId = finalized.Value!.ProposalId;
+        Assert.All(ProposalCommands.Preflight(new PreflightRequest(_path, "1.0", proposalId)).Value!.Changes,
+            fit => Assert.True(fit.StillFits, fit.Reason));
+        var dryRun = DryRunJobRunner.Run(_path, "1.0", proposalId);
+        Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
+        using (var database = ProjectMotifDatabase.Open(_path))
+        {
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                CanonicalId.Mint("assessment/").Value, CanonicalId.Parse(proposalId),
+                finalized.Value.IntentDigest, "pangloss", "Correctness",
+                """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+                "sha256:scope",
+                "none", "1", JsonSerializer.Serialize(captured.Value!.Token),
+                SIL.Motif.Host.Corpus.Selection.Create("review", ["review-word"]),
+                "sha256:outcome", "sha256:semantic", "sha256:grammar", "model", "pipeline", 0,
+                [CorrectnessFixture.Word("review-word", true)]));
+        }
+
+        var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId, "reviewer"));
+
+        Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        Assert.Empty(PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes);
+        using var stored = ProjectMotifDatabase.Open(_path);
+        using var connection = stored.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        Assert.Equal(1L, (long)command.ExecuteScalar()!);
     }
 
     [Fact]

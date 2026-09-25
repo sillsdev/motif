@@ -99,6 +99,24 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void ATrialCanMeasureOnlyTheWordsTouchedByAChange()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "one word");
+        SaveCommittedProposal(proposalId, proposalJson);
+
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform]);
+        var completed = RunAndFinish(handler, job.JobId);
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        var assessmentId = JsonDocument.Parse(completed.ResultJson!).RootElement
+            .GetProperty("assessmentIds")[0].GetString()!;
+        Assert.Equal([UnanalysedWordform], _assessments.Get(assessmentId).Selection.Words);
+    }
+
+    [Fact]
     public void TrialDoesNotChangeTheProposalsStatus()
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);
@@ -348,9 +366,9 @@ public sealed class TrialJobHandlerTests : IDisposable
             null, null, null));
     }
 
-    private JobRecord CreateTrialJob(string proposalJson)
+    private JobRecord CreateTrialJob(string proposalJson, IReadOnlyList<string>? words = null)
     {
-        var inputJson = JsonSerializer.Serialize(new TrialJobInput(proposalJson, null),
+        var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words },
             SIL.Motif.Contract.MotifJson.CreateOptions());
         var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
             TrialJobHandler.TrialKind, inputJson, "2026-08-29T00:00:00Z");
