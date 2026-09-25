@@ -44,11 +44,13 @@
                     AutomationProperties.Name="{Binding TimingLinkText}" />
             <Button Command="{Binding AddExpectedAnalysisToReviewCommand}"
                     Theme="{DynamicResource OutlineButton}"
-                    ToolTip.Tip="This expected analysis has no stored analysis ID for Review changes."
-                    AutomationProperties.Name="Add expected analysis to Review changes">
-              <TextBlock Text="Add expected analysis to Review changes" TextWrapping="Wrap"
+                    AutomationProperties.Name="Approve expected analysis in Review changes">
+              <TextBlock Text="Approve expected analysis in Review changes" TextWrapping="Wrap"
                          TextAlignment="Center" />
             </Button>
+            <views:CopyableTextBlock Classes="muted" Text="{Binding ExpectedAnalysisReviewReason}"
+                                     TextWrapping="Wrap" IsVisible="{Binding HasExpectedAnalysisReviewReason}"
+                                     AutomationProperties.Name="Expected analysis review reason" />
             <Button Content="AI Handoff for this word" Command="{Binding HandOffCommand}"
                     Theme="{DynamicResource OutlineButton}"
                     AutomationProperties.Name="AI Handoff for this word" />

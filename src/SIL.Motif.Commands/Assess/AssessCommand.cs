@@ -380,9 +380,19 @@ public static class AssessCommand
                         var projectStanding = wordContext.Standings.GetValueOrDefault(word.Word);
                         var missedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
                             .Select(index => word.Correctness.Expectations[index])
-                            .Select(missed => new ParserReading(ParserReadingReader.ReadMorphs(namingCache, projectName,
-                                missed.Morphs.Select(morph => new ParseMorph(morph.Form, morph.Msa, morph.InflType, GuessedString: null)).ToArray())))
+                            .Select(missed => ReadStoredAnalysis(namingCache, projectName, missed, "approved"))
                             .ToArray();
+                        var candidates = wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
+                        var approved = wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
+                        var nonApproved = candidates.Select(candidate => (Analysis: candidate, Opinion: "candidate"))
+                            .Concat((wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>())
+                                .Select(rejected => (Analysis: rejected, Opinion: "disapproved")))
+                            .ToArray();
+                        var expectedAnalysis = approved.FirstOrDefault() is { } approvedAnalysis
+                            ? ReadStoredAnalysis(namingCache, projectName, approvedAnalysis, "approved")
+                            : nonApproved.Length == 1
+                                ? ReadStoredAnalysis(namingCache, projectName, nonApproved[0].Analysis, nonApproved[0].Opinion)
+                                : null;
                         var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : ((int?)null, (int?)null);
                         return word with
                         {
@@ -393,6 +403,7 @@ public static class AssessCommand
                             OccurrenceCount = wordContext.HasTextSelection
                                 ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
                             MissedApproved = missedApproved,
+                            ExpectedAnalysis = expectedAnalysis,
                             Attempts = stats.Item1,
                             Passes = stats.Item2,
                             FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(
@@ -490,6 +501,18 @@ public static class AssessCommand
             : disapproved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "disapproved"
             : candidates.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "candidate"
             : "no-opinion").ToArray();
+
+    private static ParserReading ReadStoredAnalysis(
+        LcmCache cache, string projectName, ApprovedMorphology analysis, string opinion)
+    {
+        var morphs = analysis.Morphs.Select(morph =>
+            new ParseMorph(morph.Form, morph.Msa, morph.InflType, GuessedString: null)).ToArray();
+        return new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs))
+        {
+            StoredAnalysisId = analysis.SourceAnalysisId,
+            StoredAnalysisOpinion = opinion,
+        };
+    }
 
     private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 

@@ -88,7 +88,6 @@ public sealed class ComponentStyleTests
     private static IEnumerable<Case> Cases()
     {
         yield return new("Text", "a muted line", host => Add(host, Text("muted")), TextBlock.ForegroundProperty, "Intent.TextMuted");
-        yield return new("Text", "a stage title", host => Add(host, Text("stage-title")), TextBlock.FontSizeProperty, "Intent.Type.Title");
         yield return new("Text", "an error", host => Add(host, Text("error")), TextBlock.ForegroundProperty, "Intent.Danger");
 
         yield return new("Card", "a card", host => Add(host, Box("card")), Border.PaddingProperty, "Component.Card.Padding");

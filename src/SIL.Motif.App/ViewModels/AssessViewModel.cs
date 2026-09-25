@@ -191,7 +191,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         Trace.Reset();
         if (Words.SelectedRow is not { } row) return;
         Trace.SetWord(row.Word);
-        Trace.SetExpected(row.Word, row.MissedApproved.FirstOrDefault()?.Morphs);
+        Trace.SetExpected(row.Word, row.ExpectedAnalysis?.Morphs);
         // A word with no readings and nothing missed has no analyses to show, so Try a Word takes the width.
         Trace.IsFocused = !row.HasReadings && row.MissedApproved.Count == 0;
     }

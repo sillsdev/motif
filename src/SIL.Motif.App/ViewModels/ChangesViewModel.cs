@@ -157,6 +157,22 @@ public sealed partial class ChangesViewModel : ObservableObject
             ReadingIndex: reading?.Index)).ConfigureAwait(true);
     }
 
+    /// <summary>Adds an Approve change for one stored analysis without a parser reading.</summary>
+    /// <param name="word">The word form that owns the analysis.</param>
+    /// <param name="storedAnalysisId">The canonical ID of the stored analysis.</param>
+    /// <param name="displayReading">The analysis text shown in Review changes.</param>
+    /// <param name="originPage">The page that collected this change.</param>
+    public async Task ApproveStoredAnalysisAsync(string word, string storedAnalysisId,
+        string displayReading, WorkspacePage originPage)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(word);
+        ArgumentException.ThrowIfNullOrWhiteSpace(storedAnalysisId);
+        ArgumentNullException.ThrowIfNull(displayReading);
+        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, ChangeKinds.Approve, "", word,
+            StoredAnalysisId: storedAnalysisId, DisplayReading: displayReading,
+            OriginPage: originPage.ToString())).ConfigureAwait(true);
+    }
+
     private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice,
         WorkspacePage originPage)
     {

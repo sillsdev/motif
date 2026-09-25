@@ -221,6 +221,8 @@ public sealed class AssessWordRowViewModel
             .Select((reading, index) => new ParserReadingViewModel(index + 1, reading,
                 Result == "Skipped" ? "not-tried" : IsIncomplete ? "not-reached" : "missed"))
             .ToArray();
+        ExpectedAnalysis = word.ExpectedAnalysis is { } expected
+            ? new ParserReadingViewModel(1, expected, expected.StoredAnalysisOpinion) : null;
 
         // A word never tried, or stopped at a limit, may still have the approved analysis: neither is a miss.
         VsProject = MissedApproved.Count > 0 ? (Result == "Skipped" ? "Not tried" : IsIncomplete ? "Not reached" : "Missed")
@@ -318,6 +320,9 @@ public sealed class AssessWordRowViewModel
     /// <summary>Approved analyses of this word the parser did not produce.</summary>
     public IReadOnlyList<ParserReadingViewModel> MissedApproved { get; }
 
+    /// <summary>The one stored project analysis selected as this word's expected analysis.</summary>
+    public ParserReadingViewModel? ExpectedAnalysis { get; }
+
     /// <summary>Every reading on one line, for sorting and searching by what the parser found.</summary>
     public string ReadingText { get; }
 
@@ -335,6 +340,8 @@ public sealed class ParserReadingViewModel
         ArgumentNullException.ThrowIfNull(reading);
         Number = number;
         Morphs = reading.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
+        StoredAnalysisId = reading.StoredAnalysisId;
+        StoredAnalysisOpinion = reading.StoredAnalysisOpinion;
         Text = string.Join(" + ", Morphs.Select(morph => morph.Form)) + " = " +
                string.Join(" + ", Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
         Grade = grade;
@@ -356,6 +363,12 @@ public sealed class ParserReadingViewModel
 
     public int Number { get; }
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
+
+    /// <summary>The canonical ID of the stored project analysis, or <see langword="null"/> for parser output.</summary>
+    public string? StoredAnalysisId { get; }
+
+    /// <summary>The project's opinion of the stored analysis, or <see langword="null"/> when it is not known.</summary>
+    public string? StoredAnalysisOpinion { get; }
 
     /// <summary>The reading as <c>forms = glosses</c>, for copying and searching.</summary>
     public string Text { get; }

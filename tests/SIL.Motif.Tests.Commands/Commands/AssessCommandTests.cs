@@ -12,6 +12,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -657,12 +658,14 @@ public sealed class AssessCommandTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         string firstMorph, firstMsa, secondMorph, secondMsa;
+        var expectedAnalysisId = string.Empty;
         IReadOnlyList<ApprovedMorphology> approvedExpectations;
         using (var cache = new FwDataProjectLoader().LoadScratchCache(seeded.FwDataPath))
         {
             var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
                 .Single(w => w.Form.VernacularDefaultWritingSystem?.Text == SeededProject.AnalysedWordForm);
             var approved = wordform.HumanApprovedAnalyses.Single();
+            expectedAnalysisId = CanonicalId.FromGuid(approved.Guid).Value;
             firstMorph = approved.MorphBundlesOS[0].MorphRA!.Guid.ToString("D");
             firstMsa = approved.MorphBundlesOS[0].MsaRA!.Guid.ToString("D");
             secondMorph = approved.MorphBundlesOS[1].MorphRA!.Guid.ToString("D");
@@ -717,6 +720,59 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(SeededProject.FirstGloss, missed.Morphs[0].Gloss);
         Assert.Equal(SeededProject.SecondForm, missed.Morphs[1].Form);
         Assert.Equal(SeededProject.SecondGloss, missed.Morphs[1].Gloss);
+        Assert.Equal(expectedAnalysisId, missed.StoredAnalysisId);
+        Assert.Equal(expectedAnalysisId, word.ExpectedAnalysis!.StoredAnalysisId);
+        Assert.Equal("approved", word.ExpectedAnalysis.StoredAnalysisOpinion);
+    }
+
+    [Fact]
+    public void ExpectedAnalysisUsesTheUniqueStoredCandidateWhenNoAnalysisIsApproved()
+    {
+        using var seeded = NewSeededScratch();
+        var expectedAnalysisId = string.Empty;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(seeded.FwDataPath))
+        {
+            var wordforms = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances();
+            var wordform = wordforms.Single(item =>
+                item.Form.VernacularDefaultWritingSystem?.Text == SeededProject.UnanalysedWordForm);
+            var source = wordforms.Single(item =>
+                item.Form.VernacularDefaultWritingSystem?.Text == SeededProject.AnalysedWordForm)
+                .HumanApprovedAnalyses.Single();
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var candidate = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(candidate);
+                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                candidate.MorphBundlesOS.Add(bundle);
+                bundle.MorphRA = source.MorphBundlesOS[0].MorphRA;
+                bundle.MsaRA = source.MorphBundlesOS[0].MsaRA;
+                expectedAnalysisId = CanonicalId.FromGuid(candidate.Guid).Value;
+            });
+            new FwDataProjectLoader().Save(cache);
+        }
+
+        var morphology = new ParseWordEvidence(
+            SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0, SeededProject.UnanalysedWordForm, 5,
+            false, false, false, [], []);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, SeededProject.UnanalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "sig")
+                        { Morphology = morphology }],
+                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+                new SelectionRequest(false, [], [SeededProject.UnanalysedWordForm], false, null)),
+            NewManagedRoot(), assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var expected = Assert.Single(outcome.Value!.Words).ExpectedAnalysis;
+        Assert.Equal(expectedAnalysisId, expected!.StoredAnalysisId);
+        Assert.Equal("candidate", expected.StoredAnalysisOpinion);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using SIL.LCModel;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.Analysis;
@@ -53,6 +54,7 @@ public static class ApprovedMorphologyReader
                     bundle.Form.AvailableWritingSystemIds.Select(ws => bundle.Form.get_String(ws)?.Text)
                         .OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray())).ToArray())
                 {
+                    SourceAnalysisId = CanonicalId.FromGuid(analysis.Guid).Value,
                     SourceWordformGuid = word.Guid.ToString("D"),
                     WritingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
                 });

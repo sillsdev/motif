@@ -19,6 +19,9 @@ public sealed record ApprovedMorph(string? Form, string? Msa, string? InflType, 
 /// <summary>An approved reading frozen from the source used for parsing.</summary>
 public sealed record ApprovedMorphology(IReadOnlyList<ApprovedMorph> Morphs)
 {
+    /// <summary>The canonical ID of the source analysis, or <see langword="null"/> when it is not stored.</summary>
+    public string? SourceAnalysisId { get; init; }
+
     public string? SourceWordformGuid { get; init; }
     public string? WritingSystem { get; init; }
 }
@@ -35,7 +38,14 @@ public sealed record WordCorrectness(
 /// One parser reading as a person reads an interlinear gloss: its morphs in order, each resolved from the
 /// identifiers in the matching <see cref="ParseAnalysis"/> to the form, gloss and category the project gives it.
 /// </summary>
-public sealed record ParserReading(IReadOnlyList<ParserReadingMorph> Morphs);
+public sealed record ParserReading(IReadOnlyList<ParserReadingMorph> Morphs)
+{
+    /// <summary>The canonical ID of this stored project analysis, or <see langword="null"/> for parser output.</summary>
+    public string? StoredAnalysisId { get; init; }
+
+    /// <summary>The project's opinion of this stored analysis, or <see langword="null"/> when it is not known.</summary>
+    public string? StoredAnalysisOpinion { get; init; }
+}
 
 /// <summary>One morph of a <see cref="ParserReading"/>.</summary>
 /// <param name="Form">The allomorph as written, with its morph type's affix markers, such as <c>-a</c>.</param>

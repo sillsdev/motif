@@ -53,6 +53,8 @@ public sealed record AssessmentWordResult(
     public string? ProjectStanding { get; init; }
     /// <summary>Approved analyses of this word the parser did not produce, as morphs a person reads.</summary>
     public IReadOnlyList<ParserReading>? MissedApproved { get; init; }
+    /// <summary>The one stored project analysis selected as this word's expected analysis.</summary>
+    public ParserReading? ExpectedAnalysis { get; init; }
     /// <summary>How many rule applications and lexical lookups the parser attempted for this word, when measured.</summary>
     public int? Attempts { get; init; }
     /// <summary>How many of those attempts passed, when measured.</summary>

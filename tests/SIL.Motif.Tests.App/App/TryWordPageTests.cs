@@ -42,9 +42,11 @@ public sealed class TryWordPageTests
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "AI Handoff for this word");
                 var review = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Add expected analysis to Review changes");
+                    AutomationProperties.GetName(button) == "Approve expected analysis in Review changes");
                 Assert.False(review.IsEffectivelyEnabled);
-                Assert.NotNull(ToolTip.GetTip(review));
+                Assert.Contains(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
+                    AutomationProperties.GetName(block) == "Expected analysis review reason" &&
+                    block.Text == "No expected analysis is available for this word.");
                 Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(), expander =>
                     Equals(expander.Header, "Aggregate parser effort by category"));
             }
@@ -53,6 +55,52 @@ public sealed class TryWordPageTests
                 window.Close();
             }
         });
+    }
+
+    [Fact]
+    public async Task AStoredExpectedCandidateCanBeApprovedByItsStoredIdentity()
+    {
+        var (context, fake) = NewContext();
+        context.ProjectPath = ProjectPath;
+        context.Assess.Words.Load([WordWithExpectedAnalysis("word", "analysis/one", "candidate")]);
+        await context.Changes.SetProjectAsync(ProjectPath);
+        var page = new TryWordPageModel(context);
+        page.Trace.WordToTry = "word";
+
+        Assert.True(page.AddExpectedAnalysisToReviewCommand.CanExecute(null));
+        Assert.Null(page.ExpectedAnalysisReviewReason);
+        await page.AddExpectedAnalysisToReviewCommand.ExecuteAsync(null);
+
+        var change = Assert.Single(fake.PendingPutRequests).Change;
+        Assert.Equal(ChangeKinds.Approve, change.Kind);
+        Assert.Equal("word", change.Word);
+        Assert.Equal("analysis/one", change.StoredAnalysisId);
+        Assert.Null(change.Reading);
+        Assert.Null(change.ReadingIndex);
+    }
+
+    [Fact]
+    public void AnApprovedExpectedAnalysisStaysDisabledWithAnOnScreenReason()
+    {
+        var (context, _) = NewContext();
+        context.Assess.Words.Load([WordWithExpectedAnalysis("word", "analysis/one", "approved")]);
+        var page = new TryWordPageModel(context);
+        page.Trace.WordToTry = "word";
+
+        Assert.False(page.AddExpectedAnalysisToReviewCommand.CanExecute(null));
+        Assert.Equal("This analysis is already approved.", page.ExpectedAnalysisReviewReason);
+    }
+
+    [Fact]
+    public void AnExpectedAnalysisWithoutAStoredIdentityStaysDisabledWithAnOnScreenReason()
+    {
+        var (context, _) = NewContext();
+        context.Assess.Words.Load([WordWithExpectedAnalysis("word", null, null)]);
+        var page = new TryWordPageModel(context);
+        page.Trace.WordToTry = "word";
+
+        Assert.False(page.AddExpectedAnalysisToReviewCommand.CanExecute(null));
+        Assert.Equal("This expected analysis is not stored in the project.", page.ExpectedAnalysisReviewReason);
     }
 
     [Fact]
@@ -247,6 +295,16 @@ public sealed class TryWordPageTests
         return (new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
             new NoFolderPicker(), new NoDragSource()), fake);
     }
+
+    private static AssessmentWordResult WordWithExpectedAnalysis(string word, string? storedAnalysisId,
+        string? storedAnalysisOpinion) => new(word, "analysed", false, "Search completed", 1, null)
+    {
+        ExpectedAnalysis = new ParserReading([new ParserReadingMorph("form", "gloss", "n", null, false, null)])
+        {
+            StoredAnalysisId = storedAnalysisId,
+            StoredAnalysisOpinion = storedAnalysisOpinion,
+        },
+    };
 
     private static WorkspaceContext NewContext(out FakeCommandClient fake)
     {

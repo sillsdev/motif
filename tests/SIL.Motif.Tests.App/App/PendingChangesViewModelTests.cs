@@ -77,6 +77,26 @@ public sealed class PendingChangesViewModelTests
     }
 
     [Fact]
+    public async Task ApprovingAStoredAnalysisUsesItsIdentityWithoutAParserReading()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.SetProjectAsync("project.fwdata");
+
+        await changes.ApproveStoredAnalysisAsync("word", "analysis/one", "form = gloss",
+            WorkspacePage.TryAWord);
+
+        var change = Assert.Single(fake.PendingPutRequests).Change;
+        Assert.Equal(ChangeKinds.Approve, change.Kind);
+        Assert.Equal("word", change.Word);
+        Assert.Equal("analysis/one", change.StoredAnalysisId);
+        Assert.Null(change.AssessmentId);
+        Assert.Null(change.Reading);
+        Assert.Null(change.ReadingIndex);
+        Assert.Equal(WorkspacePage.TryAWord.ToString(), change.OriginPage);
+    }
+
+    [Fact]
     public async Task ARefusedCandidateDoesNotHideLaterParserReadings()
     {
         var fake = new FakeCommandClient

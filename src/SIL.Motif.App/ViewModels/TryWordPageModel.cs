@@ -17,6 +17,7 @@ public sealed class TryWordPageModel : PageModel
     private const int RecentWordLimit = 5;
     private int _timingGeneration;
     private string? _assessmentId;
+    private ParserReadingViewModel? _expectedAnalysis;
 
     public TryWordPageModel(WorkspaceContext context) : base(context)
     {
@@ -29,7 +30,11 @@ public sealed class TryWordPageModel : PageModel
         {
             if (!string.IsNullOrWhiteSpace(word)) Context.TryWord(word);
         });
-        AddExpectedAnalysisToReviewCommand = new RelayCommand(() => { }, () => false);
+        AddExpectedAnalysisToReviewCommand = new AsyncRelayCommand(AddExpectedAnalysisToReviewAsync,
+            CanAddExpectedAnalysisToReview);
+        Context.Assess.Words.PropertyChanged += OnWordsPropertyChanged;
+        Context.PropertyChanged += OnContextPropertyChanged;
+        RefreshExpected(Trace.WordToTry);
     }
 
     /// <summary>The shared trace the Texts page also primes when a Results word is chosen.</summary>
@@ -60,14 +65,30 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Traces a recent word again.</summary>
     public IRelayCommand<string?> OpenRecentWordCommand { get; }
 
-    /// <summary>The named disabled connection to Review changes for an expected analysis.</summary>
-    public IRelayCommand AddExpectedAnalysisToReviewCommand { get; }
+    /// <summary>Adds this word's one stored expected analysis to Review changes for approval.</summary>
+    public IAsyncRelayCommand AddExpectedAnalysisToReviewCommand { get; }
+
+    /// <summary>Why the expected analysis cannot be collected, or <see langword="null"/> when it can.</summary>
+    public string? ExpectedAnalysisReviewReason => _expectedAnalysis switch
+    {
+        null => "No expected analysis is available for this word.",
+        { StoredAnalysisId: null } => "This expected analysis is not stored in the project.",
+        { StoredAnalysisOpinion: "approved" } => "This analysis is already approved.",
+        _ when Context.ProjectPath is null => "Open a project before adding this analysis.",
+        { StoredAnalysisOpinion: "candidate" or "disapproved" } => null,
+        _ => "The project's approval status is unavailable.",
+    };
+
+    /// <summary>Whether the expected-analysis explanation should be shown.</summary>
+    public bool HasExpectedAnalysisReviewReason => ExpectedAnalysisReviewReason is not null;
 
     protected override void OnProjectCleared()
     {
         _assessmentId = null;
         _timingGeneration++;
         Trace.Reset();
+        _expectedAnalysis = null;
+        NotifyExpectedAnalysisChanged();
         RecentWords.Clear();
         RebuildRules(null);
     }
@@ -94,6 +115,7 @@ public sealed class TryWordPageModel : PageModel
         OpenInTextsCommand.NotifyCanExecuteChanged();
         HandOffCommand.NotifyCanExecuteChanged();
         OpenTimingCommand.NotifyCanExecuteChanged();
+        AddExpectedAnalysisToReviewCommand.NotifyCanExecuteChanged();
         if (!Trace.TryCommand.CanExecute(null)) return;
         TrackRecent(tried.Word);
         _ = Trace.TryCommand.ExecuteAsync(null);
@@ -122,8 +144,42 @@ public sealed class TryWordPageModel : PageModel
         }
     }
 
-    private void RefreshExpected(string word) =>
-        Trace.SetExpected(word, Context.Assess.Words.Find(word)?.MissedApproved.FirstOrDefault()?.Morphs);
+    private void OnWordsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AssessWordsViewModel.TotalCount) or nameof(AssessWordsViewModel.SelectedRow))
+            RefreshExpected(Trace.WordToTry);
+    }
+
+    private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WorkspaceContext.ProjectPath)) NotifyExpectedAnalysisChanged();
+    }
+
+    private void RefreshExpected(string word)
+    {
+        _expectedAnalysis = Context.Assess.Words.Find(word)?.ExpectedAnalysis;
+        Trace.SetExpected(word, _expectedAnalysis?.Morphs);
+        NotifyExpectedAnalysisChanged();
+    }
+
+    private void NotifyExpectedAnalysisChanged()
+    {
+        OnPropertyChanged(nameof(ExpectedAnalysisReviewReason));
+        OnPropertyChanged(nameof(HasExpectedAnalysisReviewReason));
+        AddExpectedAnalysisToReviewCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanAddExpectedAnalysisToReview() =>
+        Context.ProjectPath is not null && _expectedAnalysis is
+        { StoredAnalysisId: not null, StoredAnalysisOpinion: "candidate" or "disapproved" };
+
+    private async Task AddExpectedAnalysisToReviewAsync()
+    {
+        if (!CanAddExpectedAnalysisToReview() || _expectedAnalysis is not { StoredAnalysisId: { } storedId } expected)
+            return;
+        await Context.Changes.ApproveStoredAnalysisAsync(Trace.WordToTry.Trim(), storedId,
+            expected.Text, WorkspacePage.TryAWord).ConfigureAwait(true);
+    }
 
     private void TrackRecent(string word)
     {
