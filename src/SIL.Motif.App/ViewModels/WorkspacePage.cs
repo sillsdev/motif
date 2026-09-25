@@ -30,23 +30,17 @@ public enum WorkspacePage
     AiHandoff,
 }
 
-/// <summary>The views of the words that share the Texts page, each one a tab.</summary>
+/// <summary>The views of the Texts page, each one a tab.</summary>
 public enum TextsTab
 {
-    /// <summary>Every word in the matrix of what the project held against what the parser did, and the list it filters.</summary>
+    /// <summary>The Compare matrix, its fix-first panel, and the list it filters.</summary>
     Matrix,
 
-    /// <summary>What changed since the run before: the words that moved between cells of the matrix.</summary>
-    WhatChanged,
+    /// <summary>The chosen texts read in place, with the project's analysis and parser's answer together.</summary>
+    AnalyzeTexts,
 
-    /// <summary>One row per word the parser was asked about, with its analyses.</summary>
-    Words,
-
-    /// <summary>Which texts and added words are measured, and the chosen texts' words and lines.</summary>
-    Texts,
-
-    /// <summary>The chosen texts read in place, each occurrence compared with what the project stores there.</summary>
-    InText,
+    /// <summary>Named questions about words, each one a selection of exact Compare cells.</summary>
+    Lists,
 }
 
 /// <summary>

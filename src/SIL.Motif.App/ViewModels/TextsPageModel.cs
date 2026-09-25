@@ -23,11 +23,13 @@ public sealed partial class TextsPageModel : PageModel
         Words = new TextWordsViewModel(context.Commands, context.Selection);
         Assess.TextWords = Words;
         ShowTabCommand = new RelayCommand<TextsTab>(tab => Tab = tab);
-        ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord)
+        ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord, context.Changes)
         {
-            OpenTexts = () => context.OpenTexts(TextsTab.Texts),
+            OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
         };
         Assess.Compare.Changes = context.Changes;
+        TextsLists = new TextsListsViewModel(Assess.Compare);
+        Assess.Compare.ChosenCellsChanged += OnChosenCellsChanged;
         Assess.Compare.OpenWord = context.OpenWord;
         Assess.Difference.OpenWord = context.OpenWord;
         Assess.Compare.HandOff = context.HandOff;
@@ -49,24 +51,25 @@ public sealed partial class TextsPageModel : PageModel
     /// <summary>The In text view: the chosen Texts, each occurrence against the Assessment.</summary>
     public ResultsInTextViewModel ResultsInText { get; }
 
+    /// <summary>The fixed word questions, which select their exact cells in the page's Compare matrix.</summary>
+    public TextsListsViewModel TextsLists { get; }
+
     /// <summary>Which view of the words the Texts page is showing.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowMatrix))]
-    [NotifyPropertyChangedFor(nameof(ShowWhatChanged))]
-    [NotifyPropertyChangedFor(nameof(ShowWords))]
-    [NotifyPropertyChangedFor(nameof(ShowTexts))]
-    [NotifyPropertyChangedFor(nameof(ShowInText))]
+    [NotifyPropertyChangedFor(nameof(ShowAnalyzeTexts))]
+    [NotifyPropertyChangedFor(nameof(ShowLists))]
     private TextsTab _tab;
 
     public bool ShowMatrix => Tab == TextsTab.Matrix;
 
-    public bool ShowWhatChanged => Tab == TextsTab.WhatChanged;
+    public bool ShowAnalyzeTexts => Tab == TextsTab.AnalyzeTexts;
 
-    public bool ShowWords => Tab == TextsTab.Words;
+    public bool ShowLists => Tab == TextsTab.Lists;
 
-    public bool ShowTexts => Tab == TextsTab.Texts;
+    public bool ShowAssessStatus => Assess.IsActive || Assess.Refusal is not null;
 
-    public bool ShowInText => Tab == TextsTab.InText;
+    public bool ShowAssessRefusal => Assess.Refusal is not null;
 
     /// <summary>Opens the tab passed as the command parameter.</summary>
     public IRelayCommand<TextsTab> ShowTabCommand { get; }
@@ -81,8 +84,6 @@ public sealed partial class TextsPageModel : PageModel
 
     protected override void OnEvidencePublished(WorkspaceEvidence evidence)
     {
-        // A re-run exists to settle words, so what it settled is the first thing to see.
-        if (evidence.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
         Words.ShowAssessment(Assess.Words.Find);
     }
 
@@ -95,7 +96,7 @@ public sealed partial class TextsPageModel : PageModel
                 break;
             case OpenWordRequest word:
                 Assess.SelectWord(word.Word);
-                Tab = TextsTab.Words;
+                Tab = TextsTab.AnalyzeTexts;
                 break;
         }
     }
@@ -103,7 +104,19 @@ public sealed partial class TextsPageModel : PageModel
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         OnPropertyChanged(nameof(ShowEmptyResults));
+        OnPropertyChanged(nameof(ShowAssessStatus));
+        OnPropertyChanged(nameof(ShowAssessRefusal));
         if (e.PropertyName == nameof(AssessViewModel.IsActive) && Assess.IsActive) Tab = TextsTab.Matrix;
+    }
+
+    partial void OnTabChanged(TextsTab value)
+    {
+        if (value == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
+    }
+
+    private void OnChosenCellsChanged(object? sender, EventArgs e)
+    {
+        if (Tab == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
     }
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)

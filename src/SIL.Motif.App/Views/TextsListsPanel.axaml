@@ -1,0 +1,127 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.TextsListsPanel"
+             x:DataType="views:TextsListsPanel">
+  <UserControl.Styles>
+    <Style Selector="Button.question">
+      <Setter Property="Padding" Value="{DynamicResource Component.TextsPage.ListQuestionPadding}" />
+      <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterRelated}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+      <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    </Style>
+    <Style Selector="Button.question.selected">
+      <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+    </Style>
+    <Style Selector="ListBox.listWords ListBoxItem">
+      <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+      <Setter Property="MinHeight" Value="{DynamicResource Component.TextsPage.DenseRowMinHeight}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+        Margin="{DynamicResource Component.TextsPage.PageInset}">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+      <views:CopyableTextBlock Classes="stage-title" Text="Word lists" />
+      <ItemsControl ItemsSource="{Binding Lists.Lists}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:TextsListDefinitionViewModel">
+            <Button Classes="question" Classes.selected="{Binding IsSelected}"
+                    Width="{DynamicResource Component.TextsPage.ListQuestionWidth}"
+                    Command="{Binding $parent[views:TextsListsPanel].Lists.SelectListCommand}" CommandParameter="{Binding}"
+                    AutomationProperties.Name="{Binding Name, StringFormat='Open the {0} word list'}">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                <TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="muted" Text="{Binding CountText}"
+                           FontSize="{DynamicResource Intent.Type.Label}" VerticalAlignment="Center" />
+                <Ellipse Grid.Column="2" Classes="freshDot" IsVisible="{Binding HasPendingChanges}"
+                         ToolTip.Tip="{Binding PendingChangeStatus}" />
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <Border Grid.Row="1" Classes="card">
+      <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
+            RowSpacing="{DynamicResource Intent.Space.Compact}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+          <views:CopyableTextBlock Classes="section-title" Text="{Binding Lists.SelectedList.Name}" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.SelectedList.Question}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.Compare.CheckedWordText}" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="Add as candidate" Command="{Binding Lists.Compare.ProposeCommand}"
+                CommandParameter="add-candidate" AutomationProperties.Name="Add checked words as candidates" />
+        <Button Grid.Column="2" Content="Incorrect spelling" Command="{Binding Lists.Compare.ProposeCommand}"
+                CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark checked words as incorrect spelling" />
+        <views:CopyableTextBlock Grid.Row="1" Grid.ColumnSpan="3" Classes="error" Text="{Binding Lists.Compare.Changes.ErrorText}"
+                                 TextWrapping="Wrap" IsVisible="{Binding Lists.Compare.Changes.HasError}" />
+      </Grid>
+    </Border>
+
+    <ListBox Grid.Row="2" Classes="listWords" ItemsSource="{Binding Lists.Compare.Words}"
+             IsVisible="{Binding Lists.HasSelectedList}"
+             AutomationProperties.Name="Words in the selected list">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:CompareWordViewModel">
+          <Expander>
+            <Expander.Header>
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                <CheckBox Width="{DynamicResource Component.TextsPage.WordCheckWidth}"
+                          Grid.Column="0" IsChecked="{Binding IsChecked}"
+                          AutomationProperties.Name="{Binding Word, StringFormat='Tick {0} for a change'}" />
+                <Button Grid.Column="1" Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
+                        HorizontalContentAlignment="Left" Content="{Binding Word}"
+                        Command="{Binding $parent[views:TextsListsPanel].Lists.Compare.OpenWordCommand}"
+                        CommandParameter="{Binding}"
+                        AutomationProperties.Name="{Binding Word, StringFormat='Analyze {0} in its texts'}" />
+                <views:CopyableTextBlock Grid.Column="2" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
+                                         Classes="muted" Text="{Binding OccurrenceText}" />
+                <views:VerdictChip Grid.Column="3" Width="{DynamicResource Component.TextsPage.ListProjectWidth}"
+                                   Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}"
+                                   Compact="True" HorizontalAlignment="Left" />
+                <views:VerdictChip Grid.Column="4" Width="{DynamicResource Component.TextsPage.ListParserWidth}"
+                                   Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}"
+                                   Compact="True" HorizontalAlignment="Left" />
+                <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="{Binding PendingChangeStatus}"
+                                         IsVisible="{Binding HasPendingChange}" />
+              </Grid>
+            </Expander.Header>
+            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Intent.Inset.None}">
+              <views:CopyableTextBlock Classes="muted" Text="Approved analyses the parser missed" IsVisible="{Binding MissedApproved.Count}" />
+              <ItemsControl ItemsSource="{Binding MissedApproved}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ParserReadingViewModel">
+                    <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <views:CopyableTextBlock Classes="muted" Text="Parser readings" IsVisible="{Binding ReadingChoices.Count}" />
+              <ItemsControl ItemsSource="{Binding ReadingChoices}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CompareReadingChoice">
+                    <views:CopyableTextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Expander>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <views:CopyableTextBlock Grid.Row="2" Classes="muted" Text="Choose a question above to see its words."
+                             IsVisible="{Binding !Lists.HasSelectedList}"
+                             VerticalAlignment="Center" HorizontalAlignment="Center" />
+  </Grid>
+</UserControl>

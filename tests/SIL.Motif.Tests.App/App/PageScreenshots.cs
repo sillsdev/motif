@@ -78,10 +78,8 @@ public sealed class PageScreenshots
     [
         ("1-overview", WorkspacePage.Overview, TextsTab.Matrix),
         ("2a-texts-matrix", WorkspacePage.Texts, TextsTab.Matrix),
-        ("2b-texts-what-changed", WorkspacePage.Texts, TextsTab.WhatChanged),
-        ("2c-texts-words", WorkspacePage.Texts, TextsTab.Words),
-        ("2d-texts-texts", WorkspacePage.Texts, TextsTab.Texts),
-        ("2e-texts-in-text", WorkspacePage.Texts, TextsTab.InText),
+        ("2b-texts-analyze", WorkspacePage.Texts, TextsTab.AnalyzeTexts),
+        ("2c-texts-lists", WorkspacePage.Texts, TextsTab.Lists),
         ("3-try-a-word", WorkspacePage.TryAWord, TextsTab.Matrix),
         ("4-timing", WorkspacePage.Timing, TextsTab.Matrix),
         ("5-warnings", WorkspacePage.Warnings, TextsTab.Matrix),

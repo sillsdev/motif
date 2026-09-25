@@ -134,6 +134,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     public ObservableCollection<TextWordRowViewModel> Rows { get; } = [];
 
+    public IReadOnlyList<TextWordRowViewModel> ProjectWords => _all;
+
     public ObservableCollection<ReaderTextViewModel> ReaderTexts { get; } = [];
 
     /// <summary>Chooses the Words or In Text view, replacing whichever was chosen before.</summary>
@@ -277,6 +279,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
         _all.Clear();
         _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word)));
+        OnPropertyChanged(nameof(ProjectWords));
         if (_assessed is { } assessed)
             foreach (var row in _all) row.ShowAssessment(assessed(row.Form));
         OccurrenceCount = _all.Sum(row => row.OccurrenceCount);

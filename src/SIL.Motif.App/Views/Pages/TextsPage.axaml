@@ -4,97 +4,80 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsPage"
              x:DataType="vm:TextsPageModel">
-  <UserControl.Styles>
-    <Style Selector="Button.pendingStrip">
-      <Setter Property="CornerRadius" Value="99" />
-      <Setter Property="Padding" Value="12,4" />
-      <Setter Property="Background" Value="{DynamicResource Intent.Candidate.Fill}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Candidate.Accent}" />
-      <Setter Property="BorderThickness" Value="1" />
-    </Style>
-  </UserControl.Styles>
-
   <Grid RowDefinitions="Auto,*">
-    <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="20,4,20,0">
-      <DockPanel>
-        <Button DockPanel.Dock="Right" Classes="pendingStrip" Margin="0,0,10,4" VerticalAlignment="Center"
+    <Border BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}"
+            Padding="{DynamicResource Intent.Inset.None}">
+      <StackPanel>
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="pendingStrip" Margin="{DynamicResource Intent.Gap.AfterGroup}" VerticalAlignment="Center"
                 IsVisible="{Binding Changes.HasItems}"
                 Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
                 AutomationProperties.Name="Review the changes not applied yet">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Ellipse Width="7" Height="7" Fill="{DynamicResource Intent.Warning.Text}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding Changes.CountText}" FontWeight="SemiBold" VerticalAlignment="Center" />
-            <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource Intent.Accent}" VerticalAlignment="Center" />
-          </StackPanel>
-        </Button>
-        <Button DockPanel.Dock="Right"
-                Content="Run assessment"
-                Command="{Binding Assess.RunCommand}"
-                VerticalAlignment="Center" Margin="0,0,0,4"
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+              <Ellipse Width="{DynamicResource Component.MatrixCell.MarkerSize}"
+                     Height="{DynamicResource Component.MatrixCell.MarkerSize}"
+                     Fill="{DynamicResource Intent.Warning.Text}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Changes.CountText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource Intent.Accent}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button DockPanel.Dock="Right" Content="Run assessment" Command="{Binding Assess.RunCommand}"
+                VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                 AutomationProperties.Name="Run the Assessment" />
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-          <Button Content="Matrix"
-                  Classes="tab" Classes.active="{Binding ShowMatrix}"
-                  Theme="{DynamicResource BorderlessButton}"
-                  Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.Matrix}"
-                  AutomationProperties.Name="Matrix tab" />
-          <Button Content="What changed"
-                  Classes="tab" Classes.active="{Binding ShowWhatChanged}"
-                  Theme="{DynamicResource BorderlessButton}"
-                  IsVisible="{Binding Assess.Difference.HasDifference}"
-                  Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.WhatChanged}"
-                  AutomationProperties.Name="What changed tab" />
-          <Button Content="Words"
-                  Classes="tab" Classes.active="{Binding ShowWords}"
-                  Theme="{DynamicResource BorderlessButton}"
-                  Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.Words}"
-                  AutomationProperties.Name="Words tab" />
-          <Button Content="Texts"
-                  Classes="tab" Classes.active="{Binding ShowTexts}"
-                  Theme="{DynamicResource BorderlessButton}"
-                  Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.Texts}"
-                  AutomationProperties.Name="Texts tab" />
-          <Button Content="In text"
-                  Classes="tab" Classes.active="{Binding ShowInText}"
-                  Theme="{DynamicResource BorderlessButton}"
-                  Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.InText}"
-                  AutomationProperties.Name="In text tab" />
-        </StackPanel>
-        <views:CopyableTextBlock Classes="muted"
-                   Text="{Binding Assess.Words.OutcomeSummary}"
-                   Margin="16,0"
-                   VerticalAlignment="Center"
-                   TextTrimming="CharacterEllipsis" />
-      </DockPanel>
+          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+            <Button Content="Matrix" Classes="tab" Classes.active="{Binding ShowMatrix}"
+                  Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.Matrix}" AutomationProperties.Name="Matrix tab" />
+            <Button Content="Analyze texts" Classes="tab" Classes.active="{Binding ShowAnalyzeTexts}"
+                  Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.AnalyzeTexts}" AutomationProperties.Name="Analyze texts tab" />
+            <Button Content="Lists" Classes="tab" Classes.active="{Binding ShowLists}"
+                  Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
+                  CommandParameter="{x:Static vm:TextsTab.Lists}" AutomationProperties.Name="Lists tab" />
+          </StackPanel>
+        </DockPanel>
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
+              Margin="{DynamicResource Component.TextsPage.AssessmentStatusPadding}"
+              IsVisible="{Binding ShowAssessStatus}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+            <views:CopyableTextBlock Text="{Binding Assess.Progress.Message}"
+                                     IsVisible="{Binding Assess.IsActive}" />
+            <ProgressBar IsVisible="{Binding Assess.IsActive}"
+                         IsIndeterminate="{Binding Assess.IsIndeterminate}"
+                         Minimum="0" Maximum="1" Value="{Binding Assess.ProgressFraction}"
+                         AutomationProperties.Name="Assessment progress" />
+            <views:CopyableTextBlock Classes="error" Text="{Binding Assess.Refusal.Message}"
+                                     IsVisible="{Binding ShowAssessRefusal}" TextWrapping="Wrap" />
+            <Expander Header="Details" IsExpanded="False" IsVisible="{Binding ShowAssessRefusal}">
+              <ItemsControl ItemsSource="{Binding Assess.RefusalFacts}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <views:CopyableTextBlock Text="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Expander>
+          </StackPanel>
+          <Button Grid.Column="1" Content="Cancel" Command="{Binding Assess.CancelCommand}"
+                  IsVisible="{Binding Assess.IsActive}" VerticalAlignment="Center"
+                  AutomationProperties.Name="Cancel the running Assessment" />
+        </Grid>
+      </StackPanel>
     </Border>
-  
+
     <Panel Grid.Row="1">
       <Panel IsVisible="{Binding ShowMatrix}">
         <ContentControl x:Name="CompareHost" />
-        <views:CopyableTextBlock Classes="muted"
-                   Text="No results yet. Choose what to assess on the Texts tab, then run."
-                   IsVisible="{Binding ShowEmptyResults}"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center" />
+        <views:CopyableTextBlock Classes="muted" Text="No results yet. Choose what to assess on Analyze texts, then run."
+                   IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Panel>
-      <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
-      <Panel IsVisible="{Binding ShowWords}">
-        <ContentControl x:Name="AssessHost" />
-        <views:CopyableTextBlock Classes="muted"
-                   Text="No results yet. Choose what to assess on the Texts tab, then run."
-                   IsVisible="{Binding ShowEmptyResults}"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center" />
-      </Panel>
-      <ScrollViewer x:Name="TextsReader" IsVisible="{Binding ShowTexts}">
-        <ContentControl x:Name="SelectionHost" IsEnabled="{Binding Context.ProjectAndSelectionEnabled}" />
-      </ScrollViewer>
-      <ContentControl x:Name="ResultsInTextHost" IsVisible="{Binding ShowInText}" />
+      <Grid x:Name="AnalyzeTextsHost" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"
+            IsVisible="{Binding ShowAnalyzeTexts}">
+        <ContentControl x:Name="SelectionHost" Width="{DynamicResource Component.TextsPage.SelectionPanelWidth}"
+                        IsEnabled="{Binding Context.ProjectAndSelectionEnabled}" />
+        <ContentControl x:Name="ResultsInTextHost" Grid.Column="1" />
+      </Grid>
+      <ContentControl x:Name="ListsHost" IsVisible="{Binding ShowLists}" />
     </Panel>
   </Grid>
 </UserControl>

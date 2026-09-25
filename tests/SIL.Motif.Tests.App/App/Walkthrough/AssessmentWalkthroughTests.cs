@@ -45,8 +45,10 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             walkthrough.Window.UpdateLayout();
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
-            var assessPanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<AssessPanel>());
-            Assert.Same(walkthrough.Workspace.Assess, assessPanel.Assess);
+            var comparePanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<ComparePanel>());
+            Assert.Same(walkthrough.Workspace.Assess.Compare, comparePanel.Compare);
+            Assert.Equal(result.Words.Select(word => word.Word).Order(StringComparer.Ordinal),
+                walkthrough.Workspace.Assess.Compare.Words.Select(word => word.Word).Order(StringComparer.Ordinal));
             var rows = walkthrough.Workspace.Assess.Words.Rows.Cast<AssessWordRowViewModel>().ToList();
             Assert.Equal(3, rows.Count);
             // Readings are resolved against the project: every parsed word's morphs name a form, never an identifier.

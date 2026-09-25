@@ -466,23 +466,23 @@ public sealed class WorkflowShellTests
 
                 // The matrix is the first view Texts opens on; the others are one click away.
                 Assert.Contains("active", ButtonNamed(window, "Matrix tab").Classes);
-                Assert.DoesNotContain("active", ButtonNamed(window, "Words tab").Classes);
-                Assert.False(Host(window, "AssessHost").IsEffectivelyVisible);
+                Assert.DoesNotContain("active", ButtonNamed(window, "Analyze texts tab").Classes);
+                Assert.True(Host(window, "CompareHost").IsEffectivelyVisible);
 
-                ButtonNamed(window, "Words tab").Command!.Execute(TextsTab.Words);
+                ButtonNamed(window, "Analyze texts tab").Command!.Execute(TextsTab.AnalyzeTexts);
                 window.UpdateLayout();
 
-                Assert.Contains("active", ButtonNamed(window, "Words tab").Classes);
-                Assert.DoesNotContain("active", ButtonNamed(window, "Texts tab").Classes);
-                Assert.True(Host(window, "AssessHost").IsEffectivelyVisible);
-                Assert.False(Host(window, "TextsReader").IsEffectivelyVisible);
+                Assert.Contains("active", ButtonNamed(window, "Analyze texts tab").Classes);
+                Assert.DoesNotContain("active", ButtonNamed(window, "Lists tab").Classes);
+                Assert.True(Host(window, "AnalyzeTextsHost").IsEffectivelyVisible);
+                Assert.False(Host(window, "ListsHost").IsEffectivelyVisible);
 
-                ButtonNamed(window, "Texts tab").Command!.Execute(TextsTab.Texts);
+                ButtonNamed(window, "Lists tab").Command!.Execute(TextsTab.Lists);
                 window.UpdateLayout();
 
-                Assert.False(Host(window, "AssessHost").IsEffectivelyVisible);
-                Assert.True(Host(window, "TextsReader").IsEffectivelyVisible);
-                Assert.Contains("active", ButtonNamed(window, "Texts tab").Classes);
+                Assert.False(Host(window, "AnalyzeTextsHost").IsEffectivelyVisible);
+                Assert.True(Host(window, "ListsHost").IsEffectivelyVisible);
+                Assert.Contains("active", ButtonNamed(window, "Lists tab").Classes);
             }
             finally
             {
@@ -499,16 +499,17 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
+                workspace.CurrentPage = WorkspacePage.TryAWord;
                 window.Show();
                 window.UpdateLayout();
 
-                var tryPage = Assert.Single(window.GetLogicalDescendants().OfType<TryAWordPage>());
-                var tryWord = Assert.Single(window.GetLogicalDescendants().OfType<TryWordPanel>());
+                var pages = window.FindControl<Panel>("PageHost")!.Children;
+                var tryWord = Assert.IsType<TryWordPanel>(pages.Single(page => page.Name == "TryAWordPage"));
                 Assert.Same(workspace.Assess.Trace, tryWord.Trace);
-                Assert.Single(window.GetLogicalDescendants().OfType<DiagnosticPanel>());
-                var assess = Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>());
-                Assert.Empty(assess.GetLogicalDescendants().OfType<DiagnosticPanel>());
-                Assert.Equal("TryAWordPage", tryPage.Name);
+                Assert.Single(tryWord.GetLogicalDescendants().OfType<DiagnosticPanel>());
+                var texts = Assert.IsType<TextsPage>(pages.Single(page => page.Name == "TextsPage"));
+                Assert.Empty(texts.GetLogicalDescendants().OfType<TryWordPanel>());
+                Assert.Equal("TryAWordPage", tryWord.Name);
             }
             finally
             {

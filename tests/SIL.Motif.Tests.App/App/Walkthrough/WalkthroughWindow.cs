@@ -121,10 +121,8 @@ public sealed class WalkthroughWindow : IDisposable
         if (owning != WorkspacePage.Texts) return;
 
         if (owners.Contains("CompareHost")) ShowTextsTab(TextsTab.Matrix);
-        else if (owners.Contains("DifferenceHost")) ShowTextsTab(TextsTab.WhatChanged);
-        else if (owners.Contains("AssessHost")) ShowTextsTab(TextsTab.Words);
-        else if (owners.Contains("SelectionHost")) ShowTextsTab(TextsTab.Texts);
-        else if (owners.Contains("ResultsInTextHost")) ShowTextsTab(TextsTab.InText);
+        else if (owners.Contains("ListsHost")) ShowTextsTab(TextsTab.Lists);
+        else if (owners.Contains("SelectionHost") || owners.Contains("ResultsInTextHost")) ShowTextsTab(TextsTab.AnalyzeTexts);
     }
 
     /// <summary>Opens a Texts page tab the way a person does, by its tab above the page.</summary>
@@ -134,8 +132,6 @@ public sealed class WalkthroughWindow : IDisposable
 
         var name = tab switch
         {
-            TextsTab.WhatChanged => "What changed tab",
-            TextsTab.InText => "In text tab",
             _ => $"{tab} tab",
         };
         ClickControl(Find<Button>(name), name);
@@ -183,7 +179,7 @@ public sealed class WalkthroughWindow : IDisposable
     public void Check(string content)
     {
         ShowPage(WorkspacePage.Texts);
-        ShowTextsTab(TextsTab.Texts);
+        ShowTextsTab(TextsTab.AnalyzeTexts);
         var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
             Equals(control.Content, content));
         ShowStageOwning(checkBox);

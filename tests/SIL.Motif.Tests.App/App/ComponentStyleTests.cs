@@ -125,6 +125,12 @@ public sealed class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Primary");
 
         yield return new("HeatCell", "a heat shade", host => Add(host, Box("heat")), Border.BackgroundProperty, "Intent.Warning");
+        yield return new("MatrixCell", "a matrix cell", host => Add(host, Box("matrixCell")),
+            Border.BackgroundProperty, "Intent.Surface");
+        yield return new("MatrixCell", "a violation cell", host => Add(host, Box("matrixCell", "violation")),
+            Border.BackgroundProperty, "Intent.Danger.Fill");
+        yield return new("MatrixCell", "a compact matrix cell", host => Add(host, Box("matrixCell", "compact")),
+            Border.WidthProperty, "Component.MatrixCell.CompactWidth");
         yield return new("MorphemeRow", "a morpheme edge", host => Add(host, Box("morphEdge")), Border.BorderBrushProperty, "Intent.Border");
 
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.HeightProperty, "Component.TopBar.Height");

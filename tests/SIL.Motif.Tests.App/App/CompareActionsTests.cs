@@ -134,7 +134,7 @@ public sealed class CompareActionsTests
     }
 
     [Fact]
-    public async Task BulkCandidatesIncludeEveryReadingButOpinionsNeedOneExplicitChoice()
+    public async Task MatrixOffersOnlyTheTwoAllowedBulkChanges()
     {
         var table = new AssessWordsViewModel();
         table.Load([Word("ambiguous", "analysed", ProjectStanding.NotPresent, readingCount: 2)]);
@@ -144,17 +144,19 @@ public sealed class CompareActionsTests
 
         Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
         Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
-        Assert.Contains("one word", compare.ProposeReadingNotice, StringComparison.Ordinal);
         await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
         Assert.Equal(2, compare.Changes.Items.Count);
 
         var chosen = compare.Words.Single();
         chosen.IsChecked = true;
         chosen.SelectedReading = chosen.ReadingChoices[1];
-        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
-        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.Approve);
-        Assert.Contains("form-1", compare.Changes.Items.Last().Reading, StringComparison.Ordinal);
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
+        Assert.Equal(2, compare.Changes.Items.Count);
     }
 
     [Fact]

@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.MatrixCell"
+             x:DataType="vm:CompareCellViewModel"
+             Focusable="True">
+  <Border Classes="matrixCell" Classes.compact="{Binding $parent[views:MatrixCell].Compact}"
+          Focusable="True" Tag="{Binding}"
+          Classes.good="{Binding IsGood}" Classes.fine="{Binding IsFine}"
+          Classes.violation="{Binding IsViolation}" Classes.review="{Binding IsReview}"
+          Classes.new="{Binding IsNew}" Classes.nobody="{Binding IsNobody}" Classes.none="{Binding IsNone}"
+          Classes.empty="{Binding IsEmpty}" Classes.selected="{Binding IsSelected}"
+          AutomationProperties.Name="{Binding AccessibleName}">
+    <DockPanel LastChildFill="True">
+      <Ellipse DockPanel.Dock="Right" Classes="matrixPending" IsVisible="{Binding HasPendingChanges}"
+               Margin="{DynamicResource Component.MatrixCell.MarkerMargin}"
+               ToolTip.Tip="{Binding PendingChangeStatus}" />
+      <StackPanel VerticalAlignment="Center">
+        <TextBlock Classes="matrixCellCount" Text="{Binding CountText}" IsVisible="{Binding !IsEmptyImpossible}" />
+        <TextBlock Classes="matrixCellLabel" Text="{Binding Label}"
+                   TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+    </DockPanel>
+  </Border>
+</UserControl>

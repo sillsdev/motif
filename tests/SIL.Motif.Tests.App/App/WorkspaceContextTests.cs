@@ -442,7 +442,7 @@ public sealed class WorkspaceContextTests
         context.OpenWord("dogs");
 
         Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
-        Assert.Equal(TextsTab.Words, texts.Tab);
+        Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
     }
 
     [Fact]
@@ -526,7 +526,7 @@ public sealed class WorkspaceContextTests
 
         timing.Statistics.OpenTimeLimit!.Invoke();
         Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
-        Assert.Equal(TextsTab.Texts, texts.Tab);
+        Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
 
         texts.ShowPageCommand.Execute(WorkspacePage.Review);
         Assert.Equal(WorkspacePage.Review, context.CurrentPage);

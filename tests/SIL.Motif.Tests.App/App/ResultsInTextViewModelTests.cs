@@ -130,6 +130,32 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
+    public async Task OpinionsNeedAnExplicitReadingAndMarkEveryOccurrenceOfTheWordform()
+    {
+        var (inText, _) = await Loaded();
+        var tokens = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Where(token => token.Form == "kitabu").ToArray();
+        var selected = tokens[0];
+        inText.SelectToken(selected);
+
+        Assert.Null(selected.SelectedReading);
+        Assert.False(inText.AddChangeCommand.CanExecute(ChangeKinds.Approve));
+
+        selected.SelectedReading = selected.Readings[0];
+        Assert.True(inText.AddChangeCommand.CanExecute(ChangeKinds.Approve));
+        await inText.AddChangeCommand.ExecuteAsync(ChangeKinds.Approve);
+
+        Assert.Equal(ChangeKinds.Approve, Assert.Single(inText.Changes.Items).Kind);
+        Assert.All(tokens, token =>
+        {
+            Assert.True(token.IsPending);
+            Assert.Equal("Not applied yet", token.PendingChangeStatus);
+        });
+        Assert.False(inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Single(token => token.Form == "anapenda").IsPending);
+    }
+
+    [Fact]
     public void BeforeAnyAssessmentItSaysSoInsteadOfShowingNothing()
     {
         var fake = new FakeCommandClient();

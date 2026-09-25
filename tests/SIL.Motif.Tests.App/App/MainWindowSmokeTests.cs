@@ -54,7 +54,12 @@ public sealed class MainWindowSmokeTests
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
             Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
             Assert.Same(workspace.PageModel<TextsPageModel>().Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
-            Assert.Same(workspace.Assess, Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>()).Assess);
+            Assert.Same(workspace.PageModel<TextsPageModel>().Assess.Compare,
+                Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>()).Compare);
+            Assert.Same(workspace.PageModel<TextsPageModel>().ResultsInText,
+                Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>()).InText);
+            Assert.Same(workspace.PageModel<TextsPageModel>().TextsLists,
+                Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>()).Lists);
             Assert.Same(
                 workspace.PageModel<TimingPageModel>().Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
             Assert.Same(workspace.PageModel<AiHandoffPageModel>().Handoff, Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>()).Handoff);
@@ -551,7 +556,7 @@ public sealed class MainWindowSmokeTests
                 Assert.True(panel.IsEffectivelyVisible);
                 var lost = panel.GetVisualDescendants().OfType<Border>().Single(border =>
                     border.Tag is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.NoParse });
-                Assert.StartsWith("Approved, No parse: 1 words", AutomationProperties.GetName(lost));
+                Assert.StartsWith("Approved, No parse: 1 word", AutomationProperties.GetName(lost));
                 lost.RaiseEvent(new Avalonia.Input.PointerPressedEventArgs(lost,
                     new Avalonia.Input.Pointer(1, Avalonia.Input.PointerType.Mouse, true), window, default, 0,
                     new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton,
@@ -569,7 +574,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void AssessmentPanelShowsCollapsibleSectionsAndWordAndWarningTablesWithoutIdentifiers()
+    public void TextsMatrixShowsAssessmentWordsWithoutIdentifiers()
     {
         _avalonia.Invoke(() =>
         {
@@ -615,16 +620,13 @@ public sealed class MainWindowSmokeTests
                     ],
                 };
 
-                workspace.Context.OpenTexts(TextsTab.Words);
+                workspace.Context.OpenTexts(TextsTab.Matrix);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<AssessPanel>());
-                var sections = panel.GetLogicalDescendants().OfType<Expander>()
-                    .Select(AutomationProperties.GetName).Where(name => name?.EndsWith(" section") == true);
-                Assert.Equal(["Run section"], sections);
-                Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>());
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
+                Assert.True(panel.IsEffectivelyVisible);
 
                 Assert.Equal(4, workspace.Assess.Words.TotalCount);
                 var rows = workspace.Assess.Words.Rows.Cast<AssessWordRowViewModel>().ToList();
@@ -635,16 +637,41 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Morphology evidence unavailable: invalid shape.", rows[3].Detail);
 
                 var words = panel.GetLogicalDescendants().OfType<ListBox>()
-                    .Single(list => AutomationProperties.GetName(list) == "Words");
-                words.SelectedItem = rows[0];
-                window.UpdateLayout();
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-
-                Assert.Contains(panel.GetVisualDescendants().OfType<HyperlinkButton>(),
-                    link => Equals(link.Content, "motif-") && link.IsEffectivelyVisible);
+                    .Single(list => AutomationProperties.GetName(list) == "Words in the chosen cells");
+                Assert.Equal(4, words.ItemCount);
+                Assert.Equal(["motifa", "motifb", "motifc", "motifd"],
+                    workspace.Assess.Compare.Words.Select(word => word.Word));
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TextsPageShowsAssessmentRefusalsAndDetails()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.Context.OpenTexts(TextsTab.Matrix);
+                workspace.Assess.Refusal = new Refusal(
+                    "assess.parser-unavailable", FailureReason.Refused, "PanGloss is not built.",
+                    new Dictionary<string, string> { ["parserPath"] = "pangloss.exe" });
+                window.Show();
+                window.UpdateLayout();
+
+                var refusal = Assert.Single(window.GetLogicalDescendants().OfType<CopyableTextBlock>(),
+                    block => block.Text == "PanGloss is not built.");
+                Assert.True(refusal.IsEffectivelyVisible);
+                Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(),
+                    expander => Equals(expander.Header, "Details") && expander.IsEffectivelyVisible);
+                Assert.Equal(["parserPath: pangloss.exe"], workspace.Assess.RefusalFacts);
             }
             finally
             {

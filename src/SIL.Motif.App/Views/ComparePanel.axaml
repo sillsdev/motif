@@ -5,93 +5,27 @@
              x:Class="SIL.Motif.App.Views.ComparePanel"
              x:DataType="views:ComparePanel">
   <UserControl.Styles>
-    <!-- A cell's fill says what it means; a chosen cell also wears a heavy outline, so colour is never the only cue. -->
-    <Style Selector="Border.compareCell">
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="Padding" Value="10,6" />
-      <Setter Property="MinHeight" Value="54" />
-      <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="BorderThickness" Value="2" />
-      <Setter Property="BorderBrush" Value="Transparent" />
-      <Setter Property="Background" Value="{DynamicResource SemiColorFill0}" />
-    </Style>
-    <Style Selector="Border.compareCell :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
-    </Style>
-    <Style Selector="Border.compareCell.good">
-      <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
-    </Style>
-    <Style Selector="Border.compareCell.good :is(TextBlock), Border.compareCell.fine :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
-    </Style>
-    <Style Selector="Border.compareCell.violation">
-      <Setter Property="Background" Value="{DynamicResource SemiColorDangerLight}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorDanger}" />
-    </Style>
-    <Style Selector="Border.compareCell.violation :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}" />
-    </Style>
-    <Style Selector="Border.compareCell.review">
-      <Setter Property="Background" Value="{DynamicResource SemiColorWarningLight}" />
-    </Style>
-    <Style Selector="Border.compareCell.review :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}" />
-    </Style>
-    <Style Selector="Border.compareCell.new">
-      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
-    </Style>
-    <Style Selector="Border.compareCell.new :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}" />
-    </Style>
-    <Style Selector="Border.compareCell.nobody">
-      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}" />
-    </Style>
-    <Style Selector="Border.compareCell.nobody :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorLink}" />
-    </Style>
-    <Style Selector="Border.compareCell.none">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Cursor" Value="Arrow" />
-    </Style>
-    <Style Selector="Border.compareCell.none :is(TextBlock)">
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText3}" />
-    </Style>
-    <Style Selector="Border.compareCell.empty">
-      <Setter Property="Opacity" Value="0.55" />
-    </Style>
-    <Style Selector="Border.compareCell:pointerover">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimaryLightPointerover}" />
-    </Style>
-    <Style Selector="Border.compareCell.selected, Border.compareCell:focus-visible">
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
-      <Setter Property="BorderThickness" Value="3" />
-      <Setter Property="Opacity" Value="1" />
-    </Style>
     <Style Selector=":is(TextBlock).columnHeader">
-      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
       <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+      <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
     </Style>
     <Style Selector="ListBox.denseWords ListBoxItem">
-      <Setter Property="Padding" Value="8,2" />
-      <Setter Property="MinHeight" Value="0" />
-      <Setter Property="BorderThickness" Value="0,0,0,1" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+      <Setter Property="Padding" Value="{DynamicResource Component.TextsPage.DenseRowPadding}" />
+      <Setter Property="MinHeight" Value="{DynamicResource Component.TextsPage.DenseRowMinHeight}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     </Style>
     <Style Selector="Button.header">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="Padding" Value="{DynamicResource Component.TextsPage.HeaderButtonPadding}" />
     </Style>
   </UserControl.Styles>
 
-  <Grid ColumnDefinitions="*,290" ColumnSpacing="14" Margin="16,10,16,16" IsVisible="{Binding Compare.HasWords}">
-  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
-
-    <!-- Shortcuts that choose every cell of one meaning; the matrix below is the filter itself. -->
-    <StackPanel Orientation="Horizontal" Spacing="4">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+        Margin="{DynamicResource Component.TextsPage.PageInset}" IsVisible="{Binding Compare.HasWords}">
+    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
       <Border Classes="notice" IsVisible="{Binding Compare.ShowsNoStandingsNotice}">
         <views:CopyableTextBlock TextWrapping="Wrap"
                                  Text="This Assessment did not record what the project holds, so every word sits in the first row. Run it again to fill the rows." />
@@ -101,7 +35,7 @@
       <ItemsControl ItemsSource="{Binding Compare.Presets}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <StackPanel Orientation="Horizontal" Spacing="4" />
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
@@ -113,14 +47,21 @@
       </ItemsControl>
     </StackPanel>
 
-    <!-- The matrix: rows are what the project held, columns what the parser did. -->
-    <StackPanel Grid.Row="1" Spacing="5" AutomationProperties.Name="Compare matrix">
-      <Grid ColumnDefinitions="170,*">
-        <views:CopyableTextBlock Classes="columnHeader" Text="PROJECT ↓  PARSER →" VerticalAlignment="Bottom" Margin="6,0" />
+    <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Compact}" AutomationProperties.Name="Compare matrix">
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+        <RadioButton Content="Count words" GroupName="CompareCount" IsChecked="{Binding Compare.CountWords}"
+                     AutomationProperties.Name="Count words in the matrix" />
+        <RadioButton Content="Count occurrences" GroupName="CompareCount" IsChecked="{Binding Compare.CountOccurrences}"
+                     AutomationProperties.Name="Count occurrences in the matrix" />
+      </StackPanel>
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+        <views:CopyableTextBlock Width="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}"
+                                 Classes="columnHeader" Text="PROJECT ↓  PARSER →" VerticalAlignment="Bottom"
+                                 Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
         <ItemsControl Grid.Column="1" ItemsSource="{Binding Compare.Columns}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <UniformGrid Columns="5" ColumnSpacing="5" />
+              <UniformGrid Columns="5" ColumnSpacing="{DynamicResource Intent.Space.Compact}" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
@@ -129,8 +70,8 @@
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectColumnCommand}" CommandParameter="{Binding}"
                       AutomationProperties.Name="{Binding Label, StringFormat='Choose the {0} column'}">
                 <StackPanel>
-                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="13" />
-                  <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="11" />
+                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="{DynamicResource Intent.Type.Body}" />
+                  <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" />
                 </StackPanel>
               </Button>
             </DataTemplate>
@@ -140,40 +81,30 @@
       <ItemsControl ItemsSource="{Binding Compare.Rows}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <StackPanel Spacing="5" />
+            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareRowViewModel">
-            <Grid ColumnDefinitions="170,*">
-              <Button Classes="header" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Stretch"
+            <Grid ColumnDefinitions="Auto,*">
+              <Button Width="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}"
+                      Classes="header" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Stretch"
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectRowCommand}" CommandParameter="{Binding}"
                       AutomationProperties.Name="{Binding Label, StringFormat='Choose the {0} row'}">
-                <StackPanel VerticalAlignment="Center" Spacing="2">
+                <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Intent.Space.Minimal}">
                   <views:VerdictChip Verdict="{Binding Verdict}" Text="{Binding Label}" HorizontalAlignment="Left" />
-                  <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="11" Margin="2,0" />
+                  <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" />
                 </StackPanel>
               </Button>
               <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
-                    <UniformGrid Columns="5" ColumnSpacing="5" />
+                    <UniformGrid Columns="5" ColumnSpacing="{DynamicResource Intent.Space.Compact}" />
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:CompareCellViewModel">
-                    <Border Classes="compareCell" Focusable="True" Tag="{Binding}"
-                            Classes.good="{Binding IsGood}" Classes.fine="{Binding IsFine}"
-                            Classes.violation="{Binding IsViolation}" Classes.review="{Binding IsReview}"
-                            Classes.new="{Binding IsNew}" Classes.nobody="{Binding IsNobody}" Classes.none="{Binding IsNone}"
-                            Classes.empty="{Binding IsEmpty}" Classes.selected="{Binding IsSelected}"
-                            PointerPressed="OnCellPressed" KeyDown="OnCellKeyDown"
-                            AutomationProperties.Name="{Binding AccessibleName}">
-                      <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CountText}" FontSize="19" FontWeight="SemiBold" IsVisible="{Binding !IsEmptyImpossible}" />
-                        <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                      </StackPanel>
-                    </Border>
+                    <views:MatrixCell Tag="{Binding}" PointerPressed="OnCellPressed" KeyDown="OnCellKeyDown" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
@@ -183,15 +114,77 @@
       </ItemsControl>
     </StackPanel>
 
-    <!-- What is chosen, then the list's own filters, which never change the counts above. -->
-    <Grid Grid.Row="2" ColumnDefinitions="*,220,Auto" ColumnSpacing="8" Margin="0,6,0,0">
-      <StackPanel VerticalAlignment="Center" Spacing="1">
+    <Border Grid.Row="2" Classes="card">
+      <Expander IsExpanded="True">
+        <Expander.Header>
+          <DockPanel LastChildFill="True">
+            <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding Compare.FixFirstSummary}"
+                                     FontSize="{DynamicResource Intent.Type.Small}" />
+            <views:CopyableTextBlock Text="Fix these first" FontWeight="SemiBold" />
+          </DockPanel>
+        </Expander.Header>
+        <ListBox ItemsSource="{Binding Compare.FixFirstRows}"
+                 MaxHeight="{DynamicResource Component.TextsPage.FixFirstListHeight}"
+                 Margin="{DynamicResource Intent.Gap.AfterRelated}"
+                 AutomationProperties.Name="Words to check first">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:CompareFixFirstViewModel">
+              <Expander IsExpanded="{Binding Word.IsExpanded}">
+                <Expander.Header>
+                  <Button Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
+                          HorizontalContentAlignment="Stretch"
+                          Command="{Binding $parent[views:ComparePanel].Compare.FocusFixFirstCommand}"
+                          CommandParameter="{Binding}">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                        <TextBlock Text="{Binding Word.Word}" FontWeight="SemiBold" />
+                        <TextBlock Classes="muted" Text="{Binding OccurrenceText}" />
+                      </StackPanel>
+                      <TextBlock Grid.Row="1" Classes="muted" Text="{Binding Category}"
+                                 FontSize="{DynamicResource Intent.Type.Label}" />
+                      <Ellipse Grid.Column="1" Fill="{DynamicResource Intent.Warning.Text}"
+                               Width="{DynamicResource Component.MatrixCell.MarkerSize}"
+                               Height="{DynamicResource Component.MatrixCell.MarkerSize}"
+                               IsVisible="{Binding Word.HasPendingChange}" VerticalAlignment="Center"
+                               ToolTip.Tip="{Binding Word.PendingChangeStatus}" />
+                    </Grid>
+                  </Button>
+                </Expander.Header>
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Intent.Gap.AfterRelated}">
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding Explanation}" TextWrapping="Wrap" />
+                  <ItemsControl ItemsSource="{Binding MissedApproved}" IsVisible="{Binding MissedApproved.Count}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ParserReadingViewModel">
+                        <views:CopyableTextBlock Text="{Binding Text, StringFormat='Approved analysis: {0}'}" TextWrapping="Wrap" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding ParserReadings}" IsVisible="{Binding ParserReadings.Count}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CompareReadingChoice">
+                        <views:CopyableTextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Expander>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Expander>
+    </Border>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+      <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Intent.Space.Minimal}">
         <views:CopyableTextBlock Text="{Binding Compare.ListSummary}" FontWeight="SemiBold" />
-        <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.SelectionText}" FontSize="12" TextTrimming="CharacterEllipsis" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.SelectionText}"
+                                 FontSize="{DynamicResource Intent.Type.Small}" TextTrimming="CharacterEllipsis" />
       </StackPanel>
-      <TextBox Grid.Column="1" Text="{Binding Compare.SearchText}" PlaceholderText="Search these words..."
+      <TextBox Grid.Column="1" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
+               Text="{Binding Compare.SearchText}" PlaceholderText="Search these words..."
                AutomationProperties.Name="Search the listed words" />
-      <ComboBox Grid.Column="2" ItemsSource="{Binding Compare.SortChoices}" SelectedItem="{Binding Compare.Sort}" MinWidth="150"
+      <ComboBox Grid.Column="2" ItemsSource="{Binding Compare.SortChoices}" SelectedItem="{Binding Compare.Sort}"
+                MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
                 AutomationProperties.Name="Order the listed words">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareSort">
@@ -201,107 +194,77 @@
       </ComboBox>
     </Grid>
 
-    <Grid Grid.Row="3" ColumnDefinitions="28,2*,60,150,100,190,3*,70" Margin="12,0,8,0">
-      <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="WORD" />
-      <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="IN TEXTS" />
-      <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="IN THE PROJECT" />
-      <views:CopyableTextBlock Grid.Column="4" Classes="columnHeader" Text="PARSER" />
-      <views:CopyableTextBlock Grid.Column="5" Classes="columnHeader" Text="MEANING" />
-      <views:CopyableTextBlock Grid.Column="6" Classes="columnHeader" Text="CHOOSE AN ANALYSIS" />
-    </Grid>
-    <ListBox Grid.Row="4" Classes="denseWords" ItemsSource="{Binding Compare.Words}" AutomationProperties.Name="Words in the chosen cells">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:CompareWordViewModel">
-          <Grid ColumnDefinitions="28,2*,60,150,100,190,3*,70" Margin="4,3">
-            <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
-                      AutomationProperties.Name="{Binding Word, StringFormat='Tick {0} for a change'}" />
-            <views:CopyableTextBlock Grid.Column="1" Text="{Binding Word}" FontWeight="SemiBold" VerticalAlignment="Center" />
-            <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
-            <views:VerdictChip Grid.Column="3" Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}" Compact="True" HorizontalAlignment="Left" />
-            <views:VerdictChip Grid.Column="4" Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}" Compact="True" HorizontalAlignment="Left" />
-            <views:CopyableTextBlock Grid.Column="5" Text="{Binding Meaning}" FontSize="12" VerticalAlignment="Center"
-                                     Classes.error="{Binding IsViolation}" TextTrimming="CharacterEllipsis" />
-            <ComboBox Grid.Column="6" ItemsSource="{Binding ReadingChoices}" SelectedItem="{Binding SelectedReading}"
-                      PlaceholderText="Choose an analysis for an opinion" VerticalAlignment="Center"
-                      AutomationProperties.Name="{Binding Word, StringFormat='Analysis for {0}'}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:CompareReadingChoice">
-                  <views:CopyableTextBlock Text="{Binding Label}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-            <HyperlinkButton Grid.Column="7" Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
-                             Command="{Binding $parent[views:ComparePanel].Compare.OpenWordCommand}" CommandParameter="{Binding}"
-                             AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Words'}" />
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-  </Grid>
-
-  <!-- Right: what to do with the words the matrix picked out. -->
-  <ScrollViewer Grid.Column="1">
-    <StackPanel Spacing="10">
-      <Border Classes="card" Padding="12" IsVisible="{Binding Compare.CanRerun}">
-        <StackPanel Spacing="6">
-          <views:CopyableTextBlock Text="Run again" FontWeight="SemiBold" />
-          <views:CopyableTextBlock Text="{Binding Compare.RerunText}" TextWrapping="Wrap" FontSize="12" />
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10" Width="110"
-                           FormatString="0" AutomationProperties.Name="Seconds each word gets when run again" />
-            <views:CopyableTextBlock Classes="muted" Text="seconds each" VerticalAlignment="Center" />
-          </StackPanel>
-          <Button Content="Run them again" Command="{Binding Compare.RerunCommand}" HorizontalAlignment="Stretch"
-                  AutomationProperties.Name="Run the timed-out and untried words again" />
-          <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
-                                   Text="Only these words run; their answers replace the old ones here. A step limit still applies." />
-        </StackPanel>
-      </Border>
-
-      <Border Classes="card" Padding="12">
-        <StackPanel Spacing="6">
-          <views:CopyableTextBlock Text="AI Handoff" FontWeight="SemiBold" />
-          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                                   Text="Give a chat model just the listed words, assessed again for the files." />
-          <Button Content="{Binding Compare.ListSummary, StringFormat='AI Handoff for these {0}'}" Command="{Binding Compare.HandOffCommand}"
-                  HorizontalAlignment="Stretch" AutomationProperties.Name="AI Handoff for the listed words" />
-        </StackPanel>
-      </Border>
-
-      <Border Classes="card" Padding="12">
-        <StackPanel Spacing="6">
-          <views:CopyableTextBlock Text="Changes" FontWeight="SemiBold" />
-          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.Summary}" />
-          <views:CopyableTextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.CollectionNotice}" />
-          <views:CopyableTextBlock Classes="error" FontSize="12" TextWrapping="Wrap" Text="{Binding Compare.Changes.ErrorText}" />
-          <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
-                                   Text="{Binding Compare.ProposeReadingNotice}" />
-          <WrapPanel>
-            <Button Content="Approve" Command="{Binding Compare.ProposeCommand}" CommandParameter="approve" Margin="0,0,4,4" />
-            <Button Content="Reject" Command="{Binding Compare.ProposeCommand}" CommandParameter="reject" Margin="0,0,4,4" />
-            <Button Content="Back to candidate" Command="{Binding Compare.ProposeCommand}" CommandParameter="candidate" Margin="0,0,4,4" />
-            <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling" Margin="0,0,4,4" />
-            <Button Content="Add as candidate" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate" Margin="0,0,4,4" />
-          </WrapPanel>
-          <ItemsControl ItemsSource="{Binding Compare.Changes.Items}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:ChangeViewModel">
-                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                  <StackPanel>
-                    <views:CopyableTextBlock FontSize="12" Text="{Binding Summary}" />
-                    <views:CopyableTextBlock Classes="muted" FontSize="11" Text="{Binding HeldLabel, StringFormat='was {0}'}" />
-                  </StackPanel>
-                  <HyperlinkButton Grid.Column="1" Content="Remove" FontSize="11" VerticalAlignment="Center"
-                                   Command="{Binding $parent[views:ComparePanel].Compare.Changes.RemoveCommand}" CommandParameter="{Binding}" />
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <views:CopyableTextBlock Classes="muted" FontSize="11" TextWrapping="Wrap" Text="{Binding Compare.Changes.ApplyStatus}"
-                                   IsVisible="{Binding Compare.Changes.HasItems}" />
-        </StackPanel>
-      </Border>
+    <StackPanel Grid.Row="4" Spacing="{DynamicResource Intent.Space.Minimal}">
+      <WrapPanel>
+        <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.CheckedWordText}"
+                                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}" VerticalAlignment="Center" />
+        <Button Content="Add as candidate" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
+                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                AutomationProperties.Name="Add checked words as candidates" />
+        <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
+                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                AutomationProperties.Name="Mark checked words as incorrect spelling" />
+        <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10"
+                       Width="{DynamicResource Component.TextsPage.RerunTimeWidth}" FormatString="0"
+                       IsVisible="{Binding Compare.CanRerun}"
+                       AutomationProperties.Name="Seconds each word gets when run again" />
+        <Button Content="Run timed-out words again" Command="{Binding Compare.RerunCommand}"
+                IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                AutomationProperties.Name="Run the timed-out and untried words again" />
+        <Button Content="AI Handoff for these words" Command="{Binding Compare.HandOffCommand}"
+                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                AutomationProperties.Name="AI Handoff for the listed words" />
+      </WrapPanel>
+      <views:CopyableTextBlock Classes="error" Text="{Binding Compare.Changes.ErrorText}" TextWrapping="Wrap"
+                               IsVisible="{Binding Compare.Changes.HasError}" />
     </StackPanel>
-  </ScrollViewer>
+
+    <Grid Grid.Row="5" RowDefinitions="Auto,*">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="{DynamicResource Component.TextsPage.DenseRowPadding}">
+        <Border Width="{DynamicResource Component.TextsPage.WordCheckWidth}" />
+        <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="WORD" />
+        <views:CopyableTextBlock Grid.Column="2" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
+                                 Classes="columnHeader" Text="IN TEXTS" />
+        <views:CopyableTextBlock Grid.Column="3" Width="{DynamicResource Component.TextsPage.WordProjectWidth}"
+                                 Classes="columnHeader" Text="IN THE PROJECT" />
+        <views:CopyableTextBlock Grid.Column="4" Width="{DynamicResource Component.TextsPage.WordParserWidth}"
+                                 Classes="columnHeader" Text="PARSER" />
+        <views:CopyableTextBlock Grid.Column="5" Width="{DynamicResource Component.TextsPage.WordMeaningWidth}"
+                                 Classes="columnHeader" Text="MEANING" />
+        <Border Grid.Column="6" Width="{DynamicResource Component.TextsPage.WordOpenWidth}" />
+      </Grid>
+      <ListBox Grid.Row="1" Classes="denseWords" ItemsSource="{Binding Compare.Words}"
+               AutomationProperties.Name="Words in the chosen cells">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CompareWordViewModel">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="{DynamicResource Intent.Gap.AfterRelated}">
+              <CheckBox Width="{DynamicResource Component.TextsPage.WordCheckWidth}"
+                        Grid.Column="0" IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
+                        AutomationProperties.Name="{Binding Word, StringFormat='Tick {0} for a change'}" />
+              <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
+                <views:CopyableTextBlock Text="{Binding Word}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding PendingChangeStatus}"
+                                         IsVisible="{Binding HasPendingChange}" FontSize="{DynamicResource Intent.Type.Label}" />
+              </StackPanel>
+              <views:CopyableTextBlock Grid.Column="2" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
+                                       Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
+              <views:VerdictChip Grid.Column="3" Width="{DynamicResource Component.TextsPage.WordProjectWidth}"
+                                 Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}"
+                                 Compact="True" HorizontalAlignment="Left" />
+              <views:VerdictChip Grid.Column="4" Width="{DynamicResource Component.TextsPage.WordParserWidth}"
+                                 Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}"
+                                 Compact="True" HorizontalAlignment="Left" />
+              <views:CopyableTextBlock Grid.Column="5" Width="{DynamicResource Component.TextsPage.WordMeaningWidth}"
+                                       Text="{Binding Meaning}" FontSize="{DynamicResource Intent.Type.Small}"
+                                       VerticalAlignment="Center" Classes.error="{Binding IsViolation}" TextTrimming="CharacterEllipsis" />
+              <HyperlinkButton Grid.Column="6" Width="{DynamicResource Component.TextsPage.WordOpenWidth}"
+                               Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Command="{Binding $parent[views:ComparePanel].Compare.OpenWordCommand}" CommandParameter="{Binding}"
+                               AutomationProperties.Name="{Binding Word, StringFormat='Analyze {0} in its texts'}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
   </Grid>
 </UserControl>

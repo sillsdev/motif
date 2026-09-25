@@ -111,17 +111,28 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public void TheTextsPageOpensOnTheMatrixAndEachTabRaisesOnlyItsOwnFlag()
+    public void TheTextsPageOffersMatrixAnalyzeTextsAndLists()
     {
-        var (_, _, workspace) = NewWorkspace();
-        Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
+        Assert.Equal(["Matrix", "AnalyzeTexts", "Lists"], Enum.GetNames<TextsTab>());
+    }
 
-        workspace.PageModel<TextsPageModel>().ShowTabCommand.Execute(TextsTab.InText);
+    [Fact]
+    public async Task OpeningListsAfterAnAssessmentSelectsItsFirstQuestion()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        fake.AssessCompletesWith(NewAssessResponse() with
+        {
+            Words = [Word("kitabu", "no-analysis", ProjectStanding.Approved)],
+        });
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
 
         var texts = workspace.PageModel<TextsPageModel>();
-        Assert.Equal(
-            [false, false, false, false, true],
-            new[] { texts.ShowMatrix, texts.ShowWhatChanged, texts.ShowWords, texts.ShowTexts, texts.ShowInText });
+        texts.ShowTabCommand.Execute(TextsTab.Lists);
+
+        Assert.Equal("Approved, not parsed", texts.TextsLists.SelectedList?.Name);
+        Assert.Equal(["kitabu"], texts.Assess.Compare.Words.Select(word => word.Word));
     }
 
     [Fact]
@@ -143,7 +154,7 @@ public sealed class WorkspacePageTests
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
         workspace.Selection.AllWordforms = true;
-        workspace.PageModel<TextsPageModel>().ShowTabCommand.Execute(TextsTab.InText);
+        workspace.PageModel<TextsPageModel>().ShowTabCommand.Execute(Enum.Parse<TextsTab>("AnalyzeTexts"));
         fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
 
         var running = workspace.Assess.RunCommand.ExecuteAsync(null);
@@ -155,7 +166,7 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task ARerunOpensWhatChangedAndAFullRunStaysOnTheMatrix()
+    public async Task ARunAndRerunStayOnTheMatrixTab()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
@@ -169,7 +180,7 @@ public sealed class WorkspacePageTests
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RerunAsync(["alimpiga"], 30_000);
 
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowWhatChanged);
+        Assert.Equal("Matrix", workspace.PageModel<TextsPageModel>().Tab.ToString());
         Assert.Equal(MoveKind.Settled, workspace.Assess.Difference.SelectedMove!.Kind);
 
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
@@ -448,7 +459,7 @@ public sealed class WorkspacePageTests
         workspace.SeeWhatChangedCommand.Execute(null);
 
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowWhatChanged);
+        Assert.True(workspace.PageModel<TextsPageModel>().ShowMatrix);
     }
 
     [Fact]

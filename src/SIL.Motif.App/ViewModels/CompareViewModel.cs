@@ -15,6 +15,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class CompareViewModel : ObservableObject
 {
     private readonly List<CompareWordViewModel> _all = [];
+    private ChangesViewModel _changes = new();
 
     public CompareViewModel()
     {
@@ -51,6 +52,10 @@ public sealed partial class CompareViewModel : ObservableObject
         RerunCommand = new AsyncRelayCommand(RerunUnknownAsync, () => Rerun is not null && RerunWords.Count > 0);
         HandOffCommand = new RelayCommand(() => HandOff?.Invoke(Words.Select(word => word.Word).ToArray()),
             () => HandOff is not null && Words.Count > 0);
+        FocusFixFirstCommand = new RelayCommand<CompareFixFirstViewModel>(item =>
+        {
+            if (item is not null) FocusWord(item.Word);
+        });
         ProposeCommand = new AsyncRelayCommand<string>(async kind =>
         {
             if (kind is null) return;
@@ -69,15 +74,23 @@ public sealed partial class CompareViewModel : ObservableObject
     /// The changes collected so far, to become one Proposal. A list of its own until an owner hands it the one every
     /// page of the window shares.
     /// </summary>
-    public ChangesViewModel Changes { get; set; } = new();
+    public ChangesViewModel Changes
+    {
+        get => _changes;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if (ReferenceEquals(_changes, value)) return;
+            _changes.Items.CollectionChanged -= OnChangesChanged;
+            _changes = value;
+            _changes.Items.CollectionChanged += OnChangesChanged;
+            UpdatePendingMarkers();
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>Adds the chosen change for checked words, with opinions restricted to one selected analysis.</summary>
     public IAsyncRelayCommand<string> ProposeCommand { get; }
-
-    /// <summary>Explains which changes can act on checked words and which require an analysis choice.</summary>
-    public string ProposeReadingNotice =>
-        "Add as candidate collects all parser readings for each checked word. Incorrect spelling can mark many words. " +
-        "Approve, Reject, and Back to candidate require one word checked and one analysis chosen from its reading list.";
 
     private bool CanPropose(string? kind)
     {
@@ -86,14 +99,17 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             ChangeKinds.IncorrectSpelling => chosen.Length > 0,
             ChangeKinds.AddCandidate => chosen.Length > 0 && chosen.All(word => word.ReadingCount > 0),
-            ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate =>
-                chosen.Length == 1 && chosen[0].SelectedReading is not null,
             _ => false,
         };
     }
 
     private void OnWordPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(CompareWordViewModel.IsChecked))
+        {
+            OnPropertyChanged(nameof(CheckedWordCount));
+            OnPropertyChanged(nameof(CheckedWordText));
+        }
         if (e.PropertyName is nameof(CompareWordViewModel.IsChecked) or
             nameof(CompareWordViewModel.SelectedReading)) ProposeCommand.NotifyCanExecuteChanged();
     }
@@ -173,6 +189,8 @@ public sealed partial class CompareViewModel : ObservableObject
     public IRelayCommand<CompareColumnViewModel> SelectColumnCommand { get; }
     public IRelayCommand<CompareWordViewModel> OpenWordCommand { get; }
 
+    public IRelayCommand<CompareFixFirstViewModel> FocusFixFirstCommand { get; }
+
     /// <summary>Opens a word in the Words view; set by the workspace.</summary>
     public Action<string>? OpenWord { get; set; }
 
@@ -184,6 +202,9 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public IReadOnlyList<CompareSort> SortChoices { get; } = Enum.GetValues<CompareSort>();
 
+    [ObservableProperty]
+    private CompareCountMode _countMode = CompareCountMode.Words;
+
     public int TotalCount => _all.Count;
     public bool HasWords => _all.Count > 0;
 
@@ -192,6 +213,22 @@ public sealed partial class CompareViewModel : ObservableObject
 
     /// <summary>Whether to say the rows are unknown, rather than let every word look as if nothing were stored.</summary>
     public bool ShowsNoStandingsNotice => HasWords && !HasStandings;
+
+    public IReadOnlyList<CompareFixFirstViewModel> FixFirstRows => _all
+        .Select(word => (Word: word, Rank: FixFirstRank(word), Explanation: FixFirstExplanation(word)))
+        .Where(item => item.Rank is not null)
+        .OrderBy(item => item.Rank)
+        .ThenByDescending(item => item.Word.Occurrences ?? 0)
+        .ThenBy(item => item.Word.Word, StringComparer.CurrentCulture)
+        .Select(item => new CompareFixFirstViewModel(item.Word, item.Rank!.Value, item.Explanation))
+        .ToArray();
+
+    public string FixFirstSummary => FixFirstRows.Count switch
+    {
+        0 => "No words need attention in these four groups.",
+        1 => "1 word in the four groups to check first.",
+        var count => $"{count:N0} words in the four groups to check first.",
+    };
 
     public bool AnySelected => Cells.Any(cell => cell.IsSelected);
 
@@ -213,8 +250,35 @@ public sealed partial class CompareViewModel : ObservableObject
         ? $"{TotalCount:N0} word{(TotalCount == 1 ? string.Empty : "s")}"
         : $"{Words.Count:N0} of {TotalCount:N0} words";
 
+    public int CheckedWordCount => Words.Count(word => word.IsChecked);
+
+    public string CheckedWordText => CheckedWordCount switch
+    {
+        0 => "No words selected",
+        1 => "1 word selected",
+        var count => $"{count:N0} words selected",
+    };
+
     partial void OnSearchTextChanged(string value) => ApplyFilter();
     partial void OnSortChanged(CompareSort value) => ApplyFilter();
+    partial void OnCountModeChanged(CompareCountMode value)
+    {
+        RefreshCounts();
+        OnPropertyChanged(nameof(CountWords));
+        OnPropertyChanged(nameof(CountOccurrences));
+    }
+
+    public bool CountWords
+    {
+        get => CountMode == CompareCountMode.Words;
+        set { if (value) CountMode = CompareCountMode.Words; }
+    }
+
+    public bool CountOccurrences
+    {
+        get => CountMode == CompareCountMode.Occurrences;
+        set { if (value) CountMode = CompareCountMode.Occurrences; }
+    }
 
     /// <summary>Places every word in its cell and clears the selection; <see langword="null"/> empties the matrix.</summary>
     public void Load(IEnumerable<AssessWordRowViewModel>? rows)
@@ -226,17 +290,35 @@ public sealed partial class CompareViewModel : ObservableObject
         foreach (var word in _all) word.PropertyChanged += OnWordPropertyChanged;
         foreach (var cell in Cells)
         {
-            cell.Count = _all.Count(word => word.Row == cell.Row && word.Column == cell.Column);
+            var words = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column).ToArray();
+            cell.SetCounts(words.Length, words.Sum(word => word.Occurrences ?? 0));
             cell.IsSelected = false;
         }
-        foreach (var row in Rows) row.Count = row.Cells.Sum(cell => cell.Count);
-        foreach (var column in Columns) column.Count = Cells.Where(cell => cell.Column == column.Column).Sum(cell => cell.Count);
-        foreach (var preset in Presets) preset.Count = Cells.Where(cell => cell.Family == preset.Family).Sum(cell => cell.Count);
+        RefreshCounts();
+        UpdatePendingMarkers();
         OnPropertyChanged(nameof(TotalCount));
         OnPropertyChanged(nameof(HasWords));
         OnPropertyChanged(nameof(HasStandings));
         OnPropertyChanged(nameof(ShowsNoStandingsNotice));
+        OnPropertyChanged(nameof(FixFirstRows));
+        OnPropertyChanged(nameof(FixFirstSummary));
         SelectionChanged();
+    }
+
+    public void FocusWord(CompareWordViewModel word)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        foreach (var item in _all) item.IsFocused = ReferenceEquals(item, word);
+        word.IsExpanded = true;
+        SearchText = word.Word;
+        Select([Cells.Single(cell => cell.Row == word.Row && cell.Column == word.Column)], additive: false);
+    }
+
+    public void SelectCells(IEnumerable<TextsListCell> cells)
+    {
+        ArgumentNullException.ThrowIfNull(cells);
+        var keys = cells.ToHashSet();
+        Select(Cells.Where(cell => keys.Contains(new TextsListCell(cell.Row, cell.Column))), additive: false);
     }
 
     /// <summary>
@@ -281,6 +363,68 @@ public sealed partial class CompareViewModel : ObservableObject
         ApplyFilter();
     }
 
+    private void RefreshCounts()
+    {
+        foreach (var cell in Cells)
+            cell.SetDisplayedCount(CountMode == CompareCountMode.Words ? cell.WordCount : cell.OccurrenceCount,
+                CountMode == CompareCountMode.Words ? "word" : "occurrence");
+        foreach (var row in Rows) row.Count = row.Cells.Sum(cell => cell.Count);
+        foreach (var column in Columns) column.Count = Cells.Where(cell => cell.Column == column.Column).Sum(cell => cell.Count);
+        foreach (var preset in Presets) preset.Count = Cells.Where(cell => cell.Family == preset.Family).Sum(cell => cell.Count);
+    }
+
+    private void OnChangesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
+        UpdatePendingMarkers();
+
+    private void UpdatePendingMarkers()
+    {
+        var pending = Changes.Items.GroupBy(change => change.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+        foreach (var word in _all)
+        {
+            pending.TryGetValue(word.Word, out var changes);
+            word.PendingChangeStatus = PendingLabel(changes);
+            word.HasPendingChange = word.PendingChangeStatus is not null;
+        }
+        foreach (var cell in Cells)
+        {
+            var statuses = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column)
+                .Select(word => word.PendingChangeStatus).ToArray();
+            cell.PendingChangeStatus = statuses.Contains("No longer fits", StringComparer.Ordinal)
+                ? "No longer fits"
+                : statuses.FirstOrDefault(status => status is not null);
+        }
+    }
+
+    private static string? PendingLabel(IReadOnlyList<ChangeViewModel>? changes) => changes?.Any(change => change.Fit is { StillFits: false }) == true
+        ? "No longer fits"
+        : changes?.Count > 0 ? "Not applied yet" : null;
+
+    private static int? FixFirstRank(CompareWordViewModel word) => (word.Row, word.Column) switch
+    {
+        (WordProjectStatus.Approved, CompareColumnKind.NoParse) => 0,
+        (WordProjectStatus.Approved, CompareColumnKind.NoMatch) => 1,
+        (WordProjectStatus.Rejected, CompareColumnKind.Match) => 2,
+        (WordProjectStatus.Candidate, CompareColumnKind.NoParse) => 3,
+        _ => null,
+    };
+
+    private static string FixFirstExplanation(CompareWordViewModel word) => (word.Row, word.Column) switch
+    {
+        (WordProjectStatus.Approved, CompareColumnKind.NoParse) => ApprovedMissingText(word),
+        (WordProjectStatus.Approved, CompareColumnKind.NoMatch) => ApprovedMissingText(word),
+        (WordProjectStatus.Rejected, CompareColumnKind.Match) => "The parser rebuilt an analysis the project rejected.",
+        (WordProjectStatus.Candidate, CompareColumnKind.NoParse) => "The parser could not rebuild this candidate.",
+        _ => string.Empty,
+    };
+
+    private static string ApprovedMissingText(CompareWordViewModel word) => word.MissedApproved.Count switch
+    {
+        1 => $"Expected {word.MissedApproved[0].Text}; the parser did not build it.",
+        > 1 => $"The parser did not build these approved analyses: {string.Join("; ", word.MissedApproved.Select(reading => reading.Text))}.",
+        _ => "The parser could not rebuild an approved analysis.",
+    };
+
     private void ApplyFilter()
     {
         var chosen = Cells.Where(cell => cell.IsSelected).Select(cell => (cell.Row, cell.Column)).ToHashSet();
@@ -297,6 +441,8 @@ public sealed partial class CompareViewModel : ObservableObject
         Words.Clear();
         foreach (var word in matches) Words.Add(word);
         OnPropertyChanged(nameof(ListSummary));
+        OnPropertyChanged(nameof(CheckedWordCount));
+        OnPropertyChanged(nameof(CheckedWordText));
         HandOffCommand.NotifyCanExecuteChanged();
         ProposeCommand.NotifyCanExecuteChanged();
         ChosenCellsChanged?.Invoke(this, EventArgs.Empty);
@@ -381,6 +527,13 @@ public enum CompareSort
     Slowest,
 }
 
+/// <summary>What the matrix counts in its cells and summaries.</summary>
+public enum CompareCountMode
+{
+    Words,
+    Occurrences,
+}
+
 /// <summary>One row of the matrix: what the project held, and its five cells.</summary>
 public sealed partial class CompareRowViewModel(WordProjectStatus row, IReadOnlyList<CompareCellViewModel> cells) : ObservableObject
 {
@@ -428,6 +581,19 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string RowLabel { get; }
     public string ColumnLabel { get; }
 
+    [ObservableProperty]
+    private int _wordCount;
+
+    [ObservableProperty]
+    private int _occurrenceCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPendingChanges))]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
+    private string? _pendingChangeStatus;
+
+    public bool HasPendingChanges => PendingChangeStatus is not null;
+
     public bool IsGood => Family == CompareFamilyKind.Good;
     public bool IsFine => Family == CompareFamilyKind.Fine;
     public bool IsViolation => Family == CompareFamilyKind.Violation;
@@ -438,10 +604,30 @@ public sealed partial class CompareCellViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CountText))]
+    [NotifyPropertyChangedFor(nameof(CountUnit))]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
     [NotifyPropertyChangedFor(nameof(IsEmptyImpossible))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private int _count;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CountUnit))]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
+    private string _unit = "word";
+
+    public string CountUnit => Count == 1 ? Unit : $"{Unit}s";
+
+    public void SetCounts(int wordCount, int occurrenceCount)
+    {
+        WordCount = wordCount;
+        OccurrenceCount = occurrenceCount;
+    }
+
+    public void SetDisplayedCount(int count, string unit)
+    {
+        Count = count;
+        Unit = unit;
+    }
 
     /// <summary>No word fell here, so the cell is drawn faintly: still there to read, but not asking for attention.</summary>
     public bool IsEmpty => Count == 0;
@@ -454,7 +640,8 @@ public sealed partial class CompareCellViewModel : ObservableObject
     /// <summary>A combination the data cannot produce, and did not: drawn hatched rather than as a zero.</summary>
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
 
-    public string AccessibleName => $"{RowLabel}, {ColumnLabel}: {Count} words, {Label}";
+    public string AccessibleName => $"{RowLabel}, {ColumnLabel}: {Count} {CountUnit}, {Label}" +
+        (PendingChangeStatus is { } status ? $", {status}" : string.Empty);
 }
 
 /// <summary>A shortcut that chooses every cell of one meaning.</summary>
@@ -488,6 +675,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
         ColumnLabel = CompareViewModel.ColumnLabelOf(Column);
         ColumnVerdict = CompareViewModel.VerdictOf(Column);
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
+        MissedApproved = word.MissedApproved;
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
         ReadingChoices = word.Morphology?.Analyses.Select((reading, index) =>
             new CompareReadingChoice(index, reading,
@@ -501,6 +689,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public CompareColumnKind Column { get; }
     public int? Occurrences { get; }
     public string OccurrenceText => Occurrences is { } count ? $"×{count}" : "—";
+    public IReadOnlyList<ParserReadingViewModel> MissedApproved { get; }
     public int? ElapsedMs { get; }
     public string Meaning { get; }
     public CompareFamilyKind Family { get; }
@@ -523,7 +712,37 @@ public sealed partial class CompareWordViewModel : ObservableObject
     /// <summary>Whether the word is ticked, to receive the next change chosen for ticked words.</summary>
     [ObservableProperty]
     private bool _isChecked;
+
+    [ObservableProperty]
+    private bool _hasPendingChange;
+
+    [ObservableProperty]
+    private string? _pendingChangeStatus;
+
+    [ObservableProperty]
+    private bool _isFocused;
+
+    [ObservableProperty]
+    private bool _isExpanded;
 }
 
 /// <summary>A parser reading chosen by its position in one recorded Assessment word.</summary>
 public sealed record CompareReadingChoice(int Index, ParseAnalysis Reading, string Label);
+
+/// <summary>One word in the ranked fix-first list, with the reason it needs attention.</summary>
+public sealed record CompareFixFirstViewModel(CompareWordViewModel Word, int Rank, string Explanation)
+{
+    public string Category => Rank switch
+    {
+        0 => "Approved × No parse",
+        1 => "Approved × No match",
+        2 => "Rejected but rebuilt",
+        _ => "Candidate × No parse",
+    };
+
+    public string OccurrenceText => Word.Occurrences is { } count ? $"×{count}" : "—";
+
+    public IReadOnlyList<ParserReadingViewModel> MissedApproved => Word.MissedApproved;
+
+    public IReadOnlyList<CompareReadingChoice> ParserReadings => Word.ReadingChoices;
+}

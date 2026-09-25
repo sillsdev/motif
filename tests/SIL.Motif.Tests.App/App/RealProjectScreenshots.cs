@@ -321,8 +321,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         Save(walkthrough.Window, Path.Combine(folder, "2f-texts-matrix-violations-light.png"));
         compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
         Save(walkthrough.Window, Path.Combine(folder, "2g-texts-matrix-largest-cell-light.png"));
-        walkthrough.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Words;
-        Save(walkthrough.Window, Path.Combine(folder, "2h-texts-words-mini-matrix-light.png"));
+        walkthrough.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
+        Save(walkthrough.Window, Path.Combine(folder, "2h-texts-matrix-selected-light.png"));
         compare.ClearSelectionCommand.Execute(null);
     }
 
@@ -339,8 +339,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
         {
             Application.Current!.RequestedThemeVariant = variant;
-            workspace.Context.OpenTexts(TextsTab.WhatChanged);
-            Save(walkthrough.Window, Path.Combine(folder, $"2b-texts-what-changed-after-rerun-{theme}.png"));
+            workspace.Context.OpenTexts(TextsTab.Matrix);
+            Save(walkthrough.Window, Path.Combine(folder, $"2a-texts-matrix-after-rerun-{theme}.png"));
         }
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
     }
@@ -369,8 +369,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var settle = DateTime.Now.AddMilliseconds(500);
         walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.PageModel<TextsPageModel>().Words.IsLoading,
             TimeSpan.FromMinutes(1), "unchecking the Texts did not settle");
-        workspace.Context.OpenTexts(TextsTab.InText);
-        Save(walkthrough.Window, Path.Combine(folder, "2i-texts-in-text-no-text-light.png"));
+        workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+        Save(walkthrough.Window, Path.Combine(folder, "2b-texts-analyze-no-text-light.png"));
     }
 
     private static void Save(MainWindow window, string path)

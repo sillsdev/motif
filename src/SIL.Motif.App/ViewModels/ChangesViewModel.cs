@@ -97,6 +97,8 @@ public sealed partial class ChangesViewModel : ObservableObject
         OnPropertyChanged(nameof(CollectionNotice));
     }
 
+    public bool HasError => LastRefusal is not null;
+
     public string? AssessmentId { get; set; }
 
     public async Task SetProjectAsync(string path, CancellationToken cancellationToken = default)
@@ -142,7 +144,24 @@ public sealed partial class ChangesViewModel : ObservableObject
             LastRefusal = firstRefusal;
             OnPropertyChanged(nameof(LastRefusal));
             OnPropertyChanged(nameof(ErrorText));
+            OnPropertyChanged(nameof(HasError));
         }
+    }
+
+    public async Task AddFromTextAsync(string kind, ResultsTokenViewModel token, ResultsReadingViewModel? reading = null)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        if (_client is null || ProjectPath is null)
+        {
+            Items.Add(new ChangeViewModel(kind, token.Form, token.ProjectStatusLabel,
+                reading?.Text ?? string.Empty));
+            Raise();
+            return;
+        }
+
+        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", token.Form,
+            AssessmentId, reading?.Analysis, DisplayReading: reading?.Text,
+            ReadingIndex: reading?.Index)).ConfigureAwait(true);
     }
 
     private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice,
@@ -182,6 +201,7 @@ public sealed partial class ChangesViewModel : ObservableObject
         LastRefusal = conflict;
         OnPropertyChanged(nameof(LastRefusal));
         OnPropertyChanged(nameof(ErrorText));
+        OnPropertyChanged(nameof(HasError));
     }
 
     private async Task ClearAsync()
@@ -197,6 +217,9 @@ public sealed partial class ChangesViewModel : ObservableObject
         BeginCollection();
         AssessmentId = null;
         OnPropertyChanged(nameof(Snapshot));
+        OnPropertyChanged(nameof(LastRefusal));
+        OnPropertyChanged(nameof(ErrorText));
+        OnPropertyChanged(nameof(HasError));
         Raise();
     }
 
@@ -205,6 +228,7 @@ public sealed partial class ChangesViewModel : ObservableObject
         LastRefusal = outcome.Refusal;
         OnPropertyChanged(nameof(LastRefusal));
         OnPropertyChanged(nameof(ErrorText));
+        OnPropertyChanged(nameof(HasError));
         if (outcome.Value is not { } snapshot) return;
         Snapshot = snapshot;
         OnPropertyChanged(nameof(Snapshot));

@@ -9,13 +9,16 @@ public sealed class CompareViewModelTests
 {
     private static AssessmentWordResult Word(
         string word, string outcome, string standing, IReadOnlyList<string>? grades = null,
-        bool incomplete = false, int missedApproved = 0) =>
+        bool incomplete = false, int missedApproved = 0, int? occurrences = null) =>
         new(word, outcome, incomplete, "Search completed", 10, null)
         {
-            Readings = grades?.Select(_ => Reading("x")).ToArray(),
+            Readings = grades?.Select(grade => Reading(grade)).ToArray(),
             ReadingGrades = grades,
             MissedApproved = Enumerable.Range(0, missedApproved).Select(_ => Reading("missed")).ToArray(),
+            Morphology = grades is null ? null : new ParseWordEvidence("v1", 0, word, 10,
+                false, false, false, grades.Select(_ => new ParseAnalysis([])).ToArray(), []),
             ProjectStanding = standing,
+            OccurrenceCount = occurrences,
         };
 
     private static ParserReading Reading(string gloss) =>
@@ -170,5 +173,105 @@ public sealed class CompareViewModelTests
         compare.Load(table.AllRows);
 
         Assert.False(compare.HasStandings);
+    }
+
+    [Fact]
+    public void TheMatrixCanCountOccurrencesWithoutChangingTheWordList()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([
+            Word("common", "no-analysis", ProjectStanding.Approved, occurrences: 8),
+            Word("rare", "no-analysis", ProjectStanding.Approved, occurrences: 2),
+        ]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+        var cell = compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse);
+
+        Assert.Equal(2, cell.Count);
+        compare.CountMode = CompareCountMode.Occurrences;
+
+        Assert.Equal(10, cell.Count);
+        Assert.Equal(2, compare.Words.Count);
+        Assert.Equal(10, compare.Rows.Single(row => row.Row == WordProjectStatus.Approved).Count);
+    }
+
+    [Fact]
+    public void FixFirstRanksTheNamedProblemsByFrequencyAndLeavesUnknownOut()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([
+            Word("approved-common", "no-analysis", ProjectStanding.Approved, missedApproved: 1, occurrences: 9),
+            Word("approved-rare", "no-analysis", ProjectStanding.Approved, missedApproved: 1, occurrences: 2),
+            Word("approved-different", "analysed", ProjectStanding.Approved, ["no-opinion"], missedApproved: 1, occurrences: 30),
+            Word("rejected-rebuilt", "analysed", ProjectStanding.Rejected, ["disapproved"], occurrences: 7),
+            Word("candidate-unbuilt", "no-analysis", ProjectStanding.Candidate, occurrences: 6),
+            Word("timed-out", "timed-out", ProjectStanding.Approved, incomplete: true, occurrences: 100),
+            Word("skipped", "skipped", ProjectStanding.Candidate, occurrences: 200),
+        ]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+
+        Assert.Equal(
+            ["approved-common", "approved-rare", "approved-different", "rejected-rebuilt", "candidate-unbuilt"],
+            compare.FixFirstRows.Select(item => item.Word.Word));
+        Assert.Equal("Expected form = missed; the parser did not build it.", compare.FixFirstRows[0].Explanation);
+
+        compare.FocusFixFirstCommand.Execute(compare.FixFirstRows[2]);
+
+        Assert.Equal("approved-different", compare.SearchText);
+        Assert.Equal(["approved-different"], compare.Words.Select(word => word.Word));
+        Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.NoMatch),
+            (compare.Cells.Single(cell => cell.IsSelected).Row, compare.Cells.Single(cell => cell.IsSelected).Column));
+    }
+
+    [Fact]
+    public void MatrixOffersOnlyChangesAllowedForBulkSelection()
+    {
+        var (_, compare) = Loaded();
+        var word = compare.Words.Single(item => item.Word == "kitabu");
+        word.IsChecked = true;
+
+        Assert.Equal("1 word selected", compare.CheckedWordText);
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
+    }
+
+    [Fact]
+    public void AStaleWordTakesPriorityInItsCellPendingStatus()
+    {
+        var words = new AssessWordsViewModel();
+        words.Load([
+            Word("first", "no-analysis", ProjectStanding.Approved, missedApproved: 1),
+            Word("second", "no-analysis", ProjectStanding.Approved, missedApproved: 1),
+        ]);
+        var compare = new CompareViewModel();
+        compare.Load(words.AllRows);
+        var changes = new ChangesViewModel();
+        compare.Changes = changes;
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "first", "Approved", ""));
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "second", "Approved", "", "stale",
+            new SIL.Motif.Contract.Responses.ChangeFit("stale", false, ["The project changed."])));
+
+        Assert.Equal("No longer fits", compare.Cells.Single(cell =>
+            cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse).PendingChangeStatus);
+    }
+
+    [Fact]
+    public void PendingChangesMarkTheirCellsAndSurfaceWhenTheyNoLongerFit()
+    {
+        var (_, compare) = Loaded();
+        var changes = new ChangesViewModel();
+        compare.Changes = changes;
+        var word = compare.Words.Single(item => item.Word == "kitabu");
+
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, word.Word, "Approved", "", "change-1",
+            new SIL.Motif.Contract.Responses.ChangeFit("change-1", false, ["The project changed."])));
+
+        Assert.True(word.HasPendingChange);
+        Assert.Equal("No longer fits", word.PendingChangeStatus);
+        Assert.Equal("No longer fits", compare.Cells.Single(cell => cell.Row == word.Row && cell.Column == word.Column).PendingChangeStatus);
     }
 }

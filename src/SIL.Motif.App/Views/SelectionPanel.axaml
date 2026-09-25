@@ -5,314 +5,71 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.SelectionPanel"
              x:DataType="views:SelectionPanel">
-  <Grid ColumnSpacing="{DynamicResource Intent.Space.Section}"
-        Margin="{DynamicResource Component.Selection.PageInset}">
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.TextColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-      <ColumnDefinition Width="*" />
-    </Grid.ColumnDefinitions>
-
-    <!-- Left: choose which Texts feed the Words view and the assessment. -->
-    <ScrollViewer Grid.Column="0">
-      <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-        <views:CopyableTextBlock Text="{Binding Selection.SummaryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-
-        <TextBox PlaceholderText="Search texts..."
-                 Text="{Binding Selection.SearchText}"
-                 AutomationProperties.Name="Search texts" />
-        <ListBox ItemsSource="{Binding Selection.Texts}"
-                 MaxHeight="{DynamicResource Component.Selection.TextListHeight}"
-                 AutomationProperties.Name="Texts">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:TextChoiceViewModel">
-              <StackPanel Spacing="{DynamicResource Intent.Space.None}">
-                <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked}" />
-                <views:CopyableTextBlock Classes="muted textCount" Text="{Binding CountsText}"
-                           IsVisible="{Binding CountsText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-
-        <views:CopyableTextBlock Classes="muted" Text="{Binding Selection.TextsEmptyMessage}"
-                   IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-                   TextWrapping="Wrap" />
-
-        <Expander Header="Pasted words" IsExpanded="True">
-          <TextBox Text="{Binding Selection.PastedWords}"
-                   AcceptsReturn="True"
-                   TextWrapping="Wrap"
-                   Height="{DynamicResource Component.Selection.WordsBoxHeight}"
-                   AutomationProperties.Name="Pasted words" />
-        </Expander>
-
-        <Expander Header="Options" IsExpanded="False">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-            <CheckBox Content="All wordforms" IsChecked="{Binding Selection.AllWordforms}" />
-            <CheckBox Content="Retry failed" IsChecked="{Binding Selection.RetryFailed}" />
-            <DockPanel LastChildFill="False">
-              <views:CopyableTextBlock Text="Retry slower than (ms)" VerticalAlignment="Center"
-                                       Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-              <NumericUpDown Value="{Binding Selection.RetrySlowerThanMilliseconds}"
-                              Minimum="0"
-                              AutomationProperties.Name="Retry slower than, in milliseconds" />
-            </DockPanel>
-            <DockPanel LastChildFill="False">
-              <views:CopyableTextBlock Text="Time limit per word (seconds)" VerticalAlignment="Center"
-                                       Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-              <NumericUpDown Value="{Binding Selection.PerWordTimeLimitSeconds}"
-                              Minimum="0.1" Increment="1" FormatString="0.#" PlaceholderText="1"
-                              AutomationProperties.Name="Time limit per word, in seconds" />
-            </DockPanel>
-            <views:CopyableTextBlock Classes="muted smallText" TextWrapping="Wrap"
-                                     Text="Blank keeps the project's limit (1 second unless its settings say otherwise). A word that runs out of time shows as Limit." />
-            <DockPanel LastChildFill="False">
-              <views:CopyableTextBlock Text="Step limit per word" VerticalAlignment="Center"
-                                       Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-              <NumericUpDown Value="{Binding Selection.PerWordStepLimit}"
-                              Minimum="1" Increment="100000" FormatString="N0"
-                              IsEnabled="{Binding !Selection.PerWordStepLimitUnbounded}"
-                              AutomationProperties.Name="Step limit per word" />
-            </DockPanel>
-            <CheckBox Content="No step limit" IsChecked="{Binding Selection.PerWordStepLimitUnbounded}" />
-            <views:CopyableTextBlock Classes="muted smallText" TextWrapping="Wrap"
-                                     Text="Blank keeps the project's step limit. A word that uses all allowed steps shows as Limit." />
-            <views:CopyableTextBlock Classes="error" Text="{Binding Selection.StepLimitValidationMessage}"
-                       IsVisible="{Binding Selection.StepLimitValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-            <views:CopyableTextBlock Classes="error" Text="{Binding Selection.ThresholdValidationMessage}"
-                       IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-          </StackPanel>
-        </Expander>
-
-        <views:CopyableTextBlock Classes="error" Text="{Binding Selection.RefusalMessage}"
-                   IsVisible="{Binding Selection.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+  <ScrollViewer Margin="{DynamicResource Component.TextsPage.PageInset}">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+        <views:CopyableTextBlock Text="Texts" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding Selection.SummaryText}" TextWrapping="Wrap" />
       </StackPanel>
-    </ScrollViewer>
 
-    <!-- Centre: the checked Texts' words, or the Texts read in place. -->
-    <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-
-      <DockPanel LastChildFill="False">
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-          <Button Classes="viewChip" Content="Words" Classes.active="{Binding Words.ShowWords}"
-                  Command="{Binding Words.SetViewCommand}" CommandParameter="{x:Static vm:TextsView.Words}"
-                  AutomationProperties.Name="Show the Words view" />
-          <Button Classes="viewChip" Content="In text" Classes.active="{Binding Words.ShowInText}"
-                  Command="{Binding Words.SetViewCommand}" CommandParameter="{x:Static vm:TextsView.InText}"
-                  AutomationProperties.Name="Show the In text view" />
-        </StackPanel>
-        <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding Words.SummaryText}" VerticalAlignment="Center" />
-      </DockPanel>
-
-      <views:CopyableTextBlock Classes="muted" Text="{Binding Words.RefusalMessage}"
-                 IsVisible="{Binding Words.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-
-      <!-- Words view -->
-      <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}" IsVisible="{Binding Words.ShowWords}">
-        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
-          <TextBox Grid.Column="0" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
-                   AutomationProperties.Name="Search words" />
-          <views:FilterChip Grid.Column="1" Label="All" Count="{Binding Words.AllCount}"
-                            IsActive="{Binding Words.IsAllFilter}"
-                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Null}" />
-          <views:FilterChip Grid.Column="2" Label="Approved" Count="{Binding Words.ApprovedFilterCount}" Verdict="Approved"
-                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
-                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Approved}" />
-          <views:FilterChip Grid.Column="3" Label="Candidate" Count="{Binding Words.CandidateFilterCount}" Verdict="Candidate" IsVisible="{Binding Words.CandidateFilterCount}"
-                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Candidate}}"
-                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Candidate}" />
-          <views:FilterChip Grid.Column="4" Label="Rejected" Count="{Binding Words.RejectedFilterCount}" Verdict="Differs" IsVisible="{Binding Words.RejectedFilterCount}"
-                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Rejected}}"
-                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Rejected}" />
-          <views:FilterChip Grid.Column="5" Label="Not stored yet" Count="{Binding Words.NotPresentFilterCount}" Verdict="New"
-                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.NotPresent}}"
-                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.NotPresent}" />
-          <views:FilterChip Grid.Column="6" Label="Incorrect spelling" Count="{Binding Words.IncorrectSpellingFilterCount}" Verdict="Several" IsVisible="{Binding Words.IncorrectSpellingFilterCount}"
-                            IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.IncorrectSpelling}}"
-                            Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.IncorrectSpelling}" />
-          <views:FilterChip Grid.Column="7" Label="Several analyses" Count="{Binding Words.SeveralFilterCount}" Verdict="Several"
-                            IsVisible="{Binding Words.SeveralFilterCount}" IsActive="{Binding Words.SeveralOnly}"
-                            Command="{Binding Words.ShowSeveralCommand}" />
-        </Grid>
-
-        <!-- One dense line per word, most frequent first; the detail opens below it. -->
-        <Grid Grid.Row="1" RowDefinitions="Auto,*">
-          <Grid Margin="{DynamicResource Component.Selection.WordHeaderMargin}">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="2*" />
-              <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.CountColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-              <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.ResultColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-              <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.ResultColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-              <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.IconColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-            </Grid.ColumnDefinitions>
-            <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WORD" />
-            <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="IN TEXTS" />
-            <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="IN THE PROJECT" />
-            <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="LAST ASSESSMENT" />
-          </Grid>
-          <ListBox Grid.Row="1" Classes="denseWords" ItemsSource="{Binding Words.Rows}" AutomationProperties.Name="Words to test">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:TextWordRowViewModel">
-                <Expander Classes="denseWord">
-                  <Expander.Header>
-                    <Grid>
-                      <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*" />
-                        <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.CountColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-                        <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.ResultColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-                        <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.ResultColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-                      </Grid.ColumnDefinitions>
-                      <views:CopyableTextBlock Grid.Column="0" Text="{Binding Form}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                      <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceCount, StringFormat='×{0}'}" VerticalAlignment="Center" />
-                      <views:VerdictChip Grid.Column="2" Verdict="{Binding Verdict}" Text="{Binding StatusLabel}" Compact="True" HorizontalAlignment="Left" />
-                      <views:VerdictChip Grid.Column="3" Verdict="{Binding LastResultMeaning}" Text="{Binding LastResultLabel}" Compact="True"
-                                         HorizontalAlignment="Left" IsVisible="{Binding HasLastResult}" />
-                      <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="—" IsVisible="{Binding !HasLastResult}" VerticalAlignment="Center" />
-                    </Grid>
-                  </Expander.Header>
-                  <StackPanel Spacing="{DynamicResource Intent.Space.Snug}"
-                              Margin="{DynamicResource Component.Selection.DetailMargin}">
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectSummary}" TextWrapping="Wrap" />
-                    <ItemsControl ItemsSource="{Binding ApprovedAnalyses}" IsVisible="{Binding HasApproved}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ProjectAnalysisViewModel">
-                          <views:MorphemeRow Morphs="{Binding Morphs}"
-                                             Margin="{DynamicResource Component.Selection.DenseRowMargin}" />
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <views:CopyableTextBlock Classes="muted smallText" Text="Where it appears:" />
-                    <ItemsControl ItemsSource="{Binding Occurrences}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
-                          <StackPanel Margin="{DynamicResource Component.Selection.DenseRowMargin}"
-                                      Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="muted smallText" Text="{Binding Location}" />
-                            <views:CopyableTextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
-                          </StackPanel>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </StackPanel>
-                </Expander>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </Grid>
-      </Grid>
-
-      <!-- In text view -->
-      <Grid Grid.Row="2" ColumnSpacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Words.ShowInText}">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="{Binding Source={StaticResource Component.Selection.DetailColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-        </Grid.ColumnDefinitions>
-        <Grid Grid.Column="0" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-          <ComboBox ItemsSource="{Binding Words.ReaderTexts}" SelectedItem="{Binding Words.SelectedReaderText}"
-                    AutomationProperties.Name="Text to read">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:ReaderTextViewModel">
-                <views:CopyableTextBlock Text="{Binding Title}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <views:CopyableTextBlock Grid.Row="1" Classes="muted" Text="{Binding Words.ReaderMessage}" TextWrapping="Wrap"
-                     IsVisible="{Binding Words.HasReaderMessage}"
-                     Margin="{DynamicResource Component.Selection.ReaderMessageMargin}" />
-          <ScrollViewer Grid.Row="1" IsVisible="{Binding !Words.HasReaderMessage}">
-            <ItemsControl ItemsSource="{Binding Words.SelectedReaderText.Lines}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:ReaderLineViewModel">
-                  <DockPanel Margin="{DynamicResource Component.Selection.DenseRowMargin}" LastChildFill="True">
-                    <views:CopyableTextBlock DockPanel.Dock="Left" Classes="muted" Text="{Binding Number}"
-                                             Width="{Binding Source={StaticResource Component.Selection.IconColumn}, Converter={x:Static views:SelectionPanel.SizeToGridLength}}" />
-                    <ItemsControl ItemsSource="{Binding Tokens}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <WrapPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ReaderTokenViewModel">
-                          <Panel Margin="{DynamicResource Intent.Gap.AfterRelated}">
-                            <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}"
-                                                     FontSize="{DynamicResource Intent.Type.Brand}" />
-                            <!-- One interlinear block: word, morphemes, morph glosses, then word gloss and category. -->
-                            <Border IsVisible="{Binding IsWord}" Classes="wordVerdict" Focusable="True"
-                                    PointerPressed="OnReaderTokenPressed" KeyDown="OnReaderTokenKeyDown" Tag="{Binding}"
-                                    views:VerdictClasses.Verdict="{Binding Verdict}"
-                                    ToolTip.Tip="Click for this word's analyses and every place it occurs">
-                              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                                <HyperlinkButton Content="{Binding Text}" NavigateUri="{Binding WordLink}"
-                                                 IsVisible="{Binding HasWordLink}"
-                                                 Padding="{DynamicResource Intent.Inset.None}"
-                                                 FontSize="{DynamicResource Intent.Type.Brand}" FontWeight="SemiBold"
-                                                 AutomationProperties.Name="{Binding WordLinkName}" />
-                                <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding HasNoWordLink}"
-                                           FontSize="{DynamicResource Intent.Type.Brand}" FontWeight="SemiBold" />
-                                <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasAnalysis}" ShowCategory="False" />
-                                <views:CopyableTextBlock Classes="muted smallText" Text="{Binding WordLine}" FontStyle="Italic"
-                                           IsVisible="{Binding WordLine, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                                <views:CopyableTextBlock Classes="muted smallText" Text="not analysed" FontStyle="Italic"
-                                           IsVisible="{Binding IsUnanalysed}" />
-                              </StackPanel>
-                            </Border>
-                          </Panel>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </DockPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
-        </Grid>
-
-        <Border Grid.Column="1" Classes="card" IsVisible="{Binding Words.SelectedOccurrence, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
-          <ScrollViewer>
-            <StackPanel Spacing="{DynamicResource Intent.Space.Related}"
-                        DataContext="{Binding Words.SelectedOccurrence}" x:DataType="vm:ReaderOccurrenceViewModel">
-              <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold"
-                                       FontSize="{DynamicResource Intent.Type.Section}" />
-              <views:CopyableTextBlock Classes="muted" Text="{Binding OccurrenceLabel}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Classes="section-title" Text="In this occurrence"
-                                       FontSize="{DynamicResource Intent.Type.Body}" />
-              <views:CopyableTextBlock Text="{Binding Status}" IsVisible="{Binding Analysis, Converter={x:Static conv:ObjectConverters.IsNull}}" />
-              <views:MorphemeRow Morphs="{Binding Analysis.Morphs}"
-                                 IsVisible="{Binding Analysis, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                         FontSize="{DynamicResource Intent.Type.Small}" IsVisible="{Binding HasSeveralAnalyses}"
-                         Text="This spelling carries different analyses in different places, usually because it is more than one word (homographs)." />
-              <views:CopyableTextBlock Classes="section-title" Text="Approved on the word form"
-                         FontSize="{DynamicResource Intent.Type.Body}"
-                         IsVisible="{Binding ApprovedAnalyses.Count}" />
-              <ItemsControl ItemsSource="{Binding ApprovedAnalyses}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ProjectAnalysisViewModel">
-                    <views:MorphemeRow Morphs="{Binding Morphs}"
-                                       Margin="{DynamicResource Component.Selection.DenseRowMargin}"
-                                       ShowCategory="False" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <views:CopyableTextBlock Classes="section-title" Text="All occurrences"
-                                       FontSize="{DynamicResource Intent.Type.Body}" />
-              <ItemsControl ItemsSource="{Binding AllOccurrences}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
-                    <DockPanel Margin="{DynamicResource Component.Selection.DenseRowMargin}">
-                      <views:CopyableTextBlock Classes="muted" Text="{Binding Location}"
-                                               FontSize="{DynamicResource Intent.Type.Small}" />
-                    </DockPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
-                         Text="Not parsed yet. After the run, the Words tab adds the parser's readings, their cost and the trace." />
+      <TextBox PlaceholderText="Search texts..." Text="{Binding Selection.SearchText}"
+               AutomationProperties.Name="Search texts" />
+      <ListBox ItemsSource="{Binding Selection.Texts}"
+               MaxHeight="{DynamicResource Component.TextsPage.SelectionListHeight}"
+               AutomationProperties.Name="Texts to analyze">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:TextChoiceViewModel">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked}" />
+              <views:CopyableTextBlock Classes="muted" Text="{Binding CountsText}"
+                         Margin="{DynamicResource Component.TextsPage.CountIndent}"
+                         IsVisible="{Binding CountsText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
             </StackPanel>
-          </ScrollViewer>
-        </Border>
-      </Grid>
-    </Grid>
-  </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <views:CopyableTextBlock Classes="muted" Text="{Binding Selection.TextsEmptyMessage}"
+                 IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                 TextWrapping="Wrap" />
+
+      <Expander Header="Add words" IsExpanded="False">
+        <TextBox Text="{Binding Selection.PastedWords}" AcceptsReturn="True" TextWrapping="Wrap"
+                 Height="{DynamicResource Component.TextsPage.AddedWordsHeight}"
+                 AutomationProperties.Name="Words to analyze, one per line" />
+      </Expander>
+
+      <Expander Header="Analysis options" IsExpanded="False">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Related}" Margin="{DynamicResource Intent.Gap.AfterGroup}">
+          <CheckBox Content="All wordforms" IsChecked="{Binding Selection.AllWordforms}" />
+          <CheckBox Content="Retry failed" IsChecked="{Binding Selection.RetryFailed}" />
+          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+            <views:CopyableTextBlock Text="Time limit per word (seconds)" />
+            <NumericUpDown Value="{Binding Selection.PerWordTimeLimitSeconds}" Minimum="0.1" Increment="1"
+                           FormatString="0.#" AutomationProperties.Name="Time limit per word in seconds" />
+          </StackPanel>
+          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+            <views:CopyableTextBlock Text="Step limit per word" />
+            <NumericUpDown Value="{Binding Selection.PerWordStepLimit}" Minimum="1" Increment="100000"
+                           FormatString="N0" IsEnabled="{Binding !Selection.PerWordStepLimitUnbounded}"
+                           AutomationProperties.Name="Step limit per word" />
+            <CheckBox Content="No step limit" IsChecked="{Binding Selection.PerWordStepLimitUnbounded}" />
+          </StackPanel>
+          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+            <views:CopyableTextBlock Text="Retry slower than (ms)" />
+            <NumericUpDown Value="{Binding Selection.RetrySlowerThanMilliseconds}" Minimum="0"
+                           AutomationProperties.Name="Retry slower than, in milliseconds" />
+          </StackPanel>
+          <views:CopyableTextBlock Classes="error" Text="{Binding Selection.StepLimitValidationMessage}"
+                     IsVisible="{Binding Selection.StepLimitValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          <views:CopyableTextBlock Classes="error" Text="{Binding Selection.ThresholdValidationMessage}"
+                     IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+      </Expander>
+
+      <views:CopyableTextBlock Classes="error" Text="{Binding Selection.RefusalMessage}"
+                 IsVisible="{Binding Selection.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                 TextWrapping="Wrap" />
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

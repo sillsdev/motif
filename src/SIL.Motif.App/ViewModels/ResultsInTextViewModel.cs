@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Queries;
@@ -52,10 +53,12 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private readonly AssessViewModel _assess;
     private readonly Action<string> _showWord;
     private readonly Action<string> _tryWord;
+    private readonly ChangesViewModel _changes;
     private IReadOnlyList<ResultsTokenViewModel> _allWords = [];
 
     public ResultsInTextViewModel(
-        TextWordsViewModel texts, AssessViewModel assess, Action<string> showWord, Action<string> tryWord)
+        TextWordsViewModel texts, AssessViewModel assess, Action<string> showWord, Action<string> tryWord,
+        ChangesViewModel? changes = null)
     {
         ArgumentNullException.ThrowIfNull(texts);
         ArgumentNullException.ThrowIfNull(assess);
@@ -65,11 +68,14 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         _assess = assess;
         _showWord = showWord;
         _tryWord = tryWord;
+        _changes = changes ?? new ChangesViewModel();
         SetFilterCommand = new RelayCommand<ResultsInTextFilter>(filter => Filter = filter);
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
         TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });
+        AddChangeCommand = new AsyncRelayCommand<string>(AddSelectedChangeAsync, CanAddSelectedChange);
         _texts.PropertyChanged += OnSourceChanged;
         _assess.PropertyChanged += OnSourceChanged;
+        _changes.Items.CollectionChanged += OnChangesChanged;
         Rebuild();
     }
 
@@ -85,6 +91,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>Opens the selected word in the Words view and traces it there.</summary>
     public IRelayCommand TryWordCommand { get; }
+
+    public IAsyncRelayCommand<string> AddChangeCommand { get; }
+
+    public ChangesViewModel Changes => _changes;
 
     [ObservableProperty]
     private ResultsTextViewModel? _selectedText;
@@ -132,18 +142,30 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public void SelectToken(ResultsTokenViewModel token)
     {
         ArgumentNullException.ThrowIfNull(token);
-        if (token.IsWord) SelectedToken = token;
+        if (token.IsWord)
+        {
+            SelectedToken = token;
+            AddChangeCommand.NotifyCanExecuteChanged();
+        }
     }
 
     partial void OnSelectedTextChanged(ResultsTextViewModel? value) => RefreshLines();
 
     partial void OnFilterChanged(ResultsInTextFilter value) => RefreshLines();
 
+    partial void OnSelectedTokenChanging(ResultsTokenViewModel? oldValue, ResultsTokenViewModel? newValue)
+    {
+        if (oldValue is not null) oldValue.PropertyChanged -= OnSelectedTokenPropertyChanged;
+        if (newValue is not null) newValue.PropertyChanged += OnSelectedTokenPropertyChanged;
+    }
+
+    partial void OnSelectedTokenChanged(ResultsTokenViewModel? value) => AddChangeCommand.NotifyCanExecuteChanged();
+
     private int Count(OccurrenceVerdict verdict) => _allWords.Count(token => token.Verdict == verdict);
 
     private void OnSourceChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (ReferenceEquals(sender, _texts) && e.PropertyName == nameof(TextWordsViewModel.Response)) Rebuild();
+        if (ReferenceEquals(sender, _texts) && e.PropertyName is nameof(TextWordsViewModel.Response) or nameof(TextWordsViewModel.ProjectWords)) Rebuild();
         else if (ReferenceEquals(sender, _assess) && e.PropertyName == nameof(AssessViewModel.Result)) Rebuild();
     }
 
@@ -153,15 +175,18 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         var results = (_assess.Result?.Words ?? [])
             .GroupBy(word => word.Word, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var projectWords = _texts.ProjectWords.ToDictionary(row => row.Form, StringComparer.Ordinal);
         var hasAssessment = _assess.Result is not null;
 
         Texts.Clear();
         if (hasAssessment && _texts.Response is { } response)
         {
-            foreach (var text in response.Texts) Texts.Add(new ResultsTextViewModel(text, results));
+            foreach (var text in response.Texts) Texts.Add(new ResultsTextViewModel(text, results, projectWords));
         }
         _allWords = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
         SelectedToken = null;
+        AddChangeCommand.NotifyCanExecuteChanged();
+        RefreshPendingMarkers();
         OnPropertyChanged(nameof(AllCount));
         OnPropertyChanged(nameof(DiffersCount));
         OnPropertyChanged(nameof(NewCount));
@@ -206,17 +231,67 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         ResultsInTextFilter.Matches => verdict == OccurrenceVerdict.Matches,
         _ => true,
     };
+
+    private bool CanAddSelectedChange(string? kind) => kind switch
+    {
+        ChangeKinds.IncorrectSpelling => SelectedToken is { IsWord: true },
+        ChangeKinds.AddCandidate => SelectedToken is { IsWord: true, HasReadings: true },
+        ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate =>
+            SelectedToken is { IsWord: true, SelectedReading: not null },
+        _ => false,
+    };
+
+    private async Task AddSelectedChangeAsync(string? kind)
+    {
+        if (SelectedToken is not { } token || kind is null) return;
+        var readings = kind == ChangeKinds.AddCandidate ? token.Readings :
+            token.SelectedReading is { } selected ? [selected] : [];
+        if (kind == ChangeKinds.IncorrectSpelling)
+        {
+            await _changes.AddFromTextAsync(kind, token).ConfigureAwait(true);
+        }
+        else
+        {
+            foreach (var reading in readings)
+                await _changes.AddFromTextAsync(kind, token, reading).ConfigureAwait(true);
+        }
+        RefreshPendingMarkers();
+    }
+
+    private void OnChangesChanged(object? sender, NotifyCollectionChangedEventArgs e) => RefreshPendingMarkers();
+
+    private void OnSelectedTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ResultsTokenViewModel.SelectedReading))
+            AddChangeCommand.NotifyCanExecuteChanged();
+    }
+
+    private void RefreshPendingMarkers()
+    {
+        var pending = _changes.Items.GroupBy(item => item.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+        foreach (var token in Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord))
+        {
+            pending.TryGetValue(token.Form, out var changes);
+            token.PendingChangeStatus = changes?.Any(change => change.Fit is { StillFits: false }) == true
+                ? "No longer fits"
+                : changes?.Length > 0 ? "Not applied yet" : null;
+            token.IsPending = token.PendingChangeStatus is not null;
+        }
+        OnPropertyChanged(nameof(Changes));
+    }
 }
 
 /// <summary>One chosen Text, line by line, with every word compared against the Assessment.</summary>
 public sealed class ResultsTextViewModel
 {
-    public ResultsTextViewModel(TextLines text, IReadOnlyDictionary<string, AssessmentWordResult> results)
+    public ResultsTextViewModel(TextLines text, IReadOnlyDictionary<string, AssessmentWordResult> results,
+        IReadOnlyDictionary<string, TextWordRowViewModel>? projectWords = null)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(results);
         Title = text.Title;
-        Lines = text.Lines.Select(line => new ResultsLineViewModel(text.Title, line, results)).ToArray();
+        Lines = text.Lines.Select(line => new ResultsLineViewModel(text.Title, line, results, projectWords)).ToArray();
     }
 
     public string Title { get; }
@@ -226,12 +301,15 @@ public sealed class ResultsTextViewModel
 /// <summary>One line of a Text in the Results In text view.</summary>
 public sealed class ResultsLineViewModel
 {
-    public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results)
+    public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results,
+        IReadOnlyDictionary<string, TextWordRowViewModel>? projectWords = null)
     {
         ArgumentNullException.ThrowIfNull(line);
         Number = line.Number;
         Tokens = line.Tokens.Select(token => new ResultsTokenViewModel(title, line.Number, token,
-            token.Form is { } form && results.TryGetValue(form, out var result) ? result : null)).ToArray();
+            token.Form is { } form && results.TryGetValue(form, out var result) ? result : null,
+            token.Form is { } projectForm && projectWords is not null && projectWords.TryGetValue(projectForm, out var projectWord)
+                ? projectWord : null)).ToArray();
     }
 
     public int Number { get; }
@@ -244,7 +322,8 @@ public sealed class ResultsLineViewModel
 /// </summary>
 public sealed partial class ResultsTokenViewModel : ObservableObject
 {
-    public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result)
+    public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
+        TextWordRowViewModel? projectWord = null)
     {
         ArgumentNullException.ThrowIfNull(token);
         Text = token.Text;
@@ -253,6 +332,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         Location = $"{title}, line {line}";
         WordLink = token.WordLink is { } link ? new Uri(link) : null;
         Stored = token.Analysis?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
+        ProjectSummary = projectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
+        ProjectStatusLabel = projectWord?.StatusLabel ?? "Not stored yet";
+        ProjectApprovedAnalyses = projectWord?.ApprovedAnalyses ?? [];
 
         var storedKey = token.Analysis?.Key;
         var analyses = result?.Morphology?.Analyses ?? [];
@@ -262,7 +344,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         Readings = keys.Select((key, index) => new ResultsReadingViewModel(
                 ReadingText(resolved is not null && index < resolved.Count ? resolved[index] : null),
                 grades is not null && index < grades.Count ? grades[index] : null,
-                storedKey is not null && key == storedKey))
+                storedKey is not null && key == storedKey, analyses[index], index))
             .ToArray();
 
         Verdict = !IsWord || result is null || result.Outcome == "skipped" ? OccurrenceVerdict.NotAssessed
@@ -313,11 +395,28 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The morphs of the analysis stored at this occurrence, each linked to its entry.</summary>
     public IReadOnlyList<ParserReadingMorphViewModel> Stored { get; }
 
+    public string ProjectSummary { get; }
+
+    public string ProjectStatusLabel { get; }
+
+    public IReadOnlyList<ProjectAnalysisViewModel> ProjectApprovedAnalyses { get; }
+
+    public bool HasProjectApprovedAnalyses => ProjectApprovedAnalyses.Count > 0;
+
     public bool HasStored => Stored.Count > 0;
     public bool HasNothingStored => IsWord && Stored.Count == 0;
 
     /// <summary>Every reading the parser produced for this word, graded, with the one stored here marked.</summary>
     public IReadOnlyList<ResultsReadingViewModel> Readings { get; }
+
+    [ObservableProperty]
+    private ResultsReadingViewModel? _selectedReading;
+
+    [ObservableProperty]
+    private bool _isPending;
+
+    [ObservableProperty]
+    private string? _pendingChangeStatus;
 
     public bool HasReadings => Readings.Count > 0;
 
@@ -373,7 +472,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 /// <summary>One parser reading of a word as the side panel lists it.</summary>
 public sealed class ResultsReadingViewModel
 {
-    public ResultsReadingViewModel(string text, string? grade, bool isStoredHere)
+    public ResultsReadingViewModel(string text, string? grade, bool isStoredHere,
+        ParseAnalysis? analysis = null, int index = -1)
     {
         Text = text;
         IsStoredHere = isStoredHere;
@@ -386,12 +486,18 @@ public sealed class ResultsReadingViewModel
             _ => string.Empty,
         };
         IsDisapproved = grade == "disapproved";
+        Analysis = analysis;
+        Index = index;
     }
 
     public string Text { get; }
     public string GradeLabel { get; }
     public bool HasGrade => GradeLabel.Length > 0;
     public bool IsDisapproved { get; }
+
+    public ParseAnalysis? Analysis { get; }
+
+    public int Index { get; }
 
     /// <summary>Whether this is the analysis stored at the occurrence being looked at.</summary>
     public bool IsStoredHere { get; }

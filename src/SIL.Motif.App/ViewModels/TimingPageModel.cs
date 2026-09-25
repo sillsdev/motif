@@ -25,7 +25,7 @@ public sealed partial class TimingPageModel : PageModel
         Statistics = new StatisticsViewModel(context.Commands);
         Statistics.AssessedWord = context.Assess.Words.Find;
         Statistics.TryWord = context.TryWord;
-        Statistics.OpenTimeLimit = () => context.OpenTexts(TextsTab.Texts);
+        Statistics.OpenTimeLimit = () => context.OpenTexts(TextsTab.AnalyzeTexts);
         LoadFocusedTimingCommand = new AsyncRelayCommand(LoadFocusedTimingAsync,
             () => Focus is not null && Context.ProjectPath is not null);
         SelectWordSetCommand = new AsyncRelayCommand<string>(SelectWordSetAsync);
