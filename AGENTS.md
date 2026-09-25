@@ -145,12 +145,16 @@ one-sided version while removing the `using` block along with the comment above 
 **The App's look is changed in one place, so no view spells a colour or a size. Enforced by
 `tools/TokenHygiene/token-hygiene.cs`, which `./build.ps1` runs after the comment gate.**
 
+The tokens come in three layers, each built only from the layers below it:
+
 | Layer | File | May name |
 |---|---|---|
 | Primitive | `src/SIL.Motif.App/Tokens/Primitives.axaml` | raw values, named by value (`Primitive.Space.8`, `Primitive.Color.Blue500`) — the only file that may |
 | Intent | `src/SIL.Motif.App/Tokens/Intent.axaml` | a `Primitive.*` key or a Semi role; colours per theme, used through `DynamicResource` |
 | Component | `src/SIL.Motif.App/Tokens/Components/*.axaml` | colours from `{DynamicResource Intent.*}` only; sizes from Intent, its own `Component.<File>.*` keys, or Primitives |
-| View | `src/SIL.Motif.App/Views/**` (`.axaml` and the `.cs` beside it) | Intent and Component keys only — never a Primitive or Semi key |
+
+A view (`src/SIL.Motif.App/Views/**`, the `.axaml` and the `.cs` beside it) names Intent and Component
+keys only, never a Primitive or Semi key.
 
 In a view or a component the gate fails on a literal colour (hex, or a name such as `White` or
 `Transparent`) and on a literal Margin, Padding, Spacing, FontSize, CornerRadius, BorderThickness,

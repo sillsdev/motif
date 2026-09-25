@@ -89,14 +89,13 @@ internal static class TokenHygiene
         @"\bColor\.FromArgb\s*\(", @"\bColor\.FromUInt32\s*\(", @"\bColor\.Parse\s*\(", @"\bSolidColorBrush\.Parse\s*\(",
         @"\bBrush\.Parse\s*\(", @"(?<![\w.])Brushes\.[A-Za-z]+\b", @"(?<![\w.])Colors\.[A-Za-z]+\b",
         "\"#[0-9A-Fa-f]{3,8}\""));
-    private static readonly Regex CodeThickness =
-        new($@"\bnew\s+(?:Thickness|CornerRadius)\s*\(\s*({Number}(?:\s*,\s*{Number}){{0,3}})\s*\)");
+    // Any literal among the arguments counts, so a ternary such as (last ? 0 : 12) cannot hide one.
+    private static readonly Regex CodeSizeConstructor = new(@"\bnew\s+(Thickness|CornerRadius|GridLength)\s*\(([^()]*)\)");
+    private static readonly Regex NumericLiteral = new(@"(?<![\w.])\d+(?:\.\d+)?(?![\w.])");
     private static readonly Regex CodeAssignment = new(
         @"\b(?:Margin|Padding|Spacing|RowSpacing|ColumnSpacing|FontSize|StrokeThickness|Width|Height|MinWidth|MinHeight" +
         $@"|MaxWidth|MaxHeight)\s*(?<![=!<>+\-*/])=(?!=)\s*(?:\((?:double|float|int)\)\s*)?({Number})[dfmDFM]?(?=\s*[;,)}}]|\s*$)");
     private static readonly Regex CodeSetter = new($@"\bnew\s+Setter\s*\(\s*[^,()]+,\s*({Number})\s*\)");
-    private static readonly Regex CodeGridLength =
-        new($@"\bnew\s+GridLength\s*\(\s*({Number})\s*(?:,\s*GridUnitType\.(?:Pixel|Auto)\s*)?\)");
     private static readonly Regex CodePrimitiveKey = new("\"Primitive\\.");
     private static readonly Regex CodeResourceLookup = new(
         @"\b(?:TryGetResource|TryFindResource|FindResource|GetResourceObservable|DynamicResourceExtension|StaticResourceExtension)" +
@@ -382,7 +381,14 @@ internal static class TokenHygiene
             var code = lines[i];
             var line = i + 1;
             foreach (Match m in CodeColour.Matches(code)) found.Add(new(path, line, "literal-colour", m.Value));
-            foreach (var pattern in (Regex[])[CodeThickness, CodeAssignment, CodeSetter, CodeGridLength])
+            foreach (Match m in CodeSizeConstructor.Matches(code))
+            {
+                var arguments = m.Groups[2].Value;
+                if (m.Groups[1].Value == "GridLength" && arguments.Contains("GridUnitType.Star", StringComparison.Ordinal)) continue;
+                if (NumericLiteral.Matches(arguments).Any(literal => !IsNeutralSize(literal.Value)))
+                    found.Add(new(path, line, "literal-size", m.Value));
+            }
+            foreach (var pattern in (Regex[])[CodeAssignment, CodeSetter])
             {
                 foreach (Match m in pattern.Matches(code))
                 {

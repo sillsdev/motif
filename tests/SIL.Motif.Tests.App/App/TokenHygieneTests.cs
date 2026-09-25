@@ -125,6 +125,9 @@ public sealed class TokenHygieneTests
     [InlineData("FontSize = 12.5,", "literal-size")]
     [InlineData("style.Setters.Add(new Setter(Border.PaddingProperty, 4));", "literal-size")]
     [InlineData("var column = new GridLength(160);", "literal-size")]
+    [InlineData("Padding = new Thickness(0, 0, last ? 0 : 12, 0),", "literal-size")]
+    [InlineData("var radius = new CornerRadius(compact ? 2 : 3);", "literal-size")]
+    [InlineData("var column = new GridLength(wide ? 220 : 160);", "literal-size")]
     [InlineData("this.GetResourceObservable(\"Primitive.Space.4\");", "primitive-in-view")]
     [InlineData("this.GetResourceObservable(\"SemiColorText2\");", "wrong-layer")]
     public void AVisualLiteralInViewCodeFails(string line, string category) =>
@@ -134,6 +137,8 @@ public sealed class TokenHygieneTests
     [InlineData("var column = new StackPanel { Spacing = 0 };")]
     [InlineData("Padding = new Thickness(0),")]
     [InlineData("var share = new GridLength(2, GridUnitType.Star);")]
+    [InlineData("var share = new GridLength(count, GridUnitType.Star);")]
+    [InlineData("var inset = new Thickness(0, 0, last ? 0 : gap, 0);")]
     [InlineData("if (e.NewSize.Width < 760) Compact();")]
     [InlineData("if (Width == 14) return;")]
     [InlineData("Width = Math.Max(bounds.Width, MinWidth);")]
