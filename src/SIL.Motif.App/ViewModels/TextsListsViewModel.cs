@@ -34,11 +34,20 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
 
     public bool HasWords => WordCount > 0;
 
-    public bool HasPendingChanges => Compare.Cells.Where(IsCell).Any(cell => cell.HasPendingChanges);
+    public bool HasPendingChanges => PendingState != PendingChangeState.None;
 
-    public string? PendingChangeStatus => Compare.Cells.Where(IsCell)
-        .Select(cell => cell.PendingChangeStatus).FirstOrDefault(status => status == "No longer fits")
-        ?? (HasPendingChanges ? "Not applied yet" : null);
+    public PendingChangeState PendingState
+    {
+        get
+        {
+            var states = Compare.Cells.Where(IsCell).Select(cell => cell.PendingState).ToArray();
+            if (states.Contains(PendingChangeState.NoLongerFits)) return PendingChangeState.NoLongerFits;
+            return states.Any(state => state != PendingChangeState.None)
+                ? PendingChangeState.NotAppliedYet : PendingChangeState.None;
+        }
+    }
+
+    public string? PendingChangeStatus => PendingChangeStates.Label(PendingState);
 
     public string CountText => WordCount == 1 ? "1 word" : $"{WordCount:N0} words";
 
@@ -63,8 +72,12 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
             OnPropertyChanged(nameof(HasPendingChanges));
             OnPropertyChanged(nameof(PendingChangeStatus));
         }
-        if (e.PropertyName == nameof(CompareCellViewModel.PendingChangeStatus))
+        if (e.PropertyName == nameof(CompareCellViewModel.PendingState))
+        {
+            OnPropertyChanged(nameof(PendingState));
+            OnPropertyChanged(nameof(HasPendingChanges));
             OnPropertyChanged(nameof(PendingChangeStatus));
+        }
     }
 }
 

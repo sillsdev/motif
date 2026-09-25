@@ -391,22 +391,23 @@ public sealed partial class CompareViewModel : ObservableObject
         foreach (var word in _all)
         {
             pending.TryGetValue(word.Word, out var changes);
-            word.PendingChangeStatus = PendingLabel(changes);
-            word.HasPendingChange = word.PendingChangeStatus is not null;
+            word.PendingState = PendingStateOf(changes);
+            word.HasPendingChange = word.PendingState != PendingChangeState.None;
         }
         foreach (var cell in Cells)
         {
             var statuses = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column)
-                .Select(word => word.PendingChangeStatus).ToArray();
-            cell.PendingChangeStatus = statuses.Contains("No longer fits", StringComparer.Ordinal)
-                ? "No longer fits"
-                : statuses.FirstOrDefault(status => status is not null);
+                .Select(word => word.PendingState).ToArray();
+            cell.PendingState = statuses.Contains(PendingChangeState.NoLongerFits)
+                ? PendingChangeState.NoLongerFits
+                : statuses.FirstOrDefault(status => status != PendingChangeState.None);
         }
     }
 
-    private static string? PendingLabel(IReadOnlyList<ChangeViewModel>? changes) => changes?.Any(change => change.Fit is { StillFits: false }) == true
-        ? "No longer fits"
-        : changes?.Count > 0 ? "Not applied yet" : null;
+    private static PendingChangeState PendingStateOf(IReadOnlyList<ChangeViewModel>? changes) =>
+        changes?.Any(change => change.Fit is { StillFits: false }) == true
+            ? PendingChangeState.NoLongerFits
+            : changes?.Count > 0 ? PendingChangeState.NotAppliedYet : PendingChangeState.None;
 
     private static int? FixFirstRank(CompareWordViewModel word) => (word.Row, word.Column) switch
     {
@@ -600,9 +601,12 @@ public sealed partial class CompareCellViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPendingChanges))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
-    private string? _pendingChangeStatus;
+    [NotifyPropertyChangedFor(nameof(PendingChangeStatus))]
+    private PendingChangeState _pendingState;
 
-    public bool HasPendingChanges => PendingChangeStatus is not null;
+    public string? PendingChangeStatus => PendingChangeStates.Label(PendingState);
+
+    public bool HasPendingChanges => PendingState != PendingChangeState.None;
 
     public bool IsGood => Family == CompareFamilyKind.Good;
     public bool IsFine => Family == CompareFamilyKind.Fine;
@@ -724,10 +728,14 @@ public sealed partial class CompareWordViewModel : ObservableObject
     private bool _isChecked;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PendingChangeStatus))]
     private bool _hasPendingChange;
 
     [ObservableProperty]
-    private string? _pendingChangeStatus;
+    [NotifyPropertyChangedFor(nameof(PendingChangeStatus))]
+    private PendingChangeState _pendingState;
+
+    public string? PendingChangeStatus => PendingChangeStates.Label(PendingState);
 
     [ObservableProperty]
     private bool _isFocused;

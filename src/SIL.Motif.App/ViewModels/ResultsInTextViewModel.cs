@@ -297,10 +297,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         foreach (var token in Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord))
         {
             pending.TryGetValue(token.Form, out var changes);
-            token.PendingChangeStatus = changes?.Any(change => change.Fit is { StillFits: false }) == true
-                ? "No longer fits"
-                : changes?.Length > 0 ? "Not applied yet" : null;
-            token.IsPending = token.PendingChangeStatus is not null;
+            token.PendingState = changes?.Any(change => change.Fit is { StillFits: false }) == true
+                ? PendingChangeState.NoLongerFits
+                : changes?.Length > 0 ? PendingChangeState.NotAppliedYet : PendingChangeState.None;
+            token.IsPending = token.PendingState != PendingChangeState.None;
         }
         OnPropertyChanged(nameof(Changes));
     }
@@ -358,6 +358,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         Stored = token.Analysis?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
         ProjectSummary = projectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
         ProjectStatusLabel = projectWord?.StatusLabel ?? "Not stored yet";
+        ProjectStatusVerdict = projectWord?.Verdict ?? global::SIL.Motif.App.ViewModels.Verdict.New;
         ProjectApprovedAnalyses = projectWord?.ApprovedAnalyses ?? [];
 
         var storedKey = token.Analysis?.Key;
@@ -424,6 +425,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     public string ProjectStatusLabel { get; }
 
+    public Verdict ProjectStatusVerdict { get; }
+
     public IReadOnlyList<ProjectAnalysisViewModel> ProjectApprovedAnalyses { get; }
 
     public bool HasProjectApprovedAnalyses => ProjectApprovedAnalyses.Count > 0;
@@ -441,7 +444,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     private bool _isPending;
 
     [ObservableProperty]
-    private string? _pendingChangeStatus;
+    [NotifyPropertyChangedFor(nameof(PendingChangeStatus))]
+    private PendingChangeState _pendingState;
+
+    public string? PendingChangeStatus => PendingChangeStates.Label(PendingState);
 
     public bool HasReadings => Readings.Count > 0;
 

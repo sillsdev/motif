@@ -120,7 +120,7 @@
 
           <views:CopyableTextBlock Classes="section-title" Text="In the project" FontSize="{DynamicResource Intent.Type.Body}" />
           <DockPanel LastChildFill="False">
-            <views:VerdictChip Verdict="Agrees" Text="{Binding ProjectStatusLabel}" Compact="True" HorizontalAlignment="Left" />
+            <views:VerdictChip Verdict="{Binding ProjectStatusVerdict}" Text="{Binding ProjectStatusLabel}" Compact="True" HorizontalAlignment="Left" />
             <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding ProjectSummary}" TextWrapping="Wrap" />
           </DockPanel>
           <ItemsControl ItemsSource="{Binding ProjectApprovedAnalyses}" IsVisible="{Binding HasProjectApprovedAnalyses}">

@@ -150,9 +150,33 @@ public sealed class ResultsInTextViewModelTests
         {
             Assert.True(token.IsPending);
             Assert.Equal("Not applied yet", token.PendingChangeStatus);
+            Assert.Equal(PendingChangeState.NotAppliedYet, token.PendingState);
         });
         Assert.False(inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .Single(token => token.Form == "anapenda").IsPending);
+    }
+
+    [Fact]
+    public void ProjectStatusChipUsesTheWordStatusVerdict()
+    {
+        var analysis = new ProjectAnalysis("k1", [new ParserReadingMorph("form", "gloss", "n", null, false, null)]);
+        var cases = new[]
+        {
+            (new TextWord("approved", null, [], [analysis], []), Verdict.Approved),
+            (new TextWord("candidate", null, [], [], [], CandidateCount: 1), Verdict.Candidate),
+            (new TextWord("rejected", null, [], [], [analysis]), Verdict.Differs),
+            (new TextWord("incorrect", null, [], [], [], IncorrectSpelling: true), Verdict.Several),
+            (new TextWord("new", null, [], [], []), Verdict.New),
+        };
+
+        foreach (var (word, expected) in cases)
+        {
+            var projectWord = new TextWordRowViewModel(word);
+            var token = new ResultsTokenViewModel(word.Form, 1,
+                new TextToken(word.Form, word.Form, null, "unanalysed"), null, projectWord);
+
+            Assert.Equal(expected, token.ProjectStatusVerdict);
+        }
     }
 
     [Fact]

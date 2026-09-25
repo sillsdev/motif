@@ -287,6 +287,9 @@ public sealed class CompareViewModelTests
 
         Assert.True(word.HasPendingChange);
         Assert.Equal("No longer fits", word.PendingChangeStatus);
+        Assert.Equal(PendingChangeState.NoLongerFits, word.PendingState);
         Assert.Equal("No longer fits", compare.Cells.Single(cell => cell.Row == word.Row && cell.Column == word.Column).PendingChangeStatus);
+        Assert.Equal(PendingChangeState.NoLongerFits,
+            compare.Cells.Single(cell => cell.Row == word.Row && cell.Column == word.Column).PendingState);
     }
 }
