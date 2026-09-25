@@ -720,6 +720,41 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
+    public void ClickingAddWordsHeaderOpensThePastedWordsInput()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Texts;
+                workspace.PageModel<TextsPageModel>().ShowTabCommand.Execute(TextsTab.AnalyzeTexts);
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var expander = window.GetLogicalDescendants().OfType<Expander>()
+                    .Single(control => Equals(control.Header, "Add words"));
+                Assert.False(expander.IsExpanded);
+                var center = expander.TranslatePoint(
+                    new Point(expander.Bounds.Width / 2, expander.Bounds.Height / 2), window)!.Value;
+                window.MouseMove(center);
+                window.MouseDown(center, MouseButton.Left);
+                window.MouseUp(center, MouseButton.Left);
+                window.UpdateLayout();
+
+                Assert.True(expander.IsExpanded);
+                Assert.True(window.GetLogicalDescendants().OfType<TextBox>().Single(textBox =>
+                    AutomationProperties.GetName(textBox) == "Words to analyze, one per line").IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void TextsPageShowsAssessmentRefusalsAndDetails()
     {
         _avalonia.Invoke(() =>

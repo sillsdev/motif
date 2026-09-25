@@ -163,9 +163,10 @@ public sealed class WalkthroughWindow : IDisposable
         ShowTextsTab(TextsTab.AnalyzeTexts);
         var addWords = Window.GetLogicalDescendants().OfType<Expander>().Single(expander =>
             Equals(expander.Header, "Add words"));
-        addWords.IsExpanded = true;
+        ClickControl(addWords, "Add words");
         Window.UpdateLayout();
         Pump();
+        Assert.True(addWords.IsExpanded, "Clicking the Add words header should expand it.");
         Type("Words to analyze, one per line", text);
     }
 
