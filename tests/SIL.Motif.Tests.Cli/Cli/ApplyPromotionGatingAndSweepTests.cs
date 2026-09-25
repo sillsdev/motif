@@ -90,7 +90,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
 
         Assert.False(result.Succeeded);
-        Assert.Equal("apply.not-ready", result.Refusal!.Code);
+        Assert.Equal("apply.regression", result.Refusal!.Code);
         Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
         Assert.Contains("not ready to apply", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
@@ -162,7 +162,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
 
         Assert.False(result.Succeeded);
-        Assert.Equal("apply.not-ready", result.Refusal!.Code);
+        Assert.Equal("apply.regression", result.Refusal!.Code);
         Assert.Contains("regression", result.Refusal.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("alpha", result.Refusal.Message, StringComparison.Ordinal);
         // Nothing moved: the previous Assessment is still current, and the Proposal was never applied.

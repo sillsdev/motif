@@ -1421,18 +1421,18 @@ public static partial class ProposalCommands
                     : null;
 
             // Checked before loading the project, same as the anchor check above.
-            var notReady = Readiness.Assess(
+            var readiness = Readiness.Evaluate(
                 candidate?.ToCorrectness(), currentCorrectness, current?.BaselineToken,
                 candidate?.BaselineToken ?? "", configuration.GateOnRegression);
-            if (notReady.Count > 0 && !force)
+            if (readiness.Reasons.Count > 0 && !force)
             {
                 var guidance = candidate is null
                     ? "Apply requires a Correctness Assessment for this revision. Run a Trial that collects " +
                       "approved morphology comparisons; timing-only evidence cannot satisfy this requirement."
                     : "Review the Correctness evidence and resolve the reported readiness reasons before applying.";
                 return CommandOutcome<ApplyProjection>.Refused(new Refusal(
-                    "apply.not-ready", FailureReason.Refused,
-                    $"Proposal {id} is not ready to apply: {string.Join("; ", notReady)}. {guidance}",
+                    readiness.IsRegression ? "apply.regression" : "apply.not-ready", FailureReason.Refused,
+                    $"Proposal {id} is not ready to apply: {string.Join("; ", readiness.Reasons)}. {guidance}",
                     Fact(("proposalId", id))));
             }
 

@@ -47,7 +47,7 @@ public static class ChangeKinds
 }
 
 /// <summary>
-/// The observable view of the pending Draft and each change's current fit with the saved project.
+/// The observable view of the pending Draft and each change's current fit with the FieldWorks project.
 /// </summary>
 public sealed partial class ChangesViewModel : ObservableObject
 {

@@ -198,7 +198,7 @@ public sealed class ReviewPageModel : PageModel
             "One or more changes no longer fit. Remove those changes first.",
         "apply.reconciliation-needed" =>
             "Applying may have completed, but its receipt could not be recorded. Check the project before retrying.",
-        "apply.not-ready" when refusal.Message.Contains("regression", StringComparison.OrdinalIgnoreCase) =>
+        "apply.regression" =>
             "The check found worse results for words already measured. Review them before applying.",
         "apply.not-ready" => "The check did not give enough evidence to apply these changes. Check them again.",
         "review.changes-changed" => "The changes have changed. Check the numbers again before applying.",

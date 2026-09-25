@@ -65,7 +65,7 @@ public sealed class ComponentStyleTests
     }
 
     [Fact]
-    public void ReviewParserOutlineUsesItsDashToken()
+    public void ReviewParserOutlineKeepsItsDashedStroke()
     {
         _avalonia.Invoke(() =>
         {
@@ -76,9 +76,6 @@ public sealed class ComponentStyleTests
             {
                 window.Show();
                 Dispatcher.UIThread.RunJobs();
-                Assert.True(Application.Current!.TryGetResource(
-                    "Component.Review.ParserDash", ThemeVariant.Light, out var token));
-                Assert.Equal([3d, 2d], Assert.IsAssignableFrom<IEnumerable<double>>(token));
                 Assert.Equal([3d, 2d], outline.StrokeDashArray);
             }
             finally

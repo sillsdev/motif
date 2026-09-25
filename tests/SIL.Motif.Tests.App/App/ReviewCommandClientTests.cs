@@ -96,11 +96,13 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
             var reopened = PendingChanges.Load(new PendingChangesRequest(path, "1.0")).Value!;
             Assert.Equal(second.Value.DraftId, reopened.DraftId);
             Assert.Single(reopened.Changes);
+            var currentAssessmentId = new AssessmentRepository(database).GetCurrent()!.AssessmentId;
             var secondTrial = await client.RunReviewTrialAsync(new ReviewTrialRequest(path, reopened.DraftId!,
-                reopened.Revision, ["review-second"], null), new Progress<ReviewTrialProgress>(),
+                reopened.Revision, ["review-second"], currentAssessmentId), new Progress<ReviewTrialProgress>(),
                 CancellationToken.None);
             Assert.True(secondTrial.Succeeded, secondTrial.Refusal?.Message + " " + LastJob(path));
             Assert.True(secondTrial.Value!.EvidenceComplete);
+            Assert.Contains("regression check could not compare", secondTrial.Value.NumbersText);
             var secondApply = await client.ApplyReviewAsync(new ReviewApplyRequest(path, reopened.DraftId!,
                 reopened.Revision), CancellationToken.None);
             Assert.True(secondApply.Succeeded, secondApply.Refusal?.Message);

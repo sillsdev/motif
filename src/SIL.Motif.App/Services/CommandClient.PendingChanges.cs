@@ -1,4 +1,3 @@
-using SIL.Motif.Cli;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
@@ -67,11 +66,16 @@ public sealed partial class CommandClient
         ArgumentNullException.ThrowIfNull(progress);
         progress.Report(new ReviewTrialProgress(0, request.Words.Count, null));
         string? before = null;
+        IReadOnlyList<string>? previousWords = null;
         if (request.CurrentCorrectnessAssessmentId is { } currentId)
         {
             var current = await Task.Run(() => ReportCommands.Produce(new ProduceReportRequest(
                 request.ProjectPath, MotifProductVersion.CurrentText, currentId, "correctness", null, null)));
-            if (current.Succeeded) before = current.Value!.Text.TrimEnd();
+            if (current.Succeeded)
+            {
+                before = current.Value!.Text.TrimEnd();
+                previousWords = current.Value.SelectionWords;
+            }
         }
         var queued = await Task.Run(() => JobCommands.EnqueueTrial(new EnqueueTrialRequest(
             request.ProjectPath, MotifProductVersion.CurrentText, request.DraftId, Words: request.Words)));
@@ -125,6 +129,9 @@ public sealed partial class CommandClient
         var numbers = before is null ? trialHeading + report.Value.Text.TrimEnd() :
             "Existing Assessment (its Selection):\n" + before + "\n" + trialHeading +
             report.Value.Text.TrimEnd();
+        if (previousWords is not null && !previousWords.Intersect(
+                report.Value.SelectionWords, StringComparer.Ordinal).Any())
+            numbers += "\nThe regression check could not compare these Assessments because they share no words.";
         return CommandOutcome<ReviewTrialResult>.Success(new ReviewTrialResult(
             jobId, request.Revision, numbers, complete));
     }

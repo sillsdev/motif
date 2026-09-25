@@ -63,12 +63,61 @@ public sealed class RegressionCheckerTests
     }
 
     [Fact]
-    public void TrialsOfDifferentTouchedWordsCannotEstablishARegression()
+    public void DifferentWordSetsCheckLostReadingsOnTheSharedWords()
+    {
+        var previous = Build("previous", ("alpha", true), ("beta", true));
+        var candidate = Build("candidate", ("alpha", false), ("gamma", true));
+
+        var finding = RegressionChecker.Check(previous, candidate)!;
+        Assert.True(finding.IsRegression);
+        Assert.Equal("alpha", Assert.Single(finding.LostAnalyses).Word);
+        Assert.True(finding.CoverageDropped);
+    }
+
+    [Fact]
+    public void CoverageDropping_WithNoWordLevelLoss_IsStillARegression()
+    {
+        var previous = Build("previous", ("alpha", true), ("beta", true));
+        var withoutExpectations = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("gamma", false);
+        previous = previous with
+        {
+            Selection = Selection.Create("test", ["alpha", "beta", "gamma"]),
+            Words = [.. previous.Words, withoutExpectations with
+                { Correctness = MorphologyCorrectness.Compare(withoutExpectations.Morphology!, []) }],
+        };
+        var candidate = Build("candidate", ("alpha", true), ("beta", true), ("gamma", false));
+
+        var finding = RegressionChecker.Check(previous, candidate)!;
+
+        Assert.True(finding.CoverageDropped);
+        Assert.True(finding.IsRegression);
+        Assert.Empty(finding.LostAnalyses);
+    }
+
+    [Fact]
+    public void CoverageOnDifferentWordSetsUsesOnlyTheirSharedWords()
+    {
+        var previous = Build("previous", ("alpha", true), ("beta", true));
+        var candidate = Build("candidate", ("alpha", true), ("gamma", false));
+
+        var finding = RegressionChecker.Check(previous, candidate)!;
+
+        Assert.False(finding.IsRegression);
+        Assert.Equal(1, finding.PreviousCoverage.Adjudicated);
+        Assert.Equal(1, finding.CandidateCoverage.Adjudicated);
+    }
+
+    [Fact]
+    public void NoSharedWordsCannotBeCompared()
     {
         var previous = Build("previous", ("alpha", true));
-        var candidate = Build("candidate", ("beta", true), ("gamma", false));
+        var candidate = Build("candidate", ("beta", true));
 
-        Assert.Null(RegressionChecker.Check(previous, candidate));
+        var finding = RegressionChecker.Check(previous, candidate)!;
+
+        Assert.False(finding.CanCompare);
+        Assert.False(finding.IsRegression);
+        Assert.Contains("could not compare", finding.Describe());
     }
 
     [Fact]

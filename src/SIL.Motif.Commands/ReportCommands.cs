@@ -113,6 +113,7 @@ public static class ReportCommands
                 {
                     TotalSearches = rendered.TotalSearches,
                     CompletedSearches = rendered.CompletedSearches,
+                    SelectionWords = record.Words.Select(word => word.Word).ToArray(),
                 });
         });
     }

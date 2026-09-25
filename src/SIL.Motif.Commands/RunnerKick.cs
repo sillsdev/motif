@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace SIL.Motif.Cli;
+namespace SIL.Motif.Commands;
 
 /// <summary>
 /// Starts the job runner after a verb enqueues durable work, so a pseudo-daemon that idled out is woken
@@ -31,7 +31,7 @@ public static class RunnerKick
     /// end-of-file until the spawned runner, which never touches those handles, eventually exits on its
     /// own idle timeout. Marking this process's standard handles non-inheritable first closes that.
     /// </remarks>
-    public static void After()
+    public static void After(Action<string>? reportWarning = null)
     {
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(SuppressVariable))) return;
         var executable = Locate();
@@ -45,7 +45,7 @@ public static class RunnerKick
         catch (Exception exception) when (exception is IOException or InvalidOperationException)
         {
             // Reported, not thrown: the enqueue already succeeded, and the next enqueue will kick again.
-            Console.Error.WriteLine("warning: could not start the background runner (" + exception.Message +
+            reportWarning?.Invoke("warning: could not start the background runner (" + exception.Message +
                 "). Queued work will run once one is started.");
         }
     }

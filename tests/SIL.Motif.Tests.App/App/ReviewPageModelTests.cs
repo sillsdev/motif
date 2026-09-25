@@ -100,8 +100,8 @@ public sealed class ReviewPageModelTests
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
         fake.ReviewTrialCompletesWith(new ReviewTrialResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
-        fake.ReviewApplyRefusal = new Refusal("apply.not-ready", FailureReason.Refused,
-            "it would be a regression: approved readings matched less often");
+        fake.ReviewApplyRefusal = new Refusal("apply.regression", FailureReason.Refused,
+            "Approved readings matched less often.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.PublishProjectOpenedAsync(ProjectPath);
@@ -126,6 +126,7 @@ public sealed class ReviewPageModelTests
         await context.PublishProjectOpenedAsync(ProjectPath);
         context.OpenPage(WorkspacePage.Texts);
         context.OpenPage(WorkspacePage.Warnings);
+        context.OpenPage(WorkspacePage.Timing);
         context.OpenPage(WorkspacePage.Review);
         await page.MeasureCommand.ExecuteAsync(null);
         context.Baseline = new WorkspaceBaseline(true, "", "", "", "", null)

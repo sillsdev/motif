@@ -30,12 +30,16 @@ public sealed record RegressionFinding(
     GrammarCoverageFigure CandidateCoverage,
     IReadOnlyList<WordChange> LostAnalyses)
 {
+    /// <summary>Whether the two Assessments measured at least one common word.</summary>
+    public bool CanCompare { get; init; } = true;
+
     /// <summary>Either signal firing is enough to call this a regression.</summary>
     public bool IsRegression => CoverageDropped || LostAnalyses.Count > 0;
 
     /// <summary>One sentence naming what regressed, for a refusal message or an override's Decision comment.</summary>
     public string Describe()
     {
+        if (!CanCompare) return "the regression check could not compare: the Assessments share no words";
         var parts = new List<string>();
         if (CoverageDropped)
         {
@@ -70,10 +74,6 @@ public static class RegressionChecker
     {
         ArgumentNullException.ThrowIfNull(candidate);
         if (previous is null) return null;
-        if (!previous.Words.Select(word => word.Word).Order(StringComparer.Ordinal).SequenceEqual(
-                candidate.Words.Select(word => word.Word).Order(StringComparer.Ordinal), StringComparer.Ordinal))
-            return null;
-
         AssessmentComparison comparison;
         try
         {
@@ -84,19 +84,26 @@ public static class RegressionChecker
             // Different Assessors: ADR 0042 decision 1 says these were never comparable in the first place.
             return null;
         }
-        var previousByWord = previous.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
-        var lostAnalyses = candidate.Words.Where(word => previousByWord.TryGetValue(word.Word, out var before) &&
+        var shared = comparison.SharedWords.ToHashSet(StringComparer.Ordinal);
+        var previousWords = previous.Words.Where(word => shared.Contains(word.Word)).ToArray();
+        var candidateWords = candidate.Words.Where(word => shared.Contains(word.Word)).ToArray();
+        var previousByWord = previousWords.ToDictionary(word => word.Word, StringComparer.Ordinal);
+        var lostAnalyses = candidateWords.Where(word => previousByWord.TryGetValue(word.Word, out var before) &&
                 LostApprovedReading(before, word))
             .Select(word => new WordChange(word.Word, WordChangeKind.LostAnalysis, "covered", "unmatched")).ToArray();
 
+        var sharedSelection = Selection.Create("shared words", comparison.SharedWords);
         var previousCoverage = CorrectnessCoverage.Compute(
-            previous.Words, previous.Scope, previous.Selection, previous.GrammarSourceSha256, "regression");
+            previousWords, previous.Scope, sharedSelection, previous.GrammarSourceSha256, "regression");
         var candidateCoverage = CorrectnessCoverage.Compute(
-            candidate.Words, candidate.Scope, candidate.Selection, candidate.GrammarSourceSha256, "regression");
+            candidateWords, candidate.Scope, sharedSelection, candidate.GrammarSourceSha256, "regression");
         var coverageDropped = previousCoverage.Fraction is { } previousFraction &&
             candidateCoverage.Fraction is { } candidateFraction && candidateFraction < previousFraction;
 
-        return new RegressionFinding(coverageDropped, previousCoverage, candidateCoverage, lostAnalyses);
+        return new RegressionFinding(coverageDropped, previousCoverage, candidateCoverage, lostAnalyses)
+        {
+            CanCompare = shared.Count > 0,
+        };
     }
 
     private static bool LostApprovedReading(AssessedWord before, AssessedWord after)

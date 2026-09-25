@@ -11,6 +11,9 @@ public sealed record ReportKindListResponse(IReadOnlyList<ReportKindResponse> Ki
 /// <summary>One computed and stored Report, as <c>report</c> prints it.</summary>
 public sealed record ReportResponse(string ReportId, string AssessmentId, string Kind, string Text)
 {
+    /// <summary>The exact Selection words measured by this Assessment.</summary>
+    public IReadOnlyList<string> SelectionWords { get; init; } = [];
+
     /// <summary>The number of word searches represented by a correctness Report.</summary>
     public int? TotalSearches { get; init; }
 

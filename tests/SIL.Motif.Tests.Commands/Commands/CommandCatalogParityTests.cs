@@ -75,6 +75,7 @@ public sealed class CommandCatalogParityTests
     private static readonly string[] ExpectedRefusalCodes =
     {
         "apply.change-no-longer-fits", "apply.drift", "apply.dry-run-missing", "apply.not-ready", "apply.project-in-use",
+        "apply.regression",
         "apply.reconciliation-needed",
         "assess.baseline-changed", "assess.invalid-limit", "assess.invocation-inconsistent", "assess.measurements-incomplete",
         "assess.parser-unavailable", "assess.unsupported-kind",
@@ -96,7 +97,7 @@ public sealed class CommandCatalogParityTests
         "handoff.cancelled", "handoff.destination-exists", "handoff.invocation-mismatch", "handoff.invocation-not-found",
         "handoff.invocation-required", "handoff.parser-unavailable", "handoff.source-unavailable",
         "handoff.statistics-unavailable", "handoff.text-not-found",
-        "job.already-finished", "job.dry-run-incomplete", "job.invalid-id", "job.invalid-move",
+        "job.already-finished", "job.dry-run-incomplete", "job.invalid-id", "job.invalid-move", "job.invalid-words",
         "job.assessments-inconsistent", "job.move-target-not-found", "job.no-assessments", "job.not-finished", "job.not-found",
         "job.wait-timeout",
         "operation.cascading-delete", "operation.invalid-dependency", "operation.invalid-id",

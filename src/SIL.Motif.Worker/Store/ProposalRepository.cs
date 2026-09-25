@@ -409,10 +409,7 @@ public sealed class ProposalRepository : IProposalRepository
             existing.Parameters.AddWithValue("$id", proposalId);
             existing.Parameters.AddWithValue("$digest", intentDigest);
             var stored = existing.ExecuteScalar();
-            revisionExists = stored is not null;
-            if (stored is not null && (stored is not byte[] storedBytes || !storedBytes.SequenceEqual(bytes)))
-                throw new InvalidDataException(
-                    $"Proposal revision '{intentDigest}' already exists with different content.");
+            revisionExists = stored is byte[] storedBytes && storedBytes.SequenceEqual(bytes);
         }
         if (!revisionExists)
         {

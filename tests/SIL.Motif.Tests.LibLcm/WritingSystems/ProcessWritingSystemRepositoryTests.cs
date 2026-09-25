@@ -2,6 +2,7 @@ using SIL.Motif.Host.LcmUtils;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;

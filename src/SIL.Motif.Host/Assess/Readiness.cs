@@ -9,6 +9,9 @@ namespace SIL.Motif.Host.Assess;
 /// </summary>
 public static class Readiness
 {
+    /// <summary>Readiness reasons and the separate regression refusal signal.</summary>
+    public sealed record Decision(IReadOnlyList<string> Reasons, bool IsRegression);
+
     /// <summary>
     /// The reasons a Proposal is not ready to apply, in the same wording a refusal message quotes verbatim.
     /// Empty means ready. <paramref name="candidate"/> is the Assessment covering the content that would be
@@ -24,10 +27,19 @@ public static class Readiness
         CorrectnessAssessment? current,
         string? currentBaselineToken,
         string candidateBaselineToken,
+        bool gateOnRegression) =>
+        Evaluate(candidate, current, currentBaselineToken, candidateBaselineToken, gateOnRegression).Reasons;
+
+    /// <summary>Evaluates Readiness while retaining whether a regression caused the refusal.</summary>
+    public static Decision Evaluate(
+        CorrectnessAssessment? candidate,
+        CorrectnessAssessment? current,
+        string? currentBaselineToken,
+        string candidateBaselineToken,
         bool gateOnRegression)
     {
         if (candidate is null)
-            return new[] { "no Assessment covers its current content, so nothing has measured what it would do" };
+            return new Decision(["no Assessment covers its current content, so nothing has measured what it would do"], false);
 
         var reasons = new List<string>();
         var unavailable = candidate.Words.Any(word => word.Correctness is null || word.Morphology is null ||
@@ -46,12 +58,17 @@ public static class Readiness
                 "not been re-run since the project moved");
         }
 
+        var isRegression = false;
         if (!unavailable && gateOnRegression && current is not null)
         {
             var finding = RegressionChecker.Check(current, candidate);
-            if (finding is { IsRegression: true }) reasons.Add($"it would be a regression: {finding.Describe()}");
+            if (finding is { IsRegression: true })
+            {
+                reasons.Add($"it would be a regression: {finding.Describe()}");
+                isRegression = true;
+            }
         }
 
-        return reasons;
+        return new Decision(reasons, isRegression);
     }
 }
