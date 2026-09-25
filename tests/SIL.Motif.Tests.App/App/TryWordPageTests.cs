@@ -63,7 +63,7 @@ public sealed class TryWordPageTests
         var (context, fake) = NewContext();
         context.ProjectPath = ProjectPath;
         context.Assess.Words.Load([WordWithExpectedAnalysis("word", "analysis/one", "candidate")]);
-        await context.Changes.SetProjectAsync(ProjectPath);
+        await context.Changes.OpenProjectAsync(ProjectPath);
         var page = new TryWordPageModel(context);
         page.Trace.WordToTry = "word";
 

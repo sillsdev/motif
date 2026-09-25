@@ -1078,7 +1078,7 @@ public sealed class MainWindowSmokeTests
             {
                 var changes = workspace.Context.Changes;
                 var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
-                await changes.SetProjectAsync(@"C:\projects\one.fwdata");
+                await changes.OpenProjectAsync(@"C:\projects\one.fwdata");
                 fake.PendingPutResponse = new PendingChangesSnapshot("draft/one", "revision/one", [], [])
                 {
                     ReplacedChangeId = "older",

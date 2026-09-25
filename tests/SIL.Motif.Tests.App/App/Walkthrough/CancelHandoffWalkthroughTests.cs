@@ -49,8 +49,8 @@ public sealed class CancelHandoffWalkthroughTests
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Running,
                     WalkthroughSteps.Remaining(deadline), "the Handoff did not reach Running");
                 Assert.True(walkthrough.Find<Avalonia.Controls.Button>(
-                    "Cancel the running Handoff").IsEffectivelyEnabled);
-                walkthrough.Click("Cancel the running Handoff");
+                    "Cancel the running AI Handoff").IsEffectivelyEnabled);
+                walkthrough.Click("Cancel the running AI Handoff");
                 holdingClient.ReleaseHandoff();
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Cancelled,

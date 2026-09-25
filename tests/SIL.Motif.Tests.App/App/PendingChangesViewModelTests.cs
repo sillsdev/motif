@@ -1,3 +1,5 @@
+using Avalonia.Input;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
@@ -81,7 +83,7 @@ public sealed class PendingChangesViewModelTests
     {
         var fake = new FakeCommandClient();
         var changes = new ChangesViewModel(fake);
-        await changes.SetProjectAsync("project.fwdata");
+        await changes.OpenProjectAsync("project.fwdata");
 
         await changes.ApproveStoredAnalysisAsync("word", "analysis/one", "form = gloss",
             WorkspacePage.TryAWord);
@@ -148,11 +150,17 @@ public sealed class PendingChangesViewModelTests
                 "chosen reading", ["operation/two"])],
             [new ChangeFit("change/two", false, [$"Wordform {InternalId} was deleted."])]));
         var changes = new ChangesViewModel(fake);
+        var selection = new SelectionViewModel(fake);
+        var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection), changes, fake,
+            new FolderPicker(), new DragSource());
+        var review = new ReviewPageModel(context);
 
-        await changes.OpenProjectAsync("project.fwdata");
+        await context.PublishProjectOpenedAsync("project.fwdata");
 
         Assert.False(Assert.Single(changes.Snapshot.FitSummary).StillFits);
-        Assert.Contains("no longer fits", changes.ApplyStatus);
+        Assert.False(review.CanApply);
+        Assert.Contains("No longer fits", review.ApplyBlockReason);
+        Assert.False(review.ApplyCommand.CanExecute(null));
         Assert.Equal("No longer fits the current project. Remove this change before review.",
             Assert.Single(changes.Items).FitStatus);
         Assert.DoesNotContain(InternalId, Assert.Single(changes.Items).FitStatus);
@@ -194,5 +202,18 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("revision/two", changes.Snapshot.Revision);
         Assert.Equal("change/other", Assert.Single(changes.Items).ChangeId);
         Assert.Equal("change.revision-conflict", changes.LastRefusal?.Code);
+    }
+
+    private sealed class FolderPicker : IHandoffFolderPicker
+    {
+        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+    }
+
+    private sealed class DragSource : IFileDragSource
+    {
+        public Task<DragDropEffects> StartDragAsync(
+            Avalonia.Input.PointerPressedEventArgs trigger, IReadOnlyList<string> filePaths,
+            DragDropEffects allowedEffects) => Task.FromResult(allowedEffects);
     }
 }
