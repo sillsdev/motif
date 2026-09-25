@@ -5,6 +5,7 @@
     <StaticResource x:Key="Component.TryWord.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.TryWord.InputMaxWidth" ResourceKey="Primitive.Size.280" />
     <StaticResource x:Key="Component.TryWord.InputMinWidth" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.TryWord.HeaderNoteWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.TryWord.ProgressWidth" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.TryWord.SmallInset" ResourceKey="Primitive.Inset.7_1_7_1" />
     <StaticResource x:Key="Component.TryWord.SmallRowInset" ResourceKey="Primitive.Inset.1_1_1_1" />
@@ -39,5 +40,30 @@
   </Style>
   <Style Selector=":is(TextBlock).number">
     <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+  <Style Selector="Button.recentWord">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
+  </Style>
+  <Style Selector="Button.ruleRow">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector="Button.ruleRow TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector=":is(TextBlock).share">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
+  </Style>
+  <Style Selector="Border.bestPath TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+  </Style>
+  <Style Selector=":is(TextBlock).stopText">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning}" />
   </Style>
 </Styles>

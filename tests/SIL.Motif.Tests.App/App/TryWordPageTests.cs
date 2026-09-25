@@ -64,7 +64,7 @@ public sealed class TryWordPageTests
             context.ProjectPath = ProjectPath;
             context.Assess.ProjectPath = ProjectPath;
             var page = new TryWordPageModel(context);
-            var step = new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])
+            var step = new TraceStep("MorphologicalRuleAnalysis", "Plural", "dog", "dogs", null, [])
             {
                 OutcomeStatus = "succeeded",
             };
@@ -80,7 +80,7 @@ public sealed class TryWordPageTests
 
             var row = Assert.Single(page.RulesOnBestPath);
             Assert.Equal("Plural", row.Rule);
-            Assert.Equal("MorphologicalRule", row.Kind);
+            Assert.Equal("Morphological rule", row.Kind);
             Assert.Equal("succeeded", row.Outcome);
             Assert.Equal("40%", row.Share);
             Assert.Contains("dogs", page.RecentWords);
@@ -177,6 +177,22 @@ public sealed class TryWordPageTests
             {
                 window.Show();
                 window.UpdateLayout();
+                var title = Assert.Single(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
+                    AutomationProperties.GetName(block) == "Try a Word result");
+                Assert.Equal("verb", title.Text);
+                Assert.Contains(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
+                    AutomationProperties.GetName(block) == "Try a Word page description");
+                Assert.Contains(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
+                    AutomationProperties.GetName(block) == "Try a Word screenshot note");
+                var ruleTable = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
+                    AutomationProperties.GetName(border) == "Rules on this word's best path");
+                var headers = ruleTable.GetLogicalDescendants().OfType<TextBlock>()
+                    .Select(block => block.Text)
+                    .OfType<string>()
+                    .Select(value => value.Trim())
+                    .Where(value => value is "Rule" or "Kind" or "Outcome" or "Explanation" or
+                        "Stored time" or "Attempts" or "Word share").ToArray();
+                Assert.Equal(new[] { "Rule", "Kind", "Outcome", "Explanation", "Word share" }, headers);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "See Verb template in Timing");
 

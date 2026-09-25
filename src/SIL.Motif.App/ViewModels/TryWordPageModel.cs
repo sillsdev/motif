@@ -160,7 +160,7 @@ public sealed class TryWordPageModel : PageModel
                 {
                     var steps = rule.ToArray();
                     RulesOnBestPath.Add(new TryWordRuleRowViewModel(rule.Key,
-                        string.Join(" · ", steps.Select(step => step.Type).Distinct(StringComparer.Ordinal)),
+                        string.Join(" · ", steps.Select(step => DescribeKind(step.Type)).Distinct(StringComparer.Ordinal)),
                         string.Join(" · ", steps.Select(step => step.StatusText).Distinct(StringComparer.Ordinal)),
                         string.Join(" · ", steps.Select(Explain).Where(text => text.Length > 0).Distinct(StringComparer.Ordinal)),
                         () => Context.OpenTiming([result.Word], rule.Key)));
@@ -175,6 +175,14 @@ public sealed class TryWordPageModel : PageModel
     private static string Explain(TraceStepViewModel step) =>
         step.ContextualFailure ?? step.FailureReason ?? step.Output ??
         (step.Input is { Length: > 0 } input ? $"Started with {input}" : "Outcome detail not recorded");
+
+    private static string DescribeKind(string kind) => kind switch
+    {
+        "MorphologicalRule" or "MorphologicalRuleAnalysis" => "Morphological rule",
+        "PhonologicalRule" or "PhonologicalRuleAnalysis" => "Phonological rule",
+        "LexicalLookup" => "Lexical lookup",
+        _ => kind,
+    };
 
     private async Task LoadStoredRuleTimingsAsync()
     {

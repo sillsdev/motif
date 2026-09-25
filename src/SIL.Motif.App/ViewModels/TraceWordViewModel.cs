@@ -91,6 +91,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(HasResult));
         OnPropertyChanged(nameof(HasDiagnosticJson));
         OnPropertyChanged(nameof(SummaryText));
+        OnPropertyChanged(nameof(PageSummaryText));
         OnPropertyChanged(nameof(StopReason));
         OnPropertyChanged(nameof(HasStopReason));
         OnPropertyChanged(nameof(Analyses));
@@ -113,6 +114,23 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public bool HasDiagnosticJson => !string.IsNullOrWhiteSpace(DiagnosticJson);
 
     public string SummaryText => Result is not { } result ? string.Empty : Summarize(result);
+
+    /// <summary>Parser and host timings shown on the Try a Word page.</summary>
+    public string PageSummaryText
+    {
+        get
+        {
+            if (Result is not { } result) return string.Empty;
+
+            var parts = new List<string>();
+            if (result.ParserSteps is { } steps) parts.Add($"{steps:N0} steps");
+            if (result.ParserElapsedMs is { } parserMs) parts.Add($"{FormatMs(parserMs)} in the parser");
+            if (result.HostCapture?.WallElapsedMs is { } hostMs) parts.Add($"{FormatMs(hostMs)} overall");
+            else if (result.ElapsedMs > 0) parts.Add($"{FormatMs(result.ElapsedMs)} overall");
+            if (HasComparison) parts.Add("approved analysis expected");
+            return string.Join(" · ", parts);
+        }
+    }
 
     public string? StopReason => Result is { Complete: false } result ? result.StopReason : null;
 
@@ -248,6 +266,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(ExpectedMorphs));
         OnPropertyChanged(nameof(FurthestAttempt));
         OnPropertyChanged(nameof(HasComparison));
+        OnPropertyChanged(nameof(PageSummaryText));
         OnPropertyChanged(nameof(ShowsChosenWord));
         OnPropertyChanged(nameof(ShowsOtherWord));
     }
