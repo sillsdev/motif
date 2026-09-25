@@ -27,7 +27,10 @@ internal static class StoredAssessmentView
             InvocationId = invocationId,
             Words = words,
             CompletionSummary = summary,
-            Measurements = [new ProducedAssessmentReference(assessment.AssessmentId, "ParseTime", invocationId)],
+            Measurements = snapshot.MatchingCorrectnessAssessmentId is { } correctnessId
+                ? [new ProducedAssessmentReference(assessment.AssessmentId, "ParseTime", invocationId),
+                    new ProducedAssessmentReference(correctnessId, "Correctness", invocationId)]
+                : [new ProducedAssessmentReference(assessment.AssessmentId, "ParseTime", invocationId)],
             TimingOverrideAssessmentIds = snapshot.RerunAssessments.Select(item => item.AssessmentId).ToArray(),
         };
         var saved = DateTimeOffset.Parse(assessment.SavedUtc, CultureInfo.InvariantCulture,

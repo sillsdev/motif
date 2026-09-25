@@ -205,7 +205,10 @@ public sealed class WorkspaceContextTests
                 StepCap.Default, 1, false),
         };
         fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
-            null, EvidenceFreshness.Current, baseline, null, null, null, assessment));
+            null, EvidenceFreshness.Current, baseline, null, null, null, assessment)
+        {
+            MatchingCorrectnessAssessmentId = "correctness-1",
+        });
         fake.OverviewCompletesWith(Overview());
 
         await context.PublishProjectOpenedAsync(ProjectPath);
@@ -213,6 +216,8 @@ public sealed class WorkspaceContextTests
         Assert.Equal("dogs", Assert.Single(context.Assess.Words.AllRows).Word);
         Assert.Equal(1, texts.Assess.Compare.TotalCount);
         Assert.Equal(assessment.AssessmentId, context.Changes.AssessmentId);
+        Assert.Contains(context.Assess.Result!.Measurements,
+            item => item.Kind == "Correctness" && item.AssessmentId == "correctness-1");
         Assert.False(texts.ShowEmptyResults);
         Assert.NotNull(handoff.Handoff.LatestAssessmentAt);
         Assert.Equal("invocation/one", handoff.Handoff.InvocationId);

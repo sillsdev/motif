@@ -9,6 +9,8 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
@@ -107,9 +109,18 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
         new NamedSelectionRepository(database).SetDefault("Default", [], ["cat", "dog"]);
         var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
         var repository = new AssessmentRepository(database);
+        var invocation = new BatchInvocationEvidence("invocation/one", "source", "digest", "digest",
+            "words", "digest", "tsv", "digest", "stderr", "digest", 1000, StepCap.Default, 1, false);
         repository.Record(Record("base", ["cat", "dog"], [
             new AssessedWord("cat", "timed-out", []), new AssessedWord("dog", "analysed", [])],
-            "2026-09-24T11:00:00Z", tokenJson));
+            "2026-09-24T11:00:00Z", tokenJson) with { Invocation = invocation });
+        repository.Record(Record("correctness", ["cat", "dog"], [
+            new AssessedWord("cat", "timed-out", []), new AssessedWord("dog", "analysed", [])],
+            "2026-09-24T11:00:00Z", tokenJson) with
+        {
+            Kind = AssessmentKind.Correctness.ToStoredKind(),
+            Invocation = invocation,
+        });
         repository.Record(Record("rerun", ["cat"], [new AssessedWord("cat", "analysed", [])],
             "2026-09-24T11:05:00Z", tokenJson));
 
@@ -117,6 +128,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         Assert.Equal("base", result.Value!.MatchingAssessment?.AssessmentId);
+        Assert.Equal("correctness", result.Value.MatchingCorrectnessAssessmentId);
         Assert.Equal("rerun", Assert.Single(result.Value.RerunAssessments).AssessmentId);
         Assert.Equal("analysed", result.Value.EffectiveWords.Single(word => word.Word == "cat").Outcome);
         Assert.Equal(2, result.Value.EffectiveWords.Count);

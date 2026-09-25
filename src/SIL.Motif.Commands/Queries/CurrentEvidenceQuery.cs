@@ -33,6 +33,9 @@ public sealed record CurrentEvidenceSnapshot(
     /// <summary>The later subset runs applied to words of the current default Selection.</summary>
     public IReadOnlyList<AssessmentRecord> RerunAssessments { get; init; } = [];
 
+    /// <summary>The correctness measurement recorded by the same invocation as the matching ParseTime run.</summary>
+    public string? MatchingCorrectnessAssessmentId { get; init; }
+
     /// <summary>The current word outcomes after later subset runs replace their earlier answers.</summary>
     public IReadOnlyList<AssessedWord> EffectiveWords => AssessmentWordOverlay.Apply(
         MatchingAssessment?.Words ?? [], RerunAssessments);
@@ -77,6 +80,7 @@ public static class CurrentEvidenceQuery
         ResolvedSelectionSnapshot? selection = null;
         AssessmentRecord? assessment = null;
         IReadOnlyList<AssessmentRecord> reruns = [];
+        string? correctnessAssessmentId = null;
         if (current is not null && saved is not null)
         {
             var resolved = ResolveSelection(current.Summary, saved);
@@ -89,6 +93,11 @@ public static class CurrentEvidenceQuery
                 resolvedSelection.Selection.Words);
             if (assessment is not null)
             {
+                if (assessment.Invocation?.InvocationId is { } invocationId)
+                    correctnessAssessmentId = new AssessmentRepository(database)
+                        .ListBaselineAssessments(AssessmentKind.Correctness.ToStoredKind())
+                        .LastOrDefault(candidate => candidate.BaselineToken == tokenJson &&
+                            candidate.Invocation?.InvocationId == invocationId)?.AssessmentId;
                 var original = assessment.Selection.Words.ToHashSet(StringComparer.Ordinal);
                 reruns = new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind())
                     .Where(candidate => candidate.BaselineToken == tokenJson &&
@@ -113,6 +122,7 @@ public static class CurrentEvidenceQuery
             current?.Baseline, current?.Summary, saved, selection, assessment)
         {
             RerunAssessments = reruns,
+            MatchingCorrectnessAssessmentId = correctnessAssessmentId,
         });
     }
 
