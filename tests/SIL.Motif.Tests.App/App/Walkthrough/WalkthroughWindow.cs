@@ -256,6 +256,9 @@ public sealed class WalkthroughWindow : IDisposable
             $"Assess.State='{Workspace.Assess.State}', " +
             $"Assess.Refusal?.Message='{Workspace.Assess.Refusal?.Message}', " +
             $"Assess.Progress='{Workspace.Assess.Progress}', " +
+            $"Refresh.IsRunning='{Workspace.RefreshCommand.IsRunning}', " +
+            $"Overview.loaded='{Workspace.PageModel<OverviewPageModel>().Overview is not null}', " +
+            $"Overview.refusal='{Workspace.PageModel<OverviewPageModel>().OverviewRefusalMessage}', " +
             $"Handoff.State='{Workspace.PageModel<AiHandoffPageModel>().Handoff.State}', " +
             $"Handoff.Refusal?.Message='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Message}', " +
             $"Handoff.Progress='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Progress}', " +
@@ -265,7 +268,20 @@ public sealed class WalkthroughWindow : IDisposable
     public void Dispose()
     {
         Window.Close();
-        Workspace.DisposeAsync().GetAwaiter().GetResult();
+        var disposal = Workspace.DisposeAsync().AsTask();
+        var timeout = TimeSpan.FromSeconds(30);
+        var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
+        while (!disposal.IsCompleted && Stopwatch.GetTimestamp() < deadline)
+        {
+            Pump();
+            Thread.Sleep(15);
+        }
+
+        Pump();
+        if (!disposal.IsCompleted)
+            throw new TimeoutException(
+                $"The walkthrough workspace did not stop within {timeout}; Assessment state is '{Workspace.Assess.State}'.");
+        disposal.GetAwaiter().GetResult();
     }
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();

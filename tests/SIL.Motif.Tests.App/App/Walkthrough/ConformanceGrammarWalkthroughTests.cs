@@ -56,6 +56,10 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.Context.Setup?.IsOpen == true,
                     TimeSpan.FromMinutes(1), "first-run setup did not appear after the Baseline was captured");
+                walkthrough.WaitUntil(
+                    () => !walkthrough.Workspace.RefreshCommand.IsRunning,
+                    TimeSpan.FromMinutes(1),
+                    "the Baseline and Overview refresh did not finish before choosing words");
                 walkthrough.SkipSetup();
 
                 walkthrough.Type(
@@ -138,6 +142,33 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
 
         var entries = cache.ServiceLocator.GetInstance<ILexEntryRepository>();
         Assert.Equal(13, entries.Count);
+    }
+
+    [RealParserFact]
+    public void DisposingWithAnAssessmentInFlightCancelsItWithoutBlockingTheDispatcher()
+    {
+        using var project = new ConformanceProject();
+        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        RunState? assessStateAfterDispose = null;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
+            var workspace = walkthrough.Workspace;
+            try
+            {
+                WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);
+                WalkthroughSteps.StartSlowAssessment(walkthrough, deadline);
+            }
+            finally
+            {
+                walkthrough.Dispose();
+                assessStateAfterDispose = workspace.Assess.State;
+            }
+
+            Assert.Equal(RunState.Cancelled, assessStateAfterDispose);
+            return Task.CompletedTask;
+        }, WalkthroughSteps.Remaining(deadline));
     }
 
     private static void AssertBoundaryResult(

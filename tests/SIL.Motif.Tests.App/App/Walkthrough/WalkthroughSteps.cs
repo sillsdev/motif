@@ -36,6 +36,9 @@ internal static class WalkthroughSteps
                 walkthrough.Workspace.Selection.Texts.Count == 1 &&
                 walkthrough.Workspace.Context.Setup?.IsOpen == true,
             Remaining(deadline), "refreshing the Baseline did not publish its Texts and setup dialog");
+        walkthrough.WaitUntil(
+            () => !walkthrough.Workspace.RefreshCommand.IsRunning,
+            TimeSpan.FromMinutes(1), "the Baseline and Overview refresh did not finish before choosing words");
         Assert.True(walkthrough.Workspace.Context.Setup?.IsOpen,
             "first-time setup did not open after the Baseline was captured");
         walkthrough.SkipSetup();
@@ -88,6 +91,9 @@ internal static class WalkthroughSteps
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts." &&
                 walkthrough.Workspace.Context.Setup?.IsOpen == true,
             Remaining(deadline), "refreshing the conformance project did not show setup");
+        walkthrough.WaitUntil(
+            () => !walkthrough.Workspace.RefreshCommand.IsRunning,
+            TimeSpan.FromMinutes(1), "the Baseline and Overview refresh did not finish before choosing words");
         Assert.True(walkthrough.Workspace.Context.Setup?.IsOpen,
             "first-time setup did not open after the Baseline was captured");
         walkthrough.SkipSetup();
