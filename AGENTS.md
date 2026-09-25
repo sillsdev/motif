@@ -39,6 +39,17 @@ No test run may show a Windows crash dialog: `test.ps1` suppresses it for its wh
 test assembly does so again at load (`tests/Shared/NoCrashDialogs.cs`), and the runner and CLI do so at
 startup. `CrashDialogsTests` proves it by crashing a child on purpose and requiring it to exit promptly.
 
+**Building inside an agent sandbox.** When several sandboxed agents build worktrees at once, for
+example Codex workers on Windows, set these before `./build.ps1`:
+
+```
+$env:MSBUILDDISABLENODEREUSE = '1'; $env:UseSharedCompilation = 'false'; $env:AVALONIA_TELEMETRY_OPTOUT = '1'
+```
+
+A reused MSBuild node or compiler server started by another sandbox can't write into your worktree,
+so the build fails with MSB3101/MSB3491 "access denied" in `obj\`. Separately, Avalonia's build-stats
+task writes under `%LOCALAPPDATA%`, which a sandbox denies. A normal developer shell needs none of this.
+
 ## Where the build lands
 
 One directory per configuration at the repository root, not a `bin` tree under every project:
