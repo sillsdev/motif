@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 21;
+    public const int CurrentSchema = 22;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -325,7 +325,7 @@ public static class MotifSchema
             C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true), C("CheckedUtc", "TEXT", true)],
         "PendingChangeFits" =>
         [C("DraftRevision", "TEXT", true, 1), C("ProjectLastWriteUtcTicks", "INTEGER", true, 2),
-            C("FitSummaryJson", "TEXT", true)],
+            C("BaselineIdentity", "TEXT", true, 3), C("FitSummaryJson", "TEXT", true)],
         "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true)],
         "CorpusDocuments" =>
         [C("CorpusId", "TEXT", true, 1), C("DocumentId", "TEXT", true, 2), C("OrdinalIndex", "INTEGER", true),
@@ -738,8 +738,9 @@ public static class MotifSchema
         CREATE TABLE PendingChangeFits (
             DraftRevision TEXT NOT NULL,
             ProjectLastWriteUtcTicks INTEGER NOT NULL,
+            BaselineIdentity TEXT NOT NULL,
             FitSummaryJson TEXT NOT NULL,
-            PRIMARY KEY (DraftRevision, ProjectLastWriteUtcTicks)
+            PRIMARY KEY (DraftRevision, ProjectLastWriteUtcTicks, BaselineIdentity)
         );
         """;
 }
