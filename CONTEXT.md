@@ -214,6 +214,13 @@ against the manual analyses, timing and warnings. The window's first page and th
 same numbers, computed once. A projection of stored evidence, never a trigger to rerun.
 _Avoid_: dashboard, summary, health, status, to-do list
 
+**Refresh**:
+The one thing a person does to bring Motif up to date with the FieldWorks project: capture a new Baseline
+and measure it again. Always started by a person, never on its own. Motif records when each Refresh happened
+and when the FieldWorks project had last been saved, so the window can say how far behind it is. Coming back
+to the window only re-reads what Motif has already stored.
+_Avoid_: reload, sync, auto-refresh, update
+
 **Review changes**:
 The window's page where a person reads, together, what applying their pending changes would write (the Dry
 Run), what it would do to the numbers (an Assessment of the touched words) and whether each change still fits

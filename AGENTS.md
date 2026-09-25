@@ -229,8 +229,9 @@ component file gets a `StyleInclude` in `App.axaml` and a case in `ComponentStyl
     is a line paid for with nothing. A stored shape is either the current one or it is refused with
     an error telling the developer to delete it and let Motif recreate it. This applies to schema
     generations, format upgraders, back-compat readers, and deprecated flags kept as aliases — a
-    rename is a rename, not a rename plus a bridge. Revisit this at 1.0, when someone outside this
-    repository first has data that matters.
+    rename is a rename, not a rename plus a bridge. Before 1.0, the window may offer a button that
+    deletes a refused store so Motif can recreate it. 1.0 is the release that brings real Proposals,
+    beyond pending changes and Review changes. From then on, a stored shape changes only with a migration.
 
 ## Compatibility targets
 
