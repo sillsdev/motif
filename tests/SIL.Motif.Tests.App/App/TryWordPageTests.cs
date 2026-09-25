@@ -180,9 +180,9 @@ public sealed class TryWordPageTests
                 var title = Assert.Single(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
                     AutomationProperties.GetName(block) == "Try a Word result");
                 Assert.Equal("verb", title.Text);
-                Assert.Contains(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
                     AutomationProperties.GetName(block) == "Try a Word page description");
-                Assert.Contains(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
                     AutomationProperties.GetName(block) == "Try a Word screenshot note");
                 var ruleTable = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
                     AutomationProperties.GetName(border) == "Rules on this word's best path");
