@@ -133,6 +133,11 @@ public sealed class ComponentStyleTests
             Border.WidthProperty, "Component.MatrixCell.CompactWidth");
         yield return new("MorphemeRow", "a morpheme edge", host => Add(host, Box("morphEdge")), Border.BorderBrushProperty, "Intent.Border");
 
+        yield return new("DifferencePanel", "a move row", DenseListRow,
+            ListBoxItem.PaddingProperty, "Component.DifferencePanel.MoveRowPadding");
+        yield return new("DifferencePanel", "a move column heading", host => Add(host, Text("columnHeader")),
+            TextBlock.ForegroundProperty, "Intent.TextMuted");
+
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.HeightProperty, "Component.TopBar.Height");
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.PaddingProperty, "Component.TopBar.Padding");
         yield return new("TopBar", "the banner", host => Add(host, Box("banner")), Border.MarginProperty, "Component.TopBar.BannerMargin");
@@ -255,6 +260,15 @@ public sealed class ComponentStyleTests
         list.Items.Add(new ListBoxItem { Content = inner });
         host.Children.Add(list);
         return inner;
+    }
+
+    private static ListBoxItem DenseListRow(Panel host)
+    {
+        var list = new ListBox { Classes = { "dense" } };
+        var item = new ListBoxItem();
+        list.Items.Add(item);
+        host.Children.Add(list);
+        return item;
     }
 
     private static ListBoxItem Entry(Panel host, bool collapsed, bool selected)
