@@ -2,38 +2,38 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.TextsPage.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <Thickness x:Key="Component.TextsPage.DenseRowPadding">4,3</Thickness>
-    <Thickness x:Key="Component.TextsPage.ListQuestionPadding">8,12</Thickness>
-    <Thickness x:Key="Component.TextsPage.HeaderButtonPadding">6,2</Thickness>
-    <Thickness x:Key="Component.TextsPage.ShortLabelMargin">6,0</Thickness>
-    <Thickness x:Key="Component.TextsPage.ActionButtonMargin">0,0,4,4</Thickness>
-    <Thickness x:Key="Component.TextsPage.LineMargin">0,4</Thickness>
-    <Thickness x:Key="Component.TextsPage.WordGap">0,0,14,10</Thickness>
-    <Thickness x:Key="Component.TextsPage.CountIndent">26,0,0,4</Thickness>
-    <Thickness x:Key="Component.TextsPage.EmptyStateMargin">0,8</Thickness>
-    <Thickness x:Key="Component.TextsPage.AssessmentStatusPadding">8,4</Thickness>
-    <Thickness x:Key="Component.TextsPage.MorphMargin">0,0,10,0</Thickness>
-    <x:Double x:Key="Component.TextsPage.ListQuestionWidth">190</x:Double>
-    <x:Double x:Key="Component.TextsPage.FixFirstListHeight">156</x:Double>
-    <x:Double x:Key="Component.TextsPage.CompareSearchWidth">220</x:Double>
-    <x:Double x:Key="Component.TextsPage.CompareSortMinWidth">150</x:Double>
-    <x:Double x:Key="Component.TextsPage.RerunTimeWidth">110</x:Double>
-    <x:Double x:Key="Component.TextsPage.MatrixRowLabelWidth">170</x:Double>
-    <x:Double x:Key="Component.TextsPage.WordCheckWidth">28</x:Double>
-    <x:Double x:Key="Component.TextsPage.WordOccurrencesWidth">60</x:Double>
-    <x:Double x:Key="Component.TextsPage.WordProjectWidth">150</x:Double>
-    <x:Double x:Key="Component.TextsPage.WordParserWidth">100</x:Double>
-    <x:Double x:Key="Component.TextsPage.WordMeaningWidth">190</x:Double>
-    <x:Double x:Key="Component.TextsPage.WordOpenWidth">70</x:Double>
-    <x:Double x:Key="Component.TextsPage.ListProjectWidth">160</x:Double>
-    <x:Double x:Key="Component.TextsPage.ListParserWidth">160</x:Double>
-    <x:Double x:Key="Component.TextsPage.MiniMatrixRowLabelWidth">92</x:Double>
-    <x:Double x:Key="Component.TextsPage.DenseRowMinHeight">0</x:Double>
-    <x:Double x:Key="Component.TextsPage.SelectionPanelWidth">240</x:Double>
-    <x:Double x:Key="Component.TextsPage.TextInspectorWidth">300</x:Double>
-    <x:Double x:Key="Component.TextsPage.ReaderTextWidth">220</x:Double>
-    <x:Double x:Key="Component.TextsPage.SelectionListHeight">320</x:Double>
-    <x:Double x:Key="Component.TextsPage.AddedWordsHeight">90</x:Double>
-    <x:Double x:Key="Component.TextsPage.ReaderLineNumberWidth">28</x:Double>
+    <StaticResource x:Key="Component.TextsPage.DenseRowPadding" ResourceKey="Primitive.Inset.4x3" />
+    <StaticResource x:Key="Component.TextsPage.ListQuestionPadding" ResourceKey="Primitive.Inset.8_12_8_12" />
+    <StaticResource x:Key="Component.TextsPage.HeaderButtonPadding" ResourceKey="Primitive.Inset.6x2" />
+    <StaticResource x:Key="Component.TextsPage.ShortLabelMargin" ResourceKey="Primitive.Inset.6_0_6_0" />
+    <StaticResource x:Key="Component.TextsPage.ActionButtonMargin" ResourceKey="Primitive.Inset.0_0_4_4" />
+    <StaticResource x:Key="Component.TextsPage.LineMargin" ResourceKey="Primitive.Inset.0x4" />
+    <StaticResource x:Key="Component.TextsPage.WordGap" ResourceKey="Primitive.Inset.0x0x14x10" />
+    <StaticResource x:Key="Component.TextsPage.CountIndent" ResourceKey="Primitive.Inset.26x0x0x4" />
+    <StaticResource x:Key="Component.TextsPage.EmptyStateMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
+    <StaticResource x:Key="Component.TextsPage.AssessmentStatusPadding" ResourceKey="Primitive.Inset.8x4" />
+    <StaticResource x:Key="Component.TextsPage.MorphMargin" ResourceKey="Primitive.Inset.0x0x10x0" />
+    <StaticResource x:Key="Component.TextsPage.ListQuestionWidth" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.TextsPage.FixFirstListHeight" ResourceKey="Primitive.Size.156" />
+    <StaticResource x:Key="Component.TextsPage.CompareSearchWidth" ResourceKey="Primitive.Size.220" />
+    <StaticResource x:Key="Component.TextsPage.CompareSortMinWidth" ResourceKey="Primitive.Size.150" />
+    <StaticResource x:Key="Component.TextsPage.RerunTimeWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.TextsPage.MatrixRowLabelWidth" ResourceKey="Primitive.Size.170" />
+    <StaticResource x:Key="Component.TextsPage.WordCheckWidth" ResourceKey="Primitive.Size.28" />
+    <StaticResource x:Key="Component.TextsPage.WordOccurrencesWidth" ResourceKey="Primitive.Size.60" />
+    <StaticResource x:Key="Component.TextsPage.WordProjectWidth" ResourceKey="Primitive.Size.150" />
+    <StaticResource x:Key="Component.TextsPage.WordParserWidth" ResourceKey="Primitive.Size.100" />
+    <StaticResource x:Key="Component.TextsPage.WordMeaningWidth" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.TextsPage.WordOpenWidth" ResourceKey="Primitive.Size.70" />
+    <StaticResource x:Key="Component.TextsPage.ListProjectWidth" ResourceKey="Primitive.Size.160" />
+    <StaticResource x:Key="Component.TextsPage.ListParserWidth" ResourceKey="Primitive.Size.160" />
+    <StaticResource x:Key="Component.TextsPage.MiniMatrixRowLabelWidth" ResourceKey="Primitive.Size.92" />
+    <StaticResource x:Key="Component.TextsPage.DenseRowMinHeight" ResourceKey="Primitive.Size.0" />
+    <StaticResource x:Key="Component.TextsPage.SelectionPanelWidth" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.TextsPage.TextInspectorWidth" ResourceKey="Primitive.Size.300" />
+    <StaticResource x:Key="Component.TextsPage.ReaderTextWidth" ResourceKey="Primitive.Size.220" />
+    <StaticResource x:Key="Component.TextsPage.SelectionListHeight" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.TextsPage.AddedWordsHeight" ResourceKey="Primitive.Size.90" />
+    <StaticResource x:Key="Component.TextsPage.ReaderLineNumberWidth" ResourceKey="Primitive.Size.28" />
   </Styles.Resources>
 </Styles>

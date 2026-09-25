@@ -504,12 +504,13 @@ public sealed class WorkflowShellTests
                 window.UpdateLayout();
 
                 var pages = window.FindControl<Panel>("PageHost")!.Children;
-                var tryWord = Assert.IsType<TryWordPanel>(pages.Single(page => page.Name == "TryAWordPage"));
+                var tryPage = Assert.IsType<TryAWordPage>(pages.Single(page => page.Name == "TryAWordPage"));
+                var tryWord = Assert.Single(tryPage.GetLogicalDescendants().OfType<TryWordPanel>());
                 Assert.Same(workspace.Assess.Trace, tryWord.Trace);
-                Assert.Single(tryWord.GetLogicalDescendants().OfType<DiagnosticPanel>());
+                Assert.Single(tryPage.GetLogicalDescendants().OfType<DiagnosticPanel>());
                 var texts = Assert.IsType<TextsPage>(pages.Single(page => page.Name == "TextsPage"));
                 Assert.Empty(texts.GetLogicalDescendants().OfType<TryWordPanel>());
-                Assert.Equal("TryAWordPage", tryWord.Name);
+                Assert.Equal("TryAWordPage", tryPage.Name);
             }
             finally
             {

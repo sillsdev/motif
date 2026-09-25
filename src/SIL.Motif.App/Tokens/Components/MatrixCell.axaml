@@ -6,9 +6,9 @@
     <StaticResource x:Key="Component.MatrixCell.Radius" ResourceKey="Primitive.Radius.8" />
     <StaticResource x:Key="Component.MatrixCell.Height" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
-    <x:Double x:Key="Component.MatrixCell.CompactWidth">40</x:Double>
-    <x:Double x:Key="Component.MatrixCell.CompactHeight">22</x:Double>
-    <Thickness x:Key="Component.MatrixCell.MarkerMargin">0,0,4,0</Thickness>
+    <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
+    <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0x0x4x0" />
   </Styles.Resources>
   <Style Selector="Border.matrixCell">
     <Setter Property="CornerRadius" Value="{DynamicResource Component.MatrixCell.Radius}" />

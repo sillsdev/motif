@@ -144,7 +144,7 @@ public sealed class TryWordPageTests
 
             page.OpenInTextsCommand.Execute(null);
             Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
-            Assert.Equal(TextsTab.Words, texts.Tab);
+            Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
 
             page.HandOffCommand.Execute(null);
             Assert.Equal(WorkspacePage.AiHandoff, context.CurrentPage);
