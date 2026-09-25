@@ -72,7 +72,7 @@ else {
 
     Write-Step 'design-token hygiene'
     Push-Location $repoRoot
-    try { & dotnet run --file tools/TokenHygiene/token-hygiene.cs -- -Advisory }
+    try { & dotnet run --file tools/TokenHygiene/token-hygiene.cs }
     finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) {
         Write-Host ''

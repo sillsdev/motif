@@ -280,6 +280,17 @@ public sealed class TokenHygieneTests
         Assert.Matches(@"scanned [1-9]\d* file", output.ToString());
     }
 
+    [Fact]
+    public void TheBuildRunsTheGateAsAFailingStep()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Motif.sln"))) root = root.Parent;
+        Assert.NotNull(root);
+        var gate = File.ReadAllLines(Path.Combine(root.FullName, "build.ps1"))
+            .Single(line => line.Contains("tools/TokenHygiene/token-hygiene.cs", StringComparison.Ordinal) && line.Contains("& dotnet", StringComparison.Ordinal));
+        Assert.DoesNotContain("-Advisory", gate, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static List<string> Categories(string path, string text) =>
         TokenHygiene.ScanFile(path, text).Select(v => v.Category).ToList();
 
