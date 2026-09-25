@@ -42,10 +42,10 @@
     Intent.Warning.Text           small text saying something is out of date
     Intent.Danger                 differs, and errors (Semi's Danger)
     Intent.Danger.Fill            behind differing text (Semi's DangerLight)
-    Intent.Approved.Fill          behind an approved analysis (FieldWorks' cyan)
+    Intent.Approved.Fill          behind an approved analysis (Motif's cyan palette)
     Intent.Approved.Text          an approved analysis's text
     Intent.Approved.Accent        an approved analysis's bar, underline or edge
-    Intent.Candidate.Fill         behind a candidate analysis (FieldWorks' tan)
+    Intent.Candidate.Fill         behind a candidate analysis (Motif's tan palette)
     Intent.Candidate.Text         a candidate analysis's text
     Intent.Candidate.Accent       a candidate analysis's bar, underline or edge
 
