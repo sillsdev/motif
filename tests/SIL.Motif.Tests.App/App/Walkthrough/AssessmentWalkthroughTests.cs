@@ -62,6 +62,11 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Assert.Equal(walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.Groups[0],
                 walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.SelectedGroup);
 
+            var details = walkthrough.Window.GetLogicalDescendants().OfType<Expander>()
+                .Single(expander => Equals(expander.Header, "Detailed statistics"));
+            details.IsExpanded = true;
+            Dispatcher.UIThread.RunJobs();
+            walkthrough.Window.UpdateLayout();
             walkthrough.Click("Refresh statistics");
             var statisticsDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
             walkthrough.WaitUntil(
