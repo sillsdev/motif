@@ -98,6 +98,19 @@ public sealed class ProposalCommandOutcomeTests
     }
 
     [Fact]
+    public void FinalizeRefusesAStaleExpectedDraftRevision()
+    {
+        ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, "stale", null));
+        ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, "stale", CanonicalId.Mint().Value, "en", "a gloss"));
+
+        var finalized = ProposalCommands.Finalize(
+            new FinalizeRequest(_fwDataPath, ProductVersion, "stale", "sha256:stale"));
+
+        Assert.Equal("draft.revision-conflict", finalized.Refusal?.Code);
+    }
+
+    [Fact]
     public void DeferReturnsATypedProposalStatusChangedResponse()
     {
         var proposalId = CommitOneOperationProposal("d");
