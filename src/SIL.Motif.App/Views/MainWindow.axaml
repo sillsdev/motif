@@ -78,34 +78,42 @@
         <StackPanel x:Name="FreshnessLine" Classes="freshness" Orientation="Horizontal" VerticalAlignment="Center"
                     IsVisible="{Binding HasFreshness}">
           <Ellipse Classes="freshDot" Classes.current="{Binding FreshnessIsCurrent}"
-                   Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}" />
+                   Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
+                   Classes.refused="{Binding HasRefreshRefusal}" />
           <views:CopyableTextBlock Classes="freshLabel" Text="{Binding FreshnessLabel}"
                                    Classes.current="{Binding FreshnessIsCurrent}"
-                                   Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}" />
+                                   Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
+                                   Classes.refused="{Binding HasRefreshRefusal}" />
           <views:CopyableTextBlock Classes="muted freshDetail" Text="{Binding FreshnessDetail}"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </StackPanel>
       </DockPanel>
     </Border>
 
-    <Border Grid.Row="1"
-            IsVisible="{Binding RerunOffered}"
-            Classes="card banner">
-      <DockPanel LastChildFill="True">
-        <Button Content="Run again"
-                Command="{Binding AcceptRerunCommand}"
-                AutomationProperties.Name="Run the Assessment again"
-                DockPanel.Dock="Right" />
-        <Button Content="Dismiss"
-                Command="{Binding DismissRerunCommand}"
-                AutomationProperties.Name="Dismiss the rerun offer"
-                DockPanel.Dock="Right"
-                Classes="bannerAction" />
-        <views:CopyableTextBlock Text="A new Baseline was captured; the previous Assessment may be out of date."
-                   VerticalAlignment="Center"
-                   TextWrapping="Wrap" />
-      </DockPanel>
-    </Border>
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto">
+      <Border IsVisible="{Binding RerunOffered}" Classes="card banner">
+        <DockPanel LastChildFill="True">
+          <Button Content="Run again"
+                  Command="{Binding AcceptRerunCommand}"
+                  AutomationProperties.Name="Run the Assessment again"
+                  DockPanel.Dock="Right" />
+          <Button Content="Dismiss"
+                  Command="{Binding DismissRerunCommand}"
+                  AutomationProperties.Name="Dismiss the rerun offer"
+                  DockPanel.Dock="Right"
+                  Classes="bannerAction" />
+          <views:CopyableTextBlock Text="A new Baseline was captured; the previous Assessment may be out of date."
+                     VerticalAlignment="Center"
+                     TextWrapping="Wrap" />
+        </DockPanel>
+      </Border>
+      <Border Grid.Row="1" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
+        <StackPanel>
+          <views:CopyableTextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </Grid>
 
     <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
 

@@ -91,6 +91,20 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             var appTiming = await client.TimingAsync(new TimingRequest(projectPath, WordSet: "all"), CancellationToken.None);
             Assert.True(appOverview.Succeeded, appOverview.Refusal?.Message);
             Assert.True(appTiming.Succeeded, appTiming.Refusal?.Message);
+            var overviewContext = WorkspaceContextTests.NewContext(client);
+            var overviewPage = new OverviewPageModel(overviewContext);
+            await overviewContext.PublishProjectOpenedAsync(projectPath);
+            Assert.NotNull(overviewPage.Overview);
+            Assert.Equal(appOverview.Value!.MotifStoreCreatedUtc, overviewPage.Overview.MotifStoreCreatedUtc);
+            Assert.Equal(appOverview.Value.SelectionWordCount, overviewPage.Overview.SelectionWordCount);
+            Assert.Equal(appOverview.Value.TextCoverage, overviewPage.Overview.TextCoverage);
+            Assert.Equal(appOverview.Value.Accuracy, overviewPage.Overview.Accuracy);
+            Assert.Contains($"{appOverview.Value.SelectionWordCount:N0}", overviewPage.SelectionWordCountText);
+            Assert.Contains($"{appOverview.Value.TextCoverage.ParsedOccurrences:N0} of " +
+                $"{appOverview.Value.TextCoverage.TotalOccurrences:N0}", overviewPage.TextCoverageOccurrences);
+            Assert.Contains($"{appOverview.Value.Accuracy.Violations:N0} violations", overviewPage.AccuracyBreakdown);
+            Assert.Contains($"{appOverview.Value.Accuracy.RejectedAnalysesRebuilt:N0} rejected analyses rebuilt",
+                overviewPage.AccuracyBreakdown);
             Assert.Equal(overview.Value!.TextCoverage, appOverview.Value!.TextCoverage);
             Assert.Equal(overview.Value.Accuracy, appOverview.Value.Accuracy);
             Assert.Equal(overview.Value.WordformCount, appOverview.Value.WordformCount);

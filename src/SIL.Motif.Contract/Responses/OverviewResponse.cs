@@ -24,6 +24,12 @@ public sealed record OverviewResponse(
     OverviewTiming Timing,
     OverviewWarningsSummary? Warnings)
 {
+    /// <summary>Whether the default Selection resolved against the current Baseline.</summary>
+    public bool SelectionResolved { get; init; }
+
+    /// <summary>The share of resolved Selection words with a completed parse.</summary>
+    public double? WordCoveragePercent { get; init; }
+
     /// <summary>The file name of the FieldWorks project.</summary>
     public string ProjectFileName { get; init; } = string.Empty;
 
@@ -47,7 +53,11 @@ public sealed record OverviewTextCoverage(
     int UnknownWords,
     int SkippedWords,
     int TotalOccurrences,
-    int ParsedOccurrences);
+    int ParsedOccurrences)
+{
+    /// <summary>The share of selected Text occurrences with a completed parse.</summary>
+    public double? OccurrenceCoveragePercent { get; init; }
+}
 
 /// <summary>Word counts placed by the Compare matrix's shared classification rules.</summary>
 public sealed record OverviewAccuracy(
@@ -62,6 +72,18 @@ public sealed record OverviewAccuracy(
 {
     /// <summary>Rejected-standing words placed in the Compare matrix's Match column.</summary>
     public int RejectedWordsInMatchCell { get; init; }
+
+    /// <summary>Approved-standing words placed in the Compare matrix's NoMatch column.</summary>
+    public int ApprovedWordsNoMatch { get; init; }
+
+    /// <summary>Approved-standing words placed in the Compare matrix's NoParse column.</summary>
+    public int ApprovedWordsNoParse { get; init; }
+
+    /// <summary>Approved-standing words placed in the Compare matrix's Timeout column.</summary>
+    public int ApprovedWordsUnknown { get; init; }
+
+    /// <summary>Approved-standing words placed in the Compare matrix's Skipped column.</summary>
+    public int ApprovedWordsSkipped { get; init; }
 }
 
 /// <summary>Per-word parse-time percentiles, slowest words, and step-limited count.</summary>

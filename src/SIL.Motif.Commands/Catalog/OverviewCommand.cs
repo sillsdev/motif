@@ -60,6 +60,9 @@ public static class OverviewCommand
                     ByKind = warningCounts.ByKind,
                 })
             {
+                SelectionResolved = selection is not null,
+                WordCoveragePercent = selection is null
+                    ? null : OverviewMetrics.Percent(metrics.TextCoverage.ParsedWords, words.Count),
                 ProjectFileName = Path.GetFileName(project.FullFwDataPath),
                 BaselineCapturedUtc = evidence.Baseline is null
                     ? null : DateTimeOffset.Parse(evidence.Baseline.Token.CapturedUtc,
@@ -93,6 +96,10 @@ internal static class OverviewMetrics
         var rejected = 0;
         var candidatesConfirmed = 0;
         var candidates = 0;
+        var approvedNoMatch = 0;
+        var approvedNoParse = 0;
+        var approvedUnknown = 0;
+        var approvedSkipped = 0;
 
         foreach (var form in selectionWords)
         {
@@ -128,7 +135,24 @@ internal static class OverviewMetrics
             if (StringComparer.Ordinal.Equals(placement.Standing, SIL.Motif.Contract.Responses.ProjectStanding.Approved))
             {
                 approved++;
-                if (placement.Column == CompareColumnKind.Match) approvedKept++;
+                switch (placement.Column)
+                {
+                    case CompareColumnKind.Match:
+                        approvedKept++;
+                        break;
+                    case CompareColumnKind.NoMatch:
+                        approvedNoMatch++;
+                        break;
+                    case CompareColumnKind.NoParse:
+                        approvedNoParse++;
+                        break;
+                    case CompareColumnKind.Timeout:
+                        approvedUnknown++;
+                        break;
+                    case CompareColumnKind.Skipped:
+                        approvedSkipped++;
+                        break;
+                }
             }
             if (meaning.Family == CompareFamilyKind.Violation) violations++;
             if (meaning.Family == CompareFamilyKind.Unknown) accuracyUnknown++;
@@ -146,11 +170,21 @@ internal static class OverviewMetrics
 
         var totalOccurrences = occurrences is null ? 0 : selectionWords.Sum(form => occurrences.OccurrencesByWord.GetValueOrDefault(form));
         return (
-            new OverviewTextCoverage(parsed, noParse, unknown, skipped, totalOccurrences, parsedOccurrences),
+            new OverviewTextCoverage(parsed, noParse, unknown, skipped, totalOccurrences, parsedOccurrences)
+            {
+                OccurrenceCoveragePercent = Percent(parsedOccurrences, totalOccurrences),
+            },
             new OverviewAccuracy(approvedKept, approved, violations, accuracyUnknown,
                 rejectedAnalysesRebuilt, rejected, candidatesConfirmed, candidates)
             {
                 RejectedWordsInMatchCell = rejectedWordsInMatchCell,
+                ApprovedWordsNoMatch = approvedNoMatch,
+                ApprovedWordsNoParse = approvedNoParse,
+                ApprovedWordsUnknown = approvedUnknown,
+                ApprovedWordsSkipped = approvedSkipped,
             });
     }
+
+    internal static double? Percent(int numerator, int denominator) => denominator == 0
+        ? null : numerator * 100d / denominator;
 }

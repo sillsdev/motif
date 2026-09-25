@@ -19,8 +19,9 @@ public sealed partial class OverviewPageModel : PageModel
     public OverviewPageModel(WorkspaceContext context) : base(context)
     {
         History = new ProjectHistoryViewModel(context.Commands);
-        OpenTextCoverageCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix));
-        OpenAccuracyCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix));
+        var openMatrix = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix));
+        OpenTextCoverageCommand = openMatrix;
+        OpenAccuracyCommand = openMatrix;
         OpenTimingCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Timing));
         OpenWarningsCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Warnings));
         OpenAiHandoffCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.AiHandoff));
@@ -32,10 +33,10 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>The stored Overview read for the open project.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasOverview))]
     [NotifyPropertyChangedFor(nameof(OverviewIsStale))]
     [NotifyPropertyChangedFor(nameof(HasAssessment))]
     [NotifyPropertyChangedFor(nameof(ShowNoAssessment))]
+    [NotifyPropertyChangedFor(nameof(SelectionIsUnresolved))]
     [NotifyPropertyChangedFor(nameof(ProjectTitle))]
     [NotifyPropertyChangedFor(nameof(ProjectDetails))]
     [NotifyPropertyChangedFor(nameof(AssessmentDetails))]
@@ -46,10 +47,14 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(WordformCountText))]
     [NotifyPropertyChangedFor(nameof(RuleCountText))]
     [NotifyPropertyChangedFor(nameof(LexemeCountText))]
+    [NotifyPropertyChangedFor(nameof(TextCoverageMain))]
     [NotifyPropertyChangedFor(nameof(TextCoverageWords))]
+    [NotifyPropertyChangedFor(nameof(TextCoverageBreakdown))]
     [NotifyPropertyChangedFor(nameof(TextCoverageOccurrences))]
+    [NotifyPropertyChangedFor(nameof(TextCoverageSegments))]
     [NotifyPropertyChangedFor(nameof(AccuracyMain))]
     [NotifyPropertyChangedFor(nameof(AccuracyBreakdown))]
+    [NotifyPropertyChangedFor(nameof(AccuracySegments))]
     [NotifyPropertyChangedFor(nameof(TimingMedian))]
     [NotifyPropertyChangedFor(nameof(TimingDetails))]
     [NotifyPropertyChangedFor(nameof(SlowestWords))]
@@ -64,10 +69,8 @@ public sealed partial class OverviewPageModel : PageModel
     private string? _overviewRefusalMessage;
 
     /// <summary>Whether the response has a stored Assessment for its default Selection.</summary>
-    public bool HasOverview => Overview?.AssessmentId is not null;
-
     /// <summary>Whether the response has an Assessment for its default Selection.</summary>
-    public bool HasAssessment => HasOverview;
+    public bool HasAssessment => Overview?.AssessmentId is not null;
 
     /// <summary>Whether the Overview should explain that this project has no Assessment.</summary>
     public bool ShowNoAssessment => !HasAssessment;
@@ -75,25 +78,27 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>Whether the live FieldWorks file is newer than the Baseline behind this Overview.</summary>
     public bool OverviewIsStale => Overview?.IsStale == true;
 
+    /// <summary>Whether this response could not resolve its default Selection against the current Baseline.</summary>
+    public bool SelectionIsUnresolved => Overview is { SelectionResolved: false };
+
     /// <summary>The project name from the Overview response.</summary>
     public string ProjectTitle => Overview?.ProjectName ?? Context.ProjectName;
 
     /// <summary>The project file, when it was opened, and the last FieldWorks save.</summary>
     public string ProjectDetails =>
         $"{Overview?.ProjectFileName ?? Path.GetFileName(Context.ProjectPath ?? string.Empty)} · " +
-        $"opened {FormatTime(Context.ProjectOpenedUtc)} · last FieldWorks save {FormatTime(Overview?.LastFieldWorksSaveUtc)}";
+        $"opened {FormatTime(Overview?.MotifStoreCreatedUtc)} · last FieldWorks save {FormatTime(Overview?.LastFieldWorksSaveUtc)}";
 
     /// <summary>When the current Assessment completed and how long its parsing took.</summary>
     public string AssessmentDetails => Overview?.AssessedUtc is { } at
-        ? $"Assessed {at.ToLocalTime().ToString("h:mm tt", CultureInfo.CurrentCulture)}" +
+        ? $"Assessed {FormatTime(at)}" +
           (Overview.AssessmentElapsedSeconds is { } elapsed ? $" in {elapsed:N0} s" : string.Empty)
         : string.Empty;
 
     /// <summary>When the current Baseline was captured and whether the FieldWorks file has changed since.</summary>
     public string BaselineDetails => Overview?.BaselineCapturedUtc is { } captured
-        ? $"Baseline {captured.ToLocalTime().ToString("h:mm tt", CultureInfo.CurrentCulture)}" +
-          (Overview.BaselineSourceLastWriteUtc is { } saved
-              ? $" · saved {saved.ToLocalTime().ToString("h:mm tt", CultureInfo.CurrentCulture)}" : string.Empty)
+        ? $"Baseline {FormatTime(captured)}" +
+          (Overview.BaselineSourceLastWriteUtc is { } saved ? $" · saved {FormatTime(saved)}" : string.Empty)
         : "No Baseline captured";
 
     /// <summary>The Assessment's grammar and Selection fingerprints, shortened for the page header.</summary>
@@ -101,10 +106,12 @@ public sealed partial class OverviewPageModel : PageModel
         $"grammar {ShortFingerprint(overview.GrammarFingerprint)} · Selection {ShortFingerprint(overview.SelectionFingerprint)}";
 
     /// <summary>The number of words in the response's default Selection.</summary>
-    public string SelectionWordCountText => Overview?.SelectionWordCount.ToString("N0", CultureInfo.CurrentCulture) ?? "0";
+    public string SelectionWordCountText => Overview is { SelectionResolved: false } ? "not resolved" :
+        Overview?.SelectionWordCount.ToString("N0", CultureInfo.CurrentCulture) ?? "0";
 
     /// <summary>The number of occurrences in the response's selected Texts.</summary>
-    public string TextOccurrenceCountText => Overview?.TextOccurrenceCount.ToString("N0", CultureInfo.CurrentCulture) ?? "0";
+    public string TextOccurrenceCountText => Overview is { SelectionResolved: false } ? "not resolved" :
+        Overview?.TextOccurrenceCount.ToString("N0", CultureInfo.CurrentCulture) ?? "0";
 
     /// <summary>The project's wordform count from the response.</summary>
     public string WordformCountText => Overview?.WordformCount.ToString("N0", CultureInfo.CurrentCulture) ?? "0";
@@ -115,29 +122,55 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The project's lexeme count from the response.</summary>
     public string LexemeCountText => Overview?.LexemeCount.ToString("N0", CultureInfo.CurrentCulture) ?? "0";
 
-    /// <summary>The parsed-word count and Selection total returned by the Overview command.</summary>
-    public string TextCoverageWords => !HasOverview || Overview is not { } overview ? "No Assessment" :
-        $"{overview.TextCoverage.ParsedWords:N0} of {overview.SelectionWordCount:N0}";
+    /// <summary>The share of Selection words with a completed parse, as returned by the Overview command.</summary>
+    public string TextCoverageMain => !HasAssessment ? "No Assessment" : FormatPercent(Overview?.WordCoveragePercent);
 
-    /// <summary>The parsed Text occurrences and total returned by the Overview command.</summary>
-    public string TextCoverageOccurrences => !HasOverview || Overview is not { } overview ? string.Empty :
-        $"{overview.TextCoverage.ParsedOccurrences:N0} of {overview.TextCoverage.TotalOccurrences:N0} occurrences covered";
+    /// <summary>The parsed words and Selection total returned by the Overview command.</summary>
+    public string TextCoverageWords => !HasAssessment || Overview is not { } overview ? string.Empty :
+        $"{overview.TextCoverage.ParsedWords:N0} of {overview.SelectionWordCount:N0} words in the default Selection";
+
+    /// <summary>The no-parse, timed-out and skipped word counts returned by the Overview command.</summary>
+    public string TextCoverageBreakdown => !HasAssessment || Overview is not { } overview ? string.Empty :
+        $"{overview.TextCoverage.NoParseWords:N0} no parse · {overview.TextCoverage.UnknownWords:N0} timed out · " +
+        $"{overview.TextCoverage.SkippedWords:N0} skipped";
+
+    /// <summary>The occurrence total and covered share returned by the Overview command.</summary>
+    public string TextCoverageOccurrences => !HasAssessment || Overview is not { } overview ? string.Empty :
+        $"{overview.TextCoverage.ParsedOccurrences:N0} of {overview.TextCoverage.TotalOccurrences:N0} occurrences · " +
+        $"{FormatPercent(overview.TextCoverage.OccurrenceCoveragePercent)} covered";
+
+    /// <summary>The word outcomes that make up the Selection coverage bar.</summary>
+    public IReadOnlyList<OutcomeSegment> TextCoverageSegments => !HasAssessment || Overview is not { } overview ? [] :
+        NonZeroSegments(
+            new(Verdict.Agrees, overview.TextCoverage.ParsedWords, "parsed"),
+            new(Verdict.NoResult, overview.TextCoverage.NoParseWords, "no parse"),
+            new(Verdict.Limit, overview.TextCoverage.UnknownWords, "timed out"),
+            new(Verdict.Several, overview.TextCoverage.SkippedWords, "skipped"));
 
     /// <summary>The approved words kept and total returned by the Overview command.</summary>
-    public string AccuracyMain => !HasOverview || Overview is not { } overview ? "No Assessment" :
+    public string AccuracyMain => !HasAssessment || Overview is not { } overview ? "No Assessment" :
         $"{overview.Accuracy.ApprovedWordsKept:N0} of {overview.Accuracy.ApprovedWordCount:N0}";
 
     /// <summary>The accuracy counts returned by the Overview command, using the Compare matrix's definitions.</summary>
-    public string AccuracyBreakdown => !HasOverview || Overview is not { } overview ? string.Empty :
+    public string AccuracyBreakdown => !HasAssessment || Overview is not { } overview ? string.Empty :
         $"{overview.Accuracy.Violations:N0} violations · {overview.Accuracy.UnknownWords:N0} Unknown (timed out) · " +
-        $"Rejected analyses rebuilt: {overview.Accuracy.RejectedAnalysesRebuilt:N0} of {overview.Accuracy.RejectedWordCount:N0} · " +
+        $"{overview.Accuracy.RejectedAnalysesRebuilt:N0} rejected analyses rebuilt · " +
         $"candidates confirmed: {overview.Accuracy.CandidatesConfirmed:N0} of {overview.Accuracy.CandidateWordCount:N0}";
+
+    /// <summary>The approved-word outcomes that make up the Accuracy bar.</summary>
+    public IReadOnlyList<OutcomeSegment> AccuracySegments => !HasAssessment || Overview is not { } overview ? [] :
+        NonZeroSegments(
+            new(Verdict.Agrees, overview.Accuracy.ApprovedWordsKept, "kept"),
+            new(Verdict.Differs, overview.Accuracy.ApprovedWordsNoMatch, "built another reading"),
+            new(Verdict.Differs, overview.Accuracy.ApprovedWordsNoParse, "no parse"),
+            new(Verdict.Limit, overview.Accuracy.ApprovedWordsUnknown, "timed out"),
+            new(Verdict.Several, overview.Accuracy.ApprovedWordsSkipped, "skipped"));
 
     /// <summary>The median per-word time returned by the Overview command.</summary>
     public string TimingMedian => Overview?.Timing.MedianMs is { } median ? $"{median:N1} ms" : "No timing recorded";
 
     /// <summary>The 95th percentile and step-limit count returned by the Overview command.</summary>
-    public string TimingDetails => !HasOverview || Overview is not { } overview ? string.Empty :
+    public string TimingDetails => !HasAssessment || Overview is not { } overview ? string.Empty :
         $"95th percentile {FormatMilliseconds(overview.Timing.Percentile95Ms)} · " +
         $"{overview.Timing.StepLimitedWordCount:N0} words hit the step limit";
 
@@ -153,7 +186,7 @@ public sealed partial class OverviewPageModel : PageModel
     public string WarningsCount => Overview?.Warnings?.Count is { } count ? $"{count:N0} findings" : "Not recorded";
 
     /// <summary>The warning findings that were left out of the grammar.</summary>
-    public string WarningsLeftOut => Overview?.Warnings is { } warnings && WarningCount(warnings) is { } count
+    public string WarningsLeftOut => Overview?.Warnings?.WarningCount is { } count
         ? $"{count:N0} left out of the grammar" : string.Empty;
 
     /// <summary>The informational findings and largest kind returned by the Overview command.</summary>
@@ -179,7 +212,7 @@ public sealed partial class OverviewPageModel : PageModel
     private static string FormatWarningDetails(OverviewWarningsSummary warnings)
     {
         var parts = new List<string>();
-        if (InformationCount(warnings) is { } informationCount)
+        if (warnings.InformationCount is { } informationCount)
             parts.Add($"{informationCount:N0} worth a look");
         if (warnings.LargestKind is { } kind)
             parts.Add($"Largest kind: {kind}" +
@@ -187,11 +220,11 @@ public sealed partial class OverviewPageModel : PageModel
         return parts.Count == 0 ? "No additional warning details are available." : string.Join(" · ", parts);
     }
 
-    private static int? WarningCount(OverviewWarningsSummary warnings) => warnings.WarningCount ?? warnings.LeftOut;
+    private static IReadOnlyList<OutcomeSegment> NonZeroSegments(params OutcomeSegment[] segments) =>
+        segments.Where(segment => segment.Count > 0).ToArray();
 
-    private static int? InformationCount(OverviewWarningsSummary warnings) => warnings.InformationCount ??
-        (warnings.Count is { } total && WarningCount(warnings) is { } warningCount
-            ? Math.Max(0, total - warningCount) : null);
+    private static string FormatPercent(double? value) => value is { } percent
+        ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%" : "not recorded";
 
     protected override void OnProjectCleared()
     {
@@ -239,7 +272,7 @@ public sealed partial class OverviewPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(WorkspaceContext.ProjectPath) or nameof(WorkspaceContext.ProjectOpenedUtc))
+        if (e.PropertyName is nameof(WorkspaceContext.ProjectPath))
         {
             OnPropertyChanged(nameof(ProjectTitle));
             OnPropertyChanged(nameof(ProjectDetails));

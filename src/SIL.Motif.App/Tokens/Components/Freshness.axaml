@@ -25,6 +25,9 @@
   <Style Selector="Ellipse.freshDot.busy">
     <Setter Property="Fill" Value="{DynamicResource Intent.Accent}" />
   </Style>
+  <Style Selector="Ellipse.freshDot.refused">
+    <Setter Property="Fill" Value="{DynamicResource Intent.Danger}" />
+  </Style>
   <Style Selector=":is(TextBlock).freshLabel">
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
@@ -38,6 +41,9 @@
   </Style>
   <Style Selector=":is(TextBlock).freshLabel.busy">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+  <Style Selector=":is(TextBlock).freshLabel.refused">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
   </Style>
   <Style Selector=":is(TextBlock).freshDetail">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />

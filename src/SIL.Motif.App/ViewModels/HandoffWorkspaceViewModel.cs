@@ -168,8 +168,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Whether the top bar has a freshness line to show.</summary>
     public bool HasFreshness => Freshness != ProjectFreshness.NoProject;
 
+    /// <summary>Whether the last Baseline capture was refused.</summary>
+    public bool HasRefreshRefusal => Baseline.RefusalMessage is not null;
+
     /// <summary>The freshness line's state in words.</summary>
-    public string FreshnessLabel => Freshness switch
+    public string FreshnessLabel => HasRefreshRefusal ? "Refresh refused" : Freshness switch
     {
         ProjectFreshness.NoBaseline => "No Baseline yet",
         ProjectFreshness.Current => "Current",
@@ -180,19 +183,26 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     };
 
     /// <summary>The freshness line's detail: which save the numbers describe, or what the Refresh is doing.</summary>
-    public string FreshnessDetail => Freshness switch
+    public string FreshnessDetail
     {
-        ProjectFreshness.NoBaseline => "Refresh to capture one from FieldWorks' last save.",
-        ProjectFreshness.Current => BaselineAndSaveText(),
-        ProjectFreshness.SavedSince => SavedSinceText(),
-        ProjectFreshness.Refreshing => Assess.IsActive
-            ? Assess.Progress?.Message is { Length: > 0 } message ? message : "Assessing the Selection..."
-            : "Capturing a new Baseline...",
-        ProjectFreshness.Refreshed => Assess.Difference.HasDifference
-            ? Assess.Difference.Summary
-            : "A new Baseline, and the Selection assessed against it.",
-        _ => string.Empty,
-    };
+        get
+        {
+            var detail = Baseline.RefusalMessage ?? Freshness switch
+            {
+                ProjectFreshness.NoBaseline => "Refresh to capture one from FieldWorks' last save.",
+                ProjectFreshness.Current => BaselineAndSaveText(),
+                ProjectFreshness.SavedSince => SavedSinceText(),
+                ProjectFreshness.Refreshing => Assess.IsActive
+                    ? Assess.Progress?.Message is { Length: > 0 } message ? message : "Assessing the Selection..."
+                    : "Capturing a new Baseline...",
+                ProjectFreshness.Refreshed => Assess.Difference.HasDifference
+                    ? Assess.Difference.Summary
+                    : "A new Baseline, and the Selection assessed against it.",
+                _ => string.Empty,
+            };
+            return string.IsNullOrEmpty(detail) ? Baseline.HeldStatusText : $"{detail} · {Baseline.HeldStatusText}";
+        }
+    }
 
     /// <summary>Whether the freshness line reads as up to date.</summary>
     public bool FreshnessIsCurrent => Freshness is ProjectFreshness.Current or ProjectFreshness.Refreshed;
@@ -366,6 +376,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         OnPropertyChanged(nameof(FreshnessIsCurrent));
         OnPropertyChanged(nameof(FreshnessIsStale));
         OnPropertyChanged(nameof(FreshnessIsBusy));
+        OnPropertyChanged(nameof(HasRefreshRefusal));
         OnPropertyChanged(nameof(ShowsSeeWhatChanged));
         RefreshCommand.NotifyCanExecuteChanged();
         CancelRefreshCommand.NotifyCanExecuteChanged();

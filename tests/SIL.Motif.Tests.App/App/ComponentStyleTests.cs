@@ -142,6 +142,8 @@ public sealed class ComponentStyleTests
         yield return new("Freshness", "a dot", host => Add(host, Dot()), Shape.WidthProperty, "Component.Freshness.DotSize");
         yield return new("Freshness", "a current label", host => Add(host, Text("freshLabel", "current")),
             TextBlock.ForegroundProperty, "Intent.Success.Text");
+        yield return new("Freshness", "a refused label", host => Add(host, Text("freshLabel", "refused")),
+            TextBlock.ForegroundProperty, "Intent.Danger");
 
         yield return new("Sidebar", "the sidebar", host => Add(host, Box("sidebar")), Border.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("Sidebar", "the sidebar", host => Add(host, Box("sidebar")), Border.WidthProperty, "Component.Sidebar.Width");
@@ -207,6 +209,9 @@ public sealed class ComponentStyleTests
             Button.PaddingProperty, "Component.Overview.TilePadding");
         yield return new("Overview", "a tile value", host => Add(host, Text("overviewTileValue")),
             TextBlock.FontSizeProperty, "Intent.Type.Title");
+        yield return new("Overview", "a handoff icon", host => Add(host,
+                new PathIcon { Classes = { "overviewHandoffIcon" } }),
+            Control.WidthProperty, "Component.Overview.HandoffIconSize");
     }
 
     private static T Add<T>(Panel host, T control) where T : Control

@@ -13,8 +13,8 @@
     <StaticResource x:Key="Component.Overview.HeaderGap" ResourceKey="Primitive.Space.16" />
     <StaticResource x:Key="Component.Overview.HandoffGap" ResourceKey="Primitive.Space.12" />
     <StaticResource x:Key="Component.Overview.CountMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
-    <StaticResource x:Key="Component.Overview.HistoryEntryBorder" ResourceKey="Primitive.Inset.0_0_0_1" />
     <StaticResource x:Key="Component.Overview.HistoryEntryPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
+    <StaticResource x:Key="Component.Overview.HandoffIconSize" ResourceKey="Primitive.Size.18" />
   </Styles.Resources>
   <Style Selector="StackPanel.overviewPage">
     <Setter Property="Margin" Value="{DynamicResource Component.Overview.PageMargin}" />
@@ -54,6 +54,7 @@
   <Style Selector=":is(TextBlock).overviewMuted">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
   <Style Selector="Button.overviewTile">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
@@ -68,13 +69,16 @@
     <Setter Property="VerticalContentAlignment" Value="Stretch" />
   </Style>
   <Style Selector="Button.overviewTile:pointerover">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
   </Style>
   <Style Selector="Button.overviewTile:focus">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
   </Style>
   <Style Selector="StackPanel.overviewTileContent">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />
+  </Style>
+  <Style Selector="StackPanel.overviewOutcomeBar">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
   <Style Selector=":is(TextBlock).overviewTileTitle">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
@@ -84,6 +88,7 @@
   <Style Selector=":is(TextBlock).overviewTileLink">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
   <Style Selector=":is(TextBlock).overviewTileValue">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
@@ -91,6 +96,7 @@
   </Style>
   <Style Selector=":is(TextBlock).overviewTileDetail">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
   <Style Selector="Border.overviewHandoff">
     <Setter Property="Padding" Value="{DynamicResource Component.Overview.HandoffPadding}" />
@@ -99,8 +105,8 @@
     <Setter Property="CornerRadius" Value="{DynamicResource Component.Overview.CardRadius}" />
   </Style>
   <Style Selector="PathIcon.overviewHandoffIcon">
-    <Setter Property="Width" Value="{DynamicResource Intent.Type.Section}" />
-    <Setter Property="Height" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="Width" Value="{DynamicResource Component.Overview.HandoffIconSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Overview.HandoffIconSize}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
   </Style>
   <Style Selector=":is(TextBlock).overviewHandoffText">
@@ -114,7 +120,7 @@
   </Style>
   <Style Selector="Border.overviewHistoryEntry">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Component.Overview.HistoryEntryBorder}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Overview.HistoryEntryPadding}" />
   </Style>
   <Style Selector="StackPanel.overviewHistoryRow">

@@ -41,9 +41,9 @@ public sealed class WorkspacePageTests
 
     private static async Task ChooseProjectAsync(
         FakeCommandClient fake, FakeProjectPicker projectPicker, HandoffWorkspaceViewModel workspace,
-        DateTimeOffset? projectLastWriteUtc = null)
+        DateTimeOffset? projectLastWriteUtc = null, bool fieldWorksHeldProject = false)
     {
-        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false)
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, fieldWorksHeldProject)
         {
             ProjectLastWriteUtc = projectLastWriteUtc ?? Saved,
         });
@@ -342,6 +342,7 @@ public sealed class WorkspacePageTests
         Assert.Equal("Current", workspace.FreshnessLabel);
         Assert.StartsWith("Baseline of ", workspace.FreshnessDetail);
         Assert.Contains(" · one saved ", workspace.FreshnessDetail);
+        Assert.Contains("FieldWorks does not currently hold this project.", workspace.FreshnessDetail);
         Assert.True(workspace.RefreshCommand.CanExecute(null));
     }
 
@@ -356,6 +357,22 @@ public sealed class WorkspacePageTests
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
         Assert.Equal("Numbers need refresh", workspace.FreshnessLabel);
         Assert.Contains("numbers are stale until you refresh", workspace.FreshnessDetail);
+    }
+
+    [Fact]
+    public async Task ARefusedRefreshKeepsItsReasonAndFieldWorksHoldStatusVisible()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace, fieldWorksHeldProject: true);
+        var refusal = new Refusal("baseline.busy", FailureReason.Busy, "FieldWorks still has the project open.");
+        fake.CaptureBaselineRefusesWith(refusal);
+
+        await workspace.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal("Refresh refused", workspace.FreshnessLabel);
+        Assert.Contains(refusal.Message, workspace.FreshnessDetail);
+        Assert.Contains("FieldWorks holds this project open right now.", workspace.FreshnessDetail);
+        Assert.Empty(fake.AssessRequests);
     }
 
     [Fact]

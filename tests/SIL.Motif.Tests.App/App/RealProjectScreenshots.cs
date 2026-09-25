@@ -5,10 +5,12 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Tests.App;
@@ -166,11 +168,22 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
             $"{workspace.PageModel<TextsPageModel>().Words.Rows.Count} text words, {workspace.Selection.PastedWordEntries.Count} pasted words, " +
             $"{workspace.PageModel<WarningsPageModel>().Grammar.Warnings.TotalCount} grammar findings");
 
+        var savedSelection = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            walkthrough.ProjectPath, "Screenshot selection", workspace.Selection.ChosenTextIds,
+            workspace.Selection.PastedWordEntries));
+        Assert.True(savedSelection.Succeeded, savedSelection.Refusal?.Message);
+
         workspace.Assess.RunCommand.Execute(null);
         walkthrough.WaitUntil(() => workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
             TimeSpan.FromMinutes(20), "the Assessment did not finish");
         Assert.True(workspace.Assess.State == RunState.Completed,
             $"The Assessment ended {workspace.Assess.State}: {workspace.Assess.Refusal?.Message}");
+        var overview = await workspace.Context.Commands.OverviewAsync(
+            new OverviewRequest(walkthrough.ProjectPath), CancellationToken.None);
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.NotNull(overview.Value!.AssessmentId);
+        walkthrough.WaitUntil(() => workspace.PageModel<OverviewPageModel>().Overview?.AssessmentId is not null,
+            TimeSpan.FromMinutes(1), "the Overview did not load the stored Assessment");
 
         workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.Execute(null);
         walkthrough.WaitUntil(() => !workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.IsRunning, TimeSpan.FromMinutes(2), "Statistics did not load");

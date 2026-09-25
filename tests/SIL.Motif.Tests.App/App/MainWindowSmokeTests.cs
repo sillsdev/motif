@@ -62,26 +62,48 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void OverviewShowsStoredNumbersAndItsTilesNavigateWithoutRunningAnAssessment()
+    public void OverviewLoadsStoredNumbersThroughThePageContextAndItsTilesNavigateWithoutRunningAnAssessment()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
             try
             {
-                workspace.Context.ProjectPath = @"C:\projects\aweti.fwdata";
-                workspace.Context.ProjectOpenedUtc = DateTimeOffset.Parse("2026-09-24T11:02:00Z");
-                workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with { IsStale = true };
+                const string projectPath = @"C:\projects\aweti.fwdata";
+                var fake = (FakeCommandClient)workspace.Context.Commands;
+                var overview = SampleOverview() with { IsStale = true };
+                fake.OverviewCompletesWith(overview);
+                fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
+                    null, EvidenceFreshness.Stale, null, null, null, null, null));
+                await workspace.Context.PublishProjectOpenedAsync(projectPath);
+                Assert.Empty(fake.AssessRequests);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<UserControl>(),
-                    control => control.GetType().Name == "ProjectPanel");
                 var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
                 var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
-                Assert.Contains("41 of 125", text);
+                Assert.Same(overview, workspace.PageModel<OverviewPageModel>().Overview);
+                Assert.Contains(@"C:\projects\aweti.fwdata", Assert.Single(fake.OverviewRequests).ProjectPath);
+                Assert.Contains($"opened {overview.MotifStoreCreatedUtc.ToLocalTime():h:mm tt}", text);
+                Assert.Contains($"last FieldWorks save {overview.LastFieldWorksSaveUtc!.Value.ToLocalTime():h:mm tt}", text);
+                Assert.Contains("125", text);
+                Assert.Contains("313", text);
+                Assert.Contains("812", text);
+                Assert.Contains("38", text);
+                Assert.Contains("167", text);
+                Assert.Contains("33%", text);
+                Assert.Contains("41 of 125 words", text);
+                Assert.Contains("23 no parse", text);
+                Assert.Contains("55 timed out", text);
+                Assert.Contains("6 skipped", text);
+                Assert.Contains("183 of 313 occurrences · 58% covered", text);
                 Assert.Contains("18 of 39", text);
+                Assert.Contains("5 violations", text);
+                Assert.Contains("55 Unknown (timed out)", text);
+                Assert.Contains("2 rejected analyses rebuilt", text);
+                Assert.DoesNotContain("2 rejected analyses rebuilt: 2 of 4", text);
+                Assert.Contains("candidates confirmed: 9 of 18", text);
                 Assert.Contains("8.4 ms", text);
                 Assert.Contains("123.5 ms", text);
                 Assert.Contains("6 findings", text);
@@ -89,6 +111,12 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("5 worth a look", text);
                 Assert.Contains("Largest kind: environment failed validation (4)", text);
                 Assert.Contains("FieldWorks has changed since the Baseline behind these numbers.", text);
+                Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
+                Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(item => item.Text == "41 of 125 words in the default Selection").FontWeight);
+                Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(item => item.Text == "median parse time per word").FontWeight);
+                Assert.Contains("Matrix →", text);
                 var tiles = window.GetLogicalDescendants().OfType<Button>()
                     .Where(item => AutomationProperties.GetName(item) is "Open Text Coverage in Texts" or
                         "Open accuracy in Texts" or "Open Timing" or "Open Warnings");
@@ -114,7 +142,20 @@ public sealed class MainWindowSmokeTests
 
                 Click("Start an AI Handoff");
                 Assert.Equal(WorkspacePage.AiHandoff, workspace.CurrentPage);
-                Assert.Empty(((FakeCommandClient)workspace.Context.Commands).AssessRequests);
+                workspace.Context.PublishEvidence(new WorkspaceEvidence(new AssessCommandResponse(
+                    new BaselineCaptureResponse(
+                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+                        projectPath, DateTimeOffset.UtcNow, false, false),
+                    new SelectionProjection([], []), [], "summary"), DateTimeOffset.UtcNow, WasRerun: false));
+                workspace.Baseline.FieldWorksHeldProject = true;
+                workspace.Baseline.RefusalMessage = "FieldWorks still has the project open.";
+                window.UpdateLayout();
+                var refusalText = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
+                Assert.Contains("Refresh refused", refusalText);
+                Assert.Contains("FieldWorks still has the project open.", refusalText);
+                Assert.Contains("FieldWorks holds this project open right now.", refusalText);
+                Assert.Empty(fake.AssessRequests);
 
                 void Click(string accessibleName)
                 {
@@ -127,7 +168,7 @@ public sealed class MainWindowSmokeTests
             {
                 window.Close();
             }
-        });
+        }, TimeSpan.FromMinutes(1));
     }
 
     [Fact]
@@ -160,6 +201,40 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("No warning summary is available.", text);
                 Assert.DoesNotContain("0 of 0", text);
                 Assert.DoesNotContain("words hit the step limit", text);
+                Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(item => item.Text == "No warning summary is available.").FontWeight);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void OverviewSaysWhenTheDefaultSelectionHasNotResolvedAgainstTheBaseline()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with
+                {
+                    SelectionWordCount = 0,
+                    SelectionTextCount = 1,
+                    SelectionAddedWordCount = 0,
+                    TextOccurrenceCount = 0,
+                };
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
+                var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
+                Assert.Contains("Selection could not be resolved", text);
+                Assert.DoesNotContain("0 words in Selection", text);
+                Assert.DoesNotContain("0 occurrences", text);
             }
             finally
             {
@@ -751,8 +826,17 @@ public sealed class MainWindowSmokeTests
         "Aweti", DateTimeOffset.Parse("2026-09-24T11:02:00Z"), DateTimeOffset.Parse("2026-09-24T10:58:00Z"),
         125, 3, 2, 313, 812, 38, 167, "assessment-1", DateTimeOffset.Parse("2026-09-24T11:04:00Z"), 130,
         "grammar-fingerprint", "selection-fingerprint",
-        new OverviewTextCoverage(41, 23, 55, 6, 313, 183),
-        new OverviewAccuracy(18, 39, 5, 55, 2, 4, 9, 18),
+        new OverviewTextCoverage(41, 23, 55, 6, 313, 183)
+        {
+            OccurrenceCoveragePercent = 58.46,
+        },
+        new OverviewAccuracy(18, 39, 5, 55, 2, 4, 9, 18)
+        {
+            ApprovedWordsNoMatch = 2,
+            ApprovedWordsNoParse = 3,
+            ApprovedWordsUnknown = 14,
+            ApprovedWordsSkipped = 2,
+        },
         new OverviewTiming(8.4, 123.5, [new SlowWordTiming("miboko", 1000)], 55),
         new OverviewWarningsSummary(6, 1, "environment failed validation", 4)
         {
@@ -760,6 +844,8 @@ public sealed class MainWindowSmokeTests
             InformationCount = 5,
         })
     {
+        SelectionResolved = true,
+        WordCoveragePercent = 32.8,
         ProjectFileName = "aweti.fwdata",
     };
 

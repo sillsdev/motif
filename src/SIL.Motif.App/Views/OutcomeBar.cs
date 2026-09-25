@@ -14,10 +14,13 @@ public sealed class OutcomeBar : StackPanel
 {
     public static readonly StyledProperty<IReadOnlyList<OutcomeSegment>?> SegmentsProperty =
         AvaloniaProperty.Register<OutcomeBar, IReadOnlyList<OutcomeSegment>?>(nameof(Segments));
+    public static readonly StyledProperty<bool> ShowLegendProperty =
+        AvaloniaProperty.Register<OutcomeBar, bool>(nameof(ShowLegend), defaultValue: true);
 
     static OutcomeBar()
     {
         SegmentsProperty.Changed.AddClassHandler<OutcomeBar>((bar, _) => bar.Rebuild());
+        ShowLegendProperty.Changed.AddClassHandler<OutcomeBar>((bar, _) => bar.Rebuild());
     }
 
     public OutcomeBar()
@@ -31,6 +34,13 @@ public sealed class OutcomeBar : StackPanel
         set => SetValue(SegmentsProperty, value);
     }
 
+    /// <summary>Whether the bar also shows each segment's count and share.</summary>
+    public bool ShowLegend
+    {
+        get => GetValue(ShowLegendProperty);
+        set => SetValue(ShowLegendProperty, value);
+    }
+
     private void Rebuild()
     {
         Children.Clear();
@@ -38,7 +48,7 @@ public sealed class OutcomeBar : StackPanel
         if (segments.Count == 0) return;
 
         var total = segments.Sum(segment => segment.Count);
-        var bar = new Grid { Height = 14, ColumnSpacing = 2, ClipToBounds = true };
+        var bar = new Grid { Height = ShowLegend ? 14 : 10, ColumnSpacing = 2, ClipToBounds = true };
         var legend = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var segment in segments)
         {
@@ -68,6 +78,6 @@ public sealed class OutcomeBar : StackPanel
             });
         }
         Children.Add(bar);
-        Children.Add(legend);
+        if (ShowLegend) Children.Add(legend);
     }
 }

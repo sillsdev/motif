@@ -626,17 +626,22 @@ public sealed class WorkspaceContextTests
 
     internal static WorkspaceContext NewContext() => NewContextWithFake().Context;
 
+    internal static WorkspaceContext NewContext(ICommandClient commands)
+    {
+        var selection = new SelectionViewModel(commands);
+        return new WorkspaceContext(
+            selection,
+            new AssessViewModel(commands, selection),
+            new ChangesViewModel(commands),
+            commands,
+            new NoFolderPicker(),
+            new NoDragSource());
+    }
+
     private static (FakeCommandClient Fake, WorkspaceContext Context) NewContextWithFake()
     {
         var fake = new FakeCommandClient();
-        var selection = new SelectionViewModel(fake);
-        return (fake, new WorkspaceContext(
-            selection,
-            new AssessViewModel(fake, selection),
-            new ChangesViewModel(),
-            fake,
-            new NoFolderPicker(),
-            new NoDragSource()));
+        return (fake, NewContext(fake));
     }
 
     private sealed record ElsewhereRequest(string Note) : PageRequest(WorkspacePage.Warnings);
