@@ -62,6 +62,53 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
+    public async Task RerunRefreshesTheSelectedTimingFromTheStoredOverrides()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        var calls = 0;
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            new TimingResponse(request.AssessmentId!, request.WordSet, request.By, 1, ++calls, calls, [],
+                request.By == "rule" ? [new TimingAggregateRow("Fresh rule", 1, 1, 1, 1)] : [], [])
+            {
+                Words = [new TimingWordRow("dogs", 1, 1, calls > 3 ? "Finished" : "Step limit")],
+            })));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        var before = timing.KindTiming;
+
+        context.PublishEvidence(new WorkspaceEvidence(Assessment() with
+        {
+            TimingOverrideAssessmentIds = ["rerun-parse"],
+        }, DateTimeOffset.Now, WasRerun: true));
+
+        Assert.NotSame(before, timing.KindTiming);
+        Assert.Equal("Finished", Assert.Single(timing.KindTiming!.Words).Completion);
+        Assert.Contains(fake.TimingRequests, request => request.AssessmentId == "assessment-parse" &&
+            request.OverrideAssessmentIds is ["rerun-parse"]);
+    }
+
+    [Fact]
+    public async Task RefreshSelectsARuleThatExistsInTheNewAssessment()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        var refreshed = false;
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            new TimingResponse("assessment-parse", request.WordSet, request.By, 1, 1, 1, [],
+                request.By == "rule" ? [new TimingAggregateRow(refreshed ? "New rule" : "Old rule", 1, 1, 1, 1)] : [], []))));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        Assert.Equal("Old rule", timing.SelectedRule);
+
+        refreshed = true;
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        Assert.Equal("New rule", timing.SelectedRule);
+        Assert.Equal("New rule", fake.TimingRequests.Last().Rule);
+    }
+
+    [Fact]
     public async Task OpeningAProjectReadsItsStoredOverviewThroughThePageContext()
     {
         var (fake, context) = NewContextWithFake();

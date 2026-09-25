@@ -8,6 +8,7 @@ using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Tests.App;
 
@@ -62,6 +63,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 Directory.CreateDirectory(Path.Combine(folder, name));
                 File.WriteAllText(Path.Combine(folder, name, "failed.txt"), exception.ToString());
                 output.WriteLine($"{name}: FAILED after {(DateTime.Now - started).TotalSeconds:F0}s — {exception.Message}");
+                throw;
             }
         }
     }
@@ -219,16 +221,27 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
 
     private static void SaveTimingStepLimit(WalkthroughWindow walkthrough, string folder)
     {
-        var timing = walkthrough.Workspace.PageModel<TimingPageModel>();
+        var workspace = walkthrough.Workspace;
+        var timing = workspace.PageModel<TimingPageModel>();
+        var word = workspace.Assess.Result!.Words.FirstOrDefault(row => row.Outcome is "analysed" or "no-analysis")
+            ?? workspace.Assess.Result.Words.First();
+        _ = workspace.Assess.RerunAsync([word.Word], 60_000, new StepCap(1));
+        walkthrough.WaitUntil(() => workspace.Assess.State is RunState.Completed or RunState.Refused &&
+            !workspace.Assess.IsActive, TimeSpan.FromMinutes(2), "The step-limited re-run did not finish");
+        Assert.Equal(RunState.Completed, workspace.Assess.State);
         timing.SelectWordSetCommand.Execute("step-limit");
         walkthrough.WaitUntil(() => !timing.SelectWordSetCommand.IsRunning && timing.HasTiming,
             TimeSpan.FromMinutes(2), "Step-limit timing did not load");
+        Assert.True(timing.HasSelectedWords && timing.KindTiming!.Words.Any(word => word.Completion == "Step limit"),
+            "The step-limit capture must show a recorded step-limited word.");
+        walkthrough.Window.Height = 1650;
         foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
         {
             Application.Current!.RequestedThemeVariant = variant;
             walkthrough.Workspace.CurrentPage = WorkspacePage.Timing;
             Save(walkthrough.Window, Path.Combine(folder, $"4b-timing-step-limit-{theme}.png"));
         }
+        walkthrough.Window.Height = 780;
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
     }
 

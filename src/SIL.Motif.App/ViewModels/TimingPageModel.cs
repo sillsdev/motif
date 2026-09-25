@@ -17,6 +17,7 @@ public sealed partial class TimingPageModel : PageModel
 {
     private int _loadGeneration;
     private IReadOnlyList<string>? _explicitWords;
+    private TimingWordSet _wordSet = new TimingWordSet.All();
     private CancellationTokenSource? _rerunCancellation;
 
     public TimingPageModel(WorkspaceContext context) : base(context)
@@ -116,10 +117,10 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasRuleDetail => RuleDetail is not null;
     public bool HasTimingError => TimingError is not null;
     public string? TimingError { get; private set; }
-    public string WordSet { get; private set; } = "all";
-    public bool IsStepLimitSelected => WordSet == "step-limit" && _explicitWords is null;
-    public bool IsSlowestSelected => WordSet == "slowest" && _explicitWords is null;
-    public bool IsAllSelected => WordSet == "all" && _explicitWords is null;
+    public string WordSet => _wordSet.ToWireValue();
+    public bool IsStepLimitSelected => _wordSet is TimingWordSet.StepLimited && _explicitWords is null;
+    public bool IsSlowestSelected => _wordSet is TimingWordSet.Slowest && _explicitWords is null;
+    public bool IsAllSelected => _wordSet is TimingWordSet.All && _explicitWords is null;
     public string ScopeLabel => KindTiming is null ? "No stored timing for these words" :
         $"Where the time went, for these {KindTiming.WordCount:N0} words: by kind of rule";
     public string PercentileSummary => KindTiming is null ? string.Empty :
@@ -201,7 +202,7 @@ public sealed partial class TimingPageModel : PageModel
         RuleDetail = null;
         TimingError = null;
         SelectedRule = null;
-        WordSet = "all";
+        _wordSet = new TimingWordSet.All();
         _explicitWords = null;
         RaiseTimingState();
         Statistics.Reset();
@@ -225,7 +226,7 @@ public sealed partial class TimingPageModel : PageModel
         OnPropertyChanged(nameof(ShowNoEvidence));
         OnPropertyChanged(nameof(ShowStatistics));
         RaiseStoredTimingState();
-        if (!evidence.WasRerun && Context.ProjectPath is { } projectPath)
+        if (Context.ProjectPath is { } projectPath)
             _ = LoadScopeAsync(projectPath, CurrentAssessmentId, CancellationToken.None);
     }
 
@@ -248,7 +249,7 @@ public sealed partial class TimingPageModel : PageModel
         if (request is not OpenTimingRequest timing) return;
         Focus = timing with { Words = timing.Words.ToArray() };
         _explicitWords = Focus.Words.Count > 0 ? Focus.Words : null;
-        WordSet = "all";
+        _wordSet = new TimingWordSet.All();
         SelectedRule = timing.Rule;
         FocusedTiming = null;
         FocusedTimingError = null;
@@ -266,12 +267,21 @@ public sealed partial class TimingPageModel : PageModel
         .SingleOrDefault(measurement => measurement.Kind == "ParseTime")?.AssessmentId ??
         Context.CurrentEvidence?.MatchingAssessment?.AssessmentId;
 
+    private IReadOnlyList<string>? CurrentTimingOverrides => Context.Evidence?.Assessment.TimingOverrideAssessmentIds;
+
     private async Task SelectWordSetAsync(string? wordSet)
     {
-        if (string.IsNullOrWhiteSpace(wordSet) || Context.ProjectPath is not { } projectPath) return;
+        var selection = TimingWordSet.Parse(wordSet);
+        if (selection is null) return;
+        await SelectTimingWordSetAsync(selection);
+    }
+
+    private async Task SelectTimingWordSetAsync(TimingWordSet selection)
+    {
+        if (Context.ProjectPath is not { } projectPath) return;
         Focus = null;
         _explicitWords = null;
-        WordSet = wordSet;
+        _wordSet = selection;
         SelectedRule = null;
         RaiseFocusState();
         await LoadScopeAsync(projectPath, CurrentAssessmentId, CancellationToken.None);
@@ -291,18 +301,14 @@ public sealed partial class TimingPageModel : PageModel
         if (SelectedMatrixCell is not { } cell) return Task.CompletedTask;
         var standing = cell.Row switch
         {
-            WordProjectStatus.NotPresent => "not-present",
-            WordProjectStatus.IncorrectSpelling => "incorrect-spelling",
-            _ => cell.Row.ToString().ToLowerInvariant(),
+            WordProjectStatus.NotPresent => TimingStanding.NotPresent,
+            WordProjectStatus.Approved => TimingStanding.Approved,
+            WordProjectStatus.Candidate => TimingStanding.Candidate,
+            WordProjectStatus.Rejected => TimingStanding.Rejected,
+            WordProjectStatus.IncorrectSpelling => TimingStanding.IncorrectSpelling,
+            _ => throw new ArgumentOutOfRangeException(nameof(cell)),
         };
-        var column = cell.Column switch
-        {
-            CompareColumnKind.NoMatch => "no-match",
-            CompareColumnKind.NoParse => "no-parse",
-            CompareColumnKind.Timeout => "unknown",
-            _ => cell.Column.ToString().ToLowerInvariant(),
-        };
-        return SelectWordSetAsync($"cell:{standing}:{column}");
+        return SelectTimingWordSetAsync(new TimingWordSet.MatrixCell(standing, cell.Column));
     }
 
     private async Task SelectExplicitWordsAsync(IReadOnlyList<string> words)
@@ -310,7 +316,7 @@ public sealed partial class TimingPageModel : PageModel
         if (words.Count == 0 || Context.ProjectPath is not { } projectPath) return;
         Focus = null;
         _explicitWords = words;
-        WordSet = "all";
+        _wordSet = new TimingWordSet.All();
         SelectedRule = null;
         RaiseFocusState();
         await LoadScopeAsync(projectPath, CurrentAssessmentId, CancellationToken.None);
@@ -324,9 +330,10 @@ public sealed partial class TimingPageModel : PageModel
         RuleDetail = null;
         TimingError = null;
         RaiseTimingState();
-        var top = WordSet == "slowest" ? Math.Max(1, SlowestCount) : 10;
+        var top = _wordSet is TimingWordSet.Slowest ? Math.Max(1, SlowestCount) : 10;
         var kind = await Context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId,
-            WordSet, "kind", Top: top, ExplicitWords: _explicitWords), cancellationToken).ConfigureAwait(true);
+            WordSet, "kind", Top: top, ExplicitWords: _explicitWords,
+            OverrideAssessmentIds: CurrentTimingOverrides), cancellationToken).ConfigureAwait(true);
         if (generation != _loadGeneration || Context.ProjectPath != projectPath) return;
         if (!kind.Succeeded)
         {
@@ -339,13 +346,15 @@ public sealed partial class TimingPageModel : PageModel
 
         KindTiming = kind.Value;
         FocusedTiming = Focus is null ? null : kind.Value;
-        StoredTiming = Focus is null && WordSet == "all" && _explicitWords is null ? kind.Value : StoredTiming;
+        StoredTiming = Focus is null && _wordSet is TimingWordSet.All && _explicitWords is null ? kind.Value : StoredTiming;
         var rule = await Context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId,
-            WordSet, "rule", Top: top, ExplicitWords: _explicitWords), cancellationToken).ConfigureAwait(true);
+            WordSet, "rule", Top: top, ExplicitWords: _explicitWords,
+            OverrideAssessmentIds: CurrentTimingOverrides), cancellationToken).ConfigureAwait(true);
         if (generation != _loadGeneration || Context.ProjectPath != projectPath) return;
         RuleTiming = rule.Succeeded ? rule.Value : null;
         TimingError = rule.Succeeded ? null : rule.Refusal?.Message;
-        SelectedRule ??= RuleTiming?.Aggregates.FirstOrDefault()?.Name;
+        if (RuleTiming is null || RuleTiming.Aggregates.All(row => row.Name != SelectedRule))
+            SelectedRule = RuleTiming?.Aggregates.FirstOrDefault()?.Name;
         RaiseTimingState();
         if (SelectedRule is not null) await LoadRuleDetailAsync(projectPath, assessmentId, generation);
     }
@@ -363,7 +372,8 @@ public sealed partial class TimingPageModel : PageModel
     {
         var rule = SelectedRule;
         var detail = await Context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId,
-            WordSet, "rule", rule, Top: Math.Max(10, KindTiming?.WordCount ?? 10), ExplicitWords: _explicitWords),
+            WordSet, "rule", rule, Top: Math.Max(10, KindTiming?.WordCount ?? 10), ExplicitWords: _explicitWords,
+            OverrideAssessmentIds: CurrentTimingOverrides),
             CancellationToken.None).ConfigureAwait(true);
         if (generation != _loadGeneration || Context.ProjectPath != projectPath || SelectedRule != rule) return;
         RuleDetail = detail.Succeeded ? detail.Value : null;

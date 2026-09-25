@@ -18,6 +18,8 @@ public sealed record AssessCommandResponse(
     public SelectionDescriptor? SelectionDescriptor { get; init; }
     public IReadOnlyList<AssessmentWordResult> Words { get; init; } = new AssessmentWordResult[0];
     public IReadOnlyList<ProducedAssessmentReference> Measurements { get; init; } = new ProducedAssessmentReference[0];
+    /// <summary>Stored ParseTime re-runs to apply, in order, over this result's original word timings.</summary>
+    public IReadOnlyList<string> TimingOverrideAssessmentIds { get; init; } = Array.Empty<string>();
     public string CompletionSummary { get; init; } = string.Empty;
     public string CorrectnessStatus { get; init; } = "Correctness unavailable: authoritative analysis identities are not supplied.";
     public IReadOnlyList<string>? GrammarWarnings { get; init; }

@@ -8,4 +8,5 @@ public sealed record TimingRequest(
     string By = "kind",
     string? Rule = null,
     int Top = 10,
-    IReadOnlyList<string>? ExplicitWords = null);
+    IReadOnlyList<string>? ExplicitWords = null,
+    IReadOnlyList<string>? OverrideAssessmentIds = null);

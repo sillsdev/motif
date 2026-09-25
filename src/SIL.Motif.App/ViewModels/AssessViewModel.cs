@@ -66,6 +66,9 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         {
             Words = into.Words.Select(word => fresh.GetValueOrDefault(word.Word) ?? word)
                 .Concat(rerun.Words.Where(word => !existing.Contains(word.Word))).ToArray(),
+            TimingOverrideAssessmentIds = into.TimingOverrideAssessmentIds.Concat(
+                rerun.Measurements.Where(measurement => measurement.Kind == "ParseTime")
+                    .Select(measurement => measurement.AssessmentId)).ToArray(),
         };
     }
 

@@ -234,6 +234,58 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void TimingOverlaysRerunRowsAndLabelsTimeoutWithoutMorphology()
+    {
+        using var seeded = NewSeededScratch();
+        var run = 0;
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                ++run == 1
+                    ? [new(0, "motifa", 99, SIL.Motif.Host.Parser.WordOutcome.Capped, "partial"),
+                       new(1, "motifb", 50, SIL.Motif.Host.Parser.WordOutcome.TimedOut, "partial")]
+                    : [new(0, "motifa", 10, SIL.Motif.Host.Parser.WordOutcome.Analysed, "finished")],
+                1000, seeded.FwDataPath, [])),
+            AssessmentKind.ObjectTiming => TimingCache(),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate),
+        };
+        AssessmentRaw TimingCache()
+        {
+            var path = Path.Combine(_managedRootsParent, $"timing-overlay-{run}.sqlite");
+            if (run == 1)
+                WriteStatsCache(path, ("motifa", 4, 1, 2, 2_000_000), ("motifb", 3, 0, 3, 3_000_000));
+            else
+                WriteStatsCache(path, ("motifa", 8, 1, 5, 8_000_000));
+            return new AssessmentRaw.FileCache(path, BatchInvocationEvidence.DigestFile(path));
+        }
+        var initial = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa", "motifb"], false, null)), NewManagedRoot(),
+            assessor, NewInvoker(), null, CancellationToken.None);
+        Assert.True(initial.Succeeded, initial.Refusal?.Message);
+        var rerun = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa"], false, null)), NewManagedRoot(),
+            assessor, NewInvoker(), null, CancellationToken.None);
+        Assert.True(rerun.Succeeded, rerun.Refusal?.Message);
+        var initialId = initial.Value!.Measurements.Single(row => row.Kind == "ParseTime").AssessmentId;
+        var rerunId = rerun.Value!.Measurements.Single(row => row.Kind == "ParseTime").AssessmentId;
+
+        var timing = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath, initialId,
+            By: "rule", OverrideAssessmentIds: [rerunId]));
+
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Equal(2, timing.Value!.WordCount);
+        Assert.Equal("Finished", timing.Value.Words.Single(word => word.Word == "motifa").Completion);
+        Assert.Equal(10, timing.Value.Words.Single(word => word.Word == "motifa").ElapsedMs);
+        Assert.Equal("Time limit", timing.Value.Words.Single(word => word.Word == "motifb").Completion);
+        Assert.Equal(30, timing.Value.MedianMs);
+        Assert.Equal(11, Assert.Single(timing.Value.Aggregates).ElapsedMs);
+    }
+
+    [Fact]
     public void MissingBatchStatisticsForASelectedWordRefusesTheAssessment()
     {
         using var seeded = NewSeededScratch();

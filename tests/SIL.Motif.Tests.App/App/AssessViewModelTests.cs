@@ -123,6 +123,24 @@ public sealed class AssessViewModelTests
     }
 
     [Fact]
+    public void RerunningRetainsTheStoredTimingNeededToReplaceEarlierWordRows()
+    {
+        var first = NewResponse() with
+        {
+            Measurements = [new ProducedAssessmentReference("initial", "ParseTime", "first")],
+        };
+        var second = NewResponse() with
+        {
+            Measurements = [new ProducedAssessmentReference("rerun", "ParseTime", "second")],
+        };
+
+        var merged = AssessViewModel.Merge(first, second);
+
+        Assert.Equal(["rerun"], merged.TimingOverrideAssessmentIds);
+        Assert.Equal("initial", Assert.Single(merged.Measurements).AssessmentId);
+    }
+
+    [Fact]
     public async Task CancellingWhileRunningReachesCancelledWithTheCommandsOwnRefusalCode()
     {
         var (fake, _, assess) = NewViewModel();

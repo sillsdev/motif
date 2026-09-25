@@ -10,6 +10,20 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class CatalogAggregationTests
 {
     [Fact]
+    public void TimingWordSetParsesNamedChoicesAndMatrixCellsAsDistinctCases()
+    {
+        Assert.IsType<TimingWordSet.All>(TimingWordSet.Parse("all"));
+        Assert.IsType<TimingWordSet.StepLimited>(TimingWordSet.Parse("step-limit"));
+        Assert.IsType<TimingWordSet.Slowest>(TimingWordSet.Parse("slowest"));
+        var cell = Assert.IsType<TimingWordSet.MatrixCell>(TimingWordSet.Parse("cell:approved:no-parse"));
+        Assert.Equal(TimingStanding.Approved, cell.Standing);
+        Assert.Equal(CompareColumnKind.NoParse, cell.Column);
+        Assert.Equal("cell:approved:no-parse", cell.ToWireValue());
+        Assert.Equal("Saved set", Assert.IsType<TimingWordSet.Named>(TimingWordSet.Parse("Saved set")).Name);
+        Assert.Null(TimingWordSet.Parse("cell:approved:misspelled"));
+    }
+
+    [Fact]
     public void OverviewTimingUsesMedianNearestRankAndSlowestWords()
     {
         var result = TimingAggregation.SummarizeWords(

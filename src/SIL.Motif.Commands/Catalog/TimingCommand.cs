@@ -47,12 +47,32 @@ public static class TimingCommand
             if (assessment is null || !assessment.Kind.IsStoredKind(AssessmentKind.ParseTime))
                 return RefusedTiming("timing.no-assessment", "No matching stored ParseTime Assessment is available.");
 
-            var words = assessment.Words ?? Array.Empty<AssessedWord>();
+            var words = (assessment.Words ?? Array.Empty<AssessedWord>()).ToList();
+            var objectTimings = assessment.ObjectTimings.ToList();
+            foreach (var overrideId in request.OverrideAssessmentIds ?? [])
+            {
+                AssessmentRecord? replacement;
+                try { replacement = assessments.Get(overrideId); }
+                catch (KeyNotFoundException) { replacement = null; }
+                if (replacement is null)
+                    return RefusedTiming("timing.override-not-found", "A stored re-run Assessment was not found.");
+                if (!replacement.Kind.IsStoredKind(AssessmentKind.ParseTime) ||
+                    replacement.BaselineToken != assessment.BaselineToken)
+                    return RefusedTiming("timing.invalid-override", "A re-run must be a ParseTime Assessment of the same Baseline.");
+                foreach (var word in replacement.Words ?? [])
+                {
+                    var index = words.FindIndex(previous => previous.Word == word.Word);
+                    if (index < 0) words.Add(word);
+                    else words[index] = word;
+                    objectTimings.RemoveAll(row => row.Word == word.Word);
+                }
+                objectTimings.AddRange(replacement.ObjectTimings);
+            }
             var selected = ResolveWords(request, words, database, currentEvidence);
             if (!selected.Succeeded) return CommandOutcome<TimingResponse>.Refused(selected.Refusal!);
             var selectedWords = selected.Value!;
             var selectedNames = selectedWords.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
-            var objectRows = assessment.ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
+            var objectRows = objectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
             var aggregates = TimingAggregation.Aggregate(objectRows, request.By, request.Rule, request.Top);
             var summary = TimingAggregation.SummarizeWords(selectedWords, request.Top);
             var attempts = objectRows.GroupBy(row => row.Word, StringComparer.Ordinal)
@@ -65,8 +85,8 @@ public static class TimingCommand
                 IsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
                     attempts.GetValueOrDefault(word.Word), IsStepLimited(word) ? "Step limit" :
-                    word.Outcome == "timeout" || word.Morphology?.TimedOut == true ? "Time limit" :
-                    word.Outcome == "skipped" ? "Skipped" : "Finished")).ToArray(),
+                    word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? "Time limit" :
+                    word.Outcome == WordOutcome.Skipped.ToStoredOutcome() ? "Skipped" : "Finished")).ToArray(),
             });
         });
     }
@@ -83,28 +103,27 @@ public static class TimingCommand
             return Success(allWords.Where(word => explicitSet.Contains(word.Word)).ToArray());
         }
 
-        var name = request.WordSet.Trim();
-        if (StringComparer.Ordinal.Equals(name, "all")) return Success(allWords);
-        if (name is "step-limit" or "steps")
+        var selection = TimingWordSet.Parse(request.WordSet);
+        if (selection is null)
+            return RefusedInvalidWordSet("A matrix cell must use cell:<standing>:<column>.");
+        if (selection is TimingWordSet.All) return Success(allWords);
+        if (selection is TimingWordSet.StepLimited)
             return Success(allWords.Where(IsStepLimited).ToArray());
-        if (name is "slowest")
+        if (selection is TimingWordSet.Slowest)
             return Success(allWords.Where(word => word.ElapsedMs is not null)
                 .OrderByDescending(word => word.ElapsedMs).ThenBy(word => word.Word, StringComparer.Ordinal)
                 .Take(request.Top).ToArray());
-        if (name.StartsWith("cell:", StringComparison.Ordinal))
+        if (selection is TimingWordSet.MatrixCell cell)
         {
-            var cell = name[5..].Split(':', 2);
-            if (cell.Length != 2 || !TryColumn(cell[1], out var column))
-                return RefusedInvalidWordSet("A matrix cell must use cell:<standing>:<column>.");
-            var standing = NormalizeStanding(cell[0]);
-            if (standing is null) return RefusedInvalidWordSet("The matrix cell has an unknown standing.");
+            var standing = TimingWordSet.StandingName(cell.Standing);
             return Success(allWords.Where(word =>
             {
                 var placement = Place(word);
-                return placement.Column == column && StringComparer.Ordinal.Equals(placement.Standing, standing);
+                return placement.Column == cell.Column && StringComparer.Ordinal.Equals(placement.Standing, standing);
             }).ToArray());
         }
 
+        var name = ((TimingWordSet.Named)selection).Name;
         var repository = new NamedSelectionRepository(database);
         var saved = repository.Get(name);
         if (saved is null)
@@ -123,36 +142,12 @@ public static class TimingCommand
         word.ReadingGrades, word.MissedApprovedCount ?? 0));
 
     private static bool IsStepLimited(AssessedWord word) =>
-        word.Outcome == "capped" || word.Morphology?.Capped == true;
+        word.Outcome == WordOutcome.Capped.ToStoredOutcome() || word.Morphology?.Capped == true;
 
     private static HashSet<string> NormalizeWords(IEnumerable<string> words) => words
         .Where(word => !string.IsNullOrWhiteSpace(word))
         .Select(word => word.Trim().Normalize(System.Text.NormalizationForm.FormD))
         .ToHashSet(StringComparer.Ordinal);
-
-    private static string? NormalizeStanding(string value) => value switch
-    {
-        "approved" or SIL.Motif.Contract.Responses.ProjectStanding.Approved => SIL.Motif.Contract.Responses.ProjectStanding.Approved,
-        "candidate" or SIL.Motif.Contract.Responses.ProjectStanding.Candidate => SIL.Motif.Contract.Responses.ProjectStanding.Candidate,
-        "rejected" or SIL.Motif.Contract.Responses.ProjectStanding.Rejected => SIL.Motif.Contract.Responses.ProjectStanding.Rejected,
-        "incorrect-spelling" or SIL.Motif.Contract.Responses.ProjectStanding.IncorrectSpelling => SIL.Motif.Contract.Responses.ProjectStanding.IncorrectSpelling,
-        "not-present" or SIL.Motif.Contract.Responses.ProjectStanding.NotPresent => SIL.Motif.Contract.Responses.ProjectStanding.NotPresent,
-        _ => null,
-    };
-
-    private static bool TryColumn(string value, out CompareColumnKind column)
-    {
-        column = value switch
-        {
-            "match" => CompareColumnKind.Match,
-            "no-match" => CompareColumnKind.NoMatch,
-            "no-parse" => CompareColumnKind.NoParse,
-            "unknown" or "timeout" => CompareColumnKind.Timeout,
-            "skipped" => CompareColumnKind.Skipped,
-            _ => (CompareColumnKind)(-1),
-        };
-        return Enum.IsDefined(column);
-    }
 
     private static CommandOutcome<IReadOnlyList<AssessedWord>> Success(IReadOnlyList<AssessedWord> words) =>
         CommandOutcome<IReadOnlyList<AssessedWord>>.Success(words);
