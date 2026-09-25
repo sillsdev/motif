@@ -16,6 +16,7 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
+using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Baselines;
@@ -78,200 +79,221 @@ public static class PendingChanges
                 Comment = "Changes to word analyses and spelling.",
             } :
                 ParseDraft(current.ProposalJson!);
-            using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-            IWfiWordform wordform;
-            try
-            {
-                var words = cache.ServiceLocator.GetInstance<IWfiWordformRepository>();
-                if (string.IsNullOrWhiteSpace(change.WordformId))
-                {
-                    var matches = words.AllInstances().Where(item =>
-                        (item.Form.VernacularDefaultWritingSystem?.Text ?? "")
-                            .Normalize(NormalizationForm.FormD) == change.Word.Normalize(NormalizationForm.FormD))
-                        .Take(2).ToArray();
-                    if (matches.Length == 0)
-                        return Refuse("change.wordform-missing", "The selected wordform is no longer in the project.",
-                            ("changeId", change.ChangeId), ("word", change.Word));
-                    if (matches.Length > 1)
-                        return Refuse("change.wordform-ambiguous", "More than one wordform has this form.",
-                            ("changeId", change.ChangeId), ("word", change.Word));
-                    wordform = matches[0];
-                }
-                else wordform = words.GetObject(CanonicalId.Parse(change.WordformId).ToGuid());
-            }
-            catch (Exception exception) when (exception is FormatException or KeyNotFoundException or InvalidOperationException)
-            {
-                return Refuse("change.wordform-missing", "The selected wordform is no longer in the project.",
-                    ("changeId", change.ChangeId), ("wordformId", change.WordformId));
-            }
-            change = change with { WordformId = CanonicalId.FromGuid(wordform.Guid).Value };
-            var form = wordform.Form.VernacularDefaultWritingSystem?.Text ?? "";
-            if (form.Normalize(NormalizationForm.FormD) != change.Word.Normalize(NormalizationForm.FormD))
-                return Refuse("change.wordform-changed", "The selected wordform changed its form.",
-                    ("changeId", change.ChangeId), ("wordformId", change.WordformId));
-
-            if (change.Kind == AnalysisChangeKinds.AddCandidate &&
-                draft.ComposerProvenance.Any(entry => Property(entry, "wordformId") == change.WordformId &&
-                    Property(entry, "kind") is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or
-                        AnalysisChangeKinds.Candidate))
-                return CommandOutcome<PendingChangesSnapshot>.Success(
-                    Snapshot(database, project, repository) with { SkippedWord = change.Word });
-
-            var reading = change.Reading;
-            if (reading is null && change.StoredAnalysisId is { } storedId)
-            {
-                IWfiAnalysis? stored;
-                try
-                {
-                    var guid = CanonicalId.Parse(storedId).ToGuid();
-                    stored = wordform.AnalysesOC.SingleOrDefault(item => item.Guid == guid);
-                }
-                catch (Exception exception) when (exception is FormatException or InvalidOperationException)
-                {
-                    stored = null;
-                }
-                if (stored is null)
-                    return Refuse("change.stored-analysis-missing", "The chosen analysis is no longer under this wordform.",
-                        ("changeId", change.ChangeId), ("wordformId", change.WordformId),
-                        ("storedAnalysisId", storedId));
-                reading = new ParseAnalysis(stored.MorphBundlesOS.Select(bundle => new ParseMorph(
-                    bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"),
-                    bundle.InflTypeRA?.Guid.ToString("D"),
-                    bundle.MorphRA is null ? bundle.Form.VernacularDefaultWritingSystem?.Text : null)).ToArray());
-            }
-            if (change.AssessmentId is { } assessmentId)
-            {
-                try
-                {
-                    var assessment = new AssessmentRepository(database).Get(assessmentId);
-                    BaselineToken? assessmentBaseline;
-                    try
-                    {
-                        assessmentBaseline = JsonSerializer.Deserialize<BaselineToken>(
-                            assessment.BaselineToken, JsonOptions);
-                    }
-                    catch (Exception exception) when (exception is JsonException or ArgumentException)
-                    {
-                        assessmentBaseline = null;
-                    }
-                    if (assessmentBaseline != baseline.Token)
-                        return Refuse("change.assessment-stale", "The Assessment belongs to an older Baseline.",
-                            ("changeId", change.ChangeId), ("wordformId", change.WordformId),
-                            ("assessmentId", assessmentId));
-                    var word = assessment.Words?.SingleOrDefault(item =>
-                        item.Word.Normalize(NormalizationForm.FormD) == form.Normalize(NormalizationForm.FormD));
-                    if (change.StoredAnalysisId is null &&
-                        (reading is null || (change.ReadingIndex is { } index
-                            ? index < 0 || index >= (word?.Morphology?.Analyses.Count ?? 0) ||
-                              ChangeFitPreflight.ReadingDigest(word!.Morphology!.Analyses[index]) !=
-                              ChangeFitPreflight.ReadingDigest(reading)
-                            : word?.Morphology?.Analyses.Any(item =>
-                                ChangeFitPreflight.ReadingDigest(item) == ChangeFitPreflight.ReadingDigest(reading)) != true)))
-                        return Refuse("change.reading-missing", "The chosen reading is absent from the Assessment.",
-                            ("changeId", change.ChangeId), ("wordformId", change.WordformId),
-                            ("assessmentId", assessmentId));
-                }
-                catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
-                {
-                    return Refuse("change.assessment-missing", "The Assessment is unavailable.",
-                        ("changeId", change.ChangeId), ("assessmentId", assessmentId));
-                }
-            }
-            if (change.Kind != AnalysisChangeKinds.IncorrectSpelling && reading is null)
-                return Refuse("change.reading-missing", "Choose an exact reading for this change.",
-                    ("changeId", change.ChangeId), ("wordformId", change.WordformId));
-
-            var occupied = reading is null ? default : draft.Operations.Select(operation =>
-            {
-                if (operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
-                    !extensions.TryGetProperty("changeFit", out var fit) ||
-                    fit.ValueKind != JsonValueKind.Object) return (ChangeId: (string?)null, Fits: false);
-                return (ChangeId: ChangeIdOf(operation), Fits:
-                    Property(fit, "wordformId") == change.WordformId &&
-                    Property(fit, "readingContentDigest") == ChangeFitPreflight.ReadingDigest(reading!));
-            }).FirstOrDefault(item => item.Fits);
-            if (occupied.Fits && occupied.ChangeId is null)
-                return Refuse("change.slot-occupied", "An unmapped change addresses this word and reading.",
-                    ("changeId", change.ChangeId), ("wordformId", change.WordformId));
-            var priorKind = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) == occupied.ChangeId)
-                .Select(entry => Property(entry, "kind")).LastOrDefault();
-            var cancelUnstoredChoice = change.Kind == AnalysisChangeKinds.Candidate && occupied.Fits &&
-                priorKind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or
-                    AnalysisChangeKinds.Candidate or AnalysisChangeKinds.AddCandidate &&
-                !wordform.AnalysesOC.Any(analysis => AnalysisChangeComposer.Matches(analysis, reading!));
-            IReadOnlyList<OperationEnvelope> operations;
-            try
-            {
-                operations = cancelUnstoredChoice ? [] : AnalysisChangeComposer.Build(cache,
-                    new AnalysisChangeIntent(change.Kind, CanonicalId.Parse(change.WordformId), reading,
-                        change.StoredAnalysisId is null ? null : CanonicalId.Parse(change.StoredAnalysisId),
-                        change.ChangeId));
-            }
-            catch (Exception exception) when (exception is InvalidOperationException or FormatException)
-            {
-                return Refuse("change.cannot-compose", exception.Message,
-                    ("changeId", change.ChangeId), ("wordformId", change.WordformId));
-            }
-            var removed = RemoveChange(draft, change.ChangeId);
-            if (occupied.ChangeId is { } occupiedId && occupiedId != change.ChangeId)
-                removed += RemoveChange(draft, occupiedId);
-            foreach (var group in draft.ContractVersions.Keys.ToArray())
-                if (!draft.Operations.Any(operation => OperationKind.GetGroup(operation.Kind) == group))
-                    draft.ContractVersions.Remove(group);
-            if (operations.Count == 0 && removed == 0)
-                return Refuse("change.no-effect", "The chosen analysis already has that state.",
-                    ("changeId", change.ChangeId));
-            var existingOperations = draft.Operations.Count == 0
-                ? Array.Empty<OperationEnvelope>()
-                : ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
-            if (AnalysisOpinionSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
-            {
-                var existingChangeId = collision.Existing.Extensions is { ValueKind: JsonValueKind.Object } extension &&
-                    extension.TryGetProperty("changeId", out var id) ? id.GetString() : null;
-                return Refuse("change.slot-occupied", "Another change already addresses that project slot.",
-                    ("changeId", change.ChangeId), ("existingChangeId", existingChangeId),
-                    ("wordformId", change.WordformId));
-            }
-            var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
-            foreach (var operation in operations)
-            {
-                var analysis = operation.Target is { } target
-                    ? wordform.AnalysesOC.FirstOrDefault(item => item.Guid == target.ToGuid()) : null;
-                var fingerprint = new ChangeFitFingerprint(change.WordformId,
-                    analysis is null ? null : CanonicalId.FromGuid(analysis.Guid).Value,
-                    form.Normalize(NormalizationForm.FormD), token,
-                    analysis is null ? null : ChangeFitPreflight.ContentDigest(analysis),
-                    reading is null ? null : ChangeFitPreflight.ReadingDigest(reading), reading,
-                    analysis?.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString(),
-                    operation.Kind == WfiWordformSpellingStatusOperationKinds.SetSpellingStatus
-                        ? wordform.SpellingStatus : null);
-                draft.Operations.Add(ToDraft(operation, fingerprint, change.ChangeId));
-                draft.ContractVersions[OperationKind.GetGroup(operation.Kind)] = "1.0";
-            }
-            if (operations.Count > 0)
-                draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
-                {
-                    composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
-                    change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
-                    change.OriginPage,
-                    operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
-                }, JsonOptions));
-            var json = JsonSerializer.Serialize(draft, JsonOptions);
-            var saved = current is null
-                ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)
-                : repository.TrySaveDraft(DraftName, current.ProposalJson!, json);
-            if (!saved)
-                return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
-                    ("changeId", change.ChangeId), ("expectedRevision", request.ExpectedRevision));
+            var saved = ComposeAndSave(database, repository, current, draft, change, baseline,
+                request.ExpectedRevision);
+            if (!saved.Succeeded)
+                return CommandOutcome<PendingChangesSnapshot>.Refused(saved.Refusal!);
+            var details = saved.Value!;
             return CommandOutcome<PendingChangesSnapshot>.Success(
                 Snapshot(database, project, repository) with
                 {
-                    ReplacedChangeId = operations.Count > 0 && occupied.ChangeId != change.ChangeId
-                        ? occupied.ChangeId : null,
-                    CancelledChangeId = operations.Count == 0 && removed > 0
-                        ? occupied.ChangeId ?? change.ChangeId : null,
+                    SkippedWord = details.SkippedWord,
+                    ReplacedChangeId = details.ReplacedChangeId,
+                    CancelledChangeId = details.CancelledChangeId,
                 });
         });
+
+    private static CommandOutcome<PutDetails> ComposeAndSave(MotifDatabase database,
+        ProposalRepository repository, ProposalRecord? current, DraftDocument draft,
+        ChangeIntent change, BaselineRecord baseline, string expectedRevision)
+    {
+        using var cache = LoadBaselineCache(baseline.FwDataPath);
+        IWfiWordform wordform;
+        try
+        {
+            var words = cache.ServiceLocator.GetInstance<IWfiWordformRepository>();
+            if (string.IsNullOrWhiteSpace(change.WordformId))
+            {
+                var matches = words.AllInstances().Where(item =>
+                    (item.Form.VernacularDefaultWritingSystem?.Text ?? "")
+                        .Normalize(NormalizationForm.FormD) == change.Word.Normalize(NormalizationForm.FormD))
+                    .Take(2).ToArray();
+                if (matches.Length == 0)
+                    return RefusePut("change.wordform-missing", "The selected wordform is no longer in the project.",
+                        ("changeId", change.ChangeId), ("word", change.Word));
+                if (matches.Length > 1)
+                    return RefusePut("change.wordform-ambiguous", "More than one wordform has this form.",
+                        ("changeId", change.ChangeId), ("word", change.Word));
+                wordform = matches[0];
+            }
+            else wordform = words.GetObject(CanonicalId.Parse(change.WordformId).ToGuid());
+        }
+        catch (Exception exception) when (exception is FormatException or KeyNotFoundException or InvalidOperationException)
+        {
+            return RefusePut("change.wordform-missing", "The selected wordform is no longer in the project.",
+                ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+        }
+        change = change with { WordformId = CanonicalId.FromGuid(wordform.Guid).Value };
+        var form = wordform.Form.VernacularDefaultWritingSystem?.Text ?? "";
+        if (form.Normalize(NormalizationForm.FormD) != change.Word.Normalize(NormalizationForm.FormD))
+            return RefusePut("change.wordform-changed", "The selected wordform changed its form.",
+                ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+
+        if (change.Kind == AnalysisChangeKinds.AddCandidate &&
+            draft.ComposerProvenance.Any(entry => Property(entry, "wordformId") == change.WordformId &&
+                Property(entry, "kind") is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or
+                    AnalysisChangeKinds.Candidate))
+        {
+            return CommandOutcome<PutDetails>.Success(new PutDetails(change.Word, null, null));
+        }
+
+        var reading = change.Reading;
+        if (reading is null && change.StoredAnalysisId is { } storedId)
+        {
+            IWfiAnalysis? stored;
+            try
+            {
+                var guid = CanonicalId.Parse(storedId).ToGuid();
+                stored = wordform.AnalysesOC.SingleOrDefault(item => item.Guid == guid);
+            }
+            catch (Exception exception) when (exception is FormatException or InvalidOperationException)
+            {
+                stored = null;
+            }
+            if (stored is null)
+                return RefusePut("change.stored-analysis-missing", "The chosen analysis is no longer under this wordform.",
+                    ("changeId", change.ChangeId), ("wordformId", change.WordformId),
+                    ("storedAnalysisId", storedId));
+            reading = new ParseAnalysis(stored.MorphBundlesOS.Select(bundle => new ParseMorph(
+                bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"),
+                bundle.InflTypeRA?.Guid.ToString("D"),
+                bundle.MorphRA is null ? bundle.Form.VernacularDefaultWritingSystem?.Text : null)).ToArray());
+        }
+        if (change.AssessmentId is { } assessmentId)
+        {
+            try
+            {
+                var assessment = new AssessmentRepository(database).Get(assessmentId);
+                BaselineToken? assessmentBaseline;
+                try
+                {
+                    assessmentBaseline = JsonSerializer.Deserialize<BaselineToken>(
+                        assessment.BaselineToken, JsonOptions);
+                }
+                catch (Exception exception) when (exception is JsonException or ArgumentException)
+                {
+                    assessmentBaseline = null;
+                }
+                if (assessmentBaseline != baseline.Token)
+                    return RefusePut("change.assessment-stale", "The Assessment belongs to an older Baseline.",
+                        ("changeId", change.ChangeId), ("wordformId", change.WordformId),
+                        ("assessmentId", assessmentId));
+                var word = assessment.Words?.SingleOrDefault(item =>
+                    item.Word.Normalize(NormalizationForm.FormD) == form.Normalize(NormalizationForm.FormD));
+                if (change.StoredAnalysisId is null &&
+                    (reading is null || (change.ReadingIndex is { } index
+                        ? index < 0 || index >= (word?.Morphology?.Analyses.Count ?? 0) ||
+                          ChangeFitPreflight.ReadingDigest(word!.Morphology!.Analyses[index]) !=
+                          ChangeFitPreflight.ReadingDigest(reading)
+                        : word?.Morphology?.Analyses.Any(item =>
+                            ChangeFitPreflight.ReadingDigest(item) == ChangeFitPreflight.ReadingDigest(reading)) != true)))
+                    return RefusePut("change.reading-missing", "The chosen reading is absent from the Assessment.",
+                        ("changeId", change.ChangeId), ("wordformId", change.WordformId),
+                        ("assessmentId", assessmentId));
+            }
+            catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
+            {
+                return RefusePut("change.assessment-missing", "The Assessment is unavailable.",
+                    ("changeId", change.ChangeId), ("assessmentId", assessmentId));
+            }
+        }
+        if (change.Kind != AnalysisChangeKinds.IncorrectSpelling && reading is null)
+            return RefusePut("change.reading-missing", "Choose an exact reading for this change.",
+                ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+
+        var occupied = reading is null ? default : draft.Operations.Select(operation =>
+        {
+            if (operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
+                !extensions.TryGetProperty("changeFit", out var fit) ||
+                fit.ValueKind != JsonValueKind.Object) return (ChangeId: (string?)null, Fits: false);
+            return (ChangeId: ChangeIdOf(operation), Fits:
+                Property(fit, "wordformId") == change.WordformId &&
+                Property(fit, "readingContentDigest") == ChangeFitPreflight.ReadingDigest(reading!));
+        }).FirstOrDefault(item => item.Fits);
+        if (occupied.Fits && occupied.ChangeId is null)
+            return RefusePut("change.slot-occupied", "An unmapped change addresses this word and reading.",
+                ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+        var priorKind = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) == occupied.ChangeId)
+            .Select(entry => Property(entry, "kind")).LastOrDefault();
+        var cancelUnstoredChoice = change.Kind == AnalysisChangeKinds.Candidate && occupied.Fits &&
+            priorKind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or
+                AnalysisChangeKinds.Candidate or AnalysisChangeKinds.AddCandidate &&
+            !wordform.AnalysesOC.Any(analysis => AnalysisChangeComposer.Matches(analysis, reading!));
+        IReadOnlyList<OperationEnvelope> operations;
+        try
+        {
+            operations = cancelUnstoredChoice ? [] : AnalysisChangeComposer.Build(cache,
+                new AnalysisChangeIntent(change.Kind, CanonicalId.Parse(change.WordformId), reading,
+                    change.StoredAnalysisId is null ? null : CanonicalId.Parse(change.StoredAnalysisId),
+                    change.ChangeId));
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or FormatException)
+        {
+            return RefusePut("change.cannot-compose", exception.Message,
+                ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+        }
+        var removed = RemoveChange(draft, change.ChangeId);
+        if (occupied.ChangeId is { } occupiedId && occupiedId != change.ChangeId)
+            removed += RemoveChange(draft, occupiedId);
+        foreach (var group in draft.ContractVersions.Keys.ToArray())
+            if (!draft.Operations.Any(operation => OperationKind.GetGroup(operation.Kind) == group))
+                draft.ContractVersions.Remove(group);
+        if (operations.Count == 0 && removed == 0)
+            return RefusePut("change.no-effect", "The chosen analysis already has that state.",
+                ("changeId", change.ChangeId));
+        var existingOperations = draft.Operations.Count == 0
+            ? Array.Empty<OperationEnvelope>()
+            : ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
+        if (AnalysisOpinionSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
+        {
+            var existingChangeId = collision.Existing.Extensions is { ValueKind: JsonValueKind.Object } extension &&
+                extension.TryGetProperty("changeId", out var id) ? id.GetString() : null;
+            return RefusePut("change.slot-occupied", "Another change already addresses that project slot.",
+                ("changeId", change.ChangeId), ("existingChangeId", existingChangeId),
+                ("wordformId", change.WordformId));
+        }
+        var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
+        foreach (var operation in operations)
+        {
+            var analysis = operation.Target is { } target
+                ? wordform.AnalysesOC.FirstOrDefault(item => item.Guid == target.ToGuid()) : null;
+            var fingerprint = new ChangeFitFingerprint(change.WordformId,
+                analysis is null ? null : CanonicalId.FromGuid(analysis.Guid).Value,
+                form.Normalize(NormalizationForm.FormD), token,
+                analysis is null ? null : ChangeFitPreflight.ContentDigest(analysis),
+                reading is null ? null : ChangeFitPreflight.ReadingDigest(reading), reading,
+                analysis?.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString(),
+                operation.Kind == WfiWordformSpellingStatusOperationKinds.SetSpellingStatus
+                    ? wordform.SpellingStatus : null);
+            draft.Operations.Add(ToDraft(operation, fingerprint, change.ChangeId));
+            draft.ContractVersions[OperationKind.GetGroup(operation.Kind)] = "1.0";
+        }
+        if (operations.Count > 0)
+            draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
+            {
+                composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
+                change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
+                change.OriginPage,
+                displayAnalyses = DisplayAnalyses(database, cache, Path.GetFileNameWithoutExtension(
+                    baseline.FwDataPath), wordform, change, reading),
+                operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
+            }, JsonOptions));
+        var json = JsonSerializer.Serialize(draft, JsonOptions);
+        var saved = current is null
+            ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)
+            : repository.TrySaveDraft(DraftName, current.ProposalJson!, json);
+        if (!saved)
+            return RefusePut("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
+                ("changeId", change.ChangeId), ("expectedRevision", expectedRevision));
+        var replacedChangeId = operations.Count > 0 && occupied.ChangeId != change.ChangeId
+            ? occupied.ChangeId : null;
+        var cancelledChangeId = operations.Count == 0 && removed > 0
+            ? occupied.ChangeId ?? change.ChangeId : null;
+        return CommandOutcome<PutDetails>.Success(
+            new PutDetails(null, replacedChangeId, cancelledChangeId));
+    }
+
+    private sealed record PutDetails(string? SkippedWord, string? ReplacedChangeId, string? CancelledChangeId);
 
     public static CommandOutcome<PendingChangesSnapshot> Remove(RemovePendingChangeRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
@@ -306,34 +328,37 @@ public static class PendingChanges
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
             if (current is null) return Refuse("change.not-found", "There are no pending changes to check.");
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
-            if (baseline is null || File.GetLastWriteTimeUtc(project.FullFwDataPath) >
-                baseline.SourceLastWriteUtc.UtcDateTime)
+            var liveLastWriteTicks = File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
+            if (baseline is null || liveLastWriteTicks > baseline.SourceLastWriteUtc.UtcDateTime.Ticks)
                 return Refuse("change.refresh-required", "Refresh the project before checking changes again.");
             var draft = ParseDraft(current.ProposalJson!);
             var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
-            using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-            var fits = ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false)
-                .ToDictionary(fit => fit.OperationId, StringComparer.Ordinal);
-            var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
-            var changed = false;
-            foreach (var operation in draft.Operations)
+            return WithFitCache(project, baseline, liveLastWriteTicks, (cache, cacheLastWriteTicks) =>
             {
-                if (!fits.TryGetValue(operation.OperationId, out var fit) || !fit.StillFits ||
-                    operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
-                    !extensions.TryGetProperty("changeFit", out var stored)) continue;
-                var fingerprint = JsonSerializer.Deserialize<ChangeFitFingerprint>(stored.GetRawText(), JsonOptions);
-                if (fingerprint is null || fingerprint.BaselineToken == token) continue;
-                var properties = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
-                    extensions.GetRawText(), JsonOptions)!;
-                properties["changeFit"] = JsonSerializer.SerializeToElement(
-                    fingerprint with { BaselineToken = token }, JsonOptions);
-                operation.Extensions = JsonSerializer.SerializeToElement(properties, JsonOptions);
-                changed = true;
-            }
-            if (changed && !repository.TrySaveDraft(DraftName, current.ProposalJson!,
-                JsonSerializer.Serialize(draft, JsonOptions)))
-                return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
-            return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository));
+                var fits = ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false)
+                    .ToDictionary(fit => fit.OperationId, StringComparer.Ordinal);
+                var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
+                var changed = false;
+                foreach (var operation in draft.Operations)
+                {
+                    if (!fits.TryGetValue(operation.OperationId, out var fit) || !fit.StillFits ||
+                        operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
+                        !extensions.TryGetProperty("changeFit", out var stored)) continue;
+                    var fingerprint = JsonSerializer.Deserialize<ChangeFitFingerprint>(stored.GetRawText(), JsonOptions);
+                    if (fingerprint is null || fingerprint.BaselineToken == token) continue;
+                    var properties = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+                        extensions.GetRawText(), JsonOptions)!;
+                    properties["changeFit"] = JsonSerializer.SerializeToElement(
+                        fingerprint with { BaselineToken = token }, JsonOptions);
+                    operation.Extensions = JsonSerializer.SerializeToElement(properties, JsonOptions);
+                    changed = true;
+                }
+                if (changed && !repository.TrySaveDraft(DraftName, current.ProposalJson!,
+                    JsonSerializer.Serialize(draft, JsonOptions)))
+                    return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
+                return CommandOutcome<PendingChangesSnapshot>.Success(
+                    Snapshot(database, project, repository, cache, cacheLastWriteTicks, baseline));
+            });
         });
 
     private static ProposalRecord? Current(ProposalRepository repository) =>
@@ -347,10 +372,16 @@ public static class PendingChanges
         "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
 
     private static PendingChangesSnapshot Snapshot(MotifDatabase database, ProjectLocator project,
-        ProposalRepository repository)
+        ProposalRepository repository, LcmCache? fitCache = null, long? observedLastWriteTicks = null,
+        BaselineRecord? currentBaseline = null)
     {
         var current = Current(repository);
-        if (current is null) return new PendingChangesSnapshot(null, "none", [], []);
+        var fitRepository = new PendingChangeFitRepository(database);
+        if (current is null)
+        {
+            fitRepository.Clear();
+            return new PendingChangesSnapshot(null, "none", [], []);
+        }
         var draft = ParseDraft(current.ProposalJson!);
         var provenance = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) is not null)
             .GroupBy(entry => ChangeIdOf(entry)!, StringComparer.Ordinal)
@@ -374,68 +405,45 @@ public static class PendingChanges
                 Property(entry, "displayReading"), operationIds)
             {
                 OriginPage = Property(entry, "originPage"),
+                Analyses = DisplayAnalysesOf(entry),
             };
         }).ToArray();
         if (changes.Length == 0)
-            return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);
-
-        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-        var assessments = new AssessmentRepository(database);
-        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
-        changes = changes.Select(change =>
         {
-            var stored = StoredAnalyses(cache, projectName, change.WordformId);
-            if (change.AssessmentId is not { } assessmentId ||
-                !provenance.TryGetValue(change.ChangeId, out var entry))
-                return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
-            try
+            fitRepository.Clear();
+            return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);
+        }
+
+        var revision = Revision(current.ProposalJson);
+        currentBaseline ??= new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+        var baselineIdentity = BaselineIdentity(currentBaseline?.Token);
+        var lastWriteTicks = observedLastWriteTicks ?? File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
+        var fits = fitRepository.Get(revision, lastWriteTicks, baselineIdentity);
+        if (fits is null)
+        {
+            fits = fitCache is null
+                ? WithFitCache(project, currentBaseline, lastWriteTicks,
+                    (cache, cacheLastWriteTicks) => SaveFit(cache, cacheLastWriteTicks))
+                : SaveFit(fitCache, lastWriteTicks);
+
+            IReadOnlyList<ChangeFit> SaveFit(LcmCache cache, long cacheLastWriteTicks)
             {
-                var word = assessments.Get(assessmentId).Words?.SingleOrDefault(item => item.Word == change.Word);
-                if (word?.Morphology is not { } morphology)
-                    return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
-                var readings = ParserReadingReader.Read(cache, projectName, morphology);
-                var selected = Number(entry, "readingIndex");
-                if (selected is null)
-                {
-                    var authored = draft.Operations.Where(operation => ChangeIdOf(operation) == change.ChangeId)
-                        .Select(operation => operation.Extensions)
-                        .Where(extensions => extensions is { ValueKind: JsonValueKind.Object })
-                        .Select(extensions => extensions!.Value.TryGetProperty("changeFit", out var fit) ? fit : default)
-                        .FirstOrDefault(fit => fit.ValueKind == JsonValueKind.Object);
-                    var readingDigest = Property(authored, "readingContentDigest");
-                    if (readingDigest is not null)
-                    {
-                        var matching = morphology.Analyses.Select((analysis, index) => (analysis, index))
-                            .Where(candidate => ChangeFitPreflight.ReadingDigest(candidate.analysis) == readingDigest)
-                            .Take(2).ToArray();
-                        if (matching.Length == 1) selected = matching[0].index;
-                    }
-                }
-                var parserKeys = morphology.Analyses.Select(ProjectAnalysisKey.For).ToHashSet(StringComparer.Ordinal);
-                return change with
-                {
-                    Analyses = readings.Select((reading, index) =>
-                    {
-                        var key = ProjectAnalysisKey.For(morphology.Analyses[index]);
-                        var match = stored.FirstOrDefault(item => item.Key == key);
-                        return new ReviewAnalysis(reading,
-                            match.Analysis?.Opinion ?? word.ReadingGrades?.ElementAtOrDefault(index) ?? "no-opinion",
-                            selected == index, match.Analysis is not null);
-                    }).Concat(stored.Where(item => !parserKeys.Contains(item.Key))
-                        .Select(item => item.Analysis)).ToArray(),
-                };
+                var computed = ComputeFitSummary(cache, draft, changes, provenance, currentBaseline?.Token);
+                fitRepository.Save(revision, cacheLastWriteTicks, baselineIdentity, computed);
+                return computed;
             }
-            catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
-            {
-                return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
-            }
-        }).ToArray();
+        }
+        return new PendingChangesSnapshot(draft.ProposalId, revision, changes, fits);
+    }
+
+    private static IReadOnlyList<ChangeFit> ComputeFitSummary(LcmCache cache, DraftDocument draft,
+        IReadOnlyList<PendingChange> changes, IReadOnlyDictionary<string, JsonElement> provenance,
+        BaselineToken? baseline)
+    {
         var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
-        var baseline = new BaselineRepository(database)
-            .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
         var operationFits = ChangeFitPreflight.Check(cache, proposal, baseline)
             .ToDictionary(item => item.OperationId, StringComparer.Ordinal);
-        var fits = changes.Select(change =>
+        return changes.Select(change =>
         {
             var reasons = change.OperationIds.Select(id =>
                 draft.Operations.Any(operation => operation.OperationId == id &&
@@ -446,8 +454,120 @@ public static class PendingChanges
                 reasons = ["Change mapping or fingerprint is missing."];
             return new ChangeFit(change.ChangeId, reasons.Length == 0, reasons);
         }).ToArray();
-        return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, fits);
     }
+
+    private static IReadOnlyList<ReviewAnalysis> DisplayAnalyses(MotifDatabase database, LcmCache cache,
+        string projectName, IWfiWordform wordform, ChangeIntent change, ParseAnalysis? reading)
+    {
+        var stored = StoredAnalyses(cache, projectName, CanonicalId.FromGuid(wordform.Guid).Value);
+        if (change.AssessmentId is not { } assessmentId)
+            return stored.Select(item => item.Analysis).ToArray();
+        try
+        {
+            var word = new AssessmentRepository(database).Get(assessmentId).Words?
+                .SingleOrDefault(item => item.Word == change.Word);
+            if (word?.Morphology is not { } morphology)
+                return stored.Select(item => item.Analysis).ToArray();
+            var readings = ParserReadingReader.Read(cache, projectName, morphology);
+            var selected = change.ReadingIndex;
+            if (selected is null && reading is { } authoredReading)
+            {
+                var digest = ChangeFitPreflight.ReadingDigest(authoredReading);
+                var matching = morphology.Analyses.Select((analysis, index) => (analysis, index))
+                    .Where(candidate => ChangeFitPreflight.ReadingDigest(candidate.analysis) == digest)
+                    .Take(2).ToArray();
+                if (matching.Length == 1) selected = matching[0].index;
+            }
+            var parserKeys = morphology.Analyses.Select(ProjectAnalysisKey.For).ToHashSet(StringComparer.Ordinal);
+            return readings.Select((reading, index) =>
+            {
+                var key = ProjectAnalysisKey.For(morphology.Analyses[index]);
+                var match = stored.FirstOrDefault(item => item.Key == key);
+                return new ReviewAnalysis(reading,
+                    match.Analysis?.Opinion ?? word.ReadingGrades?.ElementAtOrDefault(index) ?? "no-opinion",
+                    selected == index, match.Analysis is not null);
+            }).Concat(stored.Where(item => !parserKeys.Contains(item.Key))
+                .Select(item => item.Analysis)).ToArray();
+        }
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
+        {
+            return stored.Select(item => item.Analysis).ToArray();
+        }
+    }
+
+    private static IReadOnlyList<ReviewAnalysis> DisplayAnalysesOf(JsonElement entry)
+    {
+        if (entry.ValueKind != JsonValueKind.Object ||
+            !entry.TryGetProperty("displayAnalyses", out var analyses) ||
+            analyses.ValueKind != JsonValueKind.Array) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<IReadOnlyList<ReviewAnalysis>>(analyses.GetRawText(), JsonOptions)
+                ?? throw new InvalidDataException("Stored change display analyses are incomplete.");
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("Stored change display analyses are malformed.", exception);
+        }
+    }
+
+    private static T WithFitCache<T>(ProjectLocator project, BaselineRecord? baseline,
+        long liveLastWriteTicks, Func<LcmCache, long, T> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        var baselineLastWriteTicks = baseline?.SourceLastWriteUtc.UtcDateTime.Ticks;
+        if (baseline is not null && liveLastWriteTicks == baselineLastWriteTicks)
+        {
+            using var cache = LoadBaselineCache(baseline.FwDataPath);
+            return action(cache, liveLastWriteTicks);
+        }
+        return WithLiveProjectCopy(project, (copy, cache) =>
+            action(cache, copy.SourceLastWriteUtc.UtcDateTime.Ticks));
+    }
+
+    private static LcmCache LoadBaselineCache(string path)
+    {
+        try
+        {
+            return new FwDataProjectLoader().LoadScratchCache(path);
+        }
+        catch (LcmFileLockedException)
+        {
+            throw new ProjectBaselineBusyException();
+        }
+    }
+
+    private static T WithLiveProjectCopy<T>(ProjectLocator project,
+        Func<SavedProjectFilesCopy, LcmCache, T> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        var directory = Path.Combine(Path.GetTempPath(), "SIL.Motif.PendingChanges", Guid.NewGuid().ToString("N"));
+        try
+        {
+            SavedProjectFilesCopy copy;
+            try
+            {
+                copy = new SavedProjectFileCopier().CopyAsync(project.FullFwDataPath, directory,
+                    CancellationToken.None).GetAwaiter().GetResult();
+            }
+            catch (InvalidDataException)
+            {
+                throw new ProjectSavingException();
+            }
+            using var cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
+            return action(copy, cache);
+        }
+        finally
+        {
+            try { if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    private static string BaselineIdentity(BaselineToken? baselineToken) => baselineToken is null
+        ? ""
+        : JsonSerializer.Serialize(baselineToken.SemanticIdentity, JsonOptions);
 
     private static IReadOnlyList<(string Key, ReviewAnalysis Analysis)> StoredAnalyses(
         LcmCache cache, string projectName, string wordformId)
@@ -482,10 +602,6 @@ public static class PendingChanges
         entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty(name, out var value) &&
             value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
-    private static int? Number(JsonElement entry, string name) =>
-        entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty(name, out var value) &&
-        value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) ? number : null;
-
     private static int RemoveChange(DraftDocument draft, string changeId)
     {
         var operationIds = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) == changeId)
@@ -516,6 +632,12 @@ public static class PendingChanges
 
     private static CommandOutcome<PendingChangesSnapshot> Refuse(string code, string message,
         params (string Name, string? Value)[] facts) => CommandOutcome<PendingChangesSnapshot>.Refused(
+            new Refusal(code, FailureReason.Refused, message,
+                facts.Where(item => item.Value is not null).ToDictionary(item => item.Name,
+                    item => item.Value!, StringComparer.Ordinal)));
+
+    private static CommandOutcome<PutDetails> RefusePut(string code, string message,
+        params (string Name, string? Value)[] facts) => CommandOutcome<PutDetails>.Refused(
             new Refusal(code, FailureReason.Refused, message,
                 facts.Where(item => item.Value is not null).ToDictionary(item => item.Name,
                     item => item.Value!, StringComparer.Ordinal)));

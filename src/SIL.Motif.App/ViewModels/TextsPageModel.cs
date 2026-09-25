@@ -108,6 +108,8 @@ public sealed partial class TextsPageModel : PageModel
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
         Words.SetProjectAsync(projectPath, cancellationToken);
 
+    protected override Task OnStopWorkAsync() => Words.StopAsync();
+
     protected override void OnEvidencePublished(WorkspaceEvidence evidence)
     {
         Words.ShowAssessment(Assess.Words.Find);
