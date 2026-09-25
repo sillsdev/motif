@@ -5,7 +5,7 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Tests.App;
 
-// Each defaults to an empty success, so a test that never mentions these queries is not failed by them.
+// Unconfigured queries return an empty value or a refusal, depending on the query.
 public sealed partial class FakeCommandClient
 {
     private Func<OverviewRequest, CancellationToken, Task<CommandOutcome<OverviewResponse>>>

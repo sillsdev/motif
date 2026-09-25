@@ -26,15 +26,11 @@ public static class TimingCommand
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var assessments = new AssessmentRepository(database);
-            CurrentEvidenceSnapshot? currentEvidence = null;
-            if (request.AssessmentId is null || UsesSavedSelection(request))
-            {
-                var current = CurrentEvidenceQuery.ReadCurrentEvidence(
-                    database, project, includeDefaultSelection: request.AssessmentId is null);
-                if (!current.Succeeded)
-                    return CommandOutcome<TimingResponse>.Refused(current.Refusal!);
-                currentEvidence = current.Value!;
-            }
+            var current = CurrentEvidenceQuery.ReadCurrentEvidence(
+                database, project, includeDefaultSelection: request.AssessmentId is null);
+            if (!current.Succeeded)
+                return CommandOutcome<TimingResponse>.Refused(current.Refusal!);
+            var currentEvidence = current.Value!;
             AssessmentRecord? assessment = null;
             if (request.AssessmentId is not null)
             {
@@ -45,7 +41,7 @@ public static class TimingCommand
             }
             else
             {
-                assessment = currentEvidence?.MatchingAssessment;
+                assessment = currentEvidence.MatchingAssessment;
             }
 
             if (assessment is null || !assessment.Kind.IsStoredKind(AssessmentKind.ParseTime))
@@ -62,7 +58,10 @@ public static class TimingCommand
             return CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 assessment.AssessmentId, request.WordSet, request.By, selectedWords.Count,
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,
-                aggregates.Aggregates, aggregates.CostliestWords));
+                aggregates.Aggregates, aggregates.CostliestWords)
+            {
+                IsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
+            });
         });
     }
 
@@ -70,7 +69,7 @@ public static class TimingCommand
         TimingRequest request,
         IReadOnlyList<AssessedWord> allWords,
         MotifDatabase database,
-        CurrentEvidenceSnapshot? currentEvidence)
+        CurrentEvidenceSnapshot currentEvidence)
     {
         if (request.ExplicitWords is { Count: > 0 } explicitWords)
         {
@@ -104,7 +103,7 @@ public static class TimingCommand
         var saved = repository.Get(name);
         if (saved is null)
             return RefusedWords("timing.word-set-not-found", $"No saved Selection named '{name}' exists.");
-        if (currentEvidence?.ProjectSummary is not { } summary)
+        if (currentEvidence.ProjectSummary is not { } summary)
             return RefusedWords("timing.no-baseline", "A Baseline is required to resolve a saved Selection.");
         var resolved = CurrentEvidenceQuery.ResolveSelection(summary, saved);
         if (!resolved.Succeeded)
@@ -112,14 +111,6 @@ public static class TimingCommand
         var selectedNames = resolved.Value!.Selection.Words.ToHashSet(StringComparer.Ordinal);
         return Success(allWords.Where(word => selectedNames.Contains(word.Word)).ToArray());
     }
-
-    private static bool UsesSavedSelection(TimingRequest request) =>
-        request.ExplicitWords is not { Count: > 0 } && (request.WordSet.Trim() switch
-        {
-            "all" or "step-limit" or "steps" or "slowest" => false,
-            var value when value.StartsWith("cell:", StringComparison.Ordinal) => false,
-            _ => true,
-        });
 
     private static ComparePlacement Place(AssessedWord word) => CompareSemantics.Place(new CompareWordFacts(
         word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,

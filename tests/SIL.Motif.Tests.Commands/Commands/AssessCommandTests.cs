@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using Microsoft.Data.Sqlite;
 using SIL.LCModel;
@@ -172,6 +173,9 @@ public sealed class AssessCommandTests : IDisposable
         var timing = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             parseAssessment.AssessmentId, "all", "rule", "Verb template", 5));
         Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        var timingJson = JsonSerializer.SerializeToElement(timing.Value);
+        Assert.True(timingJson.TryGetProperty("IsStale", out var isStale));
+        Assert.True(isStale.GetBoolean());
         Assert.Equal(2, timing.Value!.WordCount);
         Assert.Equal("Verb template", Assert.Single(timing.Value.Aggregates).Name);
         Assert.Equal(2, Assert.Single(timing.Value.Aggregates).Attempts);

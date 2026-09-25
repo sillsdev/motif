@@ -58,4 +58,17 @@ public sealed class CatalogTextRenderingTests
         Assert.DoesNotContain("opened", rendered.Output, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Warnings   not stored", rendered.Output, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void TimingTextWarnsWhenTheProjectIsStale()
+    {
+        var response = new TimingResponse("assessment/1", "all", "rule", 1, 8, 400, [], [], [])
+        {
+            IsStale = true,
+        };
+
+        var rendered = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false);
+
+        Assert.Contains("FieldWorks has changed since the current Baseline", rendered.Output, StringComparison.Ordinal);
+    }
 }

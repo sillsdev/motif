@@ -10,7 +10,11 @@ public sealed record TimingResponse(
     double? Percentile95Ms,
     IReadOnlyList<SlowWordTiming> SlowestWords,
     IReadOnlyList<TimingAggregateRow> Aggregates,
-    IReadOnlyList<WordRuleTiming> CostliestWords);
+    IReadOnlyList<WordRuleTiming> CostliestWords)
+{
+    /// <summary>Whether the FieldWorks file has changed since the current Baseline.</summary>
+    public bool IsStale { get; init; }
+}
 
 /// <summary>One aggregate by rule kind or named rule.</summary>
 public sealed record TimingAggregateRow(

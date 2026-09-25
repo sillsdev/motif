@@ -273,6 +273,8 @@ public static class CommandTextRenderer
     {
         var text = new StringBuilder();
         text.AppendLine($"Timing for {response.WordCount:N0} word(s) from {response.WordSet} ({response.AssessmentId})");
+        if (response.IsStale)
+            text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
         text.AppendLine($"  Median: {FormatMs(response.MedianMs)}  p95: {FormatMs(response.Percentile95Ms)}");
         text.AppendLine($"  By {response.By}:");
         foreach (var row in response.Aggregates)

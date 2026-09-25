@@ -1,6 +1,7 @@
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Baselines;
 using Xunit;
 
@@ -68,6 +69,70 @@ public sealed class BaselineRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void GetCurrentEvidenceReturnsTheCurrentBaselineAndStoredSummary()
+    {
+        using var database = OpenDatabase("evidence");
+        var repository = new BaselineRepository(database);
+        repository.Record("workspace", Publication("evidence", "sha256:" + new string('a', 64)),
+            DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), Summary());
+
+        var evidence = repository.GetCurrentEvidence("workspace");
+
+        Assert.NotNull(evidence);
+        Assert.Equal("workspace", evidence.Baseline.ProjectKey);
+        Assert.Equal(2, evidence.Summary.WordCount);
+        Assert.Equal(3, evidence.Summary.OccurrenceCount);
+        Assert.Equal(["motifa", "motifb"], evidence.Summary.Wordforms);
+        Assert.Equal(2, evidence.Summary.Texts.Count);
+    }
+
+    [Fact]
+    public void GetCurrentEvidenceReturnsNullWithoutACurrentBaseline()
+    {
+        using var database = OpenDatabase("empty-evidence");
+
+        var evidence = new BaselineRepository(database).GetCurrentEvidence("workspace");
+
+        Assert.Null(evidence);
+    }
+
+    [Fact]
+    public void GetCurrentEvidenceRejectsAMissingProjectSummary()
+    {
+        using var database = OpenDatabase("missing-summary");
+        var repository = new BaselineRepository(database);
+        repository.Record("workspace", Publication("missing-summary", "sha256:" + new string('a', 64)),
+            DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), Summary());
+        Execute(database, "DELETE FROM BaselineSummaries WHERE ProjectKey = $project;", "workspace", null);
+
+        var exception = Assert.Throws<InvalidDataException>(() => repository.GetCurrentEvidence("workspace"));
+
+        Assert.Contains("no stored project summary", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("{")]
+    [InlineData("null")]
+    [InlineData("{\"WordCount\":-1,\"OccurrenceCount\":0,\"WordformCount\":0,\"RuleCount\":0,\"LexemeCount\":0,\"Wordforms\":[],\"Texts\":[]}")]
+    public void GetCurrentEvidenceRejectsMalformedOrInvalidSummaryJson(string summaryJson)
+    {
+        using var database = OpenDatabase("malformed-summary");
+        var repository = new BaselineRepository(database);
+        repository.Record("workspace", Publication("malformed-summary", "sha256:" + new string('a', 64)),
+            DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), Summary());
+        Execute(database, "UPDATE BaselineSummaries SET SummaryJson = $summary WHERE ProjectKey = $project;",
+            "workspace", summaryJson);
+
+        var exception = Assert.Throws<InvalidDataException>(() => repository.GetCurrentEvidence("workspace"));
+
+        Assert.Contains("project summary is malformed", exception.Message, StringComparison.Ordinal);
+        Assert.IsType<System.Text.Json.JsonException>(exception.InnerException);
+    }
+
+    [Fact]
     public void Record_RejectsANonUtcSourceLastWriteOffset()
     {
         using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "offset.motif.db"), Project("offset"),
@@ -96,5 +161,23 @@ public sealed class BaselineRepositoryTests : IDisposable
         return new BaselinePublication(root, Path.Combine(root, "project.fwdata"),
             new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
                 "2026-08-23T00:00:00Z", digest));
+    }
+
+    private MotifDatabase OpenDatabase(string name) => MotifDatabase.OpenOwned(
+        Path.Combine(_root, name + ".motif.db"), Project(name), MotifSchema.CurrentSchema, new Version(1, 0));
+
+    private static ProjectSummarySnapshot Summary() => new(2, 3, 4, 5, 6, ["motifa", "motifb"],
+        [new ProjectTextSummary(Guid.NewGuid(), "Genesis", 2, 3,
+            new Dictionary<string, int>(StringComparer.Ordinal) { ["motifa"] = 2, ["motifb"] = 1 }),
+         new ProjectTextSummary(Guid.NewGuid(), "Exodus", 1, 0, new Dictionary<string, int>())]);
+
+    private static void Execute(MotifDatabase database, string sql, string project, string? summary)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("$project", project);
+        if (summary is not null) command.Parameters.AddWithValue("$summary", summary);
+        command.ExecuteNonQuery();
     }
 }
