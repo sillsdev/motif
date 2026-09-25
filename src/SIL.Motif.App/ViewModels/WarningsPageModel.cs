@@ -44,11 +44,19 @@ public sealed class WarningsPageModel : PageModel
     }
 
     // A person asked for the new Baseline, so its grammar is checked rather than only read.
-    protected override Task OnBaselineCapturedAsync(CancellationToken cancellationToken) =>
-        Context.ProjectPath is { } path ? Grammar.SetProjectAsync(path, cancellationToken) : Task.CompletedTask;
+    protected override async Task OnBaselineCapturedAsync(CancellationToken cancellationToken)
+    {
+        if (Context.ProjectPath is not { } path) return;
+        await Grammar.SetProjectAsync(path, cancellationToken).ConfigureAwait(true);
+        await Context.PublishGrammarCheckedAsync(cancellationToken).ConfigureAwait(true);
+    }
 
-    private Task CheckGrammarAsync() =>
-        Context.ProjectPath is { } path ? Grammar.SetProjectAsync(path) : Task.CompletedTask;
+    private async Task CheckGrammarAsync()
+    {
+        if (Context.ProjectPath is not { } path) return;
+        await Grammar.SetProjectAsync(path).ConfigureAwait(true);
+        await Context.PublishGrammarCheckedAsync().ConfigureAwait(true);
+    }
 
     private void OnGrammarChanged(object? sender, PropertyChangedEventArgs e)
     {

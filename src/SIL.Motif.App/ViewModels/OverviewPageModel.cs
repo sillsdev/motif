@@ -251,6 +251,20 @@ public sealed partial class OverviewPageModel : PageModel
         if (Context.ProjectPath is { } path) _ = RefreshReadModelAsync(path, CancellationToken.None);
     }
 
+    protected override Task OnGrammarCheckedAsync(CancellationToken cancellationToken) =>
+        Context.ProjectPath is { } path ? RefreshOverviewAsync(path, cancellationToken) : Task.CompletedTask;
+
+    private async Task RefreshOverviewAsync(string projectPath, CancellationToken cancellationToken)
+    {
+        var generation = ++_readGeneration;
+        var overview = await Context.Commands.OverviewAsync(new OverviewRequest(projectPath), cancellationToken)
+            .ConfigureAwait(true);
+        if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal))
+            return;
+        Overview = overview.Succeeded ? overview.Value : null;
+        OverviewRefusalMessage = overview.Succeeded ? null : overview.Refusal?.Message;
+    }
+
     private async Task RefreshReadModelAsync(string projectPath, CancellationToken cancellationToken)
     {
         var generation = ++_readGeneration;

@@ -53,6 +53,9 @@ public abstract partial class PageModel : ObservableObject
     protected virtual Task OnCurrentEvidencePublishedAsync(
         CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken) => Task.CompletedTask;
 
+    /// <summary>Reloads this page's stored summary after a person checked the grammar.</summary>
+    protected virtual Task OnGrammarCheckedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
     /// <summary>Answers <paramref name="request"/> when it is addressed to this page; ignores it otherwise.</summary>
     protected virtual void OnRequested(PageRequest request)
     {
@@ -72,6 +75,8 @@ public abstract partial class PageModel : ObservableObject
     internal Task CurrentEvidencePublishedAsync(
         CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken) =>
         OnCurrentEvidencePublishedAsync(evidence, cancellationToken);
+
+    internal Task GrammarCheckedAsync(CancellationToken cancellationToken) => OnGrammarCheckedAsync(cancellationToken);
 
     internal void Requested(PageRequest request) => OnRequested(request);
 }

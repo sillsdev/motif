@@ -226,6 +226,13 @@ public sealed partial class WorkspaceContext : ObservableObject
             await page.CurrentEvidencePublishedAsync(evidence, cancellationToken).ConfigureAwait(true);
     }
 
+    /// <summary>Notifies pages after a grammar check has updated the stored warning summary.</summary>
+    public async Task PublishGrammarCheckedAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var page in _pages.ToArray())
+            await page.GrammarCheckedAsync(cancellationToken).ConfigureAwait(true);
+    }
+
     /// <summary>Opens <paramref name="page"/> as it stands.</summary>
     public void OpenPage(WorkspacePage page) => CurrentPage = page;
 

@@ -132,6 +132,29 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
+    public async Task CheckingGrammarReloadsOverviewWarningsFromTheCommand()
+    {
+        var (fake, context) = NewContextWithFake();
+        var overviewPage = new OverviewPageModel(context);
+        var warningsPage = new WarningsPageModel(context);
+        fake.OverviewCompletesWith(Overview());
+        fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
+            null, EvidenceFreshness.NoBaseline, null, null, null, null, null));
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        Assert.False(overviewPage.HasWarningSummary);
+        fake.OverviewCompletesWith(Overview() with
+        {
+            Warnings = new OverviewWarningsSummary(0, 0, null, null),
+        });
+
+        await warningsPage.CheckGrammarCommand.ExecuteAsync(null);
+
+        Assert.True(overviewPage.HasWarningSummary);
+        Assert.Equal("0 findings", overviewPage.WarningsCount);
+        Assert.Equal(2, fake.OverviewRequests.Count);
+    }
+
+    [Fact]
     public async Task OpeningAProjectReadsItsStoredTimingThroughThePageContext()
     {
         var (fake, context) = NewContextWithFake();
