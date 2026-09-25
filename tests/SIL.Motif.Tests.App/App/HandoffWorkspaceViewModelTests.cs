@@ -68,6 +68,19 @@ public sealed class HandoffWorkspaceViewModelTests
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
     }
 
+    [Fact]
+    public async Task RerunningFromTimingKeepsTimingOpen()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Context.OpenPage(WorkspacePage.Timing);
+        fake.AssessCompletesWith(NewAssessResponse("rerun"));
+
+        await workspace.Assess.RerunAsync(["word"], 1000);
+
+        Assert.Equal(WorkspacePage.Timing, workspace.Context.CurrentPage);
+    }
+
     // Rows are only a view over the fetched set; clearing the view alone leaves the old project's words.
     [Fact]
     public async Task SortingAfterASwitchOfProjectsCannotResurrectTheOldProjectsStatistics()
