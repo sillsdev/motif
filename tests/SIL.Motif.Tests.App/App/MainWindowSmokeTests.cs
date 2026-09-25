@@ -18,6 +18,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
 using Xunit;
@@ -1065,6 +1066,45 @@ public sealed class MainWindowSmokeTests
                 window.Close();
             }
         });
+    }
+
+    [Fact]
+    public void CollectionNoticeAppearsInAnalyzeTextsAndLists()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                var changes = workspace.Context.Changes;
+                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
+                await changes.SetProjectAsync(@"C:\projects\one.fwdata");
+                fake.PendingPutResponse = new PendingChangesSnapshot("draft/one", "revision/one", [], [])
+                {
+                    ReplacedChangeId = "older",
+                };
+                await changes.PutAsync(new ChangeIntent("newer", "reject", "wordform/one", "motifa"));
+                var notice = Assert.IsType<string>(changes.CollectionNotice);
+
+                window.Show();
+                window.ApplyTemplate();
+                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                window.UpdateLayout();
+                var analyzePanel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
+                Assert.Contains(analyzePanel.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
+                    block.Text == notice && block.IsEffectivelyVisible);
+
+                workspace.Context.OpenTexts(TextsTab.Lists);
+                window.UpdateLayout();
+                var listsPanel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
+                Assert.Contains(listsPanel.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
+                    block.Text == notice && block.IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(5));
     }
 
     [Fact]
