@@ -19,7 +19,7 @@ public enum ResultsWordFilter
 
 /// <summary>
 /// The words one Assessment parsed, as a list: one row per word, filtered by a search box and one of the
-/// Results stage's chips, all within what is already in memory.
+/// result filters, all within what is already in memory.
 /// </summary>
 public sealed partial class AssessWordsViewModel : ObservableObject
 {
@@ -120,7 +120,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     /// <summary>
     /// Replaces every row with <paramref name="words"/>, or clears the table for <see langword="null"/>.
     /// <paramref name="occurrenceCounts"/> looks up how many times a word's form occurs in the chosen Texts,
-    /// when that Texts-stage data is available; a word not found there shows no occurrence count.
+    /// when data for the selected Texts is available; a word not found there shows no occurrence count.
     /// </summary>
     public void Load(IReadOnlyList<AssessmentWordResult>? words, Func<string, int?>? occurrenceCounts = null)
     {

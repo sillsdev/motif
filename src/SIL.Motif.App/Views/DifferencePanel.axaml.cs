@@ -6,7 +6,7 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Results stage's "What changed" view: two runs of the same words, and the words that moved between cells.</summary>
+/// <summary>The What changed view compares two Assessments and lists words that moved between cells.</summary>
 public sealed partial class DifferencePanel : UserControl
 {
     public DifferencePanel(DifferenceViewModel difference)

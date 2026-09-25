@@ -6,7 +6,7 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Results stage's Compare view: the matrix of what the project held against what the parser did.</summary>
+/// <summary>The Compare matrix in Texts: what the project held against what the parser built.</summary>
 public sealed partial class ComparePanel : UserControl
 {
     public ComparePanel(CompareViewModel compare)

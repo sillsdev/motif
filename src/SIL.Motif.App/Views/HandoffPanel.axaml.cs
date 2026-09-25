@@ -7,7 +7,7 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Handoff stage and its file list, bound to its own <see cref="Handoff"/> view model.</summary>
+/// <summary>The AI Handoff page and its file list, bound to its own <see cref="Handoff"/> view model.</summary>
 public sealed partial class HandoffPanel : UserControl
 {
     public HandoffPanel(HandoffViewModel handoff)

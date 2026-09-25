@@ -87,7 +87,7 @@ public sealed partial class GrammarViewModel : ObservableObject
     public bool ShowNoFindings => !IsLoading && HasChecked && Refusal is null && HasBaseline && !Warnings.HasAny;
     public bool ShowFindings => !IsLoading && HasChecked && Refusal is null && HasBaseline && Warnings.HasAny;
 
-    /// <summary>What the stepper shows for this stage.</summary>
+    /// <summary>What the Grammar page shows for this check.</summary>
     public string SummaryText => IsLoading ? "Checking grammar..."
         : Refusal is { } refusal ? refusal.Message
         : !HasChecked ? "Not checked yet"

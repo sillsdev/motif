@@ -8,7 +8,7 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Results stage's In text view, bound to its own view model.</summary>
+/// <summary>The Analyze texts view, bound to its own view model.</summary>
 public sealed partial class ResultsInTextPanel : UserControl
 {
     public ResultsInTextPanel(ResultsInTextViewModel inText)

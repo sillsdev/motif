@@ -4,7 +4,7 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Grammar stage: the parser's findings about the grammar as a whole, bound to <see cref="Grammar"/>.</summary>
+/// <summary>The Grammar page's findings about the grammar as a whole, bound to <see cref="Grammar"/>.</summary>
 public sealed partial class GrammarPanel : UserControl
 {
     public GrammarPanel(GrammarViewModel grammar)

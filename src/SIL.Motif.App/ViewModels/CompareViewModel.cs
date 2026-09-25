@@ -8,9 +8,9 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// The Results stage's Compare view: every assessed word placed in a five-by-five matrix by what the project held
-/// for it and what the parser did, with the matrix as the filter for the word list beneath it. The matrix always
-/// counts the whole Assessment; choosing cells, searching and sorting only change which words are listed.
+/// The Compare matrix on the Texts page places each assessed word in a five-by-five grid according to what the
+/// project held and what the parser built. The matrix always counts the whole Assessment; choosing cells, searching
+/// and sorting only change which words are listed.
 /// </summary>
 public sealed partial class CompareViewModel : ObservableObject
 {
@@ -478,7 +478,7 @@ public sealed partial class CompareViewModel : ObservableObject
         _ => SIL.Motif.Contract.Responses.ProjectStanding.NotPresent,
     };
 
-    /// <summary>The label a row header shows, in the same words as the Texts stage.</summary>
+    /// <summary>The label a row header shows, in the same wording as the Words view.</summary>
     public static string RowLabelOf(WordProjectStatus row) => row switch
     {
         WordProjectStatus.NotPresent => "Not stored yet",
@@ -494,7 +494,7 @@ public sealed partial class CompareViewModel : ObservableObject
         _ => "Skipped",
     };
 
-    /// <summary>The verdict a parse column is drawn with in the word list, so it reads like every other stage.</summary>
+    /// <summary>The verdict used to mark each parser outcome in a word list.</summary>
     public static Verdict VerdictOf(CompareColumnKind column) => column switch
     {
         CompareColumnKind.Match => Verdict.Agrees,

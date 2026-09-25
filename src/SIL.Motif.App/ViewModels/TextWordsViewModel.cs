@@ -9,7 +9,7 @@ using SIL.Motif.Host.Texts;
 
 namespace SIL.Motif.App.ViewModels;
 
-/// <summary>The Texts stage's two views of the checked Texts' words.</summary>
+/// <summary>The two views of words from the selected Texts.</summary>
 public enum TextsView
 {
     /// <summary>One row per distinct word, with where it occurs and what the project holds for it.</summary>
@@ -46,7 +46,7 @@ public enum WordProjectStatus
     IncorrectSpelling,
 }
 
-/// <summary>Reads a Texts status as a meaning, and so as a colour and glyph, like every other stage's.</summary>
+/// <summary>Maps a Texts status to its shared meaning, colour and glyph.</summary>
 public static class WordProjectStatuses
 {
     /// <summary>
@@ -81,7 +81,7 @@ public static class WordProjectStatuses
         _ => WordProjectStatus.NotPresent,
     };
 
-    /// <summary>The short name a chip shows for <paramref name="status"/>, in the Texts stage's own words.</summary>
+    /// <summary>The short label a Texts filter shows for <paramref name="status"/>.</summary>
     public static string LabelOf(WordProjectStatus status, int approvedCount = 1) => status switch
     {
         WordProjectStatus.Approved => approvedCount > 1 ? $"Approved, {approvedCount} analyses" : "Approved",
@@ -93,7 +93,7 @@ public static class WordProjectStatuses
 }
 
 /// <summary>
-/// Reads the checked Texts' words for the Texts stage: the Words table (one row per distinct form, its
+/// Reads words from the selected Texts for the Words table (one row per distinct form, its
 /// occurrences, and what the project holds for it) and the In Text reader (the Texts read in place, each
 /// word coloured by the same status). Reloads whenever <see cref="SelectionViewModel.ChosenTextIds"/>
 /// changes, guarded by a generation counter rather than a timer so a rapid run of checkbox clicks only
@@ -456,7 +456,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     /// <summary>Whether this spelling carries different analyses in different places, usually homographs.</summary>
     public bool HasSeveralAnalyses { get; }
 
-    /// <summary>The shared meaning behind <see cref="Status"/>, so Texts is coloured like every other stage.</summary>
+    /// <summary>The shared meaning behind <see cref="Status"/>, used for its colour and glyph.</summary>
     public Verdict Verdict => WordProjectStatuses.VerdictOf(Status);
 
     public string StatusLabel { get; }

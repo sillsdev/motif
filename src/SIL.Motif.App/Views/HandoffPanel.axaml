@@ -8,7 +8,6 @@
              x:DataType="views:HandoffPanel">
   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Component.Handoff.ColumnGap}" Margin="{DynamicResource Component.Handoff.PageMargin}">
 
-    <!-- Left: what goes in, then what was written last and whether it still matches Results. -->
     <ScrollViewer>
       <StackPanel Spacing="{DynamicResource Component.Handoff.SectionGap}">
 

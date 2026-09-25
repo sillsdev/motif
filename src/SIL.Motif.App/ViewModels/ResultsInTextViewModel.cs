@@ -30,7 +30,7 @@ public enum OccurrenceVerdict
     NotAssessed,
 }
 
-/// <summary>The Results In text view's filter chips, one for every verdict an occurrence can have.</summary>
+/// <summary>The Analyze texts filter chips, one for every verdict an occurrence can have.</summary>
 public enum ResultsInTextFilter
 {
     All,
@@ -43,8 +43,8 @@ public enum ResultsInTextFilter
 }
 
 /// <summary>
-/// The Results stage's In text view: the checked Texts read in place, each word's stored analysis with the
-/// parser's verdict for that very occurrence beneath it. Rebuilt whenever the Texts stage reads new words or
+/// Analyze texts reads the selected Texts in place, with each word's stored analysis and parser verdict beneath it.
+/// It rebuilds whenever the selected Texts load new words or
 /// an Assessment finishes; a filter keeps only the lines holding a matching word and dims the rest of them.
 /// </summary>
 public sealed partial class ResultsInTextViewModel : ObservableObject
@@ -133,10 +133,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     /// <summary>Whether there is a text to read, so the text picker and filters have something to act on.</summary>
     public bool HasTexts => Texts.Count > 0;
 
-    /// <summary>Whether the only thing missing is a checked Text, which the Texts stage can supply.</summary>
+    /// <summary>Whether the only thing missing is a checked Text, which the Texts page can supply.</summary>
     public bool NeedsTexts => _assess.Result is not null && Texts.Count == 0;
 
-    /// <summary>Opens the Texts stage, for the empty state that asks for a checked Text.</summary>
+    /// <summary>Opens the Texts page for the empty state that asks for a checked Text.</summary>
     public Action? OpenTexts { get; set; }
 
     /// <summary>Shows a clicked word's comparison in the side panel.</summary>
@@ -462,7 +462,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool IsNew => Verdict == OccurrenceVerdict.New;
     public bool IsNoParse => Verdict is OccurrenceVerdict.NoParse or OccurrenceVerdict.Limit;
 
-    /// <summary>The shared meaning behind <see cref="Verdict"/>, for the colour and glyph every stage uses.</summary>
+    /// <summary>The shared meaning behind <see cref="Verdict"/>, used for its colour and glyph.</summary>
     public Verdict Meaning => Verdict switch
     {
         OccurrenceVerdict.Matches => ViewModels.Verdict.Agrees,
