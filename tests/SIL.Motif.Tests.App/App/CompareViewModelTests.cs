@@ -86,6 +86,12 @@ public sealed class CompareViewModelTests
             preset.Family == CompareFamilyKind.Nobody).Label);
     }
 
+    [Fact]
+    public void AWordMissingFromTheProjectUsesTheNotStoredYetLabel()
+    {
+        Assert.Equal("Not stored yet", CompareViewModel.RowLabelOf(WordProjectStatus.NotPresent));
+    }
+
     private static readonly AssessmentWordResult[] Sample =
     [
         Word("kitabu", "analysed", ProjectStanding.Approved, ["approved"]),
