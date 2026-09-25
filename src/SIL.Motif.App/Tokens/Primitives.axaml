@@ -152,4 +152,5 @@
   <x:Double x:Key="Primitive.Stroke.1p8">1.8</x:Double>
 
   <x:Double x:Key="Primitive.Opacity.35">0.35</x:Double>
+  <x:Double x:Key="Primitive.Opacity.100">1</x:Double>
 </ResourceDictionary>

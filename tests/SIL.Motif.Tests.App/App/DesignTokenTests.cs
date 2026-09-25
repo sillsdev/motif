@@ -67,36 +67,19 @@ public sealed class DesignTokenTests
     }
 
     [Fact]
-    public void SelectionColumnSizesConvertToGridLengths()
+    public void AnalyzeTextsSelectionColumnUsesItsComponentWidth()
     {
-        var keys = new[]
-        {
-            "Component.Selection.TextColumn",
-            "Component.Selection.CountColumn",
-            "Component.Selection.ResultColumn",
-            "Component.Selection.IconColumn",
-            "Component.Selection.DetailColumn",
-        };
-        var selectionView = XDocument.Load(Path.Combine(AppDirectory(), "Views", "SelectionPanel.axaml"));
-        var columnWidths = selectionView.Descendants()
-            .Where(element => element.Name.LocalName == "ColumnDefinition")
-            .Select(element => (string?)element.Attribute("Width"))
-            .Where(value => value?.Contains("Component.Selection.", StringComparison.Ordinal) == true)
-            .ToList();
-        Assert.NotEmpty(columnWidths);
-        Assert.All(columnWidths, value => Assert.Contains(
-            "Converter={x:Static views:SelectionPanel.SizeToGridLength}", value, StringComparison.Ordinal));
+        var textsPage = XDocument.Load(Path.Combine(AppDirectory(), "Views", "Pages", "TextsPage.axaml"));
+        var selectionHost = textsPage.Descendants().Single(element =>
+            (string?)element.Attribute(Xaml + "Name") == "SelectionHost");
+        Assert.Equal("{DynamicResource Component.TextsPage.SelectionPanelWidth}",
+            (string?)selectionHost.Attribute("Width"));
 
         _avalonia.Invoke(() =>
         {
-            foreach (var key in keys)
-            {
-                Assert.True(Application.Current!.TryGetResource(key, ThemeVariant.Light, out var value));
-                var size = Assert.IsType<double>(value);
-                var gridLength = SelectionPanel.SizeToGridLength.Convert(
-                    size, typeof(GridLength), null!, System.Globalization.CultureInfo.InvariantCulture);
-                Assert.Equal(new GridLength(size), Assert.IsType<GridLength>(gridLength));
-            }
+            Assert.True(Application.Current!.TryGetResource(
+                "Component.TextsPage.SelectionPanelWidth", ThemeVariant.Light, out var value));
+            Assert.Equal(240d, Assert.IsType<double>(value));
         });
     }
 

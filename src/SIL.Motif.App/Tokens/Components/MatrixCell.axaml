@@ -6,6 +6,7 @@
     <StaticResource x:Key="Component.MatrixCell.Radius" ResourceKey="Primitive.Radius.8" />
     <StaticResource x:Key="Component.MatrixCell.Height" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
+    <StaticResource x:Key="Component.MatrixCell.SelectedOpacity" ResourceKey="Primitive.Opacity.100" />
     <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0x0x4x0" />
@@ -93,7 +94,7 @@
   <Style Selector="Border.matrixCell.selected, Border.matrixCell:focus-visible">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.UnderlineHeavy}" />
-    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Opacity" Value="{DynamicResource Component.MatrixCell.SelectedOpacity}" />
   </Style>
   <Style Selector="Ellipse.matrixPending">
     <Setter Property="Width" Value="{DynamicResource Component.MatrixCell.MarkerSize}" />
