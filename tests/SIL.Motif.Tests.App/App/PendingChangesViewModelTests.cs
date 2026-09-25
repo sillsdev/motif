@@ -9,29 +9,33 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class PendingChangesViewModelTests
 {
+    private const string InternalId = "12345678-1234-1234-1234-123456789abc";
+
     [Fact]
     public async Task CollectionReportsReplacementsAndSkippedBulkWords()
     {
         var fake = new FakeCommandClient();
         var changes = new ChangesViewModel(fake);
         await changes.OpenProjectAsync("project.fwdata");
-        var existing = new PendingChange("older", "wordform", "word", "approve", null, null, ["operation"]);
+        var existing = new PendingChange(InternalId, "wordform", "word", "approve", null, null, ["operation"]);
         fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [existing], [])
         {
-            ReplacedChangeId = "older",
+            ReplacedChangeId = InternalId,
         };
 
         await changes.PutAsync(new ChangeIntent("newer", "reject", "wordform", "word"));
 
-        Assert.Contains("Replaced pending change older", changes.CollectionNotice);
+        Assert.Equal("Replaced an earlier pending change.", changes.CollectionNotice);
+        Assert.DoesNotContain(InternalId, changes.CollectionNotice);
         fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [], [])
         {
-            CancelledChangeId = "older",
+            CancelledChangeId = InternalId,
         };
 
         await changes.PutAsync(new ChangeIntent("newer", "candidate", "wordform", "word"));
 
-        Assert.Contains("Cancelled pending change older", changes.CollectionNotice);
+        Assert.Equal("Cancelled the pending choice.", changes.CollectionNotice);
+        Assert.DoesNotContain(InternalId, changes.CollectionNotice);
         fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [existing], [])
         {
             SkippedWord = "word",
@@ -39,7 +43,7 @@ public sealed class PendingChangesViewModelTests
 
         await changes.PutAsync(new ChangeIntent("bulk", "add-candidate", "wordform", "word"));
 
-        Assert.Contains("Skipped word", changes.CollectionNotice);
+        Assert.Equal("Skipped one word because a choice is already pending.", changes.CollectionNotice);
     }
 
     [Fact]
@@ -120,13 +124,34 @@ public sealed class PendingChangesViewModelTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
             [new PendingChange("change/two", "wordform/two", "word", "approve", "assessment/two",
                 "chosen reading", ["operation/two"])],
-            [new ChangeFit("change/two", false, ["Wordform was deleted."])]));
+            [new ChangeFit("change/two", false, [$"Wordform {InternalId} was deleted."])]));
         var changes = new ChangesViewModel(fake);
 
         await changes.OpenProjectAsync("project.fwdata");
 
         Assert.False(Assert.Single(changes.Snapshot.FitSummary).StillFits);
-        Assert.Contains("deleted", Assert.Single(changes.Items).FitStatus);
+        Assert.Contains("no longer fits", changes.ApplyStatus);
+        Assert.Equal("No longer fits the current project. Remove this change before review.",
+            Assert.Single(changes.Items).FitStatus);
+        Assert.DoesNotContain(InternalId, Assert.Single(changes.Items).FitStatus);
+    }
+
+    [Fact]
+    public async Task ARefusalShowsMappedTextWithoutInternalTermsOrIds()
+    {
+        var fake = new FakeCommandClient
+        {
+            PendingPutRefusal = new Refusal("change.cannot-compose", FailureReason.Refused,
+                $"The pending Draft change {InternalId} could not be composed."),
+        };
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+
+        await changes.PutAsync(new ChangeIntent("change/mine", "reject", "wordform/one", "word"));
+
+        Assert.Equal("This change could not be added. Refresh the changes and try again.", changes.ErrorText);
+        Assert.DoesNotContain("Draft", changes.ErrorText);
+        Assert.DoesNotContain(InternalId, changes.ErrorText);
     }
 
     [Fact]

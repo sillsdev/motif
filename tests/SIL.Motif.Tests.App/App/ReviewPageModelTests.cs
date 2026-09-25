@@ -11,6 +11,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class ReviewPageModelTests
 {
     private const string ProjectPath = @"C:\projects\one.fwdata";
+    private const string InternalId = "12345678-1234-1234-1234-123456789abc";
 
     [Fact]
     public async Task ADeletedWordformBlocksApplyAndRemovingItKeepsTheOtherChange()
@@ -19,7 +20,7 @@ public sealed class ReviewPageModelTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first"), Change("deleted", "second")],
             [new ChangeFit("kept", true, []),
-             new ChangeFit("deleted", false, ["The wordform was deleted in FieldWorks."])]));
+             new ChangeFit("deleted", false, [$"Wordform {InternalId} was deleted in FieldWorks."])]));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
 
@@ -27,7 +28,9 @@ public sealed class ReviewPageModelTests
 
         Assert.False(page.CanApply);
         Assert.Contains("No longer fits", page.ApplyBlockReason);
-        Assert.Contains("deleted", context.Changes.Items.Single(item => item.ChangeId == "deleted").FitStatus);
+        var fitStatus = context.Changes.Items.Single(item => item.ChangeId == "deleted").FitStatus;
+        Assert.Equal("No longer fits the current project. Remove this change before review.", fitStatus);
+        Assert.DoesNotContain(InternalId, fitStatus);
 
         await page.RemoveNonFittingCommand.ExecuteAsync(null);
 
