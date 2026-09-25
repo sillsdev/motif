@@ -11,7 +11,6 @@
     <StaticResource x:Key="Component.Warnings.GroupPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
     <StaticResource x:Key="Component.Warnings.DetailPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
     <StaticResource x:Key="Component.Warnings.KindWidth" ResourceKey="Primitive.Size.280" />
-    <FontFamily x:Key="Component.Warnings.ValueFont">Cascadia Mono, Consolas, monospace</FontFamily>
   </Styles.Resources>
   <Style Selector="Grid.warningPanel">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PageMargin}" />
@@ -81,7 +80,6 @@
   </Style>
   <Style Selector=":is(SelectableTextBlock).warningValue">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
-    <Setter Property="FontFamily" Value="{DynamicResource Component.Warnings.ValueFont}" />
   </Style>
   <Style Selector="HyperlinkButton.warningObjectLink">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
