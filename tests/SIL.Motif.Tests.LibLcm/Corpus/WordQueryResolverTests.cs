@@ -54,23 +54,23 @@ public sealed class WordQueryResolverTests : IDisposable
     }
 
     [Fact]
-    public void TheDefaultQuery_YieldsOnlyWordformsCarryingAManualAnalysis()
+    public void TheManualAnalysisQuery_YieldsOnlyWordformsCarryingAManualAnalysis()
     {
         SeedApprovedWordform("zzmotifqueryapproved");
         SeedUnanalysedWordform("zzmotifqueryunanalysed");
 
-        var words = WordQueryResolver.Resolve(AssessmentScopeConfiguration.DefaultQueryText, _cache);
+        var words = WordQueryResolver.Resolve(WordQueryResolver.ManualAnalysisQueryText, _cache);
 
         Assert.Contains("zzmotifqueryapproved", words);
         Assert.DoesNotContain("zzmotifqueryunanalysed", words);
     }
 
     [Fact]
-    public void TheDefaultQuery_OverAProjectWithNoManualAnalysis_YieldsAnEmptySelection()
+    public void TheManualAnalysisQuery_OverAProjectWithNoManualAnalysis_YieldsAnEmptySelection()
     {
         SeedUnanalysedWordform("zzmotifquerynoanalysis");
 
-        var words = WordQueryResolver.Resolve(AssessmentScopeConfiguration.DefaultQueryText, _cache);
+        var words = WordQueryResolver.Resolve(WordQueryResolver.ManualAnalysisQueryText, _cache);
 
         Assert.Empty(words);
     }
@@ -88,7 +88,7 @@ public sealed class WordQueryResolverTests : IDisposable
             _cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.disapproves);
         });
 
-        var words = WordQueryResolver.Resolve(AssessmentScopeConfiguration.DefaultQueryText, _cache);
+        var words = WordQueryResolver.Resolve(WordQueryResolver.ManualAnalysisQueryText, _cache);
 
         Assert.DoesNotContain("zzmotifquerydisapproved", words);
     }

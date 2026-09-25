@@ -220,7 +220,7 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
-    public void ATrialsRecordedSelectionCarriesOnlyWordsWithAManualAnalysis()
+    public void ADefaultTrialMeasuresUnanalysedWordsToo()
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);
         var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
@@ -234,7 +234,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, completed.Status);
         var recorded = Assert.Single(_assessments.ListByProposal(proposalId));
         Assert.Contains(AnalysedWordform, recorded.Selection.Words);
-        Assert.DoesNotContain(UnanalysedWordform, recorded.Selection.Words);
+        Assert.Contains(UnanalysedWordform, recorded.Selection.Words);
 
         // The words are what this run resolved to; the query is what the scope was told, and both are kept.
         Assert.Contains("\"query\"", recorded.ScopeJson, StringComparison.Ordinal);

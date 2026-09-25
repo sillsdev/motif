@@ -6,7 +6,7 @@ namespace SIL.Motif.Host.Corpus;
 /// <summary>
 /// Resolves a scope's declared word query (<see cref="AssessmentScopeConfiguration.Query"/>) into the
 /// concrete word list a Selection is — <c>CONTEXT.md</c>'s Selection, "listed out in full... not a query
-/// and not a sample". The vocabulary is deliberately tiny: <see cref="AssessmentScopeConfiguration.DefaultQueryText"/>
+/// and not a sample". The vocabulary is deliberately tiny: <see cref="ManualAnalysisQueryText"/>
 /// and <see cref="AllWordformsQueryText"/> are the only two queries a project's configuration can express
 /// today, and <see cref="Resolve"/> refuses anything else by name rather than guessing at it (pinned by
 /// `AnUnrecognisedQuery_RefusesNamingIt`). A larger vocabulary is a later, deliberate addition, not a
@@ -17,9 +17,12 @@ public static class WordQueryResolver
     /// <summary>Every wordform with a non-empty surface form, whether or not it carries a manual analysis.</summary>
     public const string AllWordformsQueryText = "all wordforms";
 
+    /// <summary>Wordforms with a human-approved analysis.</summary>
+    public const string ManualAnalysisQueryText = "all words carrying a manual analysis";
+
     /// <summary>Every query this resolver understands, for a refusal message naming what is actually available.</summary>
     public static readonly IReadOnlyList<string> KnownQueries =
-        [AssessmentScopeConfiguration.DefaultQueryText, AllWordformsQueryText];
+        [ManualAnalysisQueryText, AllWordformsQueryText];
 
     /// <exception cref="InvalidOperationException"><paramref name="query"/> names no query this resolver understands.</exception>
     public static IReadOnlyList<string> Resolve(string query, LcmCache cache)
@@ -27,7 +30,7 @@ public static class WordQueryResolver
         if (string.IsNullOrWhiteSpace(query)) throw new ArgumentException("A query is required.", nameof(query));
         ArgumentNullException.ThrowIfNull(cache);
 
-        if (string.Equals(query, AssessmentScopeConfiguration.DefaultQueryText, StringComparison.Ordinal))
+        if (string.Equals(query, ManualAnalysisQueryText, StringComparison.Ordinal))
             return WordsCarryingAManualAnalysis(cache);
         if (string.Equals(query, AllWordformsQueryText, StringComparison.Ordinal))
             return LcmWordformCorpus.ExtractForms(cache).ToList();

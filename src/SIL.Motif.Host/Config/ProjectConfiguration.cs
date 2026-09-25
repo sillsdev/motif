@@ -16,7 +16,7 @@ namespace SIL.Motif.Host.Config;
 public sealed record AssessmentScopeConfiguration
 {
     public const string DefaultName = "default";
-    public const string DefaultQueryText = "all words carrying a manual analysis";
+    public const string DefaultQueryText = "all wordforms";
     public const string DefaultAssessorName = "pangloss";
     public static readonly StepCap DefaultPerWordStepLimit = StepCap.Default;
 
