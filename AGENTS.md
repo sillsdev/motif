@@ -140,6 +140,30 @@ Run `tools/verify-comment-only.ps1` after a comment sweep. It requires every lin
 removes** to be a comment — the symmetric check, because a pure deletion satisfies the obvious
 one-sided version while removing the `using` block along with the comment above it.
 
+## Design tokens
+
+**The App's look is changed in one place, so no view spells a colour or a size. Enforced by
+`tools/TokenHygiene/token-hygiene.cs`, which `./build.ps1` runs after the comment gate.**
+
+| Layer | File | May name |
+|---|---|---|
+| Primitive | `src/SIL.Motif.App/Tokens/Primitives.axaml` | raw values, named by value (`Primitive.Space.8`, `Primitive.Color.Blue500`) — the only file that may |
+| Intent | `src/SIL.Motif.App/Tokens/Intent.axaml` | a `Primitive.*` key or a Semi role; colours per theme, used through `DynamicResource` |
+| Component | `src/SIL.Motif.App/Tokens/Components/*.axaml` | colours from `{DynamicResource Intent.*}` only; sizes from Intent, its own `Component.<File>.*` keys, or Primitives |
+| View | `src/SIL.Motif.App/Views/**` (`.axaml` and the `.cs` beside it) | Intent and Component keys only — never a Primitive or Semi key |
+
+In a view or a component the gate fails on a literal colour (hex, or a name such as `White` or
+`Transparent`) and on a literal Margin, Padding, Spacing, FontSize, CornerRadius, BorderThickness,
+StrokeThickness, or fixed Width/Height/Min*/Max*, whether it is an attribute, a style setter, a resource,
+or a value a control sets in code. What is not styling passes: path data, a zero, `Auto` and star grid
+sizes, bindings. A code-built control wears component classes rather than setting values itself.
+
+The same rule as comments applies: zero tolerance, no baseline. The only exceptions are the named
+entries in the tool's `Allowlist`, each with a one-line reason. An entry that no longer matches
+anything fails the run, so an entry cannot outlive the value it excuses. A new value goes in
+`Primitives.axaml`. A new shared meaning goes in `Intent.axaml`, and its header lists it. A new
+component file gets a `StyleInclude` in `App.axaml` and a case in `ComponentStyleTests`.
+
 ## Non-negotiable design rules
 
 1. The canonical input is semantic CRUD+ intent, never a low-level property script or reflection
