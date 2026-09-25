@@ -10,7 +10,7 @@
         <Button DockPanel.Dock="Right" Content="{Binding HandoffActionText}"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"
                 Command="{Binding Handoff.RunCommand}"
-                AutomationProperties.Name="Write the Handoff folder" />
+                AutomationProperties.Name="Write the AI Handoff folder" />
         <views:CopyableTextBlock Classes="section-title" Text="AI Handoff" />
       </DockPanel>
     </Border>
