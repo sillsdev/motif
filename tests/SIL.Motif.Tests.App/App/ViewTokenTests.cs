@@ -50,6 +50,11 @@ public sealed class ViewTokenTests
     }
 
     [Fact]
+    public void AnOutcomeBarWithoutItsLegendTakesTheCompactTrackHeight() =>
+        AssertStyled(() => new OutcomeBar { ShowLegend = false, Segments = [new OutcomeSegment(Verdict.Agrees, 3, "agree")] },
+            [new("the track", bar => Nth<Grid>(bar, 0), Grid.HeightProperty, "Component.OutcomeBar.CompactTrackHeight")]);
+
+    [Fact]
     public void AMorphemeRowTakesItsGapsAndTypeFromTokens()
     {
         AssertStyled(() => new MorphemeRow
