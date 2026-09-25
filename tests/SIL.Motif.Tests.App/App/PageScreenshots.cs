@@ -281,9 +281,8 @@ public sealed class PageScreenshots
             .RootElement.Clone()),
     ];
 
-    private static string TraceFixture([System.Runtime.CompilerServices.CallerFilePath] string sourceFile = "") =>
-        File.ReadAllText(Path.GetFullPath(Path.Combine(
-            Path.GetDirectoryName(sourceFile)!, "..", "TestFixtures", "trace-details-v2-matinlu.json")));
+    private static string TraceFixture() =>
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"));
 
     private static BaselineToken Token() =>
         new("project-1", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));
