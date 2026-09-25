@@ -1041,7 +1041,15 @@ public sealed class MainWindowSmokeTests
                     Assert.Contains(tiles, tile => AutomationProperties.GetName(tile) == file.DragAccessibleName);
 
                 Assert.Contains(panel.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Drag all Handoff files" && button.Focusable);
+                    AutomationProperties.GetName(button) == "Drag all AI Handoff files" && button.Focusable);
+                var handoffNames = panel.GetLogicalDescendants()
+                    .OfType<Control>()
+                    .Select(control => AutomationProperties.GetName(control))
+                    .OfType<string>()
+                    .Where(name => name.Contains("Handoff", StringComparison.Ordinal));
+                Assert.All(handoffNames, name => Assert.True(name.Contains("AI Handoff", StringComparison.Ordinal), name));
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Write the AI Handoff folder");
 
                 var tile = tiles.Single(item =>
                     AutomationProperties.GetName(item) == "Drag assessment.json");
