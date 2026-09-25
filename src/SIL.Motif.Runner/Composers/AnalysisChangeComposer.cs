@@ -7,7 +7,7 @@ using SIL.LCModel;
 
 namespace SIL.Motif.Runner.Composers;
 
-/// <summary>One action a person collected for a word's first parser reading.</summary>
+/// <summary>One action a person collected for a word and a chosen analysis.</summary>
 public sealed record AnalysisChangeIntent(string Kind, CanonicalId WordformId, ParseAnalysis? Reading,
     CanonicalId? StoredAnalysisId = null, string? ChangeId = null);
 
@@ -40,6 +40,9 @@ public static class AnalysisChangeComposer
             (intent.StoredAnalysisId is null || analysis.Guid == intent.StoredAnalysisId.Value.ToGuid())).ToArray();
         if (intent.StoredAnalysisId is not null && existing.Length != 1)
             throw new InvalidOperationException("The chosen stored analysis does not match the reading.");
+        if (intent.Kind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.Candidate &&
+            existing.Length > 1)
+            throw new InvalidOperationException("Several stored analyses match this reading. Choose one by its stored identity.");
 
         if (intent.Kind == AnalysisChangeKinds.Candidate)
         {

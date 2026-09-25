@@ -322,7 +322,7 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
     }
 
     [Fact]
-    public void ApprovalAddressesEveryStoredAnalysisMatchingTheParserReading()
+    public void ApprovalRequiresIdentityWhenSeveralStoredAnalysesMatchTheReading()
     {
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
         {
@@ -338,11 +338,8 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         });
         var reading = new ParseAnalysis([new ParseMorph(null, null, null, "same-root")]);
 
-        var operations = AnalysisChangeComposer.Build(_cache,
-            new AnalysisChangeIntent("approve", CanonicalId.FromGuid(_wordform.Guid), reading));
-
-        Assert.Equal(2, operations.Count);
-        Assert.Equal(2, operations.Select(operation => operation.Target).Distinct().Count());
+        Assert.Throws<InvalidOperationException>(() => AnalysisChangeComposer.Build(_cache,
+            new AnalysisChangeIntent("approve", CanonicalId.FromGuid(_wordform.Guid), reading)));
     }
 
     [Fact]

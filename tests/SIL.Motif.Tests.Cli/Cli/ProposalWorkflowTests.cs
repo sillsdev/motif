@@ -534,10 +534,20 @@ public sealed class ProposalWorkflowTests
         var pending = PendingChanges.Load(new PendingChangesRequest(_fwDataPath, ProductVersion));
         Assert.True(pending.Succeeded, pending.Refusal?.Message);
         var secondReading = new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, "chosen-second")]);
+        var wrongIndex = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+            pending.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "approve",
+                CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
+                ReadingIndex: 0)));
+        Assert.Equal("change.reading-missing", wrongIndex.Refusal?.Code);
         var candidateChange = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
             pending.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "add-candidate",
                 CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading)));
         Assert.True(candidateChange.Succeeded, candidateChange.Refusal?.Message);
+        var sameReadingOpinion = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+            candidateChange.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "approve",
+                CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
+                ReadingIndex: 1)));
+        Assert.Equal("change.slot-occupied", sameReadingOpinion.Refusal?.Code);
         var spellingChange = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
             candidateChange.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
                 CanonicalId.FromGuid(wordformGuid).Value, word)));

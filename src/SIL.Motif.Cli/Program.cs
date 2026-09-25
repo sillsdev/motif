@@ -355,7 +355,8 @@ try
                 !flags.TryGetValue("word", out var putWord))
                 return Usage("Usage: motif put-pending-change --project <fwdata> " +
                     "--expected-revision <revision> --change-id <id> --kind <kind> --word <word> " +
-                    "[--wordform-id <id>] [--assessment <id> --reading-json <json>] [--json]", asJson);
+                    "[--wordform-id <id>] [--assessment <id> --reading-index <zero-based> " +
+                    "--reading-json <json>] [--stored-analysis-id <id>] [--json]", asJson);
             ParseAnalysis? chosenReading = null;
             if (flags.TryGetValue("reading-json", out var readingJson))
             {
@@ -365,11 +366,19 @@ try
                     return Usage("--reading-json must contain one ParseAnalysis object.", asJson);
                 }
             }
+            int? readingIndex = null;
+            if (flags.TryGetValue("reading-index", out var indexText))
+            {
+                if (!int.TryParse(indexText, out var parsedIndex) || parsedIndex < 0)
+                    return Usage("--reading-index must be a zero-based nonnegative integer.", asJson);
+                readingIndex = parsedIndex;
+            }
             result = RenderProposal(PendingChanges.Put(new PutPendingChangeRequest(
                 putProject, CliProductVersion(), putRevision,
                 new ChangeIntent(putId, putKind, flags.GetValueOrDefault("wordform-id") ?? "",
                     putWord, flags.GetValueOrDefault("assessment"), chosenReading,
-                    flags.GetValueOrDefault("stored-analysis-id"), flags.GetValueOrDefault("display-reading")))));
+                    flags.GetValueOrDefault("stored-analysis-id"), flags.GetValueOrDefault("display-reading"),
+                    readingIndex))));
             break;
 
         case "remove-pending-change":

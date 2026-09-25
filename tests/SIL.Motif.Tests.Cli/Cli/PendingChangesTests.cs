@@ -144,6 +144,51 @@ public sealed class PendingChangesTests
         Assert.Equal("same-form", outcome.Refusal?.Facts["word"]);
     }
 
+    [Theory]
+    [InlineData("approve")]
+    [InlineData("reject")]
+    [InlineData("candidate")]
+    public void OpinionRequiresAnExplicitAnalysisIdentity(string kind)
+    {
+        var initial = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var outcome = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0",
+            initial.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, kind, "", "word",
+                Reading: new ParseAnalysis([new ParseMorph(null, null, null, "word")]))));
+
+        Assert.Equal("change.analysis-identity-required", outcome.Refusal?.Code);
+    }
+
+    [Fact]
+    public void ASecondPutOfTheSameParserReadingIsRefused()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("pending-reading", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path),
+            Path.Combine(Path.GetDirectoryName(_path)!, "reading-managed")).Succeeded);
+        var initial = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var firstId = CanonicalId.Mint().Value;
+        var secondId = CanonicalId.Mint().Value;
+        var wordId = CanonicalId.FromGuid(wordformId).Value;
+        var reading = new ParseAnalysis([new ParseMorph(null, null, null, "pending-reading")]);
+        var first = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", initial.Value!.Revision,
+            new ChangeIntent(firstId, "add-candidate", wordId, "pending-reading", Reading: reading)));
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+
+        var second = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", first.Value!.Revision,
+            new ChangeIntent(secondId, "add-candidate", wordId, "pending-reading", Reading: reading)));
+
+        Assert.Equal("change.slot-occupied", second.Refusal?.Code);
+        Assert.Equal(firstId, second.Refusal?.Facts["existingChangeId"]);
+        Assert.Single(PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes);
+    }
+
     [Fact]
     public void WordformLookupAcceptsCanonicallyEquivalentUnicode()
     {

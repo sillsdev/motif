@@ -43,7 +43,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "put-pending-change", "put-pending-change",
             new[] { "put-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> --kind <kind> --word <word> [--wordform-id <id>] " +
-                "[--assessment <id> --reading-json <json>] [--stored-analysis-id <id>] [--json]" }),
+                "[--assessment <id> --reading-index <zero-based> --reading-json <json>] " +
+                "[--stored-analysis-id <id>] [--json]" }),
         new CliVerbDescriptor("Commands", "remove-pending-change", "remove-pending-change",
             new[] { "remove-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> [--json]" }),

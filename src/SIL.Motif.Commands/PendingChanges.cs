@@ -52,6 +52,10 @@ public static class PendingChanges
             if (string.IsNullOrWhiteSpace(change.ChangeId) || string.IsNullOrWhiteSpace(change.Word))
                 return Refuse("change.invalid-identity", "A change id and word are required.",
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+            if (change.Kind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.Candidate &&
+                change.StoredAnalysisId is null && (change.AssessmentId is null || change.ReadingIndex is null))
+                return Refuse("change.analysis-identity-required",
+                    "Choose one analysis explicitly before changing its opinion.", ("changeId", change.ChangeId));
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)
                 return Refuse("change.baseline-missing", "Capture a Baseline before collecting changes.",
@@ -135,8 +139,12 @@ public static class PendingChanges
                     var word = assessment.Words?.SingleOrDefault(item =>
                         item.Word.Normalize(NormalizationForm.FormD) == form.Normalize(NormalizationForm.FormD));
                     if (change.StoredAnalysisId is null &&
-                        (reading is null || word?.Morphology?.Analyses.Any(item =>
-                            ChangeFitPreflight.ReadingDigest(item) == ChangeFitPreflight.ReadingDigest(reading)) != true))
+                        (reading is null || (change.ReadingIndex is { } index
+                            ? index < 0 || index >= (word?.Morphology?.Analyses.Count ?? 0) ||
+                              ChangeFitPreflight.ReadingDigest(word!.Morphology!.Analyses[index]) !=
+                              ChangeFitPreflight.ReadingDigest(reading)
+                            : word?.Morphology?.Analyses.Any(item =>
+                                ChangeFitPreflight.ReadingDigest(item) == ChangeFitPreflight.ReadingDigest(reading)) != true)))
                         return Refuse("change.reading-missing", "The chosen reading is absent from the Assessment.",
                             ("changeId", change.ChangeId), ("wordformId", change.WordformId),
                             ("assessmentId", assessmentId));
@@ -169,6 +177,23 @@ public static class PendingChanges
                     ("changeId", change.ChangeId));
 
             RemoveChange(draft, change.ChangeId);
+            if (reading is not null)
+            {
+                var readingDigest = ChangeFitPreflight.ReadingDigest(reading);
+                var occupied = draft.Operations.Select(operation =>
+                {
+                    if (operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
+                        !extensions.TryGetProperty("changeFit", out var fit) ||
+                        fit.ValueKind != JsonValueKind.Object) return (ChangeId: (string?)null, Fits: false);
+                    return (ChangeId: ChangeIdOf(operation), Fits:
+                        Property(fit, "wordformId") == change.WordformId &&
+                        Property(fit, "readingContentDigest") == readingDigest);
+                }).FirstOrDefault(item => item.Fits);
+                if (occupied.Fits)
+                    return Refuse("change.slot-occupied", "Another change already addresses this word and reading.",
+                        ("changeId", change.ChangeId), ("existingChangeId", occupied.ChangeId),
+                        ("wordformId", change.WordformId));
+            }
             var existingOperations = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
             if (AnalysisOpinionSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
             {
@@ -194,7 +219,7 @@ public static class PendingChanges
             draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
             {
                 composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
-                change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId,
+                change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
                 operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
             }, JsonOptions));
             var json = JsonSerializer.Serialize(draft, JsonOptions);
