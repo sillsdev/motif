@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data.Converters;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
 
@@ -16,4 +18,8 @@ public sealed partial class DifferencePanel : UserControl
     }
 
     public DifferenceViewModel Difference { get; }
+
+    /// <summary>Converts a component size to the type required by a grid column.</summary>
+    public static readonly IValueConverter SizeToGridLength = new FuncValueConverter<double, GridLength>(
+        size => new GridLength(size));
 }

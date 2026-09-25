@@ -9,7 +9,7 @@
         IsVisible="{Binding Difference.HasDifference}">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*" />
-      <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.InspectorWidth}" />
+      <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.InspectorWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
     </Grid.ColumnDefinitions>
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
 
@@ -38,12 +38,12 @@
 
       <Grid Grid.Row="2" Margin="{DynamicResource Component.DifferencePanel.MoveHeaderMargin}">
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.KindColumnWidth}" />
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CellColumnWidth}" />
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.ArrowColumnWidth}" />
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.KindColumnWidth}" />
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CellColumnWidth}" />
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CountColumnWidth}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.KindColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CellColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.ArrowColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.KindColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CellColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CountColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
         </Grid.ColumnDefinitions>
         <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WHAT IT MEANS" />
         <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="FROM" />
@@ -57,12 +57,12 @@
           <DataTemplate x:DataType="vm:MoveViewModel">
             <Grid AutomationProperties.Name="{Binding AccessibleName}">
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.KindColumnWidth}" />
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CellColumnWidth}" />
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.ArrowColumnWidth}" />
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.KindColumnWidth}" />
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CellColumnWidth}" />
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CountColumnWidth}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.KindColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CellColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.ArrowColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.KindColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CellColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CountColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
               </Grid.ColumnDefinitions>
               <views:VerdictChip Grid.Column="0" Verdict="{Binding Verdict}" Text="{Binding KindLabel}" Compact="True" HorizontalAlignment="Left" />
               <StackPanel Grid.Column="1">
@@ -83,11 +83,11 @@
       <Grid Grid.Row="4" Margin="{DynamicResource Component.DifferencePanel.MoveHeaderMargin}"
             IsVisible="{Binding Difference.HasChosenMove}">
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.WordColumnWidth}" />
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.OccurrenceColumnWidth}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.WordColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.OccurrenceColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CountColumnWidth}" />
+          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CountColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
         </Grid.ColumnDefinitions>
         <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WORD" />
         <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="IN TEXTS" />
@@ -100,11 +100,11 @@
           <DataTemplate x:DataType="vm:MovedWordViewModel">
             <Grid ColumnSpacing="{DynamicResource Intent.Space.Related}">
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.WordColumnWidth}" />
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.OccurrenceColumnWidth}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.WordColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.OccurrenceColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="{DynamicResource Component.DifferencePanel.CountColumnWidth}" />
+                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CountColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
               </Grid.ColumnDefinitions>
               <views:CopyableTextBlock Grid.Column="0" Text="{Binding Word}" FontWeight="SemiBold" VerticalAlignment="Center" />
               <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
