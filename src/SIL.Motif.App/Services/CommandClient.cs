@@ -91,4 +91,26 @@ public sealed partial class CommandClient : ICommandClient
             _projectGate.Release();
         }
     });
+
+    private Task<T> OneAtATime<T>(Func<T> work, CancellationToken cancellationToken, Func<T> cancelled) =>
+        Task.Run(async () =>
+        {
+            try
+            {
+                await _projectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return cancelled();
+            }
+
+            try
+            {
+                return work();
+            }
+            finally
+            {
+                _projectGate.Release();
+            }
+        });
 }

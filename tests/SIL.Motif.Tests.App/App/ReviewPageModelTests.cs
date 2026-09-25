@@ -135,6 +135,80 @@ public sealed class ReviewPageModelTests
     }
 
     [Fact]
+    public async Task ACancelledMeasurementShowsTheCancellationMessage()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingRefusal = new Refusal("job.wait-cancelled", FailureReason.Cancelled,
+            "Waiting for job 'job/one' was cancelled.");
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        Assert.Equal("The check was cancelled.", page.MeasurementError);
+    }
+
+    [Fact]
+    public async Task ALongRunningMeasurementShowsTheWaitTimeoutMessage()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingRefusal = new Refusal("job.wait-timeout", FailureReason.Busy,
+            "The wait expired.");
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        Assert.Equal("The check is taking longer than expected. Check the job before trying again.",
+            page.MeasurementError);
+    }
+
+    [Fact]
+    public async Task OpeningAnotherProjectCancelsApplyAndReloadsChanges()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one", "complete", true));
+        var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.ApplyPendingHandler = async (_, cancellationToken) =>
+        {
+            started.SetResult(cancellationToken);
+            var cancellationSignal = Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            if (await Task.WhenAny(cancellationSignal, release.Task) == cancellationSignal)
+            {
+                try { await cancellationSignal; }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+            }
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                "job.wait-cancelled", FailureReason.Cancelled, "Waiting for the Dry Run was cancelled."));
+        };
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        var applying = page.ApplyCommand.ExecuteAsync(null);
+        var applyToken = await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var loadsBeforeSwitch = fake.PendingLoadRequests.Count;
+        await context.PublishProjectOpenedAsync(@"C:\projects\two.fwdata");
+        var cancelled = applyToken.IsCancellationRequested;
+        release.TrySetResult();
+        await applying.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(cancelled);
+        Assert.False(page.IsApplying);
+        Assert.True(fake.PendingLoadRequests.Count > loadsBeforeSwitch);
+    }
+
+    [Fact]
     public async Task ApplyingMeasuredChangesShowsTheReceiptAndEmptiesTheList()
     {
         var fake = new FakeCommandClient();

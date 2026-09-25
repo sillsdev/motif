@@ -12,6 +12,9 @@ public sealed partial class FakeCommandClient
     private MeasurePendingResult? _measurement;
     private ApplyProjection? _apply;
     public Refusal? ApplyPendingRefusal { get; set; }
+    public Refusal? MeasurePendingRefusal { get; set; }
+    public Func<ApplyPendingRequest, CancellationToken, Task<CommandOutcome<ApplyProjection>>>? ApplyPendingHandler
+        { get; set; }
 
     public void MeasurePendingCompletesWith(MeasurePendingResult result) => _measurement = result;
     public void ApplyPendingCompletesWith(ApplyProjection result) => _apply = result;
@@ -20,6 +23,7 @@ public sealed partial class FakeCommandClient
         ApplyPendingRequest request, CancellationToken cancellationToken)
     {
         ApplyPendingRequests.Add(request);
+        if (ApplyPendingHandler is { } handler) return handler(request, cancellationToken);
         if (ApplyPendingRefusal is { } refusal)
             return Task.FromResult(CommandOutcome<ApplyProjection>.Refused(refusal));
         if (_apply is not { } result) throw NotConfigured(nameof(ApplyPendingAsync));
@@ -31,9 +35,12 @@ public sealed partial class FakeCommandClient
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken)
     {
         MeasurePendingRequests.Add(request);
+        if (MeasurePendingRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<MeasurePendingResult>.Refused(refusal));
         return _measurement is { } result ? Completed(result) : throw NotConfigured(nameof(MeasurePendingAsync));
     }
     private PendingChangesSnapshot _pending = new(null, "none", [], []);
+    public List<PendingChangesRequest> PendingLoadRequests { get; } = [];
 
     public Refusal? PendingPutRefusal { get; set; }
     public int? PendingPutRefusalOnCall { get; set; }
@@ -56,7 +63,11 @@ public sealed partial class FakeCommandClient
     public void PendingChangesIs(PendingChangesSnapshot snapshot) => _pending = snapshot;
 
     public Task<CommandOutcome<PendingChangesSnapshot>> LoadPendingChangesAsync(
-        PendingChangesRequest request, CancellationToken cancellationToken) => Completed(_pending);
+        PendingChangesRequest request, CancellationToken cancellationToken)
+    {
+        PendingLoadRequests.Add(request);
+        return Completed(_pending);
+    }
 
     public Task<CommandOutcome<PendingChangesSnapshot>> PutPendingChangeAsync(
         PutPendingChangeRequest request, CancellationToken cancellationToken)

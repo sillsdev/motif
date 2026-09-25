@@ -16,6 +16,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed class ReviewPageModel : PageModel
 {
     private CancellationTokenSource? _measurementCancellation;
+    private CancellationTokenSource? _applyCancellation;
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
@@ -168,6 +169,8 @@ public sealed class ReviewPageModel : PageModel
         if (!CanApply || Context.ProjectPath is not { } project || Changes.Snapshot.DraftId is not { } draft)
             return;
         IsApplying = true;
+        _applyCancellation?.Dispose();
+        _applyCancellation = new CancellationTokenSource();
         OnPropertyChanged(nameof(IsApplying));
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
@@ -176,16 +179,20 @@ public sealed class ReviewPageModel : PageModel
         {
             result = await Context.Commands.ApplyPendingAsync(new ApplyPendingRequest(
                 project, draft, Changes.Snapshot.Revision, Environment.UserName),
-                CancellationToken.None).ConfigureAwait(true);
+                _applyCancellation.Token).ConfigureAwait(true);
         }
         finally
         {
+            var cancellation = _applyCancellation;
+            _applyCancellation = null;
+            cancellation?.Dispose();
             IsApplying = false;
             OnPropertyChanged(nameof(IsApplying));
             OnPropertyChanged(nameof(CanApply));
             OnPropertyChanged(nameof(ApplyBlockReason));
             ApplyCommand.NotifyCanExecuteChanged();
         }
+        if (Context.ProjectPath != project) return;
         if (!result.Succeeded)
         {
             ApplyError = UserFacingRefusal.MessageOf(result.Refusal!);
@@ -234,6 +241,11 @@ public sealed class ReviewPageModel : PageModel
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(WorkspaceContext.ProjectName)) OnPropertyChanged(nameof(ProjectName));
+        if (e.PropertyName == nameof(WorkspaceContext.ProjectPath))
+        {
+            _measurementCancellation?.Cancel();
+            _applyCancellation?.Cancel();
+        }
         if (e.PropertyName is nameof(WorkspaceContext.Baseline) or nameof(WorkspaceContext.CurrentEvidence))
         {
             OnPropertyChanged(nameof(CanApply));
@@ -246,6 +258,7 @@ public sealed class ReviewPageModel : PageModel
     protected override void OnProjectCleared()
     {
         _measurementCancellation?.Cancel();
+        _applyCancellation?.Cancel();
         Receipt = null;
         EvidenceComplete = false;
         OnPropertyChanged(nameof(Receipt));
@@ -257,6 +270,7 @@ public sealed class ReviewPageModel : PageModel
     protected override async Task OnStopWorkAsync()
     {
         _measurementCancellation?.Cancel();
+        _applyCancellation?.Cancel();
         if (MeasureCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
         if (ApplyCommand.ExecutionTask is { } applying) await applying.ConfigureAwait(true);
     }

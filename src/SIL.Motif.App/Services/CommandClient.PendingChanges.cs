@@ -12,7 +12,7 @@ public sealed partial class CommandClient
         ApplyPendingRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChangesWorkflow.Apply(request, cancellationToken), cancellationToken,
             () => CommandOutcome<ApplyProjection>.Refused(new Refusal(
-                "job.wait-cancelled", FailureReason.Cancelled, "Waiting to apply was cancelled.")));
+                "project.wait-cancelled", FailureReason.Cancelled, "Waiting to use the project was cancelled.")));
 
     public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken) =>
@@ -34,25 +34,4 @@ public sealed partial class CommandClient
         RecheckPendingChangesRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChanges.Recheck(request));
 
-    private Task<T> OneAtATime<T>(Func<T> work, CancellationToken cancellationToken, Func<T> cancelled) =>
-        Task.Run(async () =>
-        {
-            try
-            {
-                await _projectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return cancelled();
-            }
-
-            try
-            {
-                return work();
-            }
-            finally
-            {
-                _projectGate.Release();
-            }
-        });
 }

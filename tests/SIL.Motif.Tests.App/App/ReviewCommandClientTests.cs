@@ -51,7 +51,7 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
 
                 Assert.False(refused.Succeeded);
                 Assert.Equal(FailureReason.Cancelled, refused.Refusal!.Reason);
-                Assert.Equal("job.wait-cancelled", refused.Refusal.Code);
+                Assert.Equal("project.wait-cancelled", refused.Refusal.Code);
             }
             finally
             {
