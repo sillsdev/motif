@@ -215,8 +215,11 @@ public sealed class PendingChangesTests
         Assert.Equal("change.analysis-identity-required", outcome.Refusal?.Code);
     }
 
-    [Fact]
-    public void ASecondPutOfTheSameParserReadingIsRefused()
+    [Theory]
+    [InlineData("approve")]
+    [InlineData("reject")]
+    [InlineData("add-candidate")]
+    public void AParserReadingWithoutAssessmentIsRefused(string kind)
     {
         var loader = new FwDataProjectLoader();
         Guid wordformId = Guid.Empty;
@@ -231,19 +234,14 @@ public sealed class PendingChangesTests
             Path.Combine(Path.GetDirectoryName(_path)!, "reading-managed")).Succeeded);
         var initial = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
         var firstId = CanonicalId.Mint().Value;
-        var secondId = CanonicalId.Mint().Value;
         var wordId = CanonicalId.FromGuid(wordformId).Value;
         var reading = new ParseAnalysis([new ParseMorph(null, null, null, "pending-reading")]);
-        var first = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", initial.Value!.Revision,
-            new ChangeIntent(firstId, "add-candidate", wordId, "pending-reading", Reading: reading)));
-        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var result = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", initial.Value!.Revision,
+            new ChangeIntent(firstId, kind, wordId, "pending-reading", Reading: reading,
+                ReadingIndex: 0)));
 
-        var second = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", first.Value!.Revision,
-            new ChangeIntent(secondId, "add-candidate", wordId, "pending-reading", Reading: reading)));
-
-        Assert.Equal("change.slot-occupied", second.Refusal?.Code);
-        Assert.Equal(firstId, second.Refusal?.Facts["existingChangeId"]);
-        Assert.Single(PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes);
+        Assert.Equal("change.assessment-required", result.Refusal?.Code);
+        Assert.Empty(PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes);
     }
 
     [Fact]

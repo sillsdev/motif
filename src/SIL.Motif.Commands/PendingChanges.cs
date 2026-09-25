@@ -56,9 +56,16 @@ public static class PendingChanges
                 return Refuse("change.invalid-identity", "A change id and word are required.",
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
             if (change.Kind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.Candidate &&
-                change.StoredAnalysisId is null && (change.AssessmentId is null || change.ReadingIndex is null))
+                change.StoredAnalysisId is null && change.ReadingIndex is null)
                 return Refuse("change.analysis-identity-required",
                     "Choose one analysis explicitly before changing its opinion.", ("changeId", change.ChangeId));
+            if ((change.Kind == AnalysisChangeKinds.AddCandidate ||
+                 change.StoredAnalysisId is null && change.Kind is
+                     AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.Candidate) &&
+                change.AssessmentId is null)
+                return Refuse("change.assessment-required",
+                    "Name the Assessment that produced the chosen parser reading.",
+                    ("changeId", change.ChangeId));
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)
                 return Refuse("change.baseline-missing", "Capture a Baseline before collecting changes.",
