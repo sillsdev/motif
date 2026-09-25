@@ -75,6 +75,17 @@ public static class JobWait
         var cancelled = await Task.Run(() => JobCommands.Cancel(
             new CancelJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
         if (cancelled.Succeeded) progress?.Report(cancelled.Value!);
+        if (!cancelled.Succeeded && cancelled.Refusal?.Code == "job.already-finished")
+        {
+            var latest = await Task.Run(() => JobCommands.Show(
+                new ShowJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
+            if (latest.Succeeded && latest.Value!.Status is { } latestStatus &&
+                JobStateMachine.IsTerminal(latestStatus))
+            {
+                progress?.Report(latest.Value);
+                return CommandOutcome<JobStatusResponse>.Success(latest.Value);
+            }
+        }
         var facts = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["jobId"] = jobId,
@@ -98,19 +109,25 @@ public static class JobWait
             ["jobId"] = jobId,
             ["status"] = JobStatusJson.ToWire(status.Status.Value),
         };
-        if (cancelOnTimeout)
+        var message = "Timed out after " + timeout + " waiting for job '" + jobId + "' to finish; ";
+        var checkAgain = "Check again with 'jobs show " + jobId + " --project <fwdata>'.";
+        if (!cancelOnTimeout)
+        {
+            message += "it was " + JobStatusJson.ToWire(status.Status.Value) + ". " + checkAgain;
+        }
+        else
         {
             var cancellation = await Task.Run(() => JobCommands.Cancel(
                 new CancelJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
             facts["jobCancelled"] = cancellation.Succeeded ? "true" : "false";
             if (cancellation.Succeeded && cancellation.Value!.Status is { } cancelledStatus)
                 facts["jobStatus"] = JobStatusJson.ToWire(cancelledStatus);
+            message += cancellation.Succeeded
+                ? "Motif cancelled the job."
+                : "cancellation was refused, so the job keeps running. " + checkAgain;
         }
         return new Refusal(
-            "job.wait-timeout", FailureReason.Busy,
-            "Timed out after " + timeout + " waiting for job '" + jobId + "' to finish; it was " +
-            JobStatusJson.ToWire(status.Status.Value) +
-            ". Check again with 'jobs show " + jobId + " --project <fwdata>'.",
+            "job.wait-timeout", FailureReason.Busy, message,
             facts);
     }
 }
