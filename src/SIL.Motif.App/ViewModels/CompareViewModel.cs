@@ -481,7 +481,7 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>The label a row header shows, in the same words as the Texts stage.</summary>
     public static string RowLabelOf(WordProjectStatus row) => row switch
     {
-        WordProjectStatus.NotPresent => "Not present",
+        WordProjectStatus.NotPresent => "Not stored yet",
         _ => WordProjectStatuses.LabelOf(row),
     };
 

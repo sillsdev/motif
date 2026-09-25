@@ -296,7 +296,7 @@ public sealed class ReviewAnalysisViewModel
             "approved" => "Approved",
             "disapproved" => "Rejected",
             "candidate" => "Candidate",
-            _ => "Not present",
+            _ => "Not stored yet",
         };
     }
 
