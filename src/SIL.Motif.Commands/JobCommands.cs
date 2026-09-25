@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Model.DryRun;
@@ -133,8 +134,10 @@ public static class JobCommands
                 ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(
                     record.ProposalJson!, new JsonSerializerOptions(JsonSerializerDefaults.Web))
                     ?? throw new InvalidDataException("The Draft has no content."));
+            var words = request.Words ?? (request.AllWords ? null :
+                ProposalCommands.ChangedWords(ProposalJsonParser.Parse(proposalJson)).ToArray());
             var inputJson = JsonSerializer.Serialize(
-                new TrialJobInput(proposalJson, request.Scope, request.Words), MotifJson.CreateOptions());
+                new TrialJobInput(proposalJson, request.Scope, words, request.AllWords), MotifJson.CreateOptions());
             var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));

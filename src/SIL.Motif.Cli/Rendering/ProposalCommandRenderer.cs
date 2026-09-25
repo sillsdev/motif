@@ -68,6 +68,8 @@ public static class ProposalCommandRenderer
             $"at revision {snapshot.Revision}.{Environment.NewLine}";
         if (snapshot.ReplacedChangeId is { } replaced)
             text += $"Replaced pending change {replaced}.{Environment.NewLine}";
+        if (snapshot.CancelledChangeId is { } cancelled)
+            text += $"Cancelled pending change {cancelled}.{Environment.NewLine}";
         if (snapshot.SkippedWord is { } skipped)
             text += $"Skipped {skipped}: an explicit choice is already pending for this word.{Environment.NewLine}";
         return text;

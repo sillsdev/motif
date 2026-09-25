@@ -429,12 +429,13 @@ try
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var trialProject))
             {
                 return Usage(
-                    "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--wait] [--json]", asJson);
+                    "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]", asJson);
             }
             result = RenderCommand(
                 JobCommands.EnqueueTrial(
                     new EnqueueTrialRequest(
-                        trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope")),
+                        trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
+                        AllWords: flags.ContainsKey("all-words")),
                     usage),
                 successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.

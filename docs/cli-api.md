@@ -75,8 +75,8 @@ that dispatches them.
 | `baseline-refresh` | Released | `baseline-refresh --project <fwdata>` |
 | `dry-run` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
 | `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
-| `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--wait] [--json]` |
-| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--wait] [--json]` |
+| `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
+| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
 | `jobs show` | Released | `jobs show <jobId> --project <fwdata> [--json]` |
 | `jobs assessments` | Released | `jobs assessments <jobId> --project <fwdata> [--json]` |
 | `jobs list` | Released | `jobs list --all [--json]` |
@@ -87,6 +87,12 @@ that dispatches them.
 `jobs list --all` is the one verb that does not take `--project`: it spans every project this
 installation has been pointed at, resolved through the machine store's `KnownProjects` rather than
 through the working directory.
+
+By default, `trial` measures only the wordforms touched by the Proposal. This includes touched words
+without a manual analysis and gives `apply` evidence for each changed word. A Proposal with no
+wordform changes has an empty word Selection by default. `--all-words` measures every wordform in the
+project instead, regardless of the scope's word query; `--scope` still chooses the Assessor, kinds,
+and limits.
 
 ## Released and developer surfaces
 

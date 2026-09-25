@@ -1402,7 +1402,7 @@ public static partial class ProposalCommands
         return candidateId is null ? null : assessments.Get(candidateId);
     }
 
-    private static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
+    internal static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
         proposal.Operations.Select(operation => operation.Extensions)
             .Where(extension => extension is { ValueKind: JsonValueKind.Object } &&
                 extension.Value.TryGetProperty("changeFit", out _))

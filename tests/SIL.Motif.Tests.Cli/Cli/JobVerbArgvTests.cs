@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Cli;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Worker.Jobs;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -88,6 +89,24 @@ public sealed class JobVerbArgvTests : IDisposable
         Assert.Equal(0, shown.ExitCode);
         using var document = JsonDocument.Parse(shown.Output);
         Assert.Equal("trial", document.RootElement.GetProperty("kind").GetString());
+    }
+
+    [Fact]
+    public void TrialAllWordsFlagRequestsTheWholeCorpus()
+    {
+        var proposalId = FinalizeOneOperationProposal();
+        var defaultRun = Run($"trial --project \"{Project}\" {proposalId}");
+        var allRun = Run($"trial --project \"{Project}\" {proposalId} --all-words");
+
+        Assert.Equal(0, defaultRun.ExitCode);
+        Assert.Equal(0, allRun.ExitCode);
+        using var database = ProjectMotifDatabase.Open(Project);
+        var jobs = new JobRepository(database);
+        using var defaultInput = JsonDocument.Parse(jobs.Get(defaultRun.Output.Trim())!.InputJson);
+        using var allInput = JsonDocument.Parse(jobs.Get(allRun.Output.Trim())!.InputJson);
+        Assert.Empty(defaultInput.RootElement.GetProperty("words").EnumerateArray());
+        Assert.True(allInput.RootElement.GetProperty("allWords").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, allInput.RootElement.GetProperty("words").ValueKind);
     }
 
     [Fact]

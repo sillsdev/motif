@@ -96,7 +96,6 @@ public static class PendingChanges
                         return Refuse("change.wordform-ambiguous", "More than one wordform has this form.",
                             ("changeId", change.ChangeId), ("word", change.Word));
                     wordform = matches[0];
-                    change = change with { WordformId = CanonicalId.FromGuid(wordform.Guid).Value };
                 }
                 else wordform = words.GetObject(CanonicalId.Parse(change.WordformId).ToGuid());
             }
@@ -105,6 +104,7 @@ public static class PendingChanges
                 return Refuse("change.wordform-missing", "The selected wordform is no longer in the project.",
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
             }
+            change = change with { WordformId = CanonicalId.FromGuid(wordform.Guid).Value };
             var form = wordform.Form.VernacularDefaultWritingSystem?.Text ?? "";
             if (form.Normalize(NormalizationForm.FormD) != change.Word.Normalize(NormalizationForm.FormD))
                 return Refuse("change.wordform-changed", "The selected wordform changed its form.",
@@ -195,17 +195,17 @@ public static class PendingChanges
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
             var priorKind = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) == occupied.ChangeId)
                 .Select(entry => Property(entry, "kind")).LastOrDefault();
-            var composeKind = change.Kind == AnalysisChangeKinds.Candidate && occupied.Fits &&
-                priorKind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.Candidate &&
-                !wordform.AnalysesOC.Any(analysis => AnalysisChangeComposer.Matches(analysis, reading!))
-                    ? AnalysisChangeKinds.AddCandidate : change.Kind;
+            var cancelUnstoredChoice = change.Kind == AnalysisChangeKinds.Candidate && occupied.Fits &&
+                priorKind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or
+                    AnalysisChangeKinds.Candidate or AnalysisChangeKinds.AddCandidate &&
+                !wordform.AnalysesOC.Any(analysis => AnalysisChangeComposer.Matches(analysis, reading!));
             IReadOnlyList<OperationEnvelope> operations;
             try
             {
-                operations = AnalysisChangeComposer.Build(cache, new AnalysisChangeIntent(composeKind,
-                    CanonicalId.Parse(change.WordformId), reading,
-                    change.StoredAnalysisId is null ? null : CanonicalId.Parse(change.StoredAnalysisId),
-                    change.ChangeId));
+                operations = cancelUnstoredChoice ? [] : AnalysisChangeComposer.Build(cache,
+                    new AnalysisChangeIntent(change.Kind, CanonicalId.Parse(change.WordformId), reading,
+                        change.StoredAnalysisId is null ? null : CanonicalId.Parse(change.StoredAnalysisId),
+                        change.ChangeId));
             }
             catch (Exception exception) when (exception is InvalidOperationException or FormatException)
             {
@@ -264,7 +264,10 @@ public static class PendingChanges
             return CommandOutcome<PendingChangesSnapshot>.Success(
                 Snapshot(database, project, repository) with
                 {
-                    ReplacedChangeId = occupied.ChangeId != change.ChangeId ? occupied.ChangeId : null,
+                    ReplacedChangeId = operations.Count > 0 && occupied.ChangeId != change.ChangeId
+                        ? occupied.ChangeId : null,
+                    CancelledChangeId = operations.Count == 0 && removed > 0
+                        ? occupied.ChangeId ?? change.ChangeId : null,
                 });
         });
 

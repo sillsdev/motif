@@ -126,7 +126,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "dry-run", "dry-run --wait", NoUsage),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
-            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--wait] [--json]" }),
+            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]" }),
         new CliVerbDescriptor("Commands", "trial", "trial --wait", NoUsage),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",

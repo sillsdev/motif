@@ -210,6 +210,8 @@ public sealed partial class ChangesViewModel : ObservableObject
         OnPropertyChanged(nameof(Snapshot));
         if (snapshot.ReplacedChangeId is { } replaced)
             AddCollectionNotice($"Replaced pending change {replaced}.");
+        if (snapshot.CancelledChangeId is { } cancelled)
+            AddCollectionNotice($"Cancelled pending change {cancelled}.");
         if (snapshot.SkippedWord is { } skipped)
             AddCollectionNotice($"Skipped {skipped}: an explicit choice is already pending for this word.");
         Items.Clear();

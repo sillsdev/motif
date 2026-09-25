@@ -598,6 +598,7 @@ public sealed class ProposalWorkflowTests
         var pending = PendingChanges.Load(new PendingChangesRequest(_fwDataPath, ProductVersion));
         Assert.True(pending.Succeeded, pending.Refusal?.Message);
         var secondReading = new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, "chosen-second")]);
+        var prefixedWordformId = "wf-" + CanonicalId.FromGuid(wordformGuid).Value;
         var wrongIndex = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
             pending.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "approve",
                 CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
@@ -605,7 +606,7 @@ public sealed class ProposalWorkflowTests
         Assert.Equal("change.reading-missing", wrongIndex.Refusal?.Code);
         var candidateChange = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
             pending.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "add-candidate",
-                CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading)));
+                prefixedWordformId, word, assessmentId, secondReading)));
         Assert.True(candidateChange.Succeeded, candidateChange.Refusal?.Message);
         var review = Assert.Single(candidateChange.Value!.Changes);
         Assert.Equal(3, review.Analyses.Count);
@@ -617,7 +618,7 @@ public sealed class ProposalWorkflowTests
         Assert.Equal(2, review.Analyses[2].Reading.Morphs.Count);
         var sameReadingOpinion = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
             candidateChange.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "approve",
-                CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
+                prefixedWordformId, word, assessmentId, secondReading,
                 ReadingIndex: 1)));
         Assert.True(sameReadingOpinion.Succeeded, sameReadingOpinion.Refusal?.Message);
         Assert.Single(sameReadingOpinion.Value!.Changes);
@@ -642,23 +643,69 @@ public sealed class ProposalWorkflowTests
                 CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
                 ReadingIndex: 1)));
         Assert.True(returned.Succeeded, returned.Refusal?.Message);
-        Assert.Equal("candidate", Assert.Single(returned.Value!.Changes).Kind);
+        Assert.Empty(returned.Value!.Changes);
         Assert.NotEqual(bulk.Value.Revision, returned.Value.Revision);
-        Assert.Equal(sameReadingOpinion.Value.Changes[0].ChangeId, returned.Value.ReplacedChangeId);
+        Assert.Equal(sameReadingOpinion.Value.Changes[0].ChangeId, returned.Value.CancelledChangeId);
+        Assert.Null(returned.Value.ReplacedChangeId);
+        var cancellationJson = JsonNode.Parse(SIL.Motif.Cli.Rendering.ProposalCommandRenderer
+            .Render(returned, asJson: true).Output)!;
+        Assert.Equal(returned.Value.CancelledChangeId,
+            cancellationJson["cancelledChangeId"]?.GetValue<string>());
+        Assert.Contains("Cancelled pending change", SIL.Motif.Cli.Rendering.ProposalCommandRenderer
+            .Render(returned, asJson: false).Output);
+        var afterReturn = returned.Value;
+        foreach (var kind in new[] { "reject", "add-candidate" })
+        {
+            var selectedId = CanonicalId.Mint().Value;
+            var selected = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+                afterReturn.Revision, new ChangeIntent(selectedId, kind,
+                    CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
+                    ReadingIndex: 1)));
+            Assert.True(selected.Succeeded, selected.Refusal?.Message);
+            Assert.Single(selected.Value!.Changes);
+            var cancelled = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+                selected.Value.Revision, new ChangeIntent(CanonicalId.Mint().Value, "candidate",
+                    CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
+                    ReadingIndex: 1)));
+            Assert.True(cancelled.Succeeded, cancelled.Refusal?.Message);
+            Assert.Empty(cancelled.Value!.Changes);
+            Assert.Equal(selectedId, cancelled.Value.CancelledChangeId);
+            afterReturn = cancelled.Value;
+        }
+        var priorCandidateId = CanonicalId.Mint().Value;
+        var priorCandidate = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+            afterReturn.Revision, new ChangeIntent(priorCandidateId, "add-candidate",
+                CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
+                ReadingIndex: 1)));
+        Assert.True(priorCandidate.Succeeded, priorCandidate.Refusal?.Message);
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var repository = new ProposalRepository(database);
+            var draft = JsonNode.Parse(repository.GetDraft(PendingChanges.DraftName).ProposalJson!)!;
+            draft["composerProvenance"]![0]!["kind"] = "candidate";
+            repository.SaveDraft(PendingChanges.DraftName, draft.ToJsonString());
+        }
+        var withPriorCandidate = PendingChanges.Load(new PendingChangesRequest(_fwDataPath, ProductVersion));
+        var cancelledCandidate = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
+            withPriorCandidate.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "candidate",
+                CanonicalId.FromGuid(wordformGuid).Value, word, assessmentId, secondReading,
+                ReadingIndex: 1)));
+        Assert.True(cancelledCandidate.Succeeded, cancelledCandidate.Refusal?.Message);
+        Assert.Empty(cancelledCandidate.Value!.Changes);
+        Assert.Equal(priorCandidateId, cancelledCandidate.Value.CancelledChangeId);
+        afterReturn = cancelledCandidate.Value;
         var spellingChange = PendingChanges.Put(new PutPendingChangeRequest(_fwDataPath, ProductVersion,
-            returned.Value.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+            afterReturn.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
                 CanonicalId.FromGuid(wordformGuid).Value, word)));
         Assert.True(spellingChange.Succeeded, spellingChange.Refusal?.Message);
-        Assert.Equal(2, spellingChange.Value!.Changes.Count);
+        Assert.Single(spellingChange.Value!.Changes);
         using (var database = ProjectMotifDatabase.Open(_fwDataPath))
         {
             var pendingDraft = JsonNode.Parse(new ProposalRepository(database)
                 .GetDraft(PendingChanges.DraftName).ProposalJson!)!;
-            Assert.Equal(2, pendingDraft["operations"]!.AsArray().Count);
-            Assert.Equal("analysis/wfiWordform/createAnalyses",
+            Assert.Single(pendingDraft["operations"]!.AsArray());
+            Assert.Equal("analysis/wfiWordform/setSpellingStatus",
                 pendingDraft["operations"]![0]!["kind"]!.GetValue<string>());
-            Assert.Equal("chosen-second", pendingDraft["operations"]![0]!["extensions"]!["changeFit"]!
-                ["reading"]!["morphs"]![0]!["guessedString"]!.GetValue<string>());
         }
     }
 

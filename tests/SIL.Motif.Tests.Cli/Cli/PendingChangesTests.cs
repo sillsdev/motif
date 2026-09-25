@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -28,6 +29,37 @@ public sealed class PendingChangesTests
         _seed = pristine.Seed;
         using var scratch = pristine.NewScratch();
         _path = scratch.ProjectId.Path;
+    }
+
+    [Fact]
+    public void DefaultTrialQueuesOnlyTheTouchedWord()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid changedId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var factory = cache.ServiceLocator.GetInstance<IWfiWordformFactory>();
+                changedId = factory.Create(TsStringUtils.MakeString("trial-changed", cache.DefaultVernWs)).Guid;
+                factory.Create(TsStringUtils.MakeString("trial-untouched", cache.DefaultVernWs));
+            });
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path),
+            Path.Combine(Path.GetDirectoryName(_path)!, "trial-managed")).Succeeded);
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var changed = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(changedId).Value, "trial-changed")));
+        Assert.True(changed.Succeeded, changed.Refusal?.Message);
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_path, "1.0", changed.Value!.DraftId!));
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var database = ProjectMotifDatabase.Open(_path);
+        var input = TrialJobInput.Parse(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson);
+        Assert.Equal(["trial-changed"], input.Words);
     }
 
     [Fact]

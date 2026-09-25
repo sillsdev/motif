@@ -24,6 +24,14 @@ public sealed class PendingChangesViewModelTests
         await changes.PutAsync(new ChangeIntent("newer", "reject", "wordform", "word"));
 
         Assert.Contains("Replaced pending change older", changes.CollectionNotice);
+        fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [], [])
+        {
+            CancelledChangeId = "older",
+        };
+
+        await changes.PutAsync(new ChangeIntent("newer", "candidate", "wordform", "word"));
+
+        Assert.Contains("Cancelled pending change older", changes.CollectionNotice);
         fake.PendingPutResponse = new PendingChangesSnapshot("draft", "revision/one", [existing], [])
         {
             SkippedWord = "word",

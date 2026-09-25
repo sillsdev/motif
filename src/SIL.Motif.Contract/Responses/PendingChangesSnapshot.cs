@@ -28,4 +28,7 @@ public sealed record PendingChangesSnapshot(
 
     /// <summary>The earlier pending change replaced by this authoring action.</summary>
     public string? ReplacedChangeId { get; init; }
+
+    /// <summary>The earlier pending change cancelled by returning its reading to the project state.</summary>
+    public string? CancelledChangeId { get; init; }
 }

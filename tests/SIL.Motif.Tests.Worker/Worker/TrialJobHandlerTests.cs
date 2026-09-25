@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
+using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.LiveHost.Baselines;
@@ -242,6 +243,29 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void AllWordsOverridesAConfiguredManualAnalysisQuery()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var configuration = new ProjectConfiguration(
+            [new AssessmentScopeConfiguration(AssessmentScopeConfiguration.DefaultName,
+                WordQueryResolver.ManualAnalysisQueryText, "pangloss", [], TimeSpan.FromSeconds(1))],
+            gateOnRegression: true, purgeOnApply: true);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            configuration: new FixedConfigurationReader(configuration));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "all words");
+        SaveCommittedProposal(proposalId, proposalJson);
+
+        var job = CreateTrialJob(proposalJson, allWords: true);
+        var completed = RunAndFinish(handler, job.JobId);
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        var assessment = Assert.Single(_assessments.ListByProposal(proposalId));
+        Assert.Contains(AnalysedWordform, assessment.Selection.Words);
+        Assert.Contains(UnanalysedWordform, assessment.Selection.Words);
+    }
+
+    [Fact]
     public void AnObjectTimingAssessmentRecordsTheCachePathAndDigestWithNoWordRows()
     {
         const string cachePath = @"C:\stats\pangloss-cache.db";
@@ -393,9 +417,9 @@ public sealed class TrialJobHandlerTests : IDisposable
             null, null, null));
     }
 
-    private JobRecord CreateTrialJob(string proposalJson, IReadOnlyList<string>? words = null)
+    private JobRecord CreateTrialJob(string proposalJson, IReadOnlyList<string>? words = null, bool allWords = false)
     {
-        var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words },
+        var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words, allWords },
             SIL.Motif.Contract.MotifJson.CreateOptions());
         var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
             TrialJobHandler.TrialKind, inputJson, "2026-08-29T00:00:00Z");
@@ -412,12 +436,13 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     private TrialJobHandler BuildHandler(ProjectLaneRegistry lanes, IAssessor assessor,
-        Func<LcmCache?, CancellationToken, Task<string>>? prepareForAssessment = null)
+        Func<LcmCache?, CancellationToken, Task<string>>? prepareForAssessment = null,
+        IProjectConfigurationReader? configuration = null)
     {
         var catalog = new AssessorCatalog(new[] { assessor });
         var factory = new ScratchCacheFactory(_loader);
         return new TrialJobHandler(_baselines, _proposals, lanes,
-            new ProjectConfigurationReader(), catalog, _assessments,
+            configuration ?? new ProjectConfigurationReader(), catalog, _assessments,
             (fwDataPath, scratchRoot, _) =>
             {
                 var cache = factory.CreateFromFileCopy(fwDataPath, scratchRoot);
@@ -463,6 +488,11 @@ public sealed class TrialJobHandlerTests : IDisposable
         using var sha = SHA256.Create();
         using var stream = File.OpenRead(path);
         return Convert.ToHexString(sha.ComputeHash(stream));
+    }
+
+    private sealed class FixedConfigurationReader(ProjectConfiguration configuration) : IProjectConfigurationReader
+    {
+        public ProjectConfiguration Read(ProjectLocator _) => configuration;
     }
 
     // Counts real saves and scratch opens so a test can prove how many of each a run actually did.
