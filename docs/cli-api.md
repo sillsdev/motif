@@ -404,6 +404,11 @@ word list. `--by kind` groups time by rule kind, and `--by rule` groups by rule 
 the most costly words for that rule. The response includes the word-time percentiles, slowest words, totals,
 time share, attempts, and number of words touched. `--top` defaults to 10. `--json` emits `TimingResponse`.
 
+The App's `TimingRequest.OverrideAssessmentIds` applies stored word re-runs in order over the named
+ParseTime Assessment; the CLI has no flag for this request field. `timing.override-not-found` refuses a
+missing re-run Assessment, and `timing.invalid-override` refuses one that is not ParseTime or belongs to
+a different Baseline.
+
 The Assessment's one `pangloss batch --stats` invocation writes per-word counters and per-object fact rows to
 its statistics cache. Motif reads that cache directly, without starting more PanGloss processes, and stores
 the normalized rows with the ParseTime Assessment. A missing selected-word row or unreadable cache refuses
