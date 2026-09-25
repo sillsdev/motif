@@ -1,6 +1,6 @@
 <#
   .SYNOPSIS
-  The build gate: comment hygiene first, then compile. Stops at the first step that fails.
+  The build gate: comment hygiene, then design-token hygiene, then compile. Stops at the first step that fails.
 
   .DESCRIPTION
   Use this instead of a bare `dotnet build`. The difference is the hygiene gate, and the reason it is
@@ -8,18 +8,21 @@
   decays to a suggestion. Comment rot is silent by construction: nothing fails, nothing looks wrong,
   and a stale comment keeps being believed because it looks maintained.
 
-  Both steps are hard failures. The hygiene gate runs FIRST and on its own, because it is seconds of
+  Every step is a hard failure. The hygiene gates run FIRST and on its own, because it is seconds of
   work against minutes of compilation, and because a violation is a fact about the source that does
   not depend on whether the code compiles.
 
   The hygiene script is invoked as a child process so that its own `exit` code arrives here intact
   rather than terminating this script's scope.
 
+  The design-token gate is the same idea for the App's look: a view styles itself from Intent and Component
+  keys, never from a raw colour or size, so the look changes in one place.
+
   .PARAMETER Configuration
   MSBuild configuration. Defaults to Debug, matching a bare `dotnet build`.
 
   .PARAMETER SkipHygiene
-  Compile without the comment gate. For bisecting a build break only -- CI never passes this, so
+  Compile without the comment and design-token gates. For bisecting a build break only -- CI never passes this, so
   anything it lets through fails there instead.
 
   .EXAMPLE
@@ -54,7 +57,7 @@ elseif ($env:LOCAL_NUGET_REPO) {
 }
 
 if ($SkipHygiene) {
-    Write-Step 'comment hygiene -- SKIPPED (-SkipHygiene)'
+    Write-Step 'comment and design-token hygiene -- SKIPPED (-SkipHygiene)'
 }
 else {
     Write-Step 'comment hygiene'
@@ -64,6 +67,16 @@ else {
     if ($LASTEXITCODE -ne 0) {
         Write-Host ''
         Write-Host 'Comment hygiene failed. Run: dotnet run tools/CommentHygiene/comment-hygiene.cs -- -List' -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Step 'design-token hygiene'
+    Push-Location $repoRoot
+    try { & dotnet run --file tools/TokenHygiene/token-hygiene.cs -- -Advisory }
+    finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ''
+        Write-Host 'Design-token hygiene failed. Run: dotnet run --file tools/TokenHygiene/token-hygiene.cs' -ForegroundColor Red
         exit 1
     }
 }
