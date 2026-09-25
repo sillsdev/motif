@@ -110,6 +110,7 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(CheckedWordCount));
             OnPropertyChanged(nameof(CheckedWordText));
+            CheckedWordsChanged?.Invoke(this, EventArgs.Empty);
         }
         if (e.PropertyName is nameof(CompareWordViewModel.IsChecked) or
             nameof(CompareWordViewModel.SelectedReading)) ProposeCommand.NotifyCanExecuteChanged();
@@ -123,6 +124,9 @@ public sealed partial class CompareViewModel : ObservableObject
 
     /// <summary>Raised whenever the chosen cells change, so other views of the same words can follow them.</summary>
     public event EventHandler? ChosenCellsChanged;
+
+    /// <summary>Raised whenever a word's check mark changes.</summary>
+    public event EventHandler? CheckedWordsChanged;
 
     /// <summary>The words in the chosen cells, or <see langword="null"/> when no cell is chosen.</summary>
     public IReadOnlySet<string>? ChosenWords { get; private set; }
@@ -180,6 +184,24 @@ public sealed partial class CompareViewModel : ObservableObject
     public IReadOnlyList<string> CheckedWords => _all.Where(word => word.IsChecked)
         .Select(word => word.Word).ToArray();
 
+    /// <summary>Gets every assessed word placed in any of the given matrix cells, in Assessment order.</summary>
+    public IReadOnlyList<string> WordsInCells(IReadOnlyList<TextsListCell> cells)
+    {
+        ArgumentNullException.ThrowIfNull(cells);
+        var chosen = cells.ToHashSet();
+        return _all.Where(word => chosen.Contains(new TextsListCell(word.Row, word.Column)))
+            .Select(word => word.Word).ToArray();
+    }
+
+    /// <summary>Gets checked words placed in any of the given matrix cells, in Assessment order.</summary>
+    public IReadOnlyList<string> CheckedWordsInCells(IReadOnlyList<TextsListCell> cells)
+    {
+        ArgumentNullException.ThrowIfNull(cells);
+        var chosen = cells.ToHashSet();
+        return _all.Where(word => word.IsChecked && chosen.Contains(new TextsListCell(word.Row, word.Column)))
+            .Select(word => word.Word).ToArray();
+    }
+
     /// <summary>Every word in a Texts list, regardless of the current search or matrix filter.</summary>
     public IReadOnlyList<string> WordsInFamily(CompareFamilyKind family) => _all
         .Where(word => word.Family == family).Select(word => word.Word).ToArray();
@@ -216,20 +238,14 @@ public sealed partial class CompareViewModel : ObservableObject
     public bool ShowsNoStandingsNotice => HasWords && !HasStandings;
 
     public IReadOnlyList<CompareFixFirstViewModel> FixFirstRows => _all
-        .Select(word => (Word: word, Rank: FixFirstRank(word), Explanation: FixFirstExplanation(word)))
-        .Where(item => item.Rank is not null)
-        .OrderBy(item => item.Rank)
-        .ThenByDescending(item => item.Word.Occurrences ?? 0)
-        .ThenBy(item => item.Word.Word, StringComparer.CurrentCulture)
-        .Select(item => new CompareFixFirstViewModel(item.Word, item.Rank!.Value, item.Explanation))
+        .Where(word => word.FixFirst is not null)
+        .OrderBy(word => word.FixFirst!.Rank)
+        .ThenByDescending(word => word.Occurrences ?? 0)
+        .ThenBy(word => word.Word, StringComparer.CurrentCulture)
+        .Select(word => new CompareFixFirstViewModel(word, word.FixFirst!))
         .ToArray();
 
-    public string FixFirstSummary => FixFirstRows.Count switch
-    {
-        0 => "No words need attention in these four groups.",
-        1 => "1 word in the four groups to check first.",
-        var count => $"{count:N0} words in the four groups to check first.",
-    };
+    public string FixFirstSummary => FixFirstRows.Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
 
     public bool AnySelected => Cells.Any(cell => cell.IsSelected);
 
@@ -408,31 +424,6 @@ public sealed partial class CompareViewModel : ObservableObject
         changes?.Any(change => change.Fit is { StillFits: false }) == true
             ? PendingChangeState.NoLongerFits
             : changes?.Count > 0 ? PendingChangeState.NotAppliedYet : PendingChangeState.None;
-
-    private static int? FixFirstRank(CompareWordViewModel word) => (word.Row, word.Column) switch
-    {
-        (WordProjectStatus.Approved, CompareColumnKind.NoParse) => 0,
-        (WordProjectStatus.Approved, CompareColumnKind.NoMatch) => 1,
-        (WordProjectStatus.Rejected, CompareColumnKind.Match) => 2,
-        (WordProjectStatus.Candidate, CompareColumnKind.NoParse) => 3,
-        _ => null,
-    };
-
-    private static string FixFirstExplanation(CompareWordViewModel word) => (word.Row, word.Column) switch
-    {
-        (WordProjectStatus.Approved, CompareColumnKind.NoParse) => ApprovedMissingText(word),
-        (WordProjectStatus.Approved, CompareColumnKind.NoMatch) => ApprovedMissingText(word),
-        (WordProjectStatus.Rejected, CompareColumnKind.Match) => "The parser rebuilt an analysis the project rejected.",
-        (WordProjectStatus.Candidate, CompareColumnKind.NoParse) => "The parser could not rebuild this candidate.",
-        _ => string.Empty,
-    };
-
-    private static string ApprovedMissingText(CompareWordViewModel word) => word.MissedApproved.Count switch
-    {
-        1 => $"Expected {word.MissedApproved[0].Text}; the parser did not build it.",
-        > 1 => $"The parser did not build these approved analyses: {string.Join("; ", word.MissedApproved.Select(reading => reading.Text))}.",
-        _ => "The parser could not rebuild an approved analysis.",
-    };
 
     private void ApplyFilter()
     {
@@ -690,6 +681,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
         ColumnVerdict = CompareViewModel.VerdictOf(Column);
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
         MissedApproved = word.MissedApproved;
+        FixFirst = word.FixFirst;
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
         ReadingChoices = word.Morphology?.Analyses.Select((reading, index) =>
             new CompareReadingChoice(index, reading,
@@ -704,6 +696,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public int? Occurrences { get; }
     public string OccurrenceText => Occurrences is { } count ? $"×{count}" : "—";
     public IReadOnlyList<ParserReadingViewModel> MissedApproved { get; }
+    public FixFirstPriority? FixFirst { get; }
     public int? ElapsedMs { get; }
     public string Meaning { get; }
     public CompareFamilyKind Family { get; }
@@ -748,15 +741,11 @@ public sealed partial class CompareWordViewModel : ObservableObject
 public sealed record CompareReadingChoice(int Index, ParseAnalysis Reading, string Label);
 
 /// <summary>One word in the ranked fix-first list, with the reason it needs attention.</summary>
-public sealed record CompareFixFirstViewModel(CompareWordViewModel Word, int Rank, string Explanation)
+public sealed record CompareFixFirstViewModel(CompareWordViewModel Word, FixFirstPriority Priority)
 {
-    public string Category => Rank switch
-    {
-        0 => "Approved × No parse",
-        1 => "Approved × No match",
-        2 => "Rejected but rebuilt",
-        _ => "Candidate × No parse",
-    };
+    public string Category => Priority.Label;
+
+    public string Explanation => Priority.Explanation;
 
     public string OccurrenceText => Word.Occurrences is { } count ? $"×{count}" : "—";
 

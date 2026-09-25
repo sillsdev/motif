@@ -106,7 +106,11 @@ public sealed partial class TextsListsViewModel : ObservableObject
                 Enum.GetValues<WordProjectStatus>().Select(row => new TextsListCell(row, CompareColumnKind.Timeout)).ToArray()),
         ];
         SelectListCommand = new RelayCommand<TextsListDefinitionViewModel>(SelectList);
+        HandOffListCommand = new RelayCommand(HandOffList, CanHandOffList);
+        HandOffCheckedWordsCommand = new RelayCommand(HandOffCheckedWords, CanHandOffCheckedWords);
+        foreach (var list in Lists) list.PropertyChanged += OnListPropertyChanged;
         compare.ChosenCellsChanged += OnChosenCellsChanged;
+        compare.CheckedWordsChanged += OnCheckedWordsChanged;
         RefreshSelection();
         SelectList(Lists.FirstOrDefault());
     }
@@ -117,11 +121,31 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public bool HasSelectedList => SelectedList is not null;
 
+    private Action<IReadOnlyList<string>>? _handOff;
+
+    /// <summary>The workspace action that opens AI Handoff on these words.</summary>
+    public Action<IReadOnlyList<string>>? HandOff
+    {
+        get => _handOff;
+        set
+        {
+            if (_handOff == value) return;
+            _handOff = value;
+            OnPropertyChanged();
+            HandOffListCommand.NotifyCanExecuteChanged();
+            HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+        }
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedList))]
     private TextsListDefinitionViewModel? _selectedList;
 
     public IRelayCommand<TextsListDefinitionViewModel> SelectListCommand { get; }
+
+    public IRelayCommand HandOffListCommand { get; }
+
+    public IRelayCommand HandOffCheckedWordsCommand { get; }
 
     /// <summary>Selects the first question when the chosen matrix cells do not match a named list.</summary>
     public void SelectFirstIfNeeded()
@@ -142,7 +166,42 @@ public sealed partial class TextsListsViewModel : ObservableObject
         RefreshSelection();
     }
 
-    private void OnChosenCellsChanged(object? sender, EventArgs e) => RefreshSelection();
+    private bool CanHandOffList() => HandOff is not null && SelectedList?.HasWords == true;
+
+    private void HandOffList()
+    {
+        if (SelectedList is { } list) HandOff?.Invoke(Compare.WordsInCells(list.Cells));
+    }
+
+    private bool CanHandOffCheckedWords() => HandOff is not null && SelectedList is { } list &&
+        Compare.CheckedWordsInCells(list.Cells).Count > 0;
+
+    private void HandOffCheckedWords()
+    {
+        if (SelectedList is { } list) HandOff?.Invoke(Compare.CheckedWordsInCells(list.Cells));
+    }
+
+    private void OnChosenCellsChanged(object? sender, EventArgs e)
+    {
+        RefreshSelection();
+        HandOffListCommand.NotifyCanExecuteChanged();
+        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OnCheckedWordsChanged(object? sender, EventArgs e) =>
+        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+
+    private void OnListPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TextsListDefinitionViewModel.HasWords))
+            HandOffListCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnSelectedListChanged(TextsListDefinitionViewModel? value)
+    {
+        HandOffListCommand.NotifyCanExecuteChanged();
+        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+    }
 
     private void RefreshSelection()
     {

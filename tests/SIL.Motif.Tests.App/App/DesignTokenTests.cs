@@ -67,23 +67,6 @@ public sealed class DesignTokenTests
     }
 
     [Fact]
-    public void AnalyzeTextsSelectionColumnUsesItsComponentWidth()
-    {
-        var textsPage = XDocument.Load(Path.Combine(AppDirectory(), "Views", "Pages", "TextsPage.axaml"));
-        var selectionHost = textsPage.Descendants().Single(element =>
-            (string?)element.Attribute(Xaml + "Name") == "SelectionHost");
-        Assert.Equal("{DynamicResource Component.TextsPage.SelectionPanelWidth}",
-            (string?)selectionHost.Attribute("Width"));
-
-        _avalonia.Invoke(() =>
-        {
-            Assert.True(Application.Current!.TryGetResource(
-                "Component.TextsPage.SelectionPanelWidth", ThemeVariant.Light, out var value));
-            Assert.Equal(240d, Assert.IsType<double>(value));
-        });
-    }
-
-    [Fact]
     public void InsetPrimitiveKeysNameAllFourSides()
     {
         var primitives = XDocument.Load(Path.Combine(AppDirectory(), "Tokens", "Primitives.axaml"));

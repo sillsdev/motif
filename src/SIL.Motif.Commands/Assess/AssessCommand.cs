@@ -392,6 +392,9 @@ public static class AssessCommand
                                 .ToArray(),
                             Attempts = stats.Item1,
                             Passes = stats.Item2,
+                            FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(
+                                word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
+                                word.ReadingGrades, word.MissedApproved?.Count ?? 0), word.MissedApproved),
                         };
                     }).ToArray();
                 }

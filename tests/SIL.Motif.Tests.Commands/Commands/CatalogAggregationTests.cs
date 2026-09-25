@@ -102,4 +102,40 @@ public sealed class CatalogAggregationTests
         Assert.Equal(CompareFamilyKind.Unknown,
             CompareSemantics.MeaningOf(timeout.Standing, timeout.Column).Family);
     }
+
+    [Fact]
+    public void FixFirstPriorityComesFromOneCommandRuleTable()
+    {
+        static ParserReading Reading(string form, string gloss) =>
+            new([new ParserReadingMorph(form, gloss, "v", null, false, null)]);
+
+        var oneMissed = new[] { Reading("o-", "up") };
+        var twoMissed = new[] { Reading("o-", "up"), Reading("ka", "walk") };
+        var cases = new[]
+        {
+            (new CompareWordFacts(ProjectStanding.Approved, "no-analysis", false, null, [], 2), twoMissed,
+                FixFirstCategory.ApprovedNoParse, 1, "Approved × No parse", "Expected o- up, not built (2 approved analyses missed)."),
+            (new CompareWordFacts(ProjectStanding.Approved, "analysed", false, null, ["no-opinion"], 1), oneMissed,
+                FixFirstCategory.ApprovedNoMatch, 2, "Approved × No match", "Expected o- up, not built."),
+            (new CompareWordFacts(ProjectStanding.Rejected, "analysed", false, null, ["disapproved"], 0), Array.Empty<ParserReading>(),
+                FixFirstCategory.RejectedRebuilt, 3, "Rejected but rebuilt", "The parser rebuilt an analysis the project rejected."),
+            (new CompareWordFacts(ProjectStanding.Candidate, "no-analysis", false, null, [], 0), Array.Empty<ParserReading>(),
+                FixFirstCategory.CandidateNoParse, 4, "Candidate × No parse", "The parser could not rebuild this candidate."),
+        };
+
+        foreach (var (facts, missed, category, rank, label, explanation) in cases)
+        {
+            var priority = CompareSemantics.FixFirst(facts, missed);
+
+            Assert.NotNull(priority);
+            Assert.Equal(category, priority.Category);
+            Assert.Equal(rank, priority.Rank);
+            Assert.Equal(label, priority.Label);
+            Assert.Equal(explanation, priority.Explanation);
+            Assert.DoesNotContain(Environment.NewLine, priority.Explanation);
+        }
+
+        Assert.Null(CompareSemantics.FixFirst(
+            new CompareWordFacts(ProjectStanding.Approved, "timed-out", true, null, [], 1), oneMissed));
+    }
 }

@@ -61,7 +61,8 @@ public static class TextWordsQuery
                     candidates, incorrect);
             }).ToList();
 
-            return CommandOutcome<TextWordsResponse>.Success(new TextWordsResponse(words, texts, HasBaseline: true));
+            return CommandOutcome<TextWordsResponse>.Success(new TextWordsResponse(words, texts, HasBaseline: true,
+                OccurrenceCount: words.Sum(word => word.Occurrences.Count)));
         });
 
     private static TextLines ReadText(

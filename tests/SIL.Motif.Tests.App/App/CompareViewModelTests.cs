@@ -10,7 +10,7 @@ public sealed class CompareViewModelTests
     private static AssessmentWordResult Word(
         string word, string outcome, string standing, IReadOnlyList<string>? grades = null,
         bool incomplete = false, int missedApproved = 0, int? occurrences = null) =>
-        new(word, outcome, incomplete, "Search completed", 10, null)
+        WithPriority(new AssessmentWordResult(word, outcome, incomplete, "Search completed", 10, null)
         {
             Readings = grades?.Select(grade => Reading(grade)).ToArray(),
             ReadingGrades = grades,
@@ -19,7 +19,14 @@ public sealed class CompareViewModelTests
                 false, false, false, grades.Select(_ => new ParseAnalysis([])).ToArray(), []),
             ProjectStanding = standing,
             OccurrenceCount = occurrences,
-        };
+        });
+
+    private static AssessmentWordResult WithPriority(AssessmentWordResult word) => word with
+    {
+        FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(
+            word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
+            word.ReadingGrades, word.MissedApproved?.Count ?? 0), word.MissedApproved),
+    };
 
     private static ParserReading Reading(string gloss) =>
         new([new ParserReadingMorph("form", gloss, "n", null, false, null)]);
@@ -214,7 +221,7 @@ public sealed class CompareViewModelTests
         Assert.Equal(
             ["approved-common", "approved-rare", "approved-different", "rejected-rebuilt", "candidate-unbuilt"],
             compare.FixFirstRows.Select(item => item.Word.Word));
-        Assert.Equal("Expected form = missed; the parser did not build it.", compare.FixFirstRows[0].Explanation);
+        Assert.Equal("Expected form missed, not built.", compare.FixFirstRows[0].Explanation);
 
         compare.FocusFixFirstCommand.Execute(compare.FixFirstRows[2]);
 

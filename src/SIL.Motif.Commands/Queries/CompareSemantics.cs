@@ -23,6 +23,18 @@ public sealed record ComparePlacement(string Standing, CompareColumnKind Column)
 /// <summary>One canonical definition of the Compare matrix's placement and meaning rules.</summary>
 public static class CompareSemantics
 {
+    private static readonly FixFirstRule[] FixFirstRules =
+    [
+        new(ProjectStanding.Approved, CompareColumnKind.NoParse, FixFirstCategory.ApprovedNoParse, 1,
+            "Approved × No parse", "An approved analysis was not built."),
+        new(ProjectStanding.Approved, CompareColumnKind.NoMatch, FixFirstCategory.ApprovedNoMatch, 2,
+            "Approved × No match", "An approved analysis was not built."),
+        new(ProjectStanding.Rejected, CompareColumnKind.Match, FixFirstCategory.RejectedRebuilt, 3,
+            "Rejected but rebuilt", "The parser rebuilt an analysis the project rejected."),
+        new(ProjectStanding.Candidate, CompareColumnKind.NoParse, FixFirstCategory.CandidateNoParse, 4,
+            "Candidate × No parse", "The parser could not rebuild this candidate."),
+    ];
+
     /// <summary>Places a word using the same all-approved-analyses rule in both the App and Overview.</summary>
     public static ComparePlacement Place(CompareWordFacts word)
     {
@@ -51,6 +63,24 @@ public static class CompareSemantics
     public static bool StoppedAtLimit(string outcome, bool isIncomplete, ParseWordEvidence? morphology) =>
         isIncomplete || outcome is "timed-out" or "capped" ||
         morphology is { Capped: true } or { TimedOut: true };
+
+    /// <summary>Ranks a named Matrix problem using the command's single rule table.</summary>
+    /// <param name="word">The placement facts recorded for this word.</param>
+    /// <param name="missedApproved">The approved readings the parser did not produce.</param>
+    /// <returns>The ordered presentation data, or <see langword="null"/> when the word is outside the four groups.</returns>
+    public static FixFirstPriority? FixFirst(CompareWordFacts word, IReadOnlyList<ParserReading>? missedApproved)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        var placement = Place(word);
+        var rule = FixFirstRules.FirstOrDefault(candidate =>
+            candidate.Standing == placement.Standing && candidate.Column == placement.Column);
+        if (rule is null) return null;
+
+        var explanation = missedApproved is { Count: > 0 }
+            ? ExpectedButNotBuilt(missedApproved)
+            : rule.Explanation;
+        return new FixFirstPriority(rule.Category, rule.Rank, rule.Label, explanation);
+    }
 
     /// <summary>Returns the label and category the Compare matrix assigns to one cell.</summary>
     public static (string Label, CompareFamilyKind Family) MeaningOf(string? standing, CompareColumnKind column)
@@ -85,4 +115,17 @@ public static class CompareSemantics
         ProjectStanding.IncorrectSpelling => ProjectStanding.IncorrectSpelling,
         _ => ProjectStanding.NotPresent,
     };
+
+    private static string ExpectedButNotBuilt(IReadOnlyList<ParserReading> readings)
+    {
+        var first = readings[0];
+        var forms = string.Join(" + ", first.Morphs.Select(morph => morph.Form));
+        var glosses = string.Join(" + ", first.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
+        return readings.Count == 1
+            ? $"Expected {forms} {glosses}, not built."
+            : $"Expected {forms} {glosses}, not built ({readings.Count} approved analyses missed).";
+    }
+
+    private sealed record FixFirstRule(
+        string Standing, CompareColumnKind Column, FixFirstCategory Category, int Rank, string Label, string Explanation);
 }

@@ -21,6 +21,14 @@
       <Setter Property="HorizontalContentAlignment" Value="Left" />
       <Setter Property="Padding" Value="{DynamicResource Component.TextsPage.HeaderButtonPadding}" />
     </Style>
+    <Style Selector="Button.fixFirstWord">
+      <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    </Style>
+    <Style Selector="Button.fixFirstWord.focused">
+      <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
@@ -119,7 +127,8 @@
         <Expander.Header>
           <DockPanel LastChildFill="True">
             <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding Compare.FixFirstSummary}"
-                                     FontSize="{DynamicResource Intent.Type.Small}" />
+                                     FontSize="{DynamicResource Intent.Type.Small}"
+                                     AutomationProperties.Name="Fix these first count" />
             <views:CopyableTextBlock Text="Fix these first" FontWeight="SemiBold" />
           </DockPanel>
         </Expander.Header>
@@ -131,17 +140,21 @@
             <DataTemplate x:DataType="vm:CompareFixFirstViewModel">
               <Expander IsExpanded="{Binding Word.IsExpanded}">
                 <Expander.Header>
-                  <Button Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
+                  <Button Classes="fixFirstWord" Classes.focused="{Binding Word.IsFocused}"
+                          Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
                           HorizontalContentAlignment="Stretch"
                           Command="{Binding $parent[views:ComparePanel].Compare.FocusFixFirstCommand}"
                           CommandParameter="{Binding}">
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
                         <TextBlock Text="{Binding Word.Word}" FontWeight="SemiBold" />
                         <TextBlock Classes="muted" Text="{Binding OccurrenceText}" />
                       </StackPanel>
                       <TextBlock Grid.Row="1" Classes="muted" Text="{Binding Category}"
                                  FontSize="{DynamicResource Intent.Type.Label}" />
+                      <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="{Binding Explanation}"
+                                 FontSize="{DynamicResource Intent.Type.Label}" TextWrapping="NoWrap"
+                                 TextTrimming="CharacterEllipsis" />
                       <Ellipse Grid.Column="1" Fill="{DynamicResource Intent.Warning.Text}"
                                Width="{DynamicResource Component.MatrixCell.MarkerSize}"
                                Height="{DynamicResource Component.MatrixCell.MarkerSize}"
@@ -151,7 +164,6 @@
                   </Button>
                 </Expander.Header>
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Intent.Gap.AfterRelated}">
-                  <views:CopyableTextBlock Classes="muted" Text="{Binding Explanation}" TextWrapping="Wrap" />
                   <ItemsControl ItemsSource="{Binding MissedApproved}" IsVisible="{Binding MissedApproved.Count}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ParserReadingViewModel">

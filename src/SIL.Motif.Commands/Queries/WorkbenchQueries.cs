@@ -55,8 +55,9 @@ public sealed record TextWordsRequest(string ProjectPath, IReadOnlyList<Guid> Te
 /// Also the Texts line by line, for reading the words in place.
 /// </summary>
 /// <param name="HasBaseline">False when the project has no Baseline yet, so there was nothing to read.</param>
+/// <param name="OccurrenceCount">The command's total number of word occurrences across the returned Texts.</param>
 public sealed record TextWordsResponse(
-    IReadOnlyList<TextWord> Words, IReadOnlyList<TextLines> Texts, bool HasBaseline);
+    IReadOnlyList<TextWord> Words, IReadOnlyList<TextLines> Texts, bool HasBaseline, int OccurrenceCount = 0);
 
 /// <summary>One distinct word form in the chosen Texts.</summary>
 /// <param name="Form">The form exactly as a Selection would send it to the parser (NFD).</param>

@@ -65,6 +65,7 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var response = outcome.Value!;
         Assert.True(response.HasBaseline);
+        Assert.Equal(response.Words.Sum(word => word.Occurrences.Count), response.OccurrenceCount);
 
         // Punctuation contributes no TextWord; only the analysed and unanalysed forms do.
         Assert.Equal(2, response.Words.Count);

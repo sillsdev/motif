@@ -10,6 +10,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
@@ -670,6 +671,76 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
+    public void FixFirstCollapsesToItsCountAndHighlightsTheFocusedWordWithItsReasonVisible()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                var missed = new ParserReading([new ParserReadingMorph("o-", "up", "v", null, false, null)]);
+                var priority = new FixFirstPriority(FixFirstCategory.ApprovedNoParse, 1,
+                    "Approved × No parse", "Expected o- up, not built.");
+                workspace.Assess.Result = new AssessCommandResponse(
+                    new BaselineCaptureResponse(
+                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
+                    new SelectionProjection([], []), [], "1 word assessed")
+                {
+                    Words =
+                    [
+                        new AssessmentWordResult("motifa", "no-analysis", false, "Search completed", 1, null)
+                        {
+                            ProjectStanding = ProjectStanding.Approved,
+                            OccurrenceCount = 3,
+                            MissedApproved = [missed],
+                            FixFirst = priority,
+                        },
+                    ],
+                };
+                workspace.Context.OpenTexts(TextsTab.Matrix);
+                window.Show();
+                window.UpdateLayout();
+
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
+                var list = panel.GetLogicalDescendants().OfType<ListBox>()
+                    .Single(control => AutomationProperties.GetName(control) == "Words to check first");
+                var disclosure = panel.GetLogicalDescendants().OfType<Expander>()
+                    .Single(control => ReferenceEquals(control.Content, list));
+                disclosure.IsExpanded = false;
+                window.UpdateLayout();
+
+                var count = panel.GetLogicalDescendants().OfType<CopyableTextBlock>()
+                    .Single(text => AutomationProperties.GetName(text) == "Fix these first count");
+                Assert.Equal("1", count.Text);
+                Assert.True(count.IsEffectivelyVisible);
+                Assert.False(list.IsEffectivelyVisible);
+
+                disclosure.IsExpanded = true;
+                window.UpdateLayout();
+                var rowButton = panel.GetLogicalDescendants().OfType<Button>()
+                    .Single(button => button.Classes.Contains("fixFirstWord"));
+                var explanation = panel.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(text => text.Text == priority.Explanation);
+                Assert.Equal(TextWrapping.NoWrap,
+                    panel.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == priority.Explanation).TextWrapping);
+
+                rowButton.Command!.Execute(rowButton.CommandParameter);
+                window.UpdateLayout();
+
+                Assert.Contains("focused", rowButton.Classes);
+                Assert.True(Application.Current!.TryGetResource("Intent.Selected.Fill", ThemeVariant.Light, out var selectedFill));
+                Assert.Equal(selectedFill, rowButton.Background);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void AnalyzeTextsSwitchesBetweenTheReaderAndWordList()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -764,6 +835,34 @@ public sealed class MainWindowSmokeTests
                 Assert.True(expander.IsExpanded);
                 Assert.True(window.GetLogicalDescendants().OfType<TextBox>().Single(textBox =>
                     AutomationProperties.GetName(textBox) == "Words to analyze, one per line").IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AnalyzeTextsSelectionPanelMeasuresItsResolvedComponentWidth()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Texts;
+                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+                window.Show();
+                window.UpdateLayout();
+
+                var page = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var selectionHost = Assert.IsType<ContentControl>(page.FindControl<ContentControl>("SelectionHost"));
+                var variant = window.ActualThemeVariant;
+                Assert.True(Application.Current!.TryGetResource(
+                    "Component.TextsPage.SelectionPanelWidth", variant, out var resolvedWidth));
+
+                Assert.Equal(Assert.IsType<double>(resolvedWidth), selectionHost.Bounds.Width);
             }
             finally
             {

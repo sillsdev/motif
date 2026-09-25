@@ -188,6 +188,7 @@ public sealed class AssessWordRowViewModel
         Word = word.Word;
         Outcome = word.Outcome;
         Morphology = word.Morphology;
+        FixFirst = word.FixFirst;
         OccurrenceCount = occurrenceCount ?? word.OccurrenceCount;
         Result = word.Outcome switch
         {
@@ -245,6 +246,7 @@ public sealed class AssessWordRowViewModel
     public string Word { get; }
     public string Outcome { get; }
     public ParseWordEvidence? Morphology { get; }
+    public FixFirstPriority? FixFirst { get; }
     public int? OccurrenceCount { get; }
     public bool HasOccurrenceCount => OccurrenceCount is not null;
     public string Result { get; }

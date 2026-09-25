@@ -115,6 +115,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         _selection = selection;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
         SetViewCommand = new RelayCommand<TextsView>(view => View = view);
+        HandOffCheckedWordsCommand = new RelayCommand(HandOffCheckedWords, CanHandOffCheckedWords);
         OpenWordCommand = new RelayCommand<string>(word =>
         {
             if (!string.IsNullOrWhiteSpace(word)) OpenWord?.Invoke(word);
@@ -147,6 +148,25 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     /// <summary>Opens a word's detail in the Analyze text reader.</summary>
     public IRelayCommand<string> OpenWordCommand { get; }
+
+    public IRelayCommand HandOffCheckedWordsCommand { get; }
+
+    private Action<IReadOnlyList<string>>? _handOff;
+
+    /// <summary>The workspace action that opens AI Handoff on these words.</summary>
+    public Action<IReadOnlyList<string>>? HandOff
+    {
+        get => _handOff;
+        set
+        {
+            if (_handOff == value) return;
+            _handOff = value;
+            OnPropertyChanged();
+            HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    public int CheckedWordCount => _all.Count(row => row.IsChecked);
 
     /// <summary>The navigation action used when someone opens a word from the list.</summary>
     public Action<string>? OpenWord { get; set; }
@@ -250,6 +270,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     {
         _projectPath = fwDataPath;
         _generation++;
+        foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
         _all.Clear();
         Rows.Clear();
         ReaderTexts.Clear();
@@ -260,6 +281,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
         OccurrenceCount = 0;
         ApprovedCount = 0;
         Response = null;
+        OnPropertyChanged(nameof(CheckedWordCount));
+        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
         RaiseCounts();
         if (fwDataPath is not null) await ReloadAsync(cancellationToken).ConfigureAwait(true);
     }
@@ -287,12 +310,16 @@ public sealed partial class TextWordsViewModel : ObservableObject
         HasBaseline = outcome.Value!.HasBaseline;
         Response = outcome.Value;
 
+        foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
         _all.Clear();
         _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word)));
+        foreach (var row in _all) row.PropertyChanged += OnWordRowPropertyChanged;
+        OnPropertyChanged(nameof(CheckedWordCount));
+        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ProjectWords));
         if (_assessed is { } assessed)
             foreach (var row in _all) row.ShowAssessment(assessed(row.Form));
-        OccurrenceCount = _all.Sum(row => row.OccurrenceCount);
+        OccurrenceCount = outcome.Value.OccurrenceCount;
         ApprovedCount = _all.Count(row => row.HasApproved);
         RaiseCounts();
         ApplyFilter();
@@ -355,6 +382,18 @@ public sealed partial class TextWordsViewModel : ObservableObject
         OnPropertyChanged(nameof(SeveralFilterCount));
     }
 
+    private bool CanHandOffCheckedWords() => HandOff is not null && CheckedWordCount > 0;
+
+    private void HandOffCheckedWords() =>
+        HandOff?.Invoke(_all.Where(row => row.IsChecked).Select(row => row.Form).ToArray());
+
+    private void OnWordRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(TextWordRowViewModel.IsChecked)) return;
+        OnPropertyChanged(nameof(CheckedWordCount));
+        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+    }
+
     private async void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SelectionViewModel.PastedWords)) OnPropertyChanged(nameof(SummaryText));
@@ -365,6 +404,9 @@ public sealed partial class TextWordsViewModel : ObservableObject
 /// <summary>One distinct word form as the Words table shows it: its occurrences and the project's own analyses.</summary>
 public sealed partial class TextWordRowViewModel : ObservableObject
 {
+    [ObservableProperty]
+    private bool _isChecked;
+
     // What the latest Assessment came to for this word; null before one, or when the word was not in it.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLastResult))]

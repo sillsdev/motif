@@ -38,7 +38,7 @@ public sealed class TextWordsViewModelTests
              new TextWord("na", null,
                 [new WordOccurrence(TextId, "Alpha", 2, "s", "unanalysed", null),
                  new WordOccurrence(TextId, "Alpha", 3, "s", "unanalysed", null)], [], [])],
-            [], HasBaseline: true));
+            [], HasBaseline: true, OccurrenceCount: 3));
         var assessed = new AssessWordsViewModel();
         assessed.Load([new AssessmentWordResult("na", "no-analysis", false, "Search completed", 4, null)]);
 
@@ -189,7 +189,7 @@ public sealed class TextWordsViewModelTests
                     [Analysis("love", "love"), Analysis("like", "like")], []),
                 new TextWord("nitakupa", null, [new WordOccurrence(TextId, "Alpha", 3, "s", "unanalysed", null)], [], []),
             ],
-            [], HasBaseline: true));
+            [], HasBaseline: true, OccurrenceCount: 3));
         await words.ReloadAsync();
         words.SetStatusFilterCommand.Execute(WordProjectStatus.NotPresent);
 
@@ -219,11 +219,27 @@ public sealed class TextWordsViewModelTests
                     [Analysis("k1", "book")], []),
                 new TextWord("nitakupa", null, [new WordOccurrence(TextId, "Alpha", 3, "s", "unanalysed", null)], [], []),
             ],
-            [], HasBaseline: true));
+            [], HasBaseline: true, OccurrenceCount: 3));
 
         await words.ReloadAsync();
 
         Assert.Equal("2 words to test · 3 occurrences · 1 with an approved analysis", words.SummaryText);
+    }
+
+    [Fact]
+    public async Task TheSummaryUsesTheOccurrenceTotalReturnedByTheCommand()
+    {
+        var (fake, _, words) = NewViewModel();
+        await words.SetProjectAsync(ProjectPath);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("kitabu", null,
+                [new WordOccurrence(TextId, "Alpha", 1, "s", "approved", Analysis("k1", "book"))],
+                [Analysis("k1", "book")], [])],
+            [], HasBaseline: true, OccurrenceCount: 17));
+
+        await words.ReloadAsync();
+
+        Assert.Equal("1 word to test · 17 occurrences · 1 with an approved analysis", words.SummaryText);
     }
 
     [Fact]
