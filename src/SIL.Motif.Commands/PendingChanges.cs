@@ -295,6 +295,45 @@ public static class PendingChanges
                 Snapshot(database, project, repository));
         });
 
+    public static CommandOutcome<PendingChangesSnapshot> Recheck(RecheckPendingChangesRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            var repository = new ProposalRepository(database);
+            var current = Current(repository);
+            if (Revision(current?.ProposalJson) != request.ExpectedRevision)
+                return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
+            if (current is null) return Refuse("change.not-found", "There are no pending changes to check.");
+            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            if (baseline is null || File.GetLastWriteTimeUtc(project.FullFwDataPath) >
+                baseline.SourceLastWriteUtc.UtcDateTime)
+                return Refuse("change.refresh-required", "Refresh the project before checking changes again.");
+            var draft = ParseDraft(current.ProposalJson!);
+            var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
+            using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+            var fits = ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false)
+                .ToDictionary(fit => fit.OperationId, StringComparer.Ordinal);
+            var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
+            var changed = false;
+            foreach (var operation in draft.Operations)
+            {
+                if (!fits.TryGetValue(operation.OperationId, out var fit) || !fit.StillFits ||
+                    operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
+                    !extensions.TryGetProperty("changeFit", out var stored)) continue;
+                var fingerprint = JsonSerializer.Deserialize<ChangeFitFingerprint>(stored.GetRawText(), JsonOptions);
+                if (fingerprint is null || fingerprint.BaselineToken == token) continue;
+                var properties = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+                    extensions.GetRawText(), JsonOptions)!;
+                properties["changeFit"] = JsonSerializer.SerializeToElement(
+                    fingerprint with { BaselineToken = token }, JsonOptions);
+                operation.Extensions = JsonSerializer.SerializeToElement(properties, JsonOptions);
+                changed = true;
+            }
+            if (changed && !repository.TrySaveDraft(DraftName, current.ProposalJson!,
+                JsonSerializer.Serialize(draft, JsonOptions)))
+                return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
+            return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository));
+        });
+
     private static ProposalRecord? Current(ProposalRepository repository) =>
         repository.DraftNameExists(DraftName) ? repository.GetDraft(DraftName) : null;
 

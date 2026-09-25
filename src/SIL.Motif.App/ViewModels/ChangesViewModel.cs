@@ -112,6 +112,17 @@ public sealed partial class ChangesViewModel : ObservableObject
             await ReloadAfterConflictAsync(outcome.Refusal, cancellationToken);
     }
 
+    public async Task RecheckAsync(CancellationToken cancellationToken = default)
+    {
+        if (ProjectPath is null) return;
+        var outcome = await _client.RecheckPendingChangesAsync(new RecheckPendingChangesRequest(
+            ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision), cancellationToken)
+            .ConfigureAwait(true);
+        Accept(outcome);
+        if (outcome.Refusal?.Code == "change.revision-conflict")
+            await ReloadAfterConflictAsync(outcome.Refusal, cancellationToken).ConfigureAwait(true);
+    }
+
     public async Task AddAsync(string kind, CompareWordViewModel word,
         WorkspacePage originPage = WorkspacePage.Texts)
     {

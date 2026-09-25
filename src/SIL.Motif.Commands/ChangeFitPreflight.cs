@@ -20,7 +20,7 @@ public sealed record ChangeFitFingerprint(
 public static class ChangeFitPreflight
 {
     public static IReadOnlyList<ChangeFitResult> Check(LcmCache cache, Proposal proposal,
-        BaselineToken? currentBaseline = null)
+        BaselineToken? currentBaseline = null, bool requireSameBaseline = true)
     {
         var result = new List<ChangeFitResult>();
         var objects = cache.ServiceLocator.ObjectRepository;
@@ -153,7 +153,8 @@ public static class ChangeFitPreflight
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
             catch (Exception exception) when (exception is JsonException or ArgumentException) { captured = null; }
-            if (captured is null || !captured.HasSameSemanticIdentity(currentBaseline))
+            if (captured is null || currentBaseline is null ||
+                requireSameBaseline && !captured.HasSameSemanticIdentity(currentBaseline))
             {
                 result.Add(new ChangeFitResult(operation.OperationId.Value, false,
                     "The collected change's Baseline is no longer current.", fingerprint.BaselineToken));

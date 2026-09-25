@@ -131,4 +131,8 @@ public sealed partial class CommandClient
     public Task<CommandOutcome<PendingChangesSnapshot>> RemovePendingChangeAsync(
         RemovePendingChangeRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChanges.Remove(request));
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> RecheckPendingChangesAsync(
+        RecheckPendingChangesRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => PendingChanges.Recheck(request));
 }

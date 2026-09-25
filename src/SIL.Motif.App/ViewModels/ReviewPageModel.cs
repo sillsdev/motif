@@ -22,6 +22,8 @@ public sealed class ReviewPageModel : PageModel
         context.PropertyChanged += OnContextPropertyChanged;
         RemoveNonFittingCommand = new AsyncRelayCommand(RemoveNonFittingAsync,
             () => Changes.Items.Any(item => item.IsNoLongerFits));
+        CheckAgainCommand = new AsyncRelayCommand(() => Changes.RecheckAsync(),
+            () => HasNonFittingChanges && Context.CurrentEvidence?.Freshness != EvidenceFreshness.Stale);
         MeasureCommand = new AsyncRelayCommand(MeasureAsync,
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
         CancelMeasureCommand = new RelayCommand(() => _measurementCancellation?.Cancel(), () => IsMeasuring);
@@ -37,6 +39,9 @@ public sealed class ReviewPageModel : PageModel
 
     /// <summary>Removes only the changes that no longer fit the FieldWorks project.</summary>
     public IAsyncRelayCommand RemoveNonFittingCommand { get; }
+
+    /// <summary>Checks unchanged identities against the refreshed Baseline and renews their evidence.</summary>
+    public IAsyncRelayCommand CheckAgainCommand { get; }
 
     /// <summary>Starts a Trial of the touched words only when the person asks for one.</summary>
     public IAsyncRelayCommand MeasureCommand { get; }
@@ -236,6 +241,7 @@ public sealed class ReviewPageModel : PageModel
             OnPropertyChanged(nameof(ApplyBlockReason));
             OnPropertyChanged(nameof(HasNonFittingChanges));
             RemoveNonFittingCommand.NotifyCanExecuteChanged();
+            CheckAgainCommand.NotifyCanExecuteChanged();
             MeasureCommand.NotifyCanExecuteChanged();
             ApplyCommand.NotifyCanExecuteChanged();
         }
@@ -248,6 +254,7 @@ public sealed class ReviewPageModel : PageModel
         {
             OnPropertyChanged(nameof(CanApply));
             OnPropertyChanged(nameof(ApplyBlockReason));
+            CheckAgainCommand.NotifyCanExecuteChanged();
             ApplyCommand.NotifyCanExecuteChanged();
         }
     }

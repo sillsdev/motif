@@ -18,3 +18,7 @@ public sealed record PutPendingChangeRequest(
 /// <summary>Removes one change only if the Draft still has the revision the caller read.</summary>
 public sealed record RemovePendingChangeRequest(
     string FwDataPath, string ProductVersion, string ExpectedRevision, string ChangeId);
+
+/// <summary>Checks pending changes against the current Baseline and renews only fingerprints that still fit.</summary>
+public sealed record RecheckPendingChangesRequest(
+    string FwDataPath, string ProductVersion, string ExpectedRevision);

@@ -40,6 +40,18 @@ public sealed partial class FakeCommandClient
     public PendingChangesSnapshot? PendingPutResponse { get; set; }
 
     public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
+    public List<RecheckPendingChangesRequest> PendingRecheckRequests { get; } = [];
+    private PendingChangesSnapshot? _recheckResponse;
+
+    public void RecheckCompletesWith(PendingChangesSnapshot response) => _recheckResponse = response;
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> RecheckPendingChangesAsync(
+        RecheckPendingChangesRequest request, CancellationToken cancellationToken)
+    {
+        PendingRecheckRequests.Add(request);
+        _pending = _recheckResponse ?? _pending;
+        return Completed(_pending);
+    }
 
     public void PendingChangesIs(PendingChangesSnapshot snapshot) => _pending = snapshot;
 

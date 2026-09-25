@@ -100,6 +100,10 @@
           <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
                   IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project" />
           <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" />
+          <views:CopyableTextBlock Classes="error" Text="{Binding Changes.ErrorText}" TextWrapping="Wrap" />
+          <HyperlinkButton Classes="reviewLink" Content="Check again against the refreshed project"
+                           Command="{Binding CheckAgainCommand}"
+                           IsVisible="{Binding HasNonFittingChanges}" />
           <HyperlinkButton Classes="reviewLink" Content="Remove the ones that no longer fit"
                            Command="{Binding RemoveNonFittingCommand}"
                            IsVisible="{Binding HasNonFittingChanges}" />

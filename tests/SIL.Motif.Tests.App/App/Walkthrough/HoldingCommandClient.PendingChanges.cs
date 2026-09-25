@@ -17,4 +17,8 @@ internal sealed partial class HoldingCommandClient
     public Task<CommandOutcome<PendingChangesSnapshot>> RemovePendingChangeAsync(
         RemovePendingChangeRequest request, CancellationToken cancellationToken) =>
         _inner.RemovePendingChangeAsync(request, cancellationToken);
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> RecheckPendingChangesAsync(
+        RecheckPendingChangesRequest request, CancellationToken cancellationToken) =>
+        _inner.RecheckPendingChangesAsync(request, cancellationToken);
 }

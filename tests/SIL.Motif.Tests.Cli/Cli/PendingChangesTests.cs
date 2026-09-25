@@ -72,6 +72,80 @@ public sealed class PendingChangesTests
     }
 
     [Fact]
+    public void CheckingAgainRefreshesTheFingerprintWhenAnUnrelatedWordChanged()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("still-here", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        var managed = Path.Combine(Path.GetDirectoryName(_path)!, "check-again-managed");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "still-here")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("unrelated", cache.DefaultVernWs)));
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+        var drifted = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        Assert.False(Assert.Single(drifted.Value!.FitSummary).StillFits);
+
+        var checkedAgain = PendingChanges.Recheck(new RecheckPendingChangesRequest(_path, "1.0",
+            drifted.Value.Revision));
+
+        Assert.True(checkedAgain.Succeeded, checkedAgain.Refusal?.Message);
+        Assert.True(Assert.Single(checkedAgain.Value!.FitSummary).StillFits);
+        Assert.NotEqual(drifted.Value.Revision, checkedAgain.Value.Revision);
+    }
+
+    [Fact]
+    public void CheckingAgainDoesNotRenewADeletedWordform()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("gone", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        var managed = Path.Combine(Path.GetDirectoryName(_path)!, "deleted-managed");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+        var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "gone")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        using (var cache = loader.LoadCache(_path))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => wordform.Delete());
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed).Succeeded);
+        var drifted = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+
+        var checkedAgain = PendingChanges.Recheck(new RecheckPendingChangesRequest(_path, "1.0",
+            drifted.Value!.Revision));
+
+        Assert.True(checkedAgain.Succeeded, checkedAgain.Refusal?.Message);
+        Assert.False(Assert.Single(checkedAgain.Value!.FitSummary).StillFits);
+        Assert.Equal(drifted.Value.Revision, checkedAgain.Value.Revision);
+    }
+
+    [Fact]
     public void DefaultTrialQueuesOnlyTheTouchedWord()
     {
         var loader = new FwDataProjectLoader();

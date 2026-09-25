@@ -54,6 +54,29 @@ public sealed class ReviewPageModelTests
     }
 
     [Fact]
+    public async Task CheckAgainReplacesOnlyTheFitsThatPassedTheCommand()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first"), Change("deleted", "second")],
+            [new ChangeFit("kept", false, ["Baseline changed."]),
+             new ChangeFit("deleted", false, ["Wordform was deleted."])]));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        fake.RecheckCompletesWith(new PendingChangesSnapshot("draft/one", "revision/two",
+            [Change("kept", "first"), Change("deleted", "second")],
+            [new ChangeFit("kept", true, []),
+             new ChangeFit("deleted", false, ["Wordform was deleted."])]));
+
+        await page.CheckAgainCommand.ExecuteAsync(null);
+
+        Assert.Equal("revision/one", Assert.Single(fake.PendingRecheckRequests).ExpectedRevision);
+        Assert.True(context.Changes.Items.Single(item => item.ChangeId == "kept").Fit?.StillFits);
+        Assert.True(context.Changes.Items.Single(item => item.ChangeId == "deleted").IsNoLongerFits);
+    }
+
+    [Fact]
     public async Task AFieldWorksSaveBlocksApplyUntilRefresh()
     {
         var fake = new FakeCommandClient();
