@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 
@@ -83,13 +84,17 @@ public sealed class ReviewPageModel : PageModel
 
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
     public bool CanApply => Changes.HasItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
-        Context.Baseline?.FieldWorksHeldProject != true && EvidenceComplete && !IsMeasuring && !IsApplying;
+        Context.Baseline?.FieldWorksHeldProject != true &&
+        Context.CurrentEvidence?.Freshness != EvidenceFreshness.Stale &&
+        EvidenceComplete && !IsMeasuring && !IsApplying;
 
     /// <summary>What prevents Apply, in words shown beside the action.</summary>
     public string ApplyBlockReason => IsApplying ? "Applying changes to FieldWorks..." :
         !Changes.HasItems ? "Choose a change in Texts to begin." :
         Changes.Items.Any(item => item.IsNoLongerFits)
             ? "No longer fits: remove the changes that no longer fit before applying."
+            : Context.CurrentEvidence?.Freshness == EvidenceFreshness.Stale
+                ? "FieldWorks saved since these numbers were measured. Refresh before applying."
             : Context.Baseline?.FieldWorksHeldProject == true
                 ? "FieldWorks has this project open. Close it before applying changes."
                 : !EvidenceComplete ? "See what applying does to the numbers before applying." : string.Empty;
@@ -239,7 +244,7 @@ public sealed class ReviewPageModel : PageModel
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(WorkspaceContext.ProjectName)) OnPropertyChanged(nameof(ProjectName));
-        if (e.PropertyName == nameof(WorkspaceContext.Baseline))
+        if (e.PropertyName is nameof(WorkspaceContext.Baseline) or nameof(WorkspaceContext.CurrentEvidence))
         {
             OnPropertyChanged(nameof(CanApply));
             OnPropertyChanged(nameof(ApplyBlockReason));

@@ -1,6 +1,7 @@
 using Avalonia.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -32,6 +33,44 @@ public sealed class ReviewPageModelTests
 
         Assert.Equal("kept", Assert.Single(context.Changes.Items).ChangeId);
         Assert.Equal("kept", Assert.Single(context.Changes.Snapshot.Changes).ChangeId);
+    }
+
+    [Fact]
+    public async Task RefreshReloadsChangeFitBeforeApply()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", false, ["Wordform was deleted."])]));
+
+        await context.PublishBaselineCapturedAsync();
+
+        Assert.True(Assert.Single(context.Changes.Items).IsNoLongerFits);
+        Assert.False(page.CanApply);
+    }
+
+    [Fact]
+    public async Task AFieldWorksSaveBlocksApplyUntilRefresh()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.ReviewTrialCompletesWith(new ReviewTrialResult("job/one", "revision/one", "complete", true));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        await page.MeasureCommand.ExecuteAsync(null);
+        Assert.True(page.CanApply);
+
+        context.CurrentEvidence = new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
+            EvidenceFreshness.Stale, null, null, null, null, null);
+
+        Assert.False(page.CanApply);
+        Assert.Contains("Refresh", page.ApplyBlockReason);
     }
 
     [Fact]

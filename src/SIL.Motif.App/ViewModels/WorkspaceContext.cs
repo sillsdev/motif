@@ -193,6 +193,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     /// <summary>Tells every page a new Baseline was captured, and returns once each has reloaded.</summary>
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
     {
+        await Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
         if (Setup is not null) await Setup.BaselineCapturedAsync().ConfigureAwait(true);

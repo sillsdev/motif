@@ -236,6 +236,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         if (!HasProject || _isRefreshing) return;
         await Baseline.CheckAsync(cancellationToken).ConfigureAwait(true);
+        await Context.Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
         RaiseFreshness();
     }
 
@@ -401,6 +402,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private void OnBaselinePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         PublishBaseline();
+        if (Context.CurrentEvidence is { } evidence && Baseline.HasBaseline)
+            Context.CurrentEvidence = evidence with
+            {
+                Freshness = Baseline.IsSavedSince ? EvidenceFreshness.Stale : EvidenceFreshness.Current,
+            };
         RaiseFreshness();
     }
 
