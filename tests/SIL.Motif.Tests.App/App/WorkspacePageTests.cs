@@ -351,6 +351,19 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
+    public async Task ApplyingChangesMakesTheNumbersStaleUntilRefresh()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+
+        workspace.Context.AppliedSinceRefresh = true;
+
+        Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
+        Assert.Equal("Numbers need refresh", workspace.FreshnessLabel);
+        Assert.Contains("numbers are stale until you refresh", workspace.FreshnessDetail);
+    }
+
+    [Fact]
     public async Task ASaveAfterTheBaselineShowsFieldWorksSavedSinceAndNothingReruns()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();

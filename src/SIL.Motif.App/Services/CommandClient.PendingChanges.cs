@@ -119,8 +119,10 @@ public sealed partial class CommandClient
         progress.Report(new ReviewTrialProgress(request.Words.Count, request.Words.Count, null));
         var complete = report.Value!.Text.StartsWith(
             $"{request.Words.Count} searches completed; 0 incomplete.", StringComparison.Ordinal);
-        var numbers = before is null ? "After applying:\n" + SummaryLines(report.Value.Text) :
-            "Before:\n" + before + "\nAfter applying:\n" + SummaryLines(report.Value.Text);
+        var trialHeading = $"With these changes ({request.Words.Count} touched words):\n";
+        var numbers = before is null ? trialHeading + SummaryLines(report.Value.Text) :
+            "Existing Assessment (its Selection):\n" + before + "\n" + trialHeading +
+            SummaryLines(report.Value.Text);
         return CommandOutcome<ReviewTrialResult>.Success(new ReviewTrialResult(
             jobId, request.Revision, numbers, complete));
     }

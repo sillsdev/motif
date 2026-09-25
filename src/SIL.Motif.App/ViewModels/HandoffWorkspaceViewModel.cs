@@ -173,7 +173,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         ProjectFreshness.NoBaseline => "No Baseline yet",
         ProjectFreshness.Current => "Current",
-        ProjectFreshness.SavedSince => "FieldWorks saved since",
+        ProjectFreshness.SavedSince => Context.AppliedSinceRefresh ? "Numbers need refresh" : "FieldWorks saved since",
         ProjectFreshness.Refreshing => "Refreshing",
         ProjectFreshness.Refreshed => "Refreshed",
         _ => string.Empty,
