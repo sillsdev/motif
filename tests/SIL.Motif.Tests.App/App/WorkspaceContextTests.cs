@@ -155,6 +155,14 @@ public sealed class WorkspaceContextTests
         Assert.Equal("83% of these words' time · 26 attempts · 2 words touched", timing.RuleSummary);
     }
 
+    [Theory]
+    [InlineData("morph_rule", "Morphological rules")]
+    [InlineData("phon_rule", "Phonological rules")]
+    [InlineData("root_index", "Root lookup")]
+    [InlineData("lex_entry", "Lexical entries")]
+    public void TimingDisplaysReadableRuleKindLabels(string storedKind, string label) =>
+        Assert.Equal(label, TimingKindLabelConverter.Display(storedKind));
+
     [Fact]
     public async Task TimingShowsFiveCostliestWordsButHandsOffEveryWordUnderTheRule()
     {

@@ -5,6 +5,9 @@
              xmlns:responses="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              x:Class="SIL.Motif.App.Views.TimingPage"
              x:DataType="vm:TimingPageModel">
+  <UserControl.Resources>
+    <views:TimingKindLabelConverter x:Key="KindLabel" />
+  </UserControl.Resources>
   <ScrollViewer>
     <Border Classes="timingPage">
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
@@ -91,7 +94,7 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="responses:TimingAggregateRow">
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                        <views:CopyableTextBlock Text="{Binding Name}" />
+                        <views:CopyableTextBlock Text="{Binding Name, Converter={StaticResource KindLabel}}" />
                         <views:CopyableTextBlock Classes="muted" Text="{Binding ShareOfTotal, StringFormat='{}{0:P0}'}" />
                       </StackPanel>
                     </DataTemplate>
@@ -119,7 +122,8 @@
                               CommandParameter="{Binding}">
                         <Grid ColumnDefinitions="2*,*,*,*,*">
                           <views:CopyableTextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" />
-                          <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Kind}" />
+                          <views:CopyableTextBlock Grid.Column="1" Classes="muted"
+                                                   Text="{Binding Kind, Converter={StaticResource KindLabel}}" />
                           <views:CopyableTextBlock Grid.Column="2" Text="{Binding ShareOfTotal, StringFormat='{}{0:P0}'}" />
                           <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="{Binding Attempts, StringFormat='{}{0:N0}'}" />
                           <views:CopyableTextBlock Grid.Column="4" Text="{Binding WordsTouched, StringFormat='{}{0:N0}'}" />
