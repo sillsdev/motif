@@ -105,7 +105,7 @@ public sealed class CommandCatalogParityTests
         "job.wait-timeout",
         "operation.cascading-delete", "operation.invalid-dependency", "operation.invalid-id",
         "operation.invalid-target", "operation.invalid-writing-system",
-        "project.busy", "project.invalid", "project.not-found", "project.operation-io", "project.refused",
+        "project.busy", "project.in-use", "project.invalid", "project.not-found", "project.operation-io", "project.refused",
         "project.store-io",
         "preflight.unavailable",
         "proposal.already-applied", "proposal.inconsistent", "proposal.invalid-id", "proposal.invalid-status",

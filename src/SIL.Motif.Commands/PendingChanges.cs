@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using SIL.LCModel;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Commands.Queries;
@@ -16,6 +17,7 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
+using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Baselines;
@@ -78,7 +80,10 @@ public static class PendingChanges
                 Comment = "Changes to word analyses and spelling.",
             } :
                 ParseDraft(current.ProposalJson!);
-            using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+            var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+            var cacheDisposed = false;
+            try
+            {
             IWfiWordform wordform;
             try
             {
@@ -114,8 +119,12 @@ public static class PendingChanges
                 draft.ComposerProvenance.Any(entry => Property(entry, "wordformId") == change.WordformId &&
                     Property(entry, "kind") is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or
                         AnalysisChangeKinds.Candidate))
+            {
+                cacheDisposed = true;
+                cache.Dispose();
                 return CommandOutcome<PendingChangesSnapshot>.Success(
                     Snapshot(database, project, repository) with { SkippedWord = change.Word });
+            }
 
             var reading = change.Reading;
             if (reading is null && change.StoredAnalysisId is { } storedId)
@@ -254,6 +263,8 @@ public static class PendingChanges
                     composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
                     change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
                     change.OriginPage,
+                    displayAnalyses = DisplayAnalyses(database, cache, Path.GetFileNameWithoutExtension(
+                        baseline.FwDataPath), wordform, change),
                     operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
                 }, JsonOptions));
             var json = JsonSerializer.Serialize(draft, JsonOptions);
@@ -263,14 +274,23 @@ public static class PendingChanges
             if (!saved)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("changeId", change.ChangeId), ("expectedRevision", request.ExpectedRevision));
+            var replacedChangeId = operations.Count > 0 && occupied.ChangeId != change.ChangeId
+                ? occupied.ChangeId : null;
+            var cancelledChangeId = operations.Count == 0 && removed > 0
+                ? occupied.ChangeId ?? change.ChangeId : null;
+            cacheDisposed = true;
+            cache.Dispose();
             return CommandOutcome<PendingChangesSnapshot>.Success(
                 Snapshot(database, project, repository) with
                 {
-                    ReplacedChangeId = operations.Count > 0 && occupied.ChangeId != change.ChangeId
-                        ? occupied.ChangeId : null,
-                    CancelledChangeId = operations.Count == 0 && removed > 0
-                        ? occupied.ChangeId ?? change.ChangeId : null,
+                    ReplacedChangeId = replacedChangeId,
+                    CancelledChangeId = cancelledChangeId,
                 });
+            }
+            finally
+            {
+                if (!cacheDisposed) cache.Dispose();
+            }
         });
 
     public static CommandOutcome<PendingChangesSnapshot> Remove(RemovePendingChangeRequest request) =>
@@ -311,8 +331,8 @@ public static class PendingChanges
                 return Refuse("change.refresh-required", "Refresh the project before checking changes again.");
             var draft = ParseDraft(current.ProposalJson!);
             var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
-            using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-            var fits = ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false)
+            var fits = WithLiveProjectCopy(project, (_, cache) =>
+                ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false))
                 .ToDictionary(fit => fit.OperationId, StringComparer.Ordinal);
             var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
             var changed = false;
@@ -374,68 +394,38 @@ public static class PendingChanges
                 Property(entry, "displayReading"), operationIds)
             {
                 OriginPage = Property(entry, "originPage"),
+                Analyses = DisplayAnalysesOf(entry),
             };
         }).ToArray();
         if (changes.Length == 0)
             return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);
 
-        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-        var assessments = new AssessmentRepository(database);
-        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
-        changes = changes.Select(change =>
+        var revision = Revision(current.ProposalJson);
+        var fitRepository = new PendingChangeFitRepository(database);
+        var lastWriteTicks = File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
+        var fits = fitRepository.Get(revision, lastWriteTicks);
+        if (fits is null)
         {
-            var stored = StoredAnalyses(cache, projectName, change.WordformId);
-            if (change.AssessmentId is not { } assessmentId ||
-                !provenance.TryGetValue(change.ChangeId, out var entry))
-                return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
-            try
+            fits = WithLiveProjectCopy(project, (copy, cache) =>
             {
-                var word = assessments.Get(assessmentId).Words?.SingleOrDefault(item => item.Word == change.Word);
-                if (word?.Morphology is not { } morphology)
-                    return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
-                var readings = ParserReadingReader.Read(cache, projectName, morphology);
-                var selected = Number(entry, "readingIndex");
-                if (selected is null)
-                {
-                    var authored = draft.Operations.Where(operation => ChangeIdOf(operation) == change.ChangeId)
-                        .Select(operation => operation.Extensions)
-                        .Where(extensions => extensions is { ValueKind: JsonValueKind.Object })
-                        .Select(extensions => extensions!.Value.TryGetProperty("changeFit", out var fit) ? fit : default)
-                        .FirstOrDefault(fit => fit.ValueKind == JsonValueKind.Object);
-                    var readingDigest = Property(authored, "readingContentDigest");
-                    if (readingDigest is not null)
-                    {
-                        var matching = morphology.Analyses.Select((analysis, index) => (analysis, index))
-                            .Where(candidate => ChangeFitPreflight.ReadingDigest(candidate.analysis) == readingDigest)
-                            .Take(2).ToArray();
-                        if (matching.Length == 1) selected = matching[0].index;
-                    }
-                }
-                var parserKeys = morphology.Analyses.Select(ProjectAnalysisKey.For).ToHashSet(StringComparer.Ordinal);
-                return change with
-                {
-                    Analyses = readings.Select((reading, index) =>
-                    {
-                        var key = ProjectAnalysisKey.For(morphology.Analyses[index]);
-                        var match = stored.FirstOrDefault(item => item.Key == key);
-                        return new ReviewAnalysis(reading,
-                            match.Analysis?.Opinion ?? word.ReadingGrades?.ElementAtOrDefault(index) ?? "no-opinion",
-                            selected == index, match.Analysis is not null);
-                    }).Concat(stored.Where(item => !parserKeys.Contains(item.Key))
-                        .Select(item => item.Analysis)).ToArray(),
-                };
-            }
-            catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
-            {
-                return change with { Analyses = stored.Select(item => item.Analysis).ToArray() };
-            }
-        }).ToArray();
+                var baseline = new BaselineRepository(database)
+                    .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
+                var computed = ComputeFitSummary(cache, draft, changes, provenance, baseline);
+                fitRepository.Save(revision, copy.SourceLastWriteUtc.UtcDateTime.Ticks, computed);
+                return computed;
+            });
+        }
+        return new PendingChangesSnapshot(draft.ProposalId, revision, changes, fits);
+    }
+
+    private static IReadOnlyList<ChangeFit> ComputeFitSummary(LcmCache cache, DraftDocument draft,
+        IReadOnlyList<PendingChange> changes, IReadOnlyDictionary<string, JsonElement> provenance,
+        BaselineToken? baseline)
+    {
         var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
-        var baseline = new BaselineRepository(database)
-            .GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
         var operationFits = ChangeFitPreflight.Check(cache, proposal, baseline)
             .ToDictionary(item => item.OperationId, StringComparer.Ordinal);
-        var fits = changes.Select(change =>
+        return changes.Select(change =>
         {
             var reasons = change.OperationIds.Select(id =>
                 draft.Operations.Any(operation => operation.OperationId == id &&
@@ -446,7 +436,79 @@ public static class PendingChanges
                 reasons = ["Change mapping or fingerprint is missing."];
             return new ChangeFit(change.ChangeId, reasons.Length == 0, reasons);
         }).ToArray();
-        return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, fits);
+    }
+
+    private static IReadOnlyList<ReviewAnalysis> DisplayAnalyses(MotifDatabase database, LcmCache cache,
+        string projectName, IWfiWordform wordform, ChangeIntent change)
+    {
+        var stored = StoredAnalyses(cache, projectName, CanonicalId.FromGuid(wordform.Guid).Value);
+        if (change.AssessmentId is not { } assessmentId)
+            return stored.Select(item => item.Analysis).ToArray();
+        try
+        {
+            var word = new AssessmentRepository(database).Get(assessmentId).Words?
+                .SingleOrDefault(item => item.Word == change.Word);
+            if (word?.Morphology is not { } morphology)
+                return stored.Select(item => item.Analysis).ToArray();
+            var readings = ParserReadingReader.Read(cache, projectName, morphology);
+            var selected = change.ReadingIndex;
+            if (selected is null && change.Reading is { } authoredReading)
+            {
+                var digest = ChangeFitPreflight.ReadingDigest(authoredReading);
+                var matching = morphology.Analyses.Select((analysis, index) => (analysis, index))
+                    .Where(candidate => ChangeFitPreflight.ReadingDigest(candidate.analysis) == digest)
+                    .Take(2).ToArray();
+                if (matching.Length == 1) selected = matching[0].index;
+            }
+            var parserKeys = morphology.Analyses.Select(ProjectAnalysisKey.For).ToHashSet(StringComparer.Ordinal);
+            return readings.Select((reading, index) =>
+            {
+                var key = ProjectAnalysisKey.For(morphology.Analyses[index]);
+                var match = stored.FirstOrDefault(item => item.Key == key);
+                return new ReviewAnalysis(reading,
+                    match.Analysis?.Opinion ?? word.ReadingGrades?.ElementAtOrDefault(index) ?? "no-opinion",
+                    selected == index, match.Analysis is not null);
+            }).Concat(stored.Where(item => !parserKeys.Contains(item.Key))
+                .Select(item => item.Analysis)).ToArray();
+        }
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
+        {
+            return stored.Select(item => item.Analysis).ToArray();
+        }
+    }
+
+    private static IReadOnlyList<ReviewAnalysis> DisplayAnalysesOf(JsonElement entry)
+    {
+        if (entry.ValueKind != JsonValueKind.Object ||
+            !entry.TryGetProperty("displayAnalyses", out var analyses) ||
+            analyses.ValueKind != JsonValueKind.Array) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<IReadOnlyList<ReviewAnalysis>>(analyses.GetRawText(), JsonOptions)
+                ?? throw new InvalidDataException("Stored change display analyses are incomplete.");
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("Stored change display analyses are malformed.", exception);
+        }
+    }
+
+    private static T WithLiveProjectCopy<T>(ProjectLocator project,
+        Func<SavedProjectFilesCopy, LcmCache, T> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        var directory = Path.Combine(Path.GetTempPath(), "SIL.Motif.PendingChanges", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var copy = new SavedProjectFileCopier().CopyAsync(project.FullFwDataPath, directory,
+                CancellationToken.None).GetAwaiter().GetResult();
+            using var cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
+            return action(copy, cache);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
     }
 
     private static IReadOnlyList<(string Key, ReviewAnalysis Analysis)> StoredAnalyses(

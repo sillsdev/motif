@@ -2,6 +2,7 @@ using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
@@ -83,6 +84,11 @@ public static class ProjectStoreCommand
             try
             {
                 return act(database, project);
+            }
+            catch (LcmInitializationException exception)
+            {
+                return CommandOutcome<T>.Refused(
+                    new Refusal("project.in-use", FailureReason.Busy, exception.Message, Fact(fwDataPath)));
             }
             catch (IOException exception)
             {
