@@ -1,6 +1,5 @@
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
-using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -12,6 +11,10 @@ public sealed partial class CommandClient
     public Task<CommandOutcome<OverviewResponse>> OverviewAsync(
         OverviewRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => OverviewCommand.Overview(request));
+
+    public Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
+        string projectPath, CancellationToken cancellationToken) =>
+        Task.Run(() => CurrentEvidenceQuery.ReadCurrentEvidence(projectPath), cancellationToken);
 
     public Task<CommandOutcome<TimingResponse>> TimingAsync(
         TimingRequest request, CancellationToken cancellationToken) =>
@@ -37,7 +40,4 @@ public sealed partial class CommandClient
         WordTraceRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => WordTraceQuery.Query(request, cancellationToken));
 
-    public Task<CommandOutcome<TimingResponse>> TimingAsync(
-        TimingRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => TimingCommand.Timing(request), cancellationToken);
 }

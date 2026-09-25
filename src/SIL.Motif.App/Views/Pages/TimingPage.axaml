@@ -12,6 +12,28 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
     <ContentControl x:Name="StatisticsHost" IsVisible="{Binding ShowStatistics}" />
+    <Border Classes="card" IsVisible="{Binding ShowStoredTiming}">
+      <StackPanel Spacing="10">
+        <views:CopyableTextBlock Text="Stored Assessment timing" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding StoredTimingSummary}" />
+        <Border Classes="notice" IsVisible="{Binding StoredTiming.IsStale}">
+          <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers."
+                                   TextWrapping="Wrap" />
+        </Border>
+        <views:CopyableTextBlock Classes="error" Text="{Binding StoredTimingError}"
+                                 IsVisible="{Binding HasStoredTimingError}" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding StoredTiming.Aggregates}" AutomationProperties.Name="Stored timing by rule">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="responses:TimingAggregateRow">
+              <StackPanel Orientation="Horizontal">
+                <views:CopyableTextBlock Text="{Binding Name}" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0:F1} ms'}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
     <ScrollViewer IsVisible="{Binding HasFocus}">
       <StackPanel>
         <Border Classes="card">

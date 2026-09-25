@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -31,14 +32,25 @@ public sealed class TimingPageModel : PageModel
     /// <summary>Stored timing for the words and rule another page opened.</summary>
     public TimingResponse? FocusedTiming { get; private set; }
 
+    /// <summary>Timing for the current stored Assessment across all its words.</summary>
+    public TimingResponse? StoredTiming { get; private set; }
+
     /// <summary>Why the requested stored timing could not be read.</summary>
     public string? FocusedTimingError { get; private set; }
 
+    /// <summary>Why the current stored timing could not be read.</summary>
+    public string? StoredTimingError { get; private set; }
+
     public bool HasFocus => Focus is not null;
 
-    public bool ShowNoEvidence => Context.HasNoEvidence && Focus is null;
+    public bool ShowNoEvidence => Context.HasNoEvidence && Context.CurrentEvidence?.MatchingAssessment is null &&
+        Focus is null;
 
     public bool ShowStatistics => Context.HasEvidence && Focus is null;
+
+    /// <summary>Whether to show the stored timing while no in-memory Assessment or focused request is active.</summary>
+    public bool ShowStoredTiming => Context.CurrentEvidence?.MatchingAssessment is not null &&
+        !Context.HasEvidence && Focus is null;
 
     public string FocusSummary => Focus is not { } focus ? string.Empty :
         focus.Rule is null
@@ -49,6 +61,16 @@ public sealed class TimingPageModel : PageModel
 
     public bool HasFocusedTimingError => FocusedTimingError is not null;
 
+    /// <summary>Whether stored timing was read for the current Assessment.</summary>
+    public bool HasStoredTiming => StoredTiming is not null;
+
+    /// <summary>Whether the stored timing read returned a refusal.</summary>
+    public bool HasStoredTimingError => StoredTimingError is not null;
+
+    /// <summary>The stored timing response's word count and percentiles in one line.</summary>
+    public string StoredTimingSummary => StoredTiming is not { } timing ? string.Empty :
+        $"{timing.WordCount:N0} words · median {timing.MedianMs:N1} ms · 95th percentile {timing.Percentile95Ms:N1} ms";
+
     /// <summary>Refreshes the stored timing for the words and rule last opened.</summary>
     public IAsyncRelayCommand LoadFocusedTimingCommand { get; }
 
@@ -57,7 +79,10 @@ public sealed class TimingPageModel : PageModel
         Focus = null;
         FocusedTiming = null;
         FocusedTimingError = null;
+        StoredTiming = null;
+        StoredTimingError = null;
         RaiseFocusState();
+        RaiseStoredTimingState();
         Statistics.Reset();
     }
 
@@ -76,6 +101,30 @@ public sealed class TimingPageModel : PageModel
             .SingleOrDefault(measurement => measurement.Kind == "ObjectTiming")?.AssessmentId;
         OnPropertyChanged(nameof(ShowNoEvidence));
         OnPropertyChanged(nameof(ShowStatistics));
+        RaiseStoredTimingState();
+    }
+
+    protected override async Task OnCurrentEvidencePublishedAsync(
+        CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken)
+    {
+        if (evidence.MatchingAssessment is not { } assessment || Context.ProjectPath is not { } projectPath)
+        {
+            StoredTiming = null;
+            StoredTimingError = null;
+            RaiseStoredTimingState();
+            return;
+        }
+
+        var outcome = await Context.Commands.TimingAsync(new TimingRequest(
+            projectPath, assessment.AssessmentId, WordSet: "all", By: "kind"), cancellationToken)
+            .ConfigureAwait(true);
+        if (!ReferenceEquals(Context.CurrentEvidence, evidence) ||
+            !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal))
+            return;
+
+        StoredTiming = outcome.Succeeded ? outcome.Value : null;
+        StoredTimingError = outcome.Succeeded ? null : outcome.Refusal?.Message;
+        RaiseStoredTimingState();
     }
 
     protected override void OnRequested(PageRequest request)
@@ -114,5 +163,16 @@ public sealed class TimingPageModel : PageModel
         OnPropertyChanged(nameof(FocusedTimingError));
         OnPropertyChanged(nameof(HasFocusedTimingError));
         LoadFocusedTimingCommand.NotifyCanExecuteChanged();
+    }
+
+    private void RaiseStoredTimingState()
+    {
+        OnPropertyChanged(nameof(StoredTiming));
+        OnPropertyChanged(nameof(StoredTimingError));
+        OnPropertyChanged(nameof(HasStoredTiming));
+        OnPropertyChanged(nameof(HasStoredTimingError));
+        OnPropertyChanged(nameof(ShowStoredTiming));
+        OnPropertyChanged(nameof(ShowNoEvidence));
+        OnPropertyChanged(nameof(StoredTimingSummary));
     }
 }

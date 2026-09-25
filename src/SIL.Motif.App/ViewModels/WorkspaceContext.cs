@@ -134,6 +134,10 @@ public sealed partial class WorkspaceContext : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasNoEvidence))]
     private WorkspaceEvidence? _evidence;
 
+    /// <summary>The current stored read model published for the open project.</summary>
+    [ObservableProperty]
+    private CurrentEvidenceSnapshot? _currentEvidence;
+
     /// <summary>Whether any evidence has been published for the open project.</summary>
     public bool HasEvidence => Evidence is not null;
 
@@ -156,6 +160,7 @@ public sealed partial class WorkspaceContext : ObservableObject
     public void ClearProject()
     {
         Evidence = null;
+        CurrentEvidence = null;
         foreach (var page in _pages) page.ProjectCleared();
     }
 
@@ -188,6 +193,16 @@ public sealed partial class WorkspaceContext : ObservableObject
         ArgumentNullException.ThrowIfNull(evidence);
         Evidence = evidence;
         foreach (var page in _pages.ToArray()) page.EvidencePublished(evidence);
+    }
+
+    /// <summary>Publishes the stored read model to the open project's pages.</summary>
+    public async Task PublishCurrentEvidenceAsync(
+        CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(evidence);
+        CurrentEvidence = evidence;
+        foreach (var page in _pages.ToArray())
+            await page.CurrentEvidencePublishedAsync(evidence, cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>Opens <paramref name="page"/> as it stands.</summary>

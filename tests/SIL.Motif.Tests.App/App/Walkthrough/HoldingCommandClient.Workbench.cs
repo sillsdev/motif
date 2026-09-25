@@ -11,6 +11,10 @@ internal sealed partial class HoldingCommandClient
         OverviewRequest request, CancellationToken cancellationToken) =>
         _inner.OverviewAsync(request, cancellationToken);
 
+    public Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
+        string projectPath, CancellationToken cancellationToken) =>
+        _inner.ReadCurrentEvidenceAsync(projectPath, cancellationToken);
+
     public Task<CommandOutcome<TimingResponse>> TimingAsync(
         TimingRequest request, CancellationToken cancellationToken) =>
         _inner.TimingAsync(request, cancellationToken);
@@ -35,7 +39,4 @@ internal sealed partial class HoldingCommandClient
         WordTraceRequest request, CancellationToken cancellationToken) =>
         _inner.TraceWordAsync(request, cancellationToken);
 
-    public Task<CommandOutcome<TimingResponse>> TimingAsync(
-        TimingRequest request, CancellationToken cancellationToken) =>
-        _inner.TimingAsync(request, cancellationToken);
 }

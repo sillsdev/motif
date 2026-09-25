@@ -16,6 +16,10 @@ public sealed partial class FakeCommandClient
         _timing = (_, _) => Refused<TimingResponse>(
             new Refusal("timing.not-configured", FailureReason.Refused, "No Timing configured."));
 
+    private Func<string, CancellationToken, Task<CommandOutcome<CurrentEvidenceSnapshot>>> _currentEvidence =
+        (_, _) => Refused<CurrentEvidenceSnapshot>(
+            new Refusal("evidence.not-configured", FailureReason.Refused, "No current evidence configured."));
+
     private Func<ProjectHistoryRequest, CancellationToken, Task<CommandOutcome<ProjectHistoryResponse>>>
         _projectHistory = (_, _) => Completed(new ProjectHistoryResponse([]));
 
@@ -31,18 +35,14 @@ public sealed partial class FakeCommandClient
         _traceWord = (_, _) => Refused<WordTraceResponse>(
             new Refusal("trace.not-configured", FailureReason.Refused, "No trace configured."));
 
-    private Func<TimingRequest, CancellationToken, Task<CommandOutcome<TimingResponse>>> _timing =
-        (_, _) => Refused<TimingResponse>(
-            new Refusal("timing.not-configured", FailureReason.Refused, "No timing configured."));
-
     public List<ProjectHistoryRequest> ProjectHistoryRequests { get; } = [];
     public List<OverviewRequest> OverviewRequests { get; } = [];
-    public List<TimingRequest> TimingRequests { get; } = [];
     public List<GrammarCheckRequest> CheckGrammarRequests { get; } = [];
     public List<GrammarCheckRequest> StoredGrammarCheckRequests { get; } = [];
     public List<TextWordsRequest> ListTextWordsRequests { get; } = [];
     public List<WordTraceRequest> TraceWordRequests { get; } = [];
     public List<TimingRequest> TimingRequests { get; } = [];
+    public List<string> CurrentEvidenceRequests { get; } = [];
 
     public void OnProjectHistory(
         Func<ProjectHistoryRequest, CancellationToken, Task<CommandOutcome<ProjectHistoryResponse>>> behavior) =>
@@ -59,6 +59,9 @@ public sealed partial class FakeCommandClient
         _timing = behavior;
 
     public void TimingCompletesWith(TimingResponse response) => OnTiming((_, _) => Completed(response));
+
+    public void ReadCurrentEvidenceCompletesWith(CurrentEvidenceSnapshot snapshot) =>
+        _currentEvidence = (_, _) => Completed(snapshot);
 
     public void ProjectHistoryIs(ProjectHistoryResponse response) => OnProjectHistory((_, _) => Completed(response));
 
@@ -88,15 +91,6 @@ public sealed partial class FakeCommandClient
 
     public void TraceWordCompletesWith(WordTraceResponse response) => OnTraceWord((_, _) => Completed(response));
 
-    public void TimingCompletesWith(TimingResponse response) =>
-        _timing = (_, _) => Completed(response);
-
-    public Task<CommandOutcome<TimingResponse>> TimingAsync(TimingRequest request, CancellationToken cancellationToken)
-    {
-        TimingRequests.Add(request);
-        return _timing(request, cancellationToken);
-    }
-
     public Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken)
     {
@@ -109,6 +103,13 @@ public sealed partial class FakeCommandClient
     {
         OverviewRequests.Add(request);
         return _overview(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
+        string projectPath, CancellationToken cancellationToken)
+    {
+        CurrentEvidenceRequests.Add(projectPath);
+        return _currentEvidence(projectPath, cancellationToken);
     }
 
     public Task<CommandOutcome<TimingResponse>> TimingAsync(

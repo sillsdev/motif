@@ -7,6 +7,9 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -39,6 +42,49 @@ public sealed class WorkspaceContextTests
         Assert.Equal(ProjectPath, timing.Statistics.ProjectPath);
         Assert.Equal("summary", timing.Statistics.SummaryMarkdown);
         Assert.Equal("assessment-1", timing.Statistics.AssessmentId);
+    }
+
+    [Fact]
+    public async Task OpeningAProjectReadsItsStoredOverviewThroughThePageContext()
+    {
+        var (fake, context) = NewContextWithFake();
+        var overviewPage = new OverviewPageModel(context);
+        var current = new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
+            EvidenceFreshness.NoBaseline, null, null, null, null, null);
+        var overview = Overview();
+        fake.OverviewCompletesWith(overview);
+        fake.ReadCurrentEvidenceCompletesWith(current);
+
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        Assert.Equal(ProjectPath, Assert.Single(fake.OverviewRequests).ProjectPath);
+        Assert.Equal(ProjectPath, Assert.Single(fake.CurrentEvidenceRequests));
+        Assert.Same(current, context.CurrentEvidence);
+        Assert.Same(overview, overviewPage.Overview);
+    }
+
+    [Fact]
+    public async Task OpeningAProjectReadsItsStoredTimingThroughThePageContext()
+    {
+        var (fake, context) = NewContextWithFake();
+        _ = new OverviewPageModel(context);
+        var timing = new TimingPageModel(context);
+        var current = new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
+            EvidenceFreshness.Current, null, null, null, null, StoredAssessment());
+        var response = new TimingResponse("assessment-1", "all", "kind", 1, 5, 8, [], [], []);
+        fake.ReadCurrentEvidenceCompletesWith(current);
+        fake.OverviewCompletesWith(Overview());
+        fake.TimingCompletesWith(response);
+
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        var request = Assert.Single(fake.TimingRequests);
+        Assert.Equal(ProjectPath, request.ProjectPath);
+        Assert.Equal("assessment-1", request.AssessmentId);
+        Assert.Equal("all", request.WordSet);
+        Assert.Equal("kind", request.By);
+        Assert.Same(response, timing.StoredTiming);
+        Assert.True(timing.ShowStoredTiming);
     }
 
     [Fact]
@@ -256,6 +302,16 @@ public sealed class WorkspaceContextTests
         InvocationId = "invocation/one",
         Measurements = [new ProducedAssessmentReference("assessment-1", "ObjectTiming", "invocation/one")],
     };
+
+    private static AssessmentRecord StoredAssessment() => new(
+        "assessment-1", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope",
+        "whitespace", "1", "{}", Selection.Create("Default", ["dogs"]), null, null,
+        "sha256:grammar", null, null, null, "2026-09-24T12:00:00.0000000+00:00", Words: []);
+
+    private static OverviewResponse Overview() => new(
+        "one", DateTimeOffset.UtcNow, null, 0, 0, 0, 0, 0, 0, 0, null, null, null, null, null,
+        new OverviewTextCoverage(0, 0, 0, 0, 0, 0), new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0),
+        new OverviewTiming(null, null, [], 0), null);
 
     internal static WorkspaceContext NewContext() => NewContextWithFake().Context;
 

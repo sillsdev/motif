@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -48,6 +49,10 @@ public abstract partial class PageModel : ObservableObject
     {
     }
 
+    /// <summary>Loads this page's view of the stored evidence the context just published.</summary>
+    protected virtual Task OnCurrentEvidencePublishedAsync(
+        CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken) => Task.CompletedTask;
+
     /// <summary>Answers <paramref name="request"/> when it is addressed to this page; ignores it otherwise.</summary>
     protected virtual void OnRequested(PageRequest request)
     {
@@ -63,6 +68,10 @@ public abstract partial class PageModel : ObservableObject
     internal Task StopWorkAsync() => OnStopWorkAsync();
 
     internal void EvidencePublished(WorkspaceEvidence evidence) => OnEvidencePublished(evidence);
+
+    internal Task CurrentEvidencePublishedAsync(
+        CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken) =>
+        OnCurrentEvidencePublishedAsync(evidence, cancellationToken);
 
     internal void Requested(PageRequest request) => OnRequested(request);
 }

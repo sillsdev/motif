@@ -100,7 +100,14 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             Assert.Equal(timing.Value.CostliestWords, appTiming.Value.CostliestWords);
             var currentEvidence = CurrentEvidenceQuery.ReadCurrentEvidence(projectPath);
             Assert.True(currentEvidence.Succeeded, currentEvidence.Refusal?.Message);
+            var appCurrentEvidence = await client.ReadCurrentEvidenceAsync(projectPath, CancellationToken.None);
+            Assert.True(appCurrentEvidence.Succeeded, appCurrentEvidence.Refusal?.Message);
             var readModel = currentEvidence.Value!;
+            Assert.Equal(readModel.Freshness, appCurrentEvidence.Value!.Freshness);
+            Assert.Equal(readModel.MatchingAssessment?.AssessmentId,
+                appCurrentEvidence.Value.MatchingAssessment?.AssessmentId);
+            Assert.Equal(readModel.Selection?.Selection.Sha256,
+                appCurrentEvidence.Value.Selection?.Selection.Sha256);
             Assert.Equal(EvidenceFreshness.Current, readModel.Freshness);
             Assert.Equal(capture.Value.Token, readModel.Baseline?.Token);
             Assert.Equal(stored.AssessmentId, readModel.MatchingAssessment?.AssessmentId);

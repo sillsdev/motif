@@ -56,10 +56,19 @@
                                        IsVisible="{Binding Page.Context.HasEvidence}"
                                        Text="{Binding Page.Words.CountSummary}" />
               <views:CopyableTextBlock Classes="muted" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,12,0"
-                                       IsVisible="{Binding Page.Context.HasEvidence}"
+                                       IsVisible="{Binding Page.HasAssessment}"
                                        Text="{Binding Page.CompletedAt, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
             </DockPanel>
-            <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Page.Context.HasNoEvidence}"
+            <StackPanel IsVisible="{Binding Page.HasOverview}" Spacing="4">
+              <views:CopyableTextBlock Classes="muted" Text="{Binding Page.OverviewSummary}" TextWrapping="Wrap" />
+              <Border Classes="notice" IsVisible="{Binding Page.OverviewIsStale}">
+                <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers."
+                                         TextWrapping="Wrap" />
+              </Border>
+            </StackPanel>
+            <views:CopyableTextBlock Classes="error" Text="{Binding Page.OverviewRefusalMessage}" TextWrapping="Wrap"
+                                     IsVisible="{Binding Page.OverviewRefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+            <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Page.ShowNoAssessment}"
                                      Text="No Assessment yet. Choose Texts or paste words, then run one to see how the grammar does." />
             <StackPanel Spacing="12" IsVisible="{Binding Page.Context.HasEvidence}">
               <views:OutcomeBar Segments="{Binding Page.Words.Outcomes}" AutomationProperties.Name="What the parser came to" />
@@ -73,7 +82,7 @@
               <Border Classes="notice" IsVisible="{Binding Page.Words.AnySkipped}">
                 <views:CopyableTextBlock Text="{Binding Page.Words.SkippedHint}" TextWrapping="Wrap" />
               </Border>
-              <Border Height="1" Background="{DynamicResource SemiColorBorder}" />
+              <Border Height="1" Background="{DynamicResource Intent.Border}" />
               <views:CopyableTextBlock Text="Against what the project stores" FontWeight="SemiBold" />
               <WrapPanel>
                 <views:VerdictChip Verdict="NoResult" Margin="0,0,8,6"

@@ -15,6 +15,10 @@ public partial interface ICommandClient
     Task<CommandOutcome<TimingResponse>> TimingAsync(
         TimingRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Reads the stored Baseline, default Selection, matching Assessment, and current freshness.</summary>
+    Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
+        string projectPath, CancellationToken cancellationToken);
+
     /// <summary>Reads what Motif has done with a project: Baselines captured, Assessments run, Handoffs written.</summary>
     Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken);
@@ -35,7 +39,4 @@ public partial interface ICommandClient
     Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken);
 
-    /// <summary>Reads stored Assessment timing for the requested words and optional rule.</summary>
-    Task<CommandOutcome<TimingResponse>> TimingAsync(
-        TimingRequest request, CancellationToken cancellationToken);
 }
