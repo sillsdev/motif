@@ -161,6 +161,10 @@ public sealed class JobClaims
     /// here. A runner that stalled past its lease still holds a record saying <c>running</c>; the row it
     /// names is running too, because somebody else reclaimed it. Finishing on the status alone would let
     /// the runner that lost the row report an outcome for work another runner is still doing.
+    /// A row its handler parked behind the project lane — <c>waiting-for-baseline</c> or
+    /// <c>waiting-for-project-host</c> — is still this claim's to finish: refusing it would leave an active row
+    /// that neither a claim nor lease expiry ever takes back, pinned by
+    /// `AHandlerStoppedWhileItsRowWaitsBehindTheLaneLandsItCancelled`.
     /// </remarks>
     public bool Finish(string jobId, string claimToken, JobStatus status, JobFailureCategory category,
         string? resultJson)
@@ -169,7 +173,8 @@ public sealed class JobClaims
             throw new ArgumentException("A claim token is required.", nameof(claimToken));
 
         var current = _jobs.Get(jobId);
-        if (current is null || current.Status != JobStatus.Running) return false;
+        if (current is null || current.Status is not (JobStatus.Running or JobStatus.WaitingForBaseline or
+                JobStatus.WaitingForProjectHost)) return false;
         if (!string.Equals(current.ClaimToken, claimToken, StringComparison.Ordinal)) return false;
         _jobs.Transition(jobId, status, current.Version, category, resultJson);
         return true;
