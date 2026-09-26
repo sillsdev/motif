@@ -1,0 +1,14 @@
+---
+title: Developers
+description: Design decisions and public technical documentation for Motif.
+---
+
+The developer section collects Motif's accepted decisions and public design documents. The pages are synchronized from the repository when the site is built.
+
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+	<LinkCard title="Architecture" href="/developers/architecture/" />
+	<LinkCard title="Command API" href="/developers/cli-api/" />
+	<LinkCard title="Accepted decisions" href="/developers/adr/" />
+</CardGrid>

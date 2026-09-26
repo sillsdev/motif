@@ -1,0 +1,25 @@
+:root {
+	--sl-color-accent-low: #e3f0ec;
+	--sl-color-accent: #247768;
+	--sl-color-accent-high: #153e3b;
+	--sl-color-text-accent: #17675d;
+	--sl-font: "Segoe UI", system-ui, sans-serif;
+	--sl-content-width: 54rem;
+}
+
+[data-has-hero] .hero h1 {
+	letter-spacing: -0.045em;
+}
+
+.sl-markdown-content a {
+	text-underline-offset: 0.2em;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--sl-color-accent-low: #183c39;
+		--sl-color-accent: #84cfc0;
+		--sl-color-accent-high: #c5f3e9;
+		--sl-color-text-accent: #9ee0d2;
+	}
+}
