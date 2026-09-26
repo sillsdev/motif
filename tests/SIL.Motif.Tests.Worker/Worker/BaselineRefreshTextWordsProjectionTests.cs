@@ -14,7 +14,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Worker;
 
 /// <summary>
-/// Pins the stored Text words of a Baseline: the worker's refresh replaces them with exactly what a fresh load of
+/// Pins the stored Text words of a Baseline: the runner's refresh replaces them with exactly what a fresh load of
 /// the refreshed Baseline builds, a read touches only the requested Texts and the wordforms they use, and a row
 /// that is damaged or belongs to another Baseline is refused rather than served.
 /// </summary>
