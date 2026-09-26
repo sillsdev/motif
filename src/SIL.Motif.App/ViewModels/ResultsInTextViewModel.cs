@@ -482,7 +482,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool HasDisapprovedReading => Readings.Any(reading => reading.IsDisapproved);
 
     /// <summary>What the disapproved marker says when a reader stops on it.</summary>
-    public string DisapprovedTip => $"The parser also produced a reading the project disapproves for {Text}.";
+    public string DisapprovedTip => $"The parser also produced a reading the project has rejected for {Text}.";
 
     /// <summary>Whether the active filter passes over this word, so it recedes rather than disappears.</summary>
     [ObservableProperty]
@@ -512,15 +512,8 @@ public sealed class ResultsReadingViewModel
     {
         Text = text;
         IsStoredHere = isStoredHere;
-        GradeLabel = grade switch
-        {
-            "approved" => "Approved",
-            "disapproved" => "Disapproved",
-            "candidate" => "Candidate",
-            "no-opinion" => "No opinion",
-            _ => string.Empty,
-        };
-        IsDisapproved = grade == "disapproved";
+        GradeLabel = ReadingGradeLabels.Of(grade);
+        IsDisapproved = grade == ReadingGrade.Disapproved;
         Analysis = analysis;
         Index = index;
         Morphs = reading?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];

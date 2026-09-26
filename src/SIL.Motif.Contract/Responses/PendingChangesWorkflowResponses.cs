@@ -42,10 +42,12 @@ public sealed record ApplyPendingResult
 /// <summary>The outcome of measuring one pending revision.</summary>
 /// <param name="JobId">The Trial job that produced this outcome.</param>
 /// <param name="Revision">The pending revision used for the Trial.</param>
-/// <param name="NumbersText">The measured numbers as one English sentence.</param>
-/// <param name="EvidenceComplete">Whether every requested word produced complete correctness evidence.</param>
-public sealed record MeasurePendingResult(
-    string JobId, string Revision, string NumbersText, bool EvidenceComplete);
+/// <param name="Numbers">What the Trial did to the touched words' approved analyses.</param>
+public sealed record MeasurePendingResult(string JobId, string Revision, ReviewNumbersResponse Numbers)
+{
+    /// <summary>Whether every requested word produced complete correctness evidence.</summary>
+    public bool EvidenceComplete => Numbers.EvidenceComplete;
+}
 
 /// <summary>Reports completed work while Motif measures words for one pending revision.</summary>
 /// <param name="Completed">The number of words whose Trial work has finished.</param>

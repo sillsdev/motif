@@ -14,11 +14,8 @@ public static class ReviewNumbersCommand
     public sealed record Request(string ProjectPath, string? BeforeAssessmentId, string TrialAssessmentId,
         int TouchedWordCount);
 
-    /// <summary>The command's comparison and whether every touched word finished with correctness evidence.</summary>
-    public sealed record Response(string Text, bool EvidenceComplete);
-
     /// <summary>Reads both recorded Assessments and returns one comparison.</summary>
-    public static CommandOutcome<Response> Read(Request request) =>
+    public static CommandOutcome<ReviewNumbersResponse> Read(Request request) =>
         ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
         {
             var repository = new AssessmentRepository(database);
@@ -31,48 +28,45 @@ public static class ReviewNumbersCommand
             }
             catch (KeyNotFoundException exception)
             {
-                return CommandOutcome<Response>.Refused(new Refusal("review.assessment-not-found",
+                return CommandOutcome<ReviewNumbersResponse>.Refused(new Refusal("review.assessment-not-found",
                     FailureReason.NotFound, exception.Message));
             }
             if (trial.Kind != RegressionChecker.RequiredKind ||
                 before is not null && before.Kind != RegressionChecker.RequiredKind)
-                return CommandOutcome<Response>.Refused(new Refusal("review.wrong-assessment-kind",
+                return CommandOutcome<ReviewNumbersResponse>.Refused(new Refusal("review.wrong-assessment-kind",
                     FailureReason.InvalidArgument, "Review numbers require Correctness Assessments."));
             try
             {
-                return CommandOutcome<Response>.Success(Summarize(before, trial, request.TouchedWordCount));
+                return CommandOutcome<ReviewNumbersResponse>.Success(
+                    Summarize(before, trial, request.TouchedWordCount));
             }
             catch (Exception exception) when (exception is ReportRefusalException or ComparisonRefusalException)
             {
-                return CommandOutcome<Response>.Refused(new Refusal("review.numbers-unavailable",
+                return CommandOutcome<ReviewNumbersResponse>.Refused(new Refusal("review.numbers-unavailable",
                     FailureReason.Refused, exception.Message));
             }
         });
 
     /// <summary>Summarizes both Assessments over their shared words, using the regression comparison.</summary>
-    public static Response Summarize(AssessmentRecord? before, AssessmentRecord trial, int touchedWordCount)
+    public static ReviewNumbersResponse Summarize(AssessmentRecord? before, AssessmentRecord trial,
+        int touchedWordCount)
     {
         ArgumentNullException.ThrowIfNull(trial);
         var trialWords = trial.Words ?? [];
         var complete = trialWords.Count == touchedWordCount && trialWords.All(word =>
             word.Correctness is not null && word.Morphology is { Capped: false, TimedOut: false,
                 InvalidShape: false });
-        if (before is null)
-        {
-            var covered = trialWords.Count(word => word.Correctness?.Status == "covered");
-            return new Response($"{covered} of {trialWords.Count} touched words kept their approved analyses. " +
-                "There is no earlier Assessment to compare.", complete);
-        }
+        var covered = trialWords.Count(word => word.Correctness?.Status == "covered");
+        ReviewNumbersResponse Numbers(ReviewComparability comparability, int shared = 0, int keptBefore = 0,
+            int keptAfter = 0) =>
+            new(comparability, shared, keptBefore, keptAfter, trialWords.Count, covered, complete);
+
+        if (before is null) return Numbers(ReviewComparability.NoEarlierAssessment);
         var finding = RegressionChecker.Check(before.ToCorrectness(), trial.ToCorrectness());
-        if (finding is null)
-            return new Response("These Assessments were made by different Assessors and cannot be compared.",
-                complete);
-        if (!finding.CanCompare)
-            return new Response("The regression check could not compare these Assessments because they share no words.",
-                complete);
+        if (finding is null) return Numbers(ReviewComparability.DifferentAssessor);
+        if (!finding.CanCompare) return Numbers(ReviewComparability.NoSharedWords);
         var shared = before.Selection.Words.Intersect(trial.Selection.Words, StringComparer.Ordinal).Count();
-        var noun = shared == 1 ? "word" : "words";
-        return new Response($"Among {shared} shared {noun}, approved kept: " +
-            $"{finding.PreviousCoverage.Analysed} → {finding.CandidateCoverage.Analysed}.", complete);
+        return Numbers(ReviewComparability.Compared, shared, finding.PreviousCoverage.Analysed,
+            finding.CandidateCoverage.Analysed);
     }
 }

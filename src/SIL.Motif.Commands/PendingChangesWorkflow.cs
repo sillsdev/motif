@@ -148,7 +148,7 @@ public static class PendingChangesWorkflow
         if (!numbers.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(numbers.Refusal!);
         progress.Report(new MeasureProgress(request.Words.Count, request.Words.Count, null));
         return CommandOutcome<MeasurePendingResult>.Success(new MeasurePendingResult(
-            jobId, current.Revision, numbers.Value!.Text, numbers.Value.EvidenceComplete));
+            jobId, current.Revision, numbers.Value!));
     }
 
     // The one definition of "nothing pending" for both workflows: no Draft, or a Draft with no operations.

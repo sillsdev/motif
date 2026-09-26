@@ -17,6 +17,9 @@ public sealed partial class FakeCommandClient
         { get; set; }
 
     public void MeasurePendingCompletesWith(MeasurePendingResult result) => _measurement = result;
+
+    public static ReviewNumbersResponse CompleteNumbers { get; } =
+        new(ReviewComparability.Compared, 1, 0, 1, 1, 1, EvidenceComplete: true);
     public void ApplyPendingCompletesWith(ApplyProjection result) => _apply = result;
 
     public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
