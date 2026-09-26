@@ -324,8 +324,9 @@ _Avoid_: import, package, archive, manifest
 **Handoff**:
 The five flat files Motif writes for a person to give to a chat model, plus the block of text they paste
 ahead of their question: the grammar in PanGloss's JSON, every chosen Text in one JSON mirror of FLExText,
-the Assessment, one helper script for reading them, and one short file saying what each is. Always five,
-whatever was selected. The long explanations do not travel in it; the pasted text links to them. Outbound,
+the Assessment, one helper script for reading them, and one short file saying what each is. Five whatever
+was selected; four when no Assessment was run, because an absent Assessment is left out rather than written
+empty. The long explanations do not travel in it; the pasted text links to them. Outbound,
 where a Corpus bundle is inbound. Motif sends nothing anywhere; the person drags the files. Also *AI
 handoff* where the audience needs the qualifier.
 _Avoid_: export, bundle, package, dump, advice folder
