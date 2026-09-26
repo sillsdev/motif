@@ -8,7 +8,7 @@ public sealed record EnqueueDryRunRequest(string FwDataPath, string ProductVersi
 
 public sealed record EnqueueTrialRequest(
     string FwDataPath, string ProductVersion, string ProposalId, string? Scope = null,
-    IReadOnlyList<string>? Words = null, bool AllWords = false);
+    IReadOnlyList<string>? Words = null, bool AllWords = false, string? ExpectedDraftRevision = null);
 
 public sealed record WaitForDryRunRequest(
     string FwDataPath, string ProductVersion, string ProposalId, string JobId, TimeSpan Timeout);

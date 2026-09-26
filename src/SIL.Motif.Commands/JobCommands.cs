@@ -125,6 +125,13 @@ public static class JobCommands
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
 
+            if (record.DraftName is not null && request.ExpectedDraftRevision is { } expectedRevision &&
+                DraftRevision.Compute(record.ProposalJson) != expectedRevision)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                    "draft.revision-conflict", FailureReason.Refused,
+                    "The Draft changed after it was checked. Reload it before queueing a Trial.",
+                    new Dictionary<string, string>(StringComparer.Ordinal) { ["draftName"] = record.DraftName }));
+
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
