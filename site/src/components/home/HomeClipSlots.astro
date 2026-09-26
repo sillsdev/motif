@@ -1,0 +1,21 @@
+---
+import Walkthrough from '../Walkthrough.astro';
+
+const manifests = Object.values(import.meta.glob('../../data/walkthroughs/*/manifest.json', {
+	eager: true,
+	import: 'default',
+}));
+const { slots } = Astro.props;
+---
+
+<div>
+	{slots.map((slot) => {
+		const manifest = manifests.find((candidate) => candidate.id === slot.walkthroughId);
+		return (
+			<article>
+				<h3>{slot.title}</h3>
+				{manifest ? <Walkthrough manifest={manifest} assetBase={`/walkthroughs/${manifest.id}`} /> : <p>{slot.description}</p>}
+			</article>
+		);
+	})}
+</div>

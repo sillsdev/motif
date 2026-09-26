@@ -1,0 +1,17 @@
+---
+const samples = Object.values(import.meta.glob('../../data/samples.json', {
+	eager: true,
+	import: 'default',
+}))[0] ?? [];
+const { speedLessonLabel } = Astro.props;
+---
+
+<div>
+	{samples.map((sample) => (
+		<article>
+			<h3><a href={`/samples/#${sample.id}`}>{sample.title}</a></h3>
+			<p>{sample.summary}</p>
+			{sample.speedLesson && <p>{speedLessonLabel}</p>}
+		</article>
+	))}
+</div>

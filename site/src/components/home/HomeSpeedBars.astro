@@ -1,0 +1,22 @@
+---
+const metrics = Object.values(import.meta.glob('../../data/sample-turkish-performance.json', {
+	eager: true,
+	import: 'default',
+}))[0];
+const { beforeLabel, afterLabel, textCoverageLabel } = Astro.props;
+const variants = metrics && [
+	{ label: beforeLabel, values: metrics.broken },
+	{ label: afterLabel, values: metrics.fixed },
+];
+---
+
+{variants && (
+	<div>
+		{variants.map(({ label, values }) => (
+			<div>
+				<p>{label}: {values.parsed} / {values.words} words parsed; {textCoverageLabel} {Math.round(values.textCoverage * 100)}%</p>
+				<progress value={values.textCoverage * 100} max="100" aria-label={`${label}: ${textCoverageLabel}`} />
+			</div>
+		))}
+	</div>
+)}

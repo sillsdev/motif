@@ -1,0 +1,132 @@
+---
+title: Motif
+description: Motif helps you measure a FieldWorks grammar and understand what to improve.
+template: splash
+---
+
+import HomeHero from '../../components/home/HomeHero.astro';
+import HomeSection from '../../components/home/HomeSection.astro';
+import HomeFeatureGrid from '../../components/home/HomeFeatureGrid.astro';
+import HomeClipSlots from '../../components/home/HomeClipSlots.astro';
+import HomeSampleCards from '../../components/home/HomeSampleCards.astro';
+import HomeSpeedBars from '../../components/home/HomeSpeedBars.astro';
+import HowItFits from '../../components/home/HowItFits.astro';
+
+<HomeHero>
+	<h1>Motif can help you teach a dumb computer your language.</h1>
+	<p>You know the linguistics. An AI consultant knows the parser. Motif gives both of you the evidence to understand what is happening and decide what to change.</p>
+	<nav aria-label="Home actions">
+		<a href="#download">Download</a>
+		<a href="#work-with-ai">See how the AI helps</a>
+	</nav>
+	<p id="download">Downloads will be available when Motif has a release.</p>
+	<div slot="exchange">
+		<h2>A conversation about one parse</h2>
+		<article>
+			<h3>You</h3>
+			<p>Why didn't <code>evler</code> parse as plural?</p>
+		</article>
+		<article>
+			<h3>AI consultant</h3>
+			<p>Let's look at Motif's Trace and the suffix environment together.</p>
+		</article>
+	</div>
+</HomeHero>
+
+<HomeSection id="fieldworks-and-flextrans">
+	<h2>Works on the same FieldWorks projects FLExTrans uses</h2>
+	<p>Motif measures the grammar in your FieldWorks project. It does not connect to or control FLExTrans.</p>
+	<p><a href="https://software.sil.org/fieldworks/">Learn about FieldWorks</a> · <a href="https://software.sil.org/flextrans/">Learn about FLExTrans</a></p>
+</HomeSection>
+
+<HomeSection id="work-with-ai">
+	<h2>Writing a parser is computer science. You shouldn't have to do it alone.</h2>
+	<div>
+		<article>
+			<h3>You bring the language</h3>
+			<p>You know what the words mean, how they are built, and which forms belong together.</p>
+		</article>
+		<article>
+			<h3>The AI brings the machinery</h3>
+			<p>An AI consultant can help reason about parser rules and make a careful plan.</p>
+		</article>
+		<article>
+			<h3>Motif brings the evidence</h3>
+			<p>See parse results, Text Coverage, and the Trace before you decide what to change.</p>
+		</article>
+	</div>
+	<h3>Works with the AI you already use</h3>
+	<p>Give an agent a machine-readable description of Motif, or prepare a reviewable Handoff to share with a chat model.</p>
+	<ul>
+		<li><code>motif help --all --json</code> — the command catalog and help text.</li>
+		<li><code>motif handoff &lt;project.fwdata&gt; --out &lt;folder&gt; --invocation &lt;id&gt; --json</code> — a Handoff with retained parse evidence.</li>
+		<li><code>motif handoff &lt;project.fwdata&gt; --out &lt;folder&gt; --no-assess --json</code> — a Baseline-only Handoff.</li>
+	</ul>
+	<p>Read the full agent guide at <a href="/llms.txt">/llms.txt</a>.</p>
+</HomeSection>
+
+<HomeSection id="who-its-for">
+	<h2>Who it's for</h2>
+	<div>
+		<article>
+			<h3>Field linguist</h3>
+			<blockquote>“I know what this word should do. Help me see where the grammar stops.”</blockquote>
+			<p>Measure a grammar, inspect a parse, and bring evidence to your next analysis.</p>
+		</article>
+		<article>
+			<h3>Translator</h3>
+			<blockquote>“I can describe the form I need. I want to understand why it does not parse.”</blockquote>
+			<p>Work with a language technologist to investigate forms in a FieldWorks project.</p>
+		</article>
+		<article>
+			<h3>Native speaker</h3>
+			<blockquote>“I can tell you which word sounds right. Show me how the parts fit.”</blockquote>
+			<p>Share language knowledge while Motif makes parser results easier to discuss.</p>
+		</article>
+		<article>
+			<h3>Language technologist</h3>
+			<blockquote>“Give me clear evidence, and I can decide what to adjust.”</blockquote>
+			<p>Use Motif to measure parser behavior and review a proposed fix before applying it.</p>
+		</article>
+	</div>
+</HomeSection>
+
+<HomeSection id="clips">
+	<h2>Measure, understand, fix</h2>
+	<HomeClipSlots slots={[
+		{ title: 'Measure', walkthroughId: 'measure', description: 'A short clip will show how to measure a grammar and find the words that need attention.' },
+		{ title: 'Understand', walkthroughId: 'open-project-overview', description: 'A short clip will show how to inspect a parse and its Trace.' },
+		{ title: 'Fix', walkthroughId: 'fix-a-word', description: 'A short clip will show how to apply a reviewed fix in FieldWorks and measure again.' },
+	]} />
+</HomeSection>
+
+<HomeSection id="faster-parsing">
+	<h2>Faster parsing</h2>
+	<p>See how a small grammar change can affect parsing speed in the Turkish teaching sample. The comparison appears when the sample's checked work measures are available.</p>
+	<HomeSpeedBars beforeLabel="Before the fix" afterLabel="After the fix" textCoverageLabel="Text Coverage" />
+</HomeSection>
+
+<HomeSection id="features">
+	<h2>See what Motif finds</h2>
+	<HomeFeatureGrid features={[
+		{ title: 'Overview', href: '/guide/overview/', description: 'See the latest Assessment and how the project is doing.' },
+		{ title: 'Texts', href: '/guide/texts/', description: 'Choose Texts and see Text Coverage.' },
+		{ title: 'Try a Word', href: '/guide/try-a-word/', description: "Inspect one word's parse and read its Trace." },
+		{ title: 'Timing', href: '/guide/timing/', description: 'Find words that take longer to parse.' },
+		{ title: 'Warnings', href: '/guide/warnings/', description: 'Read grammar findings and decide what to investigate.' },
+		{ title: 'Review changes', href: '/guide/review-changes/', description: 'Review the effect before applying changes to FieldWorks.' },
+		{ title: 'AI Handoff', href: '/guide/ai-handoff/', description: 'Prepare context and parse evidence for an AI agent.' },
+	]} />
+</HomeSection>
+
+<HowItFits id="how-it-fits" diagramAlt="FieldWorks owns the data, Motif measures and explains it, and a fix happens in FieldWorks or is applied after review.">
+	<h2>How it fits</h2>
+	<p>FieldWorks owns the project data. Motif measures and explains the parser's behavior. A fix happens in FieldWorks or is applied after review.</p>
+</HowItFits>
+
+<HomeSection id="samples">
+	<h2>Try it with a sample language</h2>
+	<p>Use a small teaching project to explore measurements, parser behavior, and a guided repair.</p>
+	<HomeSampleCards speedLessonLabel="Includes a speed lesson" />
+	<p><a href="/samples/">Browse all sample languages</a></p>
+</HomeSection>

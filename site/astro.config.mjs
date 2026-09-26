@@ -14,11 +14,16 @@ export default defineConfig({
 				root: { label: 'English', lang: 'en' },
 			},
 			sidebar: [
+				{ label: 'Samples', link: '/samples/' },
 				{
 					label: 'Guide',
 					items: [
 						{ autogenerate: { directory: 'guide' } },
 					],
+				},
+				{
+					label: 'Learn',
+					items: [{ autogenerate: { directory: 'learn' } }],
 				},
 				{
 					label: 'Reference',
@@ -31,9 +36,17 @@ export default defineConfig({
 				},
 				{
 					label: 'Developers',
-					items: [{ autogenerate: { directory: 'developers' } }],
+					items: [
+						{ label: 'How parser correctness is checked', link: '/parser-correctness/' },
+						{ autogenerate: { directory: 'developers' } },
+					],
 				},
 			],
+				components: {
+					SiteTitle: './src/components/home/HomeSiteTitle.astro',
+					SocialIcons: './src/components/home/WorkWithAiNav.astro',
+					Footer: './src/components/home/HomeFooter.astro',
+				},
 			customCss: ['./src/styles/site.css'],
 			plugins: [starlightLlmsTxt()],
 		}),
