@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using SIL.Motif.App.Services;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -32,22 +34,23 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal(0, setup.Step);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, true);
-            SetupWalkthroughActions.SetSetupTextChecked(walkthrough, "Second Seeded Text", true);
-            SetupWalkthroughActions.SetSetupTextChecked(walkthrough, "Second Seeded Text", false);
+            SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, true);
+            SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, false);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Time limit per word, in seconds", "2.7");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Time limit per word, in seconds",
+                2.7m.ToString(CultureInfo.CurrentCulture));
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit per word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             walkthrough.Click("Start first run");
             walkthrough.WaitUntil(
-                () => !setup.IsOpen && walkthrough.Workspace.Assess.State == SIL.Motif.App.ViewModels.RunState.Completed &&
+                () => !setup.IsOpen && walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
                 WalkthroughSteps.Remaining(deadline), "Finish did not close setup and complete its first run");
 
             var selectedId = Assert.Single(walkthrough.Workspace.Selection.ChosenTextIds);
-            Assert.Equal("1 text, step cap 3,100", walkthrough.Workspace.Selection.SummaryText);
-            walkthrough.ShowPage(SIL.Motif.App.ViewModels.WorkspacePage.Texts);
-            walkthrough.ShowTextsTab(SIL.Motif.App.ViewModels.TextsTab.AnalyzeTexts);
+            Assert.Equal($"1 text, step cap {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
+            walkthrough.ShowPage(WorkspacePage.Texts);
+            walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
             Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
                 text.Text == walkthrough.Workspace.Selection.SummaryText && text.IsVisible);
             Assert.Equal(2.7m, walkthrough.Workspace.Selection.PerWordTimeLimitSeconds);
@@ -66,7 +69,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.True(walkthrough.Workspace.Context.Setup!.Selection.Texts
                 .Single(text => text.Title == SeededProject.TextTitle).IsChecked);
             Assert.False(walkthrough.Workspace.Context.Setup.Selection.Texts
-                .Single(text => text.Title == "Second Seeded Text").IsChecked);
+                .Single(text => text.Title == TwoTextWalkthroughProject.SecondTextTitle).IsChecked);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
             Assert.Equal(2.7m, walkthrough.Find<NumericUpDown>("Time limit per word, in seconds").Value);
             Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Parser step limit per word").Value);

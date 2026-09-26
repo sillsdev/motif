@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App.ViewModels;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -22,9 +23,7 @@ internal static class SetupWalkthroughActions
     {
         if (!walkthrough.Window.IsVisible) walkthrough.Show();
         walkthrough.ProjectPath = projectPath;
-        walkthrough.OpenProjectMenu();
-        var entry = walkthrough.FindProjectMenuEntry<Button>("Select a new project");
-        HeadlessClick.Click(walkthrough.Window, entry, "Select a new project");
+        walkthrough.ClickProjectMenuEntry("Select a new project");
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Context.ProjectPath == projectPath &&
                 walkthrough.Workspace.Context.Setup?.ProjectPath == projectPath &&
@@ -74,9 +73,7 @@ internal static class SetupWalkthroughActions
 
     internal static void OpenConfigure(WalkthroughWindow walkthrough)
     {
-        walkthrough.OpenProjectMenu();
-        var entry = walkthrough.FindProjectMenuEntry<Button>("Configure the project");
-        HeadlessClick.Click(walkthrough.Window, entry, "Configure the project");
+        walkthrough.ConfigureFromProjectMenu();
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Context.Setup?.IsOpen == true,
             TimeSpan.FromSeconds(30), "Configure did not open setup");
@@ -97,7 +94,7 @@ internal static class SetupWalkthroughActions
         Assert.Equal(3, setup.Step);
         walkthrough.Click("Start first run");
         walkthrough.WaitUntil(
-            () => !setup.IsOpen && walkthrough.Workspace.Assess.State == SIL.Motif.App.ViewModels.RunState.Completed &&
+            () => !setup.IsOpen && walkthrough.Workspace.Assess.State == RunState.Completed &&
                 walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
             timeout, "Finish did not save the Selection and complete the first run");
     }

@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Globalization;
 using SIL.Motif.App.Services;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
@@ -23,14 +25,19 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Guid selectedTextId;
             using (var first = NewWindow(project))
             {
-                await FinishFirstRun(first, project.FwDataPath, SeededProject.TextTitle, "2.7", "3100", deadline);
+                await SelectProjectAndFinishFirstRun(
+                    first, project.FwDataPath, SeededProject.TextTitle, 2.7m, 3100, deadline);
                 selectedTextId = Assert.Single(first.Workspace.Selection.ChosenTextIds);
                 Assert.True(first.Find<Avalonia.Controls.Button>("Run the Assessment").IsEffectivelyEnabled);
             }
 
             using var reopened = NewWindow(project);
-            SetupWalkthroughActions.SelectProject(reopened, project.FwDataPath);
+            reopened.Show();
+            reopened.LoadKnownProjects();
+            reopened.SelectKnownProject(project.FwDataPath);
             Assert.False(reopened.Workspace.Context.Setup!.IsOpen);
+            Assert.Equal(selectedTextId, Assert.Single(reopened.Workspace.Selection.ChosenTextIds));
+            Assert.Equal(2.7m, reopened.Workspace.Selection.PerWordTimeLimitSeconds);
             var commands = Assert.IsType<CommandClient>(reopened.Workspace.Context.Commands);
             var stored = await commands.ReadDefaultSelectionAsync(
                 new ReadDefaultSelectionRequest(project.FwDataPath), CancellationToken.None);
@@ -58,10 +65,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
                 SetupWalkthroughActions.SelectProject(first, projectB.FwDataPath);
                 SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
                     first, 1, WalkthroughSteps.Remaining(deadline));
-                first.Click("Skip setup for now");
-                first.WaitUntil(
-                    () => first.Workspace.Context.Setup?.IsOpen == false,
-                    WalkthroughSteps.Remaining(deadline), "Skip did not close setup");
+                first.SkipSetup();
                 var firstCommands = Assert.IsType<CommandClient>(first.Workspace.Context.Commands);
                 var skipped = await firstCommands.ReadDefaultSelectionAsync(
                     new ReadDefaultSelectionRequest(projectB.FwDataPath), CancellationToken.None);
@@ -71,7 +75,9 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             }
 
             using var reopened = NewWindow(projectB, managedRoot);
-            SetupWalkthroughActions.SelectProject(reopened, projectB.FwDataPath);
+            reopened.Show();
+            reopened.LoadKnownProjects();
+            reopened.SelectKnownProject(projectB.FwDataPath);
             Assert.False(reopened.Workspace.Context.Setup!.IsOpen);
             var commands = Assert.IsType<CommandClient>(reopened.Workspace.Context.Commands);
             var skippedAgain = await commands.ReadDefaultSelectionAsync(
@@ -104,7 +110,8 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
                 walkthrough, 1, WalkthroughSteps.Remaining(deadline));
             SetupWalkthroughActions.FinishFirstRun(
-                walkthrough, SeededProject.TextTitle, "2.7", "3100", WalkthroughSteps.Remaining(deadline));
+                walkthrough, SeededProject.TextTitle, 2.7m.ToString(CultureInfo.CurrentCulture), "3100",
+                WalkthroughSteps.Remaining(deadline));
 
             var commands = Assert.IsType<CommandClient>(walkthrough.Workspace.Context.Commands);
             var original = await commands.ReadDefaultSelectionAsync(
@@ -115,7 +122,8 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             SetupWalkthroughActions.OpenConfigure(walkthrough);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
             Assert.True(walkthrough.Workspace.Context.Setup!.Selection.Texts.Single().IsChecked);
-            Assert.Equal("Seeded Text", Assert.Single(walkthrough.Workspace.Context.Setup.Selection.Texts).Title);
+            Assert.Equal(SeededProject.TextTitle,
+                Assert.Single(walkthrough.Workspace.Context.Setup.Selection.Texts).Title);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
             Assert.Equal(2.7m, walkthrough.Find<Avalonia.Controls.NumericUpDown>(
                 "Time limit per word, in seconds").Value);
@@ -126,7 +134,8 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, false);
             walkthrough.Type("Words to add", "motifb");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Time limit per word, in seconds", "3.4");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Time limit per word, in seconds",
+                3.4m.ToString(CultureInfo.CurrentCulture));
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit per word", "6600");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             walkthrough.Click("Use this Selection");
@@ -142,15 +151,12 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.Equal(3400, changed.Value.Selection.PerWordLimitMs);
             Assert.Equal(6600, changed.Value.Selection.PerWordStepLimit!.Steps);
 
-            var previousEvidence = await commands.ReadCurrentEvidenceAsync(
-                project.FwDataPath, CancellationToken.None);
-            Assert.True(previousEvidence.Succeeded, previousEvidence.Refusal?.Message);
-            var previousInvocation = previousEvidence.Value!.MatchingAssessment?.Invocation?.InvocationId;
+            var previousInvocation = walkthrough.Workspace.Assess.Result!.InvocationId;
             walkthrough.Click("Run the Assessment");
             walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Assess.State == SIL.Motif.App.ViewModels.RunState.Completed &&
+                () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Assess.Result?.InvocationId is { } invocationId &&
-                    (previousInvocation is null || invocationId != previousInvocation) &&
+                    invocationId != previousInvocation &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
                 WalkthroughSteps.Remaining(deadline), "the next run did not complete from the changed Selection");
 
@@ -172,21 +178,23 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
     private static WalkthroughWindow NewWindow(WalkthroughProject project, string managedRoot) =>
         new(managedRoot, project.FwDataPath, parserPath: FakeParser.ExecutablePath);
 
-    private static async Task FinishFirstRun(
+    private static async Task SelectProjectAndFinishFirstRun(
         WalkthroughWindow walkthrough, string projectPath, string selectedText,
-        string timeLimit, string stepLimit, long deadline)
+        decimal timeLimitSeconds, long stepLimit, long deadline)
     {
         SetupWalkthroughActions.SelectProject(walkthrough, projectPath);
         SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
             walkthrough, 1, WalkthroughSteps.Remaining(deadline));
         SetupWalkthroughActions.FinishFirstRun(
-            walkthrough, selectedText, timeLimit, stepLimit, WalkthroughSteps.Remaining(deadline));
+            walkthrough, selectedText, timeLimitSeconds.ToString(CultureInfo.CurrentCulture),
+            stepLimit.ToString(CultureInfo.CurrentCulture), WalkthroughSteps.Remaining(deadline));
         var commands = Assert.IsType<CommandClient>(walkthrough.Workspace.Context.Commands);
         var stored = await commands.ReadDefaultSelectionAsync(
             new ReadDefaultSelectionRequest(projectPath), CancellationToken.None);
         Assert.True(stored.Succeeded, stored.Refusal?.Message);
         Assert.Single(stored.Value!.Selection!.TextIds);
-        Assert.Equal(2700, stored.Value.Selection.PerWordLimitMs);
-        Assert.Equal(3100, stored.Value.Selection.PerWordStepLimit!.Steps);
+        Assert.Equal(decimal.ToInt32(decimal.Round(
+            timeLimitSeconds * 1000m, 0, MidpointRounding.AwayFromZero)), stored.Value.Selection.PerWordLimitMs);
+        Assert.Equal(stepLimit, stored.Value.Selection.PerWordStepLimit!.Steps);
     }
 }

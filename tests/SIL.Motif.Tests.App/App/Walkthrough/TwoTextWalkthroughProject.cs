@@ -7,6 +7,8 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal sealed class TwoTextWalkthroughProject : IDisposable
 {
+    public const string SecondTextTitle = "Second Seeded Text";
+
     public TwoTextWalkthroughProject(PristineProjectFixture pristine)
     {
         var cache = pristine.NewScratch();
@@ -16,7 +18,7 @@ internal sealed class TwoTextWalkthroughProject : IDisposable
             var second = SeededProject.SeedText(cache, pristine.Seed);
             var secondText = cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(second.TextId);
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-                secondText.Name.set_String(cache.DefaultAnalWs, "Second Seeded Text"));
+                secondText.Name.set_String(cache.DefaultAnalWs, SecondTextTitle));
             RealParserProject.PrepareForParsing(
                 cache, "m", "o", "t", "i", "f", "a", "n", "l", "y", "s", "e", "d", "u", "b");
             new FwDataProjectLoader().Save(cache);
