@@ -87,6 +87,30 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
     }
 
     [Fact]
+    public void TheRealStartupReportsAnErrorThatEscapesTheUiThreadInMotifsErrorWindow()
+    {
+        var host = MotifAppHost.Shared;
+        var options = Options(NewRoot(), new RecordingProjectPicker());
+
+        host.Run("start, let an error escape the UI thread, and stop", StepLimit, async () =>
+        {
+            var session = host.Start(options);
+            await session.KnownProjectsLoaded;
+
+            Dispatcher.UIThread.Post(() => throw new InvalidOperationException("escaped the UI thread"));
+            Dispatcher.UIThread.RunJobs();
+
+            var window = Assert.IsType<CrashWindow>(session.Crashes.Window);
+            Assert.True(window.IsVisible, "The error window did not open.");
+            Assert.Equal("escaped the UI thread", window.Model.Message);
+            Assert.False(session.Window.IsEnabled, "The workspace stayed usable after an unhandled error.");
+
+            await host.StopAsync();
+            Assert.False(window.IsVisible, "Closing the session left the error window open.");
+        });
+    }
+
+    [Fact]
     public void TheRealStartupRunsTheSubstitutedParserRunnerAndClock()
     {
         var host = MotifAppHost.Shared;

@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+        x:Class="SIL.Motif.App.Views.CrashWindow"
+        x:DataType="vm:CrashReportViewModel"
+        Title="Motif has stopped"
+        WindowStartupLocation="CenterScreen"
+        Width="{DynamicResource Component.Shell.CrashWidth}"
+        Height="{DynamicResource Component.Shell.CrashHeight}"
+        MinWidth="{DynamicResource Component.Shell.CrashMinWidth}"
+        MinHeight="{DynamicResource Component.Shell.CrashMinHeight}">
+  <DockPanel Margin="{DynamicResource Component.Shell.CrashInset}">
+    <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">
+      <TextBlock Classes="muted" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap"
+                 AutomationProperties.Name="Crash status" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{DynamicResource Intent.Space.Related}">
+        <Button Content="Copy details" Click="OnCopyDetailsClick" />
+        <Button Content="Save report" Click="OnSaveReportClick" />
+        <Button Content="Email maintainer" Click="OnEmailMaintainerClick" />
+        <Button Content="Close" Click="OnCloseClick" IsDefault="True" IsCancel="True" />
+      </StackPanel>
+    </StackPanel>
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
+        <TextBlock Classes="section-title" Text="{x:Static vm:CrashReportViewModel.Headline}" TextWrapping="Wrap"
+                   AutomationProperties.Name="Crash headline" />
+        <TextBlock Text="{x:Static vm:CrashReportViewModel.Summary}" TextWrapping="Wrap"
+                   AutomationProperties.Name="Crash summary" />
+        <TextBlock Classes="error" Text="{Binding Message}" AutomationProperties.Name="Crash message" />
+        <Expander Header="Details" IsExpanded="False" HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="Crash details">
+          <ScrollViewer MaxHeight="{DynamicResource Component.Shell.CrashDetailsMaxHeight}"
+                        HorizontalScrollBarVisibility="Auto">
+            <SelectableTextBlock Classes="refusalDetails" Text="{Binding Details}"
+                                 AutomationProperties.Name="Crash details text" />
+          </ScrollViewer>
+        </Expander>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

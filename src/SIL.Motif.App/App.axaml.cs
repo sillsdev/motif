@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App.ViewModels;
 
@@ -28,12 +29,16 @@ public sealed partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    /// <summary>The exit code Motif ends with when an error that escaped the UI thread closed it.</summary>
+    public const int CrashExitCode = 1;
+
     /// <summary>
-    /// Composes Motif's window into <paramref name="desktop"/>, starts loading the Known projects, and closes
-    /// the session when the lifetime exits. This is the whole of the App's desktop startup:
-    /// <see cref="OnFrameworkInitializationCompleted"/> calls it, and so does a test host that starts the real
-    /// App again in one process: it closes each session with <see cref="MotifDesktopSession.CloseAsync"/> and
-    /// composes the next into the same lifetime, pinned by `TheRealStartupStartsAgainInTheSameProcess`.
+    /// Composes Motif's window into <paramref name="desktop"/>, starts loading the Known projects, reports an
+    /// error that escapes the UI thread in Motif's error window, and closes the session when the lifetime exits.
+    /// This is the whole of the App's desktop startup: <see cref="OnFrameworkInitializationCompleted"/> calls it,
+    /// and so does a test host that starts the real App again in one process: it closes each session with
+    /// <see cref="MotifDesktopSession.CloseAsync"/> and composes the next into the same lifetime, pinned by
+    /// `TheRealStartupStartsAgainInTheSameProcess`.
     /// </summary>
     public MotifDesktopSession StartDesktop(IClassicDesktopStyleApplicationLifetime desktop, MotifAppOptions options)
     {
@@ -43,7 +48,13 @@ public sealed partial class App : Application
         var session = new MotifDesktopSession(composition, LoadKnownProjects(composition.Workspace.Project));
         EventHandler<ControlledApplicationLifetimeExitEventArgs> onExit = (_, _) => session.CloseAsync();
         desktop.Exit += onExit;
-        session.DetachWith(() => desktop.Exit -= onExit);
+        var stopReporting = composition.Crashes.Attach(Dispatcher.UIThread, composition.Window,
+            () => desktop.Shutdown(CrashExitCode));
+        session.DetachWith(() =>
+        {
+            desktop.Exit -= onExit;
+            stopReporting();
+        });
         Session = session;
         return session;
     }

@@ -13,8 +13,8 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Pins the seam view models depend on: the interfaces they call — <see cref="ICommandClient"/>,
 /// <see cref="IProjectPicker"/>, <see cref="IHandoffFolderPicker"/>, <see cref="IClipboard"/>,
-/// <see cref="IDiagnosticFilePicker"/> — carry no Avalonia type, no view reaches the window's clipboard or
-/// storage provider itself, and
+/// <see cref="IDiagnosticFilePicker"/>, <see cref="IReportFilePicker"/>, <see cref="IUriLauncher"/> — carry no
+/// Avalonia type, no view reaches the window's clipboard or storage provider itself, and
 /// <see cref="FakeCommandClient"/> can complete, refuse, report progress, and block until cancelled with
 /// no process, no Avalonia control, and no wall-clock race.
 /// </summary>
@@ -32,6 +32,8 @@ public sealed class DesktopServiceBoundaryTests
     [InlineData(typeof(IHandoffFolderPicker))]
     [InlineData(typeof(IClipboard))]
     [InlineData(typeof(IDiagnosticFilePicker))]
+    [InlineData(typeof(IReportFilePicker))]
+    [InlineData(typeof(IUriLauncher))]
     public void ViewModelFacingServiceInterfaceNamesNoAvaloniaType(Type serviceInterface)
     {
         foreach (var method in serviceInterface.GetMethods())
