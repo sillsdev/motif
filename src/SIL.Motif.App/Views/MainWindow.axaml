@@ -116,8 +116,7 @@
       </Border>
       <Border Grid.Row="2" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
         <StackPanel>
-          <views:CopyableTextBlock Classes="error" Text="{Binding OpenRefusalMessage}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding OpenRefusalDetail}" TextWrapping="Wrap" />
+          <views:RefusalBlock DataContext="{Binding OpenRefusal}" />
         </StackPanel>
       </Border>
     </Grid>

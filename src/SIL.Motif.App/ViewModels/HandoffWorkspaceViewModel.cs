@@ -179,14 +179,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Whether the last Baseline capture was refused.</summary>
     public bool HasRefreshRefusal => Baseline.ShownRefusal is not null;
 
-    /// <summary>The fixed sentence shown when Motif cannot open a chosen project.</summary>
-    public string? OpenRefusalMessage { get; private set; }
-
-    /// <summary>The copyable error details from the refused project open.</summary>
-    public string? OpenRefusalDetail { get; private set; }
+    /// <summary>Why the last attempt to open a project failed, in the window's words.</summary>
+    public WindowRefusal? OpenRefusal { get; private set; }
 
     /// <summary>Whether the last attempt to open a project was refused.</summary>
-    public bool HasOpenRefusal => OpenRefusalMessage is not null;
+    public bool HasOpenRefusal => OpenRefusal is not null;
 
     /// <summary>The freshness line's state in words.</summary>
     public string FreshnessLabel => HasRefreshRefusal ? "Refresh refused" : Freshness switch
@@ -340,10 +337,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private async Task OpenProjectSafelyAsync(string fwDataPath)
     {
-        OpenRefusalMessage = null;
-        OpenRefusalDetail = null;
-        OnPropertyChanged(nameof(OpenRefusalMessage));
-        OnPropertyChanged(nameof(OpenRefusalDetail));
+        OpenRefusal = null;
+        OnPropertyChanged(nameof(OpenRefusal));
         OnPropertyChanged(nameof(HasOpenRefusal));
         try
         {
@@ -356,10 +351,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
                 Context.ClearProject();
                 Project.ShowChosen(null);
             }
-            OpenRefusalMessage = OpenProjectRefusalText;
-            OpenRefusalDetail = exception.Message;
-            OnPropertyChanged(nameof(OpenRefusalMessage));
-            OnPropertyChanged(nameof(OpenRefusalDetail));
+            OpenRefusal = WindowRefusal.Failure(WindowRefusal.OpenFailedCode, OpenProjectRefusalText, exception);
+            OnPropertyChanged(nameof(OpenRefusal));
             OnPropertyChanged(nameof(HasOpenRefusal));
         }
         RaiseFreshness();

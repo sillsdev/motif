@@ -34,9 +34,9 @@ public sealed class ProjectOpenFailureTests
         workspace.PropertyChanged += OnWorkspacePropertyChanged;
         workspace.PropertyChanged += (_, args) =>
         {
-            if (workspace.OpenRefusalMessage is null && workspace.OpenRefusalDetail is null &&
-                args.PropertyName is nameof(HandoffWorkspaceViewModel.OpenRefusalMessage) or
-                    nameof(HandoffWorkspaceViewModel.OpenRefusalDetail) or nameof(HandoffWorkspaceViewModel.HasOpenRefusal))
+            if (workspace.OpenRefusal is null &&
+                args.PropertyName is nameof(HandoffWorkspaceViewModel.OpenRefusal) or
+                    nameof(HandoffWorkspaceViewModel.HasOpenRefusal))
                 clearedBindings.Add(args.PropertyName);
         };
 
@@ -44,7 +44,7 @@ public sealed class ProjectOpenFailureTests
         var refusal = await refusalShown.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.Equal(OpenRefusal, refusal);
-        Assert.Equal("The project could not be read.", workspace.OpenRefusalDetail);
+        Assert.Equal("The project could not be read.", workspace.OpenRefusal!.Details);
         Assert.False(workspace.HasRefreshRefusal);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         picker.PathToReturn = ProjectB;
@@ -53,15 +53,14 @@ public sealed class ProjectOpenFailureTests
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
 
         Assert.Equal(ProjectB, workspace.Context.ProjectPath);
-        Assert.Contains(nameof(HandoffWorkspaceViewModel.OpenRefusalMessage), clearedBindings);
-        Assert.Contains(nameof(HandoffWorkspaceViewModel.OpenRefusalDetail), clearedBindings);
+        Assert.Contains(nameof(HandoffWorkspaceViewModel.OpenRefusal), clearedBindings);
         Assert.Contains(nameof(HandoffWorkspaceViewModel.HasOpenRefusal), clearedBindings);
 
         void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
         {
-            if (args.PropertyName == nameof(HandoffWorkspaceViewModel.OpenRefusalMessage) &&
-                workspace.OpenRefusalMessage is { } message)
-                refusalShown.TrySetResult(message);
+            if (args.PropertyName == nameof(HandoffWorkspaceViewModel.OpenRefusal) &&
+                workspace.OpenRefusal is { } shown)
+                refusalShown.TrySetResult(shown.Sentence);
         }
     }
 
@@ -79,8 +78,8 @@ public sealed class ProjectOpenFailureTests
 
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectA));
 
-        Assert.Equal(OpenRefusal, workspace.OpenRefusalMessage);
-        Assert.Equal("The project could not be read.", workspace.OpenRefusalDetail);
+        Assert.Equal(OpenRefusal, workspace.OpenRefusal!.Sentence);
+        Assert.Equal("The project could not be read.", workspace.OpenRefusal.Details);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectB));
         Assert.Equal(ProjectB, workspace.Context.ProjectPath);
@@ -99,7 +98,7 @@ public sealed class ProjectOpenFailureTests
 
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectA));
 
-        Assert.Equal(OpenRefusal, workspace.OpenRefusalMessage);
+        Assert.Equal(OpenRefusal, workspace.OpenRefusal!.Sentence);
         Assert.False(workspace.HasProject);
     }
 
@@ -126,7 +125,7 @@ public sealed class ProjectOpenFailureTests
 
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectB));
 
-        Assert.NotNull(workspace.OpenRefusalMessage);
+        Assert.NotNull(workspace.OpenRefusal);
         Assert.Null(handoff.ProjectPath);
         Assert.Null(statistics.ProjectPath);
         Assert.False(workspace.HasProject);

@@ -112,7 +112,8 @@ public sealed class WindowRefusalTests
         var refusal = new Refusal(code, FailureReason.Refused,
             @"Could not find the pangloss executable. Looked for it at: C:\Motif\pangloss.exe. " +
             "Build it with `cargo build --release -p pg-cli` in the PanGloss checkout, or set " +
-            "MOTIF_PANGLOSS_EXE to its path.");
+            "MOTIF_PANGLOSS_EXE to its path.",
+            new Dictionary<string, string> { [RefusalFactNames.ParserNotFound] = "true" });
 
         var shown = WindowRefusal.From(refusal);
 
@@ -121,6 +122,7 @@ public sealed class WindowRefusalTests
             shown.Sentence);
         Assert.Contains(@"C:\Motif\pangloss.exe", shown.Details);
         Assert.DoesNotContain("cargo", shown.Details, StringComparison.Ordinal);
+        Assert.DoesNotContain(RefusalFactNames.ParserNotFound, shown.Details, StringComparison.Ordinal);
     }
 
     [Fact]

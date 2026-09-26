@@ -17,10 +17,11 @@ namespace SIL.Motif.App.ViewModels;
 /// the message.
 /// </para>
 /// <para>
-/// Nothing the command said is lost: <see cref="Details"/> holds its message and facts. The one thing
-/// Details leaves out is a sentence that tells the reader to run a command line, which a person using the
-/// window cannot act on. An unmapped code gets <see cref="GenericSentence"/> and keeps its message in
-/// Details.
+/// <see cref="Details"/> holds the command's message and facts, folded away but still on screen once
+/// expanded, so it keeps to the window's words too: it leaves out a sentence or fact that names a Proposal,
+/// a Draft, a Preflight or a Dry Run, and a sentence that tells the reader to run a command line, which a
+/// person using the window cannot act on. An unmapped code gets <see cref="GenericSentence"/> and keeps the
+/// rest of its message in Details.
 /// </para>
 /// </remarks>
 public sealed partial record WindowRefusal
@@ -28,8 +29,22 @@ public sealed partial record WindowRefusal
     /// <summary>What the window says for a code it has no sentence for.</summary>
     public const string GenericSentence = "Motif could not complete this request. Review the project and try again.";
 
+    /// <summary>The code of a project open that failed with an escaped exception rather than a refusal.</summary>
+    public const string OpenFailedCode = "window.open-failed";
+
+    /// <summary>The code of a saved diagnostic file that could not be read at all.</summary>
+    public const string DiagnosticUnreadableCode = "window.diagnostic-unreadable";
+
+    /// <summary>The code of a diagnostic that could not be saved or copied.</summary>
+    public const string DiagnosticNotWrittenCode = "window.diagnostic-not-written";
+
+    private const string WindowCheckCode = "window.check";
+
     private const string ParserMissing =
         "Motif could not find PanGloss, so it cannot measure words. Install PanGloss beside Motif, then try again.";
+
+    private const string ParserUnusable =
+        "Motif could not run PanGloss, so it cannot measure words. The details say why.";
 
     private const string ParserWrong =
         "PanGloss gave an answer Motif could not read. Install the PanGloss that matches this Motif, then try again.";
@@ -57,7 +72,7 @@ public sealed partial record WindowRefusal
         [C.AssessInvalidLimit] = "Enter a per-word time limit greater than zero.",
         [C.AssessInvocationInconsistent] = "Motif could not record these measurements together. Measure the words again.",
         [C.AssessMeasurementsIncomplete] = "Measuring did not finish. Measure the words again.",
-        [C.AssessParserUnavailable] = ParserMissing,
+        [C.AssessParserUnavailable] = ParserUnusable,
         [C.AssessUnsupportedKind] =
             "The PanGloss Motif found cannot take this measurement. Install the PanGloss that matches this Motif, then try again.",
         [C.AssessmentCancelled] = "Measuring was cancelled. Nothing was recorded.",
@@ -97,7 +112,7 @@ public sealed partial record WindowRefusal
         [C.GrammarCheckCancelled] = "The grammar check was cancelled.",
         [C.GrammarCheckMalformedFindings] = ParserWrong,
         [C.GrammarCheckParserRefused] = "PanGloss could not check this grammar. The details say why.",
-        [C.GrammarCheckParserUnavailable] = ParserMissing,
+        [C.GrammarCheckParserUnavailable] = ParserUnusable,
         [C.GrammarCheckTimedOut] = "The grammar check took too long and was stopped. Try again.",
         [C.GrammarCheckUnsupportedSchema] = ParserWrong,
 
@@ -108,7 +123,7 @@ public sealed partial record WindowRefusal
         [C.HandoffInvocationNotFound] =
             "Those measurements are no longer stored. Measure the words again, then make the AI Handoff.",
         [C.HandoffInvocationRequired] = "Measure words before making an AI Handoff.",
-        [C.HandoffParserUnavailable] = ParserMissing,
+        [C.HandoffParserUnavailable] = ParserUnusable,
         [C.HandoffSourceUnavailable] =
             "The grammar those measurements used is no longer stored. Measure the words again, then make the AI Handoff.",
         [C.HandoffStatisticsUnavailable] =
@@ -148,7 +163,7 @@ public sealed partial record WindowRefusal
         [C.StatsNoCache] = "These measurements were stored without statistics. Measure the words again.",
         [C.StatsNoEvidence] = "The grammar these measurements used is no longer stored. Measure the words again.",
         [C.StatsParserRefused] = "PanGloss could not read these statistics. The details say why.",
-        [C.StatsParserUnavailable] = ParserMissing,
+        [C.StatsParserUnavailable] = ParserUnusable,
         [C.StatsTimedOut] = "Reading the statistics took too long and was stopped. Try again.",
 
         [C.StoreInconsistent] = "Motif's file for this project is damaged and cannot be used.",
@@ -169,11 +184,11 @@ public sealed partial record WindowRefusal
         [C.TrialNothingPending] = "There are no changes to check.",
 
         [C.WordTraceCancelled] = "Trying the word was cancelled.",
-        [C.WordTraceMalformedDiagnostic] = ParserWrong,
+        [C.WordTraceMalformedDiagnostic] = "That file is not a diagnostic Motif can read. Choose a diagnostic Motif saved.",
         [C.WordTraceMalformedOutput] = ParserWrong,
         [C.WordTraceNoBaseline] = "Refresh the project before trying a word.",
         [C.WordTraceParserRefused] = "PanGloss could not parse this word. The details say why.",
-        [C.WordTraceParserUnavailable] = ParserMissing,
+        [C.WordTraceParserUnavailable] = ParserUnusable,
     };
 
     private WindowRefusal(string code, string sentence, string? details, IReadOnlyDictionary<string, string> facts)
@@ -209,28 +224,49 @@ public sealed partial record WindowRefusal
     public static WindowRefusal Plain(string sentence)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sentence);
-        return new WindowRefusal("window.check", sentence, null, ImmutableDictionary<string, string>.Empty);
+        return new WindowRefusal(WindowCheckCode, sentence, null, ImmutableDictionary<string, string>.Empty);
+    }
+
+    /// <summary>
+    /// A failure that reached the window as an exception rather than a refusal: the window's sentence, with the
+    /// exception's own text kept to Details under the same rules as a command's message.
+    /// </summary>
+    public static WindowRefusal Failure(string code, string sentence, Exception exception)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sentence);
+        ArgumentNullException.ThrowIfNull(exception);
+        var details = WindowSafe(exception.Message);
+        return new WindowRefusal(code, sentence, details.Length == 0 ? null : details,
+            ImmutableDictionary<string, string>.Empty);
     }
 
     private static string SentenceFor(Refusal refusal)
     {
         if (refusal.Code == C.StoreOtherVersion)
             return string.Format(System.Globalization.CultureInfo.InvariantCulture, StoreFromOtherVersion,
-                refusal.Facts.TryGetValue("storePath", out var path) ? ", " + path + "," : string.Empty);
+                refusal.Facts.TryGetValue(RefusalFactNames.StorePath, out var path) ? ", " + path + "," : string.Empty);
+        if (refusal.Facts.ContainsKey(RefusalFactNames.ParserNotFound) &&
+            Sentences.TryGetValue(refusal.Code, out var mapped) && mapped == ParserUnusable)
+            return ParserMissing;
         return Sentences.TryGetValue(refusal.Code, out var sentence) ? sentence : GenericSentence;
     }
 
     private static string? DetailsOf(Refusal refusal)
     {
-        var kept = SentenceBreak().Split(refusal.Message.Trim())
-            .Where(sentence => sentence.Length > 0 && !CommandLine().IsMatch(sentence));
         var lines = new List<string>();
-        var message = string.Join(" ", kept);
+        var message = WindowSafe(refusal.Message);
         if (message.Length > 0) lines.Add(message);
-        lines.AddRange(refusal.Facts.OrderBy(fact => fact.Key, StringComparer.Ordinal)
+        lines.AddRange(refusal.Facts
+            .Where(fact => fact.Key != RefusalFactNames.ParserNotFound)
+            .Where(fact => !CliTerm().IsMatch(fact.Key) && !CliTerm().IsMatch(fact.Value))
+            .OrderBy(fact => fact.Key, StringComparer.Ordinal)
             .Select(fact => $"{fact.Key}: {fact.Value}"));
         return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
     }
+
+    private static string WindowSafe(string text) => string.Join(" ", SentenceBreak().Split(text.Trim())
+        .Where(sentence => sentence.Length > 0 && !CommandLine().IsMatch(sentence) && !CliTerm().IsMatch(sentence)));
 
     [GeneratedRegex(@"(?<=[.!?])\s+")]
     private static partial Regex SentenceBreak();
@@ -238,4 +274,8 @@ public sealed partial record WindowRefusal
     // A quoted `motif …` line, or any quoted line with an option, is a remedy only the CLI can act on.
     [GeneratedRegex(@"[`'](?:motif\s|[^`']*\s--[a-z])")]
     private static partial Regex CommandLine();
+
+    // The CLI's names for pending changes and their checks, which ADR 0046 decision 3 keeps off the screen.
+    [GeneratedRegex(@"proposal|draft|preflight|dry[\s-]?run", RegexOptions.IgnoreCase)]
+    private static partial Regex CliTerm();
 }
