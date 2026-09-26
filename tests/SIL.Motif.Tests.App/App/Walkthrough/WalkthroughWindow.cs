@@ -93,6 +93,14 @@ public sealed class WalkthroughWindow : IDisposable
         if (!ProjectMenuFlyout.IsOpen) Click("Project menu");
     }
 
+    /// <summary>Closes the project menu by clicking its button again, a press the open menu's light dismiss takes.</summary>
+    public void CloseProjectMenu()
+    {
+        if (!ProjectMenuFlyout.IsOpen) return;
+        HeadlessClick.PressOver(Window, Find<Button>("Project menu"), "Project menu");
+        Assert.False(ProjectMenuFlyout.IsOpen, "Clicking 'Project menu' again did not close the menu.");
+    }
+
     public void ChooseNewProject()
     {
         OpenProjectMenu();
@@ -321,20 +329,8 @@ public sealed class WalkthroughWindow : IDisposable
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();
 
-    private void ClickControl(Control control, string accessibleName)
-    {
-        Assert.True(control.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
-        control.BringIntoView();
-        Pump();
-        Window.UpdateLayout();
-        var bounds = control.Bounds;
-        var point = control.TranslatePoint(new Point(bounds.Width / 2, bounds.Height / 2), Window)
-            ?? throw new InvalidOperationException($"'{accessibleName}' is not positioned in the walkthrough window.");
-        Window.MouseMove(point);
-        Window.MouseDown(point, MouseButton.Left);
-        Window.MouseUp(point, MouseButton.Left);
-        Pump();
-    }
+    private void ClickControl(Control control, string accessibleName) =>
+        HeadlessClick.Click(Window, control, accessibleName);
 
     private sealed class ScriptedProjectPicker(string path) : IProjectPicker
     {
