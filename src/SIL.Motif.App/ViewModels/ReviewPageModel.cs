@@ -23,10 +23,11 @@ public sealed class ReviewPageModel : PageModel
     {
         Changes.PropertyChanged += OnChangesChanged;
         context.PropertyChanged += OnContextPropertyChanged;
+        context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
         RemoveNonFittingCommand = new AsyncRelayCommand(RemoveNonFittingAsync,
             () => Changes.Items.Any(item => item.IsNoLongerFits));
         CheckAgainCommand = new AsyncRelayCommand(() => Changes.RecheckAsync(),
-            () => HasNonFittingChanges && Context.CurrentEvidence?.Freshness != EvidenceFreshness.Stale);
+            () => HasNonFittingChanges && !Context.Evidence.IsStale);
         MeasureCommand = new AsyncRelayCommand(MeasureAsync,
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
         CancelMeasureCommand = new RelayCommand(() => _measurementCancellation?.Cancel(), () => IsMeasuring);
@@ -93,7 +94,7 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
     public bool CanApply => Changes.HasItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
         Context.Baseline?.FieldWorksHeldProject != true &&
-        Context.CurrentEvidence?.Freshness != EvidenceFreshness.Stale &&
+        !Context.Evidence.IsStale &&
         EvidenceComplete && !IsMeasuring && !IsApplying;
 
     /// <summary>What prevents Apply, in words shown beside the action.</summary>
@@ -101,7 +102,7 @@ public sealed class ReviewPageModel : PageModel
         !Changes.HasItems ? "Choose a change in Texts to begin." :
         Changes.Items.Any(item => item.IsNoLongerFits)
             ? "No longer fits: remove the changes that no longer fit before applying."
-            : Context.CurrentEvidence?.Freshness == EvidenceFreshness.Stale
+            : Context.Evidence.IsStale
                 ? "FieldWorks saved since these numbers were measured. Refresh before applying."
             : Context.Baseline?.FieldWorksHeldProject == true
                 ? "FieldWorks has this project open. Close it before applying changes."
@@ -131,8 +132,7 @@ public sealed class ReviewPageModel : PageModel
         {
             result = await Context.Commands.MeasurePendingAsync(
                 new MeasurePendingRequest(project, draft, revision, words,
-                    Context.Evidence?.Assessment.Measurements.FirstOrDefault(measurement =>
-                        measurement.Kind == "Correctness")?.AssessmentId),
+                    Context.Evidence.CorrectnessAssessmentId),
                 new Progress<MeasureProgress>(OnMeasurementProgress),
                 _measurementCancellation.Token).ConfigureAwait(true);
         }
@@ -223,7 +223,7 @@ public sealed class ReviewPageModel : PageModel
         }
         Receipt = result.Value!.Receipt;
         ApplyError = null;
-        if (result.Value.Applied) Context.AppliedSinceRefresh = true;
+        if (result.Value.Applied) Context.RecordApplied();
         await Changes.ReloadAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));
@@ -267,13 +267,20 @@ public sealed class ReviewPageModel : PageModel
             _measurementCancellation?.Cancel();
             _applyCancellation?.Cancel();
         }
-        if (e.PropertyName is nameof(WorkspaceContext.Baseline) or nameof(WorkspaceContext.CurrentEvidence))
-        {
-            OnPropertyChanged(nameof(CanApply));
-            OnPropertyChanged(nameof(ApplyBlockReason));
-            CheckAgainCommand.NotifyCanExecuteChanged();
-            ApplyCommand.NotifyCanExecuteChanged();
-        }
+        if (e.PropertyName is nameof(WorkspaceContext.Baseline)) RaiseApplyState();
+    }
+
+    private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ProjectEvidence.IsStale)) RaiseApplyState();
+    }
+
+    private void RaiseApplyState()
+    {
+        OnPropertyChanged(nameof(CanApply));
+        OnPropertyChanged(nameof(ApplyBlockReason));
+        CheckAgainCommand.NotifyCanExecuteChanged();
+        ApplyCommand.NotifyCanExecuteChanged();
     }
 
     protected override void OnProjectCleared()

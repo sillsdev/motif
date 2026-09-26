@@ -62,11 +62,11 @@ public sealed class ProjectSwitchTests
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")));
         await review.MeasureCommand.ExecuteAsync(null);
         await review.ApplyCommand.ExecuteAsync(null);
-        Assert.True(parts.Workspace.Context.AppliedSinceRefresh);
+        Assert.True(parts.Workspace.Context.Evidence.AppliedSinceRefresh);
 
         await OpenProjectAsync(parts.Workspace, ProjectB);
 
-        Assert.False(parts.Workspace.Context.AppliedSinceRefresh);
+        Assert.False(parts.Workspace.Context.Evidence.AppliedSinceRefresh);
         Assert.NotEqual("Numbers need refresh", parts.Workspace.FreshnessLabel);
     }
 
@@ -467,7 +467,7 @@ public sealed class ProjectSwitchTests
         var probe = new ProbePageModel(parts.Workspace.Context, calls);
         parts.Fake.PendingChangesIs(PendingWithChange("first"));
         await OpenProjectAsync(parts.Workspace, ProjectA);
-        parts.Workspace.Context.AppliedSinceRefresh = true;
+        parts.Workspace.Context.RecordApplied();
         parts.Workspace.Context.GrammarSummary = new GrammarSummary("1 warning", true, "warning");
         parts.Workspace.Context.OpenPage(WorkspacePage.Timing);
         parts.Workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "old", ""));
@@ -480,7 +480,7 @@ public sealed class ProjectSwitchTests
             if (request.ProjectPath == ProjectB)
             {
                 calls.Add("baseline-load");
-                clearedBeforeBaselineLoad = !parts.Workspace.Context.AppliedSinceRefresh &&
+                clearedBeforeBaselineLoad = !parts.Workspace.Context.Evidence.AppliedSinceRefresh &&
                     parts.Workspace.Context.GrammarSummary?.SummaryText != "1 warning" &&
                     parts.Workspace.Context.CurrentPage == WorkspacePage.Overview &&
                     parts.Workspace.Context.Changes.ProjectPath is null &&

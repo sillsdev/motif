@@ -165,7 +165,7 @@ public sealed class WorkspaceContextTests
 
         Assert.Equal(ProjectPath, Assert.Single(fake.OverviewRequests).ProjectPath);
         Assert.Equal(ProjectPath, Assert.Single(fake.CurrentEvidenceRequests));
-        Assert.Same(current, context.CurrentEvidence);
+        Assert.Same(current, context.Evidence.Stored);
         Assert.Same(overview, overviewPage.Overview);
     }
 
@@ -1026,8 +1026,12 @@ public sealed class WorkspaceContextTests
         protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
             Queried = (await Context.Commands.ListKnownProjectsAsync(cancellationToken)).Count;
 
-        protected override void OnEvidencePublished(WorkspaceEvidence evidence) =>
-            Shown = evidence.Assessment.InvocationId;
+        protected override Task OnEvidencePublishedAsync(
+            ProjectEvidence evidence, CancellationToken cancellationToken)
+        {
+            Shown = evidence.Assessment?.Assessment.InvocationId;
+            return Task.CompletedTask;
+        }
 
         protected override void OnRequested(PageRequest request)
         {

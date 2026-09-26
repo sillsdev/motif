@@ -10,8 +10,8 @@ namespace SIL.Motif.App.Composition;
 /// <param name="ParserPath">The parser the window's commands run, or <see langword="null"/> for none.</param>
 /// <param name="RunnerLauncher">Starts the job runner, for the same root and parser.</param>
 /// <param name="TimeProvider">
-/// The clock read for when an Assessment completed and when a Handoff was written. The shell's
-/// FieldWorks-freshness sentence and the grammar check's elapsed time read the system clock instead.
+/// The clock every part of the window reads: when an Assessment completed, when a Handoff was written, how long a
+/// grammar check has run, and what the freshness sentence calls today.
 /// </param>
 /// <param name="ProjectPicker">Chooses a project, or <see langword="null"/> for the native dialog.</param>
 /// <param name="HandoffFolderPicker">Chooses a Handoff folder, or <see langword="null"/> for the native dialog.</param>
@@ -72,8 +72,8 @@ public static class MotifAppComposition
             assess,
             options.HandoffFolderPicker ?? nativePickers,
             options.FileDragSource ?? nativePickers,
-            commandClient);
-        workspace.PageModel<AiHandoffPageModel>().Handoff.SetTimeProvider(options.TimeProvider);
+            commandClient,
+            options.TimeProvider);
         window.Compose(workspace);
         return new MotifAppCompositionResult(window, workspace);
     }

@@ -115,16 +115,11 @@ public sealed partial class TextsPageModel : PageModel
 
     protected override Task OnStopWorkAsync() => Words.StopAsync();
 
-    protected override void OnEvidencePublished(WorkspaceEvidence evidence)
+    protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
+        if (evidence.Assessment is not { } shown) return Task.CompletedTask;
         Words.ShowAssessment(Assess.Words.Find);
-        if (evidence.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
-    }
-
-    protected override Task OnCurrentEvidencePublishedAsync(
-        SIL.Motif.Commands.Queries.CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken)
-    {
-        if (Context.Evidence is not null) Words.ShowAssessment(Assess.Words.Find);
+        if (shown.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
         return Task.CompletedTask;
     }
 
@@ -164,6 +159,6 @@ public sealed partial class TextsPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(WorkspaceContext.Evidence)) OnPropertyChanged(nameof(ShowEmptyResults));
+        if (e.PropertyName == nameof(WorkspaceContext.HasEvidence)) OnPropertyChanged(nameof(ShowEmptyResults));
     }
 }

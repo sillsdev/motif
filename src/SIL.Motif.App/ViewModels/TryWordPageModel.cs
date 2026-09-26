@@ -94,16 +94,9 @@ public sealed class TryWordPageModel : PageModel
         RebuildRules(null);
     }
 
-    protected override void OnEvidencePublished(WorkspaceEvidence evidence)
+    protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
-        SetStoredAssessmentId(evidence.Assessment.Measurements
-            .SingleOrDefault(measurement => measurement.Kind == "ParseTime")?.AssessmentId);
-    }
-
-    protected override Task OnCurrentEvidencePublishedAsync(
-        CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken)
-    {
-        SetStoredAssessmentId(evidence.MatchingAssessment?.AssessmentId);
+        SetStoredAssessmentId(evidence.ParseTimeAssessmentId);
         return Task.CompletedTask;
     }
 
