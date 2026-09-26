@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -22,6 +23,7 @@ public sealed class TryWordPageModel : PageModel
     public TryWordPageModel(WorkspaceContext context) : base(context)
     {
         Trace = context.Assess.Trace;
+        Diagnostics = new DiagnosticToolsViewModel(Trace, context.Clipboard, context.DiagnosticFiles);
         Trace.PropertyChanged += OnTracePropertyChanged;
         OpenInTextsCommand = new RelayCommand(() => Context.OpenWord(Trace.WordToTry.Trim()), CanOpenCurrentWord);
         HandOffCommand = new RelayCommand(() => Context.HandOff([Trace.WordToTry.Trim()]), CanOpenCurrentWord);
@@ -39,6 +41,24 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>The shared trace the Texts page also primes when a Results word is chosen.</summary>
     public TraceWordViewModel Trace { get; }
+
+    /// <summary>The diagnostic tools beside the page's trace.</summary>
+    public DiagnosticToolsViewModel Diagnostics { get; }
+
+    /// <summary>
+    /// Raised with the tools for a diagnostic <see cref="OpenSavedDiagnosticAsync"/> read, or for an empty trace
+    /// that says why the chosen file could not be shown; either way it belongs in a window of its own.
+    /// </summary>
+    public event Action<DiagnosticToolsViewModel>? SavedDiagnosticOpened;
+
+    /// <summary>
+    /// Asks for a saved diagnostic and raises <see cref="SavedDiagnosticOpened"/> for it, leaving the page's own
+    /// trace as it was, whether the file was shown or refused.
+    /// </summary>
+    public Task OpenSavedDiagnosticAsync() => SavedDiagnosticOpener.OpenFromPickerAsync(
+        Context.DiagnosticFiles,
+        trace => SavedDiagnosticOpened?.Invoke(Diagnostics.For(trace)),
+        refusal => SavedDiagnosticOpened?.Invoke(Diagnostics.ForRefusal(refusal)));
 
     /// <summary>Recently traced words, newest first.</summary>
     public ObservableCollection<string> RecentWords { get; } = [];

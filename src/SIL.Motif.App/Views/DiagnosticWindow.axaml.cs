@@ -7,15 +7,10 @@ namespace SIL.Motif.App.Views;
 /// <summary>A project-independent window for reviewing one saved diagnostic document.</summary>
 public sealed partial class DiagnosticWindow : Window
 {
-    private DiagnosticPanel? _panel;
-
-    public DiagnosticWindow(TraceWordViewModel trace)
+    public DiagnosticWindow(DiagnosticToolsViewModel tools)
     {
-        ArgumentNullException.ThrowIfNull(trace);
+        ArgumentNullException.ThrowIfNull(tools);
         AvaloniaXamlLoader.Load(this);
-        _panel = new DiagnosticPanel(trace);
-        this.FindControl<ContentControl>("PanelHost")!.Content = _panel;
+        this.FindControl<ContentControl>("PanelHost")!.Content = new DiagnosticPanel(tools);
     }
-
-    public void ShowDiagnosticError(WindowRefusal refusal) => _panel?.ShowError(refusal);
 }

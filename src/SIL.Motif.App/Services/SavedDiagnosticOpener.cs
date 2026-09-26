@@ -1,42 +1,26 @@
-using Avalonia.Controls;
-using Avalonia.Platform.Storage;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.Services;
 
-/// <summary>Reads saved diagnostic JSON and sends the validated result, or why it failed, to a view.</summary>
+/// <summary>Reads saved diagnostic JSON and sends the validated result, or why it failed, to its caller.</summary>
 internal static class SavedDiagnosticOpener
 {
-    /// <summary>Opens the diagnostic file picker and processes the selected file for the caller.</summary>
-    /// <param name="owner">The top-level window that owns the file picker.</param>
+    /// <summary>Asks <paramref name="files"/> for a saved diagnostic and processes the chosen file for the caller.</summary>
+    /// <param name="files">Shows the open dialog and reads the chosen file.</param>
     /// <param name="showDiagnostic">Displays a diagnostic after it has been read and validated.</param>
-    /// <param name="showError">Displays why choosing, reading, or parsing the file failed.</param>
-    /// <returns>A task that completes after the selected diagnostic has been handled.</returns>
+    /// <param name="showError">Displays why reading or parsing the chosen file failed.</param>
+    /// <param name="cancellationToken">Cancels the dialog or the read.</param>
+    /// <returns>A task that completes after the chosen diagnostic has been handled.</returns>
     internal static Task OpenFromPickerAsync(
-        TopLevel owner,
+        IDiagnosticFilePicker files,
         Action<TraceWordViewModel> showDiagnostic,
-        Action<WindowRefusal> showError)
+        Action<WindowRefusal> showError,
+        CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(owner);
-        ArgumentNullException.ThrowIfNull(showDiagnostic);
-        ArgumentNullException.ThrowIfNull(showError);
-
-        return OpenAsync(async () =>
-        {
-            var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "Open diagnostic JSON",
-                AllowMultiple = false,
-                FileTypeFilter = [new FilePickerFileType("Motif diagnostic JSON") { Patterns = ["*.json"] }],
-            });
-            if (files.Count == 0) return null;
-
-            await using var stream = await files[0].OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            return await reader.ReadToEndAsync();
-        }, showDiagnostic, showError);
+        ArgumentNullException.ThrowIfNull(files);
+        return OpenAsync(() => files.OpenDiagnosticAsync(cancellationToken), showDiagnostic, showError);
     }
 
     /// <summary>Reads and parses diagnostic JSON supplied by the caller.</summary>

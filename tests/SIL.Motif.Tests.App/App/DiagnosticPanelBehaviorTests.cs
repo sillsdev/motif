@@ -55,7 +55,7 @@ public sealed class DiagnosticPanelBehaviorTests
                 Result = new WordTraceResponse("word", false, true, null, 3, null, 1, [], root),
                 MorphFilter = "needle",
             };
-            var panel = new DiagnosticPanel(model);
+            var panel = new DiagnosticPanel(ToolsFor(model));
             var window = new Window { Content = panel, Width = 1000, Height = 800 };
             try
             {
@@ -97,7 +97,7 @@ public sealed class DiagnosticPanelBehaviorTests
                     new TraceStep("WordAnalysis", null, null, null, null, [])),
             };
             model.SelectedStep = model.FilteredRoots[0];
-            var panel = new DiagnosticPanel(model);
+            var panel = new DiagnosticPanel(ToolsFor(model));
             var window = new Window { Content = panel, Width = 600, Height = 800 };
             try
             {
@@ -123,7 +123,7 @@ public sealed class DiagnosticPanelBehaviorTests
                 Result = new WordTraceResponse("word", false, true, null, 1, null, 1, [],
                     new TraceStep("WordAnalysis", null, null, null, null, [])),
             };
-            var panel = new DiagnosticPanel(model);
+            var panel = new DiagnosticPanel(ToolsFor(model));
 
             var details = panel.FindControl<Border>("DetailHost")!;
 
@@ -142,7 +142,7 @@ public sealed class DiagnosticPanelBehaviorTests
                 Result = new WordTraceResponse("word", true, true, null, 1, null, 1, [],
                     new TraceStep("WordAnalysis", null, null, null, null, [])),
             };
-            var panel = new DiagnosticPanel(model, showResultSummary: false);
+            var panel = new DiagnosticPanel(ToolsFor(model), showResultSummary: false);
             var window = new Window { Content = panel, Width = 1000, Height = 800 };
             try
             {
@@ -159,4 +159,7 @@ public sealed class DiagnosticPanelBehaviorTests
             finally { window.Close(); }
         });
     }
+
+    private static DiagnosticToolsViewModel ToolsFor(TraceWordViewModel trace) =>
+        new(trace, new RecordingClipboard(), new ScriptedDiagnosticFiles());
 }

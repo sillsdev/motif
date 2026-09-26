@@ -1,10 +1,7 @@
-using System.Text;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Avalonia.Platform.Storage;
-using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -12,28 +9,30 @@ namespace SIL.Motif.App.Views;
 /// <summary>A reusable rich diagnostic presentation that can be hosted in Results or a standalone window.</summary>
 public sealed partial class DiagnosticPanel : UserControl
 {
-    private const string FormatGuide =
-        "https://github.com/sillsdev/motif/blob/main/docs/handoff/trace-diagnostic-format.md";
-
     /// <summary>Controls whether the panel shows its standalone result summary.</summary>
     public static readonly StyledProperty<bool> ShowResultSummaryProperty =
         AvaloniaProperty.Register<DiagnosticPanel, bool>(nameof(ShowResultSummary), defaultValue: true);
 
-    public DiagnosticPanel(TraceWordViewModel trace)
-        : this(trace, showResultSummary: true)
+    public DiagnosticPanel(DiagnosticToolsViewModel tools)
+        : this(tools, showResultSummary: true)
     {
     }
 
     /// <summary>Builds the diagnostic view with its result summary optionally hidden for a page with its own summary.</summary>
-    /// <param name="trace">The trace and recorded diagnostic details to display.</param>
+    /// <param name="tools">The trace to display, with the tools that copy, save, and open diagnostics beside it.</param>
     /// <param name="showResultSummary">Whether this panel displays the trace's result summary.</param>
-    public DiagnosticPanel(TraceWordViewModel trace, bool showResultSummary)
+    public DiagnosticPanel(DiagnosticToolsViewModel tools, bool showResultSummary)
     {
-        ArgumentNullException.ThrowIfNull(trace);
+        ArgumentNullException.ThrowIfNull(tools);
+        Tools = tools;
         ShowResultSummary = showResultSummary;
-        DataContext = trace;
+        DataContext = tools.Trace;
         AvaloniaXamlLoader.Load(this);
+        tools.DiagnosticOpened += opened => new DiagnosticWindow(opened).Show();
     }
+
+    /// <summary>The tools beside the trace, which also say why the last of them failed.</summary>
+    public DiagnosticToolsViewModel Tools { get; }
 
     /// <summary>Whether the panel shows the trace summary above its diagnostic details.</summary>
     public bool ShowResultSummary
@@ -41,8 +40,6 @@ public sealed partial class DiagnosticPanel : UserControl
         get => GetValue(ShowResultSummaryProperty);
         set => SetValue(ShowResultSummaryProperty, value);
     }
-
-    private TraceWordViewModel Trace => (TraceWordViewModel)DataContext!;
 
     private void OnPanelSizeChanged(object? sender, SizeChangedEventArgs e)
     {
@@ -71,65 +68,11 @@ public sealed partial class DiagnosticPanel : UserControl
         }
     }
 
+    private async void OnCopyJsonClick(object? sender, RoutedEventArgs e) => await Tools.CopyJsonAsync();
 
-    private async void OnCopyJsonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        try
-        {
-            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
-                await clipboard.SetTextAsync(Trace.DiagnosticJson);
-        }
-        catch (Exception exception) { ShowError(NotWritten("Motif could not copy the diagnostic.", exception)); }
-    }
+    private async void OnCopyInstructionsClick(object? sender, RoutedEventArgs e) => await Tools.CopyInstructionsAsync();
 
-    private async void OnCopyInstructionsClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        try
-        {
-            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
-            {
-                var text = $"Interpret this saved Motif diagnostic as recorded evidence. Read analyses before attempts, keep parser order, " +
-                           $"treat incomplete search as incomplete even with a success, and label category counts aggregate rather than " +
-                           $"step timing. Format guide: {FormatGuide}";
-                await clipboard.SetTextAsync(text);
-            }
-        }
-        catch (Exception exception) { ShowError(NotWritten("Motif could not copy the instructions.", exception)); }
-    }
+    private async void OnSaveClick(object? sender, RoutedEventArgs e) => await Tools.SaveAsync();
 
-    internal void ShowError(WindowRefusal refusal)
-    {
-        if (this.FindControl<RefusalBlock>("ErrorRefusal") is { } error) error.DataContext = refusal;
-    }
-
-    private static WindowRefusal NotWritten(string sentence, Exception exception) =>
-        WindowRefusal.Failure(WindowRefusal.DiagnosticNotWrittenCode, sentence, exception);
-
-    private async void OnSaveClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        try
-        {
-            var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel is null) return;
-            var files = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-            {
-                Title = "Save diagnostic JSON",
-                SuggestedFileName = $"{Trace.Result?.Word ?? "diagnostic"}.trace.json",
-                FileTypeChoices = [new FilePickerFileType("Motif diagnostic JSON") { Patterns = ["*.json"] }],
-            });
-            if (files is not { } saved) return;
-            await using var stream = await saved.OpenWriteAsync();
-            if (stream.CanSeek) stream.SetLength(0);
-            await using var writer = new StreamWriter(stream, Encoding.UTF8);
-            await writer.WriteAsync(Trace.DiagnosticJson);
-            await writer.FlushAsync();
-        }
-        catch (Exception exception) { ShowError(NotWritten("Motif could not save the diagnostic file.", exception)); }
-    }
-
-    private async void OnOpenClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        if (TopLevel.GetTopLevel(this) is not { } owner) return;
-        await SavedDiagnosticOpener.OpenFromPickerAsync(owner, trace => new DiagnosticWindow(trace).Show(), ShowError);
-    }
+    private async void OnOpenClick(object? sender, RoutedEventArgs e) => await Tools.OpenAsync();
 }

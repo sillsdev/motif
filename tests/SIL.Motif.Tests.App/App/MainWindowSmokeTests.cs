@@ -1130,7 +1130,7 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(control) == "Copy the starter prompt");
                 Assert.True(button.IsEffectivelyEnabled);
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                IClipboard clipboard = window.Clipboard
+                Avalonia.Input.Platform.IClipboard clipboard = window.Clipboard
                     ?? throw new InvalidOperationException("The headless window has no clipboard.");
                 clipboardText = await clipboard.TryGetTextAsync();
             }
@@ -1238,15 +1238,15 @@ public sealed class MainWindowSmokeTests
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var dragSource = new FakeDragSource();
+        var window = new MainWindow();
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new FakeProjectPicker()),
             new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),
             new FakeFolderPicker(), dragSource,
-            fake);
+            fake, clipboard: new AvaloniaClipboard(window));
 
-        var window = new MainWindow();
         window.Compose(workspace);
         return (workspace, window, dragSource);
     }
