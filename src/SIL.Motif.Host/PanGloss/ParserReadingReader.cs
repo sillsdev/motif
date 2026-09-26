@@ -45,6 +45,25 @@ public static class ParserReadingReader
         LcmCache cache, ICmObjectRepository objects, string projectName, IReadOnlyList<ParseMorph> morphs) =>
         morphs.Select(morph => ReadMorph(cache, objects, projectName, morph)).ToArray();
 
+    /// <summary>
+    /// The FieldWorks object a link on <paramref name="morph"/> opens: the entry owning its allomorph, else the
+    /// entry owning its grammatical info; <see langword="null"/> when the project holds neither. Every reader that
+    /// links a morph uses this, so Try a Word and the Texts page always open the same object.
+    /// </summary>
+    public static FieldWorksLinkTarget? EntryTargetFor(LcmCache cache, ParseMorph morph)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(morph);
+        return EntryTargetFor(cache, cache.ServiceLocator.ObjectRepository, morph);
+    }
+
+    private static FieldWorksLinkTarget? EntryTargetFor(LcmCache cache, ICmObjectRepository objects, ParseMorph morph)
+    {
+        var entry = (ICmObject?)Find<IMoForm>(objects, morph.Form)?.Owner
+            ?? Find<IMoMorphSynAnalysis>(objects, morph.Msa)?.Owner;
+        return entry is null ? null : FieldWorksLinks.TargetFor(cache, entry);
+    }
+
     private static ParserReadingMorph ReadMorph(
         LcmCache cache, ICmObjectRepository objects, string projectName, ParseMorph morph)
     {
@@ -66,7 +85,7 @@ public static class ParserReadingReader
             category,
             inflectionType?.Abbreviation.BestAnalysisAlternative.Text,
             morph.GuessedString is not null,
-            entry is null ? null : FieldWorksLinks.For(cache, projectName, entry));
+            FieldWorksLinks.ForTarget(projectName, EntryTargetFor(cache, objects, morph)));
     }
 
     private static T? Find<T>(ICmObjectRepository objects, string? id) where T : class, ICmObject =>

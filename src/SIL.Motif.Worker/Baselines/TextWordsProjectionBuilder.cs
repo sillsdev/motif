@@ -107,22 +107,9 @@ public static class TextWordsProjectionBuilder
         var displayMorphs = ParserReadingReader.ReadMorphs(cache, string.Empty, morphs);
         var projectedMorphs = displayMorphs.Select((morph, index) => new TextWordsProjectedMorph(
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
-            MorphLinkTarget(cache, morphs[index]))).ToArray();
+            ParserReadingReader.EntryTargetFor(cache, morphs[index]))).ToArray();
         return new TextWordsProjectedAnalysis(AnalysisContent.ComputeDigest(bundles), projectedMorphs);
     }
-
-    // Mirrors ParserReadingReader's entry choice, so a stored target opens what a live reading would link.
-    private static FieldWorksLinkTarget? MorphLinkTarget(LcmCache cache, ParseMorph morph)
-    {
-        var objects = cache.ServiceLocator.ObjectRepository;
-        var form = Find<IMoForm>(objects, morph.Form);
-        var msa = Find<IMoMorphSynAnalysis>(objects, morph.Msa);
-        var entry = (ICmObject?)form?.Owner ?? msa?.Owner;
-        return entry is null ? null : FieldWorksLinks.TargetFor(cache, entry);
-    }
-
-    private static T? Find<T>(ICmObjectRepository objects, string? id) where T : class, ICmObject =>
-        Guid.TryParse(id, out var guid) && objects.TryGetObject(guid, out var found) ? found as T : null;
 
     private static string? BestText(IMultiAccessorBase accessor) => accessor.AvailableWritingSystemIds.OrderBy(ws => ws)
         .Select(ws => accessor.get_String(ws)?.Text).FirstOrDefault(text => !string.IsNullOrEmpty(text));
