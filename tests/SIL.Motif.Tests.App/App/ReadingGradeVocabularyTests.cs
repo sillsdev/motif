@@ -5,8 +5,8 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that one reading grade reads the same on every page that lists a word's readings: a reading the project
-/// rejected is "Rejected" in Analyze texts and in Review, while the wire keeps its own value.
+/// Pins that one reading grade reads the same in Analyze texts and in Review: a reading the project rejected is
+/// "Rejected" in both, while the wire keeps its own value.
 /// </summary>
 public sealed class ReadingGradeVocabularyTests
 {
