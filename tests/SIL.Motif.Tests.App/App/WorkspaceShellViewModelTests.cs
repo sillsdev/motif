@@ -277,8 +277,7 @@ public sealed class WorkspaceShellViewModelTests
         projectPicker.PathToReturn = ProjectPath;
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
         Assert.False(workspace.Context.Setup!.IsOpen);
-        workspace.ConfigureCommand.Execute(null);
-        Assert.False(workspace.Context.Setup.IsOpen);
+        Assert.False(workspace.ConfigureCommand.CanExecute(null));
         Assert.Equal("Capture a Baseline to choose Texts.", workspace.Selection.TextsEmptyMessage);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
@@ -310,6 +309,124 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.True(workspace.Context.Setup.IsOpen);
         Assert.Equal(0, workspace.Context.Setup.Step);
+    }
+
+    [Fact]
+    public async Task WithoutABaselineConfigureIsUnavailableAndSaysToRefreshFirst()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        Assert.False(workspace.ConfigureCommand.CanExecute(null));
+        Assert.Equal("Texts, added words and limits", workspace.ConfigureDetailText);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+        projectPicker.PathToReturn = ProjectPath;
+        await workspace.Project.BrowseCommand.ExecuteAsync(null);
+
+        Assert.False(workspace.ConfigureCommand.CanExecute(null));
+        Assert.Equal(WorkspaceShellViewModel.ConfigureNeedsBaselineText, workspace.ConfigureDetailText);
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+        Assert.True(workspace.ConfigureCommand.CanExecute(null));
+        Assert.Equal("Texts, added words and limits", workspace.ConfigureDetailText);
+    }
+
+    [Fact]
+    public async Task ConfigureAfterFinishingSetupShowsTheSelectionJustSaved()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        var setup = workspace.Context.Setup!;
+        workspace.Selection.Texts[0].IsChecked = true;
+        workspace.Selection.PastedWords = "added";
+        workspace.Selection.PerWordTimeLimitSeconds = 2.5m;
+        setup.StepLimitSteps = 4321;
+        setup.Step = 3;
+        fake.AssessCompletesWith(NewAssessResponse("first run"));
+        await setup.FinishCommand.ExecuteAsync(null);
+        Assert.False(setup.IsOpen);
+        workspace.Selection.Texts[0].IsChecked = false;
+        workspace.Selection.PastedWords = string.Empty;
+
+        workspace.ConfigureCommand.Execute(null);
+
+        AssertConfigureShows(workspace, "added", 2.5m, 4321m);
+    }
+
+    [Fact]
+    public async Task ConfigureAfterSkippingSetupInThisSessionReopensIt()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        await workspace.Context.Setup!.SkipCommand.ExecuteAsync(null);
+        Assert.False(workspace.Context.Setup.IsOpen);
+
+        Assert.True(workspace.ConfigureCommand.CanExecute(null));
+        workspace.ConfigureCommand.Execute(null);
+
+        Assert.True(workspace.Context.Setup.IsOpen);
+        Assert.Equal(0, workspace.Context.Setup.Step);
+        Assert.Equal("Start first run", workspace.Context.Setup.FinishButtonText);
+    }
+
+    [Fact]
+    public async Task ConfigureAfterARefreshOpensWithTheSavedSelection()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionResponseIs(SavedSelection());
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+        Assert.False(workspace.Context.Setup!.IsOpen);
+
+        Assert.True(workspace.ConfigureCommand.CanExecute(null));
+        workspace.ConfigureCommand.Execute(null);
+
+        AssertConfigureShows(workspace, "one", 1.25m, 987m);
+    }
+
+    [Fact]
+    public async Task ConfigureAfterReopeningTheProjectShowsTheStoredSelection()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionResponseIs(SavedSelection());
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata", NewToken());
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        Assert.False(workspace.Context.Setup!.IsOpen);
+
+        Assert.True(workspace.ConfigureCommand.CanExecute(null));
+        workspace.ConfigureCommand.Execute(null);
+
+        AssertConfigureShows(workspace, "one", 1.25m, 987m);
+    }
+
+    private static DefaultSelectionResponse SavedSelection() =>
+        JsonSerializer.Deserialize<DefaultSelectionResponse>("""
+            {"Selection":{"Name":"Default","TextIds":["11111111-1111-1111-1111-111111111111"],
+             "AddedWords":["one"],"CreatedUtc":"created","UpdatedUtc":"updated",
+             "PerWordLimitMs":1250,"PerWordStepLimit":{"steps":987,"isUnbounded":false}},"SetupSkipped":false}
+            """)!;
+
+    private static void AssertConfigureShows(
+        WorkspaceShellViewModel workspace, string addedWords, decimal timeLimitSeconds, decimal stepLimit)
+    {
+        var setup = workspace.Context.Setup!;
+        Assert.True(setup.IsOpen);
+        Assert.Equal(0, setup.Step);
+        Assert.True(Assert.Single(workspace.Selection.Texts).IsChecked);
+        Assert.Equal(addedWords, workspace.Selection.PastedWords);
+        Assert.Equal(timeLimitSeconds, workspace.Selection.PerWordTimeLimitSeconds);
+        Assert.Equal(stepLimit, setup.StepLimitSteps);
+        Assert.Equal("Use this Selection", setup.FinishButtonText);
     }
 
     [Fact]
