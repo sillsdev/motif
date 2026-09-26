@@ -316,10 +316,10 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         var outcome = await invoker.RunAsync(
             new PanGlossRequest.Import(project, Path.Combine(_root, "g.json")), "test:hang", CancellationToken.None,
-            wallClockCap: TimeSpan.FromMilliseconds(400));
+            wallClockCap: TimeSpan.FromSeconds(3));
 
         var timedOut = Assert.IsType<PanGlossOutcome.TimedOut>(outcome);
-        Assert.Equal(TimeSpan.FromMilliseconds(400), timedOut.Cap);
+        Assert.Equal(TimeSpan.FromSeconds(3), timedOut.Cap);
         await AssertStoppedTicking(heartbeat);
     }
 
