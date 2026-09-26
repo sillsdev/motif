@@ -27,10 +27,12 @@ public enum NumbersFreshness
 /// </summary>
 /// <remarks>
 /// Two things feed it, both through <see cref="WorkspaceContext"/>: the stored read model, which the context loads
-/// when a project opens and after each Refresh, and a completed in-session run. A stored read replaces only an
-/// Assessment that also came from the store, so a run's richer rows stay on screen until the next run or project.
-/// A stored read with no matching Assessment, as just after a Refresh, leaves the older numbers on screen, and
-/// <see cref="Freshness"/> says they describe an older save.
+/// when a project opens, after each Refresh and when a person comes back to the window, and a completed in-session
+/// run. A stored read replaces the Assessment on screen only when it holds a different one: a stored Assessment
+/// whose words changed, or one recorded after the run this window shows, as when an agent ran it from the command
+/// line. The store's copy of this window's own run never replaces it, since a run's rows name readings the store
+/// does not. A stored read with no matching Assessment, as just after a Refresh, leaves the older numbers on
+/// screen, and <see cref="Freshness"/> says they describe an older save.
 /// </remarks>
 public sealed class ProjectEvidence : ObservableObject
 {
@@ -104,27 +106,41 @@ public sealed class ProjectEvidence : ObservableObject
 
     /// <summary>The latest FieldWorks save known: the project file as last read, or a later Baseline's save.</summary>
     public DateTimeOffset? LatestSaveUtc =>
-        Baseline?.ProjectLastWriteUtc is { } written && (Baseline.SourceLastWriteUtc is not { } source || written > source)
-            ? written
-            : Baseline?.SourceLastWriteUtc;
+        EvidenceFreshnessRule.LatestSave(Baseline?.ProjectLastWriteUtc, Baseline?.SourceLastWriteUtc);
 
-    /// <summary>Whether the numbers on screen describe the FieldWorks project as it was last saved.</summary>
+    /// <summary>
+    /// Whether the numbers on screen describe the FieldWorks project as it was last saved, by
+    /// <see cref="EvidenceFreshnessRule"/> applied to the Assessment on screen, plus what only the window knows:
+    /// that changes were applied since.
+    /// </summary>
     public NumbersFreshness Freshness =>
         AppliedSinceRefresh ? NumbersFreshness.AppliedSince
-        : MeasuredSaveUtc is { } measured && LatestSaveUtc is { } latest && latest > measured
-            ? NumbersFreshness.SavedSince
-        : Baseline?.HasBaseline != true ? NumbersFreshness.NoBaseline
-        : NumbersFreshness.Current;
+        : EvidenceFreshnessRule.Of(Baseline?.HasBaseline == true ? Baseline.SourceLastWriteUtc : null,
+                MeasuredSaveUtc, LatestSaveUtc) switch
+            {
+                EvidenceFreshness.Stale => NumbersFreshness.SavedSince,
+                EvidenceFreshness.NoBaseline => NumbersFreshness.NoBaseline,
+                _ => NumbersFreshness.Current,
+            };
 
     /// <summary>Whether the numbers on screen describe an older state of the project than the current one.</summary>
     public bool IsStale => Freshness is NumbersFreshness.SavedSince or NumbersFreshness.AppliedSince;
 
-    // A run's rows name readings the store cannot, so a stored read replaces only a stored Assessment.
     internal void ShowStored(CurrentEvidenceSnapshot stored)
     {
         Stored = stored;
-        if (Assessment is { IsStored: false } || stored.Assessment is not { } assessment) return;
+        if (stored.Assessment is not { } assessment) return;
+        if (Assessment is { } shown && !IsNewer(shown, assessment, stored.AssessedUtc)) return;
         Assessment = new WorkspaceEvidence(assessment, stored.AssessedUtc, WasRerun: false) { IsStored = true };
+    }
+
+    private static bool IsNewer(WorkspaceEvidence shown, AssessCommandResponse stored, DateTimeOffset? storedAt)
+    {
+        var sameRun = MeasurementOf(shown.Assessment, AssessmentKinds.ParseTime) ==
+            MeasurementOf(stored, AssessmentKinds.ParseTime);
+        return shown.IsStored
+            ? !sameRun || !shown.Assessment.TimingOverrideAssessmentIds.SequenceEqual(stored.TimingOverrideAssessmentIds)
+            : !sameRun && storedAt > shown.CompletedAt;
     }
 
     internal void ShowRun(WorkspaceEvidence run)
@@ -147,6 +163,8 @@ public sealed class ProjectEvidence : ObservableObject
         foreach (var derived in Derived) OnPropertyChanged(derived);
     }
 
-    private string? MeasurementOf(string kind) => Assessment?.Assessment.Measurements
+    private string? MeasurementOf(string kind) => Assessment is { } shown ? MeasurementOf(shown.Assessment, kind) : null;
+
+    private static string? MeasurementOf(AssessCommandResponse assessment, string kind) => assessment.Measurements
         .LastOrDefault(measurement => measurement.Kind == kind)?.AssessmentId;
 }

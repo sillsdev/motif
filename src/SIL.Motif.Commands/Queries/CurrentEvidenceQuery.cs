@@ -88,11 +88,10 @@ public static class CurrentEvidenceQuery
         var current = new BaselineRepository(database)
             .GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
         var saved = includeDefaultSelection ? new NamedSelectionRepository(database).GetDefault() : null;
-        var freshness = current is null
-            ? EvidenceFreshness.NoBaseline
-            : lastSave is { } savedUtc && savedUtc > current.Baseline.SourceLastWriteUtc
-                ? EvidenceFreshness.Stale
-                : EvidenceFreshness.Current;
+        // The matching Assessment measures the current Baseline, so its numbers were measured against its save.
+        var baselineSave = current?.Baseline.SourceLastWriteUtc;
+        var freshness = EvidenceFreshnessRule.Of(baselineSave, baselineSave,
+            EvidenceFreshnessRule.LatestSave(lastSave, baselineSave));
         ResolvedSelectionSnapshot? selection = null;
         AssessmentRecord? assessment = null;
         IReadOnlyList<AssessmentRecord> reruns = [];

@@ -246,14 +246,17 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public IRelayCommand SeeWhatChangedCommand { get; }
 
     /// <summary>
-    /// Reads the recorded Baseline and the project file's last-write time again, so a save FieldWorks made while
-    /// the window was elsewhere shows at once. Reads only; nothing reruns.
+    /// Reads the recorded Baseline, the project file's last-write time, the pending changes and the stored
+    /// evidence again, so a save FieldWorks made, or an Assessment recorded, while the window was elsewhere shows at
+    /// once. Reads only; nothing reruns.
     /// </summary>
     public async Task CheckFreshnessAsync(CancellationToken cancellationToken = default)
     {
         if (!HasProject || _isRefreshing) return;
         await Baseline.CheckAsync(cancellationToken).ConfigureAwait(true);
         await Context.Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
+        // A run under way publishes its own result, which a stored read must not replace.
+        if (!Assess.IsActive) await Context.ReadStoredEvidenceAsync(cancellationToken).ConfigureAwait(true);
         RaiseFreshness();
     }
 

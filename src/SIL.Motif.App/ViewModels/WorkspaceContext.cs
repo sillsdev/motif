@@ -316,6 +316,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Records that changes were applied to the FieldWorks project, so the numbers are stale.</summary>
     public void RecordApplied() => Evidence.AppliedSinceRefresh = true;
 
+    /// <summary>
+    /// Reads the open project's stored evidence again and publishes it, showing an Assessment recorded since, as
+    /// when an agent ran one from the command line. It reads only; nothing is measured.
+    /// </summary>
+    public Task ReadStoredEvidenceAsync(CancellationToken cancellationToken = default) =>
+        ProjectPath is { } projectPath ? LoadStoredEvidenceAsync(projectPath, cancellationToken) : Task.CompletedTask;
+
     // The stored read model's one way in; a run's rows stay on screen when the store holds the same run.
     internal Task PublishCurrentEvidenceAsync(
         CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken = default)
