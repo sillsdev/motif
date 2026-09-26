@@ -162,11 +162,11 @@ public static class ProjectStoreCommand
         "FieldWorks does. Close the other program and try again.";
 
     /// A malformed product version must not stop a verb; the compatibility floor it feeds is a lower bound.
-    private static Version ParseVersion(string productVersion) =>
+    internal static Version ParseVersion(string productVersion) =>
         Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
 
     /// The file must exist: an unresolvable path would key a second, empty workspace instead of the real one.
-    private static ProjectLocator Locate(string fwDataPath)
+    internal static ProjectLocator Locate(string fwDataPath)
     {
         var full = Path.GetFullPath(fwDataPath);
         if (!File.Exists(full))

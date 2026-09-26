@@ -95,6 +95,75 @@ public sealed class ProjectStoreResetTests : IDisposable
     }
 
     [Fact]
+    public void NothingIsDeletedWhileAnotherOpenerHoldsTheStoresCreationLock()
+    {
+        var project = Project("locked");
+        var storePath = StorePathOf(project);
+        Open(project);
+        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
+        using var creationLock = HoldCreationLock(storePath);
+
+        var outcome = ProjectStoreReset.DeleteRefused(
+            new ProjectStoreResetRequest(project), "1.0", TimeSpan.FromMilliseconds(100));
+
+        Assert.Equal(RefusalCodes.ProjectBusy, outcome.Refusal!.Code);
+        Assert.True(File.Exists(storePath));
+    }
+
+    [Fact]
+    public async Task AStoreRecreatedWhileTheDeleteWaitsIsKept()
+    {
+        var project = Project("recreated");
+        var storePath = StorePathOf(project);
+        Open(project);
+        Execute(storePath, "UPDATE MotifMetadata SET CreatedUtc = 'recreated' WHERE Id = 1;");
+        var recreated = Path.Combine(_root, "recreated.snapshot");
+        File.Copy(storePath, recreated);
+        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
+
+        Task<CommandOutcome<ProjectStoreResetResponse>> deleting;
+        using (HoldCreationLock(storePath))
+        {
+            deleting = Task.Run(() => ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(project), "1.0"));
+            File.Copy(recreated, storePath, overwrite: true);
+        }
+        var outcome = await deleting.WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.True(outcome.Succeeded);
+        Assert.False(outcome.Value!.Deleted);
+        Assert.Equal("recreated", Scalar(storePath, "SELECT CreatedUtc FROM MotifMetadata WHERE Id = 1;"));
+    }
+
+    [Fact]
+    public void ADamagedStoreIsRefusedAsItsOwnFailureAndLeftByteForByte()
+    {
+        var project = Project("damaged");
+        var storePath = StorePathOf(project);
+        File.WriteAllBytes(storePath, Enumerable.Repeat((byte)'x', 4096).ToArray());
+        var before = File.ReadAllBytes(storePath);
+
+        var outcome = ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(project), "1.0");
+
+        Assert.Equal(RefusalCodes.StoreInconsistent, outcome.Refusal!.Code);
+        Assert.Equal(before, File.ReadAllBytes(storePath));
+    }
+
+    [Fact]
+    public void AStoreRegisteredToAnotherProjectIsRefusedAndLeftByteForByte()
+    {
+        var project = Project("registered");
+        var storePath = StorePathOf(project);
+        Open(project);
+        Execute(storePath, "UPDATE MotifMetadata SET FieldWorksProjectIdentity = 'someone-else' WHERE Id = 1;");
+        var before = File.ReadAllBytes(storePath);
+
+        var outcome = ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(project), "1.0");
+
+        Assert.Equal(RefusalCodes.StoreInconsistent, outcome.Refusal!.Code);
+        Assert.Equal(before, File.ReadAllBytes(storePath));
+    }
+
+    [Fact]
     public void AMissingProjectIsRefusedAndNothingIsCreatedOrDeleted()
     {
         var project = Path.Combine(_root, "absent.fwdata");
@@ -118,6 +187,10 @@ public sealed class ProjectStoreResetTests : IDisposable
     private static void Open(string project) =>
         Assert.True(ProjectStoreCommand.Run<string>(
             project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty)).Succeeded);
+
+    // The lock a store's first opener takes while it creates the store; holding it stands in for that opener.
+    private static FileStream HoldCreationLock(string storePath) => new(storePath + ".owner.lock",
+        FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
 
     private static SqliteConnection Connection(string databasePath)
     {

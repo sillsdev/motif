@@ -35,6 +35,37 @@ public sealed class MotifDatabase : IDisposable
         Version workerVersion,
         TimeSpan? ownershipPatience = null)
     {
+        var descriptor = Describe(path, project, supportedSchema, workerVersion);
+        return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience));
+    }
+
+    /// <summary>
+    /// Deletes a project database that <see cref="OpenOwned"/> would refuse with a
+    /// <see cref="MotifStoreVersionException"/>, because another version of Motif made it. The decision and the
+    /// deletion both happen under the database's creation lock, so no opener can create or replace the file in
+    /// between; any other refusal is thrown as <see cref="OpenOwned"/> throws it, and nothing is deleted.
+    /// </summary>
+    /// <param name="path">The sibling Motif database path.</param>
+    /// <param name="project">The project locator that must match persisted metadata.</param>
+    /// <param name="supportedSchema">The schema generation this worker requires; usually <see cref="MotifSchema.CurrentSchema"/>.</param>
+    /// <param name="workerVersion">The worker version used for compatibility checks.</param>
+    /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
+    /// <returns><c>true</c> when the file was deleted; <c>false</c> when it is absent, not yet created, or usable.</returns>
+    /// <exception cref="MotifStoreLockException">The creation lock was not free within the patience.</exception>
+    /// <exception cref="IOException">The file could not be read or deleted, for instance while it is open.</exception>
+    /// <exception cref="InvalidDataException">The file identity, metadata, or project binding is invalid.</exception>
+    public static bool DeleteIfOtherVersion(
+        string path,
+        ProjectLocator project,
+        int supportedSchema,
+        Version workerVersion,
+        TimeSpan? ownershipPatience = null) =>
+        MotifSqliteStore.DeleteIfOtherVersion(path, Describe(path, project, supportedSchema, workerVersion),
+            ownershipPatience);
+
+    private static MotifSqliteStoreDescriptor Describe(
+        string path, ProjectLocator project, int supportedSchema, Version workerVersion)
+    {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("A database path is required.", nameof(path));
         ArgumentNullException.ThrowIfNull(project);
         if (string.IsNullOrWhiteSpace(project.FullFwDataPath))
@@ -50,7 +81,7 @@ public sealed class MotifDatabase : IDisposable
                 $"Worker {workerVersion} is older than schema {supportedSchema} minimum " +
                 $"{MotifSchema.MinimumWorkerVersion(supportedSchema)}.");
 
-        var descriptor = new MotifSqliteStoreDescriptor
+        return new MotifSqliteStoreDescriptor
         {
             Name = "Motif database",
             ApplicationId = MotifSchema.ApplicationId,
@@ -66,7 +97,6 @@ public sealed class MotifDatabase : IDisposable
                         $"Worker {workerVersion} is older than database minimum {metadata.MinimumWorkerVersion}.");
             }
         };
-        return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience));
     }
 
     /// <summary>Opens a configured connection while this worker owns the database.</summary>
