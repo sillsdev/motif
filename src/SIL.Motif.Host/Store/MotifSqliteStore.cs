@@ -103,7 +103,7 @@ internal sealed class MotifSqliteStore : IDisposable
             if (schema < 0)
                 throw new InvalidDataException($"The {descriptor.Name} has an invalid schema generation.");
             if (schema > descriptor.CurrentSchema)
-                throw new NotSupportedException(
+                throw new MotifStoreVersionException(fullPath,
                     $"This {descriptor.Name} is at schema {schema} and this build understands " +
                     $"{descriptor.CurrentSchema}. " +
                     "Something newer opened it; update Motif and try again.");
@@ -116,7 +116,7 @@ internal sealed class MotifSqliteStore : IDisposable
 
             // Pre-1.0 Motif never migrates: a stored schema below this build's is refused, not upgraded.
             if (schema != 0 && schema != descriptor.CurrentSchema)
-                throw new NotSupportedException(
+                throw new MotifStoreVersionException(fullPath,
                     $"The {descriptor.Name} at '{fullPath}' is schema {schema}, but this build requires " +
                     $"exactly schema {descriptor.CurrentSchema}. Motif does not migrate before 1.0 — delete " +
                     "the database file and let Motif recreate it.");

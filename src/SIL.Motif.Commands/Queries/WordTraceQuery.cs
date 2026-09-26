@@ -78,7 +78,8 @@ public static class WordTraceQuery
                 PanGlossTraceOutcome.Declined declined => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
                     "wordtrace.parser-refused", FailureReason.Refused, declined.Detail)),
                 PanGlossTraceOutcome.Unavailable unavailable => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
-                    "wordtrace.parser-unavailable", FailureReason.Refused, unavailable.Detail)),
+                    "wordtrace.parser-unavailable", FailureReason.Refused, unavailable.Detail,
+                    ParserNotFoundFact.Mark(null, unavailable.ExecutableMissing))),
                 PanGlossTraceOutcome.Malformed malformed => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
                     "wordtrace.malformed-output", FailureReason.Refused, malformed.Detail)),
                 _ => CommandOutcome<WordTraceResponse>.Refused(new Refusal(

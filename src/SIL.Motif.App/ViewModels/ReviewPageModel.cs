@@ -79,8 +79,8 @@ public sealed class ReviewPageModel : PageModel
     public string ReceiptText => Receipt is null ? string.Empty :
         $"Changes applied to {ProjectName}. Receipt recorded at {Receipt.AppliedLogEntry.TimestampUtc}.";
 
-    /// <summary>Why the last Apply could not finish.</summary>
-    public string? ApplyError { get; private set; }
+    /// <summary>Why the last Apply could not finish, in the window's words.</summary>
+    public WindowRefusal? ApplyRefusal { get; private set; }
 
     /// <summary>The words on the action that writes the measured changes.</summary>
     public string ApplyButtonText => "Apply to FieldWorks project";
@@ -88,8 +88,8 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>The measured word counts for this exact pending revision, worded for a linguist.</summary>
     public string NumbersText { get; private set; } = NumbersPrompt;
 
-    /// <summary>Why the last requested measurement could not complete.</summary>
-    public string? MeasurementError { get; private set; }
+    /// <summary>Why the last requested measurement could not complete, in the window's words.</summary>
+    public WindowRefusal? MeasurementRefusal { get; private set; }
 
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
     public bool CanApply => Changes.HasItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
@@ -117,10 +117,10 @@ public sealed class ReviewPageModel : PageModel
         _measurementCancellation = new CancellationTokenSource();
         IsMeasuring = true;
         EvidenceComplete = false;
-        MeasurementError = null;
+        MeasurementRefusal = null;
         OnPropertyChanged(nameof(IsMeasuring));
         OnPropertyChanged(nameof(CanApply));
-        OnPropertyChanged(nameof(MeasurementError));
+        OnPropertyChanged(nameof(MeasurementRefusal));
         MeasureCommand.NotifyCanExecuteChanged();
         CancelMeasureCommand.NotifyCanExecuteChanged();
         ApplyCommand.NotifyCanExecuteChanged();
@@ -147,13 +147,13 @@ public sealed class ReviewPageModel : PageModel
         if (revision != Changes.Snapshot.Revision) return;
         EvidenceComplete = result.Succeeded && result.Value is { EvidenceComplete: true } measured &&
             measured.Revision == revision;
-        MeasurementError = result.Refusal is { } measureRefusal
-            ? UserFacingRefusal.MessageOf(measureRefusal)
-            : !EvidenceComplete ? "Some words did not finish or their analysis could not be checked." : null;
+        MeasurementRefusal = result.Refusal is { } measureRefusal
+            ? WindowRefusal.From(measureRefusal)
+            : !EvidenceComplete ? WindowRefusal.Plain("Some words did not finish or their analysis could not be checked.") : null;
         if (result.Value is { } evidence) NumbersText = WindowSentence(evidence.Numbers);
         OnPropertyChanged(nameof(NumbersText));
-        OnPropertyChanged(nameof(MeasurementError));
-        if (result.Refusal?.Code == "trial.changes-changed") await Changes.ReloadAsync().ConfigureAwait(true);
+        OnPropertyChanged(nameof(MeasurementRefusal));
+        if (result.Refusal?.Code == RefusalCodes.TrialChangesChanged) await Changes.ReloadAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
         ApplyCommand.NotifyCanExecuteChanged();
@@ -216,19 +216,19 @@ public sealed class ReviewPageModel : PageModel
         if (Context.ProjectPath != project) return;
         if (!result.Succeeded)
         {
-            ApplyError = UserFacingRefusal.MessageOf(result.Refusal!);
-            OnPropertyChanged(nameof(ApplyError));
+            ApplyRefusal = WindowRefusal.From(result.Refusal!);
+            OnPropertyChanged(nameof(ApplyRefusal));
             await Changes.ReloadAsync().ConfigureAwait(true);
             return;
         }
         Receipt = result.Value!.Receipt;
-        ApplyError = null;
+        ApplyRefusal = null;
         if (result.Value.Applied) Context.RecordApplied();
         await Changes.ReloadAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));
         OnPropertyChanged(nameof(ReceiptText));
-        OnPropertyChanged(nameof(ApplyError));
+        OnPropertyChanged(nameof(ApplyRefusal));
     }
 
     private async Task RemoveNonFittingAsync()
@@ -288,15 +288,15 @@ public sealed class ReviewPageModel : PageModel
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();
         Receipt = null;
-        ApplyError = null;
-        MeasurementError = null;
+        ApplyRefusal = null;
+        MeasurementRefusal = null;
         NumbersText = NumbersPrompt;
         EvidenceComplete = false;
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));
         OnPropertyChanged(nameof(ReceiptText));
-        OnPropertyChanged(nameof(ApplyError));
-        OnPropertyChanged(nameof(MeasurementError));
+        OnPropertyChanged(nameof(ApplyRefusal));
+        OnPropertyChanged(nameof(MeasurementRefusal));
         OnPropertyChanged(nameof(NumbersText));
         OnPropertyChanged(nameof(CanApply));
     }

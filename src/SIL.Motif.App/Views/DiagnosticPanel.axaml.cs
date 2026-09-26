@@ -79,7 +79,7 @@ public sealed partial class DiagnosticPanel : UserControl
             if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
                 await clipboard.SetTextAsync(Trace.DiagnosticJson);
         }
-        catch (Exception exception) { ShowError(exception.Message); }
+        catch (Exception exception) { ShowError(NotWritten("Motif could not copy the diagnostic.", exception)); }
     }
 
     private async void OnCopyInstructionsClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -94,17 +94,16 @@ public sealed partial class DiagnosticPanel : UserControl
                 await clipboard.SetTextAsync(text);
             }
         }
-        catch (Exception exception) { ShowError(exception.Message); }
+        catch (Exception exception) { ShowError(NotWritten("Motif could not copy the instructions.", exception)); }
     }
 
-    internal void ShowError(string message)
+    internal void ShowError(WindowRefusal refusal)
     {
-        if (this.FindControl<TextBlock>("ErrorText") is { } error)
-        {
-            error.Text = $"Diagnostic file error: {message}";
-            error.IsVisible = true;
-        }
+        if (this.FindControl<RefusalBlock>("ErrorRefusal") is { } error) error.DataContext = refusal;
     }
+
+    private static WindowRefusal NotWritten(string sentence, Exception exception) =>
+        WindowRefusal.Failure(WindowRefusal.DiagnosticNotWrittenCode, sentence, exception);
 
     private async void OnSaveClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -125,7 +124,7 @@ public sealed partial class DiagnosticPanel : UserControl
             await writer.WriteAsync(Trace.DiagnosticJson);
             await writer.FlushAsync();
         }
-        catch (Exception exception) { ShowError(exception.Message); }
+        catch (Exception exception) { ShowError(NotWritten("Motif could not save the diagnostic file.", exception)); }
     }
 
     private async void OnOpenClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

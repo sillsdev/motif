@@ -79,7 +79,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 
     public Refusal? LastRefusal { get; private set; }
 
-    public string? ErrorText => LastRefusal is { } refusal ? UserFacingRefusal.MessageOf(refusal) : null;
+    /// <summary>The last refusal in the window's words, with the command's own account under Details.</summary>
+    public WindowRefusal? ShownRefusal => LastRefusal is { } refusal ? WindowRefusal.From(refusal) : null;
 
     /// <summary>Replacement and skipped-word results from the current collection action.</summary>
     public string? CollectionNotice => _collectionNotices.Count == 0
@@ -115,7 +116,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             cancellationToken).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
-        if (outcome.Refusal?.Code == "change.revision-conflict")
+        if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken);
     }
 
@@ -128,7 +129,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             .ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
-        if (outcome.Refusal?.Code == "change.revision-conflict")
+        if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
     }
 
@@ -156,7 +157,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         {
             LastRefusal = firstRefusal;
             OnPropertyChanged(nameof(LastRefusal));
-            OnPropertyChanged(nameof(ErrorText));
+            OnPropertyChanged(nameof(ShownRefusal));
             OnPropertyChanged(nameof(HasError));
         }
     }
@@ -205,7 +206,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             CancellationToken.None).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
-        if (outcome.Refusal?.Code == "change.revision-conflict")
+        if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, CancellationToken.None);
     }
 
@@ -217,7 +218,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         if (LastRefusal is not null) return;
         LastRefusal = conflict;
         OnPropertyChanged(nameof(LastRefusal));
-        OnPropertyChanged(nameof(ErrorText));
+        OnPropertyChanged(nameof(ShownRefusal));
         OnPropertyChanged(nameof(HasError));
     }
 
@@ -231,7 +232,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         AssessmentId = null;
         OnPropertyChanged(nameof(Snapshot));
         OnPropertyChanged(nameof(LastRefusal));
-        OnPropertyChanged(nameof(ErrorText));
+        OnPropertyChanged(nameof(ShownRefusal));
         OnPropertyChanged(nameof(HasError));
         Raise();
     }
@@ -260,7 +261,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         if (!IsCurrentProject(path, generation)) return;
         LastRefusal = outcome.Refusal;
         OnPropertyChanged(nameof(LastRefusal));
-        OnPropertyChanged(nameof(ErrorText));
+        OnPropertyChanged(nameof(ShownRefusal));
         OnPropertyChanged(nameof(HasError));
         if (outcome.Value is not { } snapshot) return;
         Snapshot = snapshot;

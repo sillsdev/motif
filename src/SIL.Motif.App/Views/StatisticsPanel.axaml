@@ -59,9 +59,7 @@
               AutomationProperties.Name="Refresh statistics" />
     </DockPanel>
 
-    <views:CopyableTextBlock Classes="error" Text="{Binding Statistics.Refusal.Message}"
-               IsVisible="{Binding Statistics.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-               DockPanel.Dock="Top" />
+    <views:RefusalBlock DataContext="{Binding Statistics.ShownRefusal}" DockPanel.Dock="Top" />
     <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Margin="{DynamicResource Intent.Gap.AfterRelated}" TextWrapping="Wrap"
                Text="Shading: darker is larger, against the largest in its column. Attempts and time come from the parser's statistics pass; whether a word finished comes from the Assessment." />
     <views:CopyableTextBlock Text="Showing the last successful statistics; they may be out of date."

@@ -71,8 +71,9 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     [ObservableProperty]
     private decimal? _retrySlowerThanMilliseconds;
 
+    /// <summary>Why the last read or write was refused, in the window's words.</summary>
     [ObservableProperty]
-    private string? _refusalMessage;
+    private WindowRefusal? _shownRefusal;
 
     [ObservableProperty]
     private string? _thresholdValidationMessage;
@@ -137,7 +138,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         PerWordTimeLimitSeconds = null;
         PerWordStepLimit = null;
         PerWordStepLimitUnbounded = false;
-        RefusalMessage = null;
+        ShownRefusal = null;
         TextsEmptyMessage = null;
         Recompute();
     }
@@ -158,7 +159,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         if (generation != _textLoadGeneration) return;
         if (!outcome.Succeeded)
         {
-            RefusalMessage = outcome.Refusal!.Message;
+            ShownRefusal = WindowRefusal.From(outcome.Refusal!);
             return;
         }
 
@@ -174,7 +175,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
             _allTexts.Add(textChoice);
         }
 
-        RefusalMessage = null;
+        ShownRefusal = null;
         TextsEmptyMessage = _allTexts.Count > 0
             ? null
             : outcome.Value!.HasBaseline ? "This Baseline has no Texts." : "Capture a Baseline to choose Texts.";

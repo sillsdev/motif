@@ -54,6 +54,9 @@ public abstract record PanGlossTraceOutcome
     public sealed record Unavailable(string Word, string Detail) : PanGlossTraceOutcome
     {
         public override string Message => Detail;
+
+        /// <summary>Whether the cause is that no executable was found, rather than one that would not run.</summary>
+        public bool ExecutableMissing { get; init; }
     }
 
     /// <summary>

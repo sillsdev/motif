@@ -32,11 +32,11 @@ public sealed partial class TryWordPanel : UserControl
         await SavedDiagnosticOpener.OpenFromPickerAsync(
             owner,
             trace => new DiagnosticWindow(trace).Show(owner),
-            message =>
+            refusal =>
             {
                 var window = new DiagnosticWindow(new TraceWordViewModel());
                 window.Show(owner);
-                window.ShowDiagnosticError(message);
+                window.ShowDiagnosticError(refusal);
             });
     }
 }

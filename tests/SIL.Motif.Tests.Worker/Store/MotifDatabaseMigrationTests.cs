@@ -494,7 +494,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         using (var connection = NewConnection(path))
             Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = 99;");
 
-        Assert.Throws<NotSupportedException>(() => MotifDatabase.OpenOwned(path, Locator("newer.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(path, Locator("newer.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
         using var check = NewConnection(path);
         Assert.Equal(99, PragmaInt(check, "user_version"));
     }
@@ -533,7 +533,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         using (var connection = NewConnection(path))
             Execute(connection, "UPDATE MotifMetadata SET MinimumWorkerVersion = '2.0' WHERE Id = 1;");
 
-        Assert.Throws<NotSupportedException>(() => MotifDatabase.OpenOwned(
+        Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
             path, Locator("minimum.fwdata"), MotifSchema.CurrentSchema, new Version(1, 9)));
     }
 

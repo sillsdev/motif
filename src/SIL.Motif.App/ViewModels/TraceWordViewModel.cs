@@ -66,7 +66,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
     partial void OnIsLoadingChanged(bool value) => CancelCommand.NotifyCanExecuteChanged();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShownRefusal))]
     private Refusal? _refusal;
+
+    /// <summary>The current refusal in the window's words, with the command's own account under Details.</summary>
+    public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
 
     [ObservableProperty]
     private WordTraceResponse? _result;
@@ -445,15 +449,22 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public string DiagnosticJson => _diagnosticJson ?? Result?.DiagnosticJson ?? string.Empty;
 
     /// <summary>Loads a producer v1/v2 diagnostic through the Commands projection; no parser or project is opened.</summary>
-    public static TraceWordViewModel FromDiagnosticJson(string json, TraceHostCapture? current = null)
+    /// <returns>The loaded diagnostic, or the typed refusal that says why it could not be read.</returns>
+    public static CommandOutcome<TraceWordViewModel> LoadDiagnostic(string json, TraceHostCapture? current = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         var outcome = WordTraceQuery.LoadDiagnostic(json, current: current);
-        if (!outcome.Succeeded)
-            throw new JsonException(outcome.Refusal?.Message ?? "The diagnostic JSON was refused.");
+        if (!outcome.Succeeded) return CommandOutcome<TraceWordViewModel>.Refused(outcome.Refusal!);
         var viewModel = new TraceWordViewModel { Result = outcome.Value };
         viewModel._diagnosticJson = json;
-        return viewModel;
+        return CommandOutcome<TraceWordViewModel>.Success(viewModel);
+    }
+
+    /// <summary>As <see cref="LoadDiagnostic"/>, but a refused document throws <see cref="JsonException"/>.</summary>
+    public static TraceWordViewModel FromDiagnosticJson(string json, TraceHostCapture? current = null)
+    {
+        var outcome = LoadDiagnostic(json, current);
+        return outcome.Succeeded ? outcome.Value! : throw new JsonException(outcome.Refusal!.Message);
     }
 
     public bool ShowCandidates => View == TraceView.Candidates;

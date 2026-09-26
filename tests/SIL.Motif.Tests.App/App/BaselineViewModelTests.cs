@@ -96,7 +96,7 @@ public sealed class BaselineViewModelTests
         Assert.Same(token, viewModel.Token);
         Assert.Equal(capturedUtc, viewModel.SourceLastWriteUtc);
         Assert.True(viewModel.FieldWorksHeldProject);
-        Assert.Null(viewModel.RefusalMessage);
+        Assert.Null(viewModel.ShownRefusal);
         Assert.Equal(ProjectPath, Assert.Single(fake.CaptureBaselineRequests).ProjectPath);
     }
 
@@ -117,7 +117,7 @@ public sealed class BaselineViewModelTests
 
         Assert.Same(token, viewModel.Token);
         Assert.Equal(savedUtc, viewModel.SourceLastWriteUtc);
-        Assert.Equal(refusal.Message, viewModel.RefusalMessage);
+        Assert.Contains(refusal.Message, viewModel.ShownRefusal!.Details);
     }
 
     [Fact]

@@ -49,17 +49,7 @@
                          IsIndeterminate="{Binding Assess.IsIndeterminate}"
                          Minimum="0" Maximum="1" Value="{Binding Assess.ProgressFraction}"
                          AutomationProperties.Name="Assessment progress" />
-            <views:CopyableTextBlock Classes="error" Text="{Binding Assess.Refusal.Message}"
-                                     IsVisible="{Binding ShowAssessRefusal}" TextWrapping="Wrap" />
-            <Expander Header="Details" IsExpanded="False" IsVisible="{Binding ShowAssessRefusal}">
-              <ItemsControl ItemsSource="{Binding Assess.RefusalFacts}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="x:String">
-                    <views:CopyableTextBlock Text="{Binding}" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </Expander>
+            <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
           </StackPanel>
           <Button Grid.Column="1" Content="Cancel" Command="{Binding Assess.CancelCommand}"
                   IsVisible="{Binding Assess.IsActive}" VerticalAlignment="Center"

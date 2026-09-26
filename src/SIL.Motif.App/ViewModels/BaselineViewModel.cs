@@ -5,6 +5,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Commands;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -49,8 +50,9 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
     [NotifyPropertyChangedFor(nameof(HeldStatusText))]
     private bool _fieldWorksHeldProject;
 
+    /// <summary>Why the last read or write was refused, in the window's words.</summary>
     [ObservableProperty]
-    private string? _refusalMessage;
+    private WindowRefusal? _shownRefusal;
 
     /// <summary>The Baseline's captured time in the current culture, or a placeholder before any capture.</summary>
     public string CapturedTimeText => SourceLastWriteUtc is { } savedUtc
@@ -123,7 +125,7 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
         SourceLastWriteUtc = null;
         ProjectLastWriteUtc = null;
         FieldWorksHeldProject = false;
-        RefusalMessage = null;
+        ShownRefusal = null;
         HasAssessment = false;
         RefreshCommand.NotifyCanExecuteChanged();
     }
@@ -141,7 +143,7 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
         if (generation != _projectGeneration || !ReferenceEquals(path, _projectPath)) return;
         var assessmentAtResponse = HasAssessment;
         var sameBaseline = outcome.Value?.Token is { } token && token == Token;
-        ApplySuccessOnly(outcome.Succeeded, outcome.Refusal?.Message,
+        ApplySuccessOnly(outcome.Succeeded, outcome.Refusal,
             outcome.Value?.Token, outcome.Value?.SourceLastWriteUtc, outcome.Value?.FieldWorksHeldProject ?? false);
         if (outcome.Succeeded) ProjectLastWriteUtc = outcome.Value?.ProjectLastWriteUtc;
         HasAssessment = sameBaseline ? hadAssessment || assessmentAtResponse
@@ -158,7 +160,7 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
             new BaselineCaptureRequest(path), CancellationToken.None);
         if (generation != _projectGeneration || !ReferenceEquals(path, _projectPath)) return;
 
-        var applied = ApplySuccessOnly(outcome.Succeeded, outcome.Refusal?.Message,
+        var applied = ApplySuccessOnly(outcome.Succeeded, outcome.Refusal,
             outcome.Value?.Token, outcome.Value?.SourceLastWriteUtc, outcome.Value?.FieldWorksHeldProject ?? false);
         if (!applied) return;
         HasAssessment = false;
@@ -169,19 +171,19 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
 
     // Shared by the read-only load and the capturing Refresh: state changes only on success either way.
     private bool ApplySuccessOnly(
-        bool succeeded, string? refusalMessage, BaselineToken? token, DateTimeOffset? sourceLastWriteUtc,
+        bool succeeded, Refusal? refusal, BaselineToken? token, DateTimeOffset? sourceLastWriteUtc,
         bool fieldWorksHeldProject)
     {
         if (!succeeded)
         {
-            RefusalMessage = refusalMessage;
+            ShownRefusal = refusal is null ? null : WindowRefusal.From(refusal);
             return false;
         }
 
         Token = token;
         SourceLastWriteUtc = sourceLastWriteUtc;
         FieldWorksHeldProject = fieldWorksHeldProject;
-        RefusalMessage = null;
+        ShownRefusal = null;
         return true;
     }
 

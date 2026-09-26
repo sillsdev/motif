@@ -236,8 +236,7 @@
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                 AutomationProperties.Name="AI Handoff for the listed words" />
       </WrapPanel>
-      <views:CopyableTextBlock Classes="error" Text="{Binding Compare.Changes.ErrorText}" TextWrapping="Wrap"
-                               IsVisible="{Binding Compare.Changes.HasError}" />
+      <views:RefusalBlock DataContext="{Binding Compare.Changes.ShownRefusal}" />
       <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.Changes.CollectionNotice}" TextWrapping="Wrap" />
     </StackPanel>
 

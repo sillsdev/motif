@@ -57,7 +57,7 @@ public sealed class ProjectSwitchDraftTests(PristineProjectFixture pristine)
             Assert.Equal("change-a", Assert.Single(workspace.Context.Changes.Items).ChangeId);
 
             await workspace.SetProjectAsync(projectB + ".missing");
-            Assert.NotNull(workspace.Baseline.RefusalMessage);
+            Assert.NotNull(workspace.Baseline.ShownRefusal);
             await workspace.SetProjectAsync(projectA);
             Assert.Equal("change-a", Assert.Single(workspace.Context.Changes.Items).ChangeId);
 

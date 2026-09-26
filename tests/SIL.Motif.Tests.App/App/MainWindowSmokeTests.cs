@@ -162,7 +162,7 @@ public sealed class MainWindowSmokeTests
                         projectPath, DateTimeOffset.UtcNow, false, false),
                     new SelectionProjection([], []), [], "summary"), DateTimeOffset.UtcNow, WasRerun: false));
                 workspace.Baseline.FieldWorksHeldProject = true;
-                workspace.Baseline.RefusalMessage = "FieldWorks still has the project open.";
+                workspace.Baseline.ShownRefusal = WindowRefusal.Plain("FieldWorks still has the project open.");
                 window.UpdateLayout();
                 var refusalText = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.Contains("Refresh refused", refusalText);
@@ -998,11 +998,11 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
 
                 var refusal = Assert.Single(window.GetLogicalDescendants().OfType<CopyableTextBlock>(),
-                    block => block.Text == "PanGloss is not built.");
+                    block => block.Text == workspace.Assess.ShownRefusal!.Sentence);
                 Assert.True(refusal.IsEffectivelyVisible);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(),
                     expander => Equals(expander.Header, "Details") && expander.IsEffectivelyVisible);
-                Assert.Equal(["parserPath: pangloss.exe"], workspace.Assess.RefusalFacts);
+                Assert.Contains("parserPath: pangloss.exe", workspace.Assess.ShownRefusal!.Details);
             }
             finally
             {

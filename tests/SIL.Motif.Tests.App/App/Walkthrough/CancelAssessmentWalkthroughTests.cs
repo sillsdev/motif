@@ -46,7 +46,7 @@ public sealed class CancelAssessmentWalkthroughTests
             walkthrough.Click("Refresh the project");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Baseline.HasBaseline &&
-                    walkthrough.Workspace.Baseline.RefusalMessage is null,
+                    walkthrough.Workspace.Baseline.ShownRefusal is null,
                 WalkthroughSteps.Remaining(deadline), "refreshing after cancellation did not publish a Baseline");
             Assert.NotNull(walkthrough.Workspace.Baseline.Token);
             var baselineToken = walkthrough.Workspace.Baseline.Token!;

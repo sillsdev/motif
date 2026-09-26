@@ -71,8 +71,7 @@
         <Button Grid.Column="4" Content="Incorrect spelling" Command="{Binding Lists.Compare.ProposeCommand}"
                 CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark checked words as incorrect spelling" />
         <StackPanel Grid.Row="1" Grid.ColumnSpan="5" Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Classes="error" Text="{Binding Lists.Compare.Changes.ErrorText}"
-                                   TextWrapping="Wrap" IsVisible="{Binding Lists.Compare.Changes.HasError}" />
+          <views:RefusalBlock DataContext="{Binding Lists.Compare.Changes.ShownRefusal}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.Compare.Changes.CollectionNotice}"
                                    TextWrapping="Wrap"
                                    IsVisible="{Binding Lists.Compare.Changes.CollectionNotice, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />

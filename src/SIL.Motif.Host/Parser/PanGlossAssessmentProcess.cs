@@ -27,10 +27,7 @@ public sealed class PanGlossAssessmentProcess : IPanGlossAssessor
     public PanGlossAssessmentProcess(string? executablePath = null)
     {
         _executable = executablePath ?? PanGlossExecutable.TryLocate()
-            ?? throw new ParserUnavailableException(
-                $"Could not find the pangloss executable. Build it with " +
-                $"`cargo build --release -p pg-cli` in the PanGloss checkout, or set " +
-                $"{PanGlossExecutable.PathVariable} to its path.");
+            ?? throw new ParserUnavailableException(PanGlossExecutable.NotFoundMessage) { ExecutableMissing = true };
     }
 
     /// <summary>

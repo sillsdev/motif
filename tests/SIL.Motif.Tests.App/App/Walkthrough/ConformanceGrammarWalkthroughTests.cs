@@ -41,8 +41,8 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                     () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                         walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
                     WalkthroughSteps.Remaining(deadline), "choosing the conformance project did not show no Baseline");
-                Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
-                Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
+                Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
+                Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
 
                 walkthrough.Click("Refresh the project");
                 walkthrough.WaitUntil(
@@ -50,8 +50,8 @@ public sealed class ConformanceGrammarWalkthroughTests(ITestOutputHelper output)
                         walkthrough.Workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts.",
                     WalkthroughSteps.Remaining(deadline), "refreshing the conformance project did not complete");
                 Assert.Equal("This Baseline has no Texts.", walkthrough.Workspace.Selection.TextsEmptyMessage);
-                Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
-                Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
+                Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
+                Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
 
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.Context.Setup?.IsOpen == true,

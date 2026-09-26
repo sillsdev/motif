@@ -195,7 +195,8 @@ public static class AssessCommand
             }
             catch (AssessorUnavailableException ex)
             {
-                return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, ex.Message));
+                return CommandOutcome<AssessCommandResponse>.Refused(
+                    ParserUnavailable(request.ProjectPath, ex.Message, ex.ExecutableMissing));
             }
             catch (AssessorRefusalException ex)
             {
@@ -454,9 +455,10 @@ public static class AssessCommand
             current.Token, current.FwDataPath, current.SourceLastWriteUtc, held, ReusedExistingBytes: true));
     }
 
-    private static Refusal ParserUnavailable(string projectPath, string message) => new(
+    private static Refusal ParserUnavailable(string projectPath, string message, bool executableMissing = false) => new(
         "assess.parser-unavailable", FailureReason.Refused, message,
-        new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath });
+        ParserNotFoundFact.Mark(
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath }, executableMissing));
 
     private static Refusal Cancelled(string projectPath) => new(
         "assessment.cancelled", FailureReason.Cancelled,
@@ -550,7 +552,10 @@ internal sealed class LazyPanGlossAssessor : IAssessor
         }
         catch (ParserUnavailableException exception)
         {
-            throw new AssessorUnavailableException(Name, exception.Message);
+            throw new AssessorUnavailableException(Name, exception.Message)
+            {
+                ExecutableMissing = exception.ExecutableMissing,
+            };
         }
     }
 }

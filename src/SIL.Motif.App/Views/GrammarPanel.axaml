@@ -25,14 +25,8 @@
 
       <StackPanel IsVisible="{Binding Grammar.ShowRefused}" Spacing="{DynamicResource Intent.Space.Related}">
         <Border Classes="notice">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-            <views:CopyableTextBlock Text="The parser declined this grammar" FontWeight="SemiBold" />
-            <views:CopyableTextBlock Classes="muted" Text="Nothing can be assessed until it loads. The Details say why." TextWrapping="Wrap" />
-          </StackPanel>
+          <views:RefusalBlock DataContext="{Binding Grammar.ShownRefusal}" />
         </Border>
-        <Expander Header="Details" IsExpanded="False">
-          <views:CopyableTextBlock Text="{Binding Grammar.Refusal.Message}" TextWrapping="Wrap" />
-        </Expander>
         <Button Content="Try again"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"
                 Command="{Binding Grammar.CheckCommand}"

@@ -143,8 +143,7 @@
                 AutomationProperties.Name="Show every attempt" />
       </StackPanel>
 
-      <views:CopyableTextBlock x:Name="ErrorText" Classes="failed" IsVisible="False" TextWrapping="Wrap"
-                 AutomationProperties.Name="Diagnostic file error" />
+      <views:RefusalBlock x:Name="ErrorRefusal" AutomationProperties.Name="Diagnostic file error" />
 
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasResult}">
         <views:CopyableTextBlock Text="Analyses" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />

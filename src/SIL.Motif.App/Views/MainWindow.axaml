@@ -110,14 +110,13 @@
       </Border>
       <Border Grid.Row="1" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
         <StackPanel>
-          <views:CopyableTextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}" TextWrapping="Wrap" />
+          <views:RefusalBlock DataContext="{Binding Baseline.ShownRefusal}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
       <Border Grid.Row="2" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
         <StackPanel>
-          <views:CopyableTextBlock Classes="error" Text="{Binding OpenRefusalMessage}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding OpenRefusalDetail}" TextWrapping="Wrap" />
+          <views:RefusalBlock DataContext="{Binding OpenRefusal}" />
         </StackPanel>
       </Border>
     </Grid>
