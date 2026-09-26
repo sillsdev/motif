@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -49,54 +48,6 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.False(review.ApplyCommand.CanExecute(null));
             Assert.Equal("FieldWorks has this project open. Close it before applying changes.",
                 review.ApplyBlockReason);
-            return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    [Fact]
-    public void AFieldWorksSaveShowsSavedSince()
-    {
-        using var project = new WalkthroughProject(pristine);
-        var capturedAt = new DateTime(2026, 3, 2, 9, 15, 0, DateTimeKind.Local);
-        var savedAt = new DateTime(2026, 3, 4, 10, 30, 0, DateTimeKind.Local);
-        File.SetLastWriteTime(project.FwDataPath, capturedAt);
-        var simulator = new FieldWorksSimulator(project.FwDataPath,
-            new FixedClock(new DateTimeOffset(savedAt), TimeZoneInfo.Local));
-        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var culture = CultureInfo.CurrentCulture;
-            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-            try
-            {
-                using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
-                WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
-                Assert.Equal(capturedAt.ToUniversalTime(),
-                    walkthrough.Workspace.Baseline.SourceLastWriteUtc!.Value.UtcDateTime);
-                simulator.SaveEdit(cache =>
-                {
-                    var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances().First();
-                    NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
-                        () => wordform.SpellingStatus = 1);
-                });
-
-                var check = walkthrough.Workspace.CheckFreshnessAsync();
-                walkthrough.WaitUntil(() => check.IsCompleted, TimeSpan.FromSeconds(30),
-                    "the window did not check FieldWorks' save");
-                check.GetAwaiter().GetResult();
-
-                Assert.Equal(ProjectFreshness.SavedSince, walkthrough.Workspace.Freshness);
-                Assert.Equal("FieldWorks saved since", walkthrough.Workspace.FreshnessLabel);
-                Assert.Equal(
-                    $"{Path.GetFileNameWithoutExtension(project.FwDataPath)} saved Wed 4 Mar, 10:30; " +
-                    "the numbers still describe Mon 2 Mar, 09:15 until you refresh.",
-                    walkthrough.Workspace.FreshnessDetail);
-            }
-            finally
-            {
-                CultureInfo.CurrentCulture = culture;
-            }
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }

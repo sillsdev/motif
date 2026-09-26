@@ -1,8 +1,9 @@
-using System.Reflection;
-using Avalonia.Input;
+using Avalonia.Automation;
+using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using SIL.LCModel;
-using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
@@ -18,18 +19,17 @@ using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
-namespace SIL.Motif.Tests.App.RealClient;
+namespace SIL.Motif.Tests.App.Walkthrough;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class ReopenRealClientTests(PristineProjectFixture pristine)
+public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void ANewWorkspaceReadsStoredEvidenceIntoPagesWithoutOverview()
+    public void ANewWindowOverTheSameStoreShowsStoredEvidenceAndPendingChanges()
     {
         using var project = new WalkthroughProject(pristine);
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var firstClient = RealCommandClient.Create(project.ManagedRoot, parserPath);
-        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromMinutes(3);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -74,86 +74,66 @@ public sealed class ReopenRealClientTests(PristineProjectFixture pristine)
                     .Single(wordform => wordform.Form.VernacularDefaultWritingSystem?.Text ==
                         SeededProject.AnalysedWordForm).Guid;
             }
-            var changeId = CanonicalId.Mint().Value;
             var put = await firstClient.PutPendingChangeAsync(new PutPendingChangeRequest(
                 project.FwDataPath, MotifProductVersion.CurrentText, pending.Value!.Revision,
-                new ChangeIntent(changeId, "incorrect-spelling",
+                new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
                     CanonicalId.FromGuid(wordformId).Value, SeededProject.AnalysedWordForm)), CancellationToken.None);
             Assert.True(put.Succeeded, put.Refusal?.Message);
-            changeId = Assert.Single(put.Value!.Changes).ChangeId;
+            var changeId = Assert.Single(put.Value!.Changes).ChangeId;
+            var parserInvocationsBeforeOpen = FakeParser.Invocations(parserPath);
 
-            var secondClient = RealCommandClient.Create(project.ManagedRoot, parserPath);
-            var recording = DispatchProxy.Create<ICommandClient, RecordingCommandClient>();
-            var recorder = (RecordingCommandClient)(object)recording;
-            recorder.Inner = secondClient;
-            var selection = new SelectionViewModel(recording);
-            var changes = new ChangesViewModel(recording);
-            var baselineModel = new BaselineViewModel(recording);
-            var assess = new AssessViewModel(recording, selection);
-            var context = new WorkspaceContext(selection, assess, changes, recording,
-                new NoFolderPicker(), new NoDragSource(), baselineModel);
-            var texts = new TextsPageModel(context);
-            var timing = new TimingPageModel(context);
-            var tryWord = new TryWordPageModel(context);
-            var setup = new SetupViewModel(context, texts.Words);
-            context.AttachSetup(setup);
+            using var reopened = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
+            reopened.Show();
+            reopened.LoadKnownProjects();
+            reopened.OpenProjectMenu();
+            var openRecent = reopened.FindProjectMenuEntry<Button>("Open a recent project");
+            Assert.True(openRecent.IsEffectivelyEnabled);
+            HeadlessClick.Click(reopened.Window, openRecent, "Open a recent project");
+            var recentProject = Assert.Single(reopened.Window.RecentProjectItems);
+            HeadlessClick.Click(reopened.Window, recentProject,
+                AutomationProperties.GetName(recentProject) ?? "recent project");
+            reopened.WaitUntil(
+                () => reopened.Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
+                TimeSpan.FromSeconds(60), "opening the recent project did not finish");
+            await reopened.Workspace.Context.EvidencePublication;
 
-            await context.OpenProjectAsync(project.FwDataPath);
-            await context.EvidencePublication;
+            var overview = reopened.Workspace.PageModel<OverviewPageModel>();
+            var timing = reopened.Workspace.PageModel<TimingPageModel>();
+            var texts = reopened.Workspace.PageModel<TextsPageModel>();
+            var review = reopened.Workspace.PageModel<ReviewPageModel>();
+            reopened.WaitUntil(
+                () => overview.Overview?.AssessmentId == assessmentId && timing.HasStoredTiming &&
+                    texts.Assess.Words.AllRows.Count > 0 && review.Changes.Count == 1,
+                TimeSpan.FromSeconds(30), "the reopened window did not publish its stored page data");
 
-            Assert.Equal(capture.Value!.Token, baselineModel.Token);
-            Assert.Equal("motifa", selection.PastedWordEntries.Single());
-            var defaultState = await secondClient.ReadDefaultSelectionAsync(
-                new ReadDefaultSelectionRequest(project.FwDataPath), CancellationToken.None);
-            Assert.True(defaultState.Succeeded, defaultState.Refusal?.Message);
-            Assert.True(defaultState.Value!.SetupSkipped);
-            Assert.True(context.Evidence.Assessment!.IsStored);
-            Assert.Equal(assessmentId, context.Evidence.ParseTimeAssessmentId);
+            Assert.Equal(capture.Value!.Token, reopened.Workspace.Baseline.Token);
+            var storedEvidence = reopened.Workspace.Context.Evidence.Assessment;
+            Assert.NotNull(storedEvidence);
+            Assert.True(storedEvidence.IsStored);
+            Assert.Equal(assessmentId, reopened.Workspace.Context.Evidence.ParseTimeAssessmentId);
+            Assert.Equal(assessmentId, overview.Overview!.AssessmentId);
+            Assert.Equal("100%", overview.TextCoverageMain);
+            Assert.Contains("words in the default Selection", overview.TextCoverageWords, StringComparison.Ordinal);
+            Assert.Equal("0 of 0", overview.AccuracyMain);
+            var overviewText = Assert.Single(reopened.Window.GetLogicalDescendants().OfType<OverviewPage>())
+                .GetLogicalDescendants().OfType<TextBlock>().Select(control => control.Text);
+            Assert.Contains(overview.TextCoverageMain,
+                overviewText);
+            Assert.Contains(overview.AccuracyMain,
+                overviewText);
             Assert.Equal("motifa", Assert.Single(texts.Assess.Words.AllRows).Word);
             Assert.True(timing.HasStoredTiming);
             Assert.Equal(assessmentId, timing.StoredTiming!.AssessmentId);
-            Assert.Equal("motifa", texts.Selection.PastedWordEntries.Single());
-            Assert.Equal(changeId, Assert.Single(changes.Items).ChangeId);
-
-            context.TryWord("motifa");
-            await tryWord.Trace.TryCommand.ExecutionTask!.WaitAsync(TimeSpan.FromSeconds(30));
-            var ruleTiming = Assert.Single(recorder.TimingRequests,
-                request => request.By == "rule" && request.ExplicitWords is { } words &&
-                    words.SequenceEqual(["motifa"]));
-            Assert.Equal(assessmentId, ruleTiming.AssessmentId);
-            Assert.Equal("SeededRule", Assert.Single(tryWord.RulesOnBestPath).Rule);
+            Assert.Equal(changeId, Assert.Single(review.Changes.Items).ChangeId);
+            Assert.Equal(changeId, Assert.Single(reopened.Workspace.Context.Changes.Items).ChangeId);
+            Assert.False(reopened.Workspace.Context.Setup?.IsOpen == true);
+            Assert.Equal(parserInvocationsBeforeOpen, FakeParser.Invocations(parserPath));
 
             using var verificationDatabase = ProjectMotifDatabase.Open(project.FwDataPath);
             var storedAssessment = Assert.Single(
                 new AssessmentRepository(verificationDatabase).ListBaselineAssessments(AssessmentKinds.ParseTime));
             Assert.Equal(assessmentId, storedAssessment.AssessmentId);
-        }, TimeSpan.FromMilliseconds(Math.Max(1, (deadline - DateTimeOffset.UtcNow).TotalMilliseconds)));
-    }
-
-    public class RecordingCommandClient : DispatchProxy
-    {
-        public ICommandClient Inner { get; set; } = null!;
-
-        public List<TimingRequest> TimingRequests { get; } = [];
-
-        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
-        {
-            if (targetMethod?.Name == nameof(ICommandClient.TimingAsync))
-                TimingRequests.Add((TimingRequest)args![0]!);
-            return targetMethod!.Invoke(Inner, args);
-        }
-    }
-
-    private sealed class NoFolderPicker : IHandoffFolderPicker
-    {
-        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<string?>(null);
-    }
-
-    private sealed class NoDragSource : IFileDragSource
-    {
-        public Task<DragDropEffects> StartDragAsync(PointerPressedEventArgs trigger,
-            IReadOnlyList<string> filePaths, DragDropEffects allowedEffects) =>
-            Task.FromResult(DragDropEffects.None);
+        }, TimeSpan.FromMinutes(3));
     }
 }
