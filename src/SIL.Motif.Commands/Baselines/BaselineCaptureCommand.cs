@@ -82,7 +82,17 @@ public static class BaselineCaptureCommand
                     projectIdentity = cache.LangProject.Guid.ToString("D");
                     semanticDigest = BaselineSemanticDigest.Compute(cache, CancellationToken.None);
                     projectSummary = ProjectSummaryReader.Read(cache);
-                    textWordsProjection = TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
+                    try
+                    {
+                        textWordsProjection = TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        return CommandOutcome<BaselineCaptureResponse>.Refused(new Refusal(
+                            "baseline.text-words-unreadable", FailureReason.Refused,
+                            "Motif could not read the Texts of the saved project: " + ex.Message,
+                            Fact(("projectPath", request.ProjectPath))));
+                    }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
