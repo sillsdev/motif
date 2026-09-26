@@ -361,7 +361,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         WordLink = token.WordLink is { } link ? new Uri(link) : null;
         Stored = token.Analysis?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
         ProjectSummary = projectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
-        ProjectStatusLabel = projectWord?.StatusLabel ?? "Not stored yet";
+        ProjectStatusLabel = projectWord?.StatusLabel ?? ReadingGradeLabels.NotPresent;
         ProjectStatusVerdict = projectWord?.Verdict ?? global::SIL.Motif.App.ViewModels.Verdict.New;
         ProjectApprovedAnalyses = projectWord?.ApprovedAnalyses ?? [];
 

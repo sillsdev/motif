@@ -89,7 +89,7 @@ public sealed class CompareViewModelTests
     [Fact]
     public void AWordMissingFromTheProjectUsesTheNotStoredYetLabel()
     {
-        Assert.Equal("Not stored yet", CompareViewModel.RowLabelOf(WordProjectStatus.NotPresent));
+        Assert.Equal("Not present", CompareViewModel.RowLabelOf(WordProjectStatus.NotPresent));
     }
 
     private static readonly AssessmentWordResult[] Sample =

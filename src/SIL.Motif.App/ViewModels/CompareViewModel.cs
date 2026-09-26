@@ -479,11 +479,7 @@ public sealed partial class CompareViewModel : ObservableObject
     };
 
     /// <summary>The label a row header shows, in the same wording as the Words view.</summary>
-    public static string RowLabelOf(WordProjectStatus row) => row switch
-    {
-        WordProjectStatus.NotPresent => "Not stored yet",
-        _ => WordProjectStatuses.LabelOf(row),
-    };
+    public static string RowLabelOf(WordProjectStatus row) => WordProjectStatuses.LabelOf(row);
 
     public static string ColumnLabelOf(CompareColumnKind column) => column switch
     {

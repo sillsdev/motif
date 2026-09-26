@@ -48,7 +48,7 @@ public sealed class TextWordsViewModelTests
         Assert.Equal(["na", "mara"], words.Rows.Select(row => row.Form));
         Assert.Equal("No parse", words.Rows[0].LastResultLabel);
         Assert.False(words.Rows[1].HasLastResult);
-        Assert.Equal("Not stored yet", words.Rows[1].StatusLabel);
+        Assert.Equal("Not present", words.Rows[1].StatusLabel);
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public sealed class TextWordsViewModelTests
         var row = Assert.Single(words.Rows);
         Assert.Equal(WordProjectStatus.NotPresent, row.Status);
         Assert.Equal("Not analysed in the project", row.ProjectSummary);
-        Assert.Equal("Not stored yet", row.StatusLabel);
+        Assert.Equal("Not present", row.StatusLabel);
     }
 
     [Theory]

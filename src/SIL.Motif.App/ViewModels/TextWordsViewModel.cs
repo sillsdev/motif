@@ -79,7 +79,7 @@ public static class WordProjectStatuses
         WordProjectStatus.Candidate => "Candidate",
         WordProjectStatus.Rejected => "Rejected",
         WordProjectStatus.IncorrectSpelling => "Incorrect spelling",
-        _ => "Not stored yet",
+        _ => ReadingGradeLabels.NotPresent,
     };
 }
 

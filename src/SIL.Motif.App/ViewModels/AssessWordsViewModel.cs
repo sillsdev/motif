@@ -68,7 +68,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     public AssessWordRowViewModel? Find(string word) => _all.FirstOrDefault(row => row.Word == word);
     public int MissedCount => _all.Count(row => row.VsProject == "Missed");
     public int DisapprovedCount => _all.Count(row => row.VsProject == "Disapproved");
-    public int NoOpinionCount => _all.Count(row => row.VsProject == "No opinion");
+    public int NoOpinionCount => _all.Count(row => row.VsProject == ReadingGradeLabels.NotPresent);
     public int NoParseCount => _all.Count(row => row.Result == "No parse");
     public int LimitCount => _all.Count(row => row.StoppedAtALimit);
 
@@ -169,7 +169,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
         {
             ResultsWordFilter.Missed => row.VsProject == "Missed",
             ResultsWordFilter.Disapproved => row.VsProject == "Disapproved",
-            ResultsWordFilter.NoOpinion => row.VsProject == "No opinion",
+            ResultsWordFilter.NoOpinion => row.VsProject == ReadingGradeLabels.NotPresent,
             ResultsWordFilter.NoParse => row.Result == "No parse",
             ResultsWordFilter.Limit => row.StoppedAtALimit,
             _ => true,
@@ -229,7 +229,7 @@ public sealed class AssessWordRowViewModel
             : Readings.Any(reading => reading.Grade == ReadingGrade.Disapproved) ? "Disapproved"
             : Readings.Any(reading => reading.Grade == ReadingGrade.Approved) ? "Approved"
             : Readings.Any(reading => reading.Grade == ReadingGrade.Candidate) ? "Candidate"
-            : Readings.Count > 0 && grades is not null ? "No opinion"
+            : Readings.Count > 0 && grades is not null ? ReadingGradeLabels.NotPresent
             : "—";
 
         TryWordLink = word.TryWordLink is { } link ? new Uri(link) : null;
@@ -284,7 +284,7 @@ public sealed class AssessWordRowViewModel
     /// <summary>Whether the parser needed more than its first pass; zero passes is the ordinary case and says nothing.</summary>
     public bool HasPasses => Passes is > 0;
 
-    /// <summary>Grade against the project's own analyses: Approved, Disapproved, Candidate, No opinion, Missed, or none.</summary>
+    /// <summary>Grade against the project's own analyses: Approved, Disapproved, Candidate, Not present, Missed, or none.</summary>
     public string VsProject { get; }
 
     /// <summary>Whether there is a comparison to show; a word with no readings and nothing missed has none.</summary>
@@ -296,7 +296,7 @@ public sealed class AssessWordRowViewModel
         "Approved" => Verdict.Agrees,
         "Disapproved" => Verdict.Differs,
         "Candidate" => Verdict.Candidate,
-        "No opinion" => Verdict.New,
+        ReadingGradeLabels.NotPresent => Verdict.New,
         "Missed" => Verdict.NoResult,
         _ => Verdict.Limit,
     };

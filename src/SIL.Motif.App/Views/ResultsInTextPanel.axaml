@@ -25,7 +25,7 @@
           <views:FilterChip Label="Differs from stored" Count="{Binding InText.DiffersCount}" Verdict="Differs"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Differs}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Differs}" />
-          <views:FilterChip Label="Not stored yet" Count="{Binding InText.NewCount}" Verdict="New"
+          <views:FilterChip Label="Not present" Count="{Binding InText.NewCount}" Verdict="New"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.New}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.New}" />
           <views:FilterChip Label="No parse" Count="{Binding InText.NoParseCount}" Verdict="NoResult"

@@ -28,7 +28,7 @@ public sealed class ReadingGradeVocabularyTests
     [InlineData(ReadingGrade.Approved, "Approved")]
     [InlineData(ReadingGrade.Disapproved, "Rejected")]
     [InlineData(ReadingGrade.Candidate, "Candidate")]
-    [InlineData(ReadingGrade.NoOpinion, "No opinion")]
+    [InlineData(ReadingGrade.NoOpinion, "Not present")]
     [InlineData(null, "")]
     public void EveryGradeHasOneWindowLabel(string? grade, string label) =>
         Assert.Equal(label, ReadingGradeLabels.Of(grade));

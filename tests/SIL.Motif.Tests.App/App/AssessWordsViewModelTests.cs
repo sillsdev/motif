@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins <see cref="AssessWordsViewModel"/>'s grading against the project — Approved, Disapproved, Missed,
-/// No opinion, or none available — and its six independent filter-chip buckets, each its own subset rather
+/// Not present, or none available — and its six independent filter-chip buckets, each its own subset rather
 /// than a partition of the others.
 /// </summary>
 public sealed class AssessWordsViewModelTests
@@ -113,7 +113,7 @@ public sealed class AssessWordsViewModelTests
         var table = new AssessWordsViewModel();
         table.Load([Word("nitakupa", "analysed", [Reading("give")], ["no-opinion"])]);
 
-        Assert.Equal("No opinion", Assert.Single(table.Rows).VsProject);
+        Assert.Equal("Not present", Assert.Single(table.Rows).VsProject);
     }
 
     [Fact]
