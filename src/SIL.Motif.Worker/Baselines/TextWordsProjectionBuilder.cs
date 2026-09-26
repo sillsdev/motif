@@ -93,11 +93,8 @@ public static class TextWordsProjectionBuilder
         var tokenText = forms.Length > 0 ? forms[0] : string.Empty;
         var chosenWordGloss = analysis is IWfiGloss chosenGloss ? BestText(chosenGloss.Form) : null;
         var category = wfiAnalysis?.CategoryRA is { } pos ? BestText(pos.Abbreviation) ?? BestText(pos.Name) : null;
-        // Its own wordform first: two wordforms sharing a spelling make the lookup's answer depend on load order.
-        var wordLinkTarget = tokenText.Length == 0 ? null
-            : wordform.Form.get_String(cache.DefaultVernWs)?.Text == tokenText
-                ? FieldWorksLinks.TargetFor(cache, wordform)
-                : FieldWorksLinks.WordformTargetFor(cache, tokenText);
+        // Its own wordform, never a lookup by spelling: another wordform can share the spelling and win the lookup.
+        var wordLinkTarget = tokenText.Length == 0 ? null : FieldWorksLinks.TargetFor(cache, wordform);
         return new TextWordsProjectedToken(tokenText, forms, wordform.Guid, status, analysisKey,
             chosenWordGloss, category, wordLinkTarget);
     }

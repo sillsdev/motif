@@ -143,7 +143,7 @@ public sealed class TextWordsReadNoProjectFileTests : IDisposable
         Assert.Equal(InterlinearAnalysisStatus.Approved, glossed.Status);
         Assert.Equal(WordGlossText, glossed.WordGloss);
         Assert.Equal(CategoryAbbreviation, glossed.Category);
-        Assert.Equal(FieldWorksLinks.ForWordform(baseline, projectName, rawForms[0]), glossed.WordLink);
+        Assert.Equal(FieldWorksLinks.For(baseline, projectName, wordform), glossed.WordLink);
         Assert.Equal(JsonSerializer.Serialize(expectedMorphs), JsonSerializer.Serialize(glossed.Analysis!.Morphs));
         Assert.NotNull(expectedMorphs[1].FieldWorksLink);
         Assert.Equal(string.Join(" ", expectedMorphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)),
@@ -160,6 +160,47 @@ public sealed class TextWordsReadNoProjectFileTests : IDisposable
         Assert.Equal(glossed.Analysis.Key, approved.Key);
     }
 
+    [Fact]
+    public void AWordLinksItsOwnWordformEvenWhenAnotherIsSpelledTheSameInTheDefaultVernacular()
+    {
+        using var cache = _pristine.NewScratch();
+        var services = cache.ServiceLocator;
+        var secondVernWs = services.WritingSystemManager.Get(NewLangProjFixture.SecondVernacularTag).Handle;
+        Guid textId = default, ownId = default, namesakeId = default;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var own = services.GetInstance<IWfiWordformFactory>().Create();
+            own.Form.set_String(secondVernWs, SharedSpelling);
+            var namesake = services.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(SharedSpelling, cache.DefaultVernWs));
+            var text = services.GetInstance<ITextFactory>().Create();
+            text.Name.set_String(cache.DefaultAnalWs, "Namesake Text");
+            var contents = services.GetInstance<IStTextFactory>().Create();
+            text.ContentsOA = contents;
+            var paragraph = services.GetInstance<IStTxtParaFactory>().Create();
+            contents.ParagraphsOS.Add(paragraph);
+            paragraph.Contents = TsStringUtils.MakeString(SharedSpelling, secondVernWs);
+            var segment = services.GetInstance<ISegmentFactory>().Create();
+            paragraph.SegmentsOS.Add(segment);
+            segment.AnalysesRS.Add(own);
+            (textId, ownId, namesakeId) = (text.Guid, own.Guid, namesake.Guid);
+        });
+        new FwDataProjectLoader().Save(cache);
+        var fwDataPath = cache.ProjectId.Path;
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+
+        var outcome = TextWordsQuery.Query(new TextWordsRequest(fwDataPath, [textId]));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var token = Assert.Single(Assert.Single(outcome.Value!.Texts).Lines.SelectMany(line => line.Tokens));
+        Assert.Equal(SharedSpelling, token.Text);
+        Assert.NotNull(token.WordLink);
+        Assert.Contains(ownId.ToString("D"), Uri.UnescapeDataString(token.WordLink!), StringComparison.Ordinal);
+        Assert.DoesNotContain(namesakeId.ToString("D"), Uri.UnescapeDataString(token.WordLink!), StringComparison.Ordinal);
+    }
+
+    private const string SharedSpelling = "namesake";
     private const string PrecomposedForm = " motiéa";
     private const string SecondAlternativeForm = "motieb";
     private const string PlainForm = "plainword";
