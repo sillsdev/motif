@@ -261,6 +261,9 @@ public sealed class WalkthroughWindow : IDisposable
         item.Command!.Execute(item.CommandParameter);
         ProjectMenuFlyout.Hide();
         Pump();
+        // The Baseline and Texts load partway through the open; the recent list is right only once it ends.
+        WaitUntil(() => Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
+            TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
     }
 
     private Flyout ProjectMenuFlyout =>
