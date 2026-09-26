@@ -704,6 +704,13 @@ try
                 warningsProject, flags.GetValueOrDefault("kind"), flags.ContainsKey("left-out"))));
             break;
 
+        case "grammar":
+            if (positionals.Count != 1 || positionals[0] != "check" ||
+                !flags.TryGetValue("project", out var grammarProject))
+                return Usage(UsageLineFor("grammar check"), asJson);
+            result = RenderCommand(GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject)));
+            break;
+
         case "timing":
             if (!flags.TryGetValue("project", out var timingProject))
                 return Usage(UsageLineFor("timing"), asJson);
@@ -1045,7 +1052,7 @@ static string ResolveCommandName(string[] invocation)
         return "apply --all-pending";
     if (first == "trial" && invocation.Contains("--pending", StringComparer.Ordinal))
         return "trial --pending";
-    if (first is "config" or "baseline" or "jobs" or "selection" or "texts" or "setup")
+    if (first is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup")
     {
         var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;

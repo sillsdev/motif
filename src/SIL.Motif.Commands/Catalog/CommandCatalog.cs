@@ -17,7 +17,7 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="BaselineCaptureCommand"/>,
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
-/// <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>,
+/// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="HandoffCommand"/>,
 /// <see cref="JobCommands"/>, and <see cref="PendingChangesWorkflow"/>.
 /// </summary>
 /// <remarks>
@@ -114,6 +114,7 @@ public static class CommandCatalog
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released),
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released),
+        new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released),
         new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released),
 
         // HandoffCommand
