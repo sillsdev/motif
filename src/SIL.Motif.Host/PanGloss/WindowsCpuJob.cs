@@ -42,11 +42,12 @@ public sealed class WindowsCpuJob : IDisposable
     /// <summary>Creates a job object and immediately applies the CPU hard cap and kill-on-close limit.</summary>
     public WindowsCpuJob()
     {
+        var jobMemoryLimit = CreateNativeMemoryLimit();
         _handle = NativeMethods.CreateJobObject(IntPtr.Zero, null);
         if (_handle.IsInvalid)
             throw new Win32Exception(Marshal.GetLastWin32Error());
         ApplyCpuRateControl();
-        ApplyKillOnClose();
+        ApplyKillOnClose(jobMemoryLimit);
     }
 
     /// <summary>
@@ -116,7 +117,14 @@ public sealed class WindowsCpuJob : IDisposable
             });
     }
 
-    private void ApplyKillOnClose()
+    private static UIntPtr CreateNativeMemoryLimit()
+    {
+        if (UIntPtr.Size != sizeof(ulong))
+            throw new PlatformNotSupportedException("The 10 GiB PanGloss memory limit requires a 64-bit process.");
+        return new UIntPtr(JobMemoryLimitBytes);
+    }
+
+    private void ApplyKillOnClose(UIntPtr jobMemoryLimit)
     {
         SetInformation(NativeMethods.JobObjectInfoClass.JobObjectExtendedLimitInformation,
             new NativeMethods.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
@@ -126,7 +134,7 @@ public sealed class WindowsCpuJob : IDisposable
                     LimitFlags = NativeMethods.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
                         | NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY,
                 },
-                JobMemoryLimit = (UIntPtr)JobMemoryLimitBytes,
+                JobMemoryLimit = jobMemoryLimit,
             });
     }
 

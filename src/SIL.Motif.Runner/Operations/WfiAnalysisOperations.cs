@@ -17,6 +17,7 @@ public static class WfiAnalysisOperationKinds
     public const string RemoveRefEvaluations = "analysis/wfiAnalysis/removeRefEvaluations";
     public const string CreateAnalysis = "analysis/wfiWordform/createAnalyses";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -26,6 +27,7 @@ public static class WfiAnalysisOperationKinds
         OperationHandlerRegistry.Register(RemoveRefEvaluations, new HumanEvaluationHandler(false));
         OperationHandlerRegistry.Register(CreateAnalysis, new CreateAnalysisHandler());
     }
+#pragma warning restore CA2255
 }
 
 /// <summary>The closed payload naming the default human agent's positive or negative evaluation.</summary>

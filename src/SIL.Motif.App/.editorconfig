@@ -1,0 +1,5 @@
+root = false
+
+[Views/**/*.axaml]
+# Views receive view models through constructors and are always built in code.
+dotnet_diagnostic.AVLN3001.severity = none

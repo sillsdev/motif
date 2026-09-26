@@ -73,10 +73,26 @@ public static class GrammarCheckQuery
             if (outcome is not PanGlossOutcome.Completed completed)
                 return CommandOutcome<GrammarCheckResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
 
-            GrammarHealthReportJson report;
+            GrammarWarning[] findings;
+            GrammarWarningSummary[] summary;
             try
             {
-                report = ReadReport(completed.Output);
+                var report = ReadReport(completed.Output);
+                findings = (report.Diagnostics ?? throw new JsonException(
+                        "The grammar-health report is incomplete."))
+                    .Select(diagnostic => ToGrammarWarning(diagnostic ?? throw new JsonException(
+                        "A diagnostic is incomplete.")))
+                    .ToArray();
+                summary = (report.Summary ?? throw new JsonException(
+                        "The grammar-health report is incomplete."))
+                    .Select(row =>
+                    {
+                        var item = row ?? throw new JsonException("A summary row is incomplete or invalid.");
+                        return new GrammarWarningSummary(
+                            item.Code ?? throw new JsonException("A summary row is incomplete or invalid."),
+                            item.GroupName, item.Level, item.Count);
+                    })
+                    .ToArray();
             }
             catch (UnsupportedGrammarHealthSchemaException exception)
             {
@@ -96,13 +112,9 @@ public static class GrammarCheckQuery
                     Fact(("projectPath", request.ProjectPath))));
             }
 
-            var findings = report.Diagnostics
-                .Select(diagnostic => ToGrammarWarning(diagnostic!))
-                .ToArray();
             var response = new GrammarCheckResponse(findings, HasBaseline: true)
             {
-                Summary = report.Summary.Select(row => new GrammarWarningSummary(
-                    row!.Code!, row.GroupName, row.Level, row.Count)).ToArray(),
+                Summary = summary,
             };
             var baselineToken = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
             var selectionSha256 = SelectionDigest(database, baseline.FwDataPath, baselineToken);

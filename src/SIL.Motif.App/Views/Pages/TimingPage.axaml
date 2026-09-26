@@ -60,7 +60,7 @@
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
           <TextBox Text="{Binding PickedWords}" AcceptsReturn="True" TextWrapping="Wrap"
                    Height="{DynamicResource Component.Timing.PickerHeight}"
-                   Watermark="Type or paste words, one per line"
+                   PlaceholderText="Type or paste words, one per line"
                    AutomationProperties.Name="Words picked by hand" />
           <Button Content="Pick words" Command="{Binding UsePickedWordsCommand}" />
         </StackPanel>
