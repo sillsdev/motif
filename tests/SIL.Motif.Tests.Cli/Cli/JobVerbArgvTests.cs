@@ -261,7 +261,7 @@ public sealed class JobVerbArgvTests : IDisposable
             CreateNoWindow = true,
         };
         // This suite asserts on the queue with nothing claiming it; a real kicked runner would race it.
-        start.Environment[RunnerKick.SuppressVariable] = "1";
+        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.

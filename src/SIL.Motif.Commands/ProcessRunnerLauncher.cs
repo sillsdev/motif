@@ -1,19 +1,72 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using WorkerRunnerOptions = SIL.Motif.Worker.RunnerOptions;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>Starts the sibling Worker process with explicit root and parser settings.</summary>
+/// <summary>
+/// Starts the job runner process after a verb enqueues durable work, so a pseudo-daemon that idled out is
+/// woken again rather than left stopped until someone happens to start it by hand.
+/// </summary>
+/// <remarks>
+/// No protocol exists between this and the runner it starts (ADR 0041 decision 5): the two rendezvous
+/// through nothing but the named ownership mutex the runner already guards itself with, so spawning is
+/// unconditional — an already-alive runner makes this a no-op, and keeps its own settings — and
+/// best-effort: a runner that fails to start leaves the row queued for the next enqueue to wake instead of
+/// failing the one that just queued it. Every setting in <see cref="Options"/> travels as a launch argument,
+/// which the runner prefers over its environment.
+/// </remarks>
 public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
 {
-    public void Start(string projectPath, JobRunnerLaunchOptions options, Action<string>? reportWarning = null)
+    /// <summary>Skips the spawn. <b>Test-only</b>: a test that starts and manages a runner itself sets this.</summary>
+    public const string SuppressVariable = "MOTIF_SUPPRESS_KICK";
+
+    /// <summary>Overrides where the runner executable is found. <b>Test-only.</b></summary>
+    public const string ExecutableVariable = "MOTIF_WORKER_EXE";
+
+    public ProcessRunnerLauncher(JobRunnerLaunchOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.Root);
+        Options = options;
+    }
+
+    public JobRunnerLaunchOptions Options { get; }
+
+    /// <summary>
+    /// The launcher a process's environment selects: <see cref="JobRunnerLaunchOptions.FromEnvironment"/>,
+    /// or one that starts nothing when <see cref="SuppressVariable"/> is set.
+    /// </summary>
+    public static IJobRunnerLauncher FromEnvironment()
+    {
+        var options = JobRunnerLaunchOptions.FromEnvironment();
+        return string.IsNullOrEmpty(Environment.GetEnvironmentVariable(SuppressVariable))
+            ? new ProcessRunnerLauncher(options)
+            : new NoRunnerLauncher(options);
+    }
+
+    /// <summary>The runner executable <see cref="ExecutableVariable"/> names, or <see langword="null"/>.</summary>
+    public static string? ConfiguredExecutable()
+    {
+        var configured = Environment.GetEnvironmentVariable(ExecutableVariable);
+        return string.IsNullOrWhiteSpace(configured) ? null : configured;
+    }
+
+    /// <summary>Spawns the runner with this launcher's settings.</summary>
+    /// <remarks>
+    /// Windows <c>CreateProcess</c> duplicates every inheritable handle the caller holds, not just the
+    /// ones a child's own <see cref="ProcessStartInfo"/> wires up. Left alone, a caller capturing this
+    /// process's own stdio — a redirecting parent, a shell's command substitution — would block on
+    /// end-of-file until the spawned runner, which never touches those handles, eventually exits on its
+    /// own idle timeout. Marking this process's standard handles non-inheritable first closes that.
+    /// </remarks>
+    public void Start(string projectPath, Action<string>? reportWarning = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
-        ArgumentNullException.ThrowIfNull(options);
-        var executable = Locate();
+        var executable = Locate(Options.WorkerExecutable);
         if (executable is null) return;
 
         try
@@ -21,25 +74,50 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 MakeOwnStandardHandlesNonInheritable();
             var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true };
-            start.ArgumentList.Add(WorkerRunnerOptions.RootArgument);
-            start.ArgumentList.Add(options.Root);
-            if (options.ParserPath is { } parserPath)
-            {
-                start.ArgumentList.Add(WorkerRunnerOptions.ParserArgument);
-                start.ArgumentList.Add(parserPath);
-            }
-            else
-            {
-                start.ArgumentList.Add(WorkerRunnerOptions.NoParserArgument);
-            }
+            foreach (var argument in Arguments(Options))
+                start.ArgumentList.Add(argument);
             Process.Start(start);
         }
         catch (Exception exception) when (exception is IOException or InvalidOperationException)
         {
+            // Reported, not thrown: the enqueue already succeeded, and the next enqueue will kick again.
             reportWarning?.Invoke("warning: could not start the background runner (" + exception.Message +
                 "). Queued work will run once one is started.");
         }
     }
+
+    private static IEnumerable<string> Arguments(JobRunnerLaunchOptions options)
+    {
+        yield return WorkerRunnerOptions.RootArgument;
+        yield return options.Root;
+        if (options.ParserPath is { } parserPath)
+        {
+            yield return WorkerRunnerOptions.ParserArgument;
+            yield return parserPath;
+        }
+        else
+        {
+            yield return WorkerRunnerOptions.NoParserArgument;
+        }
+        if (options.OwnerNamespace is { } ownerNamespace)
+        {
+            yield return WorkerRunnerOptions.NamespaceArgument;
+            yield return ownerNamespace;
+        }
+        if (options.IdleTimeout is { } idle)
+        {
+            yield return WorkerRunnerOptions.IdleArgument;
+            yield return Milliseconds(idle);
+        }
+        if (options.Lease is { } lease)
+        {
+            yield return WorkerRunnerOptions.LeaseArgument;
+            yield return Milliseconds(lease);
+        }
+    }
+
+    private static string Milliseconds(TimeSpan value) =>
+        ((long)Math.Ceiling(value.TotalMilliseconds)).ToString(CultureInfo.InvariantCulture);
 
     private const int StdInputHandle = -10;
     private const int StdOutputHandle = -11;
@@ -52,11 +130,16 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool SetHandleInformation(IntPtr hObject, uint dwMask, uint dwFlags);
 
-    private static string? Locate()
+    private static string? Locate(string? configured)
     {
+        if (configured is not null)
+            return File.Exists(configured) ? configured : null;
+
         var fileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? "SIL.Motif.Worker.exe"
             : "SIL.Motif.Worker";
+
+        // Beside the host, built or published alike: one artifact, one version (ADR 0040 decision 5).
         var sibling = Path.Combine(AppContext.BaseDirectory, fileName);
         return File.Exists(sibling) ? sibling : null;
     }

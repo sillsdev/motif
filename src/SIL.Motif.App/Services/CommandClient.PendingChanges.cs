@@ -11,14 +11,14 @@ public sealed partial class CommandClient
     public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChangesWorkflow.Apply(request, cancellationToken,
-            runnerOptions: _options.LaunchOptions, runnerLauncher: _options.RunnerLauncher), cancellationToken,
+            runnerLauncher: _options.RunnerLauncher), cancellationToken,
             () => CommandOutcome<ApplyPendingResult>.Refused(new Refusal(
                 "project.wait-cancelled", FailureReason.Cancelled, "Waiting to use the project was cancelled.")));
 
     public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken) =>
         PendingChangesWorkflow.Measure(request, progress, cancellationToken,
-            runnerOptions: _options.LaunchOptions, runnerLauncher: _options.RunnerLauncher);
+            runnerLauncher: _options.RunnerLauncher);
 
     public Task<CommandOutcome<PendingChangesSnapshot>> LoadPendingChangesAsync(
         PendingChangesRequest request, CancellationToken cancellationToken) =>

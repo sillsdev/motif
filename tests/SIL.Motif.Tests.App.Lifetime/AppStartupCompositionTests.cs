@@ -37,7 +37,7 @@ public sealed class AppStartupCompositionTests
         var options = new MotifAppOptions(
             managedRoot,
             Path.Combine(managedRoot, "pangloss.exe"),
-            new NoOpRunnerLauncher(),
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, Path.Combine(managedRoot, "pangloss.exe"))),
             new FixedTimeProvider(new DateTimeOffset(2026, 9, 25, 12, 0, 0, TimeSpan.Zero)),
             new CancelProjectPicker(),
             new CancelFolderPicker(),
@@ -70,12 +70,6 @@ public sealed class AppStartupCompositionTests
             Dispatcher.UIThread.RunJobs();
             if (Directory.Exists(managedRoot)) Directory.Delete(managedRoot, recursive: true);
         }
-    }
-
-    private sealed class NoOpRunnerLauncher : IJobRunnerLauncher
-    {
-        public void Start(string projectPath, JobRunnerLaunchOptions options,
-            Action<string>? reportWarning = null) { }
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider

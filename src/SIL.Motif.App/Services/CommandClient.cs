@@ -41,8 +41,13 @@ public sealed partial class CommandClient : ICommandClient
 
     public CommandClient() : this(CommandClientOptions.ForInstallation()) { }
 
-    public CommandClient(string managedRoot) : this(new CommandClientOptions(
-        managedRoot, PanGlossExecutable.TryLocateFromInstallation(), new ProcessRunnerLauncher()))
+    public CommandClient(string managedRoot) : this(CommandClientOptions.ForInstallation() is var installed
+        ? installed with
+        {
+            ManagedRoot = managedRoot,
+            RunnerLauncher = new ProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, installed.ParserPath)),
+        }
+        : throw new InvalidOperationException())
     {
     }
 
@@ -51,6 +56,13 @@ public sealed partial class CommandClient : ICommandClient
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.ManagedRoot);
         ArgumentNullException.ThrowIfNull(options.RunnerLauncher);
+        var launched = options.RunnerLauncher.Options;
+        if (!string.Equals(Path.GetFullPath(launched.Root), Path.GetFullPath(options.ManagedRoot),
+                StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(launched.ParserPath, options.ParserPath, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException(
+                "The runner launcher must use the same worker root and parser as the command client.",
+                nameof(options));
         _options = options;
         _managedRoot = options.ManagedRoot;
     }

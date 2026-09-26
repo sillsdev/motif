@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
@@ -29,11 +30,8 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
                 using var firstWalkthrough = new WalkthroughWindow(
                     managedRoot, firstProject.FwDataPath);
                 var secondClient = new HoldingCommandClient(
-                    new CommandClient(CommandClientOptions.ForInstallation() with
-                    {
-                        ManagedRoot = managedRoot,
-                        ParserPath = PanGlossExecutable.TryLocate(),
-                    }), holdAssess: true);
+                    new CommandClient(new CommandClientOptions(managedRoot, PanGlossExecutable.TryLocate(),
+                        new ProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, PanGlossExecutable.TryLocate())))), holdAssess: true);
                 using var secondWalkthrough = new WalkthroughWindow(
                     managedRoot, secondProject.FwDataPath, commandClient: secondClient);
                 WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(firstWalkthrough, deadline);

@@ -85,7 +85,7 @@ public sealed class ProcessWritingSystemRepositoryTests
                 CreateNoWindow = true,
             };
             start.Environment[RunnerOptions.RootVariable] = childWorkerRoot;
-            start.Environment[RunnerKick.SuppressVariable] = "1";
+            start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
             start.ArgumentList.Add("open");
             start.ArgumentList.Add(fwDataPath);
             start.ArgumentList.Add("--json");

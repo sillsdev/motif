@@ -9,6 +9,7 @@ using SIL.Motif.App.Composition;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -29,10 +30,11 @@ public sealed class WalkthroughWindow : IDisposable
         _folderPicker = new ScriptedFolderPicker(folderPath);
         _dragSource = new RecordingDragSource();
 
+        var parserPath = PanGlossExecutable.TryLocate();
         var composition = MotifAppComposition.Create(new MotifAppOptions(
             managedRoot,
-            PanGlossExecutable.TryLocate(),
-            new InProcessRunnerLauncher(),
+            parserPath,
+            new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath)),
             timeProvider ?? TimeProvider.System,
             _projectPicker,
             _folderPicker,

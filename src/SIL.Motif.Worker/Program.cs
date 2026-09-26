@@ -29,8 +29,8 @@ namespace SIL.Motif.Worker;
 
 internal static class Program
 {
-    private const string BaselineRefreshKind = "baseline-refresh";
-    private const string DryRunKind = "dry-run";
+    private const string BaselineRefreshKind = ProjectJobHandlers.BaselineRefreshKind;
+    private const string DryRunKind = ProjectJobHandlers.DryRunKind;
 
     /// Matches the bound <see cref="JobRepository.RetryInfrastructure"/> itself applies to any lineage.
     private const int MaxAutomaticBaselineRefreshAttempts = 3;
@@ -208,7 +208,8 @@ internal static class Program
             if (runtime.Jobs.ListActive(runtime.WorkspaceKey).Count != 0) hasActiveWork = true;
             else runtime.Jobs.PurgeArchived(ArchivePolicy.Default);
 
-            opened.Add((runtime, BuildLoop(runtime, project, options, invoker, ownerId, lanes)));
+            opened.Add((runtime, ProjectJobHandlers.CreateLoop(runtime.Database, runtime.Baselines, runtime.WorkspaceKey,
+                project, options, invoker, ownerId, lanes)));
         }
 
         if (opened.Count == 0) return new SweepOutcome(null, hasActiveWork);
@@ -306,84 +307,4 @@ internal static class Program
     private static void EnqueueBaselineRefresh(Projects.ProjectRuntime runtime, DateTimeOffset now) =>
         runtime.Jobs.Create(CanonicalId.Mint("job/").Value, runtime.WorkspaceKey, BaselineRefreshKind, "{}",
             now.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
-
-    /// <summary>Builds the handlers one project's claimed jobs are dispatched to.</summary>
-    private static JobRunnerLoop BuildLoop(Projects.ProjectRuntime runtime, ProjectLocator project,
-        RunnerOptions options, IPanGlossInvoker invoker, string ownerId, Scheduling.ProjectLaneRegistry lanes)
-    {
-        var publish = new BaselineRefresh(runtime.Baselines, options.Root);
-        var refresh = new BaselineRefreshJobHandler(
-            new BaselineRefreshBarrier(locator => new FwDataProjectLoader().LoadCache(locator.FullFwDataPath)),
-            (cache, token) => publish.RefreshAsync(cache, project, token));
-        var proposals = new ProposalRepository(runtime.Database);
-        var dryRun = new DryRunJobHandler(runtime.Baselines, proposals, lanes, _ => null,
-            (fwDataPath, _) =>
-            {
-                // One open of the published Baseline: peeked here for the applied log, consumed later to run.
-                var scratch = new BaselineScratchFactory().OpenSingleUse(fwDataPath);
-                var appliedProposalIds = ProjectAppliedLog.ReadAll(scratch.PeekCache())
-                    .Select(entry => entry.ProposalId).ToArray();
-                return Task.FromResult<(IReadOnlyCollection<Guid>, DryRunScratch?)>((appliedProposalIds, scratch));
-            },
-            (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)));
-
-        var handlers = new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal)
-        {
-            [BaselineRefreshKind] = (_, token) => refresh.RunAsync(project, token),
-            [DryRunKind] = (job, token) => dryRun.RunAsync(job, project, token),
-        };
-
-        if (TryBuildTrialHandler(runtime, proposals, lanes, options, invoker) is { } trial)
-            handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
-
-        return new JobRunnerLoop(new JobClaims(runtime.Database), runtime.WorkspaceKey, ownerId: ownerId,
-            lease: options.Lease, poll: TimeSpan.Zero, handlers: handlers);
-    }
-
-    /// <summary>Builds a Trial handler, or null when the parser or root is not usable.</summary>
-    private static TrialJobHandler? TryBuildTrialHandler(Projects.ProjectRuntime runtime,
-        ProposalRepository proposals, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options,
-        IPanGlossInvoker invoker)
-    {
-        // No executable, no Trial handler: a Trial job would otherwise fail on every attempt.
-        if (options.ParserPath is null) return null;
-        IAssessorCatalog catalog;
-        try
-        {
-            var ownership = WorkspaceOwnership.Bootstrap(options.Root);
-            catalog = new AssessorCatalog(new IAssessor[]
-            {
-                new PanGlossAssessor(new StatsCacheStore(ownership), invoker),
-            });
-        }
-        catch (ArgumentException)
-        {
-            return null;
-        }
-
-        var loader = new FwDataProjectLoader();
-        return new TrialJobHandler(runtime.Baselines, proposals, lanes,
-            new ProjectConfigurationReader(), catalog, new AssessmentRepository(runtime.Database),
-            (fwDataPath, scratchRoot, _) =>
-            {
-                var factory = new ScratchCacheFactory(loader);
-                var cache = factory.CreateFromFileCopy(fwDataPath, scratchRoot);
-                var scratch = DryRunScratch.Adopt(cache, $"file copy under {scratchRoot}");
-                var appliedProposalIds = ProjectAppliedLog.ReadAll(scratch.PeekCache())
-                    .Select(entry => entry.ProposalId).ToArray();
-                return Task.FromResult<(IReadOnlyCollection<Guid>, DryRunScratch?)>((appliedProposalIds, scratch));
-            },
-            (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)),
-            (cache, _) =>
-            {
-                if (cache is null)
-                {
-                    throw new InvalidOperationException(
-                        "A Trial requires a real scratch to prepare a candidate for Assessment.");
-                }
-                loader.Save(cache);
-                var directory = Path.GetDirectoryName(Path.GetFullPath(cache.ProjectId.Path))!;
-                return Task.FromResult(directory);
-            });
-    }
 }

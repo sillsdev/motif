@@ -18,10 +18,13 @@ public static class PendingChangesWorkflow
     /// <param name="request">The project, pending Draft, expected revision, and applying user.</param>
     /// <param name="cancellationToken">Cancels the queued Dry Run and reopens the Draft while waiting.</param>
     /// <param name="dryRunTimeout">The wait bound, or <see langword="null"/> to use the command default.</param>
+    /// <param name="runnerLauncher">
+    /// Starts the runner for the queued Dry Run, or <see langword="null"/> for
+    /// <see cref="ProcessRunnerLauncher.FromEnvironment"/>, the command line's own.
+    /// </param>
     public static CommandOutcome<ApplyPendingResult> Apply(
         ApplyPendingRequest request, CancellationToken cancellationToken = default,
-        TimeSpan? dryRunTimeout = null, JobRunnerLaunchOptions? runnerOptions = null,
-        IJobRunnerLauncher? runnerLauncher = null)
+        TimeSpan? dryRunTimeout = null, IJobRunnerLauncher? runnerLauncher = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var version = MotifProductVersion.CurrentText;
@@ -62,7 +65,7 @@ public static class PendingChangesWorkflow
 
         var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(request.ProjectPath, version, proposalId));
         if (!queued.Succeeded) return ReopenAfterRefusal(resolvedRequest, queued.Refusal!);
-        KickRunner(request.ProjectPath, runnerOptions, runnerLauncher);
+        (runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment()).Start(request.ProjectPath);
         var dryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(
             request.ProjectPath, version, proposalId, queued.Value!.JobId,
             dryRunTimeout ?? JobCommands.DefaultWaitTimeout), cancellationToken, cancelOnTimeout: true);
@@ -82,12 +85,15 @@ public static class PendingChangesWorkflow
     /// <param name="progress">Receives the number of words completed and the current word.</param>
     /// <param name="cancellationToken">Cancels the Trial job and stops waiting for it.</param>
     /// <param name="waitTimeout">The wait bound, or <see langword="null"/> to wait until completion or cancellation.</param>
+    /// <param name="runnerLauncher">
+    /// Starts the runner for the queued Trial, or <see langword="null"/> for
+    /// <see cref="ProcessRunnerLauncher.FromEnvironment"/>, the command line's own.
+    /// </param>
     public static async Task<CommandOutcome<MeasurePendingResult>> Measure(
         MeasurePendingRequest request,
         IProgress<MeasureProgress> progress,
         CancellationToken cancellationToken,
         TimeSpan? waitTimeout = null,
-        JobRunnerLaunchOptions? runnerOptions = null,
         IJobRunnerLauncher? runnerLauncher = null)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -111,7 +117,7 @@ public static class PendingChangesWorkflow
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
         if (!queued.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(queued.Refusal!);
         var jobId = queued.Value!.JobId;
-        KickRunner(request.ProjectPath, runnerOptions, runnerLauncher);
+        (runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment()).Start(request.ProjectPath);
 
         MeasureProgress? lastProgress = null;
         var jobProgress = new JobStatusProgress(status =>
@@ -158,17 +164,6 @@ public static class PendingChangesWorkflow
             return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(new PendingDraftIdentity(
                 draft.ProposalId.Value, DraftRevision.Compute(json))));
         });
-
-    private static void KickRunner(string projectPath, JobRunnerLaunchOptions? options, IJobRunnerLauncher? launcher)
-    {
-        if (launcher is null)
-        {
-            RunnerKick.After();
-            return;
-        }
-
-        RunnerKick.After(projectPath, options ?? JobRunnerLaunchOptions.ForCommandDefaults(), launcher);
-    }
 
     private static CommandOutcome<ApplyPendingResult> ReopenAfterRefusal(
         ApplyPendingRequest request, Refusal reason)
