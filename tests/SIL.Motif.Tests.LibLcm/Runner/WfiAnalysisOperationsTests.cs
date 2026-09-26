@@ -84,7 +84,7 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
 
         var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester");
 
-        var created = Assert.Single(_wordform.AnalysesOC.Where(item => item.Guid == proposedAnalysis.ToGuid()));
+        var created = Assert.Single(_wordform.AnalysesOC, item => item.Guid == proposedAnalysis.ToGuid());
         var bundle = Assert.Single(created.MorphBundlesOS);
         Assert.Equal(form.Guid, bundle.MorphRA!.Guid);
         Assert.Equal(msa.Guid, bundle.MsaRA!.Guid);

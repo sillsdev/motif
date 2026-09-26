@@ -17,7 +17,7 @@ public sealed class RunnerMachineDatabaseLossTests : IDisposable
     private Process? _runner;
 
     [Fact]
-    public void ARunnerWhoseRootIsDeletedReportsItAndExitsWithTheEscapedFailureCode()
+    public async Task ARunnerWhoseRootIsDeletedReportsItAndExitsWithTheEscapedFailureCode()
     {
         Directory.CreateDirectory(_root);
         var start = new ProcessStartInfo(BuildOutput.Worker)
@@ -44,7 +44,7 @@ public sealed class RunnerMachineDatabaseLossTests : IDisposable
 
         Assert.True(_runner.WaitForExit(30_000), "The runner kept running after its machine database was deleted.");
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent), _runner.ExitCode);
-        Assert.Contains("machine database", error.GetAwaiter().GetResult(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("machine database", await error, StringComparison.OrdinalIgnoreCase);
     }
 
     // The runner holds its files only while a sweep touches them, so a deletion succeeds between sweeps.

@@ -32,7 +32,7 @@ public sealed class PanGlossPinTests
     [Fact]
     public void TheHandoffLinksPanGlossDocumentsAtThePinnedRelease()
     {
-        Assert.Equal(ReadPin().Tag, HandoffWriter.PanGlossRef);
+        Assert.Equal(HandoffWriter.PanGlossRef, ReadPin().Tag);
     }
 
     private sealed record Pin(string Version, string Tag, string Url, string Sha256);

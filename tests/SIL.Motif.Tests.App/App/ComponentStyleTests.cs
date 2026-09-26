@@ -27,7 +27,7 @@ public sealed class ComponentStyleTests
         var directory = System.IO.Path.Combine(AppDirectory(), "Tokens", "Components");
         var styled = Directory.GetFiles(directory, "*.axaml")
             .Where(file => File.ReadAllText(file).Contains("<Style ", StringComparison.Ordinal))
-            .Select(System.IO.Path.GetFileNameWithoutExtension)
+            .Select(file => System.IO.Path.GetFileNameWithoutExtension(file)!)
             .Order()
             .ToList();
         Assert.Equal(styled, Cases().Select(item => item.Component).Distinct().Order().ToList());

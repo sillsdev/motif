@@ -207,7 +207,7 @@ public sealed class WorkspaceContextTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        var request = Assert.Single(fake.TimingRequests.Where(item => item.By == "kind"));
+        var request = Assert.Single(fake.TimingRequests, item => item.By == "kind");
         Assert.Equal(ProjectPath, request.ProjectPath);
         Assert.Equal("assessment-1", request.AssessmentId);
         Assert.Equal("all", request.WordSet);
@@ -843,8 +843,8 @@ public sealed class WorkspaceContextTests
         await timing.LoadFocusedTimingCommand.ExecutionTask!;
 
         Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
-        var request = Assert.Single(fake.TimingRequests.Where(item => item.By == "kind" &&
-            item.ExplicitWords is { Count: > 0 }));
+        var request = Assert.Single(fake.TimingRequests, item => item.By == "kind" &&
+            item.ExplicitWords is { Count: > 0 });
         Assert.Equal("assessment-parse", request.AssessmentId);
         Assert.Equal("kind", request.By);
         Assert.Equal(["dogs"], request.ExplicitWords);
@@ -867,8 +867,8 @@ public sealed class WorkspaceContextTests
         await timing.LoadFocusedTimingCommand.ExecutionTask!;
 
         Assert.Equal(["dogs"], timing.Focus!.Words);
-        var request = Assert.Single(fake.TimingRequests.Where(item => item.Rule == "Plural" &&
-            item.ExplicitWords is { Count: > 0 }));
+        var request = Assert.Single(fake.TimingRequests, item => item.Rule == "Plural" &&
+            item.ExplicitWords is { Count: > 0 });
         Assert.Equal("rule", request.By);
         Assert.Equal("Plural", request.Rule);
         Assert.Equal(["dogs"], request.ExplicitWords);
@@ -934,13 +934,13 @@ public sealed class WorkspaceContextTests
         Assert.Equal(PageRegistry.Entries.Count, pageModels.Count);
 
         foreach (var holder in new[] { typeof(WorkspaceShellViewModel), typeof(WorkspaceContext) })
-            Assert.Empty(NamedTypes(holder).Where(pageModels.Contains));
+            Assert.DoesNotContain(NamedTypes(holder), pageModels.Contains);
 
         foreach (var page in pageModels)
         {
             var named = NamedTypes(page).ToList();
             Assert.DoesNotContain(typeof(WorkspaceShellViewModel), named);
-            Assert.Empty(named.Where(type => type != page && pageModels.Contains(type)));
+            Assert.DoesNotContain(named, type => type != page && pageModels.Contains(type));
         }
     }
 

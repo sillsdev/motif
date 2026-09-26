@@ -168,7 +168,7 @@ public sealed class WindowRefusalTests
         foreach (Match match in codePattern.Matches(File.ReadAllText(file)))
             declared.Add(match.Groups[1].Value);
 
-        Assert.Empty(AllCatalogueCodes().Where(code => !declared.Contains(code)));
+        Assert.DoesNotContain(AllCatalogueCodes(), code => !declared.Contains(code));
     }
 
     private static Refusal Refusal(string code) => new(code, FailureReason.Refused, "The command's own sentence.",

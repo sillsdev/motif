@@ -58,7 +58,7 @@ public sealed class ProcessWritingSystemRepositoryTests
     }
 
     [Fact]
-    public void LaunchedMotifProcessUsesTheSelectedRepositoryInsteadOfTheMachineWideRepository()
+    public async Task LaunchedMotifProcessUsesTheSelectedRepositoryInsteadOfTheMachineWideRepository()
     {
         var machineStore = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -102,8 +102,8 @@ public sealed class ProcessWritingSystemRepositoryTests
                     process.Kill();
                 throw new TimeoutException($"motif open did not exit before the test timeout: {executable}");
             }
-            var output = outputTask.GetAwaiter().GetResult();
-            var error = errorTask.GetAwaiter().GetResult();
+            var output = await outputTask;
+            var error = await errorTask;
 
             Assert.True(process.ExitCode == 0, $"motif open failed: {error}\n{output}");
             Assert.Equal(machineStoreBefore, SnapshotFiles(machineStore));

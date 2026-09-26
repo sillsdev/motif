@@ -63,7 +63,8 @@ internal sealed class MotifAppHost
     private MotifAppHost()
     {
         var thread = new Thread(Run) { IsBackground = true, Name = "Motif real startup" };
-        thread.SetApartmentState(ApartmentState.STA);
+        if (OperatingSystem.IsWindows())
+            thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
     }
 

@@ -51,7 +51,9 @@ public sealed class PendingChangesWindowActivationTests(PristineProjectFixture p
             new AssessViewModel(commands, selection), new TestFolderPicker(), new TestDragSource(), commands);
         try
         {
-            await workspace.Context.OpenProjectCommand.ExecuteAsync(fwDataPath);
+            var openProjectCommand = workspace.Context.OpenProjectCommand;
+            Assert.NotNull(openProjectCommand);
+            await openProjectCommand.ExecuteAsync(fwDataPath);
             using var held = new FileStream(fwDataPath + ".lock", FileMode.Create,
                 FileAccess.ReadWrite, FileShare.None);
 
