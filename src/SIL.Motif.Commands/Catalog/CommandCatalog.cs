@@ -50,7 +50,7 @@ public static class CommandCatalog
         new CommandDescriptor("trial --pending", typeof(MeasurePendingRequest),
             typeof(MeasurePendingResult), CommandSurface.Developer),
         new CommandDescriptor("review-numbers", typeof(ReviewNumbersCommand.Request),
-            typeof(ReviewNumbersCommand.Response), CommandSurface.Developer),
+            typeof(ReviewNumbersResponse), CommandSurface.Developer),
         new CommandDescriptor("add-set-gloss", typeof(AddSetGlossRequest), typeof(SetGlossAddedResponse), CommandSurface.Developer),
         new CommandDescriptor(
             "add-delete-lexeme-form", typeof(AddDeleteLexemeFormRequest), typeof(DeleteLexemeFormAddedResponse), CommandSurface.Developer),

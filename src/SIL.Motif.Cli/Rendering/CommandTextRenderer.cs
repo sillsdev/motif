@@ -46,7 +46,8 @@ public static class CommandTextRenderer
             CorpusBundleAddedResponse r => RenderCorpusBundleAdded(r),
             ReportKindListResponse r => RenderReportKindList(r),
             ReportResponse r => RenderReport(r),
-            ReviewNumbersCommand.Response r => r.Text + Environment.NewLine,
+            ReviewNumbersResponse r => RenderReviewNumbers(r),
+            MeasurePendingResult r => RenderReviewNumbers(r.Numbers),
             CompareResponse r => RenderCompare(r),
             JobEnqueuedResponse r => r.JobId + Environment.NewLine,
             JobStatusResponse r => RenderJobStatus(r),
@@ -151,6 +152,21 @@ public static class CommandTextRenderer
         text.AppendLine(response.Text);
         return text.ToString();
     }
+
+    private static string RenderReviewNumbers(ReviewNumbersResponse numbers) => (numbers.Comparability switch
+    {
+        ReviewComparability.NoEarlierAssessment =>
+            $"{numbers.TouchedWordsCovered} of {numbers.TouchedWordCount} touched words kept their approved " +
+            "analyses. There is no earlier Assessment to compare.",
+        ReviewComparability.DifferentAssessor =>
+            "These Assessments were made by different Assessors and cannot be compared.",
+        ReviewComparability.NoSharedWords =>
+            "The regression check could not compare these Assessments because they share no words.",
+        ReviewComparability.Compared =>
+            $"Among {numbers.SharedWordCount} shared {(numbers.SharedWordCount == 1 ? "word" : "words")}, " +
+            $"approved kept: {numbers.ApprovedKeptBefore} → {numbers.ApprovedKeptAfter}.",
+        _ => throw new ArgumentOutOfRangeException(nameof(numbers), numbers.Comparability, null),
+    }) + Environment.NewLine;
 
     private static string RenderCompare(CompareResponse response)
     {

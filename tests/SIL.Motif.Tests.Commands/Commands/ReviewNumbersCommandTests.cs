@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
@@ -21,9 +22,9 @@ public sealed class ReviewNumbersCommandTests
         var numbers = ReviewNumbersCommand.Summarize(before, after, 1);
 
         Assert.True(numbers.EvidenceComplete);
-        Assert.Contains("1 shared word", numbers.Text);
-        Assert.Contains("0 → 1", numbers.Text);
-        Assert.DoesNotContain("2 shared", numbers.Text);
+        Assert.Equal(ReviewComparability.Compared, numbers.Comparability);
+        Assert.Equal(1, numbers.SharedWordCount);
+        Assert.Equal((0, 1), (numbers.ApprovedKeptBefore, numbers.ApprovedKeptAfter));
     }
 
     [Fact]
@@ -34,7 +35,7 @@ public sealed class ReviewNumbersCommandTests
 
         var numbers = ReviewNumbersCommand.Summarize(before, after, 1);
 
-        Assert.Contains("share no words", numbers.Text);
+        Assert.Equal(ReviewComparability.NoSharedWords, numbers.Comparability);
     }
 
     private static AssessmentRecord Record(string id, IReadOnlyList<AssessedWord> words)
