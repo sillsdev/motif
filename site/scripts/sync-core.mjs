@@ -249,7 +249,8 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 		const destination = path.join(localeRoot, 'learn', `${slug}.md`);
 		await mkdir(path.dirname(destination), { recursive: true });
 		await writeFile(destination, `${frontmatter(title, description)}${body}\n`);
-		learnLinks.push(`- [${title}](/learn/${slug}/)`);
+		const localePrefix = locale === 'en' ? '' : `/${locale}`;
+		learnLinks.push(`- [${title}](${localePrefix}/learn/${slug}/)`);
 	}
 
 	const sections = guideSections.map((section) => {
@@ -265,10 +266,14 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 	const learnIndex = path.join(localeRoot, 'learn', 'index.md');
 	await mkdir(path.dirname(learnIndex), { recursive: true });
 	await writeFile(learnIndex, `${frontmatter('Learn', 'Step-by-step lessons for learning Motif with sample language projects.')}${learnLinks.join('\n')}\n`);
-	const speedSamples = new Set([...learnPages.keys()]
-		.filter((slug) => /(^|[-/])speed([-/.]|$)/.test(slug))
-		.map((slug) => `sample-${slug.split('/')[0].split('-')[0]}`));
-	return { learnLessons: learnPages.size, speedSamples };
+	const lessonsBySample = new Map();
+	const speedLessons = new Map();
+	for (const slug of learnPages.keys()) {
+		const sampleId = `sample-${slug.split('/')[0].split('-')[0]}`;
+		if (!lessonsBySample.has(sampleId)) lessonsBySample.set(sampleId, slug);
+		if (/(^|[-/])speed([-/.]|$)/.test(slug)) speedLessons.set(sampleId, slug);
+	}
+	return { learnLessons: learnPages.size, lessonsBySample, speedLessons };
 }
 
 function validSample(sample, directoryId) {
@@ -287,7 +292,7 @@ function sampleText(value) {
 	return value.replace(/[&<>]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character]).replace(/\s+/g, ' ').trim();
 }
 
-async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRoot, site, locale, speedSamples }) {
+async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRoot, site, locale, lessonsBySample, speedLessons }) {
 	const sampleDirectories = await readdir(samplesRoot, { withFileTypes: true }).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
 	const sampleIds = sampleDirectories.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
 	const sections = [];
@@ -298,6 +303,7 @@ async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRo
 		if (!validSample(sample, directoryId)) throw new Error(`Invalid sample metadata: ${metadataPath}`);
 
 		const downloads = [];
+		const downloadUrls = { fixed: null, broken: null };
 		for (const variant of ['fixed', 'broken']) {
 			const filename = `${sample.id}-${variant}.fwbackup`;
 			const source = path.join(samplesOut, filename);
@@ -307,14 +313,29 @@ async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRo
 				await mkdir(path.dirname(destination), { recursive: true });
 				await copyFile(source, destination);
 				downloads.push(`- [${variant === 'fixed' ? 'Fixed' : 'Broken'} project (.fwbackup)](/downloads/samples/${filename})`);
+				downloadUrls[variant] = `/downloads/samples/${filename}`;
 			} catch (error) {
 				if (error.code !== 'ENOENT') throw error;
 				downloads.push(`- ${variant === 'fixed' ? 'Fixed' : 'Broken'} project (.fwbackup) is available in release builds.`);
 			}
 		}
 
-		const hasSpeedLesson = speedSamples.has(sample.id);
-		homeSamples.push({ id: sample.id, title: sample.title, language: sample.language, summary: sample.summary, speedLesson: hasSpeedLesson });
+		const speedLesson = speedLessons.get(sample.id);
+		const hasSpeedLesson = speedLesson !== undefined;
+		const lessonSlug = lessonsBySample.get(sample.id);
+		const localePrefix = locale === 'en' ? '' : `/${locale}`;
+		homeSamples.push({
+			id: sample.id,
+			title: sample.title,
+			language: sample.language,
+			teaches: sample.teaches,
+			summary: sample.summary,
+			disclaimer: sample.disclaimer,
+			downloads: downloadUrls,
+			lessonsHref: lessonSlug ? `${localePrefix}/learn/${lessonSlug}/` : null,
+			speedLesson: hasSpeedLesson,
+			speedLessonHref: speedLesson ? `${localePrefix}/learn/${speedLesson}/` : null,
+		});
 		sections.push([
 			`<a id="${sample.id}"></a>`,
 			`## ${sampleText(sample.title)}`,
@@ -515,7 +536,16 @@ export async function syncSiteContent({ repository, site, helpExportPath, helpRo
 	});
 	await writeHelpPages({ helpRoot, outputRoot: contentRoot, locale: helpExport.locale, entries: helpExport.entries, walkthroughs });
 	const learn = await writeGuidePages({ helpRoot, contentRoot, locale: helpExport.locale, entries: helpExport.entries, walkthroughs });
-	const samples = await writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRoot, site, locale: helpExport.locale, speedSamples: learn.speedSamples });
+	const samples = await writeSamplesPage({
+		samplesRoot,
+		samplesOut,
+		contentRoot,
+		publicRoot,
+		site,
+		locale: helpExport.locale,
+		lessonsBySample: learn.lessonsBySample,
+		speedLessons: learn.speedLessons,
+	});
 	await writeDeveloperDocs({ repository, docsRoot, contentRoot });
 
 	const xml = await readFile(apiXmlPath, 'utf8');

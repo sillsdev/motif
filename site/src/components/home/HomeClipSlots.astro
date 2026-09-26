@@ -8,13 +8,18 @@ const manifests = Object.values(import.meta.glob('../../data/walkthroughs/*/mani
 const { slots } = Astro.props;
 ---
 
-<div>
-	{slots.map((slot) => {
+<div class="home-clip-grid">
+	{slots.map((slot, index) => {
 		const manifest = manifests.find((candidate) => candidate.id === slot.walkthroughId);
 		return (
-			<article>
-				<h3>{slot.title}</h3>
-				{manifest ? <Walkthrough manifest={manifest} assetBase={`/walkthroughs/${manifest.id}`} /> : <p>{slot.description}</p>}
+			<article class="home-clip-card">
+				<div class="home-clip-card__frame">
+					{manifest ? <Walkthrough manifest={manifest} assetBase={`/walkthroughs/${manifest.id}`} /> : <p>{slot.description}</p>}
+				</div>
+				<div class="home-clip-card__summary">
+					<span aria-hidden="true">{index + 1}</span>
+					<div><h3>{slot.title}</h3>{manifest && <p>{slot.description}</p>}</div>
+				</div>
 			</article>
 		);
 	})}

@@ -155,6 +155,12 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 	assert.doesNotMatch(samplesPage, /Includes a speed lesson/);
 	assert.equal(await readFile(path.join(site, 'public', 'downloads', 'samples', 'sample-turkish-fixed.fwbackup'), 'utf8'), 'fixed-project');
 	await assert.rejects(readFile(path.join(site, 'public', 'downloads', 'samples', 'sample-turkish-broken.fwbackup'), 'utf8'), { code: 'ENOENT' });
+	const initialHomeSample = JSON.parse(await readFile(path.join(site, 'src', 'data', 'samples.json'), 'utf8'))[0];
+	assert.equal(initialHomeSample.downloads.fixed, '/downloads/samples/sample-turkish-fixed.fwbackup');
+	assert.equal(initialHomeSample.downloads.broken, null);
+	assert.equal(initialHomeSample.lessonsHref, '/learn/turkish-plural-harmony/');
+	assert.equal(initialHomeSample.speedLesson, false);
+	assert.equal(initialHomeSample.speedLessonHref, null);
 	await assert.rejects(readFile(path.join(site, 'src', 'data', 'sample-turkish-performance.json'), 'utf8'), { code: 'ENOENT' });
 
 	await writeFile(path.join(samples, 'sample-turkish', 'expected.json'), JSON.stringify({
@@ -166,7 +172,15 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 	await syncSiteContent({ repository, site, helpExportPath: path.join(repository, 'help-export.json'), helpRoot: path.join(repository, 'help'), walkthroughRoot: walks, docsRoot: docs, apiXmlPath: apiXml, samplesRoot: samples, samplesOut: sampleBuild });
 	assert.match(await readFile(path.join(site, 'src', 'content', 'docs', 'samples', 'index.md'), 'utf8'), /Includes a speed lesson/);
 	assert.equal(await readFile(path.join(site, 'public', 'downloads', 'samples', 'sample-turkish-broken.fwbackup'), 'utf8'), 'broken-project');
-	assert.deepEqual(JSON.parse(await readFile(path.join(site, 'src', 'data', 'samples.json'), 'utf8'))[0].speedLesson, true);
+	const homeSample = JSON.parse(await readFile(path.join(site, 'src', 'data', 'samples.json'), 'utf8'))[0];
+	assert.deepEqual(homeSample.speedLesson, true);
+	assert.deepEqual(homeSample.speedLessonHref, '/learn/turkish-speed-benchmark/');
+	assert.deepEqual(homeSample.lessonsHref, '/learn/turkish-plural-harmony/');
+	assert.deepEqual(homeSample.teaches, ['suffix slots in order', 'vowel harmony']);
+	assert.deepEqual(homeSample.downloads, {
+		fixed: '/downloads/samples/sample-turkish-fixed.fwbackup',
+		broken: '/downloads/samples/sample-turkish-broken.fwbackup',
+	});
 	assert.deepEqual(JSON.parse(await readFile(path.join(site, 'src', 'data', 'sample-turkish-performance.json'), 'utf8')), {
 		fixed: { words: 2, parsed: 2, textCoverage: 1 },
 		broken: { words: 2, parsed: 1, textCoverage: 0.5 },

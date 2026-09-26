@@ -1,0 +1,28 @@
+---
+const { label, phrases } = Astro.props;
+---
+
+<section class="home-marquee" aria-label={label}>
+	<div class="home-marquee__track">
+		<div class="home-marquee__group">
+			{phrases.map((phrase) => (
+				<span class="home-marquee__item">
+					<span class:list={['home-marquee__text', phrase.strong && 'home-marquee__text--strong']}>
+						{phrase.text}
+					</span>
+					<span class="home-marquee__divider" aria-hidden="true"></span>
+				</span>
+			))}
+		</div>
+		<div class="home-marquee__group" aria-hidden="true">
+			{phrases.map((phrase) => (
+				<span class="home-marquee__item">
+					<span class:list={['home-marquee__text', phrase.strong && 'home-marquee__text--strong']}>
+						{phrase.text}
+					</span>
+					<span class="home-marquee__divider"></span>
+				</span>
+			))}
+		</div>
+	</div>
+</section>

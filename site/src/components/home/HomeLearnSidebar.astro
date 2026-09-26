@@ -1,0 +1,46 @@
+---
+import DefaultSidebar from '@astrojs/starlight/components/Sidebar.astro';
+import MobileMenuFooter from 'virtual:starlight/components/MobileMenuFooter';
+import samples from '../../data/samples.json';
+
+const route = Astro.locals.starlightRoute;
+const routeId = route.entry.id.replace(/\.mdx?$/i, '');
+const isLearnLesson = routeId.includes('learn/') && !routeId.endsWith('/index');
+
+function flattenSidebar(entries) {
+	return entries.flatMap((entry) => entry.type === 'link' ? [entry] : flattenSidebar(entry.entries ?? []));
+}
+
+const lessons = flattenSidebar(route.sidebar).filter((entry) => entry.href.includes('/learn/') && !/\/learn\/?(?:[#?].*)?$/.test(entry.href));
+const sampleSlug = routeId.split('/').at(-1)?.split('-')[0];
+const sample = samples.find((entry) => entry.id === `sample-${sampleSlug}`);
+const otherSamples = samples.filter((entry) => entry.id !== sample?.id);
+const localePrefix = route.locale ? `/${route.locale}` : '';
+---
+
+{isLearnLesson ? (
+	<>
+		<div class="learn-sidebar">
+			<p class="learn-sidebar__heading">{Astro.locals.t('home.learnSampleHeading', { language: sample?.language.name ?? '' })}</p>
+			<ol>
+				{lessons.map((lesson, index) => (
+					<li>
+						<a href={lesson.href} aria-current={lesson.isCurrent ? 'page' : undefined}>
+							<span>{index + 1}</span>
+							<span>{lesson.label}</span>
+						</a>
+					</li>
+				))}
+			</ol>
+			{otherSamples.length > 0 && (
+				<div class="learn-sidebar__other">
+					<p>{Astro.locals.t('home.learnOtherSamples')}</p>
+					{otherSamples.map((entry) => (
+						<a href={`${localePrefix}/samples/#${entry.id}`}>{entry.language.name}</a>
+					))}
+				</div>
+			)}
+		</div>
+		<div class="md:sl-hidden"><MobileMenuFooter /></div>
+	</>
+) : <DefaultSidebar />}

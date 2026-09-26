@@ -11,5 +11,11 @@ const { id, diagramAlt } = Astro.props;
 
 <HomeSection id={id}>
 	<slot />
-	{diagram && <img src={diagram} alt={diagramAlt} />}
+	{diagram && (
+		<figure class="home-diagram" aria-label={diagramAlt}>
+			<img class="home-diagram__art" src={diagram} alt="" />
+			<slot name="diagram-labels" />
+			<slot name="diagram-loop" />
+		</figure>
+	)}
 </HomeSection>

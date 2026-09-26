@@ -3,15 +3,25 @@ const samples = Object.values(import.meta.glob('../../data/samples.json', {
 	eager: true,
 	import: 'default',
 }))[0] ?? [];
-const { speedLessonLabel } = Astro.props;
+const { speedLessonLabel, brokenLabel, fixedLabel, lessonsLabel, teachesLabel, availableInReleaseLabel } = Astro.props;
 ---
 
-<div>
+<div class="home-sample-grid">
 	{samples.map((sample) => (
-		<article>
-			<h3><a href={`/samples/#${sample.id}`}>{sample.title}</a></h3>
-			<p>{sample.summary}</p>
-			{sample.speedLesson && <p>{speedLessonLabel}</p>}
+		<article class="home-sample-card">
+			<h3><a href={`samples/#${sample.id}`}>{sample.language.name}</a></h3>
+			<p><strong>{teachesLabel}:</strong> {sample.teaches.join(', ')}</p>
+			{sample.speedLesson && <p class="home-sample-card__speed">{speedLessonLabel}</p>}
+			<nav aria-label={`${sample.title} downloads`}>
+				{sample.downloads.broken
+					? <a href={sample.downloads.broken}>{brokenLabel}</a>
+					: <span>{brokenLabel} <small>{availableInReleaseLabel}</small></span>}
+				{sample.downloads.fixed
+					? <a href={sample.downloads.fixed}>{fixedLabel}</a>
+					: <span>{fixedLabel} <small>{availableInReleaseLabel}</small></span>}
+				{sample.lessonsHref && <a href={sample.lessonsHref}>{lessonsLabel}</a>}
+			</nav>
+			<p class="home-sample-card__disclaimer">{sample.disclaimer}</p>
 		</article>
 	))}
 </div>
