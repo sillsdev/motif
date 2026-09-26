@@ -60,14 +60,18 @@ internal static class AssessmentWordRows
 
     /// <summary>How many searches completed, stopped at a limit, or were not attempted, in one sentence.</summary>
     internal static string CompletionSummary(IReadOnlyCollection<AssessmentWordResult> words) =>
-        AssessCommand.CompletionSummary(
+        CompletionSummary(
             words.Count(word => !word.IsIncomplete && word.Outcome != "skipped"),
             words.Count(word => word.IsIncomplete), words.Count(word => word.Outcome == "skipped"));
 
-    /// <summary>
-    /// One recorded word's row. The store keeps a missed approved reading's forms but not its glosses, so those
-    /// readings name forms alone.
-    /// </summary>
+    /// <summary>The same sentence from counts already made, as the project history lists each Assessment.</summary>
+    internal static string CompletionSummary(int completedCount, int incompleteCount, int skippedCount)
+    {
+        var searchNoun = completedCount == 1 ? "search" : "searches";
+        return $"{completedCount} {searchNoun} completed; {incompleteCount} incomplete; {skippedCount} skipped.";
+    }
+
+    /// <summary>One recorded word's row, with the missed approved readings named as the run named them.</summary>
     internal static AssessmentWordResult FromRecorded(AssessedWord word)
     {
         var row = Row(word.Word, word.Outcome, word.ElapsedMs, word.RawSignature, word.Morphology, word.Correctness);
@@ -77,10 +81,7 @@ internal static class AssessmentWordRows
             ReadingGrades = word.ReadingGrades,
             ProjectStanding = word.ProjectStanding,
             OccurrenceCount = word.OccurrenceCount,
-            MissedApproved = word.Correctness?.Unmatched.Select(index => word.Correctness.Expectations[index])
-                .Select(expected => new ParserReading(expected.Morphs.Select(morph =>
-                    new ParserReadingMorph(morph.Forms.FirstOrDefault() ?? "?", "", "", null, false, null))
-                    .ToArray())).ToArray(),
+            MissedApproved = word.MissedApproved,
         };
         return row with { FixFirst = FixFirst(row) };
     }

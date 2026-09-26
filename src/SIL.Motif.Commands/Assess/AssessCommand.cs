@@ -316,6 +316,16 @@ public static class AssessCommand
                 var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
                 var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
                     composition.Descriptor.TextIds);
+                // Named once and recorded, so a later read of the stored words glosses them as this run does.
+                var namedMissed = new Dictionary<string, ParserReading[]?>(StringComparer.Ordinal);
+                ParserReading[]? NameMissed(string word, WordCorrectness? correctness)
+                {
+                    if (namedMissed.TryGetValue(word, out var named)) return named;
+                    return namedMissed[word] = correctness?.Unmatched
+                        .Select(index => correctness.Expectations[index])
+                        .Select(missed => ReadStoredAnalysis(namingCache, projectName, missed, ReadingGrade.Approved))
+                        .ToArray();
+                }
                 pendingRecords = pendingRecords.Select(record => record with
                 {
                     Words = record.Words.Select(word => word with
@@ -328,6 +338,7 @@ public static class AssessCommand
                             wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
                             wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>()),
                         MissedApprovedCount = word.Correctness?.Unmatched.Count,
+                        MissedApproved = NameMissed(word.Word, word.Correctness),
                     }).ToArray(),
                     ObjectTimings = record.Kind == AssessmentKind.ParseTime.ToStoredKind()
                         ? objectTimings : record.ObjectTimings,
@@ -370,10 +381,7 @@ public static class AssessCommand
                             wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
                             wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>());
                         var projectStanding = wordContext.Standings.GetValueOrDefault(word.Word);
-                        var missedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
-                            .Select(index => word.Correctness.Expectations[index])
-                            .Select(missed => ReadStoredAnalysis(namingCache, projectName, missed, ReadingGrade.Approved))
-                            .ToArray();
+                        var missedApproved = NameMissed(word.Word, word.Correctness);
                         var candidates = wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
                         var approved = wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
                         var nonApproved = candidates.Select(candidate => (Analysis: candidate, Opinion: ReadingGrade.Candidate))
@@ -476,12 +484,6 @@ public static class AssessCommand
     internal static string RenderSummaryMarkdown(string completionSummary, string statisticsOutput) =>
         completionSummary + Environment.NewLine + Environment.NewLine +
         "```" + Environment.NewLine + statisticsOutput + "```" + Environment.NewLine;
-
-    internal static string CompletionSummary(int completedCount, int incompleteCount, int skippedCount)
-    {
-        var searchNoun = completedCount == 1 ? "search" : "searches";
-        return $"{completedCount} {searchNoun} completed; {incompleteCount} incomplete; {skippedCount} skipped.";
-    }
 
     // One grade per produced analysis, in Readings' own order, using the same match Correctness uses.
     private static IReadOnlyList<string> GradeReadings(

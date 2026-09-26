@@ -512,10 +512,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
         insertWord.CommandText = """
             INSERT INTO AssessedWords
                 (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, RawSignature, MorphologyJson, CorrectnessJson,
-                 ProjectStanding, OccurrenceCount, ReadingGradesJson, MissedApprovedCount, IsIncomplete)
+                 ProjectStanding, OccurrenceCount, ReadingGradesJson, MissedApprovedCount, MissedApprovedJson,
+                 IsIncomplete)
             VALUES
                 ($id, $ordinal, $word, $outcome, $elapsed, $signature, $morphology, $correctness,
-                 $standing, $occurrences, $grades, $missed, $incomplete);
+                 $standing, $occurrences, $grades, $missed, $missedReadings, $incomplete);
             """;
         var assessmentIdParam = insertWord.Parameters.Add("$id", SqliteType.Text);
         var wordOrdinalParam = insertWord.Parameters.Add("$ordinal", SqliteType.Integer);
@@ -529,6 +530,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var occurrenceParam = insertWord.Parameters.Add("$occurrences", SqliteType.Integer);
         var gradesParam = insertWord.Parameters.Add("$grades", SqliteType.Text);
         var missedParam = insertWord.Parameters.Add("$missed", SqliteType.Integer);
+        var missedReadingsParam = insertWord.Parameters.Add("$missedReadings", SqliteType.Text);
         var incompleteParam = insertWord.Parameters.Add("$incomplete", SqliteType.Integer);
 
         using var lastRowId = connection.CreateCommand();
@@ -565,6 +567,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
             occurrenceParam.Value = (object?)word.OccurrenceCount ?? DBNull.Value;
             gradesParam.Value = word.ReadingGrades is null ? DBNull.Value : JsonSerializer.Serialize(word.ReadingGrades);
             missedParam.Value = (object?)word.MissedApprovedCount ?? DBNull.Value;
+            missedReadingsParam.Value = word.MissedApproved is null ? DBNull.Value
+                : JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions);
             incompleteParam.Value = word.IsIncomplete ? 1 : 0;
             insertWord.ExecuteNonQuery();
 
@@ -713,7 +717,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
                    aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
-                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete
+                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -733,6 +737,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         int? currentOccurrenceCount = null;
         IReadOnlyList<string>? currentReadingGrades = null;
         int? currentMissedApprovedCount = null;
+        IReadOnlyList<ParserReading>? currentMissedApproved = null;
         bool currentIncomplete = false;
         List<ParsedAnalysis> currentAnalyses = [];
 
@@ -747,7 +752,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                     { Morphology = currentMorphology, Correctness = currentCorrectness,
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
-                        IsIncomplete = currentIncomplete });
+                        MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete });
                 if (reader.GetInt32(11) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
                 currentWordId = wordId;
@@ -764,6 +769,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 currentReadingGrades = reader.IsDBNull(14) ? null : JsonSerializer.Deserialize<string[]>(reader.GetString(14));
                 currentMissedApprovedCount = reader.IsDBNull(15) ? null : reader.GetInt32(15);
                 currentIncomplete = reader.GetInt32(16) != 0;
+                currentMissedApproved = reader.IsDBNull(17) ? null
+                    : JsonSerializer.Deserialize<ParserReading[]>(reader.GetString(17), ParseMorphEvidence.JsonOptions);
                 currentAnalyses = [];
             }
 
@@ -782,7 +789,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             { Morphology = currentMorphology, Correctness = currentCorrectness,
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                 ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
-                IsIncomplete = currentIncomplete });
+                MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete });
         return words;
     }
 }

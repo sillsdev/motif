@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using SIL.LCModel;
 using SIL.Motif.Commands;
@@ -93,7 +94,8 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         Assert.Equal(run.Value.InvocationId, stored.InvocationId);
         Assert.Equal(run.Value.Measurements.OrderBy(item => item.Kind),
             stored.Measurements.OrderBy(item => item.Kind));
-        Assert.Contains(stored.Words, word => word.FixFirst is not null);
+        var missed = Assert.Single(stored.Words, word => word.Word == SeededProject.AnalysedWordForm).MissedApproved!;
+        Assert.Equal(SeededProject.FirstGloss, Assert.Single(missed).Morphs[0].Gloss);
     }
 
     [Fact]
@@ -104,13 +106,12 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         Assert.Equal(AssessmentKind.Correctness.ToStoredKind(), AssessmentKinds.Correctness);
     }
 
-    // A missed approved reading's explanation names its glosses only where the project was read, so it is left out.
     private static IReadOnlyList<string> Facts(IEnumerable<AssessmentWordResult> words) => words
         .OrderBy(word => word.Word, StringComparer.Ordinal)
         .Select(word => string.Join(" | ", word.Word, word.Outcome, word.IsIncomplete, word.CompletionStatus,
             word.ElapsedMs, word.ProjectStanding, string.Join(",", word.ReadingGrades ?? []), word.OccurrenceCount,
-            word.FixFirst?.Category, word.FixFirst?.Rank, word.FixFirst?.Label,
-            word.MissedApproved is { Count: > 0 } ? word.MissedApproved.Count : word.FixFirst?.Explanation))
+            word.FixFirst?.Category, word.FixFirst?.Rank, word.FixFirst?.Label, word.FixFirst?.Explanation,
+            JsonSerializer.Serialize(word.MissedApproved)))
         .ToArray();
 
     private static FakeInvoker NewInvoker() => new()
