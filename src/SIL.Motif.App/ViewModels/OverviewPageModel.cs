@@ -19,9 +19,10 @@ public sealed partial class OverviewPageModel : PageModel
     public OverviewPageModel(WorkspaceContext context) : base(context)
     {
         History = new ProjectHistoryViewModel(context.Commands);
-        OpenTextCoverageCommand = new RelayCommand(() => OpenMatrix([]));
-        OpenAccuracyCommand = new RelayCommand(() => OpenMatrix(Enum.GetValues<CompareColumnKind>()
-            .Select(column => new TextsListCell(WordProjectStatus.Approved, column)).ToArray()));
+        OpenTextCoverageCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix, []));
+        OpenAccuracyCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix,
+            Enum.GetValues<CompareColumnKind>()
+                .Select(column => new TextsListCell(WordProjectStatus.Approved, column)).ToArray()));
         OpenTimingCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Timing));
         OpenWarningsCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Warnings));
         OpenAiHandoffCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.AiHandoff));
@@ -207,12 +208,6 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>Opens AI Handoff.</summary>
     public IRelayCommand OpenAiHandoffCommand { get; }
-
-    private void OpenMatrix(IReadOnlyList<TextsListCell> cells)
-    {
-        Context.OpenTexts(TextsTab.Matrix);
-        Context.Assess.Compare.SelectCells(cells);
-    }
 
     private static string FormatWarningDetails(OverviewWarningsSummary warnings)
     {

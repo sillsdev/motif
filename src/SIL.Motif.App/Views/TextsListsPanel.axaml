@@ -68,8 +68,8 @@
                 ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" />
         <Button Grid.Column="2" Content="AI Handoff" Command="{Binding Lists.HandOffCheckedWordsCommand}"
                 AutomationProperties.Name="AI Handoff for ticked words in the selected list"
-                AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsDisabledReason}"
-                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsDisabledReason}" />
+                AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}"
+                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" />
         <Button Grid.Column="3" Content="Add as candidate" Command="{Binding Lists.Compare.ProposeCommand}"
                 CommandParameter="add-candidate" AutomationProperties.Name="Add checked words as candidates" />
         <Button Grid.Column="4" Content="Incorrect spelling" Command="{Binding Lists.Compare.ProposeCommand}"

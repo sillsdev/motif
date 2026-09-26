@@ -408,7 +408,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>Opens the Texts page on <paramref name="tab"/>.</summary>
-    public void OpenTexts(TextsTab tab) => Open(new OpenTextsRequest(tab));
+    /// <param name="tab">The tab to show.</param>
+    public void OpenTexts(TextsTab tab) => OpenTexts(tab, null);
+
+    /// <summary>Opens the Texts page on <paramref name="tab"/> with the requested matrix cells selected.</summary>
+    /// <param name="tab">The tab to show.</param>
+    /// <param name="cells">The matrix cells to select, or <see langword="null"/> to preserve the current selection.</param>
+    public void OpenTexts(TextsTab tab, IReadOnlyList<TextsListCell>? cells) =>
+        Open(new OpenTextsRequest(tab, cells));
 
     /// <summary>Opens <paramref name="word"/> in the Texts page's word list, with every filter cleared.</summary>
     public void OpenWord(string word) => Open(new OpenWordRequest(word));

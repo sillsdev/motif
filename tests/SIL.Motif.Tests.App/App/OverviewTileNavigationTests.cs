@@ -1,7 +1,6 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
-using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -14,11 +13,43 @@ namespace SIL.Motif.Tests.App;
 public sealed class OverviewTileNavigationTests
 {
     [Fact]
+    public void TextsRequestAppliesItsCellSelectionOnArrival()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var (workspace, window) = FakeComposedWindow.Create();
+            try
+            {
+                var cells = (IReadOnlyList<TextsListCell>)[
+                    new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.Match),
+                    new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.NoParse),
+                ];
+                var constructor = typeof(OpenTextsRequest).GetConstructor(
+                    [typeof(TextsTab), typeof(IReadOnlyList<TextsListCell>)]);
+                Assert.NotNull(constructor);
+
+                workspace.Context.Open((PageRequest)constructor!.Invoke([TextsTab.Matrix, cells]));
+
+                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                Assert.Equal(cells.ToHashSet(), workspace.PageModel<TextsPageModel>().Assess.Compare.Cells
+                    .Where(cell => cell.IsSelected)
+                    .Select(cell => new TextsListCell(cell.Row, cell.Column)).ToHashSet());
+            }
+            finally
+            {
+                Close(workspace, window);
+            }
+
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public void TextCoverageTileClearsThePreviousMatrixFilter()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
-            var (workspace, window) = CreateWindow();
+            var (workspace, window) = FakeComposedWindow.Create();
             try
             {
                 window.Show();
@@ -47,7 +78,7 @@ public sealed class OverviewTileNavigationTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
-            var (workspace, window) = CreateWindow();
+            var (workspace, window) = FakeComposedWindow.Create();
             try
             {
                 window.Show();
@@ -72,22 +103,6 @@ public sealed class OverviewTileNavigationTests
         }, TimeSpan.FromSeconds(10));
     }
 
-    private static (WorkspaceShellViewModel Workspace, MainWindow Window) CreateWindow()
-    {
-        var fake = new FakeCommandClient();
-        var selection = new SelectionViewModel(fake);
-        var window = new MainWindow();
-        var workspace = new WorkspaceShellViewModel(
-            new ProjectViewModel(fake, new NoProjectPicker()),
-            new BaselineViewModel(fake),
-            selection,
-            new AssessViewModel(fake, selection),
-            new NoFolderPicker(), new NoDragSource(), fake,
-            clipboard: new AvaloniaClipboard(window));
-        window.Compose(workspace);
-        return (workspace, window);
-    }
-
     private static void Click(MainWindow window, string name)
     {
         var button = window.GetLogicalDescendants().OfType<Button>().Single(control =>
@@ -101,22 +116,4 @@ public sealed class OverviewTileNavigationTests
         workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 
-    private sealed class NoProjectPicker : IProjectPicker
-    {
-        public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<string?>(null);
-    }
-
-    private sealed class NoFolderPicker : IHandoffFolderPicker
-    {
-        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<string?>(null);
-    }
-
-    private sealed class NoDragSource : IFileDragSource
-    {
-        public Task<Avalonia.Input.DragDropEffects> StartDragAsync(
-            Avalonia.Input.PointerPressedEventArgs trigger, IReadOnlyList<string> filePaths,
-            Avalonia.Input.DragDropEffects allowedEffects) => Task.FromResult(Avalonia.Input.DragDropEffects.None);
-    }
 }

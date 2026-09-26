@@ -6,7 +6,9 @@ namespace SIL.Motif.App.ViewModels;
 
 /// <summary>Opens the Texts page on one of its tabs.</summary>
 /// <param name="Tab">The tab to show.</param>
-public sealed record OpenTextsRequest(TextsTab Tab) : PageRequest(WorkspacePage.Texts);
+/// <param name="Cells">The matrix cells to select, or <see langword="null"/> to preserve the current selection.</param>
+public sealed record OpenTextsRequest(TextsTab Tab, IReadOnlyList<TextsListCell>? Cells = null)
+    : PageRequest(WorkspacePage.Texts);
 
 /// <summary>Opens one word in the Texts page's word list, with every filter cleared.</summary>
 /// <param name="Word">The word to select.</param>
@@ -129,6 +131,7 @@ public sealed partial class TextsPageModel : PageModel
         {
             case OpenTextsRequest texts:
                 Tab = texts.Tab;
+                if (texts.Cells is { } cells) Assess.Compare.SelectCells(cells);
                 break;
             case OpenWordRequest word:
                 Assess.SelectWord(word.Word);

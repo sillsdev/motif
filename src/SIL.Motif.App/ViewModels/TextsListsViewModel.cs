@@ -128,12 +128,20 @@ public sealed partial class TextsListsViewModel : ObservableObject
     public bool HandOffListUnavailable => HandOffListDisabledReason.Length > 0;
 
     public string HandOffCheckedWordsDisabledReason => SelectedList is not { } list
-        ? "Choose a word list first."
+        ? string.Empty
+        : !list.HasWords ? string.Empty
         : Compare.CheckedWordsInCells(list.Cells).Count == 0
             ? "Tick words in this list before starting an AI Handoff."
             : string.Empty;
 
     public bool HandOffCheckedWordsUnavailable => HandOffCheckedWordsDisabledReason.Length > 0;
+
+    public string HandOffCheckedWordsHelpText => SelectedList is not { } list
+        ? "Choose a word list first."
+        : !list.HasWords ? "This word list has no words to tick."
+        : Compare.CheckedWordsInCells(list.Cells).Count == 0
+            ? "Tick words in this list before starting an AI Handoff."
+            : string.Empty;
 
     private Action<IReadOnlyList<string>>? _handOff;
 
@@ -157,6 +165,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HandOffListUnavailable))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsDisabledReason))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsUnavailable))]
+    [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsHelpText))]
     private TextsListDefinitionViewModel? _selectedList;
 
     public IRelayCommand<TextsListDefinitionViewModel> SelectListCommand { get; }
@@ -214,6 +223,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HandOffCheckedWordsDisabledReason));
         OnPropertyChanged(nameof(HandOffCheckedWordsUnavailable));
+        OnPropertyChanged(nameof(HandOffCheckedWordsHelpText));
     }
 
     private void OnListPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -225,6 +235,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
             OnPropertyChanged(nameof(HandOffListUnavailable));
             OnPropertyChanged(nameof(HandOffCheckedWordsDisabledReason));
             OnPropertyChanged(nameof(HandOffCheckedWordsUnavailable));
+            OnPropertyChanged(nameof(HandOffCheckedWordsHelpText));
         }
     }
 

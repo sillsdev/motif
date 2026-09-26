@@ -69,7 +69,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void OverviewLoadsStoredNumbersThroughThePageContextAndItsTilesNavigateWithoutRunningAnAssessment()
+    public void OverviewKeepsItsTileLayoutAndShowsARefreshRefusalOnce()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -95,29 +95,6 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains(@"C:\projects\aweti.fwdata", Assert.Single(fake.OverviewRequests).ProjectPath);
                 Assert.Contains($"opened {overview.MotifStoreCreatedUtc.ToLocalTime():h:mm tt}", text);
                 Assert.Contains($"last FieldWorks save {overview.LastFieldWorksSaveUtc!.Value.ToLocalTime():h:mm tt}", text);
-                Assert.Contains("125", text);
-                Assert.Contains("313", text);
-                Assert.Contains("812", text);
-                Assert.Contains("38", text);
-                Assert.Contains("167", text);
-                Assert.Contains("33%", text);
-                Assert.Contains("41 of 125 words", text);
-                Assert.Contains("23 no parse", text);
-                Assert.Contains("55 timed out", text);
-                Assert.Contains("6 skipped", text);
-                Assert.Contains("183 of 313 occurrences · 58% covered", text);
-                Assert.Contains("18 of 39", text);
-                Assert.Contains("5 violations", text);
-                Assert.Contains("55 Unknown (timed out)", text);
-                Assert.Contains("2 rejected analyses rebuilt", text);
-                Assert.DoesNotContain("2 rejected analyses rebuilt: 2 of 4", text);
-                Assert.Contains("candidates confirmed: 9 of 18", text);
-                Assert.Contains("8.4 ms", text);
-                Assert.Contains("123.5 ms", text);
-                Assert.Contains("6 findings", text);
-                Assert.Contains("1 left out of the grammar", text);
-                Assert.Contains("5 worth a look", text);
-                Assert.Contains("Largest kind: environment failed validation (4)", text);
                 Assert.Contains("FieldWorks has changed since the Baseline behind these numbers.", text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
@@ -129,7 +106,6 @@ public sealed class MainWindowSmokeTests
                     .Single(item => item.Text == "41 of 125 words in the default Selection").FontWeight);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
                     .Single(item => item.Text == "median parse time per word").FontWeight);
-                Assert.Contains("Matrix →", text);
                 var tiles = window.GetLogicalDescendants().OfType<Button>()
                     .Where(item => AutomationProperties.GetName(item) is "Open Text Coverage in Texts" or
                         "Open accuracy in Texts" or "Open Timing" or "Open Warnings");
@@ -139,22 +115,6 @@ public sealed class MainWindowSmokeTests
                     Assert.Equal(Avalonia.Layout.VerticalAlignment.Stretch, tile.VerticalAlignment);
                 });
 
-                Click("Open Text Coverage in Texts");
-                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
-
-                Click("Open accuracy in Texts");
-                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
-
-                Click("Open Timing");
-                Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
-
-                Click("Open Warnings");
-                Assert.Equal(WorkspacePage.Warnings, workspace.CurrentPage);
-
-                Click("Start an AI Handoff");
-                Assert.Equal(WorkspacePage.AiHandoff, workspace.CurrentPage);
                 workspace.Context.PublishEvidence(new WorkspaceEvidence(new AssessCommandResponse(
                     new BaselineCaptureResponse(
                         new BaselineToken("project", "sha256:" + new string('a', 64), "1",
@@ -175,12 +135,6 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal(1, visibleText.Count(item => item == "FieldWorks holds this project open right now."));
                 Assert.Empty(fake.AssessRequests);
 
-                void Click(string accessibleName)
-                {
-                    var button = window.GetLogicalDescendants().OfType<Button>()
-                        .Single(item => AutomationProperties.GetName(item) == accessibleName);
-                    button.Command!.Execute(button.CommandParameter);
-                }
             }
             finally
             {

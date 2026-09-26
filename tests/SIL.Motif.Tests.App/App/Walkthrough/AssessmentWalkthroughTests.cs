@@ -1,7 +1,10 @@
 using System.Diagnostics;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Projects;
@@ -17,6 +20,106 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public void TimingSourceButtonsExplainOrDisableEmptyInputs()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var deadline = Stopwatch.GetTimestamp() + 360 * Stopwatch.Frequency;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: FakeParser.ExecutablePath);
+            walkthrough.Window.Height = 1100;
+            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
+            WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
+
+            var result = walkthrough.Workspace.Assess.Result;
+            Assert.NotNull(result);
+            Assert.NotEmpty(result!.Words);
+            walkthrough.ShowPage(WorkspacePage.Overview);
+            walkthrough.Click("Open accuracy in Texts");
+            Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.CurrentPage);
+            Assert.Equal(TextsTab.Matrix, walkthrough.Workspace.PageModel<TextsPageModel>().Tab);
+            Assert.Contains(walkthrough.Workspace.Assess.Compare.Cells,
+                cell => cell.Row == WordProjectStatus.Approved && cell.IsSelected);
+
+            walkthrough.ShowPage(WorkspacePage.Timing);
+            var timing = walkthrough.Workspace.PageModel<TimingPageModel>();
+            Button SourceButton(string name) => walkthrough.Window.GetLogicalDescendants().OfType<Button>()
+                .Single(button => Equals(button.Content, name));
+            var sources = new[]
+            {
+                ("Use cell", "Choose a matrix cell from Texts first."),
+                ("Use list", "Choose a word list from Texts first."),
+                ("Pick words", "Enter one or more words, one per line."),
+                ("Chosen in Texts", "Tick words in Texts first."),
+            };
+            foreach (var (name, reason) in sources)
+            {
+                var button = SourceButton(name);
+                Assert.False(button.IsEffectivelyEnabled);
+                Assert.Equal(reason, AutomationProperties.GetHelpText(button));
+                Assert.Contains(walkthrough.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == reason);
+            }
+
+            walkthrough.Type("Words picked by hand", $"   {Environment.NewLine}   ");
+            Assert.False(SourceButton("Pick words").IsEffectivelyEnabled);
+            Assert.Equal("Enter one or more words, one per line.",
+                AutomationProperties.GetHelpText(SourceButton("Pick words")));
+
+            var matrixPicker = walkthrough.Find<ComboBox>("Matrix cell from Texts");
+            HeadlessClick.Click(walkthrough.Window, matrixPicker, "Matrix cell from Texts");
+            walkthrough.Window.KeyPress(Avalonia.Input.Key.Down, Avalonia.Input.RawInputModifiers.None,
+                Avalonia.Input.PhysicalKey.None, null);
+            walkthrough.Window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None,
+                Avalonia.Input.PhysicalKey.None, null);
+            Assert.NotNull(timing.SelectedMatrixCell);
+            Assert.True(SourceButton("Use cell").IsEffectivelyEnabled);
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Use cell"))));
+            walkthrough.Click("Use cell");
+            walkthrough.WaitUntil(() => !timing.UseMatrixCellCommand.IsRunning && timing.KindTiming is not null,
+                WalkthroughSteps.Remaining(deadline), "Timing did not load the chosen matrix cell");
+
+            var listPicker = walkthrough.Find<ComboBox>("List from Texts");
+            HeadlessClick.Click(walkthrough.Window, listPicker, "List from Texts");
+            walkthrough.Window.KeyPress(Avalonia.Input.Key.Down, Avalonia.Input.RawInputModifiers.None,
+                Avalonia.Input.PhysicalKey.None, null);
+            walkthrough.Window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None,
+                Avalonia.Input.PhysicalKey.None, null);
+            Assert.NotNull(timing.SelectedTextsList);
+            Assert.True(SourceButton("Use list").IsEffectivelyEnabled);
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Use list"))));
+            walkthrough.Click("Use list");
+            walkthrough.WaitUntil(() => !timing.UseTextsListCommand.IsRunning && timing.KindTiming is not null,
+                WalkthroughSteps.Remaining(deadline), "Timing did not load the chosen word list");
+
+            var oldScope = timing.ScopeLabel;
+            walkthrough.Type("Words picked by hand", string.Join(Environment.NewLine,
+                result.Words.Select(assessed => assessed.Word)));
+            Assert.True(SourceButton("Pick words").IsEffectivelyEnabled);
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Pick words"))));
+            walkthrough.Click("Pick words");
+            walkthrough.WaitUntil(() => !timing.UsePickedWordsCommand.IsRunning && timing.KindTiming is not null,
+                WalkthroughSteps.Remaining(deadline), "Timing did not load the picked word");
+            Assert.NotEqual(oldScope, timing.ScopeLabel);
+
+            walkthrough.ShowPage(WorkspacePage.Overview);
+            walkthrough.Click("Open Text Coverage in Texts");
+            var comparedWord = walkthrough.Workspace.Assess.Compare.Words.First().Word;
+            walkthrough.ShowTextsTab(TextsTab.Matrix);
+            var tick = walkthrough.Find<CheckBox>($"Tick {comparedWord} for a change");
+            HeadlessClick.Click(walkthrough.Window, tick, $"Tick {comparedWord} for a change");
+            Assert.True(tick.IsChecked);
+            walkthrough.ShowPage(WorkspacePage.Timing);
+            Assert.True(SourceButton("Chosen in Texts").IsEffectivelyEnabled);
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Chosen in Texts"))));
+
+            return Task.CompletedTask;
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
     [RealParserFact]
     public void RunningAssessmentRendersReadingsAndPublishesStatistics()
     {
