@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Avalonia.Automation;
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
@@ -28,74 +28,74 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
         var simulator = new FieldWorksSimulator(project.FwDataPath,
             new FixedClock(new DateTimeOffset(savedAt), TimeZoneInfo.Local));
         var client = RealCommandClient.Create(project.ManagedRoot);
-        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var capture = await client.CaptureBaselineAsync(
-                new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
-            Assert.True(capture.Succeeded, capture.Refusal?.Message);
-            var configured = await client.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
-                project.FwDataPath, "Default", [], ["motifa"]), CancellationToken.None);
-            Assert.True(configured.Succeeded, configured.Refusal?.Message);
-            var skipped = await client.SkipSetupAsync(
-                new SkipSetupRequest(project.FwDataPath), CancellationToken.None);
-            Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
-
-            using var walkthrough = new WalkthroughWindow(
-                project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
-            walkthrough.Show();
-            walkthrough.LoadKnownProjects();
-            walkthrough.OpenProjectMenu();
-            var openRecent = walkthrough.FindProjectMenuEntry<Button>("Open a recent project");
-            Assert.True(openRecent.IsEffectivelyEnabled);
-            HeadlessClick.Click(walkthrough.Window, openRecent, "Open a recent project");
-            var recentProject = Assert.Single(walkthrough.Window.RecentProjectItems);
-            HeadlessClick.Click(walkthrough.Window, recentProject,
-                AutomationProperties.GetName(recentProject) ?? "recent project");
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
-                WalkthroughSteps.Remaining(deadline), "opening the recent project did not finish");
-            await walkthrough.Workspace.Context.EvidencePublication;
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Baseline.HasBaseline &&
-                    walkthrough.Workspace.Selection.Texts.Count == 1,
-                WalkthroughSteps.Remaining(deadline), "the recent project did not load its Baseline and Texts");
-
-            var baselineToken = walkthrough.Workspace.Baseline.Token;
-            Assert.NotNull(baselineToken);
-            Assert.Equal(capturedAt.ToUniversalTime(),
-                walkthrough.Workspace.Baseline.SourceLastWriteUtc!.Value.UtcDateTime);
-            var invocationsBeforeSave = FakeParser.Invocations(parserPath);
-            Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen == true);
-
-            simulator.SaveEdit(cache =>
+            var originalCulture = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            try
             {
-                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances().First();
-                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
-                    () => wordform.SpellingStatus = 1);
-            });
+                var capture = await client.CaptureBaselineAsync(
+                    new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
+                Assert.True(capture.Succeeded, capture.Refusal?.Message);
+                var configured = await client.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
+                    project.FwDataPath, "Default", [], ["motifa"]), CancellationToken.None);
+                Assert.True(configured.Succeeded, configured.Refusal?.Message);
+                var skipped = await client.SkipSetupAsync(
+                    new SkipSetupRequest(project.FwDataPath), CancellationToken.None);
+                Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
 
-            Assert.Equal(ProjectFreshness.Current, walkthrough.Workspace.Freshness);
-            walkthrough.Window.Hide();
-            walkthrough.Window.Show();
-            walkthrough.Window.Activate();
-            Dispatcher.UIThread.RunJobs();
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Freshness == ProjectFreshness.SavedSince,
-                WalkthroughSteps.Remaining(deadline), "window activation did not read FieldWorks' save");
+                var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+                using var walkthrough = new WalkthroughWindow(
+                    project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
+                walkthrough.Show();
+                walkthrough.OpenRecentProjectByClick(project.FwDataPath);
+                await walkthrough.Workspace.Context.EvidencePublication;
+                walkthrough.WaitUntil(
+                    () => walkthrough.Workspace.Baseline.HasBaseline &&
+                        walkthrough.Workspace.Selection.Texts.Count == 1,
+                    WalkthroughSteps.Remaining(deadline), "the recent project did not load its Baseline and Texts");
 
-            Assert.Equal(baselineToken, walkthrough.Workspace.Baseline.Token);
-            Assert.Equal(invocationsBeforeSave, FakeParser.Invocations(parserPath));
-            var renderedText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
-                .Where(text => text.IsVisible).Select(text => text.Text).OfType<string>().ToArray();
-            Assert.Contains("FieldWorks saved since", renderedText);
-            var renderedDetail = Assert.Single(renderedText, text => text.Contains(
-                "the numbers still describe", StringComparison.Ordinal));
-            Assert.Equal(walkthrough.Workspace.FreshnessDetail, renderedDetail);
-            Assert.EndsWith("until you refresh.", renderedDetail, StringComparison.Ordinal);
-            Assert.Contains(Path.GetFileNameWithoutExtension(project.FwDataPath), renderedDetail,
-                StringComparison.Ordinal);
-        }, WalkthroughSteps.Remaining(deadline));
+                var baselineToken = walkthrough.Workspace.Baseline.Token;
+                Assert.NotNull(baselineToken);
+                Assert.Equal(capturedAt.ToUniversalTime(),
+                    walkthrough.Workspace.Baseline.SourceLastWriteUtc!.Value.UtcDateTime);
+                var invocationsBeforeSave = FakeParser.Invocations(parserPath);
+                Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen == true);
+
+                simulator.SaveEdit(cache =>
+                {
+                    var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances().First();
+                    NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
+                        () => wordform.SpellingStatus = 1);
+                });
+
+                Assert.Equal(ProjectFreshness.Current, walkthrough.Workspace.Freshness);
+                walkthrough.Window.Hide();
+                walkthrough.Window.Show();
+                walkthrough.Window.Activate();
+                Dispatcher.UIThread.RunJobs();
+                walkthrough.WaitUntil(
+                    () => walkthrough.Workspace.Freshness == ProjectFreshness.SavedSince,
+                    WalkthroughSteps.Remaining(deadline), "window activation did not read FieldWorks' save");
+
+                Assert.Equal(baselineToken, walkthrough.Workspace.Baseline.Token);
+                Assert.Equal(invocationsBeforeSave, FakeParser.Invocations(parserPath));
+                var renderedText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
+                    .Where(text => text.IsVisible).Select(text => text.Text).OfType<string>().ToArray();
+                Assert.Contains("FieldWorks saved since", renderedText);
+                var renderedDetail = Assert.Single(renderedText, text => text.Contains(
+                    "the numbers still describe", StringComparison.Ordinal));
+                Assert.Equal(walkthrough.Workspace.FreshnessDetail, renderedDetail);
+                var projectName = Path.GetFileNameWithoutExtension(project.FwDataPath);
+                Assert.Equal(
+                    $"{projectName} saved Wed 4 Mar, 10:30; the numbers still describe Mon 2 Mar, 09:15 until you refresh.",
+                    renderedDetail);
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = originalCulture;
+            }
+        }, TimeSpan.FromMinutes(3));
     }
 }

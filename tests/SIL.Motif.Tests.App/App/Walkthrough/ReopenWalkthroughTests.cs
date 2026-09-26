@@ -1,4 +1,3 @@
-using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using SIL.LCModel;
@@ -85,17 +84,7 @@ public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
             using var reopened = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
             reopened.Show();
-            reopened.LoadKnownProjects();
-            reopened.OpenProjectMenu();
-            var openRecent = reopened.FindProjectMenuEntry<Button>("Open a recent project");
-            Assert.True(openRecent.IsEffectivelyEnabled);
-            HeadlessClick.Click(reopened.Window, openRecent, "Open a recent project");
-            var recentProject = Assert.Single(reopened.Window.RecentProjectItems);
-            HeadlessClick.Click(reopened.Window, recentProject,
-                AutomationProperties.GetName(recentProject) ?? "recent project");
-            reopened.WaitUntil(
-                () => reopened.Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
-                TimeSpan.FromSeconds(60), "opening the recent project did not finish");
+            reopened.OpenRecentProjectByClick(project.FwDataPath);
             await reopened.Workspace.Context.EvidencePublication;
 
             var overview = reopened.Workspace.PageModel<OverviewPageModel>();
@@ -117,11 +106,10 @@ public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
             Assert.Contains("words in the default Selection", overview.TextCoverageWords, StringComparison.Ordinal);
             Assert.Equal("0 of 0", overview.AccuracyMain);
             var overviewText = Assert.Single(reopened.Window.GetLogicalDescendants().OfType<OverviewPage>())
-                .GetLogicalDescendants().OfType<TextBlock>().Select(control => control.Text);
-            Assert.Contains(overview.TextCoverageMain,
-                overviewText);
-            Assert.Contains(overview.AccuracyMain,
-                overviewText);
+                .GetLogicalDescendants().OfType<TextBlock>().Where(control => control.IsVisible)
+                .Select(control => control.Text);
+            Assert.Contains(overview.TextCoverageMain, overviewText);
+            Assert.Contains(overview.AccuracyMain, overviewText);
             Assert.Equal("motifa", Assert.Single(texts.Assess.Words.AllRows).Word);
             Assert.True(timing.HasStoredTiming);
             Assert.Equal(assessmentId, timing.StoredTiming!.AssessmentId);
@@ -131,6 +119,9 @@ public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
             Assert.Equal(parserInvocationsBeforeOpen, FakeParser.Invocations(parserPath));
 
             using var verificationDatabase = ProjectMotifDatabase.Open(project.FwDataPath);
+            var storedBaseline = new BaselineRepository(verificationDatabase).GetCurrent(ProjectWorkspaceKey.Compute(locator));
+            Assert.NotNull(storedBaseline);
+            Assert.Equal(capture.Value!.Token.CapturedUtc, storedBaseline.Token.CapturedUtc);
             var storedAssessment = Assert.Single(
                 new AssessmentRepository(verificationDatabase).ListBaselineAssessments(AssessmentKinds.ParseTime));
             Assert.Equal(assessmentId, storedAssessment.AssessmentId);
