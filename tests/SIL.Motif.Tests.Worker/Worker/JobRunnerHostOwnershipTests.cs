@@ -1,4 +1,5 @@
 using SIL.Motif.Worker;
+using SIL.Motif.Host.PanGloss;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
@@ -10,6 +11,20 @@ namespace SIL.Motif.Tests.Worker;
 /// </summary>
 public sealed class JobRunnerHostOwnershipTests
 {
+    [Fact]
+    public void CurrentOwnerNameUsesThePlatformUserNamespace()
+    {
+        var name = JobRunnerHost.GetOwnerMutexName();
+
+        if (OperatingSystem.IsWindows())
+            Assert.StartsWith(@"Local\SIL.Motif.Worker.Owner.", name, StringComparison.Ordinal);
+        else
+        {
+            Assert.Matches("^uid-[0-9]+$", WorkerIdentity.GetCurrentUserNamespace());
+            Assert.EndsWith(WorkerIdentity.GetCurrentUserNamespace(), name, StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public async Task KickingWhenARunnerIsAlreadyAliveDoesNotStartASecondOwner()
     {

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using System.Runtime.Versioning;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -15,7 +14,6 @@ namespace SIL.Motif.Host.PanGloss;
 /// but which queue wins a given free slot is unspecified and never asserted (pinned by
 /// `RunAsync_AcrossTwoUserNamespaces_NeverExceedsMachineCapacity`).
 /// </remarks>
-[SupportedOSPlatform("windows")]
 public sealed class MachinePanGlossQueue : IDisposable
 {
     private static readonly string[] DefaultSlotNames =
@@ -24,7 +22,7 @@ public sealed class MachinePanGlossQueue : IDisposable
         "Global\\MotifPanGlossSlot-1",
     };
 
-    // Machine leases are OS mutexes, not events, so a short poll is how a freed slot is noticed.
+    // Machine leases are locks, not events, so polling is how a freed slot is noticed.
     private static readonly TimeSpan SlotPollInterval = TimeSpan.FromMilliseconds(10);
 
     private readonly IReadOnlyList<string> _slotNames;
@@ -54,13 +52,13 @@ public sealed class MachinePanGlossQueue : IDisposable
     internal IReadOnlyDictionary<int, string> SlotOwnership => _slotOwnership;
 
     /// <summary>Observes each job object the moment a job is admitted into it. Set only by tests.</summary>
-    internal Action<WindowsCpuJob>? JobAdmitted { get; set; }
+    internal Action<PanGlossContainmentJob>? JobAdmitted { get; set; }
 
     /// <summary>
     /// Queues <paramref name="work"/> under <paramref name="jobId"/> and returns its result once the
     /// job has been admitted to a machine slot and has run to completion.
     /// </summary>
-    public Task<T> RunAsync<T>(string jobId, Func<WindowsCpuJob, CancellationToken, Task<T>> work,
+    public Task<T> RunAsync<T>(string jobId, Func<PanGlossContainmentJob, CancellationToken, Task<T>> work,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(jobId))
@@ -143,7 +141,7 @@ public sealed class MachinePanGlossQueue : IDisposable
     {
         try
         {
-            using var cpuJob = new WindowsCpuJob();
+            using var cpuJob = PanGlossContainment.CreateJob();
             JobAdmitted?.Invoke(cpuJob);
             await job.ExecuteAsync(cpuJob, linked.Token).ConfigureAwait(false);
         }
@@ -158,7 +156,7 @@ public sealed class MachinePanGlossQueue : IDisposable
     {
         // One owner per slot per wait: ownership is per-thread, and per-poll owners would churn threads.
         var owners = new WorkerMutexOwner[_slotNames.Count];
-        for (var i = 0; i < owners.Length; i++) owners[i] = new WorkerMutexOwner(_slotNames[i]);
+        for (var i = 0; i < owners.Length; i++) owners[i] = new WorkerMutexOwner(_slotNames[i], machineWide: true);
         var winner = -1;
         try
         {
@@ -214,16 +212,16 @@ public sealed class MachinePanGlossQueue : IDisposable
         public LinkedListNode<QueuedJob>? Node { get; set; }
         public CancellationTokenRegistration Registration { get; set; }
 
-        public abstract Task ExecuteAsync(WindowsCpuJob cpuJob, CancellationToken linkedToken);
+        public abstract Task ExecuteAsync(PanGlossContainmentJob cpuJob, CancellationToken linkedToken);
         public abstract void Cancel(CancellationToken token);
     }
 
     private sealed class QueuedJob<T> : QueuedJob
     {
-        private readonly Func<WindowsCpuJob, CancellationToken, Task<T>> _work;
+        private readonly Func<PanGlossContainmentJob, CancellationToken, Task<T>> _work;
         private readonly TaskCompletionSource<T> _completion;
 
-        public QueuedJob(string jobId, Func<WindowsCpuJob, CancellationToken, Task<T>> work,
+        public QueuedJob(string jobId, Func<PanGlossContainmentJob, CancellationToken, Task<T>> work,
             CancellationToken cancellationToken, TaskCompletionSource<T> completion)
             : base(jobId, cancellationToken)
         {
@@ -231,7 +229,7 @@ public sealed class MachinePanGlossQueue : IDisposable
             _completion = completion;
         }
 
-        public override async Task ExecuteAsync(WindowsCpuJob cpuJob, CancellationToken linkedToken)
+        public override async Task ExecuteAsync(PanGlossContainmentJob cpuJob, CancellationToken linkedToken)
         {
             try
             {

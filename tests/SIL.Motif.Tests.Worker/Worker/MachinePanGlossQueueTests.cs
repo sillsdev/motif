@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.Versioning;
 using System.Threading;
 using SIL.Motif.Host.PanGloss;
 using Xunit;
@@ -7,6 +8,39 @@ namespace SIL.Motif.Tests.Worker;
 
 public sealed class MachinePanGlossQueueTests
 {
+    [RequiresUnixFact]
+    public async Task RunAsync_AcrossTwoQueuesNeverExceedsMachineCapacity()
+    {
+        var slotNames = UniqueSlotNames(2);
+        using var userA = new MachinePanGlossQueue(slotNames);
+        using var userB = new MachinePanGlossQueue(slotNames);
+        var gate = new object();
+        var running = 0;
+        var peak = 0;
+        var releaseAll = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task Enqueue(MachinePanGlossQueue queue, string jobId) => queue.RunAsync(jobId, async (job, ct) =>
+        {
+            Assert.NotNull(job.Report);
+            lock (gate) peak = Math.Max(peak, ++running);
+            try { await releaseAll.Task.WaitAsync(TimeSpan.FromSeconds(15), ct); }
+            finally { lock (gate) running--; }
+            return 0;
+        }, CancellationToken.None);
+
+        var tasks = new[]
+        {
+            Enqueue(userA, "a-1"), Enqueue(userA, "a-2"),
+            Enqueue(userB, "b-1"), Enqueue(userB, "b-2"),
+        };
+        await WaitUntilAsync(() => Volatile.Read(ref peak) == 2, TimeSpan.FromSeconds(10));
+        releaseAll.SetResult();
+        await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(20));
+
+        Assert.Equal(2, peak);
+        Assert.Equal(0, running);
+    }
+
     [RequiresWindowsFact]
     public async Task RunAsync_AdmitsThreeProjectsInSubmissionOrder()
     {
@@ -39,6 +73,7 @@ public sealed class MachinePanGlossQueueTests
     }
 
     [RequiresWindowsFact]
+    [SupportedOSPlatform("windows")]
     public async Task RunAsync_AcrossTwoUserNamespaces_NeverExceedsMachineCapacity()
     {
         var slotNames = UniqueSlotNames(2);
@@ -54,7 +89,7 @@ public sealed class MachinePanGlossQueueTests
 
         Task<int> Enqueue(MachinePanGlossQueue queue, string jobId) => queue.RunAsync(jobId, async (cpuJob, ct) =>
         {
-            observedRates.Add(cpuJob.QueryCpuRateControl().CpuRate);
+            observedRates.Add(Assert.IsType<WindowsCpuJob>(cpuJob).QueryCpuRateControl().CpuRate);
             lock (gate) peakRunning = Math.Max(peakRunning, ++currentlyRunning);
             try { await releaseAll.Task.WaitAsync(TimeSpan.FromSeconds(15), ct); }
             finally { lock (gate) currentlyRunning--; }
