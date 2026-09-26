@@ -9,8 +9,8 @@ public enum GatedCommand
 
 /// <summary>
 /// Holds a long-running command before the command client starts it, so a test can observe the window
-/// while the run is pending. It can only delay the command: the real client still runs it once the returned
-/// task completes, and still reports the command's own outcome, including its cancellation.
+/// while the run is pending. It can only delay the command: once the returned task completes, the real client
+/// goes on exactly as if there were no gate, and reports what that yields, the command's own cancellation included.
 /// </summary>
 public interface ICommandStartGate
 {
