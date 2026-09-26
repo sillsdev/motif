@@ -24,6 +24,7 @@ help/
     ui/<slug>.md           Help page for a control (optional per control)
     terms/<slug>.md        Help page for a term (optional)
     walkthroughs/<id>.json { "title": "...", "description": "...", "steps": { "<stepId>": "caption" } }
+    guide/<slug>.md        Guide page (slugs and outline in 2026-09-26-docs-content-plan.md)
 ```
 
 - `<code>` for a command is the `CommandCatalog` name verbatim (`apply --all-pending`, `jobs show`).
@@ -95,6 +96,9 @@ Walkthrough: `{root}/guide/walkthroughs/<id>/`.
 
 ## Package B — AutomationIds and the Walkthrough engine (`gh/walk`)
 
+**Parked by the owner.** Walkthrough tests and clips wait until the App tests another agent is writing have
+landed; which of them become Walkthroughs is settled in `2026-09-26-docs-content-plan.md`.
+
 1. `AutomationIds`: one static class of constants in the App; views set
    `AutomationProperties.AutomationId` from it (`{x:Static}`). Tests: every constant is used exactly once
    in a view, and every AutomationId in a view comes from the class. Cover every control the pilot touches.
@@ -130,7 +134,12 @@ Walkthrough: `{root}/guide/walkthroughs/<id>/`.
 5. `llms.txt` published if a maintained plugin exists; otherwise note why not.
 6. `npm ci && npm run build` passes offline from fixtures; Pagefind search works in the built output.
 
-## Package D — after A, B and C are merged
+## Package E — the written documentation (`gh/docs`)
+
+Every Guide and agent page in `2026-09-26-docs-content-plan.md`, in English under `help/en/guide/`, written
+against the real window and CLI. No tests beyond the existing link and shape checks.
+
+## Package D — after A, B and C are merged (the CI workflow waits with Package B)
 
 - App help pop-up: F1 or a help button shows Title, Description and the Help page (rendered Markdown), plus
   "Open online" to the URL. Tooltips on AutomationId'd controls come from `help/<lang>/ui.json`.
