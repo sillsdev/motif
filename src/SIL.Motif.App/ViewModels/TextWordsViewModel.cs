@@ -109,6 +109,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
         _commandClient = commandClient;
         _selection = selection;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
+        ReloadCommand = new AsyncRelayCommand(ReloadAsync,
+            AsyncRelayCommandOptions.AllowConcurrentExecutions | AsyncRelayCommandOptions.FlowExceptionsToTaskScheduler);
         HandOffCheckedWordsCommand = new RelayCommand(HandOffCheckedWords, CanHandOffCheckedWords);
         OpenWordCommand = new RelayCommand<string>(word =>
         {
@@ -129,6 +131,12 @@ public sealed partial class TextWordsViewModel : ObservableObject
     public ObservableCollection<TextWordRowViewModel> Rows { get; } = [];
 
     public IReadOnlyList<TextWordRowViewModel> ProjectWords => _all;
+
+    /// <summary>
+    /// Reloads the words for the Texts checked now. A Text selection change runs it, and each run cancels the
+    /// read it supersedes. Its execution task never faults: a failed read becomes <see cref="Refusal"/>.
+    /// </summary>
+    public IAsyncRelayCommand ReloadCommand { get; }
 
     /// <summary>Opens a word's detail in the Analyze text reader.</summary>
     public IRelayCommand<string> OpenWordCommand { get; }
@@ -423,10 +431,10 @@ public sealed partial class TextWordsViewModel : ObservableObject
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
     }
 
-    private async void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SelectionViewModel.PastedWords)) OnPropertyChanged(nameof(SummaryText));
-        if (e.PropertyName == nameof(SelectionViewModel.ChosenTextIds)) await ReloadAsync().ConfigureAwait(true);
+        if (e.PropertyName == nameof(SelectionViewModel.ChosenTextIds)) ReloadCommand.Execute(null);
     }
 }
 
