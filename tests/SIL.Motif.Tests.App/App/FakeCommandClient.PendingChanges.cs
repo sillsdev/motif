@@ -28,7 +28,7 @@ public sealed partial class FakeCommandClient
             return Task.FromResult(CommandOutcome<ApplyPendingResult>.Refused(refusal));
         if (_apply is not { } result) throw NotConfigured(nameof(ApplyPendingAsync));
         _pending = new PendingChangesSnapshot(null, "none", [], []);
-        return Completed(new ApplyPendingResult(true, result));
+        return Completed(ApplyPendingResult.AppliedWith(result));
     }
 
     public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(

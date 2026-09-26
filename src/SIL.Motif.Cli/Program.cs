@@ -67,12 +67,6 @@ try
         return ProposalCommandRenderer.Render(outcome, asJson, successAsJson);
     }
 
-    CommandResult RenderPendingApply(CommandOutcome<ApplyPendingResult> outcome)
-    {
-        alreadyRendered = true;
-        return ProposalCommandRenderer.RenderPendingApply(outcome, asJson);
-    }
-
     CommandResult RenderCommand<T>(CommandOutcome<T> outcome, bool successAsJson = true) where T : class
     {
         alreadyRendered = true;
@@ -519,7 +513,7 @@ try
                 var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
                     DraftId: null, Revision: flags.GetValueOrDefault("revision"),
                     User: flags.GetValueOrDefault("user") ?? Environment.UserName);
-                result = RunWithConsoleCancellation(cancellationToken => RenderPendingApply(
+                result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
                     PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
                 break;
             }

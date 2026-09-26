@@ -26,13 +26,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     [InlineData(true)]
     public async Task ApplyAllPendingWritesOneReceiptWithOptionalRevision(bool includeRevision)
     {
-        using var scratch = pristine.NewScratch();
-        var path = scratch.ProjectId.Path;
-        Guid wordformId = Guid.Empty;
-        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
-            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                .Create(TsStringUtils.MakeString("review-word", scratch.DefaultVernWs)).Guid);
-        new FwDataProjectLoader().Save(scratch);
+        var (path, wordformId) = ReleasedProjectWithWord("review-word");
 
         var root = Path.Combine(Path.GetDirectoryName(path)!, "pending-apply-worker");
         var environment = new Dictionary<string, string?>
@@ -85,7 +79,10 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             var error = await errorTask;
             Assert.True(process.ExitCode == 0, $"CLI failed with {process.ExitCode}: {error}{output}");
             using var response = JsonDocument.Parse(output);
-            Assert.Equal(added.Value.DraftId, response.RootElement.GetProperty("proposalId").GetString());
+            Assert.True(response.RootElement.GetProperty("ok").GetBoolean());
+            Assert.True(response.RootElement.GetProperty("applied").GetBoolean());
+            Assert.Equal(added.Value.DraftId,
+                response.RootElement.GetProperty("receipt").GetProperty("proposalId").GetString());
 
             using var database = ProjectMotifDatabase.Open(path);
             using var connection = database.OpenConnection();
@@ -106,8 +103,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     [InlineData(true)]
     public async Task ApplyAllPendingWithNothingPendingSucceedsWithoutWritingAReceipt(bool asJson)
     {
-        using var scratch = pristine.NewScratch();
-        var path = scratch.ProjectId.Path;
+        var (path, _) = ReleasedProjectWithWord("unchanged-word");
         var root = Path.Combine(Path.GetDirectoryName(path)!, "empty-pending-apply-worker");
         var environment = new Dictionary<string, string?>
         {
@@ -147,8 +143,8 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             Assert.Empty(error);
             if (asJson)
             {
-                Assert.Equal("{\"ok\":true,\"applied\":false}", output.Trim());
                 using var response = JsonDocument.Parse(output);
+                Assert.Equal("{\"ok\":true,\"applied\":false}", JsonSerializer.Serialize(response.RootElement));
                 Assert.True(response.RootElement.GetProperty("ok").GetBoolean());
                 Assert.False(response.RootElement.GetProperty("applied").GetBoolean());
                 Assert.DoesNotContain("code", response.RootElement.EnumerateObject().Select(property => property.Name));
@@ -168,5 +164,17 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             foreach (var (key, value) in environment)
                 Environment.SetEnvironmentVariable(key, value);
         }
+    }
+
+    // The save-boundary contract has FieldWorks release the project before it calls the verb.
+    private (string Path, Guid WordformId) ReleasedProjectWithWord(string word)
+    {
+        using var cache = pristine.NewScratch();
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(cache);
+        return (cache.ProjectId.Path, wordformId);
     }
 }
