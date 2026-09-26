@@ -18,8 +18,9 @@ public sealed class FieldWorksSimulator
     }
 
     /// <summary>
-    /// Holds the project's lock file open exclusively, as a running FieldWorks does, until disposed. A lock
-    /// file that already existed is left behind on release; only one this hold created is removed.
+    /// Holds the project's <c>.lock</c> file open with no sharing until disposed, pinned by
+    /// `AHoldCreatesTheLockExclusivelyAndRemovesItOnRelease`. A lock file that already existed is left behind
+    /// on release, pinned by `AHoldOnALockThatAlreadyExistedLeavesThatLockBehind`.
     /// </summary>
     public IDisposable Hold()
     {

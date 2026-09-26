@@ -50,10 +50,9 @@ public sealed record RunnerOptions
     public const string NamespaceVariable = "MOTIF_RUNNER_NAMESPACE";
 
     /// <summary>
-    /// How long the runner stays alive with nothing to do, in seconds. A runner the CLI spawned takes no
-    /// arguments, so this is the only way to tune one that was not started by hand — an operator shortening
-    /// the wait on a machine that idles badly, or a caller that wants a kicked runner to go away promptly.
-    /// <see cref="IdleArgument"/> still wins where it is passed.
+    /// How long the runner stays alive with nothing to do, in seconds. A kicked runner inherits its caller's
+    /// environment, so an operator shortening the wait on a machine that idles badly sets it there.
+    /// <see cref="IdleArgument"/>, which a launcher passes when its options name an idle timeout, still wins.
     /// </summary>
     public const string IdleVariable = "MOTIF_RUNNER_IDLE_SECONDS";
 

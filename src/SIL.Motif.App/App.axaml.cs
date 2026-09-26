@@ -32,9 +32,8 @@ public sealed partial class App : Application
     /// Composes Motif's window into <paramref name="desktop"/>, starts loading the Known projects, and closes
     /// the session when the lifetime exits. This is the whole of the App's desktop startup:
     /// <see cref="OnFrameworkInitializationCompleted"/> calls it, and so does a test host that starts the real
-    /// App again in one process. Avalonia allows one setup and one lifetime per process, and a lifetime's
-    /// shutdown also ends its dispatcher, so such a host closes each session with
-    /// <see cref="MotifDesktopSession.CloseAsync"/> and composes the next into the same lifetime.
+    /// App again in one process: it closes each session with <see cref="MotifDesktopSession.CloseAsync"/> and
+    /// composes the next into the same lifetime, pinned by `TheRealStartupStartsAgainInTheSameProcess`.
     /// </summary>
     public MotifDesktopSession StartDesktop(IClassicDesktopStyleApplicationLifetime desktop, MotifAppOptions options)
     {

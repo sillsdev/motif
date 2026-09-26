@@ -60,8 +60,9 @@ public static class HandoffCommand
         Handoff(request, RunnerOptions.ResolveRoot(), onProgress, cancellationToken);
 
     /// <summary>
-    /// Writes a Handoff folder under an explicitly supplied managed root. The single-argument overload is
-    /// what production code and the CLI call; this one exists so a test can supply its own disposable root.
+    /// Writes a Handoff folder under an explicitly supplied managed root, with the parser the environment
+    /// locates. The CLI calls the overload without a root; the window calls the one that also takes the
+    /// parser; this one lets a test supply its own disposable root.
     /// </summary>
     public static CommandOutcome<HandoffCommandResponse> Handoff(
         HandoffRequest request, string managedRoot, Action<AssessmentProgress>? onProgress = null,

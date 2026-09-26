@@ -57,11 +57,10 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
 
     /// <summary>Spawns the runner with this launcher's settings.</summary>
     /// <remarks>
-    /// Windows <c>CreateProcess</c> duplicates every inheritable handle the caller holds, not just the
-    /// ones a child's own <see cref="ProcessStartInfo"/> wires up. Left alone, a caller capturing this
-    /// process's own stdio — a redirecting parent, a shell's command substitution — would block on
-    /// end-of-file until the spawned runner, which never touches those handles, eventually exits on its
-    /// own idle timeout. Marking this process's standard handles non-inheritable first closes that.
+    /// This process's standard handles are marked non-inheritable before the spawn, so a caller capturing
+    /// this process's own stdio — a redirecting parent, a shell's command substitution — reaches end-of-file
+    /// when this process exits rather than when the runner idles out, pinned by
+    /// `ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked`.
     /// </remarks>
     public void Start(string projectPath, Action<string>? reportWarning = null)
     {

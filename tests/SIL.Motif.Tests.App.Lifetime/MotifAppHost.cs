@@ -24,8 +24,8 @@ public sealed class MotifAppHostCollection : ICollectionFixture<MotifAppHostExit
 
 /// <summary>
 /// Exits Motif through the classic desktop lifetime once every test in the collection has run, and fails
-/// the run if that exit does not close the session. It runs last because a lifetime's shutdown also ends
-/// Avalonia's dispatcher.
+/// the run if that exit does not close the session. It runs last because that shutdown also ends Avalonia's
+/// dispatcher, as <see cref="MotifAppHost"/> records.
 /// </summary>
 public sealed class MotifAppHostExit : IDisposable
 {
@@ -38,8 +38,10 @@ public sealed class MotifAppHostExit : IDisposable
 /// Skia — and closes and restarts it inside one test process.
 /// </summary>
 /// <remarks>
-/// Avalonia allows one <c>Setup</c> and one application lifetime per process, and the lifetime's shutdown
-/// also shuts its dispatcher down. So the first <see cref="Start"/> sets the platform up with
+/// Avalonia 12.1.2 throws on a second <c>Setup</c> (<c>src/Avalonia.Controls/AppBuilder.cs:349</c>) and a
+/// second application lifetime (<c>src/Avalonia.Controls/Application.cs:189</c>), and the classic desktop
+/// lifetime's shutdown also shuts the dispatcher down
+/// (<c>src/Avalonia.Controls/ApplicationLifetimes/ClassicDesktopStyleApplicationLifetime.cs:232</c>). So the first <see cref="Start"/> sets the platform up with
 /// <c>SetupWithLifetime</c>, which runs <c>OnFrameworkInitializationCompleted</c>; <see cref="StopAsync"/>
 /// closes the session with <see cref="MotifDesktopSession.CloseAsync"/>, which is what the lifetime's exit
 /// calls; and every later start composes into the same lifetime through <c>App.StartDesktop</c>, the method
