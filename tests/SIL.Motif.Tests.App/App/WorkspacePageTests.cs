@@ -382,7 +382,7 @@ public sealed class WorkspacePageTests
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
 
-        workspace.Context.AppliedSinceRefresh = true;
+        workspace.Context.RecordApplied();
 
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
         Assert.Equal("Numbers need refresh", workspace.FreshnessLabel);
@@ -654,7 +654,7 @@ public sealed class WorkspacePageTests
         var stored = NewAssessResponse(Saved.AddHours(-3));
         workspace.Context.PublishEvidence(new WorkspaceEvidence(stored, Saved.AddHours(-2), WasRerun: false));
 
-        Assert.Equal(Saved.AddHours(-3), workspace.Context.Evidence!.MeasuredSaveUtc);
+        Assert.Equal(Saved.AddHours(-3), workspace.Context.Evidence.MeasuredSaveUtc);
         Assert.True(workspace.Baseline.HasAssessment);
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
         Assert.Contains("the numbers still describe", workspace.FreshnessDetail);

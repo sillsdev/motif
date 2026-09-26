@@ -42,6 +42,10 @@ public sealed partial class TimingPageModel : PageModel
         RerunWordsCommand = new AsyncRelayCommand(RerunWordsAsync,
             () => SelectedWords.Count > 0 && !IsRerunning && !context.Assess.IsActive);
         CancelRerunCommand = new RelayCommand(CancelRerun, () => IsRerunning);
+        context.Evidence.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(ShowStaleTiming));
+        };
     }
 
     /// <summary>The page's own statistics, read through the context's commands.</summary>
@@ -64,13 +68,13 @@ public sealed partial class TimingPageModel : PageModel
 
     public bool HasFocus => Focus is not null;
 
-    public bool ShowNoEvidence => Context.HasNoEvidence && Context.CurrentEvidence?.MatchingAssessment is null &&
+    public bool ShowNoEvidence => Context.HasNoEvidence && Context.Evidence.StoredAssessmentId is null &&
         Focus is null;
 
     public bool ShowStatistics => Context.HasEvidence && Focus is null;
 
     /// <summary>Whether to show the stored timing while no in-memory Assessment or focused request is active.</summary>
-    public bool ShowStoredTiming => Context.CurrentEvidence?.MatchingAssessment is not null &&
+    public bool ShowStoredTiming => Context.Evidence.StoredAssessmentId is not null &&
         !Context.HasEvidence && Focus is null;
 
     public string FocusSummary => Focus is not { } focus ? string.Empty :
@@ -112,7 +116,7 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasTiming => KindTiming is not null;
     public bool HasSelectedWords => KindTiming?.WordCount > 0;
     public bool ShowEmptySelection => KindTiming is { WordCount: 0 };
-    public bool ShowStaleTiming => KindTiming?.IsStale == true;
+    public bool ShowStaleTiming => HasTiming && Context.Evidence.IsStale;
     public bool HasRule => SelectedRule is not null;
     public bool HasRuleDetail => RuleDetail is not null;
     public bool HasTimingError => TimingError is not null;
@@ -216,25 +220,19 @@ public sealed partial class TimingPageModel : PageModel
         return Task.CompletedTask;
     }
 
-    protected override void OnEvidencePublished(WorkspaceEvidence evidence)
+    protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
-        Statistics.Reset();
-        Statistics.SummaryMarkdown = evidence.Assessment.SummaryMarkdown;
-        Statistics.AssessmentId = evidence.Assessment.Measurements
-            .SingleOrDefault(measurement => measurement.Kind == "ObjectTiming")?.AssessmentId;
+        if (evidence.Assessment is { } shown)
+        {
+            Statistics.Reset();
+            Statistics.SummaryMarkdown = shown.Assessment.SummaryMarkdown;
+            Statistics.AssessmentId = evidence.ObjectTimingAssessmentId;
+        }
         OnPropertyChanged(nameof(MatrixCells));
         OnPropertyChanged(nameof(TextsLists));
         OnPropertyChanged(nameof(ShowNoEvidence));
         OnPropertyChanged(nameof(ShowStatistics));
-        RaiseStoredTimingState();
-        if (Context.ProjectPath is { } projectPath)
-            _ = LoadScopeAsync(projectPath, CurrentAssessmentId, CancellationToken.None);
-    }
-
-    protected override async Task OnCurrentEvidencePublishedAsync(
-        CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken)
-    {
-        if (evidence.MatchingAssessment is not { } assessment || Context.ProjectPath is not { } projectPath)
+        if (evidence.ParseTimeAssessmentId is not { } assessmentId || Context.ProjectPath is not { } projectPath)
         {
             StoredTiming = null;
             StoredTimingError = null;
@@ -242,7 +240,10 @@ public sealed partial class TimingPageModel : PageModel
             return;
         }
 
-        if (Focus is null) await LoadScopeAsync(projectPath, assessment.AssessmentId, cancellationToken);
+        RaiseStoredTimingState();
+        // A run answers whatever the page is focused on; a stored read never replaces a focused view.
+        if (evidence.Assessment is { IsStored: false } || Focus is null)
+            await LoadScopeAsync(projectPath, assessmentId, cancellationToken).ConfigureAwait(true);
     }
 
     protected override void OnRequested(PageRequest request)
@@ -264,11 +265,10 @@ public sealed partial class TimingPageModel : PageModel
         await LoadScopeAsync(projectPath, CurrentAssessmentId, CancellationToken.None);
     }
 
-    private string? CurrentAssessmentId => Context.Evidence?.Assessment.Measurements
-        .SingleOrDefault(measurement => measurement.Kind == "ParseTime")?.AssessmentId ??
-        Context.CurrentEvidence?.MatchingAssessment?.AssessmentId;
+    private string? CurrentAssessmentId => Context.Evidence.ParseTimeAssessmentId;
 
-    private IReadOnlyList<string>? CurrentTimingOverrides => Context.Evidence?.Assessment.TimingOverrideAssessmentIds;
+    private IReadOnlyList<string>? CurrentTimingOverrides =>
+        Context.HasEvidence ? Context.Evidence.TimingOverrideAssessmentIds : null;
 
     private async Task SelectWordSetAsync(string? wordSet)
     {

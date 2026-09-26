@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -26,6 +25,7 @@ public sealed partial class OverviewPageModel : PageModel
         OpenWarningsCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Warnings));
         OpenAiHandoffCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.AiHandoff));
         context.PropertyChanged += OnContextPropertyChanged;
+        context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
     }
 
     /// <summary>The project's Baselines and Assessments, newest first, which the page loads for itself.</summary>
@@ -33,7 +33,6 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>The stored Overview read for the open project.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(OverviewIsStale))]
     [NotifyPropertyChangedFor(nameof(HasAssessment))]
     [NotifyPropertyChangedFor(nameof(ShowNoAssessment))]
     [NotifyPropertyChangedFor(nameof(SelectionIsUnresolved))]
@@ -74,8 +73,8 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>Whether the Overview should explain that this project has no Assessment.</summary>
     public bool ShowNoAssessment => !HasAssessment;
 
-    /// <summary>Whether the live FieldWorks file is newer than the Baseline behind this Overview.</summary>
-    public bool OverviewIsStale => Overview?.IsStale == true;
+    /// <summary>Whether the numbers behind this Overview describe an older state of the project.</summary>
+    public bool OverviewIsStale => Context.Evidence.IsStale;
 
     /// <summary>Whether this response could not resolve its default Selection against the current Baseline.</summary>
     public bool SelectionIsUnresolved => Overview is { SelectionResolved: false };
@@ -235,20 +234,22 @@ public sealed partial class OverviewPageModel : PageModel
     protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
         await History.SetProjectAsync(projectPath, cancellationToken).ConfigureAwait(true);
-        await RefreshReadModelAsync(projectPath, cancellationToken).ConfigureAwait(true);
+        await RefreshOverviewAsync(projectPath, cancellationToken).ConfigureAwait(true);
     }
 
     protected override async Task OnBaselineCapturedAsync(CancellationToken cancellationToken)
     {
         await History.LoadAsync(cancellationToken).ConfigureAwait(true);
         if (Context.ProjectPath is { } path)
-            await RefreshReadModelAsync(path, cancellationToken).ConfigureAwait(true);
+            await RefreshOverviewAsync(path, cancellationToken).ConfigureAwait(true);
     }
 
-    protected override void OnEvidencePublished(WorkspaceEvidence evidence)
+    // Opening and Refresh already read the stored Overview, so only a run from this window makes it older.
+    protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
-        _ = History.LoadAsync();
-        if (Context.ProjectPath is { } path) _ = RefreshReadModelAsync(path, CancellationToken.None);
+        if (evidence.Assessment is not { IsStored: false }) return;
+        await History.LoadAsync(cancellationToken).ConfigureAwait(true);
+        if (Context.ProjectPath is { } path) await RefreshOverviewAsync(path, cancellationToken).ConfigureAwait(true);
     }
 
     protected override Task OnGrammarCheckedAsync(CancellationToken cancellationToken) =>
@@ -265,24 +266,6 @@ public sealed partial class OverviewPageModel : PageModel
         OverviewRefusalMessage = overview.Succeeded ? null : overview.Refusal?.Message;
     }
 
-    private async Task RefreshReadModelAsync(string projectPath, CancellationToken cancellationToken)
-    {
-        var generation = ++_readGeneration;
-        var overviewTask = Context.Commands.OverviewAsync(new OverviewRequest(projectPath), cancellationToken);
-        var evidenceTask = Context.Commands.ReadCurrentEvidenceAsync(projectPath, cancellationToken);
-        await Task.WhenAll(overviewTask, evidenceTask).ConfigureAwait(true);
-        if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal))
-            return;
-
-        var overview = await overviewTask.ConfigureAwait(true);
-        Overview = overview.Succeeded ? overview.Value : null;
-        OverviewRefusalMessage = overview.Succeeded ? null : overview.Refusal?.Message;
-
-        var evidence = await evidenceTask.ConfigureAwait(true);
-        if (evidence.Succeeded)
-            await Context.PublishCurrentEvidenceAsync(evidence.Value!, cancellationToken).ConfigureAwait(true);
-    }
-
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(WorkspaceContext.ProjectPath))
@@ -290,6 +273,11 @@ public sealed partial class OverviewPageModel : PageModel
             OnPropertyChanged(nameof(ProjectTitle));
             OnPropertyChanged(nameof(ProjectDetails));
         }
+    }
+
+    private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(OverviewIsStale));
     }
 
     private static string FormatTime(DateTimeOffset? value) => value is { } at

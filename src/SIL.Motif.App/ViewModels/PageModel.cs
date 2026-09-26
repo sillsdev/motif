@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -44,14 +43,12 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
     /// <summary>Stops whatever work the page has running, and returns once it has stopped.</summary>
     protected virtual Task OnStopWorkAsync() => Task.CompletedTask;
 
-    /// <summary>Shows <paramref name="evidence"/>, just published.</summary>
-    protected virtual void OnEvidencePublished(WorkspaceEvidence evidence)
-    {
-    }
-
-    /// <summary>Loads this page's view of the stored evidence the context just published.</summary>
-    protected virtual Task OnCurrentEvidencePublishedAsync(
-        CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken) => Task.CompletedTask;
+    /// <summary>
+    /// Shows <paramref name="evidence"/>, just published because a run completed or the stored evidence was read.
+    /// A burst of publications reaches a page as one more call with the latest evidence, never one per arrival.
+    /// </summary>
+    protected virtual Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 
     /// <summary>Reloads this page's stored summary after a person checked the grammar.</summary>
     protected virtual Task OnGrammarCheckedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -70,11 +67,8 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
 
     internal Task StopWorkAsync() => OnStopWorkAsync();
 
-    internal void EvidencePublished(WorkspaceEvidence evidence) => OnEvidencePublished(evidence);
-
-    internal Task CurrentEvidencePublishedAsync(
-        CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken) =>
-        OnCurrentEvidencePublishedAsync(evidence, cancellationToken);
+    internal Task EvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken) =>
+        OnEvidencePublishedAsync(evidence, cancellationToken);
 
     internal Task GrammarCheckedAsync(CancellationToken cancellationToken) => OnGrammarCheckedAsync(cancellationToken);
 

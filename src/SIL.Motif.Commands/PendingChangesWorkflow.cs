@@ -139,7 +139,7 @@ public static class PendingChangesWorkflow
         var recorded = await Task.Run(() => JobCommands.Assessments(
             new JobAssessmentsRequest(request.ProjectPath, jobId, version))).ConfigureAwait(false);
         if (!recorded.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(recorded.Refusal!);
-        var correctness = recorded.Value!.Assessments.LastOrDefault(item => item.Kind == "Correctness");
+        var correctness = recorded.Value!.Assessments.LastOrDefault(item => item.Kind == AssessmentKinds.Correctness);
         if (correctness is null)
             return RefuseMeasure("trial.measurement-incomplete", "The check did not measure approved analyses.");
         var numbers = await Task.Run(() => ReviewNumbersCommand.Read(new ReviewNumbersCommand.Request(

@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 23;
+    public const int CurrentSchema = 24;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -349,7 +349,7 @@ public static class MotifSchema
             C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("RawSignature", "TEXT"),
             C("MorphologyJson", "TEXT"), C("CorrectnessJson", "TEXT"), C("ProjectStanding", "TEXT"),
             C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "TEXT"), C("MissedApprovedCount", "INTEGER"),
-            C("IsIncomplete", "INTEGER", true, defaultValue: "0")],
+            C("MissedApprovedJson", "TEXT"), C("IsIncomplete", "INTEGER", true, defaultValue: "0")],
         "AssessmentObjectTimings" =>
         [C("AssessmentId", "TEXT", true, 1), C("OrdinalIndex", "INTEGER", true, 2), C("Kind", "TEXT", true),
             C("Object", "TEXT", true), C("Word", "TEXT", true), C("Attempts", "INTEGER"), C("Passes", "INTEGER"),
@@ -596,6 +596,7 @@ public static class MotifSchema
             OccurrenceCount INTEGER NULL,
             ReadingGradesJson TEXT NULL,
             MissedApprovedCount INTEGER NULL,
+            MissedApprovedJson TEXT NULL,
             IsIncomplete INTEGER NOT NULL DEFAULT 0 CHECK (IsIncomplete IN (0, 1))
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);

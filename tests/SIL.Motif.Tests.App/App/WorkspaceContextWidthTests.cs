@@ -8,8 +8,9 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins what a <see cref="WorkspaceContext"/> may carry: snapshots, the one shared Assessment run and its Selection,
-/// the pending changes, the shell setup dialog, desktop services and shell actions; never a model one page owns.
+/// Pins what a <see cref="WorkspaceContext"/> may carry: snapshots, the project's evidence, the clock, the one shared
+/// Assessment run and its Selection, the pending changes, the shell setup dialog, desktop services and shell
+/// actions; never a model one page owns.
 /// </summary>
 public sealed class WorkspaceContextWidthTests
 {
@@ -18,8 +19,8 @@ public sealed class WorkspaceContextWidthTests
     {
         Type[] allowed =
         [
-            typeof(string), typeof(bool), typeof(WorkspacePage), typeof(WorkspaceEvidence), typeof(WorkspaceBaseline),
-            typeof(CurrentEvidenceSnapshot),
+            typeof(string), typeof(bool), typeof(WorkspacePage), typeof(ProjectEvidence), typeof(WorkspaceBaseline),
+            typeof(TimeProvider),
             typeof(GrammarSummary), typeof(ChangesViewModel), typeof(AssessViewModel), typeof(SelectionViewModel),
             typeof(SetupViewModel),
             typeof(ICommandClient), typeof(IHandoffFolderPicker), typeof(IFileDragSource),

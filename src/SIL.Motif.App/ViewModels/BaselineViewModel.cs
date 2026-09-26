@@ -39,12 +39,10 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CapturedTimeText))]
     [NotifyPropertyChangedFor(nameof(SavedText))]
-    [NotifyPropertyChangedFor(nameof(IsSavedSince))]
     private DateTimeOffset? _sourceLastWriteUtc;
 
     /// <summary>The project file's last-write time as last read.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsSavedSince))]
     private DateTimeOffset? _projectLastWriteUtc;
 
     [ObservableProperty]
@@ -75,9 +73,6 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
         DateTimeOffset.TryParse(token.CapturedUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var captured)
             ? captured
             : null;
-
-    /// <summary>Whether FieldWorks has written the project since the save the Baseline copies.</summary>
-    public bool IsSavedSince => SourceLastWriteUtc is { } source && ProjectLastWriteUtc is { } written && written > source;
 
     /// <summary>Instance-bindable form of <see cref="FreshnessSentence"/>, for a view's binding path.</summary>
     public string FreshnessText => FreshnessSentence;

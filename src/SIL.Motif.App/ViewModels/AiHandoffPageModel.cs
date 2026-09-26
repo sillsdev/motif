@@ -11,7 +11,8 @@ public sealed class AiHandoffPageModel : PageModel
 {
     public AiHandoffPageModel(WorkspaceContext context) : base(context)
     {
-        Handoff = new HandoffViewModel(context.Commands, context.Selection, context.FolderPicker, context.DragSource);
+        Handoff = new HandoffViewModel(context.Commands, context.Selection, context.FolderPicker, context.DragSource,
+            context.Clock);
         Handoff.PropertyChanged += OnHandoffPropertyChanged;
     }
 
@@ -41,18 +42,13 @@ public sealed class AiHandoffPageModel : PageModel
         return Task.CompletedTask;
     }
 
-    protected override void OnEvidencePublished(WorkspaceEvidence evidence)
+    protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
-        Handoff.InvocationId = evidence.Assessment.InvocationId;
-        Handoff.LatestAssessmentAt = evidence.CompletedAt;
-        Handoff.CoverageText = CoverageOf(evidence.CompletedAt, Context.Assess.Words.CountSummary,
+        if (evidence.Assessment is not { } shown) return Task.CompletedTask;
+        Handoff.InvocationId = shown.Assessment.InvocationId;
+        Handoff.LatestAssessmentAt = shown.CompletedAt;
+        Handoff.CoverageText = CoverageOf(shown.CompletedAt, Context.Assess.Words.CountSummary,
             Context.Selection.ChosenTextIds.Count, Context.Selection.PastedWordEntries.Count);
-    }
-
-    protected override Task OnCurrentEvidencePublishedAsync(
-        SIL.Motif.Commands.Queries.CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken)
-    {
-        if (Context.Evidence is { } restored) OnEvidencePublished(restored);
         return Task.CompletedTask;
     }
 

@@ -19,6 +19,9 @@ public sealed record WorkspaceEvidence(AssessCommandResponse Assessment, DateTim
 {
     /// <summary>The FieldWorks save the Assessment's numbers were measured against.</summary>
     public DateTimeOffset MeasuredSaveUtc => Assessment.Baseline.SourceLastWriteUtc;
+
+    /// <summary>Whether the store supplied it, rather than a run in this window.</summary>
+    public bool IsStored { get; init; }
 }
 
 /// <summary>The open project's Baseline as the window describes it, captured whenever it changes.</summary>
@@ -34,6 +37,12 @@ public sealed record WorkspaceBaseline(
 {
     /// <summary>Whether FieldWorks holds the project open, preventing a direct Apply.</summary>
     public bool FieldWorksHeldProject { get; init; }
+
+    /// <summary>The FieldWorks save the Baseline copies, or <see langword="null"/> before any capture.</summary>
+    public DateTimeOffset? SourceLastWriteUtc { get; init; }
+
+    /// <summary>The project file's last-write time as last read, or <see langword="null"/> when unknown.</summary>
+    public DateTimeOffset? ProjectLastWriteUtc { get; init; }
 }
 
 /// <summary>The grammar check's findings in one line, for pages that summarise them.</summary>
@@ -56,13 +65,15 @@ public abstract record PageRequest(WorkspacePage Page);
 /// <remarks>
 /// The shell publishes project and Assessment changes here. Page models receive those changes and may share
 /// <see cref="Assess"/> and <see cref="Selection"/> when their controls operate on the same run. Navigation
-/// requests, such as <see cref="OpenWord"/>, reach page models without giving them the shell.
+/// requests, such as <see cref="OpenWord"/>, reach page models without giving them the shell. The context reads
+/// the stored evidence itself when a project opens and after each Refresh, so no page has to be present for the
+/// others to see it.
 /// </remarks>
 public sealed partial class WorkspaceContext : ObservableObject, IProjectStateParticipant
 {
     public WorkspaceContext(
         SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
-        IFileDragSource dragSource, BaselineViewModel baseline)
+        IFileDragSource dragSource, BaselineViewModel baseline, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -77,11 +88,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Commands = commands;
         FolderPicker = folderPicker;
         DragSource = dragSource;
+        Clock = clock ?? TimeProvider.System;
         Assess.PropertyChanged += OnAssessPropertyChanged;
+        Evidence.PropertyChanged += OnEvidencePropertyChanged;
         _projectParticipants.Add(baseline);
         _projectParticipants.Add(selection);
         _projectParticipants.Add(Changes);
         _projectParticipants.Add(this);
+        _projectParticipants.Add(new StoredEvidenceLoader(this));
     }
 
     /// <summary>What the one Assessment run measures; the Texts page edits it and the shell summarises it.</summary>
@@ -114,12 +128,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The changes collected on any page and not applied yet; the Review changes page lists them.</summary>
     public ChangesViewModel Changes { get; }
 
-    /// <summary>Whether applying changes has made the visible numbers older than the saved project.</summary>
-    [ObservableProperty]
-    private bool _appliedSinceRefresh;
-
     /// <summary>The command seam a page runs its own queries through.</summary>
     public ICommandClient Commands { get; }
+
+    /// <summary>The clock every page reads: when a run completed, a check's elapsed time, what "today" is.</summary>
+    public TimeProvider Clock { get; }
+
+    /// <summary>The evidence every page shows, and whether its numbers are still current.</summary>
+    public ProjectEvidence Evidence { get; } = new();
 
     /// <summary>The project setup dialog displayed over the current page.</summary>
     public SetupViewModel? Setup { get; private set; }
@@ -140,25 +156,17 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     [ObservableProperty]
     private WorkspaceBaseline? _baseline;
 
+    partial void OnBaselineChanged(WorkspaceBaseline? value) => Evidence.Baseline = value;
+
     /// <summary>The grammar check in one line, as the page that owns the check last published it.</summary>
     [ObservableProperty]
     private GrammarSummary? _grammarSummary;
 
-    /// <summary>The evidence published for the open project, or <see langword="null"/> before any.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasEvidence))]
-    [NotifyPropertyChangedFor(nameof(HasNoEvidence))]
-    private WorkspaceEvidence? _evidence;
-
-    /// <summary>The current stored read model published for the open project.</summary>
-    [ObservableProperty]
-    private CurrentEvidenceSnapshot? _currentEvidence;
-
-    /// <summary>Whether any evidence has been published for the open project.</summary>
-    public bool HasEvidence => Evidence is not null;
+    /// <summary>Whether an Assessment is on screen for the open project.</summary>
+    public bool HasEvidence => Evidence.HasAssessment;
 
     /// <summary>The negation of <see cref="HasEvidence"/>, so a view never composes <c>!</c> itself.</summary>
-    public bool HasNoEvidence => Evidence is null;
+    public bool HasNoEvidence => !Evidence.HasAssessment;
 
     /// <summary>Whether the project and Selection controls accept input: not while an Assessment runs.</summary>
     public bool ProjectAndSelectionEnabled => !Assess.IsActive;
@@ -171,6 +179,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     private readonly List<IProjectStateParticipant> _projectParticipants = [];
     private CancellationTokenSource? _openCancellation;
     private int _openGeneration;
+    private bool _publishing;
+    private bool _republish;
+
+    /// <summary>The publication to the pages under way, or a completed task when none is.</summary>
+    internal Task EvidencePublication { get; private set; } = Task.CompletedTask;
 
     // Called by each page model's constructor, so the context reaches a page only through its hooks.
     internal void Attach(PageModel page)
@@ -200,11 +213,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     private void ClearOwnProjectState()
     {
         Assess.Reset();
-        Evidence = null;
-        CurrentEvidence = null;
         Baseline = null;
+        Evidence.Clear();
         GrammarSummary = null;
-        AppliedSinceRefresh = false;
         CurrentPage = WorkspacePage.Overview;
         ProjectPath = null;
         Assess.ProjectPath = null;
@@ -260,10 +271,15 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         }
     }
 
-    /// <summary>Tells every page a new Baseline was captured, and returns once each has reloaded.</summary>
+    /// <summary>
+    /// Reads the stored evidence for the new Baseline, tells every page it was captured, and returns once each has
+    /// reloaded.
+    /// </summary>
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
     {
         await Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
+        if (ProjectPath is { } projectPath)
+            await LoadStoredEvidenceAsync(projectPath, cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
         if (Setup is not null) await Setup.BaselineCapturedAsync().ConfigureAwait(true);
@@ -288,31 +304,76 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private bool IsCurrentOpen(int generation) => generation == Volatile.Read(ref _openGeneration);
 
-    /// <summary>Publishes <paramref name="evidence"/> as what every page now shows.</summary>
+    /// <summary>Publishes a completed in-session run as what every page now shows.</summary>
     public void PublishEvidence(WorkspaceEvidence evidence)
     {
         ArgumentNullException.ThrowIfNull(evidence);
-        Evidence = evidence;
-        AppliedSinceRefresh = false;
-        Changes.AssessmentId = evidence.Assessment.Measurements
-            .SingleOrDefault(measurement => measurement.Kind == "ParseTime")?.AssessmentId;
-        foreach (var page in _pages.ToArray()) page.EvidencePublished(evidence);
+        Evidence.ShowRun(evidence);
+        Changes.AssessmentId = Evidence.ParseTimeAssessmentId;
+        _ = PublishToPagesAsync(CancellationToken.None);
     }
 
-    /// <summary>Publishes the stored read model to the open project's pages.</summary>
-    public async Task PublishCurrentEvidenceAsync(
+    /// <summary>Records that changes were applied to the FieldWorks project, so the numbers are stale.</summary>
+    public void RecordApplied() => Evidence.AppliedSinceRefresh = true;
+
+    /// <summary>
+    /// Reads the open project's stored evidence again and publishes it, showing an Assessment recorded since, as
+    /// when an agent ran one from the command line. It reads only; nothing is measured.
+    /// </summary>
+    public Task ReadStoredEvidenceAsync(CancellationToken cancellationToken = default) =>
+        ProjectPath is { } projectPath ? LoadStoredEvidenceAsync(projectPath, cancellationToken) : Task.CompletedTask;
+
+    // The stored read model's one way in; a run's rows stay on screen when the store holds the same run.
+    internal Task PublishCurrentEvidenceAsync(
         CurrentEvidenceSnapshot evidence, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(evidence);
-        CurrentEvidence = evidence;
-        if (Evidence is null && StoredAssessmentView.From(evidence) is { } restored)
-        {
+        var shown = Evidence.Assessment;
+        Evidence.ShowStored(evidence);
+        if (Evidence.Assessment is { IsStored: true } restored && !ReferenceEquals(restored, shown))
             Assess.Restore(restored);
-            Evidence = restored;
-            Changes.AssessmentId = evidence.MatchingAssessment?.AssessmentId;
+        Changes.AssessmentId = Evidence.ParseTimeAssessmentId;
+        return PublishToPagesAsync(cancellationToken);
+    }
+
+    private async Task LoadStoredEvidenceAsync(string projectPath, CancellationToken cancellationToken)
+    {
+        var generation = Volatile.Read(ref _openGeneration);
+        var stored = await Commands.ReadCurrentEvidenceAsync(projectPath, cancellationToken).ConfigureAwait(true);
+        if (!IsCurrentOpen(generation) || !string.Equals(projectPath, ProjectPath, StringComparison.Ordinal)) return;
+        if (stored.Succeeded) await PublishCurrentEvidenceAsync(stored.Value!, cancellationToken).ConfigureAwait(true);
+    }
+
+    // Arrivals during a pass are folded into one more pass, so every page ends on the same, latest evidence.
+    private Task PublishToPagesAsync(CancellationToken cancellationToken)
+    {
+        if (_publishing)
+        {
+            _republish = true;
+            return EvidencePublication;
         }
-        foreach (var page in _pages.ToArray())
-            await page.CurrentEvidencePublishedAsync(evidence, cancellationToken).ConfigureAwait(true);
+        return EvidencePublication = RunPublicationAsync(cancellationToken);
+    }
+
+    private async Task RunPublicationAsync(CancellationToken cancellationToken)
+    {
+        _publishing = true;
+        var generation = Volatile.Read(ref _openGeneration);
+        try
+        {
+            do
+            {
+                _republish = false;
+                await Task.WhenAll(_pages.ToArray()
+                    .Select(page => page.EvidencePublishedAsync(Evidence, cancellationToken))).ConfigureAwait(true);
+            }
+            while (_republish && IsCurrentOpen(generation));
+        }
+        finally
+        {
+            _publishing = false;
+            _republish = false;
+        }
     }
 
     /// <summary>Notifies pages after a grammar check has updated the stored warning summary.</summary>
@@ -353,6 +414,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         if (e.PropertyName == nameof(AssessViewModel.IsActive)) OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
     }
 
+    private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ProjectEvidence.HasAssessment)) return;
+        OnPropertyChanged(nameof(HasEvidence));
+        OnPropertyChanged(nameof(HasNoEvidence));
+    }
+
     ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Context;
 
     void IProjectStateParticipant.ClearProject() => ClearOwnProjectState();
@@ -365,4 +433,16 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         return Task.CompletedTask;
     }
 
+    // Opens beside the pages, once the Baseline is known, as a page's own read would.
+    private sealed class StoredEvidenceLoader(WorkspaceContext context) : IProjectStateParticipant
+    {
+        public ProjectOpenStage OpenStage => ProjectOpenStage.Independent;
+
+        public void ClearProject()
+        {
+        }
+
+        public Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+            context.LoadStoredEvidenceAsync(projectPath, cancellationToken);
+    }
 }

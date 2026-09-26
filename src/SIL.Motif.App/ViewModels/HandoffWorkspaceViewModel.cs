@@ -35,7 +35,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
-        ICommandClient commandClient)
+        ICommandClient commandClient, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -48,7 +48,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Project = project;
         Baseline = baseline;
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
-            dragSource, baseline)
+            dragSource, baseline, clock)
         {
             KnownProjects = project.KnownProjects,
             BrowseForProjectCommand = project.BrowseCommand,
@@ -81,6 +81,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Baseline.PropertyChanged += OnBaselinePropertyChanged;
         Assess.PropertyChanged += OnAssessPropertyChanged;
         Context.PropertyChanged += OnContextPropertyChanged;
+        Context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
 
         AcceptRerunCommand = new AsyncRelayCommand(AcceptRerunAsync, () => RerunOffered);
         DismissRerunCommand = new RelayCommand(() => RerunOffered = false, () => RerunOffered);
@@ -167,8 +168,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public ProjectFreshness Freshness =>
         !HasProject ? ProjectFreshness.NoProject
         : _isRefreshing ? ProjectFreshness.Refreshing
-        : Context.AppliedSinceRefresh || IsSavedSinceTheNumbers ? ProjectFreshness.SavedSince
-        : !Baseline.HasBaseline ? ProjectFreshness.NoBaseline
+        : Context.Evidence.IsStale ? ProjectFreshness.SavedSince
+        : Context.Evidence.Freshness == NumbersFreshness.NoBaseline ? ProjectFreshness.NoBaseline
         : _refreshed ? ProjectFreshness.Refreshed
         : ProjectFreshness.Current;
 
@@ -192,7 +193,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         ProjectFreshness.NoBaseline => "No Baseline yet",
         ProjectFreshness.Current => "Current",
-        ProjectFreshness.SavedSince => Context.AppliedSinceRefresh ? "Numbers need refresh" : "FieldWorks saved since",
+        ProjectFreshness.SavedSince => Context.Evidence.AppliedSinceRefresh ? "Numbers need refresh" : "FieldWorks saved since",
         ProjectFreshness.Refreshing => "Refreshing",
         ProjectFreshness.Refreshed => "Refreshed",
         _ => string.Empty,
@@ -245,35 +246,28 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public IRelayCommand SeeWhatChangedCommand { get; }
 
     /// <summary>
-    /// Reads the recorded Baseline and the project file's last-write time again, so a save FieldWorks made while
-    /// the window was elsewhere shows at once. Reads only; nothing reruns.
+    /// Reads the recorded Baseline, the project file's last-write time, the pending changes and the stored
+    /// evidence again, so a save FieldWorks made, or an Assessment recorded, while the window was elsewhere shows at
+    /// once. Reads only; nothing reruns.
     /// </summary>
     public async Task CheckFreshnessAsync(CancellationToken cancellationToken = default)
     {
         if (!HasProject || _isRefreshing) return;
         await Baseline.CheckAsync(cancellationToken).ConfigureAwait(true);
         await Context.Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
+        // A run under way publishes its own result, which a stored read must not replace.
+        if (!Assess.IsActive) await Context.ReadStoredEvidenceAsync(cancellationToken).ConfigureAwait(true);
         RaiseFreshness();
     }
 
-    // What the numbers on screen were measured against: the published evidence's save, else the Baseline's.
-    private DateTimeOffset? NumbersSavedUtc => Context.Evidence?.MeasuredSaveUtc ?? Baseline.SourceLastWriteUtc;
-
-    // The latest save known: the project file as last read, or a Baseline captured from a later save.
-    private DateTimeOffset? LatestSaveUtc =>
-        Baseline.ProjectLastWriteUtc is { } written && (Baseline.SourceLastWriteUtc is not { } source || written > source)
-            ? written
-            : Baseline.SourceLastWriteUtc;
-
-    private bool IsSavedSinceTheNumbers => NumbersSavedUtc is { } numbers && LatestSaveUtc is { } latest && latest > numbers;
-
     private string SavedSinceText()
     {
-        if (Context.AppliedSinceRefresh)
+        var evidence = Context.Evidence;
+        if (evidence.AppliedSinceRefresh)
             return "Changes were applied to the FieldWorks project. The numbers are stale until you refresh.";
         var stem = Path.GetFileNameWithoutExtension(Context.ProjectPath);
-        return $"{stem} saved {When(LatestSaveUtc!.Value)}; the numbers still describe {When(NumbersSavedUtc!.Value)} " +
-            "until you refresh.";
+        return $"{stem} saved {When(evidence.LatestSaveUtc!.Value)}; the numbers still describe " +
+            $"{When(evidence.MeasuredSaveUtc!.Value)} until you refresh.";
     }
 
     private string BaselineAndSaveText()
@@ -284,10 +278,11 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         return written is { } at ? $"{baseline} · {stem} saved {When(at)}" : baseline;
     }
 
-    private static string When(DateTimeOffset at)
+    private string When(DateTimeOffset at)
     {
-        var local = at.ToLocalTime();
-        return local.Date == DateTime.Today
+        var clock = Context.Clock;
+        var local = TimeZoneInfo.ConvertTime(at, clock.LocalTimeZone);
+        return local.Date == clock.GetLocalNow().Date
             ? local.ToString("t", CultureInfo.CurrentCulture) + " today"
             : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
     }
@@ -468,11 +463,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         if (Context.ProjectPath is null) Context.Baseline = null;
         else PublishBaseline();
-        if (Context.CurrentEvidence is { } evidence && Baseline.HasBaseline)
-            Context.CurrentEvidence = evidence with
-            {
-                Freshness = Baseline.IsSavedSince ? EvidenceFreshness.Stale : EvidenceFreshness.Current,
-            };
         RaiseFreshness();
     }
 
@@ -481,6 +471,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Baseline.HeldStatusText, Baseline.RefusalMessage)
     {
         FieldWorksHeldProject = Baseline.FieldWorksHeldProject,
+        SourceLastWriteUtc = Baseline.SourceLastWriteUtc,
+        ProjectLastWriteUtc = Baseline.ProjectLastWriteUtc,
     };
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -497,15 +489,15 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
                 OnPropertyChanged(nameof(HasProject));
                 OnPropertyChanged(nameof(ProjectSwitchEnabled));
                 break;
-            case nameof(WorkspaceContext.Evidence):
-                // Freshness describes the evidence on screen, whether a run just produced it or the store held it.
-                if (Context.HasEvidence) Baseline.HasAssessment = true;
-                RaiseFreshness();
-                break;
-            case nameof(WorkspaceContext.AppliedSinceRefresh):
-                RaiseFreshness();
-                break;
         }
+    }
+
+    // Freshness describes the evidence on screen, whether a run just produced it or the store held it.
+    private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ProjectEvidence.HasAssessment) && Context.HasEvidence)
+            Baseline.HasAssessment = true;
+        if (e.PropertyName == nameof(ProjectEvidence.Freshness)) RaiseFreshness();
     }
 
     private void RefreshPages()
@@ -527,8 +519,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         if (_isRefreshing) RaiseFreshness();
 
+        // A restored stored Assessment completes the run too; only a result not already shown is a new run.
         if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Completed &&
-            Assess.Result is { } result)
+            Assess.Result is { } result && !ReferenceEquals(result, Context.Evidence.Assessment?.Assessment))
         {
             Context.PublishEvidence(new WorkspaceEvidence(result, Assess.CompletedAt, Assess.LastRunWasRerun));
         }

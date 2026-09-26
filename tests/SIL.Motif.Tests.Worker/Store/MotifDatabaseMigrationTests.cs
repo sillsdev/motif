@@ -270,6 +270,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "Word|TEXT|1|0|", "Outcome|TEXT|1|0|", "ElapsedMs|INTEGER|0|0|", "RawSignature|TEXT|0|0|",
                 "MorphologyJson|TEXT|0|0|", "CorrectnessJson|TEXT|0|0|", "ProjectStanding|TEXT|0|0|",
                 "OccurrenceCount|INTEGER|0|0|", "ReadingGradesJson|TEXT|0|0|", "MissedApprovedCount|INTEGER|0|0|",
+                "MissedApprovedJson|TEXT|0|0|",
                 "IsIncomplete|INTEGER|1|0|0"],
             ["AssessmentObjectTimings"] = ["AssessmentId|TEXT|1|1|", "OrdinalIndex|INTEGER|1|2|", "Kind|TEXT|1|0|",
                 "Object|TEXT|1|0|", "Word|TEXT|1|0|", "Attempts|INTEGER|0|0|", "Passes|INTEGER|0|0|",

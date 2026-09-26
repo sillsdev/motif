@@ -16,7 +16,7 @@ public sealed class WarningsPageModel : PageModel
 {
     public WarningsPageModel(WorkspaceContext context) : base(context)
     {
-        Grammar = new GrammarViewModel(context.Commands);
+        Grammar = new GrammarViewModel(context.Commands, context.Clock);
         CheckGrammarCommand = new AsyncRelayCommand(CheckGrammarAsync, () => Context.HasProject && !Grammar.IsLoading);
         Grammar.PropertyChanged += OnGrammarChanged;
         Grammar.Warnings.PropertyChanged += OnGrammarChanged;

@@ -26,6 +26,14 @@ public sealed record AssessedWord(
     public int? OccurrenceCount { get; init; }
     public IReadOnlyList<string>? ReadingGrades { get; init; }
     public int? MissedApprovedCount { get; init; }
+
+    /// <summary>
+    /// The approved analyses the parser did not produce, named with the forms, glosses and categories the project
+    /// gave them when the word was assessed, so a later read words them as the run did. <see langword="null"/> when
+    /// the run did not compare the word with its approved analyses.
+    /// </summary>
+    public IReadOnlyList<SIL.Motif.Contract.Responses.ParserReading>? MissedApproved { get; init; }
+
     public bool IsIncomplete { get; init; }
 }
 

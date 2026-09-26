@@ -92,8 +92,12 @@ public sealed class ReviewPageModelTests
         await page.MeasureCommand.ExecuteAsync(null);
         Assert.True(page.CanApply);
 
-        context.CurrentEvidence = new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
-            EvidenceFreshness.Stale, null, null, null, null, null);
+        var saved = DateTimeOffset.UtcNow;
+        context.Baseline = new WorkspaceBaseline(true, "", "", "", "", null)
+        {
+            SourceLastWriteUtc = saved,
+            ProjectLastWriteUtc = saved.AddHours(1),
+        };
 
         Assert.False(page.CanApply);
         Assert.Contains("Refresh", page.ApplyBlockReason);
@@ -260,7 +264,7 @@ public sealed class ReviewPageModelTests
         Assert.Empty(context.Changes.Items);
         Assert.Equal("draft/one", page.Receipt!.ProposalId);
         Assert.Equal("revision/one", Assert.Single(fake.ApplyPendingRequests).Revision);
-        Assert.True(context.AppliedSinceRefresh);
+        Assert.True(context.Evidence.AppliedSinceRefresh);
     }
 
     [Fact]
@@ -283,7 +287,7 @@ public sealed class ReviewPageModelTests
         Assert.Null(page.Receipt);
         Assert.False(page.HasReceipt);
         Assert.Null(page.ApplyError);
-        Assert.False(context.AppliedSinceRefresh);
+        Assert.False(context.Evidence.AppliedSinceRefresh);
     }
 
     [Fact]
