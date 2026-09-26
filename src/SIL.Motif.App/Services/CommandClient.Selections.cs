@@ -15,11 +15,11 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<DefaultSelectionResponse>> SetDefaultSelectionAsync(
         SetDefaultSelectionRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => SelectionCommands.SetDefault(request));
+        OneAtATime(() => SelectionCommands.SetDefault(request), cancellationToken);
 
     public Task<CommandOutcome<ProjectSetupResponse>> SkipSetupAsync(
         SkipSetupRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => ProjectSetupCommands.Skip(request));
+        OneAtATime(() => ProjectSetupCommands.Skip(request), cancellationToken);
 
     public Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
         ShowConfigRequest request, CancellationToken cancellationToken) =>
