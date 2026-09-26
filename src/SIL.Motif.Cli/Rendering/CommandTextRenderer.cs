@@ -61,6 +61,7 @@ public static class CommandTextRenderer
                 : "Setup remains open." + Environment.NewLine,
             TextInventoryResponse r => RenderTextInventory(r),
             OverviewResponse r => RenderOverview(r),
+            GrammarCheckResponse r => RenderGrammarCheck(r),
             WarningsResponse r => RenderWarnings(r),
             TimingResponse r => RenderTiming(r),
             HandoffCommandResponse r => RenderHandoff(r),
@@ -294,13 +295,34 @@ public static class CommandTextRenderer
 
     private static string RenderWarnings(WarningsResponse response)
     {
-        if (!response.HasBaseline) return "No Baseline has been captured." + Environment.NewLine;
-        if (!response.HasCheck) return "Grammar not checked yet for this Baseline." + Environment.NewLine;
+        if (!response.HasBaseline)
+            return "No Baseline has been captured. Run: motif baseline capture <fwdata>" + Environment.NewLine;
+        if (!response.HasCheck)
+            return "Grammar not checked yet for this Baseline. Run: motif grammar check --project <fwdata>" +
+                Environment.NewLine;
         var text = new StringBuilder();
         text.AppendLine($"Grammar findings: {response.TotalCount:N0} " +
             $"({response.WarningCount:N0} warnings, {response.InformationCount:N0} information)");
         foreach (var kind in response.ByKind)
             text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}");
+        foreach (var finding in response.Findings)
+            text.AppendLine($"  {finding.Text}");
+        return text.ToString();
+    }
+
+    private static string RenderGrammarCheck(GrammarCheckResponse response)
+    {
+        if (!response.HasBaseline)
+            return "No Baseline has been captured. Run: motif baseline capture <fwdata>" + Environment.NewLine;
+
+        var warningCount = response.Findings.Count(finding =>
+            finding.Severity == GrammarDiagnosticLevel.Warning);
+        var informationCount = response.Findings.Count - warningCount;
+        var text = new StringBuilder();
+        text.AppendLine($"Grammar findings: {response.Findings.Count:N0} " +
+            $"({warningCount:N0} warnings, {informationCount:N0} information)");
+        foreach (var summary in response.Summary)
+            text.AppendLine($"  {summary.Code}: {summary.Count:N0} {summary.Level.ToWireValue()}");
         foreach (var finding in response.Findings)
             text.AppendLine($"  {finding.Text}");
         return text.ToString();

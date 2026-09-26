@@ -6,6 +6,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Tests.TestFixtures;
@@ -51,6 +52,28 @@ public sealed class WarningsArgvTests(PristineProjectFixture pristine) : IDispos
         Assert.Equal("hc-unused-rule", Assert.Single(ProjectionJson.Deserialize<WarningsResponse>(leftOut.Output)!.Findings).Code);
         Assert.Contains("1 warnings, 0 information", human.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("hc-undeclared-segment", human.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnavailableGrammarChecksTellTheCallerWhatToRunNext()
+    {
+        Directory.CreateDirectory(_root);
+        var project = pristine.CopyProjectFile();
+
+        var noBaseline = Run("warnings", "--project", project);
+
+        Assert.Equal(0, noBaseline.ExitCode);
+        Assert.Contains("No Baseline has been captured.", noBaseline.Output, StringComparison.Ordinal);
+        Assert.Contains("motif baseline capture <fwdata>", noBaseline.Output, StringComparison.Ordinal);
+
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+
+        var noCheck = Run("warnings", "--project", project);
+
+        Assert.Equal(0, noCheck.ExitCode);
+        Assert.Contains("Grammar not checked yet for this Baseline.", noCheck.Output, StringComparison.Ordinal);
+        Assert.Contains("motif grammar check --project <fwdata>", noCheck.Output, StringComparison.Ordinal);
     }
 
     public void Dispose()

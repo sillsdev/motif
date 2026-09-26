@@ -2,6 +2,7 @@ using System;
 using System.Text.Json;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Host;

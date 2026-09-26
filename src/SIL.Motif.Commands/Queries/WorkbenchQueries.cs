@@ -29,23 +29,6 @@ public enum ProjectHistoryKind
 /// <param name="Summary">One line: what was captured, assessed, or written, and how it came out.</param>
 public sealed record ProjectHistoryEntry(DateTimeOffset At, ProjectHistoryKind Kind, string Summary);
 
-/// <summary>Which project's grammar to check; the grammar is read from its current Baseline.</summary>
-public sealed record GrammarCheckRequest(string ProjectPath);
-
-/// <summary>
-/// What the parser reports about a project's grammar as a whole, including findings produced during import.
-/// </summary>
-/// <param name="Findings">
-/// The grammar-health report findings.
-/// </param>
-/// <param name="HasBaseline">False when the project has no Baseline yet, so there was no grammar to read.</param>
-public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings, bool HasBaseline)
-{
-    /// <summary>The parser's per-code summary rows, used to group findings for display.</summary>
-    public IReadOnlyList<GrammarWarningSummary> Summary { get; init; } = [];
-
-}
-
 /// <summary>Which Texts to read words from; empty reads none.</summary>
 public sealed record TextWordsRequest(string ProjectPath, IReadOnlyList<Guid> TextIds);
 
