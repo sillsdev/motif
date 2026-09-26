@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Motif — home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF;color:#333333;font-family:"Noto Sans",system-ui,sans-serif}
+a{color:#007a32}a:hover{color:#005c25}
+@keyframes motif-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.marquee-track{animation:motif-marquee 60s linear infinite}
+.marquee:hover .marquee-track{animation-play-state:paused}
+@media (prefers-reduced-motion: reduce){.marquee-track{animation:none}}
+</style>
+</helmet>
+<div style="width: 1440px; height: 4860px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333">
+
+<header style="height: 76px; box-sizing: border-box; padding: 0 80px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #DDDDDD">
+<div style="display: flex; align-items: center; gap: 16px">
+<a href="https://software.sil.org/" aria-label="SIL Language Technology"><img src="/_blob/ed56d12dc82aef245cc32cc08e7a8391" alt="SIL" style="height: 36px; width: 67px; display: block"></a>
+<div style="width: 1px; height: 28px; background: #DDDDDD"></div>
+<div style="display: flex; align-items: center; gap: 10px"><img src="/_blob/b5cfc56b302246be35abc96d5e19f301" alt="" style="height: 30px; width: 38px; display: block"><span style="font-size: 26px; font-weight: 800; color: #333333">Motif</span></div>
+</div>
+<nav style="display: flex; gap: 32px; font-size: 16px">
+<a href="#" style="text-decoration: none; color: #333333">Guide</a>
+<a href="#" style="text-decoration: none; color: #333333">Learn</a>
+<a href="#" style="text-decoration: none; color: #333333">Samples</a>
+<a href="#" style="text-decoration: none; color: #333333">Work with AI</a>
+<a href="#" style="text-decoration: none; color: #333333">Reference</a>
+<a href="https://github.com/sillsdev/motif" style="text-decoration: none; color: #333333">GitHub</a>
+</nav>
+</header>
+
+<section style="padding: 104px 80px 88px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: center">
+<div style="grid-column: span 7; display: flex; flex-direction: column; gap: 26px">
+<div style="font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">For anyone getting a FieldWorks parser to work</div>
+<h1 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 62px; line-height: 1.08; font-weight: 700">Motif can help you teach a dumb computer your language.</h1>
+<p style="margin: 0; font-size: 21px; line-height: 1.55; color: #555555; max-width: 620px">You know the linguistics. An AI consultant knows the parser, the rules and FieldWorks’ settings. Motif gives you both the evidence: which words fail, why, and what is slow — and checks every fix.</p>
+<div style="display: flex; gap: 16px; align-items: center">
+<a href="#" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 26px; border-radius: 8px; background: #007a32; color: #FFFFFF; font-weight: 700; text-decoration: none">Download Motif</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 24px; border-radius: 8px; border: 1px solid #CCCCCC; color: #333333; font-weight: 700; text-decoration: none">See how the AI helps</a>
+</div>
+<div style="font-size: 14px; color: #555555">[Release status] · Free and open source · <a href="https://github.com/sillsdev/motif">GitHub</a></div>
+</div>
+<div style="grid-column: 8 / span 5; display: flex; flex-direction: column; gap: 14px">
+<div style="padding: 22px 24px; border-radius: 14px 14px 14px 4px; background: #FFFFFF; border: 1px solid #DDDDDD; font-size: 16px; line-height: 1.55">
+<div style="font-size: 13px; font-weight: 700; color: #555555; margin-bottom: 6px">You</div>
+Half my plural nouns won’t parse, but only the ones with back vowels. What am I missing?
+</div>
+<div style="padding: 22px 24px; border-radius: 14px 14px 4px 14px; background: {{accentSoft}}; border: 1px solid {{accentLine}}; font-size: 16px; line-height: 1.55">
+<div style="font-size: 13px; font-weight: 700; color: {{accent}}; margin-bottom: 6px">AI consultant, reading Motif’s Handoff</div>
+Every failing word stops at the plural. Your <em>-lar</em> allomorph has an environment that only allows front vowels before it. In FieldWorks, open the plural suffix and change that environment to back vowels — then Refresh in Motif to check.
+</div>
+<div style="font-size: 13px; color: #555555; padding-left: 4px">[Illustrative exchange — replace with a real one from the Turkish sample]</div>
+</div>
+</section>
+
+<section class="marquee" aria-label="What Motif does" style="background: #800493; overflow: hidden; padding: 22px 0">
+<div class="marquee-track" style="display: flex; width: max-content">
+<div style="display: flex"><sc-for list="{{phrases}}" as="ph" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 40px; flex-shrink: 0; padding-right: 40px">
+<span style="font-size: 20px; font-weight: {{ph.weight}}; white-space: nowrap; color: #FFFFFF">{{ph.text}}</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="#FBC21D" style="flex-shrink: 0"><rect x="8" y="2" width="8" height="20" rx="4"></rect></svg>
+</div>
+</sc-for></div>
+<div aria-hidden="true" style="display: flex"><sc-for list="{{phrases}}" as="ph" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 40px; flex-shrink: 0; padding-right: 40px">
+<span style="font-size: 20px; font-weight: {{ph.weight}}; white-space: nowrap; color: #FFFFFF">{{ph.text}}</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="#FBC21D" style="flex-shrink: 0"><rect x="8" y="2" width="8" height="20" rx="4"></rect></svg>
+</div>
+</sc-for></div>
+</div>
+</section>
+
+<div style="height: 56px"></div>
+<section style="margin: 0 80px; padding: 24px 32px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD; display: flex; align-items: center; justify-content: space-between; gap: 24px">
+<div style="font-size: 18px; line-height: 1.5">Works on the same <strong>FieldWorks</strong> projects that <strong>FLExTrans</strong> uses. A grammar that parses better — and faster — helps both.</div>
+<div style="display: flex; gap: 12px; flex-shrink: 0">
+<a href="https://software.sil.org/fieldworks/" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 8px; background: #EEEEEE; color: #333333; font-weight: 700; text-decoration: none">FieldWorks ↗</a>
+<a href="https://software.sil.org/flextrans/" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 8px; background: #EEEEEE; color: #333333; font-weight: 700; text-decoration: none">FLExTrans ↗</a>
+</div>
+</section>
+
+<section style="padding: 112px 80px 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; row-gap: 40px">
+<div style="grid-column: span 12; display: flex; flex-direction: column; gap: 14px; max-width: 860px">
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 44px; line-height: 1.12; font-weight: 700">Writing a parser is computer science. You shouldn’t have to do it alone.</h2>
+<p style="margin: 0; font-size: 19px; line-height: 1.6; color: #555555">Getting a parser to accept a language means turning linguistics into rules a machine follows literally. Motif puts an AI consultant beside you — and gives it everything it needs to be useful: your measured results, the exact reason each word fails, and documentation written for it to read.</p>
+</div>
+<div style="grid-column: span 4; display: flex; flex-direction: column; gap: 12px; padding: 28px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD">
+<div style="font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #555555">You bring</div>
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 26px; font-weight: 700">The language</div>
+<div style="font-size: 16px; line-height: 1.55; color: #555555">Which words are right, what the morphemes mean, how sounds change. The judgement no machine has.</div>
+</div>
+<div style="grid-column: span 4; display: flex; flex-direction: column; gap: 12px; padding: 28px; border-radius: 12px; background: {{accentSoft}}; border: 1px solid {{accentLine}}">
+<div style="font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: {{accent}}">The AI brings</div>
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 26px; font-weight: 700">The machinery</div>
+<div style="font-size: 16px; line-height: 1.55; color: #555555">How the parser reads rules, slots and environments; which FieldWorks setting to change; why a grammar is slow; what to try next.</div>
+</div>
+<div style="grid-column: span 4; display: flex; flex-direction: column; gap: 12px; padding: 28px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD">
+<div style="font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #555555">Motif brings</div>
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 26px; font-weight: 700">The evidence</div>
+<div style="font-size: 16px; line-height: 1.55; color: #555555">Coverage over your texts, the reason every word fails, timing, and a Handoff folder you drag into any AI chat. It checks each fix before it reaches your project.</div>
+</div>
+<div style="grid-column: span 12; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding: 32px; border-radius: 14px; background: #1B1F24; color: #F7F5F0; align-items: center">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 26px; font-weight: 700">Works with the AI you already use</div>
+<div style="font-size: 16px; line-height: 1.6; color: #DDDDDD">Drag the AI Handoff into a chat, or let an agent drive Motif directly: every command answers in JSON, and one call describes them all.</div>
+</div>
+<pre style="margin: 0; padding: 20px 24px; border-radius: 10px; background: #0F1215; font-family: 'IBM Plex Mono', monospace; font-size: 15px; line-height: 1.7; color: #DDDDDD; white-space: pre-wrap">$ motif help --all --json
+$ motif handoff Sample.fwdata --out handoff --no-assess
+→ /llms.txt for the whole site</pre>
+</div>
+</section>
+
+<section style="padding: 112px 80px 0; display: flex; flex-direction: column; gap: 36px">
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 40px; font-weight: 700">Who it’s for</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px">
+<sc-for list="{{people}}" as="p" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD">
+<div style="font-size: 19px; font-weight: 700">{{p.who}}</div>
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 18px; line-height: 1.45; color: #333333">“{{p.pain}}”</div>
+<div style="font-size: 15px; line-height: 1.5; color: #555555">{{p.help}}</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="padding: 112px 80px 0; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 40px; font-weight: 700">Measure, understand, fix</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #555555">The loop Motif is built around, in clips under thirty seconds each.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+<sc-for list="{{clips}}" as="clip" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="aspect-ratio: 16 / 9; border-radius: 12px; background: #1B1F24; display: flex; align-items: center; justify-content: center; position: relative">
+<div style="width: 56px; height: 56px; border-radius: 28px; background: rgba(255,255,255,0.14); display: flex; align-items: center; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M8 5v14l11-7z"></path></svg>
+</div>
+<div style="position: absolute; left: 16px; bottom: 12px; font-size: 13px; color: #CCCCCC">{{clip.placeholder}}</div>
+</div>
+<div style="display: flex; gap: 14px; align-items: flex-start">
+<div style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 16px; background: {{accentSoft}}; color: {{accent}}; font-weight: 700; display: flex; align-items: center; justify-content: center">{{clip.n}}</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 19px; font-weight: 700">{{clip.title}}</div>
+<div style="font-size: 16px; line-height: 1.5; color: #555555">{{clip.body}}</div>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="margin: 112px 80px 0; padding: 48px; border-radius: 14px; background: #FFFFFF; border: 1px solid #DDDDDD; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; align-items: center">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div style="font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">Faster parsing</div>
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 38px; line-height: 1.15; font-weight: 700">A grammar that parses right can still parse slowly.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.6; color: #555555">Timing shows which words take longest and which rules do the work. One small change — a slot left too open, an environment too broad — can make a grammar dramatically faster. The Turkish sample shows one.</p>
+<a href="#" style="font-weight: 700">Lesson: the grammar that took all night →</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; font-size: 15px"><span>Turkish sample, broken</span><span style="font-weight: 700">[time]</span></div>
+<div style="height: 22px; border-radius: 6px; background: #999999"></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; font-size: 15px"><span>Turkish sample, fixed</span><span style="font-weight: 700">[time]</span></div>
+<div style="height: 22px; width: 8%; border-radius: 6px; background: #007a32"></div>
+</div>
+<div style="font-size: 14px; color: #555555">[Measured speed-up from the sample’s pinned results, e.g. “× faster on the same texts”]</div>
+</div>
+</section>
+
+<section style="padding: 112px 80px 0; display: flex; flex-direction: column; gap: 40px">
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 40px; font-weight: 700">Everything in one window</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px">
+<sc-for list="{{features}}" as="f" hint-placeholder-count="7">
+<a href="#" style="display: flex; flex-direction: column; gap: 10px; padding: 24px; min-height: 150px; box-sizing: border-box; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD; text-decoration: none; color: #333333">
+<div style="font-size: 18px; font-weight: 700">{{f.title}}</div>
+<div style="font-size: 15px; line-height: 1.5; color: #555555">{{f.body}}</div>
+</a>
+</sc-for>
+<a href="#" style="display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 24px; min-height: 150px; box-sizing: border-box; border-radius: 12px; background: {{accentSoft}}; text-decoration: none; color: {{accent}}">
+<div style="font-size: 18px; font-weight: 700">Read the Guide →</div>
+<div style="font-size: 15px; line-height: 1.5; color: #333333">Every page, step by step.</div>
+</a>
+</div>
+</section>
+
+<section style="padding: 112px 80px 0; display: flex; flex-direction: column; gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 40px; font-weight: 700">How it fits</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #555555">Motif doesn’t replace FieldWorks. FieldWorks keeps your data; Motif measures it and explains what it finds; you and your AI consultant decide the fix.</p>
+</div>
+<div style="border-radius: 14px; background: #FFFFFF; border: 1px solid #DDDDDD; padding: 24px; display: flex; justify-content: center">
+<dc-import name="HowItFits" accent="{{accent}}" hint-size="1200px,560px"></dc-import>
+</div>
+</section>
+
+<section style="padding: 112px 80px 0; display: flex; flex-direction: column; gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 800px">
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 40px; font-weight: 700">Practise on a sample language</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #555555">Each sample comes broken and fixed. Open the broken one, find what Motif flags, fix it in FieldWorks — with an AI if you like — and watch the numbers rise.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+<sc-for list="{{samples}}" as="s" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 16px; padding: 28px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD">
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 28px; font-weight: 700">{{s.name}}</div>
+<div style="font-size: 15px; line-height: 1.5; color: #555555">Teaches {{s.teaches}}</div>
+<sc-if value="{{s.fast}}" hint-placeholder-val="{{false}}">
+<div style="align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: #FFF4D1; color: #6B4E00; font-size: 13px; font-weight: 700">Includes a speed lesson</div>
+</sc-if>
+<div style="display: flex; gap: 10px">
+<a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid #CCCCCC; color: #333333; font-weight: 700; text-decoration: none">Broken ↓</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid #CCCCCC; color: #333333; font-weight: 700; text-decoration: none">Fixed ↓</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; color: {{accent}}; font-weight: 700; text-decoration: none">Lessons →</a>
+</div>
+<div style="font-size: 13px; line-height: 1.5; color: #555555">A simplified teaching grammar for learning Motif; not a description of {{s.name}}.</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<footer style="margin-top: auto; padding: 40px 80px; border-top: 1px solid #DDDDDD; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #555555">
+<div style="display: flex; align-items: center; gap: 14px">
+<img src="/_blob/ed56d12dc82aef245cc32cc08e7a8391" alt="SIL" style="height: 30px; width: 56px; display: block">
+<span>Motif is part of <a href="https://software.sil.org/">SIL Language Technology</a>. [License]</span>
+</div>
+<div style="display: flex; gap: 24px"><a href="https://github.com/sillsdev/motif">GitHub</a><a href="https://software.sil.org/fieldworks/">FieldWorks</a><a href="https://software.sil.org/flextrans/">FLExTrans</a></div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":1440,"height":4860}}'>
+class Component extends DCLogic {
+renderVals() {
+const accent = this.props.accent ?? '#800493';
+return {
+phrases: [
+{ text: 'You know when a word is right. Motif helps the computer learn it too.', weight: '800' },
+{ text: 'The parser isn’t smart. It’s literal. Motif shows you what it took literally.', weight: '400' },
+{ text: 'You’ve described the morphology. Now get the computer to agree.', weight: '400' },
+{ text: 'A grammar that parses right can still parse slowly. Find the one change that fixes it.', weight: '400' },
+{ text: 'The AI doesn’t replace your judgement. It translates it into rules.', weight: '400' }
+],
+accent,
+accentSoft: accent + '14',
+accentLine: accent + '40',
+people: [
+{ who: 'Field linguist', pain: 'I’ve described the morphology. The parser still disagrees.', help: 'See exactly where each word stops, and have the AI turn your analysis into rules the parser accepts.' },
+{ who: 'Translator', pain: 'I just want my words glossed.', help: 'Find the few grammar fixes that make most of your text parse, without learning parser theory first.' },
+{ who: 'Native speaker', pain: 'I know when a word is right. The computer doesn’t.', help: 'Your judgement is the ground truth; Motif and the AI help the computer catch up to it.' },
+{ who: 'Language technologist', pain: 'Which rule is slow, and why?', help: 'Timing, JSON output for every command, and documentation written for agents.' }
+],
+clips: [
+{ n: '1', title: 'See where your grammar stands', body: 'Open a project and read how much of your own texts parses.', placeholder: 'Clip: open project → Overview' },
+{ n: '2', title: 'Find out why a word fails', body: 'Try a Word shows the parse — or the exact step where the grammar gave up. Hand it to the AI.', placeholder: 'Clip: Try a Word → reason → Handoff' },
+{ n: '3', title: 'Fix it and check before you apply', body: 'Review changes shows what a fix would write and what it does to the numbers.', placeholder: 'Clip: Review changes → Apply' }
+],
+features: [
+{ title: 'Overview', body: 'Where the grammar stands, from the last run.' },
+{ title: 'Texts', body: 'Text Coverage, and which texts to measure.' },
+{ title: 'Try a Word', body: 'Parse one word and see why.' },
+{ title: 'Timing', body: 'Which words are slow, and what makes them slow.' },
+{ title: 'Warnings', body: 'Grammar findings and what to do about them.' },
+{ title: 'Review changes', body: 'What applying your changes would do.' },
+{ title: 'AI Handoff', body: 'Everything your AI consultant needs, in five files.' }
+],
+samples: [
+{ name: 'Turkish', teaches: 'suffix order, vowel harmony — and a slow grammar made fast.', fast: true },
+{ name: 'Swahili', teaches: 'noun-class prefixes and agreement.', fast: false },
+{ name: 'Tagalog', teaches: 'infixes and reduplication.', fast: false }
+]
+};
+}
+}
+</script>
+</body>
+</html>

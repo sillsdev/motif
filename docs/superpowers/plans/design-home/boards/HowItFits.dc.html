@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How Motif fits with FieldWorks</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"Noto Sans",system-ui,sans-serif;color:#333333}
+</style>
+</helmet>
+<div style="width: 1200px; height: 560px; box-sizing: border-box; background: #FFFFFF; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333; display: flex; align-items: center; justify-content: center">
+<svg width="1152" height="512" viewBox="0 0 1152 512" role="img" aria-label="FieldWorks holds the project. Motif measures it with the PanGloss parser and explains which words fail and why. You fix the grammar in FieldWorks, or apply a reviewed change from Motif, then refresh.">
+<rect x="24" y="96" width="300" height="232" rx="16" fill="#F5F5F5" stroke="#CCCCCC" style="stroke-width: 1.5"></rect>
+<text x="56" y="148" fill="#333333" style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 28px; font-weight: 700">FieldWorks</text>
+<text x="56" y="182" fill="#555555" style="font-size: 17px">Owns your data</text>
+<text x="56" y="226" fill="#333333" style="font-size: 16px">Lexicon and grammar</text>
+<text x="56" y="256" fill="#333333" style="font-size: 16px">Texts</text>
+<text x="56" y="286" fill="#333333" style="font-size: 16px">Your analyses</text>
+
+<rect x="426" y="64" width="300" height="296" rx="16" fill="{{accentSoft}}" stroke="{{accent}}" style="stroke-width: 2"></rect>
+<text x="458" y="116" fill="{{accent}}" style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 28px; font-weight: 700">Motif</text>
+<text x="458" y="150" fill="#555555" style="font-size: 17px">Measures and explains</text>
+<text x="458" y="196" fill="#333333" style="font-size: 16px">Parses every word with PanGloss</text>
+<text x="458" y="226" fill="#333333" style="font-size: 16px">Text Coverage and timing</text>
+<text x="458" y="256" fill="#333333" style="font-size: 16px">Why a word fails</text>
+<text x="458" y="286" fill="#333333" style="font-size: 16px">What a change would do</text>
+<text x="458" y="330" fill="#555555" style="font-size: 14px">Reads the project; never edits it silently</text>
+
+<rect x="828" y="96" width="300" height="232" rx="16" fill="#F5F5F5" stroke="#CCCCCC" style="stroke-width: 1.5"></rect>
+<text x="860" y="148" fill="#333333" style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 23px; font-weight: 700">You + an AI consultant</text>
+<text x="860" y="182" fill="#555555" style="font-size: 17px">Decide the fix</text>
+<text x="860" y="226" fill="#333333" style="font-size: 16px">The AI reads the Handoff</text>
+<text x="860" y="256" fill="#333333" style="font-size: 16px">You fix it in FieldWorks</text>
+<text x="860" y="286" fill="#333333" style="font-size: 16px">— or apply a reviewed change</text>
+
+<path d="M332 212 H412" fill="none" stroke="#333333" style="stroke-width: 2"></path>
+<path d="M404 204 L414 212 L404 220" fill="none" stroke="#333333" style="stroke-width: 2"></path>
+<text x="372" y="200" fill="#555555" style="font-size: 14px; text-anchor: middle">reads</text>
+
+<path d="M734 212 H814" fill="none" stroke="#333333" style="stroke-width: 2"></path>
+<path d="M806 204 L816 212 L806 220" fill="none" stroke="#333333" style="stroke-width: 2"></path>
+<text x="774" y="200" fill="#555555" style="font-size: 14px; text-anchor: middle">shows</text>
+
+<path d="M978 336 V430 Q978 452 956 452 H196 Q174 452 174 430 V344" fill="none" stroke="{{accent}}" style="stroke-width: 2; stroke-dasharray: 6 6"></path>
+<path d="M166 352 L174 340 L182 352" fill="none" stroke="{{accent}}" style="stroke-width: 2"></path>
+<rect x="476" y="434" width="200" height="36" rx="18" fill="#FFFFFF" stroke="{{accent}}" style="stroke-width: 1.5"></rect>
+<text x="576" y="458" fill="{{accent}}" style="font-size: 15px; font-weight: 700; text-anchor: middle">Save, then Refresh</text>
+</svg>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":1200,"height":560}}'>
+class Component extends DCLogic {
+renderVals() {
+const accent = this.props.accent ?? '#800493';
+return { accent, accentSoft: accent + '14' };
+}
+}
+</script>
+</body>
+</html>
