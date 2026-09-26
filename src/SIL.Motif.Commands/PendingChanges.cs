@@ -482,7 +482,7 @@ public static class PendingChanges
                 var key = ProjectAnalysisKey.For(morphology.Analyses[index]);
                 var match = stored.FirstOrDefault(item => item.Key == key);
                 return new ReviewAnalysis(reading,
-                    match.Analysis?.Opinion ?? word.ReadingGrades?.ElementAtOrDefault(index) ?? "no-opinion",
+                    match.Analysis?.Opinion ?? word.ReadingGrades?.ElementAtOrDefault(index) ?? ReadingGrade.NoOpinion,
                     selected == index, match.Analysis is not null);
             }).Concat(stored.Where(item => !parserKeys.Contains(item.Key))
                 .Select(item => item.Analysis)).ToArray();
@@ -580,8 +580,8 @@ public static class PendingChanges
                 bundle.InflTypeRA?.Guid.ToString("D"), null)).ToArray();
             var key = AnalysisContent.ComputeDigest(morphs.Select(morph =>
                 new MorphBundleContent(morph.Form, morph.Msa, morph.InflType)).ToArray());
-            var opinion = wordform.HumanApprovedAnalyses.Contains(analysis) ? "approved" :
-                wordform.HumanDisapprovedParses.Contains(analysis) ? "disapproved" : "candidate";
+            var opinion = wordform.HumanApprovedAnalyses.Contains(analysis) ? ReadingGrade.Approved :
+                wordform.HumanDisapprovedParses.Contains(analysis) ? ReadingGrade.Disapproved : ReadingGrade.Candidate;
             var reading = new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs));
             return (key, new ReviewAnalysis(reading, opinion, false, true));
         }).ToArray();

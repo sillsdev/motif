@@ -380,16 +380,16 @@ public static class AssessCommand
                         var projectStanding = wordContext.Standings.GetValueOrDefault(word.Word);
                         var missedApproved = word.Correctness is null ? null : word.Correctness.Unmatched
                             .Select(index => word.Correctness.Expectations[index])
-                            .Select(missed => ReadStoredAnalysis(namingCache, projectName, missed, "approved"))
+                            .Select(missed => ReadStoredAnalysis(namingCache, projectName, missed, ReadingGrade.Approved))
                             .ToArray();
                         var candidates = wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
                         var approved = wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
-                        var nonApproved = candidates.Select(candidate => (Analysis: candidate, Opinion: "candidate"))
+                        var nonApproved = candidates.Select(candidate => (Analysis: candidate, Opinion: ReadingGrade.Candidate))
                             .Concat((wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>())
-                                .Select(rejected => (Analysis: rejected, Opinion: "disapproved")))
+                                .Select(rejected => (Analysis: rejected, Opinion: ReadingGrade.Disapproved)))
                             .ToArray();
                         var expectedAnalysis = approved.FirstOrDefault() is { } approvedAnalysis
-                            ? ReadStoredAnalysis(namingCache, projectName, approvedAnalysis, "approved")
+                            ? ReadStoredAnalysis(namingCache, projectName, approvedAnalysis, ReadingGrade.Approved)
                             : nonApproved.Length == 1
                                 ? ReadStoredAnalysis(namingCache, projectName, nonApproved[0].Analysis, nonApproved[0].Opinion)
                                 : null;
@@ -497,10 +497,10 @@ public static class AssessCommand
     private static IReadOnlyList<string> GradeReadings(
         IReadOnlyList<ParseAnalysis> analyses, IReadOnlyList<ApprovedMorphology> approved,
         IReadOnlyList<ApprovedMorphology> disapproved, IReadOnlyList<ApprovedMorphology> candidates) =>
-        analyses.Select(analysis => approved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "approved"
-            : disapproved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "disapproved"
-            : candidates.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? "candidate"
-            : "no-opinion").ToArray();
+        analyses.Select(analysis => approved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? ReadingGrade.Approved
+            : disapproved.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? ReadingGrade.Disapproved
+            : candidates.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? ReadingGrade.Candidate
+            : ReadingGrade.NoOpinion).ToArray();
 
     private static ParserReading ReadStoredAnalysis(
         LcmCache cache, string projectName, ApprovedMorphology analysis, string opinion)
