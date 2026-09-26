@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// <summary>Identity of a spelling change stored in a test project's Motif store.</summary>
 public sealed record PendingSpellingChange(Guid WordformId, string Word);
 
-/// <summary>Seeds pending changes through Motif's real project commands.</summary>
+/// <summary>Adds a word as FieldWorks would, captures the project, and stores a spelling change through Motif's real commands.</summary>
 public static class PendingChangeFixture
 {
     /// <summary>
