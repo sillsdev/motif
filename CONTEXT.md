@@ -180,7 +180,8 @@ _Avoid_: drift, merge conflict, failed assessment
 
 **Receipt**:
 The record that one Proposal was applied to one project, naming the before and after state. The
-durable edge in a project's history.
+durable edge in a project's history. It carries the short message the person gave when applying, which
+is pre-filled with a summary of the changes, so they can later recognise what they did.
 _Avoid_: application receipt, success result, audit log
 
 **Report**:
@@ -213,6 +214,13 @@ Where a project stands, read from what the last run stored: the project's counts
 against the manual analyses, timing and warnings. The window's first page and the `overview` command show the
 same numbers, computed once. A projection of stored evidence, never a trigger to rerun.
 _Avoid_: dashboard, summary, health, status, to-do list
+
+**Refresh**:
+The one thing a person does to bring Motif up to date with the FieldWorks project: capture a new Baseline
+and measure it again. Always started by a person, never on its own. Motif records when each Refresh happened
+and when the FieldWorks project had last been saved, so the window can say how far behind it is. Coming back
+to the window only re-reads what Motif has already stored.
+_Avoid_: reload, sync, auto-refresh, update
 
 **Review changes**:
 The window's page where a person reads, together, what applying their pending changes would write (the Dry

@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 20;
+    public const int CurrentSchema = 22;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -30,7 +30,7 @@ public static class MotifSchema
         {
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
-                BaselineDdl + RetainedInvocationDdl + GrammarCheckDdl;
+                BaselineDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl;
             command.ExecuteNonQuery();
         }
 
@@ -57,7 +57,7 @@ public static class MotifSchema
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
-            "BaselineSummaries", "GrammarChecks"
+            "BaselineSummaries", "GrammarChecks", "PendingChangeFits"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -323,6 +323,9 @@ public static class MotifSchema
         "GrammarChecks" =>
         [C("BaselineToken", "TEXT", false, 1), C("SelectionSha256", "TEXT", true),
             C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true), C("CheckedUtc", "TEXT", true)],
+        "PendingChangeFits" =>
+        [C("DraftRevision", "TEXT", true, 1), C("ProjectLastWriteUtcTicks", "INTEGER", true, 2),
+            C("BaselineIdentity", "TEXT", true, 3), C("FitSummaryJson", "TEXT", true)],
         "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true)],
         "CorpusDocuments" =>
         [C("CorpusId", "TEXT", true, 1), C("DocumentId", "TEXT", true, 2), C("OrdinalIndex", "INTEGER", true),
@@ -728,6 +731,16 @@ public static class MotifSchema
             ParserStamp TEXT NULL,
             ResponseJson TEXT NOT NULL,
             CheckedUtc TEXT NOT NULL
+        );
+        """;
+
+    private const string PendingChangeFitDdl = """
+        CREATE TABLE PendingChangeFits (
+            DraftRevision TEXT NOT NULL,
+            ProjectLastWriteUtcTicks INTEGER NOT NULL,
+            BaselineIdentity TEXT NOT NULL,
+            FitSummaryJson TEXT NOT NULL,
+            PRIMARY KEY (DraftRevision, ProjectLastWriteUtcTicks, BaselineIdentity)
         );
         """;
 }

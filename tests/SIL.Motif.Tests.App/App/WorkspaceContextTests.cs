@@ -36,6 +36,41 @@ public sealed class WorkspaceContextTests
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
     [Fact]
+    public async Task StopPageWorkWaitsForAnInFlightTextWordsRead()
+    {
+        var fake = new FakeCommandClient();
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        var context = NewContext(fake);
+        _ = new TextsPageModel(context);
+        await context.Selection.SetProjectAsync(ProjectPath);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<CommandOutcome<TextWordsResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnListTextWords((_, _) =>
+        {
+            started.SetResult();
+            return completion.Task;
+        });
+        context.Selection.Texts.Single().IsChecked = true;
+        await started.Task;
+
+        var stopped = context.StopPageWorkAsync();
+        try
+        {
+            Assert.False(stopped.IsCompleted);
+        }
+        finally
+        {
+            completion.SetResult(CommandOutcome<TextWordsResponse>.Success(
+                new TextWordsResponse([], [], HasBaseline: true)));
+            await stopped;
+        }
+    }
+
+    [Fact]
     public async Task ATimingPageModelBuiltFromAContextAloneTakesTheEvidenceTheContextPublishes()
     {
         var context = NewContext();

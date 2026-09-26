@@ -2,6 +2,7 @@ using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
@@ -84,6 +85,27 @@ public static class ProjectStoreCommand
             {
                 return act(database, project);
             }
+            catch (ProjectBaselineBusyException)
+            {
+                return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
+                    "Another Motif task is using this project's Baseline. Try again in a moment.",
+                    Fact(fwDataPath)));
+            }
+            catch (ProjectSavingException)
+            {
+                return CommandOutcome<T>.Refused(new Refusal("change.project-saving", FailureReason.Busy,
+                    "FieldWorks is saving the project. Try again in a moment.", Fact(fwDataPath)));
+            }
+            catch (LcmFileLockedException)
+            {
+                return CommandOutcome<T>.Refused(new Refusal("project.in-use", FailureReason.Busy,
+                    ProjectInUseMessage(fwDataPath, "continue with this command"), Fact(fwDataPath)));
+            }
+            catch (LcmInitializationException exception)
+            {
+                return CommandOutcome<T>.Refused(new Refusal("project.unloadable", FailureReason.Refused,
+                    exception.Message, Fact(fwDataPath)));
+            }
             catch (IOException exception)
             {
                 return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
@@ -123,6 +145,13 @@ public static class ProjectStoreCommand
             "The exception is not a recognized project-store failure."),
     };
 
+    /// <summary>Gives the caller an actionable message after a live-project lock refusal (ADR 0030).</summary>
+    internal static string ProjectInUseMessage(string fwDataPath, string verb) =>
+        $"Cannot {verb}: the project '{Path.GetFileNameWithoutExtension(fwDataPath)}' is in use by " +
+        "another program — most likely FieldWorks, or another Motif command that has not finished. " +
+        "Only one program may hold a FieldWorks project at a time, and Motif takes the same lock " +
+        "FieldWorks does. Close the other program and try again.";
+
     /// A malformed product version must not stop a verb; the compatibility floor it feeds is a lower bound.
     private static Version ParseVersion(string productVersion) =>
         Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
@@ -136,3 +165,6 @@ public static class ProjectStoreCommand
         return new ProjectLocator(full, Path.GetFileNameWithoutExtension(full));
     }
 }
+
+internal sealed class ProjectSavingException : Exception { }
+internal sealed class ProjectBaselineBusyException : Exception { }
