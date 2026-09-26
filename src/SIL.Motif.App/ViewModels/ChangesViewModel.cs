@@ -344,17 +344,13 @@ public sealed class ReviewAnalysisViewModel
         ParserBuilt = !analysis.Stored;
         Opinion = analysis.Touched ? changeKind switch
         {
-            ChangeKinds.Approve => "Approved",
-            ChangeKinds.Reject => "Rejected",
-            ChangeKinds.Candidate or ChangeKinds.AddCandidate => "Candidate",
+            ChangeKinds.Approve => ReadingGradeLabels.Of(ReadingGrade.Approved),
+            ChangeKinds.Reject => ReadingGradeLabels.Of(ReadingGrade.Disapproved),
+            ChangeKinds.Candidate or ChangeKinds.AddCandidate => ReadingGradeLabels.Of(ReadingGrade.Candidate),
             _ => analysis.Opinion,
-        } : analysis.Opinion switch
-        {
-            "approved" => "Approved",
-            "disapproved" => "Rejected",
-            "candidate" => "Candidate",
-            _ => "Not stored yet",
-        };
+        } : analysis.Opinion is ReadingGrade.Approved or ReadingGrade.Disapproved or ReadingGrade.Candidate
+            ? ReadingGradeLabels.Of(analysis.Opinion)
+            : "Not stored yet";
     }
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
