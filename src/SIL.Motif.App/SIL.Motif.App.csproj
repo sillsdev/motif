@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SIL.Motif.App</RootNamespace>
     <ApplicationIcon>Assets\motif.ico</ApplicationIcon>
+    <!-- Views take their view model through the constructor and are always built in code, never by URI. -->
+    <NoWarn>$(NoWarn);AVLN3001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
