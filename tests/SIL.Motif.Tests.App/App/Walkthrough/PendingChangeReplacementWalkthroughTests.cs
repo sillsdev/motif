@@ -49,7 +49,7 @@ public sealed class PendingChangeReplacementWalkthroughTests(PristineProjectFixt
         }, WalkthroughSteps.Remaining(deadline));
     }
 
-    // A fresh analysis carries no human opinion, so approving it has an effect the second time as well.
+    // Starts with no opinion, pinned by `AddHumanApproval_RoundTripsThroughDryRunAndApply`, so both approvals act.
     private static string AddStoredAnalysis(string fwDataPath, SeededProject seed)
     {
         var loader = new FwDataProjectLoader();
