@@ -25,7 +25,6 @@ public sealed class ReleaseSurfaceTests : IDisposable
         "handoff", "add-corpus", "add-document",
         "add-corpus-bundle", "corpora", "show-corpus", "baseline-refresh", "jobs show",
         "jobs assessments", "jobs list", "jobs cancel", "jobs requeue", "jobs move",
-        "apply --all-pending",
     ];
 
     private static readonly string[] DeveloperNames =
@@ -36,7 +35,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
         "compose-author-feature-structure", "promote-gloss", "label", "comment", "finalize",
         "discard-draft", "reopen", "duplicate", "remove-operations", "split", "defer", "reject",
         "supersede", "list", "show", "preflight", "dry-run", "dry-run --wait",
-        "trial", "trial --wait", "trial --pending", "apply", "log",
+        "trial", "trial --wait", "trial --pending", "apply", "apply --all-pending", "log",
     ];
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-release-surface-" + Guid.NewGuid().ToString("N"));
@@ -70,6 +69,15 @@ public sealed class ReleaseSurfaceTests : IDisposable
             names.Where(item => item.Surface == "Released").Select(item => item.Name).Order(StringComparer.Ordinal));
         Assert.Equal(DeveloperNames.Order(StringComparer.Ordinal),
             names.Where(item => item.Surface == "Developer").Select(item => item.Name).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void ApplyingAllPendingChangesIsAbsentFromTheReleasedSurface()
+    {
+        var command = CommandCatalog.All.Single(item => item.Name == "apply --all-pending");
+
+        Assert.False(new CommandSurfacePolicy(developerCommandsEnabled: false).IsAvailable(command));
+        Assert.True(new CommandSurfacePolicy(developerCommandsEnabled: true).IsAvailable(command));
     }
 
     [Fact]

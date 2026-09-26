@@ -17,7 +17,7 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>Reads Text words from the current Baseline's stored projection without opening LibLCM.</summary>
 /// <remarks>
 /// <para>
-/// The projection is written with the Baseline by both capture and the worker's refresh, so it is exactly as
+/// The projection is written with the Baseline by both capture and the runner's refresh, so it is exactly as
 /// current as the Baseline itself. It is display data for the Texts page, never fit evidence.
 /// </para>
 /// <para>

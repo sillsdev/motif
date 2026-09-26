@@ -26,7 +26,7 @@ namespace SIL.Motif.Tests.Commands;
 /// <summary>
 /// Pins that <see cref="TextWordsQuery"/> answers from the words stored with the current Baseline: once the
 /// managed Baseline copy is moved away, the query still returns the response it gave before, whether that
-/// Baseline came from interactive capture or from the worker's refresh. It also pins the stored words against the
+/// Baseline came from interactive capture or from the runner's refresh. It also pins the stored words against the
 /// live readers over the same Baseline bytes: forms, canonicalization, word glosses, categories, morphs and links.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
