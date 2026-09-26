@@ -51,11 +51,11 @@
                   </Button.Flyout>
                 </Button>
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
-                        Command="{Binding ConfigureCommand}" IsEnabled="{Binding HasProject}"
+                        Command="{Binding ConfigureCommand}"
                         AutomationProperties.Name="Configure the project">
                   <StackPanel>
                     <TextBlock Classes="menuTitle" Text="Configure&#x2026;" />
-                    <TextBlock Classes="menuDetail" Text="Texts, added words and limits" />
+                    <TextBlock Classes="menuDetail" Text="{Binding ConfigureDetailText}" />
                   </StackPanel>
                 </Button>
               </StackPanel>

@@ -18,7 +18,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 /// </remarks>
 internal static class HeadlessClick
 {
-    public static void Click(Window window, Control control, string accessibleName)
+    public static void Click(TopLevel window, Control control, string accessibleName)
     {
         var aimed = Aim(window, control, accessibleName);
         var pressed = false;
@@ -53,7 +53,7 @@ internal static class HeadlessClick
     /// Presses where <paramref name="control"/> is without requiring the press to reach it, as when an open popup's
     /// light dismiss takes the press; the caller checks the effect it expects instead.
     /// </summary>
-    public static void PressOver(Window window, Control control, string accessibleName)
+    public static void PressOver(TopLevel window, Control control, string accessibleName)
     {
         var aimed = Aim(window, control, accessibleName);
         window.MouseMove(aimed);
@@ -62,7 +62,7 @@ internal static class HeadlessClick
         Dispatcher.UIThread.RunJobs();
     }
 
-    private static Point Aim(Window window, Control control, string accessibleName)
+    private static Point Aim(TopLevel window, Control control, string accessibleName)
     {
         Assert.True(control.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
         control.BringIntoView();
@@ -72,6 +72,6 @@ internal static class HeadlessClick
             ?? throw new InvalidOperationException($"'{accessibleName}' is not positioned in the walkthrough window.");
     }
 
-    private static Point? CentreOf(Window window, Control control) =>
+    private static Point? CentreOf(TopLevel window, Control control) =>
         control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window);
 }

@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -84,7 +85,8 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => HideProjectMenu();
+    // Hiding unparents the menu, which unbinds the entry's Command before the Button runs it, so hide after.
+    private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(HideProjectMenu);
 
     private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
 

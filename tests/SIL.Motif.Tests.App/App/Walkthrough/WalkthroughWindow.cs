@@ -121,6 +121,26 @@ public sealed class WalkthroughWindow : IDisposable
         Pump();
     }
 
+    /// <summary>Clicks the project menu's Configure entry through the pointer, in the menu's own popup.</summary>
+    public void ConfigureFromProjectMenu() => ClickProjectMenuEntry("Configure the project");
+
+    /// <summary>Opens the project menu and clicks the entry named <paramref name="accessibleName"/> through the pointer.</summary>
+    public void ClickProjectMenuEntry(string accessibleName)
+    {
+        OpenProjectMenu();
+        var entry = FindProjectMenuEntry<Button>(accessibleName);
+        var menu = TopLevel.GetTopLevel(entry)
+            ?? throw new InvalidOperationException($"The project menu's '{accessibleName}' is not in a top level.");
+        HeadlessClick.Click(menu, entry, accessibleName);
+        Window.UpdateLayout();
+        Pump();
+        Assert.False(ProjectMenuFlyout.IsOpen, $"Clicking '{accessibleName}' left the project menu open.");
+    }
+
+    /// <summary>Whether the setup dialog is on screen over the window, not merely open in its view model.</summary>
+    public bool SetupDialogIsShown =>
+        Window.GetLogicalDescendants().OfType<SetupDialog>().Single().IsEffectivelyVisible;
+
     public T FindProjectMenuEntry<T>(string accessibleName) where T : Control =>
         (ProjectMenuFlyout.Content as Control)?.GetLogicalDescendants().OfType<T>().Single(control =>
             string.Equals(Avalonia.Automation.AutomationProperties.GetName(control), accessibleName,
