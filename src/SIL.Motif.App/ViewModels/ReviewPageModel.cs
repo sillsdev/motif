@@ -159,21 +159,24 @@ public sealed class ReviewPageModel : PageModel
         ApplyCommand.NotifyCanExecuteChanged();
     }
 
-    private static string WindowSentence(ReviewNumbersResponse numbers) => numbers.Comparability switch
+    private static string WindowSentence(ReviewNumbersResponse numbers)
     {
-        ReviewComparability.NoEarlierAssessment =>
-            $"{numbers.TouchedWordsCovered} of {numbers.TouchedWordCount} " +
-            $"{(numbers.TouchedWordCount == 1 ? "word" : "words")} you changed kept their approved analyses. " +
-            "Nothing was checked before to compare with.",
-        ReviewComparability.DifferentAssessor =>
-            "The earlier numbers came from a different parser, so they cannot be compared with these.",
-        ReviewComparability.NoSharedWords =>
-            "None of these words were checked before, so there is nothing to compare them with.",
-        ReviewComparability.Compared =>
-            $"Among {numbers.SharedWordCount} {(numbers.SharedWordCount == 1 ? "word" : "words")} also checked " +
-            $"before, {numbers.ApprovedKeptBefore} → {numbers.ApprovedKeptAfter} kept their approved analyses.",
-        _ => throw new ArgumentOutOfRangeException(nameof(numbers), numbers.Comparability, null),
-    };
+        var kept = $"{numbers.TouchedWordsCovered} of {numbers.TouchedWordCount} " +
+            $"{(numbers.TouchedWordCount == 1 ? "word" : "words")} you changed kept their approved analyses. ";
+        return numbers.Comparability switch
+        {
+            ReviewComparability.NoEarlierAssessment => kept + "Nothing was checked before to compare with.",
+            ReviewComparability.DifferentAssessor => kept +
+                "The earlier numbers came from a different parser, so they cannot be compared with these.",
+            ReviewComparability.NoSharedWords => kept +
+                "None of these words were checked before, so there is nothing to compare them with.",
+            ReviewComparability.Compared =>
+                $"Among {numbers.SharedWordCount} {(numbers.SharedWordCount == 1 ? "word" : "words")} also " +
+                $"checked before, {numbers.ApprovedKeptBefore} → {numbers.ApprovedKeptAfter} kept their approved " +
+                "analyses.",
+            _ => throw new ArgumentOutOfRangeException(nameof(numbers), numbers.Comparability, null),
+        };
+    }
 
     private void OnMeasurementProgress(MeasureProgress progress)
     {

@@ -18,8 +18,10 @@ public sealed class ReviewNumbersWordingTests
         { new(ReviewComparability.NoEarlierAssessment, 0, 0, 0, 1, 1, true),
             "1 of 1 word you changed kept their approved analyses. Nothing was checked before to compare with." },
         { new(ReviewComparability.DifferentAssessor, 0, 0, 0, 1, 1, true),
+            "1 of 1 word you changed kept their approved analyses. " +
             "The earlier numbers came from a different parser, so they cannot be compared with these." },
         { new(ReviewComparability.NoSharedWords, 0, 0, 0, 1, 0, true),
+            "0 of 1 word you changed kept their approved analyses. " +
             "None of these words were checked before, so there is nothing to compare them with." },
         { new(ReviewComparability.Compared, 12, 9, 11, 3, 2, true),
             "Among 12 words also checked before, 9 → 11 kept their approved analyses." },
