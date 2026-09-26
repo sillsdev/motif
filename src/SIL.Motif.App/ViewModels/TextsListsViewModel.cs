@@ -121,6 +121,24 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public bool HasSelectedList => SelectedList is not null;
 
+    public string HandOffListDisabledReason => SelectedList is null
+        ? "Choose a word list first."
+        : SelectedList.HasWords ? string.Empty : "No words in this list to send to AI Handoff.";
+
+    public bool HandOffListUnavailable => HandOffListDisabledReason.Length > 0;
+
+    public string HandOffCheckedWordsDisabledReason => SelectedList is { HasWords: true }
+        ? HandOffCheckedWordsHelpText : string.Empty;
+
+    public bool HandOffCheckedWordsUnavailable => HandOffCheckedWordsDisabledReason.Length > 0;
+
+    public string HandOffCheckedWordsHelpText => SelectedList is not { } list
+        ? "Choose a word list first."
+        : !list.HasWords ? "This word list has no words to tick."
+        : Compare.CheckedWordsInCells(list.Cells).Count == 0
+            ? "Tick words in this list before starting an AI Handoff."
+            : string.Empty;
+
     private Action<IReadOnlyList<string>>? _handOff;
 
     /// <summary>The workspace action that opens AI Handoff on these words.</summary>
@@ -139,6 +157,11 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedList))]
+    [NotifyPropertyChangedFor(nameof(HandOffListDisabledReason))]
+    [NotifyPropertyChangedFor(nameof(HandOffListUnavailable))]
+    [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsDisabledReason))]
+    [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsUnavailable))]
+    [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsHelpText))]
     private TextsListDefinitionViewModel? _selectedList;
 
     public IRelayCommand<TextsListDefinitionViewModel> SelectListCommand { get; }
@@ -191,13 +214,25 @@ public sealed partial class TextsListsViewModel : ObservableObject
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
     }
 
-    private void OnCheckedWordsChanged(object? sender, EventArgs e) =>
+    private void OnCheckedWordsChanged(object? sender, EventArgs e)
+    {
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(HandOffCheckedWordsDisabledReason));
+        OnPropertyChanged(nameof(HandOffCheckedWordsUnavailable));
+        OnPropertyChanged(nameof(HandOffCheckedWordsHelpText));
+    }
 
     private void OnListPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(TextsListDefinitionViewModel.HasWords))
+        {
             HandOffListCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(HandOffListDisabledReason));
+            OnPropertyChanged(nameof(HandOffListUnavailable));
+            OnPropertyChanged(nameof(HandOffCheckedWordsDisabledReason));
+            OnPropertyChanged(nameof(HandOffCheckedWordsUnavailable));
+            OnPropertyChanged(nameof(HandOffCheckedWordsHelpText));
+        }
     }
 
     partial void OnSelectedListChanged(TextsListDefinitionViewModel? value)

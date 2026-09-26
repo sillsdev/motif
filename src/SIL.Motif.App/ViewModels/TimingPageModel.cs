@@ -29,10 +29,10 @@ public sealed partial class TimingPageModel : PageModel
         LoadFocusedTimingCommand = new AsyncRelayCommand(LoadFocusedTimingAsync,
             () => Focus is not null && Context.ProjectPath is not null);
         SelectWordSetCommand = new AsyncRelayCommand<string>(SelectWordSetAsync);
-        UsePickedWordsCommand = new AsyncRelayCommand(UsePickedWordsAsync);
-        UseTextsListCommand = new AsyncRelayCommand(UseTextsListAsync);
-        UseCheckedWordsCommand = new AsyncRelayCommand(UseCheckedWordsAsync);
-        UseMatrixCellCommand = new AsyncRelayCommand(UseMatrixCellAsync);
+        UsePickedWordsCommand = new AsyncRelayCommand(UsePickedWordsAsync, CanUsePickedWords);
+        UseTextsListCommand = new AsyncRelayCommand(UseTextsListAsync, CanUseTextsList);
+        UseCheckedWordsCommand = new AsyncRelayCommand(UseCheckedWordsAsync, CanUseCheckedWords);
+        UseMatrixCellCommand = new AsyncRelayCommand(UseMatrixCellAsync, CanUseMatrixCell);
         ChooseRuleCommand = new AsyncRelayCommand<TimingAggregateRow>(ChooseRuleAsync);
         HandOffWordsCommand = new RelayCommand(() => context.HandOff(SelectedWords),
             () => SelectedWords.Count > 0);
@@ -46,6 +46,7 @@ public sealed partial class TimingPageModel : PageModel
         {
             if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(ShowStaleTiming));
         };
+        context.Assess.Compare.CheckedWordsChanged += OnCheckedWordsChanged;
     }
 
     /// <summary>The page's own statistics, read through the context's commands.</summary>
@@ -140,6 +141,32 @@ public sealed partial class TimingPageModel : PageModel
     public IReadOnlyList<ComparePresetViewModel> TextsLists =>
         Context.Assess.Compare.Presets.Where(preset => preset.Count > 0).ToArray();
 
+    public string UseMatrixCellDisabledReason => Context.ProjectPath is null
+        ? "Open a project first."
+        : SelectedMatrixCell is null ? "Choose a matrix cell above first." : string.Empty;
+
+    public bool UseMatrixCellUnavailable => UseMatrixCellDisabledReason.Length > 0;
+
+    public string UseTextsListDisabledReason => Context.ProjectPath is null
+        ? "Open a project first."
+        : SelectedTextsList is null ? "Choose a word list above first."
+        : Context.Assess.Compare.WordsInFamily(SelectedTextsList.Family).Count == 0
+            ? "No words in this list to use for Timing." : string.Empty;
+
+    public bool UseTextsListUnavailable => UseTextsListDisabledReason.Length > 0;
+
+    public string UsePickedWordsDisabledReason => Context.ProjectPath is null
+        ? "Open a project first."
+        : PickedWordValues.Count == 0 ? "Enter one or more words, one per line." : string.Empty;
+
+    public bool UsePickedWordsUnavailable => UsePickedWordsDisabledReason.Length > 0;
+
+    public string UseCheckedWordsDisabledReason => Context.ProjectPath is null
+        ? "Open a project first."
+        : Context.Assess.Compare.CheckedWords.Count == 0 ? "Tick words in Texts first." : string.Empty;
+
+    public bool UseCheckedWordsUnavailable => UseCheckedWordsDisabledReason.Length > 0;
+
     [ObservableProperty]
     private int _slowestCount = 20;
 
@@ -206,17 +233,21 @@ public sealed partial class TimingPageModel : PageModel
         RuleDetail = null;
         TimingRefusal = null;
         SelectedRule = null;
+        SelectedMatrixCell = null;
+        SelectedTextsList = null;
         _wordSet = new TimingWordSet.All();
         _explicitWords = null;
         RaiseTimingState();
         Statistics.ProjectPath = null;
         Statistics.Reset();
+        NotifySourceAvailability();
     }
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
         Statistics.ProjectPath = projectPath;
         LoadFocusedTimingCommand.NotifyCanExecuteChanged();
+        NotifySourceAvailability();
         return Task.CompletedTask;
     }
 
@@ -230,6 +261,7 @@ public sealed partial class TimingPageModel : PageModel
         }
         OnPropertyChanged(nameof(MatrixCells));
         OnPropertyChanged(nameof(TextsLists));
+        NotifySourceAvailability();
         OnPropertyChanged(nameof(ShowNoEvidence));
         OnPropertyChanged(nameof(ShowStatistics));
         if (evidence.ParseTimeAssessmentId is not { } assessmentId || Context.ProjectPath is not { } projectPath)
@@ -289,13 +321,54 @@ public sealed partial class TimingPageModel : PageModel
     }
 
     private Task UsePickedWordsAsync() => SelectExplicitWordsAsync(
-        PickedWords.Replace("\r\n", "\n").Split('\n').Select(word => word.Trim()).Where(word => word.Length > 0)
-            .Distinct(StringComparer.Ordinal).ToArray());
+        PickedWordValues);
 
     private Task UseTextsListAsync() => SelectExplicitWordsAsync(SelectedTextsList is { } list
         ? Context.Assess.Compare.WordsInFamily(list.Family) : []);
 
     private Task UseCheckedWordsAsync() => SelectExplicitWordsAsync(Context.Assess.Compare.CheckedWords);
+
+    private IReadOnlyList<string> PickedWordValues => PickedWords.Replace("\r\n", "\n").Split('\n')
+        .Select(word => word.Trim()).Where(word => word.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+
+    private bool CanUsePickedWords() => Context.ProjectPath is not null && PickedWordValues.Count > 0;
+
+    private bool CanUseTextsList() => Context.ProjectPath is not null && SelectedTextsList is { } list &&
+        Context.Assess.Compare.WordsInFamily(list.Family).Count > 0;
+
+    private bool CanUseCheckedWords() => Context.ProjectPath is not null &&
+        Context.Assess.Compare.CheckedWords.Count > 0;
+
+    private bool CanUseMatrixCell() => Context.ProjectPath is not null && SelectedMatrixCell is not null;
+
+    private void OnCheckedWordsChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(MatrixCells));
+        OnPropertyChanged(nameof(TextsLists));
+        NotifySourceAvailability();
+    }
+
+    private void NotifySourceAvailability()
+    {
+        UseMatrixCellCommand.NotifyCanExecuteChanged();
+        UseTextsListCommand.NotifyCanExecuteChanged();
+        UsePickedWordsCommand.NotifyCanExecuteChanged();
+        UseCheckedWordsCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(UseMatrixCellDisabledReason));
+        OnPropertyChanged(nameof(UseMatrixCellUnavailable));
+        OnPropertyChanged(nameof(UseTextsListDisabledReason));
+        OnPropertyChanged(nameof(UseTextsListUnavailable));
+        OnPropertyChanged(nameof(UsePickedWordsDisabledReason));
+        OnPropertyChanged(nameof(UsePickedWordsUnavailable));
+        OnPropertyChanged(nameof(UseCheckedWordsDisabledReason));
+        OnPropertyChanged(nameof(UseCheckedWordsUnavailable));
+    }
+
+    partial void OnPickedWordsChanged(string value) => NotifySourceAvailability();
+
+    partial void OnSelectedMatrixCellChanged(CompareCellViewModel? value) => NotifySourceAvailability();
+
+    partial void OnSelectedTextsListChanged(ComparePresetViewModel? value) => NotifySourceAvailability();
 
     private Task UseMatrixCellAsync()
     {
