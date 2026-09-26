@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void CapturedProjectAppearsInOpenRecentWithoutRestart()
+    public void CapturedProjectAppearsInOpenRecentAndOpensWithoutRestart()
     {
         using var capturedProject = new WalkthroughProject(pristine);
         using var currentProject = new WalkthroughProject(pristine);
@@ -30,6 +30,7 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
                     walkthrough.Workspace.Context.Setup?.IsOpen == true,
                 WalkthroughSteps.Remaining(deadline), "the captured project did not finish its first Refresh");
             walkthrough.SkipSetup();
+            var capturedToken = walkthrough.Workspace.Baseline.Token;
 
             await walkthrough.Workspace.SetProjectAsync(currentProject.FwDataPath);
             walkthrough.Click("Project menu");
@@ -42,6 +43,12 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
             Assert.Equal(recent.AutomationName,
                 Avalonia.Automation.AutomationProperties.GetName(menuItem));
             Assert.True(menuItem.IsEffectivelyEnabled);
+            HeadlessClick.Click(walkthrough.Window, menuItem, recent.AutomationName);
+            walkthrough.WaitUntil(
+                () => string.Equals(walkthrough.Workspace.Context.ProjectPath, capturedProject.FwDataPath,
+                    StringComparison.OrdinalIgnoreCase) && walkthrough.Workspace.Baseline.HasBaseline,
+                WalkthroughSteps.Remaining(deadline), "opening the recent project did not restore its Baseline");
+            Assert.Equal(capturedToken, walkthrough.Workspace.Baseline.Token);
             return;
         }, WalkthroughSteps.Remaining(deadline));
     }
