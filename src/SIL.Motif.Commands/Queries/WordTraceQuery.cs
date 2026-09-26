@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 
@@ -18,13 +19,11 @@ public static class WordTraceQuery
         WordTraceDiagnosticReader.Read(json, elapsedMs, current);
 
     public static CommandOutcome<WordTraceResponse> Query(
-        WordTraceRequest request, CancellationToken cancellationToken = default)
-    {
-        using var invoker = new PanGlossInvoker();
-        return Query(request, new PanGlossTracer(invoker), cancellationToken);
-    }
+        WordTraceRequest request, CancellationToken cancellationToken = default) =>
+        Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
 
-    /// <summary>Traces a word with the parser selected by the App composition options.</summary>
+    /// <summary>Traces a word with an explicitly selected parser.</summary>
+    /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
     public static CommandOutcome<WordTraceResponse> Query(
         WordTraceRequest request, string? parserPath, CancellationToken cancellationToken = default)
     {

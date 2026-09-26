@@ -72,18 +72,14 @@ public static class AssessCommand
     /// </summary>
     public static CommandOutcome<AssessCommandResponse> Assess(
         AssessRequest request, string managedRoot, Action<AssessmentProgress>? onProgress = null,
-        CancellationToken cancellationToken = default)
-    {
-        var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
-        using var invoker = new PanGlossInvoker();
-        var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(new StatsCacheStore(ownership), invoker));
-        return Run(request, managedRoot, assessor, invoker, onProgress, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        Assess(request, managedRoot, PanGlossExecutable.TryLocate(), onProgress, cancellationToken);
 
-    /// <summary>Measures a project with the parser selected by the App composition options.</summary>
+    /// <summary>Measures a project under an explicit managed root with an explicitly selected parser.</summary>
+    /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
     public static CommandOutcome<AssessCommandResponse> Assess(
         AssessRequest request, string managedRoot, string? parserPath,
-        Action<AssessmentProgress>? onProgress = null, CancellationToken cancellationToken = default)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);

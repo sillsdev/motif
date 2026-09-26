@@ -32,13 +32,11 @@ public static class GrammarCheckQuery
 {
     /// <summary>Checks the project's current Baseline grammar with the installed PanGloss executable.</summary>
     public static CommandOutcome<GrammarCheckResponse> Query(
-        GrammarCheckRequest request, CancellationToken cancellationToken = default)
-    {
-        using var invoker = new PanGlossInvoker();
-        return Query(request, invoker, cancellationToken, ParserStamp());
-    }
+        GrammarCheckRequest request, CancellationToken cancellationToken = default) =>
+        Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
 
-    /// <summary>Checks the current Baseline with the parser selected by the App composition options.</summary>
+    /// <summary>Checks the project's current Baseline grammar with an explicitly selected parser.</summary>
+    /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
     public static CommandOutcome<GrammarCheckResponse> Query(
         GrammarCheckRequest request, string? parserPath, CancellationToken cancellationToken = default)
     {
@@ -122,11 +120,6 @@ public static class GrammarCheckQuery
         var request = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null);
         var composed = SelectionComposer.Compose(cache, request, new AssessmentRepository(database), baselineToken);
         return composed.Succeeded ? composed.Value!.Selection.Sha256 : string.Empty;
-    }
-
-    private static string? ParserStamp()
-    {
-        return ParserStamp(PanGlossExecutable.TryLocate());
     }
 
     private static string? ParserStamp(string? parserPath)
