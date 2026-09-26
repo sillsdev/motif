@@ -29,10 +29,9 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
             {
                 using var firstWalkthrough = new WalkthroughWindow(
                     managedRoot, firstProject.FwDataPath);
-                HoldingCommandClient? secondClient = null;
+                var secondGate = new HoldingStartGate(holdAssess: true);
                 using var secondWalkthrough = new WalkthroughWindow(
-                    managedRoot, secondProject.FwDataPath,
-                    decorateCommandClient: real => secondClient = new HoldingCommandClient(real, holdAssess: true));
+                    managedRoot, secondProject.FwDataPath, startGate: secondGate);
                 WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(firstWalkthrough, deadline);
                 WalkthroughSteps.ChooseProjectAndCaptureBaseline(secondWalkthrough, deadline);
                 secondWalkthrough.Check(SeededProject.TextTitle);
@@ -44,7 +43,7 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
 
                 var slowStarted = Stopwatch.GetTimestamp();
                 WalkthroughSteps.StartSlowAssessment(firstWalkthrough, deadline);
-                WalkthroughSteps.StartAssessmentOverPastedWords(secondWalkthrough, deadline, secondClient!);
+                WalkthroughSteps.StartAssessmentOverPastedWords(secondWalkthrough, deadline, secondGate);
                 firstWalkthrough.WaitUntil(
                     () => firstWalkthrough.Workspace.Assess.State == RunState.Completed,
                     WalkthroughSteps.Remaining(deadline), "the conformance Assessment did not complete beside the second");

@@ -44,12 +44,12 @@ public static class MotifAppComposition
 {
     /// <summary>Creates the window and workspace that the App installs into its desktop lifetime.</summary>
     /// <param name="options">The inputs a test may replace; everything else is the product's own.</param>
-    /// <param name="decorateCommandClient">
-    /// Wraps the real command client built from <paramref name="options"/>, so a test can hold or observe a
-    /// call. It cannot replace the client, and the wrapper still runs against the options' root and parser.
+    /// <param name="startGate">
+    /// Holds the real command client's Assessment or Handoff before it starts, so a test can observe the
+    /// window mid-run. It can delay a command but not replace the client, which is always the
+    /// <see cref="CommandClient"/> built from <paramref name="options"/>.
     /// </param>
-    public static MotifAppCompositionResult Create(MotifAppOptions options,
-        Func<ICommandClient, ICommandClient>? decorateCommandClient = null)
+    public static MotifAppCompositionResult Create(MotifAppOptions options, ICommandStartGate? startGate = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.ManagedRoot);
@@ -58,9 +58,8 @@ public static class MotifAppComposition
 
         var window = new MainWindow(options.RememberBounds);
         var nativePickers = new AvaloniaStoragePickers(window);
-        ICommandClient commandClient = new CommandClient(new CommandClientOptions(
-            options.ManagedRoot, options.ParserPath, options.RunnerLauncher));
-        if (decorateCommandClient is not null) commandClient = decorateCommandClient(commandClient);
+        var commandClient = new CommandClient(new CommandClientOptions(
+            options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate));
         var selection = new SelectionViewModel(commandClient);
         var assess = new AssessViewModel(commandClient, selection, options.TimeProvider);
         var workspace = new HandoffWorkspaceViewModel(

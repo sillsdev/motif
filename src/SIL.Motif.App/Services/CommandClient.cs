@@ -75,9 +75,9 @@ public sealed partial class CommandClient : ICommandClient
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return OneAtATime(
+        return AfterStartGate(GatedCommand.Assess, () => OneAtATime(
             () => AssessCommand.Assess(request, _managedRoot, _options.ParserPath,
-                progress.Report, cancellationToken));
+                progress.Report, cancellationToken)));
     }
 
     public Task<CommandOutcome<StatsCommandResponse>> StatsAsync(
@@ -88,9 +88,15 @@ public sealed partial class CommandClient : ICommandClient
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return OneAtATime(
+        return AfterStartGate(GatedCommand.Handoff, () => OneAtATime(
             () => HandoffCommand.Handoff(request, _managedRoot, _options.ParserPath,
-                progress.Report, cancellationToken));
+                progress.Report, cancellationToken)));
+    }
+
+    private async Task<T> AfterStartGate<T>(GatedCommand command, Func<Task<T>> run)
+    {
+        if (_options.StartGate is { } gate) await gate.WaitToStartAsync(command).ConfigureAwait(false);
+        return await run().ConfigureAwait(false);
     }
 
     // Waits without the caller's token, so a cancelled wait still reaches the command's own typed refusal.

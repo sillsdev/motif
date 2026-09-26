@@ -21,16 +21,17 @@ public sealed class WalkthroughWindow : IDisposable
     private readonly ScriptedProjectPicker _projectPicker;
     private readonly ScriptedFolderPicker _folderPicker;
     private readonly RecordingDragSource _dragSource;
+    private readonly InProcessRunnerLauncher? _ownedRunner;
 
     /// <summary>Composes the real window over <paramref name="managedRoot"/> with scripted desktop inputs.</summary>
-    /// <param name="decorateCommandClient">Wraps the real command client, for example to hold a call.</param>
+    /// <param name="startGate">Holds the real client's Assessment or Handoff before it starts.</param>
     /// <param name="parserPath">The parser to run; <see langword="null"/> locates the real one.</param>
     /// <param name="runnerLauncher">
     /// Starts queued work; <see langword="null"/> drains it in this process with the same root and parser.
     /// </param>
     public WalkthroughWindow(
         string managedRoot, string projectPath, string? folderPath = null,
-        Func<ICommandClient, ICommandClient>? decorateCommandClient = null, TimeProvider? timeProvider = null,
+        ICommandStartGate? startGate = null, TimeProvider? timeProvider = null,
         string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null)
     {
         _projectPicker = new ScriptedProjectPicker(projectPath);
@@ -38,14 +39,16 @@ public sealed class WalkthroughWindow : IDisposable
         _dragSource = new RecordingDragSource();
 
         parserPath ??= PanGlossExecutable.TryLocate();
+        if (runnerLauncher is null)
+            runnerLauncher = _ownedRunner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath));
         var composition = MotifAppComposition.Create(new MotifAppOptions(
             managedRoot,
             parserPath,
-            runnerLauncher ?? new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath)),
+            runnerLauncher,
             timeProvider ?? TimeProvider.System,
             _projectPicker,
             _folderPicker,
-            _dragSource), decorateCommandClient);
+            _dragSource), startGate);
         Window = composition.Window;
         Workspace = composition.Workspace;
     }
@@ -312,6 +315,8 @@ public sealed class WalkthroughWindow : IDisposable
             throw new TimeoutException(
                 $"The walkthrough workspace did not stop within {timeout}; Assessment state is '{Workspace.Assess.State}'.");
         disposal.GetAwaiter().GetResult();
+        if (_ownedRunner is not null && !_ownedRunner.DisposeAsync().AsTask().Wait(timeout))
+            throw new TimeoutException($"The walkthrough's in-process runner did not stop within {timeout}.");
     }
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();

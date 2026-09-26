@@ -132,14 +132,14 @@ internal static class WalkthroughSteps
     }
 
     internal static void StartAssessmentOverPastedWords(
-        WalkthroughWindow walkthrough, long deadline, HoldingCommandClient? holdingClient = null)
+        WalkthroughWindow walkthrough, long deadline, HoldingStartGate? holdingGate = null)
     {
         walkthrough.TypePastedWords("motifa\nmotifb\nmofita");
         Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
         walkthrough.Click("Run the Assessment");
 
-        if (holdingClient is not null)
+        if (holdingGate is not null)
         {
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Running,
@@ -147,7 +147,7 @@ internal static class WalkthroughSteps
             Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
             Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
             Assert.True(walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled);
-            holdingClient.ReleaseAssess();
+            holdingGate.ReleaseAssess();
         }
     }
 }
