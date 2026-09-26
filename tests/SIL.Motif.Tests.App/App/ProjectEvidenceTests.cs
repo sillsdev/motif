@@ -223,7 +223,7 @@ public sealed class ProjectEvidenceTests
             new FolderPicker(), new DragSource(), new BaselineViewModel(fake), clock);
     }
 
-    private static (FakeCommandClient Fake, HandoffWorkspaceViewModel Workspace) NewWorkspace(
+    private static (FakeCommandClient Fake, WorkspaceShellViewModel Workspace) NewWorkspace(
         TimeProvider? clock = null)
     {
         var fake = new FakeCommandClient();
@@ -233,7 +233,7 @@ public sealed class ProjectEvidenceTests
         });
         fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new ProjectPicker()), new BaselineViewModel(fake), selection,
             new AssessViewModel(fake, selection), new FolderPicker(), new DragSource(), fake, clock);
         return (fake, workspace);

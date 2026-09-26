@@ -46,7 +46,7 @@ public sealed class PendingChangesWindowActivationTests(PristineProjectFixture p
         Assert.True(put.Succeeded, put.Refusal?.Message);
 
         var selection = new SelectionViewModel(commands);
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(commands, new TestProjectPicker()), new BaselineViewModel(commands), selection,
             new AssessViewModel(commands, selection), new TestFolderPicker(), new TestDragSource(), commands);
         try

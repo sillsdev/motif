@@ -20,7 +20,7 @@ namespace SIL.Motif.App.ViewModels;
 /// Page models load their own project queries and handle requests through the context. The shell starts a new
 /// Baseline and Assessment together only through <see cref="RefreshCommand"/>.
 /// </remarks>
-public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
+public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDisposable
 {
     private const string OpenProjectRefusalText = "Motif could not open this project.";
 
@@ -33,7 +33,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private bool _refreshed;
     private int _refreshGeneration;
 
-    public HandoffWorkspaceViewModel(
+    public WorkspaceShellViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient, TimeProvider? clock = null, IClipboard? clipboard = null,
         IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null)

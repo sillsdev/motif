@@ -582,11 +582,11 @@ public sealed class WorkflowShellTests
         return Directory.EnumerateFiles(views, "*.axaml", SearchOption.AllDirectories).Select(File.ReadAllText);
     }
 
-    private static HandoffWorkspaceViewModel NewWorkspace()
+    private static WorkspaceShellViewModel NewWorkspace()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
-        return new HandoffWorkspaceViewModel(
+        return new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new NoProjectPicker()),
             new BaselineViewModel(fake),
             selection,
@@ -595,14 +595,14 @@ public sealed class WorkflowShellTests
             fake);
     }
 
-    private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow() =>
+    private static (WorkspaceShellViewModel Workspace, MainWindow Window) NewComposedWindow() =>
         NewComposedWindow(new FakeCommandClient());
 
-    private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow(FakeCommandClient fake)
+    private static (WorkspaceShellViewModel Workspace, MainWindow Window) NewComposedWindow(FakeCommandClient fake)
     {
         var selection = new SelectionViewModel(fake);
         var window = new MainWindow();
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new NoProjectPicker()),
             new BaselineViewModel(fake),
             selection,

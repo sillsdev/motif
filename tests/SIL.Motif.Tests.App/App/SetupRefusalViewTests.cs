@@ -37,13 +37,13 @@ public sealed class SetupRefusalViewTests
     {
         var refusal = new Refusal(RefusalCodes.SelectionDefaultMissing, FailureReason.Refused,
             "No default Selection is saved for this project. Save one with `motif selection set-default` first.");
-        HandoffWorkspaceViewModel? workspace = null;
+        WorkspaceShellViewModel? workspace = null;
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var fake = new FakeCommandClient();
             var projectPicker = new FakeProjectPicker();
             var selection = new SelectionViewModel(fake);
-            workspace = new HandoffWorkspaceViewModel(
+            workspace = new WorkspaceShellViewModel(
                 new ProjectViewModel(fake, projectPicker),
                 new BaselineViewModel(fake),
                 selection,

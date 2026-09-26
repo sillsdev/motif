@@ -61,7 +61,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public MainWindow Window { get; }
 
-    public HandoffWorkspaceViewModel Workspace { get; }
+    public WorkspaceShellViewModel Workspace { get; }
 
     public IReadOnlyList<string> DraggedPaths => _dragSource.Paths;
 

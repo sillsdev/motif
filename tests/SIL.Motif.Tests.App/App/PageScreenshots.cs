@@ -100,7 +100,7 @@ public sealed class PageScreenshots
         frame.Save(path);
     }
 
-    private static async Task<(HandoffWorkspaceViewModel Workspace, MainWindow Window)> OpenOverSampleData()
+    private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData()
     {
         var fake = new FakeCommandClient();
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
@@ -125,7 +125,7 @@ public sealed class PageScreenshots
         });
 
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),

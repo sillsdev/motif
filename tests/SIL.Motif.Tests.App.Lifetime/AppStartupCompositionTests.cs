@@ -47,7 +47,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
 
             var window = Assert.IsType<MainWindow>(host.Lifetime.MainWindow);
             Assert.Same(session.Window, window);
-            Assert.Same(session.Workspace, Assert.IsType<HandoffWorkspaceViewModel>(window.DataContext));
+            Assert.Same(session.Workspace, Assert.IsType<WorkspaceShellViewModel>(window.DataContext));
             await session.KnownProjectsLoaded;
             Assert.True(File.Exists(Path.Combine(options.ManagedRoot, "motif.db")),
                 "The Known-project load did not open the machine database under the substituted root.");

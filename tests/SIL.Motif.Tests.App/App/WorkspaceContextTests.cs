@@ -933,13 +933,13 @@ public sealed class WorkspaceContextTests
             .ToHashSet();
         Assert.Equal(PageRegistry.Entries.Count, pageModels.Count);
 
-        foreach (var holder in new[] { typeof(HandoffWorkspaceViewModel), typeof(WorkspaceContext) })
+        foreach (var holder in new[] { typeof(WorkspaceShellViewModel), typeof(WorkspaceContext) })
             Assert.Empty(NamedTypes(holder).Where(pageModels.Contains));
 
         foreach (var page in pageModels)
         {
             var named = NamedTypes(page).ToList();
-            Assert.DoesNotContain(typeof(HandoffWorkspaceViewModel), named);
+            Assert.DoesNotContain(typeof(WorkspaceShellViewModel), named);
             Assert.Empty(named.Where(type => type != page && pageModels.Contains(type)));
         }
     }

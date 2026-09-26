@@ -27,7 +27,7 @@ public sealed class ProjectOpenFailureTests
         fake.OnGetCurrentBaseline((_, _) =>
             Task.FromException<CommandOutcome<CurrentBaselineResponse>>(new InvalidOperationException("The project could not be read.")));
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(new ProjectViewModel(fake, picker), new BaselineViewModel(fake),
+        var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, picker), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection), new FakeFolderPicker(), new FakeDragSource(), fake);
         var refusalShown = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         var clearedBindings = new HashSet<string>();
@@ -35,8 +35,8 @@ public sealed class ProjectOpenFailureTests
         workspace.PropertyChanged += (_, args) =>
         {
             if (workspace.OpenRefusal is null &&
-                args.PropertyName is nameof(HandoffWorkspaceViewModel.OpenRefusal) or
-                    nameof(HandoffWorkspaceViewModel.HasOpenRefusal))
+                args.PropertyName is nameof(WorkspaceShellViewModel.OpenRefusal) or
+                    nameof(WorkspaceShellViewModel.HasOpenRefusal))
                 clearedBindings.Add(args.PropertyName);
         };
 
@@ -53,12 +53,12 @@ public sealed class ProjectOpenFailureTests
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
 
         Assert.Equal(ProjectB, workspace.Context.ProjectPath);
-        Assert.Contains(nameof(HandoffWorkspaceViewModel.OpenRefusal), clearedBindings);
-        Assert.Contains(nameof(HandoffWorkspaceViewModel.HasOpenRefusal), clearedBindings);
+        Assert.Contains(nameof(WorkspaceShellViewModel.OpenRefusal), clearedBindings);
+        Assert.Contains(nameof(WorkspaceShellViewModel.HasOpenRefusal), clearedBindings);
 
         void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
         {
-            if (args.PropertyName == nameof(HandoffWorkspaceViewModel.OpenRefusal) &&
+            if (args.PropertyName == nameof(WorkspaceShellViewModel.OpenRefusal) &&
                 workspace.OpenRefusal is { } shown)
                 refusalShown.TrySetResult(shown.Sentence);
         }
@@ -72,7 +72,7 @@ public sealed class ProjectOpenFailureTests
         fake.OnGetCurrentBaseline((_, _) => Task.FromException<CommandOutcome<CurrentBaselineResponse>>(
             new InvalidOperationException("The project could not be read.")));
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
+        var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
             new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
             new FakeFolderPicker(), new FakeDragSource(), fake);
 
@@ -92,7 +92,7 @@ public sealed class ProjectOpenFailureTests
         fake.OnGetCurrentBaseline((_, _) => Task.FromException<CommandOutcome<CurrentBaselineResponse>>(
             new OperationCanceledException("The project read was cancelled.")));
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
+        var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
             new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
             new FakeFolderPicker(), new FakeDragSource(), fake);
 
@@ -113,7 +113,7 @@ public sealed class ProjectOpenFailureTests
             : Task.FromResult(CommandOutcome<CurrentBaselineResponse>.Success(
                 new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false))));
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
+        var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
             new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
             new FakeFolderPicker(), new FakeDragSource(), fake);
         var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;

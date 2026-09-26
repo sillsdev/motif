@@ -11,7 +11,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins the page shell's state on <see cref="HandoffWorkspaceViewModel"/>: which page is showing, the sidebar's
+/// Pins the page shell's state on <see cref="WorkspaceShellViewModel"/>: which page is showing, the sidebar's
 /// entries, badges and collapsed mode, the project menu, the freshness line, and the one changes list every page
 /// shares.
 /// </summary>
@@ -24,13 +24,13 @@ public sealed class WorkspacePageTests
     private static readonly BaselineToken Token = new(
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
-    private static (FakeCommandClient Fake, FakeProjectPicker ProjectPicker, HandoffWorkspaceViewModel Workspace)
+    private static (FakeCommandClient Fake, FakeProjectPicker ProjectPicker, WorkspaceShellViewModel Workspace)
         NewWorkspace()
     {
         var fake = new FakeCommandClient();
         var projectPicker = new FakeProjectPicker();
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, projectPicker),
             new BaselineViewModel(fake),
             selection,
@@ -41,7 +41,7 @@ public sealed class WorkspacePageTests
     }
 
     private static async Task ChooseProjectAsync(
-        FakeCommandClient fake, FakeProjectPicker projectPicker, HandoffWorkspaceViewModel workspace,
+        FakeCommandClient fake, FakeProjectPicker projectPicker, WorkspaceShellViewModel workspace,
         DateTimeOffset? projectLastWriteUtc = null, bool fieldWorksHeldProject = false)
     {
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, fieldWorksHeldProject)
@@ -260,8 +260,8 @@ public sealed class WorkspacePageTests
 
     [Theory]
     [InlineData(900, true)]
-    [InlineData(HandoffWorkspaceViewModel.SidebarCollapseWidth - 1, true)]
-    [InlineData(HandoffWorkspaceViewModel.SidebarCollapseWidth, false)]
+    [InlineData(WorkspaceShellViewModel.SidebarCollapseWidth - 1, true)]
+    [InlineData(WorkspaceShellViewModel.SidebarCollapseWidth, false)]
     [InlineData(1400, false)]
     public void TheSidebarCollapsesToIconsBelowItsWidthThreshold(double width, bool collapsed)
     {

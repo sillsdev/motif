@@ -36,7 +36,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Builds each page's view from its model with <see cref="PageRegistry"/>, and binds the window to <paramref name="workspace"/>.</summary>
-    public void Compose(HandoffWorkspaceViewModel workspace)
+    public void Compose(WorkspaceShellViewModel workspace)
     {
         ArgumentNullException.ThrowIfNull(workspace);
         DataContext = workspace;
@@ -65,7 +65,7 @@ public sealed partial class MainWindow : Window
             ? menu.Items.OfType<MenuItem>().ToList()
             : [];
 
-    private void RebuildRecentProjects(HandoffWorkspaceViewModel workspace)
+    private void RebuildRecentProjects(WorkspaceShellViewModel workspace)
     {
         if (this.FindControl<Button>("OpenRecentButton")?.Flyout is not MenuFlyout menu) return;
         menu.Items.Clear();
