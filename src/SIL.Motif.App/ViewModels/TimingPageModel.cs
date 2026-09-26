@@ -205,6 +205,7 @@ public sealed partial class TimingPageModel : PageModel
         _wordSet = new TimingWordSet.All();
         _explicitWords = null;
         RaiseTimingState();
+        Statistics.ProjectPath = null;
         Statistics.Reset();
     }
 

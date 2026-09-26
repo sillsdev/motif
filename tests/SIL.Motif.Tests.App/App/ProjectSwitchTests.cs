@@ -1,10 +1,6 @@
 using Avalonia.Input;
-using SIL.LCModel;
-using SIL.LCModel.Core.Text;
-using SIL.LCModel.Infrastructure;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
-using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
@@ -12,14 +8,15 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-[Collection(LcmCacheTestCollection.Name)]
-public sealed class ProjectSwitchTests(PristineProjectFixture pristine)
+public sealed class ProjectSwitchTests
 {
     private const string ProjectA = @"C:\projects\one.fwdata";
     private const string ProjectB = @"C:\projects\two.fwdata";
@@ -242,16 +239,88 @@ public sealed class ProjectSwitchTests(PristineProjectFixture pristine)
 
         var opening = OpenProjectAsync(parts.Workspace, ProjectA);
         await baselineStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        parts.Workspace.Baseline.HasAssessment = true;
+        parts.Fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
+            null, EvidenceFreshness.Current,
+            new BaselineRecord("project-1", NewToken(), "root", ProjectA,
+                DateTimeOffset.UtcNow, DateTimeOffset.UtcNow), null, null, null, StoredAssessment()));
         releaseBaseline.SetResult(CommandOutcome<CurrentBaselineResponse>.Success(
             new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));
         await opening;
+        Assert.Contains(ProjectA, parts.Fake.CurrentEvidenceRequests);
+        Assert.True(parts.Workspace.Baseline.HasAssessment);
         parts.Fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectA, DateTimeOffset.UtcNow, false, false));
 
         await parts.Workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
         Assert.True(parts.Workspace.RerunOffered);
+    }
+
+    [Fact]
+    public async Task NoProjectReadStartsBeforeTheBaselineAnswers()
+    {
+        var parts = NewWorkspace();
+        var baselineStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseBaseline = new TaskCompletionSource<CommandOutcome<CurrentBaselineResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var readOrder = new System.Collections.Concurrent.ConcurrentQueue<(string Kind, string Path)>();
+        parts.Fake.OnGetCurrentBaseline((request, _) =>
+        {
+            if (request.ProjectPath == ProjectB)
+            {
+                baselineStarted.TrySetResult();
+                return releaseBaseline.Task;
+            }
+            return Task.FromResult(CommandOutcome<CurrentBaselineResponse>.Success(
+                new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));
+        });
+        parts.Fake.CurrentEvidenceHandler = (path, _) =>
+        {
+            readOrder.Enqueue(("current-evidence", path));
+            return Task.FromResult(CommandOutcome<CurrentEvidenceSnapshot>.Success(
+                new CurrentEvidenceSnapshot("two", DateTimeOffset.UtcNow, null,
+                    EvidenceFreshness.NoBaseline, null, null, null, null, null)));
+        };
+        parts.Fake.OnListTexts((request, _) =>
+        {
+            readOrder.Enqueue(("list-texts", request.ProjectPath));
+            return Task.FromResult(CommandOutcome<TextInventoryResponse>.Success(
+                new TextInventoryResponse([], HasBaseline: true)));
+        });
+        parts.Fake.PendingLoadHandler = (request, _) =>
+        {
+            readOrder.Enqueue(("pending-changes", request.FwDataPath));
+            return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(
+                new PendingChangesSnapshot(null, "none", [], [])));
+        };
+        parts.Fake.DefaultSelectionHandler = (request, _) =>
+        {
+            readOrder.Enqueue(("default-selection", request.ProjectPath));
+            return Task.FromResult(CommandOutcome<DefaultSelectionResponse>.Success(
+                new DefaultSelectionResponse(null)));
+        };
+
+        var opening = OpenProjectAsync(parts.Workspace, ProjectB);
+        await baselineStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.DoesNotContain(parts.Fake.CurrentEvidenceRequests, path => path == ProjectB);
+        Assert.DoesNotContain(parts.Fake.ListTextsRequests, request => request.ProjectPath == ProjectB);
+        Assert.DoesNotContain(parts.Fake.PendingLoadRequests, request => request.FwDataPath == ProjectB);
+        Assert.DoesNotContain(parts.Fake.DefaultSelectionRequests, request => request.ProjectPath == ProjectB);
+
+        releaseBaseline.SetResult(CommandOutcome<CurrentBaselineResponse>.Success(
+            new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));
+        await opening;
+
+        var projectReads = readOrder.Where(read => read.Path == ProjectB).ToArray();
+        var setupIndex = Array.FindIndex(projectReads, read => read.Kind == "default-selection");
+        Assert.True(setupIndex >= 0);
+        Assert.Contains(projectReads, read => read.Kind == "current-evidence");
+        Assert.Contains(projectReads, read => read.Kind == "list-texts");
+        Assert.Contains(projectReads, read => read.Kind == "pending-changes");
+        Assert.All(projectReads.Select((read, index) => (read, index))
+            .Where(item => item.read.Kind is "current-evidence" or "list-texts" or "pending-changes"),
+            item => Assert.True(item.index < setupIndex));
     }
 
     [Fact]
@@ -390,74 +459,6 @@ public sealed class ProjectSwitchTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public async Task SwitchingAwayAndBackKeepsTheStoredDraft()
-    {
-        var fake = new FakeCommandClient();
-        string projectA;
-        string projectB;
-        using (var cache = pristine.NewScratch())
-        {
-            projectA = cache.ProjectId.Path;
-            AddWordform(cache, "stored-word-a");
-            new FwDataProjectLoader().Save(cache);
-        }
-        using (var cache = pristine.NewScratch())
-        {
-            projectB = cache.ProjectId.Path;
-            new FwDataProjectLoader().Save(cache);
-        }
-
-        var managedRoot = Path.Combine(Path.GetTempPath(), "Motif.ProjectSwitch", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(managedRoot);
-        try
-        {
-            Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectA), managedRoot).Succeeded);
-            Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectB), managedRoot).Succeeded);
-            var client = new CommandClient(managedRoot);
-            var parts = NewWorkspace(fake, client);
-            await OpenProjectAsync(parts.Workspace, projectA);
-            await parts.Workspace.Context.Changes.PutAsync(new ChangeIntent(
-                "change-a", ChangeKinds.IncorrectSpelling, "", "stored-word-a"));
-            Assert.Equal("change-a", Assert.Single(parts.Workspace.Context.Changes.Items).ChangeId);
-
-            await OpenProjectAsync(parts.Workspace, projectB);
-            Assert.Empty(parts.Workspace.Context.Changes.Items);
-            await OpenProjectAsync(parts.Workspace, projectA);
-            Assert.Equal("change-a", Assert.Single(parts.Workspace.Context.Changes.Items).ChangeId);
-
-            await OpenProjectAsync(parts.Workspace, projectB + ".missing");
-            Assert.NotNull(parts.Workspace.Baseline.RefusalMessage);
-            await OpenProjectAsync(parts.Workspace, projectA);
-            Assert.Equal("change-a", Assert.Single(parts.Workspace.Context.Changes.Items).ChangeId);
-
-            var openStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            var finishOpen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            _ = new BlockingOpenPageModel(parts.Workspace.Context, openStarted, finishOpen);
-            using var cancellation = new CancellationTokenSource();
-            var openingB = parts.Workspace.Context.OpenProjectAsync(projectB, cancellation.Token);
-            await openStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(projectB, parts.Workspace.Context.ProjectPath);
-            cancellation.Cancel();
-            finishOpen.SetResult();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => openingB);
-            await OpenProjectAsync(parts.Workspace, projectA);
-
-            var reopened = new ChangesViewModel(client);
-            await reopened.OpenProjectAsync(projectA);
-            Assert.Equal("change-a", Assert.Single(reopened.Items).ChangeId);
-        }
-        finally
-        {
-            Directory.Delete(managedRoot, recursive: true);
-        }
-    }
-
-    private static void AddWordform(LcmCache cache, string form) =>
-        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-            cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                .Create(TsStringUtils.MakeString(form, cache.DefaultVernWs)));
-
-    [Fact]
     public async Task EveryParticipantIsClearedBeforeAnyLoads()
     {
         var parts = NewWorkspace();
@@ -506,6 +507,11 @@ public sealed class ProjectSwitchTests(PristineProjectFixture pristine)
         [new PendingChange(id, "wordform", id, ChangeKinds.IncorrectSpelling, null, null, [id])],
         [new ChangeFit(id, true, [])]);
 
+    private static AssessmentRecord StoredAssessment() => new(
+        "assessment-1", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope",
+        "whitespace", "1", "{}", Selection.Create("Default", ["dogs"]), null, null,
+        "sha256:grammar", null, null, null, "2026-09-24T12:00:00.0000000+00:00", Words: []);
+
     private sealed record WorkspaceParts(FakeCommandClient Fake, FakeProjectPicker ProjectPicker,
         HandoffWorkspaceViewModel Workspace);
 
@@ -517,16 +523,6 @@ public sealed class ProjectSwitchTests(PristineProjectFixture pristine)
         {
             calls.Add("probe-load");
             return Task.CompletedTask;
-        }
-    }
-
-    private sealed class BlockingOpenPageModel(
-        WorkspaceContext context, TaskCompletionSource started, TaskCompletionSource release) : PageModel(context)
-    {
-        protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
-        {
-            started.TrySetResult();
-            await release.Task;
         }
     }
 

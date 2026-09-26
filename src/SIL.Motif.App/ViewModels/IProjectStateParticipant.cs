@@ -2,10 +2,10 @@ namespace SIL.Motif.App.ViewModels;
 
 internal enum ProjectOpenStage
 {
-    Context,
-    Baseline,
-    Independent,
-    Setup,
+    Context = 0,
+    Baseline = 1,
+    Independent = 2,
+    Setup = 3,
 }
 
 internal interface IProjectStateParticipant

@@ -22,6 +22,8 @@ namespace SIL.Motif.App.ViewModels;
 /// </remarks>
 public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
+    private const string OpenProjectRefusalText = "Motif could not open this project.";
+
     /// <summary>Below this window width the sidebar shows icons alone, with each label as a tooltip.</summary>
     public const double SidebarCollapseWidth = 1100;
 
@@ -182,6 +184,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>The copyable error details from the refused project open.</summary>
     public string? OpenRefusalDetail { get; private set; }
 
+    /// <summary>Whether the last attempt to open a project was refused.</summary>
     public bool HasOpenRefusal => OpenRefusalMessage is not null;
 
     /// <summary>The freshness line's state in words.</summary>
@@ -318,7 +321,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// Cancels any active Assessment or AI Handoff run, clears whatever the previous project displayed, and
     /// loads the newly chosen project's Baseline and Text state.
     /// </summary>
-    public async Task SetProjectAsync(string fwDataPath, CancellationToken cancellationToken = default)
+    internal async Task SetProjectAsync(string fwDataPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
         InvalidateRefreshForProjectSwitch();
@@ -344,17 +347,21 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     {
         OpenRefusalMessage = null;
         OpenRefusalDetail = null;
+        OnPropertyChanged(nameof(OpenRefusalMessage));
+        OnPropertyChanged(nameof(OpenRefusalDetail));
         OnPropertyChanged(nameof(HasOpenRefusal));
         try
         {
             await SetProjectAsync(fwDataPath).ConfigureAwait(true);
         }
-        catch (OperationCanceledException)
-        {
-        }
         catch (Exception exception)
         {
-            OpenRefusalMessage = "Motif could not open this project.";
+            if (string.Equals(Context.ProjectPath, fwDataPath, StringComparison.Ordinal))
+            {
+                Context.ClearProject();
+                Project.ShowChosen(null);
+            }
+            OpenRefusalMessage = OpenProjectRefusalText;
             OpenRefusalDetail = exception.Message;
             OnPropertyChanged(nameof(OpenRefusalMessage));
             OnPropertyChanged(nameof(OpenRefusalDetail));
@@ -420,7 +427,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private bool IsCurrentRefresh(int generation, string? projectPath) =>
         generation == _refreshGeneration && projectPath is not null &&
-        string.Equals(projectPath, Context.ProjectPath, StringComparison.OrdinalIgnoreCase);
+        string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal);
 
     private void CancelRefresh()
     {
