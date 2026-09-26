@@ -64,6 +64,20 @@ translates like the rest. Every other page's words stay in `help/<lang>/`.
 fixed), and CI renders clips from recorded Assessment evidence captured from real runs, so clips need no parser
 in CI. Recorded here so nothing built now forecloses it.
 
+**D9. The home page puts the AI consultant up front.** The owner's framing: writing a parser is computer
+science that linguists are doing; the person knows the linguistics, an AI consultant knows the parser, the
+rules and FieldWorks' settings, and Motif supplies the evidence both need. That is why the agent-facing
+documentation exists. The hero leads with "Motif can help you teach a dumb computer your language"; a section
+right after it explains the partnership, and a "Who it's for" row names the field linguist, the translator, the
+native speaker and the language technologist. The visual design comes from the design canvas
+(<https://claude.ai/artifact/KnD9nsgWEjptjPBGxjUK1D>), with SIL's own typefaces (Charis SIL, Andika) and the SIL
+logo once the owner supplies the brand assets.
+
+**D10. One sample teaches speed.** `sample-turkish` carries a planted bug whose symptom is slowness, not
+failure, and its fixed variant is dramatically faster (aim: ten times or more). `expected.json` records a
+machine-independent work measure per variant, with wall-clock time as information only, and the gated test pins
+the work ratio, never wall-clock time. The home page's "Faster parsing" band quotes that measurement.
+
 ## 3. Interfaces (binding)
 
 ### Sample metadata — the part the site reads
