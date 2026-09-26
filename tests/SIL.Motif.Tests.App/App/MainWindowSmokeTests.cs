@@ -78,11 +78,12 @@ public sealed class MainWindowSmokeTests
             {
                 const string projectPath = @"C:\projects\aweti.fwdata";
                 var fake = (FakeCommandClient)workspace.Context.Commands;
+                fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, DateTimeOffset.UtcNow, false));
                 var overview = SampleOverview() with { IsStale = true };
                 fake.OverviewCompletesWith(overview);
                 fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
                     null, EvidenceFreshness.Stale, null, null, null, null, null));
-                await workspace.Context.PublishProjectOpenedAsync(projectPath);
+                await workspace.Context.OpenProjectAsync(projectPath);
                 Assert.Empty(fake.AssessRequests);
                 window.Show();
                 window.ApplyTemplate();

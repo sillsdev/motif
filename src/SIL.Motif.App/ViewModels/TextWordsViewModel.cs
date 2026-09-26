@@ -216,21 +216,31 @@ public sealed partial class TextWordsViewModel : ObservableObject
     /// <summary>Sets the project to read words from and immediately reloads for whatever is checked now.</summary>
     public async Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
     {
+        ClearProject();
+        if (fwDataPath is null) return;
+        lock (_loadGate) _projectPath = fwDataPath;
+        await ReloadAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    internal void ClearProject()
+    {
         CancellationTokenSource? superseded;
         lock (_loadGate)
         {
             superseded = _reloadCancellation;
             _reloadCancellation = null;
             _acceptLoads = true;
-            _projectPath = fwDataPath;
+            _projectPath = null;
             _generation++;
         }
         Cancel(superseded);
         ClearWords();
+        SearchText = string.Empty;
+        StatusFilter = null;
+        SeveralOnly = false;
         HasBaseline = true;
         IsLoading = false;
         Refusal = null;
-        if (fwDataPath is not null) await ReloadAsync(cancellationToken).ConfigureAwait(true);
     }
 
     public async Task ReloadAsync(CancellationToken cancellationToken = default)

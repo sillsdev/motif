@@ -21,7 +21,11 @@ public sealed class AiHandoffPageModel : PageModel
     /// <summary>What the page's action reads: the first write, or a rewrite.</summary>
     public string HandoffActionText => Handoff.HasCompletedFiles ? "Write the AI Handoff again" : "Write the AI Handoff";
 
-    protected override void OnProjectCleared() => Handoff.Reset();
+    protected override void OnProjectCleared()
+    {
+        Handoff.ProjectPath = null;
+        Handoff.Reset();
+    }
 
     // Awaits the run's own unwind rather than disposing it: the page outlives one project.
     protected override async Task OnStopWorkAsync()

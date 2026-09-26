@@ -14,13 +14,14 @@ namespace SIL.Motif.App.ViewModels;
 /// comes from <see cref="ICommandClient.GetCurrentBaselineAsync"/>, a read-only query with no capture
 /// side effect. Only <see cref="RefreshCommand"/> captures.
 /// </summary>
-public sealed partial class BaselineViewModel : ObservableObject
+public sealed partial class BaselineViewModel : ObservableObject, IProjectStateParticipant
 {
     /// <summary>The words a person reads beside the Baseline's timestamp; pinned identically in the CLI.</summary>
     public const string FreshnessSentence = "as of FieldWorks' last save";
 
     private readonly ICommandClient _commandClient;
     private string? _projectPath;
+    private int _projectGeneration;
 
     public BaselineViewModel(ICommandClient commandClient)
     {
@@ -112,7 +113,17 @@ public sealed partial class BaselineViewModel : ObservableObject
     public async Task SetProjectAsync(string fwDataPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
+        ClearProject();
         _projectPath = fwDataPath;
+        RefreshCommand.NotifyCanExecuteChanged();
+
+        await CheckAsync(cancellationToken);
+    }
+
+    internal void ClearProject()
+    {
+        _projectGeneration++;
+        _projectPath = null;
         Token = null;
         SourceLastWriteUtc = null;
         ProjectLastWriteUtc = null;
@@ -120,8 +131,6 @@ public sealed partial class BaselineViewModel : ObservableObject
         RefusalMessage = null;
         HasAssessment = false;
         RefreshCommand.NotifyCanExecuteChanged();
-
-        await CheckAsync(cancellationToken);
     }
 
     /// <summary>
@@ -131,28 +140,33 @@ public sealed partial class BaselineViewModel : ObservableObject
     public async Task CheckAsync(CancellationToken cancellationToken = default)
     {
         if (_projectPath is not { } path) return;
+        var generation = _projectGeneration;
         var hadAssessment = HasAssessment;
         var outcome = await _commandClient.GetCurrentBaselineAsync(new CurrentBaselineRequest(path), cancellationToken);
-        if (!ReferenceEquals(path, _projectPath)) return;
+        if (generation != _projectGeneration || !ReferenceEquals(path, _projectPath)) return;
+        var assessmentAtResponse = HasAssessment;
         var sameBaseline = outcome.Value?.Token is { } token && token == Token;
         ApplySuccessOnly(outcome.Succeeded, outcome.Refusal?.Message,
             outcome.Value?.Token, outcome.Value?.SourceLastWriteUtc, outcome.Value?.FieldWorksHeldProject ?? false);
         if (outcome.Succeeded) ProjectLastWriteUtc = outcome.Value?.ProjectLastWriteUtc;
-        // Re-reading the same Baseline leaves the Assessment that covers it on record.
-        if (sameBaseline) HasAssessment = hadAssessment;
+        HasAssessment = sameBaseline ? hadAssessment || assessmentAtResponse
+            : !hadAssessment && assessmentAtResponse;
     }
 
     private async Task RefreshAsync()
     {
-        if (_projectPath is null) return;
+        if (_projectPath is not { } path) return;
+        var generation = _projectGeneration;
 
         var hadAssessment = HasAssessment;
         var outcome = await _commandClient.CaptureBaselineAsync(
-            new BaselineCaptureRequest(_projectPath), CancellationToken.None);
+            new BaselineCaptureRequest(path), CancellationToken.None);
+        if (generation != _projectGeneration || !ReferenceEquals(path, _projectPath)) return;
 
         var applied = ApplySuccessOnly(outcome.Succeeded, outcome.Refusal?.Message,
             outcome.Value?.Token, outcome.Value?.SourceLastWriteUtc, outcome.Value?.FieldWorksHeldProject ?? false);
         if (!applied) return;
+        HasAssessment = false;
         ProjectLastWriteUtc = SourceLastWriteUtc;
         Refreshed?.Invoke(this, EventArgs.Empty);
         if (hadAssessment) OfferRerun?.Invoke(this, EventArgs.Empty);
@@ -173,7 +187,13 @@ public sealed partial class BaselineViewModel : ObservableObject
         SourceLastWriteUtc = sourceLastWriteUtc;
         FieldWorksHeldProject = fieldWorksHeldProject;
         RefusalMessage = null;
-        HasAssessment = false;
         return true;
     }
+
+    ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Baseline;
+
+    void IProjectStateParticipant.ClearProject() => ClearProject();
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        SetProjectAsync(projectPath, cancellationToken);
 }

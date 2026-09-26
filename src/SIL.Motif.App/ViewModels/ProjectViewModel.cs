@@ -59,7 +59,7 @@ public sealed partial class ProjectViewModel : ObservableObject
     /// Shows <paramref name="fwDataPath"/> as the picker's choice without choosing it again. A listed project is
     /// selected; an unlisted one is named by <see cref="OpenUnlistedPath"/> so it can still be picked afresh.
     /// </summary>
-    public void ShowChosen(string fwDataPath)
+    public void ShowChosen(string? fwDataPath)
     {
         var known = KnownProjects.FirstOrDefault(project =>
             string.Equals(project.FullFwDataPath, fwDataPath, StringComparison.OrdinalIgnoreCase));

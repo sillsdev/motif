@@ -93,7 +93,7 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             Assert.True(appTiming.Succeeded, appTiming.Refusal?.Message);
             var overviewContext = WorkspaceContextTests.NewContext(client);
             var overviewPage = new OverviewPageModel(overviewContext);
-            await overviewContext.PublishProjectOpenedAsync(projectPath);
+            await overviewContext.OpenProjectAsync(projectPath);
             Assert.NotNull(overviewPage.Overview);
             Assert.Equal(appOverview.Value!.MotifStoreCreatedUtc, overviewPage.Overview.MotifStoreCreatedUtc);
             Assert.Equal(appOverview.Value.SelectionWordCount, overviewPage.Overview.SelectionWordCount);
