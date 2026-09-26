@@ -351,27 +351,11 @@ public static class AssessCommand
 
                 var timing = produced.FirstOrDefault(item => item.Kind == AssessmentKind.ParseTime);
                 var words = timing?.Raw is AssessmentRaw.Batch batch
-                    ? batch.Analysis.Words.Select(word => new AssessmentWordResult(
-                        word.Word, word.Outcome.ToStoredOutcome(),
-                        // A search that found readings before a limit stopped it is still unfinished, as Statistics says.
-                        word.Outcome is WordOutcome.Capped or WordOutcome.TimedOut ||
-                            word.Morphology is { Capped: true } or { TimedOut: true },
-                        word.Outcome switch
-                        {
-                            _ when word.Morphology is { Capped: true, TimedOut: true } =>
-                                "INCOMPLETE — parsing did not finish (step and time limits)",
-                            WordOutcome.Capped => "INCOMPLETE — parsing did not finish (step limit)",
-                            WordOutcome.TimedOut => "INCOMPLETE — parsing did not finish (time limit)",
-                            _ when word.Morphology is { Capped: true } => "INCOMPLETE — parsing did not finish (step limit)",
-                            _ when word.Morphology is { TimedOut: true } => "INCOMPLETE — parsing did not finish (time limit)",
-                            WordOutcome.Skipped => "Not attempted",
-                            _ => "Search completed",
-                        }, word.ElapsedMs, word.Signature)
-                    { Morphology = word.Morphology, Correctness = word.Correctness }).ToArray()
+                    ? batch.Analysis.Words.Select(word => AssessmentWordRows.Row(word.Word,
+                        word.Outcome.ToStoredOutcome(), word.ElapsedMs, word.Signature, word.Morphology,
+                        word.Correctness)).ToArray()
                     : Array.Empty<AssessmentWordResult>();
-                var completedCount = words.Count(word => !word.IsIncomplete && word.Outcome != "skipped");
-                var completionSummary = CompletionSummary(completedCount, words.Count(word => word.IsIncomplete),
-                    words.Count(word => word.Outcome == "skipped"));
+                var completionSummary = AssessmentWordRows.CompletionSummary(words);
                 summaryMarkdown = RenderSummaryMarkdown(completionSummary, summaryMarkdown);
                 var grammarWarnings = invocation?.GrammarWarningLines is { Count: > 0 } warningLines
                     ? warningLines : null;
@@ -402,7 +386,7 @@ public static class AssessCommand
                                 ? ReadStoredAnalysis(namingCache, projectName, nonApproved[0].Analysis, nonApproved[0].Opinion)
                                 : null;
                         var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : ((int?)null, (int?)null);
-                        return word with
+                        var row = word with
                         {
                             Readings = readings,
                             TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
@@ -414,10 +398,8 @@ public static class AssessCommand
                             ExpectedAnalysis = expectedAnalysis,
                             Attempts = stats.Item1,
                             Passes = stats.Item2,
-                            FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(
-                                projectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
-                                readingGrades, missedApproved?.Length ?? 0), missedApproved),
                         };
+                        return row with { FixFirst = AssessmentWordRows.FixFirst(row) };
                     }).ToArray();
                 }
 

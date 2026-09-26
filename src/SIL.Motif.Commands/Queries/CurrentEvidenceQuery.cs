@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
@@ -36,9 +37,24 @@ public sealed record CurrentEvidenceSnapshot(
     /// <summary>The correctness measurement recorded by the same invocation as the matching ParseTime run.</summary>
     public string? MatchingCorrectnessAssessmentId { get; init; }
 
+    /// <summary>The per-rule timing measurement recorded by the same invocation as the matching ParseTime run.</summary>
+    public string? MatchingObjectTimingAssessmentId { get; init; }
+
     /// <summary>The current word outcomes after later subset runs replace their earlier answers.</summary>
     public IReadOnlyList<AssessedWord> EffectiveWords => AssessmentWordOverlay.Apply(
         MatchingAssessment?.Words ?? [], RerunAssessments);
+
+    /// <summary>
+    /// The matching Assessment as an <c>assess</c> run returns it: its words after later subset runs, worded by
+    /// the same row builder a run uses, with its completion summary and its measurements by kind.
+    /// <see langword="null"/> without a Baseline or a matching Assessment. It is built afresh on each read.
+    /// </summary>
+    public AssessCommandResponse? Assessment => AssessmentWordRows.FromStored(this);
+
+    /// <summary>When the matching Assessment was recorded, or <see langword="null"/> without one.</summary>
+    public DateTimeOffset? AssessedUtc => MatchingAssessment is { } assessment
+        ? DateTimeOffset.Parse(assessment.SavedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
+        : null;
 }
 
 /// <summary>Whether the current project file matches its recorded Baseline.</summary>
@@ -81,6 +97,7 @@ public static class CurrentEvidenceQuery
         AssessmentRecord? assessment = null;
         IReadOnlyList<AssessmentRecord> reruns = [];
         string? correctnessAssessmentId = null;
+        string? objectTimingAssessmentId = null;
         if (current is not null && saved is not null)
         {
             var resolved = ResolveSelection(current.Summary, saved);
@@ -94,10 +111,14 @@ public static class CurrentEvidenceQuery
             if (assessment is not null)
             {
                 if (assessment.Invocation?.InvocationId is { } invocationId)
-                    correctnessAssessmentId = new AssessmentRepository(database)
-                        .ListBaselineAssessments(AssessmentKind.Correctness.ToStoredKind())
+                {
+                    string? SameInvocation(AssessmentKind kind) => new AssessmentRepository(database)
+                        .ListBaselineAssessments(kind.ToStoredKind())
                         .LastOrDefault(candidate => candidate.BaselineToken == tokenJson &&
                             candidate.Invocation?.InvocationId == invocationId)?.AssessmentId;
+                    correctnessAssessmentId = SameInvocation(AssessmentKind.Correctness);
+                    objectTimingAssessmentId = SameInvocation(AssessmentKind.ObjectTiming);
+                }
                 var original = assessment.Selection.Words.ToHashSet(StringComparer.Ordinal);
                 reruns = new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind())
                     .Where(candidate => candidate.BaselineToken == tokenJson &&
@@ -123,6 +144,7 @@ public static class CurrentEvidenceQuery
         {
             RerunAssessments = reruns,
             MatchingCorrectnessAssessmentId = correctnessAssessmentId,
+            MatchingObjectTimingAssessmentId = objectTimingAssessmentId,
         });
     }
 
