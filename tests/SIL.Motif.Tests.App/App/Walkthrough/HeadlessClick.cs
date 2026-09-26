@@ -18,7 +18,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 /// </remarks>
 internal static class HeadlessClick
 {
-    public static void Click(Window window, Control control, string accessibleName)
+    public static void Click(TopLevel window, Control control, string accessibleName)
     {
         var aimed = Aim(window, control, accessibleName);
         var pressed = false;
@@ -49,11 +49,34 @@ internal static class HeadlessClick
             $"{now?.ToString() ?? "nowhere in the window"}: {why} Wait for whatever is still loading before clicking.");
     }
 
+    /// <summary>Presses and releases twice over <paramref name="control"/>, as a double-click does, and returns its clicks.</summary>
+    public static int DoubleClick(TopLevel window, Control control, string accessibleName)
+    {
+        var aimed = Aim(window, control, accessibleName);
+        var clicks = 0;
+        void OnClicked(object? sender, RoutedEventArgs e) => clicks++;
+        if (control is Button button) button.Click += OnClicked;
+        try
+        {
+            window.MouseMove(aimed);
+            window.MouseDown(aimed, MouseButton.Left);
+            window.MouseUp(aimed, MouseButton.Left);
+            window.MouseDown(aimed, MouseButton.Left);
+            window.MouseUp(aimed, MouseButton.Left);
+        }
+        finally
+        {
+            if (control is Button clickable) clickable.Click -= OnClicked;
+        }
+        Dispatcher.UIThread.RunJobs();
+        return clicks;
+    }
+
     /// <summary>
     /// Presses where <paramref name="control"/> is without requiring the press to reach it, as when an open popup's
     /// light dismiss takes the press; the caller checks the effect it expects instead.
     /// </summary>
-    public static void PressOver(Window window, Control control, string accessibleName)
+    public static void PressOver(TopLevel window, Control control, string accessibleName)
     {
         var aimed = Aim(window, control, accessibleName);
         window.MouseMove(aimed);
@@ -62,7 +85,7 @@ internal static class HeadlessClick
         Dispatcher.UIThread.RunJobs();
     }
 
-    private static Point Aim(Window window, Control control, string accessibleName)
+    private static Point Aim(TopLevel window, Control control, string accessibleName)
     {
         Assert.True(control.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
         control.BringIntoView();
@@ -72,6 +95,6 @@ internal static class HeadlessClick
             ?? throw new InvalidOperationException($"'{accessibleName}' is not positioned in the walkthrough window.");
     }
 
-    private static Point? CentreOf(Window window, Control control) =>
+    private static Point? CentreOf(TopLevel window, Control control) =>
         control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window);
 }
