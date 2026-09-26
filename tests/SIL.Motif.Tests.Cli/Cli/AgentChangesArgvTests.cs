@@ -1,11 +1,9 @@
-using System.Diagnostics;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
-using SIL.Motif.Worker;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -35,7 +33,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         Assert.Empty(initial.Changes);
 
         var changeId = "agent-change-" + Guid.NewGuid().ToString("N");
-        var put = await RunAsync(true, "put-pending-change", "--project", project,
+        var put = await CliProcess.RunAsync(_workerRoot, null, true, "put-pending-change", "--project", project,
             "--expected-revision", initial.Revision, "--change-id", changeId,
             "--kind", "incorrect-spelling", "--word", "agent-roundtrip-word",
             "--wordform-id", wordform, "--json");
@@ -46,12 +44,20 @@ public sealed class AgentChangesArgvTests : IDisposable
         Assert.Equal(added.Revision, listed.Revision);
         Assert.Contains(listed.Changes, change => change.ChangeId == changeId);
 
-        var recheckedResult = await RunAsync(true, "recheck-pending-changes", "--project", project,
-            "--expected-revision", listed.Revision, "--json");
+        AddWordform(project, "agent-roundtrip-unrelated");
+        File.SetLastWriteTimeUtc(project, File.GetLastWriteTimeUtc(project).AddMinutes(1));
+        await CaptureBaseline(project);
+        var drifted = await ReadPending(project);
+        Assert.False(Assert.Single(drifted.FitSummary).StillFits);
+
+        var recheckedResult = await CliProcess.RunAsync(_workerRoot, null, true, "recheck-pending-changes", "--project", project,
+            "--expected-revision", drifted.Revision, "--json");
         var rechecked = SuccessfulSnapshot(recheckedResult);
         Assert.Contains(rechecked.Changes, change => change.ChangeId == changeId);
+        Assert.True(Assert.Single(rechecked.FitSummary).StillFits);
+        Assert.NotEqual(drifted.Revision, rechecked.Revision);
 
-        var removedResult = await RunAsync(true, "remove-pending-change", "--project", project,
+        var removedResult = await CliProcess.RunAsync(_workerRoot, null, true, "remove-pending-change", "--project", project,
             "--expected-revision", rechecked.Revision, "--change-id", changeId, "--json");
         var removed = SuccessfulSnapshot(removedResult);
         Assert.Empty(removed.Changes);
@@ -77,6 +83,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         Assert.Equal("change.revision-conflict", refusal.Code);
 
         var afterRefusal = await ReadPending(project);
+        Assert.Equal(first.Revision, afterRefusal.Revision);
         Assert.Single(afterRefusal.Changes);
         Assert.Contains(afterRefusal.Changes, change => change.ChangeId == firstId);
 
@@ -95,45 +102,28 @@ public sealed class AgentChangesArgvTests : IDisposable
 
     private async Task CaptureBaseline(string project)
     {
-        var result = await RunAsync(true, "baseline", "capture", project, "--json");
-        Assert.Equal(0, result.ExitCode);
+        var result = await CliProcess.RunAsync(_workerRoot, null, false,
+            "baseline", "capture", project, "--json");
+        Assert.True(result.ExitCode == 0, result.FailureDetails);
     }
 
     private async Task<PendingChangesSnapshot> ReadPending(string project)
     {
-        var result = await RunAsync(true, "pending-changes", "--project", project, "--json");
+        var result = await CliProcess.RunAsync(_workerRoot, null, true,
+            "pending-changes", "--project", project, "--json");
         return SuccessfulSnapshot(result);
     }
 
-    private Task<CliRun> Put(string project, string revision, string changeId, string word, string wordformId) =>
-        RunAsync(true, "put-pending-change", "--project", project, "--expected-revision", revision,
+    private Task<CliProcessResult> Put(string project, string revision, string changeId, string word, string wordformId) =>
+        CliProcess.RunAsync(_workerRoot, null, true,
+            "put-pending-change", "--project", project, "--expected-revision", revision,
             "--change-id", changeId, "--kind", "incorrect-spelling", "--word", word,
             "--wordform-id", wordformId, "--json");
 
-    private static PendingChangesSnapshot SuccessfulSnapshot(CliRun result)
+    private static PendingChangesSnapshot SuccessfulSnapshot(CliProcessResult result)
     {
-        Assert.True(result.ExitCode == 0, $"CLI exited {result.ExitCode}: {result.Error}{result.Output}");
+        Assert.True(result.ExitCode == 0, result.FailureDetails);
         return ProjectionJson.Deserialize<PendingChangesSnapshot>(result.Output)!;
-    }
-
-    private async Task<CliRun> RunAsync(bool developerCommands, params string[] arguments)
-    {
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        start.Environment[RunnerOptions.RootVariable] = _workerRoot;
-        start.Environment.Remove("MOTIF_DEVELOPER_COMMANDS");
-        if (developerCommands) start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
-        using var process = Process.Start(start)!;
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
-        return new CliRun(process.ExitCode, await outputTask, await errorTask);
     }
 
     private static string AddWordform(string project, string word)
@@ -147,5 +137,4 @@ public sealed class AgentChangesArgvTests : IDisposable
         return SIL.Motif.Contract.Ids.CanonicalId.FromGuid(wordformId).Value;
     }
 
-    private sealed record CliRun(int ExitCode, string Output, string Error);
 }

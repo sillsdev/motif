@@ -843,8 +843,9 @@ try
             if (positionals.Count != 1) return Usage(StatsUsage(), asJson);
             var statsOutput = asJson ? StatsOutputKind.JsonRows : StatsOutputKind.Text;
             if (flags.ContainsKey("proposal")) return Usage(StatsUsage(), asJson);
-            result = RenderCommand(StatsCommand.Stats(new StatsRequest(
-                positionals[0], flags.GetValueOrDefault("assessment"), statsOutput, forwardedArguments)));
+            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(StatsCommand.Stats(
+                new StatsRequest(positionals[0], flags.GetValueOrDefault("assessment"), statsOutput, forwardedArguments),
+                cancellationToken)));
             break;
 
         case "handoff":
@@ -861,9 +862,9 @@ try
             // No --texts means every wordform and every Text; a chosen list means only those Texts' words.
             var handoffSelection = new SelectionRequest(
                 handoffTextIds.Count == 0, handoffTextIds, Array.Empty<string>(), false, null);
-            result = RenderCommand(HandoffCommand.Handoff(
+            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(HandoffCommand.Handoff(
                 new HandoffRequest(positionals[0], handoffOut, handoffSelection, !handoffNoAssess, handoffInvocation),
-                asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
+                asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
             break;
 
         case "jobs":

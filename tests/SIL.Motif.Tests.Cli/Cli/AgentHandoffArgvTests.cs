@@ -1,8 +1,6 @@
-using System.Diagnostics;
+using System.Text.Json;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
-using SIL.Motif.Worker;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -25,23 +23,24 @@ public sealed class AgentHandoffArgvTests : IDisposable
     public async Task AHandoffFromARetainedRunWritesFiveFilesAndRefusesAFullFolder()
     {
         var project = _pristine.CopyProjectFile();
-        var baseline = await RunAsync(null, "baseline", "capture", project, "--json");
-        Assert.Equal(0, baseline.ExitCode);
-        var selection = await RunAsync(null, "selection", "set-default", "--project", project,
+        var baseline = await CliProcess.RunAsync(_workerRoot, null, false,
+            "baseline", "capture", project, "--json");
+        Assert.True(baseline.ExitCode == 0, baseline.FailureDetails);
+        var selection = await CliProcess.RunAsync(_workerRoot, null, false, "selection", "set-default", "--project", project,
             "--name", "Default", "--add-words", "motifa", "--json");
-        Assert.Equal(0, selection.ExitCode);
+        Assert.True(selection.ExitCode == 0, selection.FailureDetails);
 
         var parser = CopyFakeParser();
-        var assess = await RunAsync(parser, "assess", project, "--json");
-        Assert.Equal(0, assess.ExitCode);
+        var assess = await CliProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
+        Assert.True(assess.ExitCode == 0, assess.FailureDetails);
         var assessed = ProjectionJson.Deserialize<AssessCommandResponse>(assess.Output)!;
         Assert.NotEmpty(assessed.InvocationId);
 
         var destination = Path.Combine(_root, "handoff");
-        var handoffResult = await RunAsync(null, "handoff", project, "--out", destination,
+        var handoffResult = await CliProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", destination,
             "--invocation", assessed.InvocationId, "--json");
 
-        Assert.Equal(0, handoffResult.ExitCode);
+        Assert.True(handoffResult.ExitCode == 0, handoffResult.FailureDetails);
         var handoff = ProjectionJson.Deserialize<HandoffCommandResponse>(handoffResult.Output)!;
         Assert.Equal(Path.GetFullPath(destination), Path.GetFullPath(handoff.OutputDirectory));
         Assert.Equal(assessed.InvocationId, handoff.InvocationId);
@@ -56,12 +55,15 @@ public sealed class AgentHandoffArgvTests : IDisposable
             "texts.json",
         }, handoff.Files.Order(StringComparer.Ordinal));
         Assert.All(handoff.Files, file => Assert.True(File.Exists(Path.Combine(destination, file.Replace('/', Path.DirectorySeparatorChar))), file));
+        using var assessmentDocument = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "assessment.json")));
+        Assert.Equal("motifa", Assert.Single(assessmentDocument.RootElement.EnumerateArray())
+            .GetProperty("word").GetString());
 
         var fullDestination = Path.Combine(_root, "full-folder");
         Directory.CreateDirectory(fullDestination);
         var keep = Path.Combine(fullDestination, "keep.txt");
         File.WriteAllText(keep, "preserve");
-        var full = await RunAsync(null, "handoff", project, "--out", fullDestination,
+        var full = await CliProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", fullDestination,
             "--invocation", assessed.InvocationId, "--json");
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), full.ExitCode);
         Assert.Equal("handoff.destination-exists", ProjectionJson.Deserialize<FailureEnvelope>(full.Error)!.Code);
@@ -69,7 +71,7 @@ public sealed class AgentHandoffArgvTests : IDisposable
         Assert.Single(Directory.GetFiles(fullDestination));
 
         var missingDestination = Path.Combine(_root, "missing-run");
-        var missing = await RunAsync(null, "handoff", project, "--out", missingDestination,
+        var missing = await CliProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", missingDestination,
             "--invocation", "missing-invocation", "--json");
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.NotFound), missing.ExitCode);
         Assert.Equal("handoff.invocation-not-found", ProjectionJson.Deserialize<FailureEnvelope>(missing.Error)!.Code);
@@ -91,26 +93,4 @@ public sealed class AgentHandoffArgvTests : IDisposable
         return parser;
     }
 
-    private async Task<CliRun> RunAsync(string? parserPath, params string[] arguments)
-    {
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        start.Environment[RunnerOptions.RootVariable] = _workerRoot;
-        start.Environment[PanGlossExecutable.PathVariable] = parserPath ?? FakeParser.ExecutablePath;
-        start.Environment.Remove("MOTIF_DEVELOPER_COMMANDS");
-        start.Environment.Remove("FAKE_PANGLOSS_BEHAVIOUR_PATH");
-        using var process = Process.Start(start)!;
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
-        return new CliRun(process.ExitCode, await outputTask, await errorTask);
-    }
-
-    private sealed record CliRun(int ExitCode, string Output, string Error);
 }
