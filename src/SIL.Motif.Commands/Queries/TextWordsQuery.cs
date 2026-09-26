@@ -35,7 +35,7 @@ public static class TextWordsQuery
         ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var current = new BaselineRepository(database).GetCurrentTextWords(workspaceKey);
+            var current = new BaselineRepository(database).GetCurrentTextWords(workspaceKey, request.TextIds);
             if (current is null)
                 return CommandOutcome<TextWordsResponse>.Success(
                     new TextWordsResponse(Array.Empty<TextWord>(), Array.Empty<TextLines>(), HasBaseline: false));
@@ -50,16 +50,18 @@ public static class TextWordsQuery
             foreach (var textId in request.TextIds)
             {
                 if (!textsById.TryGetValue(textId, out var text)) continue;
+                var analyses = text.Analyses.ToDictionary(
+                    stored => stored.Key, stored => ReadAnalysis(stored, projectName), StringComparer.Ordinal);
                 var lines = new List<TextLine>();
                 foreach (var line in text.Lines)
                 {
                     var tokens = new List<TextToken>();
                     foreach (var token in line.Tokens)
                     {
-                        var analysis = ReadAnalysis(token.Analysis, projectName);
+                        var analysis = token.AnalysisKey is { } key ? analyses[key] : null;
                         var primary = token.Forms.Count == 0 ? string.Empty : Canonicalize(token.Forms[0]);
                         tokens.Add(new TextToken(token.Text, primary.Length == 0 ? null : primary,
-                            token.Gloss, token.Status)
+                            GlossOf(analysis), token.Status)
                         {
                             Analysis = analysis,
                             WordGloss = token.WordGloss,
@@ -93,9 +95,9 @@ public static class TextWordsQuery
                 var accumulator = accumulators[form];
                 var wordform = accumulator.WordformId is { } id && wordformsById.TryGetValue(id, out var found)
                     ? found : null;
-                var approved = wordform?.Approved.Select(analysis => ReadAnalysis(analysis, projectName)!).ToArray()
+                var approved = wordform?.Approved.Select(analysis => ReadAnalysis(analysis, projectName)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
-                var disapproved = wordform?.Disapproved.Select(analysis => ReadAnalysis(analysis, projectName)!).ToArray()
+                var disapproved = wordform?.Disapproved.Select(analysis => ReadAnalysis(analysis, projectName)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
                 return new TextWord(form, accumulator.WordformId?.ToString("D"), accumulator.Occurrences,
                     approved, disapproved, wordform?.CandidateCount ?? 0, wordform?.IncorrectSpelling ?? false);
@@ -105,9 +107,11 @@ public static class TextWordsQuery
                 OccurrenceCount: words.Sum(word => word.Occurrences.Count)));
         });
 
-    private static ProjectAnalysis? ReadAnalysis(TextWordsProjectedAnalysis? analysis, string projectName)
+    private static string? GlossOf(ProjectAnalysis? analysis) => analysis is null ? null
+        : string.Join(" ", analysis.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
+
+    private static ProjectAnalysis ReadAnalysis(TextWordsProjectedAnalysis analysis, string projectName)
     {
-        if (analysis is null) return null;
         var morphs = analysis.Morphs.Select(morph => new ParserReadingMorph(
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
             FieldWorksLinks.ForTarget(projectName, morph.LinkTarget))).ToArray();

@@ -78,7 +78,7 @@ public sealed class BaselineRefresh
             // The caller saved the project before calling, so the file's own stamp is that save's time.
             var savedUtc = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
             _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, _now(), savedUtc,
-                TextWordsProjectionBuilder.Build(savedCache), ProjectSummaryReader.Read(savedCache));
+                TextWordsProjectionBuilder.Build(savedCache, cancellationToken), ProjectSummaryReader.Read(savedCache));
             return publication.Token;
         }
         finally

@@ -2,16 +2,22 @@ using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Host.Texts;
 
-/// <summary>The complete ordered Text words data derived from one saved Baseline.</summary>
+/// <summary>
+/// The Text words data derived from one saved Baseline: its Texts, and every wordform their tokens use. It is
+/// stored one Text and one wordform per row, so the Texts page reads only what the chosen Texts need.
+/// </summary>
 public sealed record TextWordsProjection(
     IReadOnlyList<TextWordsProjectedText> Texts,
     IReadOnlyList<TextWordsProjectedWordform> Wordforms);
 
-/// <summary>One Text in its Baseline order, with the ordered lines and tokens used by Text words.</summary>
+/// <summary>
+/// One Text with its ordered lines, and each analysis its tokens chose, stored once and referred to by key.
+/// </summary>
 public sealed record TextWordsProjectedText(
     Guid TextId,
     string Title,
-    IReadOnlyList<TextWordsProjectedLine> Lines);
+    IReadOnlyList<TextWordsProjectedLine> Lines,
+    IReadOnlyList<TextWordsProjectedAnalysis> Analyses);
 
 /// <summary>One line in a Text, retaining its source sentence and ordered token evidence.</summary>
 public sealed record TextWordsProjectedLine(
@@ -19,14 +25,16 @@ public sealed record TextWordsProjectedLine(
     string Sentence,
     IReadOnlyList<TextWordsProjectedToken> Tokens);
 
-/// <summary>One source token and all ordered wordform alternatives that contribute to Text words.</summary>
+/// <summary>
+/// One source token and all ordered wordform alternatives that contribute to Text words. A word token names its
+/// chosen analysis by the key of an entry in its Text's <see cref="TextWordsProjectedText.Analyses"/>.
+/// </summary>
 public sealed record TextWordsProjectedToken(
     string Text,
     IReadOnlyList<string> Forms,
     Guid? WordformId,
     string? Status,
-    TextWordsProjectedAnalysis? Analysis,
-    string? Gloss,
+    string? AnalysisKey,
     string? WordGloss,
     string? Category,
     FieldWorksLinkTarget? WordLinkTarget);
@@ -39,7 +47,10 @@ public sealed record TextWordsProjectedWordform(
     int CandidateCount,
     bool IncorrectSpelling);
 
-/// <summary>One stored analysis and its ordered display-ready morphology.</summary>
+/// <summary>
+/// One stored analysis and its ordered display-ready morphology. Its key is the analysis content digest, so two
+/// analyses sharing a key share their morphs and display the same.
+/// </summary>
 public sealed record TextWordsProjectedAnalysis(
     string Key,
     IReadOnlyList<TextWordsProjectedMorph> Morphs);

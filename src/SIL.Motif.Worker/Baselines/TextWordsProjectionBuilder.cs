@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
@@ -15,15 +16,22 @@ namespace SIL.Motif.Worker.Baselines;
 /// <summary>Builds the complete ordered Text words projection from one saved Baseline cache.</summary>
 public static class TextWordsProjectionBuilder
 {
-    /// <summary>Reads Text lines, occurrences, analyses and stable FieldWorks link targets from a saved cache.</summary>
-    public static TextWordsProjection Build(LcmCache cache)
+    /// <summary>
+    /// Reads Text lines, occurrences, analyses and stable FieldWorks link targets from a saved cache, checking
+    /// <paramref name="cancellationToken"/> before each Text.
+    /// </summary>
+    public static TextWordsProjection Build(LcmCache cache, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(cache);
         var wordforms = new Dictionary<Guid, TextWordsProjectedWordform>();
+        var texts = new List<TextWordsProjectedText>();
         // The query looks Texts up by id; a fixed order only keeps the stored bytes stable across captures.
-        var texts = cache.ServiceLocator.GetInstance<ITextRepository>().AllInstances()
-            .OrderBy(text => text.Guid.ToString("D"), StringComparer.Ordinal)
-            .Select(text => ReadText(cache, text, wordforms)).ToArray();
+        foreach (var text in cache.ServiceLocator.GetInstance<ITextRepository>().AllInstances()
+                     .OrderBy(text => text.Guid.ToString("D"), StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            texts.Add(ReadText(cache, text, wordforms));
+        }
         return new TextWordsProjection(texts, wordforms.Values
             .OrderBy(wordform => wordform.WordformId.ToString("D"), StringComparer.Ordinal).ToArray());
     }
@@ -32,6 +40,7 @@ public static class TextWordsProjectionBuilder
         LcmCache cache, IText text, Dictionary<Guid, TextWordsProjectedWordform> wordforms)
     {
         var lines = new List<TextWordsProjectedLine>();
+        var analyses = new Dictionary<string, TextWordsProjectedAnalysis>(StringComparer.Ordinal);
         var lineNumber = 0;
         foreach (var paragraph in text.ContentsOA?.ParagraphsOS.OfType<IStTxtPara>() ?? Enumerable.Empty<IStTxtPara>())
         {
@@ -41,20 +50,21 @@ public static class TextWordsProjectionBuilder
                 lineNumber++;
                 var sentence = segment.BaselineText?.Text ?? string.Empty;
                 var tokens = occurrencesBySegment[segment]
-                    .Select(occurrence => ReadToken(cache, occurrence.Analysis, wordforms)).ToArray();
+                    .Select(occurrence => ReadToken(cache, occurrence.Analysis, wordforms, analyses)).ToArray();
                 lines.Add(new TextWordsProjectedLine(lineNumber, sentence, tokens));
             }
         }
 
-        return new TextWordsProjectedText(text.Guid, ReadTitle(text), lines);
+        return new TextWordsProjectedText(text.Guid, ReadTitle(text), lines, analyses.Values.ToArray());
     }
 
     private static TextWordsProjectedToken ReadToken(
-        LcmCache cache, IAnalysis analysis, Dictionary<Guid, TextWordsProjectedWordform> wordforms)
+        LcmCache cache, IAnalysis analysis, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
+        Dictionary<string, TextWordsProjectedAnalysis> analyses)
     {
         if (analysis is IPunctuationForm punctuation)
             return new TextWordsProjectedToken(
-                punctuation.Form?.Text ?? string.Empty, [], null, null, null, null, null, null, null);
+                punctuation.Form?.Text ?? string.Empty, [], null, null, null, null, null, null);
 
         var (wordform, wfiAnalysis) = analysis switch
         {
@@ -73,15 +83,23 @@ public static class TextWordsProjectionBuilder
                 ? InterlinearAnalysisStatus.Approved
                 : InterlinearAnalysisStatus.Unapproved
             : InterlinearAnalysisStatus.Unanalysed;
-        var selectedAnalysis = wfiAnalysis is { } selected ? BuildProjectAnalysis(cache, selected) : null;
+        string? analysisKey = null;
+        if (wfiAnalysis is { } selected)
+        {
+            var projected = BuildProjectAnalysis(cache, selected);
+            analyses.TryAdd(projected.Key, projected);
+            analysisKey = projected.Key;
+        }
         var tokenText = forms.Length > 0 ? forms[0] : string.Empty;
-        var gloss = selectedAnalysis is null ? null
-            : string.Join(" ", selectedAnalysis.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
         var chosenWordGloss = analysis is IWfiGloss chosenGloss ? BestText(chosenGloss.Form) : null;
         var category = wfiAnalysis?.CategoryRA is { } pos ? BestText(pos.Abbreviation) ?? BestText(pos.Name) : null;
-        var wordLinkTarget = tokenText.Length == 0 ? null : FieldWorksLinks.WordformTargetFor(cache, tokenText);
-        return new TextWordsProjectedToken(tokenText, forms, wordform.Guid, status, selectedAnalysis,
-            gloss, chosenWordGloss, category, wordLinkTarget);
+        // Its own wordform first: two wordforms sharing a spelling make the lookup's answer depend on load order.
+        var wordLinkTarget = tokenText.Length == 0 ? null
+            : wordform.Form.get_String(cache.DefaultVernWs)?.Text == tokenText
+                ? FieldWorksLinks.TargetFor(cache, wordform)
+                : FieldWorksLinks.WordformTargetFor(cache, tokenText);
+        return new TextWordsProjectedToken(tokenText, forms, wordform.Guid, status, analysisKey,
+            chosenWordGloss, category, wordLinkTarget);
     }
 
     private static TextWordsProjectedWordform ReadWordform(LcmCache cache, IWfiWordform wordform)

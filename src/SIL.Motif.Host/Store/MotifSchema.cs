@@ -57,7 +57,7 @@ public static class MotifSchema
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
-            "BaselineSummaries", "BaselineTextWords", "GrammarChecks", "PendingChangeFits"
+            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "GrammarChecks", "PendingChangeFits"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -299,6 +299,7 @@ public static class MotifSchema
         "AssessmentObjectTimings" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineSummaries" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextWords" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
+        "BaselineTextWordforms" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -354,8 +355,10 @@ public static class MotifSchema
             C("Object", "TEXT", true), C("Word", "TEXT", true), C("Attempts", "INTEGER"), C("Passes", "INTEGER"),
             C("ElapsedMs", "REAL", true)],
         "BaselineSummaries" => [C("ProjectKey", "TEXT", false, 1), C("SummaryJson", "TEXT", true)],
-        "BaselineTextWords" => [C("ProjectKey", "TEXT", false, 1), C("BundleDigest", "TEXT", true),
-            C("ProjectionJson", "TEXT", true)],
+        "BaselineTextWords" => [C("ProjectKey", "TEXT", true, 1), C("TextId", "TEXT", true, 2),
+            C("BundleDigest", "TEXT", true), C("TextJson", "TEXT", true)],
+        "BaselineTextWordforms" => [C("ProjectKey", "TEXT", true, 1), C("WordformId", "TEXT", true, 2),
+            C("BundleDigest", "TEXT", true), C("WordformJson", "TEXT", true)],
         "ParsedAnalyses" =>
         [C("AssessedWordId", "INTEGER", true), C("OrdinalIndex", "INTEGER", true), C("CategoryGuid", "TEXT"),
             C("MorphemeGuidsJson", "TEXT", true), C("RootIndex", "INTEGER", true), C("IdentityDigest", "TEXT", true)],
@@ -699,9 +702,19 @@ public static class MotifSchema
 
     private const string BaselineTextWordsDdl = """
         CREATE TABLE BaselineTextWords (
-            ProjectKey TEXT PRIMARY KEY REFERENCES Baselines(ProjectKey),
+            ProjectKey TEXT NOT NULL REFERENCES Baselines(ProjectKey),
+            TextId TEXT NOT NULL,
             BundleDigest TEXT NOT NULL,
-            ProjectionJson TEXT NOT NULL
+            TextJson TEXT NOT NULL,
+            PRIMARY KEY (ProjectKey, TextId)
+        );
+
+        CREATE TABLE BaselineTextWordforms (
+            ProjectKey TEXT NOT NULL REFERENCES Baselines(ProjectKey),
+            WordformId TEXT NOT NULL,
+            BundleDigest TEXT NOT NULL,
+            WordformJson TEXT NOT NULL,
+            PRIMARY KEY (ProjectKey, WordformId)
         );
         """;
 

@@ -1,8 +1,10 @@
 using System.Text.Json;
+using SIL.LCModel;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
@@ -12,8 +14,9 @@ using Xunit;
 namespace SIL.Motif.Tests.Worker;
 
 /// <summary>
-/// Pins that the worker's Baseline refresh stores the Text words projection of the Baseline it records, in
-/// place of the previous one, and that a stored projection is served only for the Baseline it was built from.
+/// Pins the stored Text words of a Baseline: the worker's refresh replaces them with exactly what a fresh load of
+/// the refreshed Baseline builds, a read touches only the requested Texts and the wordforms they use, and a row
+/// that is damaged or belongs to another Baseline is refused rather than served.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
@@ -29,61 +32,73 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
     }
 
     [Fact]
-    public async Task RefreshReplacesTheTextWordsProjectionWithTheCurrentBaselines()
+    public async Task RefreshStoresWhatAFreshLoadOfTheRefreshedBaselineBuilds()
     {
         using var cache = _pristine.NewScratch();
         var firstText = SeededProject.SeedText(cache, _pristine.Seed);
         new FwDataProjectLoader().Save(cache);
-        var projectPath = cache.ProjectId.Path;
-        var project = new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath));
-        using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
-            .OpenOwned(project);
+        var (project, database) = Open(cache);
+        using var owned = database;
         var repository = new BaselineRepository(database);
         var refresh = new BaselineRefresh(repository, Path.Combine(_root, "managed"));
         var projectKey = ProjectWorkspaceKey.Compute(project);
 
         var firstToken = await refresh.RefreshAsync(cache, project, CancellationToken.None);
-        var first = repository.GetCurrentTextWords(projectKey)!;
 
-        Assert.Equal(firstToken.BundleDigest, first.Baseline.Token.BundleDigest);
-        Assert.Equal([firstText.TextId], first.Projection.Texts.Select(text => text.TextId));
-
+        Assert.Equal(1, Count(database, "BaselineTextWords", projectKey));
         var secondText = SeededProject.SeedText(cache, _pristine.Seed);
         new FwDataProjectLoader().Save(cache);
         var secondToken = await refresh.RefreshAsync(cache, project, CancellationToken.None);
-        var second = repository.GetCurrentTextWords(projectKey)!;
+        var current = repository.GetCurrentTextWords(projectKey, [firstText.TextId, secondText.TextId])!;
+        using var fresh = new FwDataProjectLoader().LoadScratchCache(current.Baseline.FwDataPath);
+        var expected = TextWordsProjectionBuilder.Build(fresh, CancellationToken.None);
+        var stored = repository.GetCurrentTextWords(
+            projectKey, expected.Texts.Select(text => text.TextId).ToArray())!;
 
         Assert.NotEqual(firstToken.BundleDigest, secondToken.BundleDigest);
-        Assert.Equal(secondToken.BundleDigest, second.Baseline.Token.BundleDigest);
+        Assert.Equal(secondToken.BundleDigest, current.Baseline.Token.BundleDigest);
         Assert.Equal(new HashSet<Guid> { firstText.TextId, secondText.TextId },
-            second.Projection.Texts.Select(text => text.TextId).ToHashSet());
-        Assert.Equal(Serialize(TextWordsProjectionBuilder.Build(cache)), Serialize(second.Projection));
-        Assert.Equal(1, CountProjectionRows(database, projectKey));
+            current.Projection.Texts.Select(text => text.TextId).ToHashSet());
+        Assert.Equal(Serialize(expected), Serialize(stored.Projection));
+        Assert.Equal(2, Count(database, "BaselineTextWords", projectKey));
+        Assert.Equal(expected.Wordforms.Count, Count(database, "BaselineTextWordforms", projectKey));
+        Assert.Equal(0, CountOtherDigest(database, "BaselineTextWords", projectKey, secondToken.BundleDigest));
+        Assert.Equal(0, CountOtherDigest(database, "BaselineTextWordforms", projectKey, secondToken.BundleDigest));
     }
 
     [Fact]
-    public async Task AProjectionBuiltFromAnotherBaselineIsRefusedRatherThanServed()
+    public async Task AReadReturnsOnlyTheRequestedTextsAndTheWordformsTheyUse()
     {
-        using var cache = _pristine.NewScratch();
-        SeededProject.SeedText(cache, _pristine.Seed);
-        new FwDataProjectLoader().Save(cache);
-        var projectPath = cache.ProjectId.Path;
-        var project = new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath));
-        using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
-            .OpenOwned(project);
-        var repository = new BaselineRepository(database);
-        await new BaselineRefresh(repository, Path.Combine(_root, "managed"))
-            .RefreshAsync(cache, project, CancellationToken.None);
-        var projectKey = ProjectWorkspaceKey.Compute(project);
-        using (var connection = database.OpenConnection())
-        using (var command = connection.CreateCommand())
-        {
-            command.CommandText = "UPDATE BaselineTextWords SET BundleDigest = 'sha256:other' WHERE ProjectKey = $project;";
-            command.Parameters.AddWithValue("$project", projectKey);
-            Assert.Equal(1, command.ExecuteNonQuery());
-        }
+        var (projectKey, repository, database, first, second) = await RefreshTwoTexts();
+        using var owned = database;
 
-        Assert.Throws<InvalidDataException>(() => repository.GetCurrentTextWords(projectKey));
+        var read = repository.GetCurrentTextWords(projectKey, [second, Guid.NewGuid(), second])!;
+
+        var text = Assert.Single(read.Projection.Texts);
+        Assert.Equal(second, text.TextId);
+        var used = text.Lines.SelectMany(line => line.Tokens).Select(token => token.WordformId)
+            .OfType<Guid>().ToHashSet();
+        Assert.Equal(used, read.Projection.Wordforms.Select(wordform => wordform.WordformId).ToHashSet());
+        Assert.Empty(repository.GetCurrentTextWords(projectKey, [])!.Projection.Texts);
+        Assert.DoesNotContain(read.Projection.Texts, candidate => candidate.TextId == first);
+    }
+
+    [Theory]
+    [InlineData("UPDATE BaselineTextWords SET BundleDigest = 'sha256:other' WHERE ProjectKey = $project;")]
+    [InlineData("UPDATE BaselineTextWordforms SET BundleDigest = 'sha256:other' WHERE ProjectKey = $project;")]
+    [InlineData("UPDATE BaselineTextWords SET TextJson = '{}' WHERE ProjectKey = $project;")]
+    [InlineData("UPDATE BaselineTextWords SET TextJson = 'not json' WHERE ProjectKey = $project;")]
+    [InlineData("UPDATE BaselineTextWordforms SET WordformJson = '{}' WHERE ProjectKey = $project;")]
+    [InlineData("DELETE FROM BaselineTextWordforms WHERE ProjectKey = $project;")]
+    [InlineData("UPDATE BaselineTextWords SET TextJson = json_set(TextJson, '$.Analyses', json('[]')) " +
+        "WHERE ProjectKey = $project;")]
+    public async Task ADamagedOrForeignRowIsRefusedRatherThanServed(string damage)
+    {
+        var (projectKey, repository, database, first, _) = await RefreshTwoTexts();
+        using var owned = database;
+        Execute(database, damage, projectKey);
+
+        Assert.Throws<InvalidDataException>(() => repository.GetCurrentTextWords(projectKey, [first]));
     }
 
     public void Dispose()
@@ -94,14 +109,52 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
         catch (UnauthorizedAccessException) { }
     }
 
-    private static string Serialize(object value) => JsonSerializer.Serialize(value, MotifJson.CreateOptions());
+    private async Task<(string ProjectKey, BaselineRepository Repository, MotifDatabase Database, Guid First,
+        Guid Second)> RefreshTwoTexts()
+    {
+        using var cache = _pristine.NewScratch();
+        var first = SeededProject.SeedText(cache, _pristine.Seed);
+        var second = SeededProject.SeedText(cache, _pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        var (project, database) = Open(cache);
+        var repository = new BaselineRepository(database);
+        await new BaselineRefresh(repository, Path.Combine(_root, "managed"))
+            .RefreshAsync(cache, project, CancellationToken.None);
+        return (ProjectWorkspaceKey.Compute(project), repository, database, first.TextId, second.TextId);
+    }
 
-    private static long CountProjectionRows(MotifDatabase database, string projectKey)
+    private static (ProjectLocator Project, MotifDatabase Database) Open(LcmCache cache)
+    {
+        var projectPath = cache.ProjectId.Path;
+        var project = new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath));
+        return (project, new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)).OpenOwned(project));
+    }
+
+    private static string Serialize(TextWordsProjection value) =>
+        JsonSerializer.Serialize(value, MotifJson.CreateOptions());
+
+    private static long Count(MotifDatabase database, string table, string projectKey) =>
+        Scalar(database, $"SELECT COUNT(*) FROM {table} WHERE ProjectKey = $project;", projectKey);
+
+    private static long CountOtherDigest(MotifDatabase database, string table, string projectKey, string digest) =>
+        Scalar(database, $"SELECT COUNT(*) FROM {table} WHERE ProjectKey = $project AND BundleDigest <> '{digest}';",
+            projectKey);
+
+    private static long Scalar(MotifDatabase database, string sql, string projectKey)
     {
         using var connection = database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM BaselineTextWords WHERE ProjectKey = $project;";
+        command.CommandText = sql;
         command.Parameters.AddWithValue("$project", projectKey);
         return (long)command.ExecuteScalar()!;
+    }
+
+    private static void Execute(MotifDatabase database, string sql, string projectKey)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("$project", projectKey);
+        Assert.True(command.ExecuteNonQuery() > 0);
     }
 }
