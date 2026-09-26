@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using Xunit;
@@ -69,7 +70,7 @@ public sealed class ProjectStoreResetTests : IDisposable
         Assert.False(outcome.Value!.Deleted);
         Assert.Equal(storePath, outcome.Value.StorePath);
         Assert.True(File.Exists(storePath));
-        Assert.Equal("kept", Scalar(storePath, "SELECT CreatedUtc FROM MotifMetadata WHERE Id = 1;"));
+        Assert.Equal("kept", (string)Scalar(storePath, "SELECT CreatedUtc FROM MotifMetadata WHERE Id = 1;"));
     }
 
     [Fact]
@@ -111,27 +112,62 @@ public sealed class ProjectStoreResetTests : IDisposable
     }
 
     [Fact]
-    public async Task AStoreRecreatedWhileTheDeleteWaitsIsKept()
+    public async Task ADatabaseCreatedWhileTheDeleteWaitsIsKept()
     {
-        var project = Project("recreated");
+        var project = Project("created");
+        var storePath = StorePathOf(project);
+        using var deleteWaiting = new ManualResetEventSlim();
+        Task<CommandOutcome<string>> creating;
+        Task<bool> deleting;
+
+        // A write lock on the still-empty file pauses a real creator inside creation, holding the creation lock.
+        using (var writer = Connection(storePath))
+        {
+            Execute(writer, "BEGIN IMMEDIATE;");
+            creating = Task.Run(() => ProjectStoreCommand.Run<string>(
+                project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty)));
+            Assert.True(SpinWait.SpinUntil(() => File.Exists(storePath + ".owner.lock"), TimeSpan.FromSeconds(10)));
+
+            deleting = Task.Run(() => MotifDatabase.DeleteIfOtherVersion(storePath, Locator(project),
+                MotifSchema.CurrentSchema, new Version(1, 0), onWaitingForOwnership: deleteWaiting.Set));
+            Assert.True(deleteWaiting.Wait(TimeSpan.FromSeconds(10)));
+            Assert.False(deleting.IsCompleted);
+            Execute(writer, "ROLLBACK;");
+        }
+
+        Assert.True((await creating.WaitAsync(TimeSpan.FromSeconds(30))).Succeeded);
+        Assert.False(await deleting.WaitAsync(TimeSpan.FromSeconds(30)));
+        Assert.True(File.Exists(storePath));
+        Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(storePath, "PRAGMA user_version;"));
+        Open(project);
+    }
+
+    [Fact]
+    public async Task ADeleteThatWinsTheLockIsFollowedByACleanRecreate()
+    {
+        var project = Project("won");
         var storePath = StorePathOf(project);
         Open(project);
-        Execute(storePath, "UPDATE MotifMetadata SET CreatedUtc = 'recreated' WHERE Id = 1;");
-        var recreated = Path.Combine(_root, "recreated.snapshot");
-        File.Copy(storePath, recreated);
         Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
+        using var deleteWaiting = new ManualResetEventSlim();
+        Task<bool> deleting;
 
-        Task<CommandOutcome<ProjectStoreResetResponse>> deleting;
         using (HoldCreationLock(storePath))
         {
-            deleting = Task.Run(() => ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(project), "1.0"));
-            File.Copy(recreated, storePath, overwrite: true);
-        }
-        var outcome = await deleting.WaitAsync(TimeSpan.FromSeconds(30));
+            deleting = Task.Run(() => MotifDatabase.DeleteIfOtherVersion(storePath, Locator(project),
+                MotifSchema.CurrentSchema, new Version(1, 0), onWaitingForOwnership: deleteWaiting.Set));
+            Assert.True(deleteWaiting.Wait(TimeSpan.FromSeconds(10)));
 
-        Assert.True(outcome.Succeeded);
-        Assert.False(outcome.Value!.Deleted);
-        Assert.Equal("recreated", Scalar(storePath, "SELECT CreatedUtc FROM MotifMetadata WHERE Id = 1;"));
+            var racing = ProjectStoreCommand.Run<string>(
+                project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
+            Assert.Equal(RefusalCodes.StoreOtherVersion, racing.Refusal!.Code);
+            Assert.False(deleting.IsCompleted);
+        }
+
+        Assert.True(await deleting.WaitAsync(TimeSpan.FromSeconds(30)));
+        Assert.False(File.Exists(storePath));
+        Open(project);
+        Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(storePath, "PRAGMA user_version;"));
     }
 
     [Fact]
@@ -202,17 +238,28 @@ public sealed class ProjectStoreResetTests : IDisposable
     private static void Execute(string databasePath, string sql)
     {
         using var connection = Connection(databasePath);
+        Execute(connection, sql);
+    }
+
+    private static void Execute(SqliteConnection connection, string sql)
+    {
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.ExecuteNonQuery();
     }
 
-    private static string Scalar(string databasePath, string sql)
+    private static ProjectLocator Locator(string project)
+    {
+        var full = Path.GetFullPath(project);
+        return new ProjectLocator(full, Path.GetFileNameWithoutExtension(full));
+    }
+
+    private static object Scalar(string databasePath, string sql)
     {
         using var connection = Connection(databasePath);
         using var command = connection.CreateCommand();
         command.CommandText = sql;
-        return (string)command.ExecuteScalar()!;
+        return command.ExecuteScalar()!;
     }
 
     public void Dispose()

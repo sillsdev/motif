@@ -145,15 +145,16 @@ internal sealed class MotifSqliteStore : IDisposable
 
     /// <summary>
     /// Deletes the store if <see cref="Open"/> would refuse it with a <see cref="MotifStoreVersionException"/>,
-    /// deciding and deleting under the creation lock so no opener can create or replace the store in between.
+    /// deciding and deleting under the creation lock, the one lock that orders against the store's creation.
     /// </summary>
     /// <returns><c>true</c> when the file was deleted; <c>false</c> when it is absent, empty, or usable.</returns>
     public static bool DeleteIfOtherVersion(string path, MotifSqliteStoreDescriptor descriptor,
-        TimeSpan? ownershipPatience = null)
+        TimeSpan? ownershipPatience = null, Action? onWaitingForOwnership = null)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         var fullPath = Path.GetFullPath(path);
-        using var ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
+        using var ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience,
+            onWaitingForOwnership);
         if (!File.Exists(fullPath)) return false;
         try
         {
@@ -357,7 +358,7 @@ internal sealed class MotifSqliteStore : IDisposable
     }
 
     // Waits rather than fails: two processes opening a database that needs migrating is ordinary.
-    private static FileStream AcquireOwnership(string path, TimeSpan patience)
+    private static FileStream AcquireOwnership(string path, TimeSpan patience, Action? onWaiting = null)
     {
         var deadline = DateTime.UtcNow.Add(patience);
         while (true)
@@ -365,6 +366,8 @@ internal sealed class MotifSqliteStore : IDisposable
             try { return AcquireOwnershipCore(path); }
             catch (IOException) when (DateTime.UtcNow < deadline)
             {
+                onWaiting?.Invoke();
+                onWaiting = null;
                 Thread.Sleep(25);
             }
         }
