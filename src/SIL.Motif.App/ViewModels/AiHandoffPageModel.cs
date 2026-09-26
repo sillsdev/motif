@@ -12,7 +12,7 @@ public sealed class AiHandoffPageModel : PageModel
     public AiHandoffPageModel(WorkspaceContext context) : base(context)
     {
         Handoff = new HandoffViewModel(context.Commands, context.Selection, context.FolderPicker, context.DragSource,
-            context.Clock);
+            context.Clock, context.Clipboard);
         Handoff.PropertyChanged += OnHandoffPropertyChanged;
     }
 

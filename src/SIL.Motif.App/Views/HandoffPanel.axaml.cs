@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
@@ -54,32 +53,18 @@ public sealed partial class HandoffPanel : UserControl
     }
 
     // A drag needs a pointer, so the keyboard route to the same files is their folder's path.
-    private async void OnAllFilesClick(object? sender, RoutedEventArgs e)
-    {
-        if (Handoff.OutputDirectory is not { } folder) return;
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel?.Clipboard is { } clipboard) await clipboard.SetTextAsync(folder);
-    }
+    private async void OnAllFilesClick(object? sender, RoutedEventArgs e) => await Handoff.CopyFolderAsync();
 
     private async void OnCopyPathClick(object? sender, RoutedEventArgs e)
     {
-        if ((sender as Control)?.DataContext is not HandoffFileViewModel file) return;
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel?.Clipboard is { } clipboard) await clipboard.SetTextAsync(file.FullPath);
+        if ((sender as Control)?.DataContext is HandoffFileViewModel file) await Handoff.CopyFilePathAsync(file);
     }
 
     private async void OnCopyQuestionClick(object? sender, RoutedEventArgs e)
     {
-        if ((sender as Control)?.Tag is not string question) return;
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel?.Clipboard is { } clipboard) await clipboard.SetTextAsync(question);
+        if ((sender as Control)?.Tag is string question) await Handoff.CopyQuestionAsync(question);
     }
 
-    private async void OnCopyStarterPromptClick(object? sender, RoutedEventArgs e)
-    {
-        if (Handoff.PastedHeader is not { } header) return;
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel?.Clipboard is { } clipboard)
-            await clipboard.SetTextAsync(header);
-    }
+    private async void OnCopyStarterPromptClick(object? sender, RoutedEventArgs e) =>
+        await Handoff.CopyStarterPromptAsync();
 }

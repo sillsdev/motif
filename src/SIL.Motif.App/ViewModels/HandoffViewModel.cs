@@ -36,12 +36,14 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     private readonly ICommandClient _commandClient;
     private readonly IHandoffFolderPicker _folderPicker;
     private readonly IFileDragSource _dragSource;
+    private readonly IClipboard _clipboard;
     private readonly TimeProvider _timeProvider;
     private string? _pendingFolder;
 
     public HandoffViewModel(
         ICommandClient commandClient, SelectionViewModel selection,
-        IHandoffFolderPicker folderPicker, IFileDragSource dragSource, TimeProvider? timeProvider = null)
+        IHandoffFolderPicker folderPicker, IFileDragSource dragSource, TimeProvider? timeProvider = null,
+        IClipboard? clipboard = null)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         ArgumentNullException.ThrowIfNull(selection);
@@ -50,6 +52,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         _commandClient = commandClient;
         _folderPicker = folderPicker;
         _dragSource = dragSource;
+        _clipboard = clipboard ?? NoDesktopServices.Instance;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -111,6 +114,28 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     partial void OnProjectPathChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
 
     partial void OnInvocationIdChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
+
+    /// <summary>Copies the folder the files were written to, the keyboard's route to what a drag carries.</summary>
+    public Task CopyFolderAsync() =>
+        OutputDirectory is { } folder ? _clipboard.SetTextAsync(folder) : Task.CompletedTask;
+
+    /// <summary>Copies the exact path of one Handoff file.</summary>
+    public Task CopyFilePathAsync(HandoffFileViewModel file)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        return _clipboard.SetTextAsync(file.FullPath);
+    }
+
+    /// <summary>Copies one of the questions offered for a chat.</summary>
+    public Task CopyQuestionAsync(string question)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(question);
+        return _clipboard.SetTextAsync(question);
+    }
+
+    /// <summary>Copies the starter prompt pasted beside the files; nothing before a run has written one.</summary>
+    public Task CopyStarterPromptAsync() =>
+        PastedHeader is { } header ? _clipboard.SetTextAsync(header) : Task.CompletedTask;
 
     /// <summary>Hands the exact path of one Handoff file to the drag adapter; never reads its bytes.</summary>
     public Task<DragDropEffects> DragFileAsync(PointerPressedEventArgs trigger, HandoffFileViewModel file)

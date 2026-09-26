@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
@@ -10,8 +11,10 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins the seam view models depend on: the three interfaces they call — <see cref="ICommandClient"/>,
-/// <see cref="IProjectPicker"/>, <see cref="IHandoffFolderPicker"/> — carry no Avalonia type, and
+/// Pins the seam view models depend on: the interfaces they call — <see cref="ICommandClient"/>,
+/// <see cref="IProjectPicker"/>, <see cref="IHandoffFolderPicker"/>, <see cref="IClipboard"/>,
+/// <see cref="IDiagnosticFilePicker"/> — carry no Avalonia type, no view reaches the window's clipboard or
+/// storage provider itself, and
 /// <see cref="FakeCommandClient"/> can complete, refuse, report progress, and block until cancelled with
 /// no process, no Avalonia control, and no wall-clock race.
 /// </summary>
@@ -27,6 +30,8 @@ public sealed class DesktopServiceBoundaryTests
     [InlineData(typeof(ICommandClient))]
     [InlineData(typeof(IProjectPicker))]
     [InlineData(typeof(IHandoffFolderPicker))]
+    [InlineData(typeof(IClipboard))]
+    [InlineData(typeof(IDiagnosticFilePicker))]
     public void ViewModelFacingServiceInterfaceNamesNoAvaloniaType(Type serviceInterface)
     {
         foreach (var method in serviceInterface.GetMethods())
@@ -47,6 +52,40 @@ public sealed class DesktopServiceBoundaryTests
             foreach (var argument in type.GetGenericArguments())
                 AssertNoAvaloniaType(argument, owner, memberName);
         }
+    }
+
+    [Fact]
+    public void NoViewCodeBehindReachesTheClipboardOrTheStorageProvider()
+    {
+        var offenders = AppSources("Views")
+            .Where(file => file.EndsWith(".axaml.cs", StringComparison.Ordinal))
+            .Where(file => Regex.IsMatch(File.ReadAllText(file), @"\b(StorageProvider|Clipboard)\b"))
+            .ToList();
+
+        Assert.Empty(offenders);
+    }
+
+    [Fact]
+    public void OnlyTheAvaloniaAdaptersNameAvaloniasClipboardAndStorageNamespaces()
+    {
+        var offenders = AppSources()
+            .Where(file => !Path.GetFileName(file).StartsWith("Avalonia", StringComparison.Ordinal))
+            .Where(file => Regex.IsMatch(File.ReadAllText(file), @"\bAvalonia\.(Platform\.Storage|Input\.Platform)\b"))
+            .ToList();
+
+        Assert.Empty(offenders);
+    }
+
+    private static IEnumerable<string> AppSources(string? under = null)
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Motif.sln"))) root = root.Parent;
+        Assert.NotNull(root);
+        var app = Path.Combine(root.FullName, "src", "SIL.Motif.App");
+        var directory = under is null ? app : Path.Combine(app, under);
+        var obj = Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar;
+        return Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+            .Where(file => !file.Contains(obj, StringComparison.Ordinal));
     }
 
     [Fact]

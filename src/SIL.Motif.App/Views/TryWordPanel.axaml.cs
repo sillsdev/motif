@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -19,24 +18,20 @@ public sealed partial class TryWordPanel : UserControl
         Trace = model.Trace;
         DataContext = model;
         AvaloniaXamlLoader.Load(this);
-        this.FindControl<ContentControl>("RichDiagnosticHost")!.Content = new DiagnosticPanel(Trace, showResultSummary: false);
+        this.FindControl<ContentControl>("RichDiagnosticHost")!.Content =
+            new DiagnosticPanel(model.Diagnostics, showResultSummary: false);
+        model.SavedDiagnosticOpened += OnSavedDiagnosticOpened;
     }
 
     public TraceWordViewModel Trace { get; }
 
     public TryWordPageModel Model { get; }
 
-    private async void OnOpenDiagnosticClick(object? sender, RoutedEventArgs e)
+    private async void OnOpenDiagnosticClick(object? sender, RoutedEventArgs e) =>
+        await Model.OpenSavedDiagnosticAsync();
+
+    private void OnSavedDiagnosticOpened(OpenedDiagnostic opened)
     {
-        if (TopLevel.GetTopLevel(this) is not Window owner) return;
-        await SavedDiagnosticOpener.OpenFromPickerAsync(
-            owner,
-            trace => new DiagnosticWindow(trace).Show(owner),
-            refusal =>
-            {
-                var window = new DiagnosticWindow(new TraceWordViewModel());
-                window.Show(owner);
-                window.ShowDiagnosticError(refusal);
-            });
+        if (TopLevel.GetTopLevel(this) is Window owner) new DiagnosticWindow(opened, Model.Diagnostics).Show(owner);
     }
 }

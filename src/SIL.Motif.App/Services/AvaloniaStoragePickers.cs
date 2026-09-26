@@ -1,3 +1,4 @@
+using System.Text;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
@@ -6,14 +7,19 @@ namespace SIL.Motif.App.Services;
 
 /// <summary>
 /// Wraps one window's <see cref="TopLevel"/> — its storage provider and its drag-and-drop entry point —
-/// behind <see cref="IProjectPicker"/>, <see cref="IHandoffFolderPicker"/>, and <see cref="IFileDragSource"/>,
-/// so no view model needs to name <see cref="TopLevel"/>, <see cref="IStorageProvider"/>, or
-/// <see cref="IDataTransfer"/>.
+/// behind <see cref="IProjectPicker"/>, <see cref="IHandoffFolderPicker"/>, <see cref="IDiagnosticFilePicker"/>,
+/// and <see cref="IFileDragSource"/>, so no view model needs to name <see cref="TopLevel"/>,
+/// <see cref="IStorageProvider"/>, <see cref="IStorageFile"/>, or <see cref="IDataTransfer"/>. As
+/// <see cref="IDiagnosticWindowDialogs"/> it gives another window dialogs of its own.
 /// </summary>
-public sealed class AvaloniaStoragePickers : IProjectPicker, IHandoffFolderPicker, IFileDragSource
+public sealed class AvaloniaStoragePickers :
+    IProjectPicker, IHandoffFolderPicker, IDiagnosticFilePicker, IDiagnosticWindowDialogs, IFileDragSource
 {
     private static readonly FilePickerFileType FwDataFileType =
         new("FieldWorks project") { Patterns = ["*.fwdata"] };
+
+    private static readonly FilePickerFileType DiagnosticFileType =
+        new("Motif diagnostic JSON") { Patterns = ["*.json"] };
 
     private readonly TopLevel _topLevel;
 
@@ -47,6 +53,49 @@ public sealed class AvaloniaStoragePickers : IProjectPicker, IHandoffFolderPicke
             AllowMultiple = false,
         });
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
+    }
+
+    public IDiagnosticFilePicker For(TopLevel window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        return ReferenceEquals(window, _topLevel) ? this : new AvaloniaStoragePickers(window);
+    }
+
+    public async Task<string?> OpenDiagnosticAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var files = await _topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open diagnostic JSON",
+            AllowMultiple = false,
+            FileTypeFilter = [DiagnosticFileType],
+        });
+        if (files.Count == 0) return null;
+
+        await using var stream = await files[0].OpenReadAsync();
+        using var reader = new StreamReader(stream);
+        return await reader.ReadToEndAsync(cancellationToken);
+    }
+
+    public async Task<bool> SaveDiagnosticAsync(
+        string suggestedFileName, string json, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(json);
+        cancellationToken.ThrowIfCancellationRequested();
+        var file = await _topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save diagnostic JSON",
+            SuggestedFileName = suggestedFileName,
+            FileTypeChoices = [DiagnosticFileType],
+        });
+        if (file is null) return false;
+
+        await using var stream = await file.OpenWriteAsync();
+        if (stream.CanSeek) stream.SetLength(0);
+        await using var writer = new StreamWriter(stream, Encoding.UTF8);
+        await writer.WriteAsync(json.AsMemory(), cancellationToken);
+        await writer.FlushAsync(cancellationToken);
+        return true;
     }
 
     public async Task<DragDropEffects> StartDragAsync(

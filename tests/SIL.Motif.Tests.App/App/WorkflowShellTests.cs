@@ -601,15 +601,15 @@ public sealed class WorkflowShellTests
     private static (HandoffWorkspaceViewModel Workspace, MainWindow Window) NewComposedWindow(FakeCommandClient fake)
     {
         var selection = new SelectionViewModel(fake);
+        var window = new MainWindow();
         var workspace = new HandoffWorkspaceViewModel(
             new ProjectViewModel(fake, new NoProjectPicker()),
             new BaselineViewModel(fake),
             selection,
             new AssessViewModel(fake, selection),
             new NoFolderPicker(), DragSource,
-            fake);
+            fake, clipboard: new AvaloniaClipboard(window));
 
-        var window = new MainWindow();
         window.Compose(workspace);
         return (workspace, window);
     }
