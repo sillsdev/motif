@@ -1,3 +1,4 @@
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
@@ -34,4 +35,11 @@ public partial interface ICommandClient
 
     Task<CommandOutcome<HandoffCommandResponse>> HandoffAsync(
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Deletes the project's Motif store when another version of Motif made it, so opening the project again
+    /// recreates it. Every change not yet applied is lost with it; the FieldWorks project is never touched.
+    /// </summary>
+    Task<CommandOutcome<ProjectStoreResetResponse>> DeleteRefusedStoreAsync(
+        ProjectStoreResetRequest request, CancellationToken cancellationToken);
 }

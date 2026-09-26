@@ -5,6 +5,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.Views;
 
@@ -24,9 +25,15 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 {
     private const string OpenProjectRefusalText = "Motif could not open this project.";
 
+    /// <summary>What the window asks before it deletes a store another version of Motif made.</summary>
+    public const string StoreDeletionWarning =
+        "Changes not applied yet are lost. Your FieldWorks project is not touched.";
+
     /// <summary>Below this window width the sidebar shows icons alone, with each label as a tooltip.</summary>
     public const double SidebarCollapseWidth = 1100;
 
+    private readonly ICommandClient _commandClient;
+    private string? _storeDeletionProject;
     private Task _reloadAfterRefresh = Task.CompletedTask;
     private bool _isRefreshing;
     private bool _refreshCancelled;
@@ -46,6 +53,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         ArgumentNullException.ThrowIfNull(dragSource);
         ArgumentNullException.ThrowIfNull(commandClient);
 
+        _commandClient = commandClient;
         Project = project;
         Baseline = baseline;
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
@@ -74,6 +82,10 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         CancelRefreshCommand = new RelayCommand(CancelRefresh, () => _isRefreshing);
         SeeWhatChangedCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.WhatChanged), () => ShowsSeeWhatChanged);
+        DeleteRefusedStoreCommand = new RelayCommand<WindowRefusal>(AskToDeleteRefusedStore, CanAskToDeleteRefusedStore);
+        ConfirmStoreDeletionCommand = new AsyncRelayCommand(DeleteRefusedStoreAndReopenAsync,
+            () => IsConfirmingStoreDeletion);
+        CancelStoreDeletionCommand = new RelayCommand(() => StopConfirmingStoreDeletion(), () => IsConfirmingStoreDeletion);
 
         Project.ProjectChosen += OnProjectChosen;
         Project.KnownProjects.CollectionChanged += OnKnownProjectsChanged;
@@ -185,6 +197,21 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>Whether the last attempt to open a project was refused.</summary>
     public bool HasOpenRefusal => OpenRefusal is not null;
+
+    /// <summary>
+    /// Delete this file and reopen: asks, with <see cref="StoreDeletionWarning"/>, before deleting the store the
+    /// refusal passed as the parameter names. Only a <see cref="WindowRefusal.OffersStoreDeletion"/> refusal can.
+    /// </summary>
+    public IRelayCommand<WindowRefusal> DeleteRefusedStoreCommand { get; }
+
+    /// <summary>Whether the window is asking the person to confirm deleting the refused store.</summary>
+    public bool IsConfirmingStoreDeletion => _storeDeletionProject is not null;
+
+    /// <summary>Deletes the refused store of the project on screen, then opens that project again.</summary>
+    public IAsyncRelayCommand ConfirmStoreDeletionCommand { get; }
+
+    /// <summary>Stops asking, and deletes nothing.</summary>
+    public IRelayCommand CancelStoreDeletionCommand { get; }
 
     /// <summary>The freshness line's state in words.</summary>
     public string FreshnessLabel => HasRefreshRefusal ? "Refresh refused" : Freshness switch
@@ -336,11 +363,53 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     private void OnProjectChosen(object? sender, string fwDataPath) => _ = OpenProjectSafelyAsync(fwDataPath);
 
-    private async Task OpenProjectSafelyAsync(string fwDataPath)
+    private bool CanAskToDeleteRefusedStore(WindowRefusal? refusal) =>
+        refusal is { OffersStoreDeletion: true } && Context.ProjectPath is not null && !IsConfirmingStoreDeletion;
+
+    private void AskToDeleteRefusedStore(WindowRefusal? refusal)
     {
-        OpenRefusal = null;
+        if (!CanAskToDeleteRefusedStore(refusal)) return;
+        SetStoreDeletionProject(Context.ProjectPath);
+    }
+
+    private void StopConfirmingStoreDeletion() => SetStoreDeletionProject(null);
+
+    private void SetStoreDeletionProject(string? projectPath)
+    {
+        _storeDeletionProject = projectPath;
+        OnPropertyChanged(nameof(IsConfirmingStoreDeletion));
+        DeleteRefusedStoreCommand.NotifyCanExecuteChanged();
+        ConfirmStoreDeletionCommand.NotifyCanExecuteChanged();
+        CancelStoreDeletionCommand.NotifyCanExecuteChanged();
+    }
+
+    // The project is the one asked about, so a project switched to since can never lose its store.
+    private async Task DeleteRefusedStoreAndReopenAsync()
+    {
+        if (_storeDeletionProject is not { } projectPath) return;
+        StopConfirmingStoreDeletion();
+        if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
+        var outcome = await _commandClient.DeleteRefusedStoreAsync(
+            new ProjectStoreResetRequest(projectPath), CancellationToken.None).ConfigureAwait(true);
+        if (outcome.Refusal is { } refusal)
+        {
+            ShowOpenRefusal(WindowRefusal.From(refusal));
+            return;
+        }
+        await OpenProjectSafelyAsync(projectPath).ConfigureAwait(true);
+    }
+
+    private void ShowOpenRefusal(WindowRefusal? refusal)
+    {
+        OpenRefusal = refusal;
         OnPropertyChanged(nameof(OpenRefusal));
         OnPropertyChanged(nameof(HasOpenRefusal));
+    }
+
+    private async Task OpenProjectSafelyAsync(string fwDataPath)
+    {
+        StopConfirmingStoreDeletion();
+        ShowOpenRefusal(null);
         try
         {
             await SetProjectAsync(fwDataPath).ConfigureAwait(true);
@@ -352,9 +421,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 Context.ClearProject();
                 Project.ShowChosen(null);
             }
-            OpenRefusal = WindowRefusal.Failure(WindowRefusal.OpenFailedCode, OpenProjectRefusalText, exception);
-            OnPropertyChanged(nameof(OpenRefusal));
-            OnPropertyChanged(nameof(HasOpenRefusal));
+            ShowOpenRefusal(WindowRefusal.Failure(WindowRefusal.OpenFailedCode, OpenProjectRefusalText, exception));
         }
         RaiseFreshness();
     }
@@ -438,6 +505,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         OnPropertyChanged(nameof(ShowsSeeWhatChanged));
         RefreshCommand.NotifyCanExecuteChanged();
         CancelRefreshCommand.NotifyCanExecuteChanged();
+        DeleteRefusedStoreCommand.NotifyCanExecuteChanged();
         SeeWhatChangedCommand.NotifyCanExecuteChanged();
     }
 
