@@ -13,7 +13,8 @@ gate entirely, which is how the rules below decay into suggestions. `./test.ps1`
 first, so one green run means clean comments, a clean compile, and a passing suite.
 
 CI runs the same two scripts (`.github/workflows/ci.yml`), so anything they reject locally is
-rejected there too — and anything they let through is not a CI surprise.
+rejected there too — and anything they let through is not a CI surprise. The workflow runs on Windows,
+Ubuntu 22.04, and macOS.
 
 **`./test.ps1` needs no project or checkout from outside this repo.** Every LibLCM project the suite
 exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture` and seeded by
@@ -32,12 +33,13 @@ once inside one process races, so every class that opens one shares the serializ
 parallelism lets that serialized work use more than one core. Each project writes its console log to
 `bin/<Configuration>/test-results/<project>.log` and its TRX to
 `bin/<Configuration>/test-results/<project>/<project>.trx`. When a run fails, open that project's log
-first. Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). The machine-wide
-`%ProgramData%` store is shared across processes, and concurrent saves into it collide.
+first. Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). The operating
+system's shared writing-system store is shared across processes, and concurrent saves into it collide.
 Tests set `MOTIF_WRITING_SYSTEM_REPOSITORY_PATH` at module load, and child processes inherit it.
 No test run may show a Windows crash dialog: `test.ps1` suppresses it for its whole process tree, every
 test assembly does so again at load (`tests/Shared/NoCrashDialogs.cs`), and the runner and CLI do so at
-startup. `CrashDialogsTests` proves it by crashing a child on purpose and requiring it to exit promptly.
+startup. `CrashDialogsTests` checks Windows suppression and requires a crashing child to exit promptly on
+every OS.
 
 **Building inside an agent sandbox.** When several sandboxed agents build worktrees at once, for
 example Codex workers on Windows, set these before `./build.ps1`:
@@ -47,17 +49,18 @@ $env:MSBUILDDISABLENODEREUSE = '1'; $env:UseSharedCompilation = 'false'; $env:AV
 ```
 
 A reused MSBuild node or compiler server started by another sandbox can't write into your worktree,
-so the build fails with MSB3101/MSB3491 "access denied" in `obj\`. Separately, Avalonia's build-stats
-task writes under `%LOCALAPPDATA%`, which a sandbox denies. A normal developer shell needs none of this.
+so the build fails with MSB3101/MSB3491 "access denied" in `obj/`. Separately, Avalonia's build-stats
+task writes under the user's local app-data directory, which a sandbox denies. A normal developer shell
+needs none of this.
 
 ## Where the build lands
 
 One directory per configuration at the repository root, not a `bin` tree under every project:
 
 ```
-bin/Debug/motif.exe                 the CLI
-bin/Debug/SIL.Motif.App.exe         the window
-bin/Debug/SIL.Motif.Worker.exe      the job runner
+bin/Debug/motif                     the CLI apphost (.exe on Windows)
+bin/Debug/SIL.Motif.App             the window apphost (.exe on Windows)
+bin/Debug/SIL.Motif.Worker          the job runner apphost (.exe on Windows)
 bin/Debug/tests/SIL.Motif.Tests.Support.dll
 bin/Debug/tests/SIL.Motif.Tests.Contract.dll
 bin/Debug/tests/SIL.Motif.Tests.LibLcm.dll
@@ -70,9 +73,10 @@ bin/Debug/tests/fake-pangloss/      the suite's fake parser
 bin/Debug/spikes/                   the throwaway harnesses
 ```
 
-`Release` reads the same with `Release` in place of `Debug`. The three executables sit together on
+`Release` reads the same with `Release` in place of `Debug`. The three apphosts sit together on
 purpose: the CLI finds its worker, and either front end finds a bundled parser, by looking beside
-itself, so a development build takes the same branch a published one does. The suite gets a
+itself, so a development build takes the same branch a published one does. Windows apphosts use `.exe`;
+Linux and macOS apphosts have no extension. The suite gets a
 subdirectory because a test host that outlives its run holds a lock on the directory it was launched
 from, and that must not be the product's; the fake parser gets one below that because parser discovery
 prefers an executable sitting beside the application, and the fake must never be that executable.
@@ -89,8 +93,8 @@ To build against a local libpalaso checkout instead — e.g. to pick up a fix be
 package — pack it and point motif at the result:
 
 ```
-$env:LOCAL_NUGET_REPO = 'C:\localnugetpackages'
-./tools/Manage-LocalLibraries.ps1 -PalasoPath C:\path\to\libpalaso
+$env:LOCAL_NUGET_REPO = '/path/to/local-nuget-packages'
+./tools/Manage-LocalLibraries.ps1 -PalasoPath /path/to/libpalaso
 ./build.ps1
 ```
 

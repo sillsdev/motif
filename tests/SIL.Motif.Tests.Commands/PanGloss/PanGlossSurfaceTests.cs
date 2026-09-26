@@ -21,7 +21,7 @@ public sealed class PanGlossSurfaceTests
     public async Task MissingExecutableIsInvalidThroughTheSurfaceCheck()
     {
         var result = await PanGlossSurface.CheckAsync(
-            Path.Combine(_root, "missing", "pangloss.exe"), _ => { }, CancellationToken.None);
+            Path.Combine(_root, "missing", FakeParser.ExecutableFileName), _ => { }, CancellationToken.None);
 
         Assert.False(result.IsValid);
         Assert.Contains("could not start --describe", result.Message, StringComparison.Ordinal);

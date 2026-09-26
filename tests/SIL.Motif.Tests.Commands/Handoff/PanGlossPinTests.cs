@@ -17,16 +17,18 @@ namespace SIL.Motif.Tests.Handoff;
 public sealed class PanGlossPinTests
 {
     [Fact]
-    public void ThePinNamesOneReleaseByTagUrlAndHash()
+    public void ThePinNamesAvailableBuildsByRidWithTheirUrlAndHash()
     {
         var pin = ReadPin();
 
         Assert.Matches(@"^\d+\.\d+\.\d+$", pin.Version);
         Assert.Equal($"v{pin.Version}", pin.Tag);
+        var asset = Assert.Single(pin.Assets);
+        Assert.Equal("win-x64", asset.Key);
         Assert.Equal(
             $"https://github.com/sillsdev/PanGloss/releases/download/{pin.Tag}/pangloss.exe",
-            pin.Url);
-        Assert.Matches("^[0-9a-f]{64}$", pin.Sha256);
+            asset.Value.Url);
+        Assert.Matches("^[0-9a-f]{64}$", asset.Value.Sha256);
     }
 
     [Fact]
@@ -35,7 +37,9 @@ public sealed class PanGlossPinTests
         Assert.Equal(HandoffWriter.PanGlossRef, ReadPin().Tag);
     }
 
-    private sealed record Pin(string Version, string Tag, string Url, string Sha256);
+    private sealed record Asset(string Url, string Sha256);
+
+    private sealed record Pin(string Version, string Tag, Dictionary<string, Asset> Assets);
 
     private static Pin ReadPin()
     {

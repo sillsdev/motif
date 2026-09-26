@@ -9,9 +9,15 @@ on:
 
 jobs:
   build-and-test:
-    # Windows because nuget.config resolves a source through %USERPROFILE%, and because LibLCM's native
-    # ICU comes from a Windows-only package. Nothing in the code itself requires it.
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
 
     steps:
       - uses: actions/checkout@v4
@@ -20,10 +26,22 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # nuget.config declares the global packages folder as a source; NuGet fails if it is absent.
-      - name: Ensure the local package source exists
-        shell: pwsh
-        run: New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.nuget\packages" | Out-Null
+      - name: Install LibLCM ICU (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          wget -qO - http://linux.lsdev.sil.org/downloads/sil-testing.gpg | sudo tee /etc/apt/trusted.gpg.d/linux-lsdev-sil-org.asc
+          sudo add-apt-repository "deb http://linux.lsdev.sil.org/ubuntu $(lsb_release -sc)-experimental main"
+          sudo apt-get update
+          sudo apt-get install -y icu-fw
+
+      - name: Install LibLCM ICU (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          brew install icu4c
+          echo "DYLD_LIBRARY_PATH=$(brew --prefix icu4c)/lib:${DYLD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=$(brew --prefix icu4c)/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
 
       - name: Build (comment hygiene, then compile)
         shell: pwsh

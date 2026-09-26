@@ -61,7 +61,7 @@ public static class Program
             "Usage: dotnet run --project src/SIL.Motif.Generator -- <command>" + Environment.NewLine +
             "  emit                                        regenerate the checked-in operation/snapshot files" + Environment.NewLine +
             "  refresh-descriptions [--accept-source-move] re-attach provenance to manifest/kind-descriptions.tsv" + Environment.NewLine +
-            "  harvest-help [extracted-help-root]          re-read FieldWorks' compiled help (Windows-only)" + Environment.NewLine +
+            "  harvest-help [extracted-help-root]          read FieldWorks help; hh.exe extraction is Windows-only" + Environment.NewLine +
             "  harvest-ordering-evidence                   re-read what the model says about field ordering");
         return 1;
     }
@@ -184,7 +184,7 @@ public static class Program
         return 0;
     }
 
-    /// <summary>Windows-only (hh.exe): a dev-time step whose TSV output is committed, not the .chm.</summary>
+    /// <summary>Reads extracted help anywhere; decompiling the FieldWorks .chm is Windows-only.</summary>
     private static int RunHarvestHelp(string? extractedHelpRoot)
     {
         var outputPath = RepoPaths.DefaultHelpDescriptionsPath();

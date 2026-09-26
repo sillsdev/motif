@@ -7,7 +7,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// Covers <c>config show</c> against the real <c>motif.exe</c> rather than the command layer, so the
+/// Covers <c>config show</c> against the real <c>motif</c> apphost rather than the command layer, so the
 /// documented defaults and the failure contract are proven for the surface an outside caller actually runs.
 /// </summary>
 public sealed class ConfigCommandArgvTests : IDisposable

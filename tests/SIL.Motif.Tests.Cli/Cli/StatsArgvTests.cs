@@ -19,7 +19,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// Drives the real <c>motif.exe</c> for <c>stats</c> against the real <c>FakePanGloss</c> executable: the
+/// Drives the real <c>motif</c> apphost for <c>stats</c> against the real <c>FakePanGloss</c> executable: the
 /// exact argv recorded at a child-only destination proves the whole path — <c>ParseArgs</c>'s standalone
 /// <c>--</c> delimiter, <see cref="SIL.Motif.Commands.Assess.StatsCommand"/>'s Baseline and Trial
 /// resolution, and <see cref="SIL.Motif.Host.PanGloss.PanGlossInvoker"/>'s own forwarding — preserves

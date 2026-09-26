@@ -9,6 +9,7 @@ namespace SIL.Motif.Tests.Parser;
 /// </summary>
 public sealed class PanGlossNotFoundMessageTests
 {
+    private static readonly string ParserFileName = OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss";
     private static readonly string ApplicationDirectory = Path.Combine(Path.GetTempPath(), "motif-app");
     private static readonly string RepositoryRoot = Path.Combine(Path.GetTempPath(), "motif-repo");
 
@@ -16,23 +17,23 @@ public sealed class PanGlossNotFoundMessageTests
     public void AShippedMotifLooksOnlyBesideItself()
     {
         var places = PanGlossExecutable.PlacesSearched(
-            configuredPath: null, ApplicationDirectory, "pangloss.exe", repositoryRoot: null);
+            configuredPath: null, ApplicationDirectory, ParserFileName, repositoryRoot: null);
 
-        Assert.Equal([Path.GetFullPath(Path.Combine(ApplicationDirectory, "pangloss.exe"))], places);
+        Assert.Equal([Path.GetFullPath(Path.Combine(ApplicationDirectory, ParserFileName))], places);
     }
 
     [Fact]
     public void ACheckoutLooksAtTheSiblingBuildsBeforeBesideItself()
     {
         var places = PanGlossExecutable.PlacesSearched(
-            configuredPath: null, ApplicationDirectory, "pangloss.exe", RepositoryRoot);
+            configuredPath: null, ApplicationDirectory, ParserFileName, RepositoryRoot);
 
         var sibling = Path.GetFullPath(Path.Combine(RepositoryRoot, "..", "PanGloss"));
         Assert.Equal(
             [
-                Path.Combine(sibling, "dist", "<version>", "pangloss.exe"),
-                Path.Combine(sibling, "rust", "target", "release", "pangloss.exe"),
-                Path.GetFullPath(Path.Combine(ApplicationDirectory, "pangloss.exe")),
+                Path.Combine(sibling, "dist", "<version>", ParserFileName),
+                Path.Combine(sibling, "rust", "target", "release", ParserFileName),
+                Path.GetFullPath(Path.Combine(ApplicationDirectory, ParserFileName)),
             ],
             places);
     }
@@ -40,9 +41,9 @@ public sealed class PanGlossNotFoundMessageTests
     [Fact]
     public void AConfiguredPathIsTheOnlyPlaceLooked()
     {
-        var configured = Path.Combine(Path.GetTempPath(), "elsewhere", "pangloss.exe");
+        var configured = Path.Combine(Path.GetTempPath(), "elsewhere", ParserFileName);
 
-        var places = PanGlossExecutable.PlacesSearched(configured, ApplicationDirectory, "pangloss.exe", RepositoryRoot);
+        var places = PanGlossExecutable.PlacesSearched(configured, ApplicationDirectory, ParserFileName, RepositoryRoot);
 
         Assert.Equal([Path.GetFullPath(configured)], places);
     }
@@ -50,11 +51,11 @@ public sealed class PanGlossNotFoundMessageTests
     [Fact]
     public void TheNotFoundMessageNamesThePlacesLooked()
     {
-        var message = PanGlossExecutable.NotFoundMessageFor(
-            [@"C:\Motif\pangloss.exe", @"C:\Other\pangloss.exe"]);
+        var first = Path.Combine(Path.GetTempPath(), "Motif", ParserFileName);
+        var second = Path.Combine(Path.GetTempPath(), "Other", ParserFileName);
+        var message = PanGlossExecutable.NotFoundMessageFor([first, second]);
 
         Assert.StartsWith("Could not find the pangloss executable.", message, StringComparison.Ordinal);
-        Assert.Contains(@"Looked for it at: C:\Motif\pangloss.exe; C:\Other\pangloss.exe.", message,
-            StringComparison.Ordinal);
+        Assert.Contains($"Looked for it at: {first}; {second}.", message, StringComparison.Ordinal);
     }
 }

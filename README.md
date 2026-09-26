@@ -244,7 +244,7 @@ The analysis aggregate is a cheap read that never invokes PanGloss. Without an A
 the project's manually approved analyses:
 
 ```powershell
-motif analyses --project C:\path\to\project.fwdata [--json]
+motif analyses --project path/to/project.fwdata [--json]
 ```
 
 To include automatic analyses from an Assessment already stored in `.motif/motif.db`, name it and
@@ -252,7 +252,7 @@ supply both current hashes. Motif compares those caller-supplied values with the
 the Report can say whether the Assessment is current or stale without running the parser:
 
 ```powershell
-motif analyses --project C:\path\to\project.fwdata `
+motif analyses --project path/to/project.fwdata `
   --assessment <assessmentId> `
   --current-selection-sha256 <sha256> `
   --current-grammar-sha256 <sha256> `
@@ -265,7 +265,7 @@ from FieldWorks' in-memory state, so everything derived from it is *as of FieldW
 FieldWorks may keep the project open the whole time:
 
 ```powershell
-motif baseline capture C:\path\to\project.fwdata [--json]
+motif baseline capture path/to/project.fwdata [--json]
 ```
 
 `motif assess` ensures a current Baseline exists (capturing one first if none does), composes a Selection
@@ -274,14 +274,14 @@ list, and the previous run's failed or slow-to-parse words — sends that Select
 records the outcome as Assessments:
 
 ```powershell
-motif assess C:\path\to\project.fwdata --all-wordforms [--json]
+motif assess path/to/project.fwdata --all-wordforms [--json]
 ```
 
 `motif stats` then forwards a query straight through to PanGloss's own `stats` command against whichever
 Assessment resulted, passing everything written after a standalone `--` through byte-for-byte:
 
 ```powershell
-motif stats C:\path\to\project.fwdata -- --group pos
+motif stats path/to/project.fwdata -- --group pos
 ```
 
 `motif handoff` composes all three into one self-explaining folder that an AI agent with no network and no
@@ -290,7 +290,7 @@ and — unless `--no-assess` — PanGloss's own statistics, alongside a reader s
 this repository maintains and copies in unchanged:
 
 ```powershell
-motif handoff C:\path\to\project.fwdata --out C:\path\to\folder [--texts <guid,guid>] [--flextext] [--json]
+motif handoff path/to/project.fwdata --out path/to/folder [--texts <guid,guid>] [--flextext] [--json]
 ```
 
 The folder is built beside the requested `--out` path and moved into place only once its listing is
@@ -328,24 +328,25 @@ words, run PanGloss, browse statistics, and write an AI Handoff folder — all f
 without touching the CLI.** It calls the same command catalog the CLI calls, in-process; it never parses
 `--json` and never holds a live FieldWorks project model.
 
-**What you need.** The .NET 10 SDK (built and tested against 10.0.303) and Windows — the Baseline
-capture and the parser governor both use Windows APIs. PanGloss is optional to launch the window, and
-required to parse anything.
+**What you need.** The .NET 10 SDK (built and tested against 10.0.303). Motif builds and runs on Windows,
+Linux, and macOS; LibLCM needs ICU, supplied by the SIL package on Ubuntu and Homebrew `icu4c` on macOS.
+PanGloss is optional to launch the window, and required to parse anything.
 
 Build and check the solution from the repository root:
 
 ```powershell
 ./build.ps1          # comment hygiene, then compile
-./test.ps1           # the full suite, about two minutes
+./test.ps1           # the full suite
 ```
 
 Both scripts take the whole solution; use them rather than a bare `dotnet build`, so the hygiene gate
-runs and a green run means one green run.
+runs and a green run means one green run. CI runs the same scripts on Windows, Ubuntu 22.04, and macOS.
 
 Launch the window from the repository root:
 
 ```powershell
-./bin/Debug/SIL.Motif.App.exe
+./bin/Debug/SIL.Motif.App.exe   # Windows
+./bin/Debug/SIL.Motif.App       # Linux or macOS
 ```
 
 **Building PanGloss.** Motif shells out to a `pangloss` executable it does not build. In a sibling
@@ -360,15 +361,16 @@ Use the executable path reported by the managed build; its cache may be outside 
 Back in the Motif worktree, select that executable before starting the app or running the tests:
 
 ```powershell
-$env:MOTIF_PANGLOSS_EXE = 'C:\path\reported\by\the\build\pangloss.exe'
-./bin/Debug/SIL.Motif.App.exe
+$env:MOTIF_PANGLOSS_EXE = '/path/reported/by/the/build/pangloss'
+./bin/Debug/SIL.Motif.App
 ```
 
 **PanGloss discovery.** The window (like `motif assess`, `stats`, and `handoff`) shells out to the
 `pangloss` executable. Set `MOTIF_PANGLOSS_EXE` to its path, or leave it unset and Motif looks for the newest
-of `../PanGloss/dist/v*/pangloss(.exe)` and `../PanGloss/rust/target/release/pangloss(.exe)` relative to the
-repository root — the layout of a sibling PanGloss checkout — and then beside the executable itself. The
-window resolves the parser and its worker root (`MOTIF_WORKER_ROOT`, or `%LOCALAPPDATA%\SIL\Motif`) once, at
+of `../PanGloss/dist/v*/pangloss` and `../PanGloss/rust/target/release/pangloss` (with `.exe` on Windows)
+relative to the repository root — the layout of a sibling PanGloss checkout — and then beside the
+executable itself. The window resolves the parser and its worker root (`MOTIF_WORKER_ROOT`, or the user's
+local app-data directory under `SIL/Motif`) once, at
 startup, exactly as the CLI does, and hands both to the job runner it starts as launch arguments; a runner
 already running keeps the settings it started with. Neither found is an ordinary state of a machine that has not built
 PanGloss yet: Run and Handoff refuse with `assess.parser-unavailable` / `handoff.parser-unavailable` rather

@@ -28,7 +28,7 @@ public static class CrashDialogs
     /// <summary>Turns the crash dialog off for this process and every process it starts afterwards.</summary>
     public static void Suppress()
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
+        if (!OperatingSystem.IsWindows()) return;
         SetErrorMode(GetErrorMode() | SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
         WerSetFlags(WerFaultReportingNoUi);
     }

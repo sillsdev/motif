@@ -8,6 +8,7 @@
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
                              Condition="'%(ResolvedFileToPublish.RelativePath)' == 'SIL.Motif.Worker.exe' or
+                                        '%(ResolvedFileToPublish.RelativePath)' == 'SIL.Motif.Worker' or
                                         '%(ResolvedFileToPublish.RelativePath)' == 'SIL.Motif.Worker.deps.json' or
                                         '%(ResolvedFileToPublish.RelativePath)' == 'SIL.Motif.Worker.runtimeconfig.json'" />
     </ItemGroup>

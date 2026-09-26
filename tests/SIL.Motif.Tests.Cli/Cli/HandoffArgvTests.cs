@@ -8,7 +8,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// Drives the real <c>motif.exe</c> for <c>handoff</c>, restricted to the argv-shaped cases that fail
+/// Drives the real <c>motif</c> apphost for <c>handoff</c>, restricted to the argv-shaped cases that fail
 /// before any subprocess starts: usage, an unparseable <c>--texts</c> list, and a nonexistent project. A
 /// run that actually writes a folder needs a real <c>pangloss</c> executable resolvable on the machine,
 /// which this suite does not assume.

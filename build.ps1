@@ -43,6 +43,14 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
 
+if ([string]::IsNullOrWhiteSpace($env:HOME)) {
+    $env:HOME = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+}
+if ([string]::IsNullOrWhiteSpace($env:HOME)) {
+    throw 'Could not determine the user home directory for the local NuGet source.'
+}
+New-Item -ItemType Directory -Force -Path (Join-Path $env:HOME '.nuget/packages') | Out-Null
+
 function Write-Step {
     param([string] $Text)
     Write-Host ''

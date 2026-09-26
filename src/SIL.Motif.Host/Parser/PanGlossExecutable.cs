@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 namespace SIL.Motif.Host.Parser;
 
 /// <summary>
@@ -11,7 +9,7 @@ public static class PanGlossExecutable
     public const string PathVariable = "MOTIF_PANGLOSS_EXE";
 
     private static string FileName =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "pangloss.exe" : "pangloss";
+        OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss";
 
     /// <summary>
     /// Returns the executable's path, or <c>null</c> when it cannot be found. A configured override is

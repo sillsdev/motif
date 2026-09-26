@@ -298,7 +298,7 @@ public sealed class PanGlossInvokerTests : IDisposable
     public async Task AnExecutableThatWillNotStartIsUnavailable_NotAnException()
     {
         using var queue = NewQueue();
-        using var invoker = new PanGlossInvoker(Path.Combine(_root, "no-such-pangloss.exe"), queue);
+        using var invoker = new PanGlossInvoker(Path.Combine(_root, "no-such-" + FakeParser.ExecutableFileName), queue);
 
         var outcome = await invoker.RunAsync(
             new PanGlossRequest.Import(Project("nostart"), Path.Combine(_root, "g.json")), "test", CancellationToken.None);

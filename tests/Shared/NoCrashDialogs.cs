@@ -13,5 +13,8 @@ namespace SIL.Motif.Tests.TestFixtures;
 internal static class NoCrashDialogs
 {
     [ModuleInitializer]
-    internal static void Install() => CrashDialogs.Suppress();
+    internal static void Install()
+    {
+        if (OperatingSystem.IsWindows()) CrashDialogs.Suppress();
+    }
 }

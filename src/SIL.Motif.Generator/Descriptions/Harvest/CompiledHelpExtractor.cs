@@ -26,6 +26,14 @@ public static class CompiledHelpExtractor
 
     public static string Decompile(string chmPath, string destinationDirectory, TimeSpan? timeout = null)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            throw new GeneratorException(
+                "Compiled help decompilation uses hh.exe and is Windows-only; extract the help file elsewhere " +
+                "and pass the directory: `dotnet run --project src/SIL.Motif.Generator -- harvest-help " +
+                "<extracted-help-root>`.");
+        }
+
         if (!File.Exists(chmPath))
         {
             throw new GeneratorException(
