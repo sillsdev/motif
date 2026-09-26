@@ -64,7 +64,8 @@ public sealed class BaselineDryRunIntegrationTests : IDisposable
             "2026-08-24T00:00:00Z", "sha256:" + new string('b', 64));
         _baselines.Record(ProjectWorkspaceKey.Compute(_project),
             new BaselinePublication(_publishedRoot, fwDataPath, _token),
-            DateTimeOffset.Parse("2026-08-24T00:00:00Z"), DateTimeOffset.Parse("2026-08-24T00:00:00Z"));
+            DateTimeOffset.Parse("2026-08-24T00:00:00Z"), DateTimeOffset.Parse("2026-08-24T00:00:00Z"),
+            TextWordsProjectionBuilder.Build(master, CancellationToken.None));
 
         _proposalJson = DryRunTestSupport.BuildSetGlossProposalJson(_seed.FirstSenseId, "same proposal every time");
     }
@@ -501,7 +502,7 @@ public sealed class BaselineDryRunSchedulingTests : IDisposable
         Directory.CreateDirectory(publishedRoot);
         baselines.Record(workspaceKey,
             new BaselinePublication(publishedRoot, Path.Combine(publishedRoot, "project.fwdata"), token),
-            DateTimeOffset.Parse("2026-08-24T00:00:00Z"), DateTimeOffset.Parse("2026-08-24T00:00:00Z"));
+            DateTimeOffset.Parse("2026-08-24T00:00:00Z"), DateTimeOffset.Parse("2026-08-24T00:00:00Z"), TestTextWords.Empty);
         return new TestContext(project, database, jobs, baselines, token, workspaceKey);
     }
 

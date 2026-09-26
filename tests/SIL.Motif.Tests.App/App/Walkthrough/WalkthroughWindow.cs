@@ -161,6 +161,9 @@ public sealed class WalkthroughWindow : IDisposable
     {
         ShowPage(WorkspacePage.Texts);
         ShowTextsTab(TextsTab.AnalyzeTexts);
+        // A Text's counts arrive with its words and push this header down, so a click aimed earlier misses it.
+        WaitUntil(() => Workspace.Assess.TextWords is not { IsLoading: true }, TimeSpan.FromSeconds(30),
+            "the chosen Texts' words did not finish loading");
         var addWords = Window.GetLogicalDescendants().OfType<Expander>().Single(expander =>
             Equals(expander.Header, "Add words"));
         ClickControl(addWords, "Add words");

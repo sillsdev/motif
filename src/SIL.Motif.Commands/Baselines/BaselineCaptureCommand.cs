@@ -75,12 +75,24 @@ public static class BaselineCaptureCommand
                 string projectIdentity;
                 string semanticDigest;
                 ProjectSummarySnapshot projectSummary;
+                TextWordsProjection textWordsProjection;
                 try
                 {
                     using var cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
                     projectIdentity = cache.LangProject.Guid.ToString("D");
                     semanticDigest = BaselineSemanticDigest.Compute(cache, CancellationToken.None);
                     projectSummary = ProjectSummaryReader.Read(cache);
+                    try
+                    {
+                        textWordsProjection = TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        return CommandOutcome<BaselineCaptureResponse>.Refused(new Refusal(
+                            "baseline.text-words-unreadable", FailureReason.Refused,
+                            "Motif could not read the Texts of the saved project: " + ex.Message,
+                            Fact(("projectPath", request.ProjectPath))));
+                    }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -107,7 +119,7 @@ public static class BaselineCaptureCommand
 
                     publication = new BaselineCapturePublisher(database, managedRoot)
                         .PublishAsync(project, bundlePath, declaredToken, copy.SourceLastWriteUtc,
-                            CancellationToken.None, projectSummary)
+                            textWordsProjection, CancellationToken.None, projectSummary)
                         .GetAwaiter().GetResult();
                 }
                 catch (InvalidDataException ex)

@@ -52,11 +52,13 @@ public sealed class BaselineCapturePublisher
         string bundlePath,
         BaselineToken declaredToken,
         DateTimeOffset sourceLastWriteUtc,
+        TextWordsProjection textWordsProjection,
         CancellationToken cancellationToken,
         ProjectSummarySnapshot? projectSummary = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(declaredToken);
+        ArgumentNullException.ThrowIfNull(textWordsProjection);
 
         var transfer = Verified(bundlePath);
         var target = new BaselinePublicationTarget(
@@ -67,7 +69,8 @@ public sealed class BaselineCapturePublisher
 
         var baselines = new BaselineRepository(_database);
         baselines.Record(
-            ProjectWorkspaceKey.Compute(project), outcome.Publication, _now(), sourceLastWriteUtc, projectSummary);
+            ProjectWorkspaceKey.Compute(project), outcome.Publication, _now(), sourceLastWriteUtc, textWordsProjection,
+            projectSummary);
 
         return new BaselineCapturePublication(
             outcome.Publication.Token, outcome.Publication.FwDataPath, !outcome.Created);

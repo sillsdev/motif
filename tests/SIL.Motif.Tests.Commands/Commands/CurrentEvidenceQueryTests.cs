@@ -12,6 +12,7 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.Texts;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -53,7 +54,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
             new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
                 "2026-08-23T10:00:00Z", "sha256:" + new string('a', 64)));
         new BaselineRepository(database).Record(workspaceKey, publication,
-            DateTimeOffset.Parse("2026-08-23T12:00:00Z"), sourceLastWriteUtc, summary);
+            DateTimeOffset.Parse("2026-08-23T12:00:00Z"), sourceLastWriteUtc, TestTextWords.Empty, summary);
         new NamedSelectionRepository(database).SetDefault("Default", [textId], ["pasted"]);
 
         var result = CurrentEvidenceQuery.ReadCurrentEvidence(database, project);
@@ -104,7 +105,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
         var root = Path.Combine(_root, "baseline");
         new BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
             new BaselinePublication(root, Path.Combine(root, "project.fwdata"), token),
-            DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse("2026-09-24T10:00:00Z"),
+            DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse("2026-09-24T10:00:00Z"), TestTextWords.Empty,
             new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
         new NamedSelectionRepository(database).SetDefault("Default", [], ["cat", "dog"]);
         var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());

@@ -26,8 +26,9 @@ namespace SIL.Motif.App.Services;
 /// <para>
 /// Every call that opens a project copy through LibLCM runs one at a time. LibLCM locks a project file
 /// exclusively, and the window starts several such reads at once when a project is chosen — the grammar
-/// check, the Text list, and the Text words — so without this the second and third fail with a locked-file
-/// error. A word trace joins them because the parser reads that same file; the store-only reads do not.
+/// check and the Text list — so without this the second fails with a locked-file error. A word trace joins them
+/// because the parser reads that same file. The store-only reads do not, the Text words among them: those are
+/// stored with the Baseline, so a superseded read neither waits behind LibLCM work nor holds it up.
 /// </para>
 /// </remarks>
 public sealed partial class CommandClient : ICommandClient

@@ -34,7 +34,7 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
         TextWordsRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => TextWordsQuery.Query(request));
+        Task.Run(() => TextWordsQuery.Query(request, cancellationToken));
 
     public Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken) =>

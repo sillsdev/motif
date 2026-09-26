@@ -63,6 +63,9 @@ public sealed class BaselineRefresh
         ArgumentNullException.ThrowIfNull(savedCache);
         ArgumentNullException.ThrowIfNull(project);
 
+        // Read before publishing, so a failure here cannot leave a published bundle that nothing records.
+        var summary = ProjectSummaryReader.Read(savedCache);
+        var textWords = TextWordsProjectionBuilder.Build(savedCache, cancellationToken);
         var staging = Path.Combine(_root, "captures");
         Directory.CreateDirectory(staging);
         var bundlePath = Path.Combine(staging, Guid.NewGuid().ToString("N") + ".zip");
@@ -78,7 +81,7 @@ public sealed class BaselineRefresh
             // The caller saved the project before calling, so the file's own stamp is that save's time.
             var savedUtc = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
             _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, _now(), savedUtc,
-                ProjectSummaryReader.Read(savedCache));
+                textWords, summary);
             return publication.Token;
         }
         finally

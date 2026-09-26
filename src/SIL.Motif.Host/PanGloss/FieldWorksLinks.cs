@@ -6,6 +6,9 @@ using SIL.LCModel.Core.Text;
 
 namespace SIL.Motif.Host.PanGloss;
 
+/// <summary>A stable FieldWorks link destination whose displayed URL can use the request's project name.</summary>
+public sealed record FieldWorksLinkTarget(string Tool, Guid ObjectId);
+
 /// <summary>
 /// Builds <c>silfw:</c> links that open FieldWorks on one object of a named project, in the tool that
 /// lists it — the same links FieldWorks writes for itself, so the installed FieldWorks follows them.
@@ -21,7 +24,7 @@ public static class FieldWorksLinks
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(projectName);
         ArgumentNullException.ThrowIfNull(found);
-        return Target(cache, found) is { } target ? Build(projectName, target.Tool, target.Guid) : null;
+        return ForTarget(projectName, TargetFor(cache, found));
     }
 
     /// <summary>
@@ -34,10 +37,33 @@ public static class FieldWorksLinks
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(projectName);
         ArgumentNullException.ThrowIfNull(word);
+        return ForTarget(projectName, WordformTargetFor(cache, word));
+    }
+
+    /// <summary>Finds the stable destination FieldWorks would open for one project object.</summary>
+    public static FieldWorksLinkTarget? TargetFor(LcmCache cache, ICmObject found)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(found);
+        return Target(cache, found) is { } target ? new FieldWorksLinkTarget(target.Tool, target.Guid) : null;
+    }
+
+    /// <summary>Finds the stable wordform destination for a word in the default vernacular writing system.</summary>
+    public static FieldWorksLinkTarget? WordformTargetFor(LcmCache cache, string word)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(word);
         var repository = cache.ServiceLocator.GetInstance<IWfiWordformRepository>();
         return repository.TryGetObject(TsStringUtils.MakeString(word, cache.DefaultVernWs), true, out var wordform)
-            ? Build(projectName, "Analyses", wordform.Guid)
+            ? new FieldWorksLinkTarget("Analyses", wordform.Guid)
             : null;
+    }
+
+    /// <summary>Builds a request-specific link from a stable FieldWorks destination.</summary>
+    public static string? ForTarget(string projectName, FieldWorksLinkTarget? target)
+    {
+        ArgumentNullException.ThrowIfNull(projectName);
+        return target is null ? null : Build(projectName, target.Tool, target.ObjectId);
     }
 
     // Mirrors FieldWorks' own link follower, which also opens an object at its nearest listed owner.

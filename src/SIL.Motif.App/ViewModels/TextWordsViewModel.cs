@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Texts;
 
@@ -85,8 +86,9 @@ public static class WordProjectStatuses
 /// <summary>
 /// Reads words from the selected Texts for the Words table: one row per distinct form, its
 /// occurrences, and what the project holds for it. Reloads whenever <see cref="SelectionViewModel.ChosenTextIds"/>
-/// changes, guarded by a generation counter rather than a timer so a rapid run of checkbox clicks only
-/// ever applies the last one's answer.
+/// changes. A newer selection cancels the read it replaces, and only the current generation's answer is ever
+/// applied, so a rapid run of checkbox clicks shows the last one's words. A read that fails clears the words it
+/// would have replaced and sets <see cref="Refusal"/> instead of throwing.
 /// </summary>
 public sealed partial class TextWordsViewModel : ObservableObject
 {
@@ -98,6 +100,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private string? _projectPath;
     private int _generation;
     private bool _acceptLoads = true;
+    private CancellationTokenSource? _reloadCancellation;
 
     public TextWordsViewModel(ICommandClient commandClient, SelectionViewModel selection)
     {
@@ -159,6 +162,9 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private string _searchText = string.Empty;
 
     [ObservableProperty]
+    private Refusal? _refusal;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAllFilter))]
     private WordProjectStatus? _statusFilter;
 
@@ -210,29 +216,28 @@ public sealed partial class TextWordsViewModel : ObservableObject
     /// <summary>Sets the project to read words from and immediately reloads for whatever is checked now.</summary>
     public async Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
     {
+        CancellationTokenSource? superseded;
         lock (_loadGate)
         {
+            superseded = _reloadCancellation;
+            _reloadCancellation = null;
             _acceptLoads = true;
             _projectPath = fwDataPath;
             _generation++;
         }
-        foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
-        _all.Clear();
-        Rows.Clear();
+        Cancel(superseded);
+        ClearWords();
         HasBaseline = true;
         IsLoading = false;
-        OccurrenceCount = 0;
-        ApprovedCount = 0;
-        Response = null;
-        OnPropertyChanged(nameof(CheckedWordCount));
-        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
-        RaiseCounts();
+        Refusal = null;
         if (fwDataPath is not null) await ReloadAsync(cancellationToken).ConfigureAwait(true);
     }
 
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
         TaskCompletionSource completed;
+        CancellationTokenSource loadCancellation;
+        CancellationTokenSource? superseded;
         string path;
         IReadOnlyList<Guid> textIds;
         int generation;
@@ -242,19 +247,29 @@ public sealed partial class TextWordsViewModel : ObservableObject
             path = projectPath;
             textIds = _selection.ChosenTextIds;
             generation = ++_generation;
+            superseded = _reloadCancellation;
+            loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _reloadCancellation = loadCancellation;
             completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _activeLoads.Add(completed.Task);
             IsLoading = true;
+            Refusal = null;
         }
 
         try
         {
-            var outcome = await _commandClient.ListTextWordsAsync(new TextWordsRequest(path, textIds), cancellationToken)
+            Cancel(superseded);
+            var outcome = await _commandClient.ListTextWordsAsync(
+                    new TextWordsRequest(path, textIds), loadCancellation.Token)
                 .ConfigureAwait(true);
             if (generation != _generation) return;
 
-            IsLoading = false;
-            if (!outcome.Succeeded) return;
+            if (!outcome.Succeeded)
+            {
+                // A read the caller cancelled says nothing about the words, so the page stays as it is.
+                if (!loadCancellation.IsCancellationRequested) ShowFailure(outcome.Refusal);
+                return;
+            }
 
             HasBaseline = outcome.Value!.HasBaseline;
             Response = outcome.Value;
@@ -281,10 +296,24 @@ public sealed partial class TextWordsViewModel : ObservableObject
                 _selection.SetTextCounts(textId, occurrences, distinct);
             }
         }
+        catch (OperationCanceledException) when (loadCancellation.IsCancellationRequested || cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (generation == _generation)
+                ShowFailure(new Refusal("texts.words-query-failed", FailureReason.Refused, exception.Message));
+        }
         finally
         {
-            lock (_loadGate) _activeLoads.Remove(completed.Task);
+            lock (_loadGate)
+            {
+                _activeLoads.Remove(completed.Task);
+                if (ReferenceEquals(_reloadCancellation, loadCancellation)) _reloadCancellation = null;
+                if (generation == _generation) IsLoading = false;
+            }
             completed.SetResult();
+            loadCancellation.Dispose();
         }
     }
 
@@ -292,14 +321,47 @@ public sealed partial class TextWordsViewModel : ObservableObject
     public async Task StopAsync()
     {
         Task[] activeLoads;
+        CancellationTokenSource? activeCancellation;
         lock (_loadGate)
         {
             _acceptLoads = false;
             _generation++;
+            activeCancellation = _reloadCancellation;
+            _reloadCancellation = null;
             IsLoading = false;
             activeLoads = _activeLoads.ToArray();
         }
+        Cancel(activeCancellation);
         await Task.WhenAll(activeLoads).ConfigureAwait(true);
+    }
+
+    // Empties the Words table and its counts, so no earlier selection's words outlive a reset or a failure.
+    private void ClearWords()
+    {
+        foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
+        _all.Clear();
+        Rows.Clear();
+        OccurrenceCount = 0;
+        ApprovedCount = 0;
+        Response = null;
+        OnPropertyChanged(nameof(CheckedWordCount));
+        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ProjectWords));
+        RaiseCounts();
+    }
+
+    private void ShowFailure(Refusal? refusal)
+    {
+        ClearWords();
+        _selection.ClearTextCounts();
+        Refusal = refusal;
+    }
+
+    private static void Cancel(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null) return;
+        try { cancellation.Cancel(); }
+        catch (ObjectDisposedException) { }
     }
 
     private void ApplyFilter()
