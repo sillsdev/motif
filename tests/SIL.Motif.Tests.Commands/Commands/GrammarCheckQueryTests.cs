@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
@@ -47,6 +48,21 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.False(outcome.Value!.HasBaseline);
         Assert.Empty(outcome.Value.Findings);
         Assert.Empty(invoker.Requests);
+    }
+
+    [Fact]
+    public void CancelledGrammarCheckIsATypedCancellationRefusal()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        var outcome = GrammarCheckQuery.Query(
+            new GrammarCheckRequest(fwDataPath), new FakeInvoker(), cancellation.Token);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("grammarcheck.cancelled", outcome.Refusal!.Code);
     }
 
     [Fact]

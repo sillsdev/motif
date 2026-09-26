@@ -66,6 +66,7 @@ that dispatches them.
 | `selection set-default` | Released | `selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] [--add-words <word,word>] [--json]` |
 | `overview` | Released | `overview --project <fwdata> [--json]` |
 | `warnings` | Released | `warnings --project <fwdata> [--kind <code>] [--left-out] [--json]` |
+| `grammar check` | Released | `grammar check --project <fwdata> [--json]` |
 | `timing` | Released | `timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind\|rule] [--rule <name>] [--top N] [--json]` |
 | `handoff` | Released | `handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]` |
 | `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |
@@ -100,7 +101,7 @@ and limits.
 
 The Released surface contains `open`, `analyses`, `config show`, `report`, `report --list-kinds`,
 `compare`, `baseline capture`, `assess`, `stats`, `selection show`, `selection set-default`,
-`overview`, `warnings`, `timing`, `handoff`, `add-corpus`, `add-document`,
+`overview`, `warnings`, `grammar check`, `timing`, `handoff`, `add-corpus`, `add-document`,
 `add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `apply --all-pending`, `jobs show`, `jobs assessments`,
 `jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
 
@@ -443,15 +444,21 @@ the Assessment, so partial statistics cannot look complete. Opening Overview or 
 ### Grammar findings
 
 The Warnings page reads PanGloss's grammar-health report last stored for the current Baseline. Opening the page
-or running `warnings` never invokes PanGloss. The person can start a new check with **Reload grammar**; successful
-findings replace the one stored result for that Baseline. The store also records the resolved default Selection
-digest at check time when one exists, but grammar findings remain valid after the Selection changes.
-`grammar-health` itself is not a catalogued `motif` CLI verb.
+or running `warnings` never invokes PanGloss. The App's **Reload grammar** action and the CLI check run PanGloss
+`grammar-health` on the current Baseline. A successful run replaces that Baseline's one stored result. The store
+also records the resolved default Selection digest at check time when one exists, but grammar findings remain
+valid after the Selection changes.
+
+**`grammar check --project <fwdata> [--json]`** performs a new check. With no Baseline it succeeds with
+`hasBaseline: false` and no findings. `--json` emits `GrammarCheckResponse`. Its refusal codes are
+`grammarcheck.cancelled`, `grammarcheck.timed-out`, `grammarcheck.parser-unavailable`,
+`grammarcheck.parser-refused`, `grammarcheck.malformed-findings`, and `grammarcheck.unsupported-schema`.
 
 **`warnings --project <fwdata> [--kind <code>] [--left-out] [--json]`** reads those stored findings.
 `--kind` matches one stable diagnostic code exactly, ignoring case. `--left-out` keeps only findings whose
 level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result.
-Without a check, text says the grammar has not been checked and JSON has `hasCheck: false` with empty findings.
+`warnings` reads the stored result. Without a check, text says the grammar has not been checked and JSON has
+`hasCheck: false` with empty findings.
 `--json` emits `WarningsResponse`, including each finding's description, origin, guidance, subjects, and links.
 
 PanGloss v2 writes an object with `schema_version: 2`, `fieldworks_project`, `summary`, and `diagnostics`.

@@ -9,6 +9,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 

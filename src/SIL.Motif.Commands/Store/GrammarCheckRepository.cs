@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.Contract;
-using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Commands.Store;

@@ -205,6 +205,9 @@ public static class CliVerbCatalog
             "Project", "warnings", "warnings",
             new[] { "warnings --project <fwdata> [--kind <code>] [--left-out] [--json]" }),
         new CliVerbDescriptor(
+            "Project", "grammar", "grammar check",
+            new[] { "grammar check --project <fwdata> [--json]" }),
+        new CliVerbDescriptor(
             "Project", "timing", "timing",
             new[]
             {
