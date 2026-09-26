@@ -21,6 +21,10 @@ namespace SIL.Motif.App.Composition;
 /// Gives each window that opens and saves diagnostic JSON its dialogs, or <see langword="null"/> for the native
 /// dialogs, each owned by the window whose action started it.
 /// </param>
+/// <param name="CrashWindow">
+/// The clipboard, save dialog and mail launcher of the error window, or <see langword="null"/> for that window's
+/// own native ones.
+/// </param>
 /// <param name="RememberBounds">
 /// Whether the window restores and saves its size and place in the person's settings; off unless installed,
 /// so a composed test window never writes the person's settings.
@@ -35,6 +39,7 @@ public sealed record MotifAppOptions(
     IFileDragSource? FileDragSource = null,
     IClipboard? Clipboard = null,
     IDiagnosticWindowDialogs? DiagnosticDialogs = null,
+    CrashWindowServices? CrashWindow = null,
     bool RememberBounds = false)
 {
     /// <summary>
@@ -86,9 +91,10 @@ public static class MotifAppComposition
             diagnosticDialogs.For(window),
             diagnosticDialogs);
         window.Compose(workspace);
-        return new MotifAppCompositionResult(window, workspace);
+        var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
+        return new MotifAppCompositionResult(window, workspace, crashes);
     }
 }
 
-/// <summary>The window and workspace composed together for one Motif desktop lifetime.</summary>
-public sealed record MotifAppCompositionResult(MainWindow Window, WorkspaceShellViewModel Workspace);
+/// <summary>The window, workspace and error reporting composed together for one Motif desktop lifetime.</summary>
+public sealed record MotifAppCompositionResult(MainWindow Window, WorkspaceShellViewModel Workspace, CrashReporter Crashes);
