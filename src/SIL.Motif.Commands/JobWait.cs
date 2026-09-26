@@ -51,8 +51,8 @@ public static class JobWait
                 return await CancelAndRefuseAsync(projectPath, jobId, version, progress).ConfigureAwait(false);
             if (deadline is { } due && DateTimeOffset.UtcNow >= due)
             {
-                return CommandOutcome<JobStatusResponse>.Refused(await WaitTimeoutAsync(
-                    projectPath, jobId, version, value, timeout!.Value, cancelOnTimeout).ConfigureAwait(false));
+                return await WaitTimeoutAsync(projectPath, jobId, version, value, timeout!.Value,
+                    cancelOnTimeout, progress).ConfigureAwait(false);
             }
 
             var delay = deadline is { } next ? next - DateTimeOffset.UtcNow : PollInterval;
@@ -75,17 +75,9 @@ public static class JobWait
         var cancelled = await Task.Run(() => JobCommands.Cancel(
             new CancelJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
         if (cancelled.Succeeded) progress?.Report(cancelled.Value!);
-        if (!cancelled.Succeeded && cancelled.Refusal?.Code == "job.already-finished")
-        {
-            var latest = await Task.Run(() => JobCommands.Show(
-                new ShowJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
-            if (latest.Succeeded && latest.Value!.Status is { } latestStatus &&
-                JobStateMachine.IsTerminal(latestStatus))
-            {
-                progress?.Report(latest.Value);
-                return CommandOutcome<JobStatusResponse>.Success(latest.Value);
-            }
-        }
+        if (await FinishedInsteadAsync(cancelled, projectPath, jobId, productVersion, progress)
+            .ConfigureAwait(false) is { } finished)
+            return CommandOutcome<JobStatusResponse>.Success(finished);
         var facts = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["jobId"] = jobId,
@@ -101,8 +93,22 @@ public static class JobWait
             facts));
     }
 
-    private static async Task<Refusal> WaitTimeoutAsync(string projectPath, string jobId, string productVersion,
-        JobStatusResponse status, TimeSpan timeout, bool cancelOnTimeout)
+    // A cancel refused because the job already finished means the finished result wins, on either path.
+    private static async Task<JobStatusResponse?> FinishedInsteadAsync(CommandOutcome<JobStatusResponse> cancelled,
+        string projectPath, string jobId, string productVersion, IProgress<JobStatusResponse>? progress)
+    {
+        if (cancelled.Succeeded || cancelled.Refusal?.Code != "job.already-finished") return null;
+        var latest = await Task.Run(() => JobCommands.Show(
+            new ShowJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
+        if (!latest.Succeeded || latest.Value!.Status is not { } status || !JobStateMachine.IsTerminal(status))
+            return null;
+        progress?.Report(latest.Value);
+        return latest.Value;
+    }
+
+    private static async Task<CommandOutcome<JobStatusResponse>> WaitTimeoutAsync(string projectPath,
+        string jobId, string productVersion, JobStatusResponse status, TimeSpan timeout, bool cancelOnTimeout,
+        IProgress<JobStatusResponse>? progress)
     {
         var facts = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -119,15 +125,19 @@ public static class JobWait
         {
             var cancellation = await Task.Run(() => JobCommands.Cancel(
                 new CancelJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
+            if (await FinishedInsteadAsync(cancellation, projectPath, jobId, productVersion, progress)
+                .ConfigureAwait(false) is { } finished)
+                return CommandOutcome<JobStatusResponse>.Success(finished);
             facts["jobCancelled"] = cancellation.Succeeded ? "true" : "false";
-            if (cancellation.Succeeded && cancellation.Value!.Status is { } cancelledStatus)
-                facts["jobStatus"] = JobStatusJson.ToWire(cancelledStatus);
-            message += cancellation.Succeeded
-                ? "Motif cancelled the job."
-                : "cancellation was refused, so the job keeps running. " + checkAgain;
+            var cancelledStatus = cancellation.Succeeded ? cancellation.Value!.Status : null;
+            if (cancelledStatus is { } known) facts["jobStatus"] = JobStatusJson.ToWire(known);
+            message += !cancellation.Succeeded
+                ? "cancellation was refused, so the job keeps running. " + checkAgain
+                : cancelledStatus == JobStatus.Cancelled
+                    ? "Motif cancelled the job."
+                    : "Motif requested cancellation of the job.";
         }
-        return new Refusal(
-            "job.wait-timeout", FailureReason.Busy, message,
-            facts);
+        return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+            "job.wait-timeout", FailureReason.Busy, message, facts));
     }
 }
