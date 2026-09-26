@@ -14,7 +14,7 @@ public enum Verdict
     /// <summary>They contradict each other: Disapproved, Differs from stored, or an attempt a rule stopped.</summary>
     Differs,
 
-    /// <summary>Something new to consider: nothing stored here, or a reading the project has no opinion on.</summary>
+    /// <summary>Something new to consider: a word or reading the project does not hold, which the window calls not present.</summary>
     New,
 
     /// <summary>Nothing came out: No parse, or an approved analysis the parser missed.</summary>
@@ -73,7 +73,7 @@ public static class Verdicts
     {
         Verdict.Agrees => "agrees",
         Verdict.Differs => "differs from stored",
-        Verdict.New => "not stored yet",
+        Verdict.New => "not present",
         Verdict.NoResult => "no parse",
         Verdict.Limit => "stopped at a limit",
         Verdict.Approved => "approved in the project",

@@ -16,8 +16,12 @@ namespace SIL.Motif.Commands;
 /// through nothing but the named ownership mutex the runner already guards itself with, so spawning is
 /// unconditional — an already-alive runner makes this a no-op, and keeps its own settings — and
 /// best-effort: a runner that fails to start leaves the row queued for the next enqueue to wake instead of
-/// failing the one that just queued it. Every setting in <see cref="Options"/> travels as a launch argument,
-/// which the runner prefers over its environment.
+/// failing the one that just queued it. Every runner setting in <see cref="Options"/> travels as a launch
+/// argument, pinned by `EveryRunnerSettingTravelsAsALaunchArgumentAndTheExecutableDoesNot`. The runner prefers
+/// an argument over its environment, pinned by `ExplicitArgumentsSelectTheRootParserNamespaceIdleAndLease`.
+/// <see cref="JobRunnerLaunchOptions.WorkerExecutable"/> is not a runner setting: it chooses the executable
+/// to start, and a configured one that does not exist starts nothing, pinned by
+/// `AConfiguredRunnerThatDoesNotExistIsNotStarted`.
 /// </remarks>
 public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
 {
@@ -73,7 +77,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 MakeOwnStandardHandlesNonInheritable();
             var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true };
-            foreach (var argument in Arguments(Options))
+            foreach (var argument in LaunchArguments(Options))
                 start.ArgumentList.Add(argument);
             Process.Start(start);
         }
@@ -85,7 +89,19 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
         }
     }
 
-    private static IEnumerable<string> Arguments(JobRunnerLaunchOptions options)
+    /// <summary>The arguments a launched runner is started with.</summary>
+    /// <remarks>
+    /// <see cref="WorkerRunnerOptions.Read"/> reads every runner setting in <paramref name="options"/> back from
+    /// them, and <see cref="JobRunnerLaunchOptions.WorkerExecutable"/> is not among them, pinned by
+    /// `EveryRunnerSettingTravelsAsALaunchArgumentAndTheExecutableDoesNot`.
+    /// </remarks>
+    public static IEnumerable<string> LaunchArguments(JobRunnerLaunchOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return LaunchArgumentsOf(options);
+    }
+
+    private static IEnumerable<string> LaunchArgumentsOf(JobRunnerLaunchOptions options)
     {
         yield return WorkerRunnerOptions.RootArgument;
         yield return options.Root;

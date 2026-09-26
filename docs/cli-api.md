@@ -53,7 +53,7 @@ that dispatches them.
 | `show` | Developer | `show --project <fwdata> <proposalId> [--json]` |
 | `preflight` | Developer | `preflight --project <fwdata> <proposalId> [--json]` |
 | `apply` | Developer | `apply <proposalId> --project <fwdata> --user <name> [--force] [--json]` |
-| `apply --all-pending` | Released | `apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]` |
+| `apply --all-pending` | Developer | `apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]` |
 | `log` | Developer | `log --project <fwdata> [--json]` |
 | `config show` | Released | `Usage: motif config show --project <fwdata> [--json]` |
 | `report` | Released | `Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]` |
@@ -103,17 +103,18 @@ and limits.
 The Released surface contains `open`, `analyses`, `config show`, `report`, `report --list-kinds`,
 `compare`, `baseline capture`, `assess`, `stats`, `selection show`, `selection set-default`,
 `overview`, `warnings`, `grammar check`, `timing`, `handoff`, `add-corpus`, `add-document`,
-`add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `apply --all-pending`, `jobs show`, `jobs assessments`,
+`add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
 `jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
 
 The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
 `remove-pending-change`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
-`supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`,
+`supersede`, `list`, `show`, `preflight`, `apply`, `apply --all-pending`, `log`, `dry-run`,
 `dry-run --wait`, `trial`, `trial --wait`, and `trial --pending`.
 
-`apply --all-pending` is the Released save-boundary entry point specified for FieldWorks: FieldWorks releases
+`apply --all-pending` is the save-boundary entry point specified for FieldWorks, and Developer-only for now
+(see the 2026-09-26 amendment): FieldWorks releases
 the project, calls the verb, then reloads the project. It accepts an optional `--revision` to require the exact
 revision FieldWorks previously checked and an optional `--user` for the Receipt; without `--user`, Motif uses
 the current account. Nothing pending is a success, not a refusal: the verb exits `0`, writes nothing to
@@ -394,6 +395,21 @@ validation failed), `assessment.cancelled`, `selection.empty`, `selection.text-n
 mistyped project path is refused as `project.not-found` even when the parser is entirely unavailable,
 because the project is resolved before the Assessor is ever built — pinned by
 `AMissingProjectIsRefusedBeforeTheParserIsEvenBuilt`.
+
+
+### 2026-09-26 — `apply --all-pending` is Developer-only
+
+An ordinary `motif` installation no longer offers the command that writes every pending change into the
+FieldWorks project. Motif's own window still applies them, because it calls the same workflow directly rather
+than through this verb.
+
+The owner ruled that the verbs an agent uses to change a project — the pending-change verbs, `preflight`,
+`trial --pending` and `apply --all-pending` — stay developer-only until the full set of agent commands has
+its own design and test coverage. `apply --all-pending` had been catalogued Released, so a Released
+invocation exposed a project-mutating command that ruling defers. It now answers `command.not-in-release`
+without `MOTIF_DEVELOPER_COMMANDS=1`, pinned by `ApplyingAllPendingChangesIsAbsentFromTheReleasedSurface`.
+Its behaviour with the opt-in set is unchanged, and so is the FieldWorks save-boundary contract described
+above; that surface is not yet built, and making the verb Released again is part of building it.
 
 ## Selection, Overview, and Timing
 

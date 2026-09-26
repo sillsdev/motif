@@ -9,7 +9,7 @@ namespace SIL.Motif.Commands;
 /// a launch that finds one already running leaves it alone, and that runner keeps the settings it started
 /// with.
 /// </remarks>
-/// <param name="Root">The worker root whose Known projects and machine database the runner uses.</param>
+/// <param name="Root">The root directory whose Known projects and machine database the runner uses.</param>
 /// <param name="ParserPath">The parser a Trial runs, or <see langword="null"/> to run no Trials.</param>
 public sealed record JobRunnerLaunchOptions(string Root, string? ParserPath)
 {

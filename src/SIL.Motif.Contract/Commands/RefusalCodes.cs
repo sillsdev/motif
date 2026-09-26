@@ -6,10 +6,11 @@ namespace SIL.Motif.Contract.Commands;
 /// </summary>
 /// <remarks>
 /// Commands still spell their codes as literals, because the command catalogue pins every literal it
-/// declares. What keeps the two in step is a test: every constant here must be a code some command or the
-/// window itself declares, so renaming a code in a command fails the build's tests instead of quietly
-/// sending the window to its generic sentence. The CLI does not read this list; it prints each command's
-/// own message.
+/// declares. What keeps the two in step is a test: every constant here must appear as a literal somewhere in
+/// the commands or the window, pinned by `EveryCatalogueCodeIsOneACommandOrTheWindowDeclares`. So renaming the
+/// last literal of a code fails the test suite, not the build. The test does not tie a code to a particular
+/// command: a command that stops using a code another command still declares passes it. The CLI does not
+/// read this list; it prints each command's own message.
 /// </remarks>
 public static class RefusalCodes
 {

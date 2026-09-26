@@ -276,7 +276,7 @@ public sealed class RunnerSpineTests : IDisposable
         return true;
     }
 
-    /// Runs the real CLI against this test's own isolated worker root, the one <see cref="StartRunner"/> uses too.
+    /// Runs the real CLI against this test's own isolated runner root, the one <see cref="StartRunner"/> uses too.
     private CliRun Cli(string arguments)
     {
         var executable = BuildOutput.Cli;

@@ -82,7 +82,7 @@ public static class PendingChangesWorkflow
 
     /// <summary>Runs a Trial for the selected words and returns its recorded correctness evidence.</summary>
     /// <param name="request">The project, pending Draft, revision, words, and earlier Assessment identity.</param>
-    /// <param name="progress">Receives the number of words completed and the current word.</param>
+    /// <param name="progress">Receives the number of words completed out of those requested.</param>
     /// <param name="cancellationToken">Cancels the Trial job and stops waiting for it.</param>
     /// <param name="waitTimeout">The wait bound, or <see langword="null"/> to wait until completion or cancellation.</param>
     /// <param name="runnerLauncher">
@@ -98,7 +98,7 @@ public static class PendingChangesWorkflow
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(progress);
-        progress.Report(new MeasureProgress(0, request.Words.Count, null));
+        progress.Report(new MeasureProgress(0, request.Words.Count));
         var version = MotifProductVersion.CurrentText;
         if (cancellationToken.IsCancellationRequested) return CancelledMeasure();
 
@@ -123,7 +123,7 @@ public static class PendingChangesWorkflow
         var jobProgress = new JobStatusProgress(status =>
         {
             if (status.TrialProgress is not { } wordProgress) return;
-            var next = new MeasureProgress(wordProgress.Completed, wordProgress.Total, wordProgress.CurrentWord);
+            var next = new MeasureProgress(wordProgress.Completed, wordProgress.Total);
             if (next == lastProgress) return;
             progress.Report(next);
             lastProgress = next;
@@ -146,7 +146,7 @@ public static class PendingChangesWorkflow
             request.ProjectPath, request.BeforeCorrectnessAssessmentId, correctness.AssessmentId,
             request.Words.Count))).ConfigureAwait(false);
         if (!numbers.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(numbers.Refusal!);
-        progress.Report(new MeasureProgress(request.Words.Count, request.Words.Count, null));
+        progress.Report(new MeasureProgress(request.Words.Count, request.Words.Count));
         return CommandOutcome<MeasurePendingResult>.Success(new MeasurePendingResult(
             jobId, current.Revision, numbers.Value!));
     }

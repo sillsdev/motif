@@ -10,7 +10,7 @@ public sealed partial class CommandClient
 {
     public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken) =>
-        // The workflow finalizes the changes before it looks at the token, so a cancelled call never starts it.
+        // An already-cancelled token never starts the workflow.
         cancellationToken.IsCancellationRequested
             ? Task.FromResult(WaitCancelled<ApplyPendingResult>())
             : OneAtATime(() => PendingChangesWorkflow.Apply(request, cancellationToken,

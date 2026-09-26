@@ -1,5 +1,5 @@
 <!--
-  The main window's and the diagnostic window's opening and smallest sizes.
+  The opening and smallest sizes of the main window, the diagnostic window and the error window, and the error window's inset.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
@@ -13,5 +13,11 @@
     <StaticResource x:Key="Component.Shell.DiagnosticHeight" ResourceKey="Primitive.Size.760" />
     <StaticResource x:Key="Component.Shell.DiagnosticMinWidth" ResourceKey="Primitive.Size.640" />
     <StaticResource x:Key="Component.Shell.DiagnosticMinHeight" ResourceKey="Primitive.Size.480" />
+    <StaticResource x:Key="Component.Shell.CrashWidth" ResourceKey="Primitive.Size.640" />
+    <StaticResource x:Key="Component.Shell.CrashHeight" ResourceKey="Primitive.Size.480" />
+    <StaticResource x:Key="Component.Shell.CrashMinWidth" ResourceKey="Primitive.Size.420" />
+    <StaticResource x:Key="Component.Shell.CrashMinHeight" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Shell.CrashDetailsMaxHeight" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.Shell.CrashInset" ResourceKey="Primitive.Inset.16_16_16_16" />
   </Styles.Resources>
 </Styles>

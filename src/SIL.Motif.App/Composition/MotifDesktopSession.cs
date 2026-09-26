@@ -17,6 +17,7 @@ public sealed class MotifDesktopSession
     {
         Window = composition.Window;
         Workspace = composition.Workspace;
+        Crashes = composition.Crashes;
         KnownProjectsLoaded = knownProjectsLoaded;
     }
 
@@ -25,6 +26,9 @@ public sealed class MotifDesktopSession
 
     /// <summary>The workspace the window shows.</summary>
     public WorkspaceShellViewModel Workspace { get; }
+
+    /// <summary>Opens the error window for an error that escapes the UI thread, until <see cref="CloseAsync"/>.</summary>
+    public CrashReporter Crashes { get; }
 
     /// <summary>Completes when startup's Known-project load has finished; it never faults.</summary>
     public Task KnownProjectsLoaded { get; }
