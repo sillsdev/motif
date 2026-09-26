@@ -12,4 +12,9 @@
     -->
     <OutputPath>$(MotifBinRoot)tests\fake-pangloss\</OutputPath>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The batch statistics cache is SQLite, in the tables Motif's statistics reader queries. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
+  </ItemGroup>
 </Project>

@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -53,6 +54,25 @@ public sealed class GrammarViewModelTests
         Assert.True(seen[nameof(GrammarViewModel.ShowFindings)]);
         Assert.False(seen[nameof(GrammarViewModel.ShowNoFindings)]);
         Assert.False(seen[nameof(GrammarViewModel.ShowLoading)]);
+    }
+
+    [Fact]
+    public async Task TheElapsedTimeOfACheckIsReadFromTheComposedClock()
+    {
+        var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
+        var fake = new FakeCommandClient();
+        var answer = new TaskCompletionSource<CommandOutcome<GrammarCheckResponse>>();
+        fake.OnCheckGrammar((_, _) => answer.Task);
+        var grammar = new GrammarViewModel(fake, clock);
+
+        var setting = grammar.SetProjectAsync(ProjectPath);
+        clock.Advance(TimeSpan.FromSeconds(7));
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (grammar.ElapsedSeconds != 7 && DateTime.UtcNow < deadline) await Task.Delay(50);
+
+        Assert.Equal("7 s", grammar.ElapsedText);
+        answer.SetResult(CommandOutcome<GrammarCheckResponse>.Success(new GrammarCheckResponse([], HasBaseline: true)));
+        await setting;
     }
 
     [Fact]

@@ -5,9 +5,13 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using SIL.Motif.App.Composition;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands;
+using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -17,26 +21,36 @@ public sealed class WalkthroughWindow : IDisposable
     private readonly ScriptedProjectPicker _projectPicker;
     private readonly ScriptedFolderPicker _folderPicker;
     private readonly RecordingDragSource _dragSource;
+    private readonly InProcessRunnerLauncher? _ownedRunner;
 
+    /// <summary>Composes the real window over <paramref name="managedRoot"/> with scripted desktop inputs.</summary>
+    /// <param name="startGate">Holds the real client's Assessment or Handoff before it starts.</param>
+    /// <param name="parserPath">The parser to run; <see langword="null"/> locates the real one.</param>
+    /// <param name="runnerLauncher">
+    /// Starts queued work; <see langword="null"/> drains it in this process with the same root and parser.
+    /// </param>
     public WalkthroughWindow(
-        string managedRoot, string projectPath, string? folderPath = null, ICommandClient? commandClient = null)
+        string managedRoot, string projectPath, string? folderPath = null,
+        ICommandStartGate? startGate = null, TimeProvider? timeProvider = null,
+        string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null)
     {
         _projectPicker = new ScriptedProjectPicker(projectPath);
         _folderPicker = new ScriptedFolderPicker(folderPath);
         _dragSource = new RecordingDragSource();
 
-        commandClient ??= new CommandClient(managedRoot);
-        var selection = new SelectionViewModel(commandClient);
-        Workspace = new HandoffWorkspaceViewModel(
-            new ProjectViewModel(commandClient, _projectPicker),
-            new BaselineViewModel(commandClient),
-            selection,
-            new AssessViewModel(commandClient, selection),
-            _folderPicker, _dragSource,
-            commandClient);
-
-        Window = new MainWindow();
-        Window.Compose(Workspace);
+        parserPath ??= PanGlossExecutable.TryLocate();
+        if (runnerLauncher is null)
+            runnerLauncher = _ownedRunner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath));
+        var composition = MotifAppComposition.Create(new MotifAppOptions(
+            managedRoot,
+            parserPath,
+            runnerLauncher,
+            timeProvider ?? TimeProvider.System,
+            _projectPicker,
+            _folderPicker,
+            _dragSource), startGate);
+        Window = composition.Window;
+        Workspace = composition.Workspace;
     }
 
     public MainWindow Window { get; }
@@ -301,6 +315,8 @@ public sealed class WalkthroughWindow : IDisposable
             throw new TimeoutException(
                 $"The walkthrough workspace did not stop within {timeout}; Assessment state is '{Workspace.Assess.State}'.");
         disposal.GetAwaiter().GetResult();
+        if (_ownedRunner is not null && !_ownedRunner.DisposeAsync().AsTask().Wait(timeout))
+            throw new TimeoutException($"The walkthrough's in-process runner did not stop within {timeout}.");
     }
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();

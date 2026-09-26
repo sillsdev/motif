@@ -39,6 +39,11 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     {
     }
 
+    /// <summary>Uses an explicitly selected parser path, or reports that the parser is unavailable.</summary>
+    public PanGlossInvoker(string? executablePath) : this(executablePath, new MachinePanGlossQueue())
+    {
+    }
+
     /// <summary>An explicit executable (or none) and an explicit queue, so a test can isolate both.</summary>
     internal PanGlossInvoker(string? executablePath, MachinePanGlossQueue queue)
     {

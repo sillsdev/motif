@@ -1253,6 +1253,24 @@ F08 replaces the first; move the second to `Hold()` when the file is next touche
 - **A killed process**: kill the CLI or the runner child and its process tree, as `RunnerSpineTests` does.
   Killing the App process itself belongs to the native lane (§8 question 1); no headless test can.
 
+**Decided with F08, 2026-09-26: the smoke tests share one real startup per process.** All five smoke tests
+start Motif the way a person does, and they can now do so one after another inside a single test run.
+Avalonia allows one setup and one application lifetime per process, and the lifetime's shutdown also ends
+its dispatcher, so choice (a) of the F08 review holds, with these mechanics:
+
+- `MotifAppHost` lives in `tests/SIL.Motif.Tests.App.Lifetime/MotifAppHost.cs`, not in Tests.Support, which
+  every non-UI test project references and which carries no Avalonia. The smoke tests of §1.3 go in that
+  assembly too, not under `tests/SIL.Motif.Tests.App/App/Smoke/`: the App test assembly already sets Avalonia
+  up without a lifetime, and a process cannot set it up twice.
+- The first `Start` calls `SetupWithLifetime`, which runs `App.OnFrameworkInitializationCompleted`. That
+  override is one call to `App.StartDesktop(lifetime, options)`, and every later `Start` calls it directly
+  into the same classic desktop lifetime, so each test gets a fresh window and workspace from the same code.
+- `Stop` and `Restart()` close the session with `MotifDesktopSession.CloseAsync`, the method the lifetime's
+  `Exit` calls, and wait for the Known-project load and the workspace's disposal before a test deletes its
+  root. `Restart()` is the in-process restart this section asks for.
+- The lifetime's own `Shutdown` runs once, from the collection fixture after the last test, and fails the run
+  if that exit does not close the session. Pinned by `AppStartupCompositionTests` and `MotifAppHostExit`.
+
 ### 4.4 The clock
 
 F08 injects `TimeProvider`. Tests use one fixed `TimeProvider` stub in

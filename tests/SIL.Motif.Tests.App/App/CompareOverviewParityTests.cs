@@ -86,7 +86,7 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             Assert.True(overview.Succeeded, overview.Refusal?.Message);
             var timing = TimingCommand.Timing(new TimingRequest(projectPath, WordSet: "all"));
             Assert.True(timing.Succeeded, timing.Refusal?.Message);
-            var client = new CommandClient(_managedRoot);
+            var client = RealCommandClient.Create(_managedRoot);
             var appOverview = await client.OverviewAsync(new OverviewRequest(projectPath), CancellationToken.None);
             var appTiming = await client.TimingAsync(new TimingRequest(projectPath, WordSet: "all"), CancellationToken.None);
             Assert.True(appOverview.Succeeded, appOverview.Refusal?.Message);

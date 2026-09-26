@@ -437,7 +437,7 @@ try
                     new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0]), usage),
                 successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
-            if (result.ExitCode == 0) RunnerKick.After(Console.Error.WriteLine);
+            if (result.ExitCode == 0) ProcessRunnerLauncher.FromEnvironment().Start(dryRunProject, Console.Error.WriteLine);
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var dryRunJobId = result.Output.Trim();
@@ -494,7 +494,7 @@ try
                     usage),
                 successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
-            if (result.ExitCode == 0) RunnerKick.After(Console.Error.WriteLine);
+            if (result.ExitCode == 0) ProcessRunnerLauncher.FromEnvironment().Start(trialProject, Console.Error.WriteLine);
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var trialJobId = result.Output.Trim();
@@ -626,7 +626,7 @@ try
                 JobCommands.EnqueueBaselineRefresh(
                     new EnqueueBaselineRefreshRequest(refreshProject, CliProductVersion())),
                 successAsJson: false);
-            if (result.ExitCode == 0) RunnerKick.After(Console.Error.WriteLine);
+            if (result.ExitCode == 0) ProcessRunnerLauncher.FromEnvironment().Start(refreshProject, Console.Error.WriteLine);
             break;
 
         case "config":
@@ -896,7 +896,7 @@ try
                         return Usage("Usage: motif jobs requeue <jobId> --project <fwdata> [--json]", asJson);
                     result = RenderCommand(JobCommands.Requeue(
                         new RequeueJobRequest(jobsRequeueProject, positionals[1], CliProductVersion())));
-                    if (result.ExitCode == 0) RunnerKick.After(Console.Error.WriteLine);
+                    if (result.ExitCode == 0) ProcessRunnerLauncher.FromEnvironment().Start(jobsRequeueProject, Console.Error.WriteLine);
                     break;
 
                 case "move":

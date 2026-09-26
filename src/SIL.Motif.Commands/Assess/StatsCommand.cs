@@ -11,6 +11,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
@@ -37,9 +38,15 @@ public static class StatsCommand
 
     /// <summary>Queries statistics through a real parser invocation.</summary>
     public static CommandOutcome<StatsCommandResponse> Stats(
-        StatsRequest request, CancellationToken cancellationToken = default)
+        StatsRequest request, CancellationToken cancellationToken = default) =>
+        Stats(request, PanGlossExecutable.TryLocate(), cancellationToken);
+
+    /// <summary>Queries statistics through an explicitly selected parser.</summary>
+    /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
+    public static CommandOutcome<StatsCommandResponse> Stats(
+        StatsRequest request, string? parserPath, CancellationToken cancellationToken = default)
     {
-        using var invoker = new PanGlossInvoker();
+        using var invoker = new PanGlossInvoker(parserPath);
         return Run(request, invoker, cancellationToken);
     }
 

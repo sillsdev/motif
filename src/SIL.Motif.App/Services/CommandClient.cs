@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
@@ -33,15 +34,26 @@ namespace SIL.Motif.App.Services;
 /// </remarks>
 public sealed partial class CommandClient : ICommandClient
 {
+    private readonly CommandClientOptions _options;
     private readonly string _managedRoot;
     private readonly SemaphoreSlim _projectGate = new(1, 1);
 
-    public CommandClient() : this(SIL.Motif.Worker.RunnerOptions.ResolveRoot()) { }
+    public CommandClient() : this(CommandClientOptions.ForInstallation()) { }
 
-    public CommandClient(string managedRoot)
+    public CommandClient(CommandClientOptions options)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(managedRoot);
-        _managedRoot = managedRoot;
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.ManagedRoot);
+        ArgumentNullException.ThrowIfNull(options.RunnerLauncher);
+        var launched = options.RunnerLauncher.Options;
+        if (!string.Equals(Path.GetFullPath(launched.Root), Path.GetFullPath(options.ManagedRoot),
+                StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(launched.ParserPath, options.ParserPath, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException(
+                "The runner launcher must use the same worker root and parser as the command client.",
+                nameof(options));
+        _options = options;
+        _managedRoot = options.ManagedRoot;
     }
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
@@ -63,20 +75,28 @@ public sealed partial class CommandClient : ICommandClient
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return OneAtATime(
-            () => AssessCommand.Assess(request, _managedRoot, progress.Report, cancellationToken));
+        return AfterStartGate(GatedCommand.Assess, () => OneAtATime(
+            () => AssessCommand.Assess(request, _managedRoot, _options.ParserPath,
+                progress.Report, cancellationToken)));
     }
 
     public Task<CommandOutcome<StatsCommandResponse>> StatsAsync(
         StatsRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => StatsCommand.Stats(request, cancellationToken));
+        Task.Run(() => StatsCommand.Stats(request, _options.ParserPath, cancellationToken));
 
     public Task<CommandOutcome<HandoffCommandResponse>> HandoffAsync(
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return OneAtATime(
-            () => HandoffCommand.Handoff(request, _managedRoot, progress.Report, cancellationToken));
+        return AfterStartGate(GatedCommand.Handoff, () => OneAtATime(
+            () => HandoffCommand.Handoff(request, _managedRoot, _options.ParserPath,
+                progress.Report, cancellationToken)));
+    }
+
+    private async Task<T> AfterStartGate<T>(GatedCommand command, Func<Task<T>> run)
+    {
+        if (_options.StartGate is { } gate) await gate.WaitToStartAsync(command).ConfigureAwait(false);
+        return await run().ConfigureAwait(false);
     }
 
     // Waits without the caller's token, so a cancelled wait still reaches the command's own typed refusal.

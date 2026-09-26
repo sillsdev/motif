@@ -72,7 +72,7 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
             start.Environment["MOTIF_PANGLOSS_EXE"] = FakeParser.ExecutablePath;
             start.Environment[RunnerOptions.NamespaceVariable] = Guid.NewGuid().ToString("N");
             start.Environment[RunnerOptions.IdleVariable] = "1";
-            start.Environment.Remove(RunnerKick.SuppressVariable);
+            start.Environment.Remove(ProcessRunnerLauncher.SuppressVariable);
         }
         start.RedirectStandardOutput = true;
         start.RedirectStandardError = true;

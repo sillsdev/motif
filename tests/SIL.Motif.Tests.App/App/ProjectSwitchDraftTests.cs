@@ -41,7 +41,7 @@ public sealed class ProjectSwitchDraftTests(PristineProjectFixture pristine)
         {
             Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectA), managedRoot).Succeeded);
             Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectB), managedRoot).Succeeded);
-            var client = new CommandClient(managedRoot);
+            var client = RealCommandClient.Create(managedRoot);
             var selection = new SelectionViewModel(client);
             var workspace = new HandoffWorkspaceViewModel(new ProjectViewModel(client, new FakeProjectPicker()),
                 new BaselineViewModel(client), selection, new AssessViewModel(client, selection),

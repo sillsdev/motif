@@ -20,7 +20,7 @@ public sealed class TextWordsCommandClientTests : IDisposable
     [Fact]
     public async Task ACancelledReadIsATypedCancellationBeforeTheStoreIsOpened()
     {
-        var client = new CommandClient(Path.Combine(_root, "managed"));
+        var client = RealCommandClient.Create(Path.Combine(_root, "managed"));
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         var missingProject = Path.Combine(_root, "absent.fwdata");
@@ -35,7 +35,7 @@ public sealed class TextWordsCommandClientTests : IDisposable
     [Fact]
     public async Task AnUncancelledReadRunsTheQuery()
     {
-        var client = new CommandClient(Path.Combine(_root, "managed"));
+        var client = RealCommandClient.Create(Path.Combine(_root, "managed"));
         var missingProject = Path.Combine(_root, "absent.fwdata");
 
         var outcome = await client.ListTextWordsAsync(new TextWordsRequest(missingProject, []), CancellationToken.None);

@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -47,6 +48,21 @@ public sealed class AssessViewModelTests
         new(AssessmentStage.ReadingStatistics, 2, 2, "Reading PanGloss's statistics..."),
         new(AssessmentStage.Complete, 2, 2, "Assessment complete."),
     ];
+
+    [Fact]
+    public async Task ACompletedRunIsStampedWithTheComposedClock()
+    {
+        var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake) { AllWordforms = true };
+        var assess = new AssessViewModel(fake, selection, clock) { ProjectPath = ProjectPath };
+        fake.AssessCompletesWith(NewResponse(), Steps);
+
+        await assess.RunCommand.ExecuteAsync(null);
+
+        Assert.Equal(RunState.Completed, assess.State);
+        Assert.Equal(clock.GetLocalNow(), assess.CompletedAt);
+    }
 
     [Fact]
     public void BeforeAnyRunTheStateIsIdleAndRunIsEnabledOnceAProjectAndSelectionExist()

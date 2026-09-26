@@ -1,50 +1,55 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using SIL.Motif.App.Services;
+using SIL.Motif.App.Composition;
 using SIL.Motif.App.ViewModels;
-using SIL.Motif.App.Views;
 
 namespace SIL.Motif.App;
 
 public sealed partial class App : Application
 {
+    private readonly MotifAppOptions? _options;
+
+    public App() { }
+
+    public App(MotifAppOptions options) =>
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+
+    /// <summary>The session of the desktop lifetime most recently started, or <see langword="null"/>.</summary>
+    public MotifDesktopSession? Session { get; private set; }
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var window = new MainWindow(rememberBounds: true);
-            var workspace = ComposeWorkspace(window);
-            window.Compose(workspace);
-            desktop.MainWindow = window;
-
-            desktop.Exit += (_, _) => _ = workspace.DisposeAsync();
-            LoadKnownProjects(workspace.Project);
-        }
+            StartDesktop(desktop, _options ?? MotifAppOptions.ForInstallation());
 
         base.OnFrameworkInitializationCompleted();
     }
 
-    // The one composition root: nowhere else names a concrete ICommandClient, picker, or drag source.
-    private static HandoffWorkspaceViewModel ComposeWorkspace(MainWindow window)
+    /// <summary>
+    /// Composes Motif's window into <paramref name="desktop"/>, starts loading the Known projects, and closes
+    /// the session when the lifetime exits. This is the whole of the App's desktop startup:
+    /// <see cref="OnFrameworkInitializationCompleted"/> calls it, and so does a test host that starts the real
+    /// App again in one process: it closes each session with <see cref="MotifDesktopSession.CloseAsync"/> and
+    /// composes the next into the same lifetime, pinned by `TheRealStartupStartsAgainInTheSameProcess`.
+    /// </summary>
+    public MotifDesktopSession StartDesktop(IClassicDesktopStyleApplicationLifetime desktop, MotifAppOptions options)
     {
-        var commandClient = new CommandClient();
-        var pickers = new AvaloniaStoragePickers(window);
-        var selection = new SelectionViewModel(commandClient);
-
-        return new HandoffWorkspaceViewModel(
-            new ProjectViewModel(commandClient, pickers),
-            new BaselineViewModel(commandClient),
-            selection,
-            new AssessViewModel(commandClient, selection),
-            pickers, pickers,
-            commandClient);
+        ArgumentNullException.ThrowIfNull(desktop);
+        var composition = MotifAppComposition.Create(options);
+        desktop.MainWindow = composition.Window;
+        var session = new MotifDesktopSession(composition, LoadKnownProjects(composition.Workspace.Project));
+        EventHandler<ControlledApplicationLifetimeExitEventArgs> onExit = (_, _) => session.CloseAsync();
+        desktop.Exit += onExit;
+        session.DetachWith(() => desktop.Exit -= onExit);
+        Session = session;
+        return session;
     }
 
-    // Fire-and-forget by design: nothing else in startup waits for the Known-project list to resolve.
-    private static async void LoadKnownProjects(ProjectViewModel project)
+    // Nothing in startup waits for the Known-project list, so this never faults and is not awaited there.
+    private static async Task LoadKnownProjects(ProjectViewModel project)
     {
         try
         {

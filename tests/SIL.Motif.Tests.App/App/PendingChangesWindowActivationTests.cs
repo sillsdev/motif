@@ -35,7 +35,7 @@ public sealed class PendingChangesWindowActivationTests(PristineProjectFixture p
             Guid.NewGuid().ToString("N"));
         var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
-        var commands = new CommandClient(managedRoot);
+        var commands = RealCommandClient.Create(managedRoot);
         var loaded = await commands.LoadPendingChangesAsync(new PendingChangesRequest(fwDataPath,
             SIL.Motif.Host.MotifProductVersion.CurrentText), CancellationToken.None);
         Assert.True(loaded.Succeeded, loaded.Refusal?.Message);

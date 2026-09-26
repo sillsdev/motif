@@ -365,9 +365,12 @@ $env:MOTIF_PANGLOSS_EXE = 'C:\path\reported\by\the\build\pangloss.exe'
 ```
 
 **PanGloss discovery.** The window (like `motif assess`, `stats`, and `handoff`) shells out to the
-`pangloss` executable. Set `MOTIF_PANGLOSS_EXE` to its path, or leave it unset and Motif looks for
-`../PanGloss/rust/target/release/pangloss(.exe)` relative to the repository root — the layout of a sibling
-PanGloss checkout built in release mode. Neither found is an ordinary state of a machine that has not built
+`pangloss` executable. Set `MOTIF_PANGLOSS_EXE` to its path, or leave it unset and Motif looks for the newest
+of `../PanGloss/dist/v*/pangloss(.exe)` and `../PanGloss/rust/target/release/pangloss(.exe)` relative to the
+repository root — the layout of a sibling PanGloss checkout — and then beside the executable itself. The
+window resolves the parser and its worker root (`MOTIF_WORKER_ROOT`, or `%LOCALAPPDATA%\SIL\Motif`) once, at
+startup, exactly as the CLI does, and hands both to the job runner it starts as launch arguments; a runner
+already running keeps the settings it started with. Neither found is an ordinary state of a machine that has not built
 PanGloss yet: Run and Handoff refuse with `assess.parser-unavailable` / `handoff.parser-unavailable` rather
 than crashing, and every other panel keeps working.
 

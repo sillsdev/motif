@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
@@ -59,6 +60,19 @@ public sealed class RunnerKickRaceTests : IDisposable
         Assert.NotEqual("running", status);
     }
 
+    [Fact]
+    public void ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked()
+    {
+        var project = _projects.CopyProjectFile();
+        var elapsed = Stopwatch.StartNew();
+
+        var run = Cli($"baseline-refresh --project \"{project}\"", idleSeconds: 12);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(8),
+            $"Reading the CLI's output took {elapsed.Elapsed}: the kicked runner held its standard handles.");
+    }
+
     private string StatusOf(string project, string jobId)
     {
         var shown = Cli($"jobs show {jobId} --project \"{project}\" --json");
@@ -68,7 +82,7 @@ public sealed class RunnerKickRaceTests : IDisposable
     }
 
     /// Runs the real CLI with the kick enabled, sharing this test's isolated root and runner namespace.
-    private CliRun Cli(string arguments)
+    private CliRun Cli(string arguments, int idleSeconds = 2)
     {
         var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
@@ -82,7 +96,7 @@ public sealed class RunnerKickRaceTests : IDisposable
         start.Environment[RunnerOptions.RootVariable] = _root;
         start.Environment[RunnerOptions.NamespaceVariable] = _ownerNamespace;
         // The runner this kicks is nobody's to wait on, so bound how long it outlives the test.
-        start.Environment[RunnerOptions.IdleVariable] = "2";
+        start.Environment[RunnerOptions.IdleVariable] = idleSeconds.ToString(CultureInfo.InvariantCulture);
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();

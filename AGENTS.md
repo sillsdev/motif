@@ -65,6 +65,7 @@ bin/Debug/tests/SIL.Motif.Tests.Commands.dll
 bin/Debug/tests/SIL.Motif.Tests.Cli.dll
 bin/Debug/tests/SIL.Motif.Tests.Worker.dll
 bin/Debug/tests/SIL.Motif.Tests.App.dll
+bin/Debug/tests/SIL.Motif.Tests.App.Lifetime.dll
 bin/Debug/tests/fake-pangloss/      the suite's fake parser
 bin/Debug/spikes/                   the throwaway harnesses
 ```

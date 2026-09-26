@@ -15,6 +15,8 @@ internal static class FakeParser
 {
     private const string BehaviourFileName = "_fake-pangloss.json";
     private const string WrongDescriptionFileName = "_fake-pangloss-wrong-description";
+    private const string RecordInvocationsSentinel = "_fake-pangloss-record-invocations";
+    private const string InvocationsFileName = "_pangloss-invocations.log";
 
     /// <summary>
     /// The fake parser's path: a directory below the test binaries, never beside them, because parser
@@ -37,6 +39,27 @@ internal static class FakeParser
         File.WriteAllText(Path.Combine(candidateDirectory, BehaviourFileName),
             JsonSerializer.Serialize(behaviour));
 
+    /// <summary>
+    /// Tells one copy of the fake (from <see cref="Copy"/>) how to behave wherever its candidate is exported,
+    /// for work such as a Trial whose candidate lands in a directory the test cannot know in advance.
+    /// </summary>
+    internal static void BehaveBesideExecutable(string copiedExecutable, object behaviour) =>
+        Behave(Path.GetDirectoryName(copiedExecutable)!, behaviour);
+
+    /// <summary>
+    /// Copies the fake into <paramref name="directory"/> and has that copy log each command it runs, so a
+    /// test can tell that work reached this copy rather than some other parser.
+    /// </summary>
+    internal static string CopyRecordingInvocations(string directory) =>
+        CopyWithSentinel(directory, RecordInvocationsSentinel);
+
+    /// <summary>The commands a copy from <see cref="CopyRecordingInvocations"/> has run, in order.</summary>
+    internal static IReadOnlyList<string> Invocations(string copiedExecutable)
+    {
+        var log = Path.Combine(Path.GetDirectoryName(copiedExecutable)!, InvocationsFileName);
+        return File.Exists(log) ? File.ReadAllLines(log) : [];
+    }
+
     internal static string CopyWithWrongDescription(string candidateDirectory)
     {
         return CopyWithSentinel(candidateDirectory, WrongDescriptionFileName);
@@ -53,8 +76,14 @@ internal static class FakeParser
     {
         Directory.CreateDirectory(candidateDirectory);
         var sourceDirectory = Path.GetDirectoryName(ExecutablePath)!;
-        foreach (var source in Directory.EnumerateFiles(sourceDirectory, "pangloss.*"))
-            File.Copy(source, Path.Combine(candidateDirectory, Path.GetFileName(source)), overwrite: true);
+        // The whole build, not only pangloss.*: the SQLite statistics cache needs its own libraries beside it.
+        foreach (var source in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+        {
+            if (Path.GetFileName(source).StartsWith('_')) continue;
+            var target = Path.Combine(candidateDirectory, Path.GetRelativePath(sourceDirectory, source));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(source, target, overwrite: true);
+        }
         return Path.Combine(candidateDirectory, OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss");
     }
 }

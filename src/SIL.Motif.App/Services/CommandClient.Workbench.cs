@@ -26,7 +26,7 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<GrammarCheckResponse>> CheckGrammarAsync(
         GrammarCheckRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => GrammarCheckQuery.Query(request, cancellationToken));
+        OneAtATime(() => GrammarCheckQuery.Query(request, _options.ParserPath, cancellationToken));
 
     public Task<CommandOutcome<StoredGrammarCheckResponse>> ReadStoredGrammarCheckAsync(
         GrammarCheckRequest request, CancellationToken cancellationToken) =>
@@ -38,6 +38,6 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => WordTraceQuery.Query(request, cancellationToken));
+        OneAtATime(() => WordTraceQuery.Query(request, _options.ParserPath, cancellationToken));
 
 }

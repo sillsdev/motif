@@ -4,6 +4,8 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Commands;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -26,10 +28,9 @@ public sealed class CancelHandoffWalkthroughTests
         {
             AvaloniaHeadlessFixture.RunUntilComplete(() =>
             {
-                var holdingClient = new HoldingCommandClient(
-                    new CommandClient(project.ManagedRoot), holdHandoff: true);
+                var holdingGate = new HoldingStartGate(holdHandoff: true);
                 using var walkthrough = new WalkthroughWindow(
-                    project.ManagedRoot, project.FwDataPath, outputDirectory, holdingClient);
+                    project.ManagedRoot, project.FwDataPath, outputDirectory, startGate: holdingGate);
                 WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);
                 walkthrough.TypePastedWords(string.Join(Environment.NewLine,
                     ConformanceProject.OneAnalysisShort,
@@ -51,7 +52,7 @@ public sealed class CancelHandoffWalkthroughTests
                 Assert.True(walkthrough.Find<Avalonia.Controls.Button>(
                     "Cancel the running AI Handoff").IsEffectivelyEnabled);
                 walkthrough.Click("Cancel the running AI Handoff");
-                holdingClient.ReleaseHandoff();
+                holdingGate.ReleaseHandoff();
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Cancelled,
                     WalkthroughSteps.Remaining(deadline), "the Handoff cancellation did not unwind");

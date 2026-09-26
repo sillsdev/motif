@@ -67,15 +67,23 @@ public static class AssessCommand
         Assess(request, RunnerOptions.ResolveRoot(), onProgress, cancellationToken);
 
     /// <summary>
-    /// Measures the project under an explicitly supplied managed root. The single-argument overload is what
-    /// production code and the CLI call; this one exists so a test can supply its own disposable root.
+    /// Measures the project under an explicitly supplied managed root, with the parser the environment
+    /// locates. The CLI calls the overload without a root; the window calls the one that also takes the
+    /// parser; this one lets a test supply its own disposable root.
     /// </summary>
     public static CommandOutcome<AssessCommandResponse> Assess(
         AssessRequest request, string managedRoot, Action<AssessmentProgress>? onProgress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Assess(request, managedRoot, PanGlossExecutable.TryLocate(), onProgress, cancellationToken);
+
+    /// <summary>Measures a project under an explicit managed root with an explicitly selected parser.</summary>
+    /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
+    public static CommandOutcome<AssessCommandResponse> Assess(
+        AssessRequest request, string managedRoot, string? parserPath,
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
-        using var invoker = new PanGlossInvoker();
+        using var invoker = new PanGlossInvoker(parserPath);
         var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(new StatsCacheStore(ownership), invoker));
         return Run(request, managedRoot, assessor, invoker, onProgress, cancellationToken);
     }

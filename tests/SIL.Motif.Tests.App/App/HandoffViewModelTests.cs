@@ -5,6 +5,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -49,6 +50,22 @@ public sealed class HandoffViewModelTests
     private static HandoffCommandResponse NewResponseWithHeader(
         string outputDirectory, string pastedHeader, string handoffMarkdown) =>
         NewResponse(outputDirectory) with { PastedHeader = pastedHeader, HandoffMarkdown = handoffMarkdown };
+
+    [Fact]
+    public async Task AWrittenHandoffIsStampedWithTheComposedClock()
+    {
+        var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake) { AllWordforms = true };
+        var handoff = new HandoffViewModel(fake, selection, new FakeFolderPicker(@"C:\out"), new FakeDragSource(),
+            clock) { ProjectPath = ProjectPath, InvocationId = "invocation/one" };
+        fake.HandoffCompletesWith(NewResponse(@"C:\out", "handoff.md"));
+
+        await handoff.RunCommand.ExecuteAsync(null);
+
+        Assert.Equal(clock.GetLocalNow(), handoff.WrittenAt);
+        Assert.Equal($"Last written {clock.GetLocalNow().ToLocalTime():t}", handoff.WrittenAtText);
+    }
 
     [Fact]
     public async Task FilesWrittenBeforeTheLatestAssessmentSayTheyAreOutOfDate()
