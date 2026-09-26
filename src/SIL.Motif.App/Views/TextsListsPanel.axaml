@@ -63,14 +63,22 @@
           <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.Compare.CheckedWordText}" />
         </StackPanel>
         <Button Grid.Column="1" Content="AI Handoff" Command="{Binding Lists.HandOffListCommand}"
-                AutomationProperties.Name="AI Handoff for the whole selected list" />
+                AutomationProperties.Name="AI Handoff for the whole selected list"
+                AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
+                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" />
         <Button Grid.Column="2" Content="AI Handoff" Command="{Binding Lists.HandOffCheckedWordsCommand}"
-                AutomationProperties.Name="AI Handoff for ticked words in the selected list" />
+                AutomationProperties.Name="AI Handoff for ticked words in the selected list"
+                AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsDisabledReason}"
+                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsDisabledReason}" />
         <Button Grid.Column="3" Content="Add as candidate" Command="{Binding Lists.Compare.ProposeCommand}"
                 CommandParameter="add-candidate" AutomationProperties.Name="Add checked words as candidates" />
         <Button Grid.Column="4" Content="Incorrect spelling" Command="{Binding Lists.Compare.ProposeCommand}"
                 CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark checked words as incorrect spelling" />
         <StackPanel Grid.Row="1" Grid.ColumnSpan="5" Spacing="{DynamicResource Intent.Space.Compact}">
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.HandOffListDisabledReason}"
+                                   IsVisible="{Binding Lists.HandOffListUnavailable}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.HandOffCheckedWordsDisabledReason}"
+                                   IsVisible="{Binding Lists.HandOffCheckedWordsUnavailable}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding Lists.Compare.Changes.ShownRefusal}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.Compare.Changes.CollectionNotice}"
                                    TextWrapping="Wrap"
