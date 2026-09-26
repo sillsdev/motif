@@ -45,6 +45,10 @@ public sealed partial class FakeCommandClient
     public Refusal? PendingPutRefusal { get; set; }
     public int? PendingPutRefusalOnCall { get; set; }
     public PendingChangesSnapshot? PendingPutResponse { get; set; }
+    public Func<PendingChangesRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
+        PendingLoadHandler { get; set; }
+    public Func<PutPendingChangeRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
+        PendingPutHandler { get; set; }
 
     public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
     public List<RecheckPendingChangesRequest> PendingRecheckRequests { get; } = [];
@@ -66,6 +70,7 @@ public sealed partial class FakeCommandClient
         PendingChangesRequest request, CancellationToken cancellationToken)
     {
         PendingLoadRequests.Add(request);
+        if (PendingLoadHandler is { } handler) return handler(request, cancellationToken);
         return Completed(_pending);
     }
 
@@ -73,6 +78,7 @@ public sealed partial class FakeCommandClient
         PutPendingChangeRequest request, CancellationToken cancellationToken)
     {
         PendingPutRequests.Add(request);
+        if (PendingPutHandler is { } handler) return handler(request, cancellationToken);
         if (PendingPutRefusal is { } refusal &&
             (PendingPutRefusalOnCall is null || PendingPutRefusalOnCall == PendingPutRequests.Count))
             return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));

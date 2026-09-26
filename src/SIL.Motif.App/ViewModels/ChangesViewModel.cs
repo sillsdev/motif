@@ -44,10 +44,11 @@ public static class ChangeKinds
 /// <summary>
 /// The observable view of pending changes and each change's current fit with the FieldWorks project.
 /// </summary>
-public sealed partial class ChangesViewModel : ObservableObject
+public sealed partial class ChangesViewModel : ObservableObject, IProjectStateParticipant
 {
     private readonly ICommandClient _client;
     private readonly List<string> _collectionNotices = [];
+    private int _projectGeneration;
     public ChangesViewModel(ICommandClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
@@ -96,50 +97,61 @@ public sealed partial class ChangesViewModel : ObservableObject
 
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
-        if (ProjectPath is null) return;
-        Accept(await _client.LoadPendingChangesAsync(new PendingChangesRequest(
-            ProjectPath, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true));
+        if (ProjectPath is not { } path) return;
+        await ReloadAsync(path, _projectGeneration, cancellationToken).ConfigureAwait(true);
     }
 
     public async Task PutAsync(ChangeIntent change, CancellationToken cancellationToken = default)
     {
-        if (ProjectPath is null) throw new InvalidOperationException("Open a project before collecting changes.");
+        if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
+        await PutAsync(change, path, _projectGeneration, cancellationToken).ConfigureAwait(true);
+    }
+
+    private async Task PutAsync(
+        ChangeIntent change, string path, int generation, CancellationToken cancellationToken)
+    {
         var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
-            ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision, change),
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, change),
             cancellationToken).ConfigureAwait(true);
-        Accept(outcome);
+        if (!IsCurrentProject(path, generation)) return;
+        Accept(outcome, path, generation);
         if (outcome.Refusal?.Code == "change.revision-conflict")
-            await ReloadAfterConflictAsync(outcome.Refusal, cancellationToken);
+            await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken);
     }
 
     public async Task RecheckAsync(CancellationToken cancellationToken = default)
     {
-        if (ProjectPath is null) return;
+        if (ProjectPath is not { } path) return;
+        var generation = _projectGeneration;
         var outcome = await _client.RecheckPendingChangesAsync(new RecheckPendingChangesRequest(
-            ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision), cancellationToken)
+            path, MotifProductVersion.CurrentText, Snapshot.Revision), cancellationToken)
             .ConfigureAwait(true);
-        Accept(outcome);
+        if (!IsCurrentProject(path, generation)) return;
+        Accept(outcome, path, generation);
         if (outcome.Refusal?.Code == "change.revision-conflict")
-            await ReloadAfterConflictAsync(outcome.Refusal, cancellationToken).ConfigureAwait(true);
+            await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
     }
 
     public async Task AddAsync(string kind, CompareWordViewModel word,
         WorkspacePage originPage = WorkspacePage.Texts)
     {
         ArgumentNullException.ThrowIfNull(word);
+        if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
         var readings = kind == ChangeKinds.AddCandidate ? word.ReadingChoices :
             word.SelectedReading is { } selected ? [selected] : [];
         if (kind == ChangeKinds.IncorrectSpelling)
         {
-            await AddOneAsync(kind, word, null, originPage).ConfigureAwait(true);
+            await AddOneAsync(kind, word, null, originPage, path, generation).ConfigureAwait(true);
             return;
         }
         Refusal? firstRefusal = null;
         foreach (var reading in readings)
         {
-            await AddOneAsync(kind, word, reading, originPage).ConfigureAwait(true);
+            await AddOneAsync(kind, word, reading, originPage, path, generation).ConfigureAwait(true);
             firstRefusal ??= LastRefusal;
         }
+        if (!IsCurrentProject(path, generation)) return;
         if (firstRefusal is not null)
         {
             LastRefusal = firstRefusal;
@@ -174,28 +186,34 @@ public sealed partial class ChangesViewModel : ObservableObject
     }
 
     private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice,
-        WorkspacePage originPage)
+        WorkspacePage originPage, string path, int generation)
     {
+        if (!IsCurrentProject(path, generation)) return;
         await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", word.Word,
-            AssessmentId, choice?.Reading, DisplayReading: choice?.Label ?? word.FirstReading,
-            ReadingIndex: choice?.Index, OriginPage: originPage.ToString())).ConfigureAwait(true);
+                AssessmentId, choice?.Reading, DisplayReading: choice?.Label ?? word.FirstReading,
+                ReadingIndex: choice?.Index, OriginPage: originPage.ToString()), path, generation,
+            CancellationToken.None).ConfigureAwait(true);
     }
 
     private async Task RemoveAsync(ChangeViewModel? change)
     {
         if (change is null) return;
-        if (ProjectPath is null) return;
+        if (ProjectPath is not { } path) return;
+        var generation = _projectGeneration;
         var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
-            ProjectPath, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId),
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId),
             CancellationToken.None).ConfigureAwait(true);
-        Accept(outcome);
+        if (!IsCurrentProject(path, generation)) return;
+        Accept(outcome, path, generation);
         if (outcome.Refusal?.Code == "change.revision-conflict")
-            await ReloadAfterConflictAsync(outcome.Refusal, CancellationToken.None);
+            await ReloadAfterConflictAsync(outcome.Refusal, path, generation, CancellationToken.None);
     }
 
-    private async Task ReloadAfterConflictAsync(Refusal conflict, CancellationToken cancellationToken)
+    private async Task ReloadAfterConflictAsync(
+        Refusal conflict, string path, int generation, CancellationToken cancellationToken)
     {
-        await ReloadAsync(cancellationToken);
+        await ReloadAsync(path, generation, cancellationToken);
+        if (!IsCurrentProject(path, generation)) return;
         if (LastRefusal is not null) return;
         LastRefusal = conflict;
         OnPropertyChanged(nameof(LastRefusal));
@@ -205,6 +223,7 @@ public sealed partial class ChangesViewModel : ObservableObject
 
     public void Reset()
     {
+        _projectGeneration++;
         Items.Clear();
         Snapshot = new PendingChangesSnapshot(null, "none", [], []);
         LastRefusal = null;
@@ -217,8 +236,28 @@ public sealed partial class ChangesViewModel : ObservableObject
         Raise();
     }
 
-    private void Accept(CommandOutcome<PendingChangesSnapshot> outcome)
+    void IProjectStateParticipant.ClearProject()
     {
+        ProjectPath = null;
+        Reset();
+    }
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        OpenProjectAsync(projectPath, cancellationToken);
+
+    private async Task ReloadAsync(string path, int generation, CancellationToken cancellationToken)
+    {
+        var outcome = await _client.LoadPendingChangesAsync(new PendingChangesRequest(
+            path, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true);
+        Accept(outcome, path, generation);
+    }
+
+    private bool IsCurrentProject(string path, int generation) =>
+        generation == _projectGeneration && string.Equals(path, ProjectPath, StringComparison.Ordinal);
+
+    private void Accept(CommandOutcome<PendingChangesSnapshot> outcome, string path, int generation)
+    {
+        if (!IsCurrentProject(path, generation)) return;
         LastRefusal = outcome.Refusal;
         OnPropertyChanged(nameof(LastRefusal));
         OnPropertyChanged(nameof(ErrorText));
@@ -241,6 +280,8 @@ public sealed partial class ChangesViewModel : ObservableObject
         }
         Raise();
     }
+
+    ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Independent;
 
     private void AddCollectionNotice(string notice)
     {

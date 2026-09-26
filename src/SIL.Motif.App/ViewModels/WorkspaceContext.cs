@@ -58,11 +58,11 @@ public abstract record PageRequest(WorkspacePage Page);
 /// <see cref="Assess"/> and <see cref="Selection"/> when their controls operate on the same run. Navigation
 /// requests, such as <see cref="OpenWord"/>, reach page models without giving them the shell.
 /// </remarks>
-public sealed partial class WorkspaceContext : ObservableObject
+public sealed partial class WorkspaceContext : ObservableObject, IProjectStateParticipant
 {
     public WorkspaceContext(
         SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
-        IFileDragSource dragSource)
+        IFileDragSource dragSource, BaselineViewModel baseline)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -70,6 +70,7 @@ public sealed partial class WorkspaceContext : ObservableObject
         ArgumentNullException.ThrowIfNull(commands);
         ArgumentNullException.ThrowIfNull(folderPicker);
         ArgumentNullException.ThrowIfNull(dragSource);
+        ArgumentNullException.ThrowIfNull(baseline);
         Selection = selection;
         Assess = assess;
         Changes = changes;
@@ -77,6 +78,10 @@ public sealed partial class WorkspaceContext : ObservableObject
         FolderPicker = folderPicker;
         DragSource = dragSource;
         Assess.PropertyChanged += OnAssessPropertyChanged;
+        _projectParticipants.Add(baseline);
+        _projectParticipants.Add(selection);
+        _projectParticipants.Add(Changes);
+        _projectParticipants.Add(this);
     }
 
     /// <summary>What the one Assessment run measures; the Texts page edits it and the shell summarises it.</summary>
@@ -163,31 +168,96 @@ public sealed partial class WorkspaceContext : ObservableObject
     private WorkspacePage _currentPage;
 
     private readonly List<PageModel> _pages = [];
+    private readonly List<IProjectStateParticipant> _projectParticipants = [];
+    private CancellationTokenSource? _openCancellation;
+    private int _openGeneration;
 
     // Called by each page model's constructor, so the context reaches a page only through its hooks.
-    internal void Attach(PageModel page) => _pages.Add(page);
-
-    /// <summary>Registers the setup dialog that is shared by the shell.</summary>
-    internal void AttachSetup(SetupViewModel setup) => Setup = setup;
-
-    /// <summary>Forgets the evidence and tells every page to drop what it showed for the previous project.</summary>
-    public void ClearProject()
+    internal void Attach(PageModel page)
     {
-        Evidence = null;
-        CurrentEvidence = null;
-        Setup?.ProjectCleared();
-        foreach (var page in _pages) page.ProjectCleared();
+        _pages.Add(page);
+        _projectParticipants.Add(page);
     }
 
-    /// <summary>Opens <paramref name="projectPath"/> on every page, and returns once each has loaded it.</summary>
-    public async Task PublishProjectOpenedAsync(string projectPath, CancellationToken cancellationToken = default)
+    /// <summary>Registers the setup dialog that is shared by the shell.</summary>
+    internal void AttachSetup(SetupViewModel setup)
+    {
+        Setup = setup;
+        _projectParticipants.Add(setup);
+    }
+
+    /// <summary>Forgets the evidence and tells every page to drop what it showed for the previous project.</summary>
+    internal void ClearProject()
+    {
+        Interlocked.Increment(ref _openGeneration);
+        Interlocked.Exchange(ref _openCancellation, null)?.Cancel();
+        ClearOwnProjectState();
+        foreach (var participant in _projectParticipants.Where(participant => !ReferenceEquals(participant, this))
+                     .Reverse().ToArray())
+            participant.ClearProject();
+    }
+
+    private void ClearOwnProjectState()
+    {
+        Assess.Reset();
+        Evidence = null;
+        CurrentEvidence = null;
+        Baseline = null;
+        GrammarSummary = null;
+        AppliedSinceRefresh = false;
+        CurrentPage = WorkspacePage.Overview;
+        ProjectPath = null;
+        Assess.ProjectPath = null;
+    }
+
+    /// <summary>Clears and opens every project-bound participant before returning.</summary>
+    public async Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
-        ProjectPath = projectPath;
-        await Changes.OpenProjectAsync(projectPath, cancellationToken).ConfigureAwait(true);
-        foreach (var page in _pages.ToArray())
-            await page.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
-        if (Setup is not null) await Setup.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
+        var generation = Interlocked.Increment(ref _openGeneration);
+        var openCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var superseded = Interlocked.Exchange(ref _openCancellation, openCancellation);
+        superseded?.Cancel();
+        var participants = _projectParticipants.ToArray();
+        try
+        {
+            await StopProjectWorkAsync().ConfigureAwait(true);
+            if (!IsCurrentOpen(generation)) return;
+            openCancellation.Token.ThrowIfCancellationRequested();
+
+            ((IProjectStateParticipant)this).ClearProject();
+            foreach (var participant in participants.Where(participant => !ReferenceEquals(participant, this))
+                         .Reverse())
+                participant.ClearProject();
+            if (!IsCurrentOpen(generation)) return;
+            openCancellation.Token.ThrowIfCancellationRequested();
+
+            foreach (var stage in Enum.GetValues<ProjectOpenStage>())
+            {
+                if (!IsCurrentOpen(generation)) return;
+                openCancellation.Token.ThrowIfCancellationRequested();
+                try
+                {
+                    await Task.WhenAll(participants.Where(participant => participant.OpenStage == stage)
+                        .Select(participant => participant.OpenProjectAsync(projectPath, openCancellation.Token)))
+                        .ConfigureAwait(true);
+                }
+                catch (OperationCanceledException) when (!IsCurrentOpen(generation))
+                {
+                    return;
+                }
+                catch (Exception) when (!IsCurrentOpen(generation))
+                {
+                    return;
+                }
+                if (!IsCurrentOpen(generation)) return;
+            }
+        }
+        finally
+        {
+            Interlocked.CompareExchange(ref _openCancellation, null, openCancellation);
+            openCancellation.Dispose();
+        }
     }
 
     /// <summary>Tells every page a new Baseline was captured, and returns once each has reloaded.</summary>
@@ -204,6 +274,19 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         foreach (var page in _pages.ToArray()) await page.StopWorkAsync().ConfigureAwait(true);
     }
+
+    private async Task StopProjectWorkAsync()
+    {
+        // Await each command's unwind; its page model outlives this project.
+        if (Assess.IsActive)
+        {
+            Assess.CancelCommand.Execute(null);
+            if (Assess.RunCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
+        }
+        await StopPageWorkAsync().ConfigureAwait(true);
+    }
+
+    private bool IsCurrentOpen(int generation) => generation == Volatile.Read(ref _openGeneration);
 
     /// <summary>Publishes <paramref name="evidence"/> as what every page now shows.</summary>
     public void PublishEvidence(WorkspaceEvidence evidence)
@@ -269,4 +352,17 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         if (e.PropertyName == nameof(AssessViewModel.IsActive)) OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
     }
+
+    ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Context;
+
+    void IProjectStateParticipant.ClearProject() => ClearOwnProjectState();
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ProjectPath = projectPath;
+        Assess.ProjectPath = projectPath;
+        return Task.CompletedTask;
+    }
+
 }

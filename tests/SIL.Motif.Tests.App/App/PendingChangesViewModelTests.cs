@@ -151,11 +151,12 @@ public sealed class PendingChangesViewModelTests
             [new ChangeFit("change/two", false, [$"Wordform {InternalId} was deleted."])]));
         var changes = new ChangesViewModel(fake);
         var selection = new SelectionViewModel(fake);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection), changes, fake,
-            new FolderPicker(), new DragSource());
+            new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
         var review = new ReviewPageModel(context);
 
-        await context.PublishProjectOpenedAsync("project.fwdata");
+        await context.OpenProjectAsync("project.fwdata");
 
         Assert.False(Assert.Single(changes.Snapshot.FitSummary).StillFits);
         Assert.False(review.CanApply);

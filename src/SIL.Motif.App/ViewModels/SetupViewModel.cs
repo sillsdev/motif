@@ -10,7 +10,7 @@ using SIL.Motif.Host;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>The shell's four-step first-run setup and project configuration dialog.</summary>
-public sealed partial class SetupViewModel : ObservableObject
+public sealed partial class SetupViewModel : ObservableObject, IProjectStateParticipant
 {
     private const string DefaultSelectionName = "Default";
     private readonly WorkspaceContext _context;
@@ -209,6 +209,13 @@ public sealed partial class SetupViewModel : ObservableObject
         IsEditingExistingSelection = false;
         RefusalMessage = null;
     }
+
+    void IProjectStateParticipant.ClearProject() => ProjectCleared();
+
+    ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Setup;
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        ProjectOpenedAsync(projectPath, cancellationToken);
 
     /// <summary>Reopens setup from the project menu at its first step and with the saved values.</summary>
     public void OpenForConfiguration()

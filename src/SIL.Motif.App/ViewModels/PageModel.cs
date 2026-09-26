@@ -9,7 +9,7 @@ namespace SIL.Motif.App.ViewModels;
 /// evidence the context publishes and to the <see cref="PageRequest"/>s addressed to it, and owns what its page
 /// displays, including the count beside its sidebar label.
 /// </summary>
-public abstract partial class PageModel : ObservableObject
+public abstract partial class PageModel : ObservableObject, IProjectStateParticipant
 {
     protected PageModel(WorkspaceContext context)
     {
@@ -79,4 +79,11 @@ public abstract partial class PageModel : ObservableObject
     internal Task GrammarCheckedAsync(CancellationToken cancellationToken) => OnGrammarCheckedAsync(cancellationToken);
 
     internal void Requested(PageRequest request) => OnRequested(request);
+
+    void IProjectStateParticipant.ClearProject() => ProjectCleared();
+
+    ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Independent;
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        ProjectOpenedAsync(projectPath, cancellationToken);
 }

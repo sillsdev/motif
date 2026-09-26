@@ -23,7 +23,7 @@
 
         <Button x:Name="ProjectMenuButton" DockPanel.Dock="Left" VerticalAlignment="Center"
                 Theme="{DynamicResource OutlineButton}" Classes="Tertiary projectMenu"
-                IsEnabled="{Binding Context.ProjectAndSelectionEnabled}"
+                IsEnabled="{Binding ProjectSwitchEnabled}"
                 AutomationProperties.Name="Project menu">
           <StackPanel Classes="topBarGroup" Orientation="Horizontal">
             <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />
@@ -91,7 +91,7 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="1" RowDefinitions="Auto,Auto">
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto">
       <Border IsVisible="{Binding RerunOffered}" Classes="card banner">
         <DockPanel LastChildFill="True">
           <Button Content="Run again"
@@ -112,6 +112,12 @@
         <StackPanel>
           <views:CopyableTextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Row="2" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
+        <StackPanel>
+          <views:CopyableTextBlock Classes="error" Text="{Binding OpenRefusalMessage}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding OpenRefusalDetail}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
     </Grid>

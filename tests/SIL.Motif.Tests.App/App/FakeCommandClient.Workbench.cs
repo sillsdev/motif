@@ -43,6 +43,8 @@ public sealed partial class FakeCommandClient
     public List<WordTraceRequest> TraceWordRequests { get; } = [];
     public List<TimingRequest> TimingRequests { get; } = [];
     public List<string> CurrentEvidenceRequests { get; } = [];
+    public Func<string, CancellationToken, Task<CommandOutcome<CurrentEvidenceSnapshot>>>? CurrentEvidenceHandler
+        { get; set; }
 
     public void OnProjectHistory(
         Func<ProjectHistoryRequest, CancellationToken, Task<CommandOutcome<ProjectHistoryResponse>>> behavior) =>
@@ -109,6 +111,7 @@ public sealed partial class FakeCommandClient
         string projectPath, CancellationToken cancellationToken)
     {
         CurrentEvidenceRequests.Add(projectPath);
+        if (CurrentEvidenceHandler is { } handler) return handler(projectPath, cancellationToken);
         return _currentEvidence(projectPath, cancellationToken);
     }
 

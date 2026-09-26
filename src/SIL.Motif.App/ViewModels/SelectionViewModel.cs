@@ -16,7 +16,7 @@ namespace SIL.Motif.App.ViewModels;
 /// resolving a Selection's words happens later, inside the Assess command's own
 /// <see cref="SIL.Motif.Commands.Assess.SelectionComposer"/>, which is the one place that opens a project.
 /// </summary>
-public sealed partial class SelectionViewModel : ObservableObject
+public sealed partial class SelectionViewModel : ObservableObject, IProjectStateParticipant
 {
     private const string NothingSelectedYet = "Nothing selected yet.";
     private const string NegativeThresholdMessage = "The retry-slower-than threshold must not be negative.";
@@ -118,7 +118,15 @@ public sealed partial class SelectionViewModel : ObservableObject
     public async Task SetProjectAsync(string fwDataPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
+        ClearProject();
+        await LoadTextsAsync(fwDataPath, cancellationToken);
+    }
 
+    internal void ClearProject()
+    {
+        _textLoadGeneration++;
+        foreach (var text in _allTexts) text.PropertyChanged -= OnTextChoicePropertyChanged;
+        foreach (var text in _allTexts) text.IsChecked = false;
         _allTexts.Clear();
         Texts.Clear();
         SearchText = string.Empty;
@@ -132,8 +140,6 @@ public sealed partial class SelectionViewModel : ObservableObject
         RefusalMessage = null;
         TextsEmptyMessage = null;
         Recompute();
-
-        await LoadTextsAsync(fwDataPath, cancellationToken);
     }
 
     /// <summary>
@@ -270,4 +276,11 @@ public sealed partial class SelectionViewModel : ObservableObject
             .Select(line => line.Trim())
             .Where(line => line.Length > 0)
             .ToList();
+
+    ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Independent;
+
+    void IProjectStateParticipant.ClearProject() => ClearProject();
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        SetProjectAsync(projectPath, cancellationToken);
 }
