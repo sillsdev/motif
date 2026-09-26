@@ -64,6 +64,7 @@ that dispatches them.
 | `stats` | Released | `stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]` |
 | `selection show` | Released | `selection show --project <fwdata> [--json]` |
 | `selection set-default` | Released | `selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] [--add-words <word,word>] [--json]` |
+| `store delete-refused` | Developer | `store delete-refused --project <fwdata> [--json]` |
 | `overview` | Released | `overview --project <fwdata> [--json]` |
 | `warnings` | Released | `warnings --project <fwdata> [--kind <code>] [--left-out] [--json]` |
 | `grammar check` | Released | `grammar check --project <fwdata> [--json]` |

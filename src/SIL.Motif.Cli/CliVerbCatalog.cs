@@ -199,6 +199,9 @@ public static class CliVerbCatalog
             "Project", "setup", "setup skip",
             new[] { "setup skip --project <fwdata> [--json]" }),
         new CliVerbDescriptor(
+            "Project", "store", "store delete-refused",
+            new[] { "store delete-refused --project <fwdata> [--json]" }),
+        new CliVerbDescriptor(
             "Project", "overview", "overview",
             new[] { "overview --project <fwdata> [--json]" }),
         new CliVerbDescriptor(

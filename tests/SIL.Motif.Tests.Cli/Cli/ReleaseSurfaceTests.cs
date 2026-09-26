@@ -36,7 +36,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
         "compose-author-feature-structure", "promote-gloss", "label", "comment", "finalize",
         "discard-draft", "reopen", "duplicate", "remove-operations", "split", "defer", "reject",
         "supersede", "list", "show", "preflight", "dry-run", "dry-run --wait",
-        "trial", "trial --wait", "trial --pending", "apply", "log",
+        "trial", "trial --wait", "trial --pending", "apply", "log", "store delete-refused",
     ];
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-release-surface-" + Guid.NewGuid().ToString("N"));
