@@ -35,8 +35,10 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.ChooseNewProject();
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Baseline.FieldWorksHeldProject &&
-                    walkthrough.Workspace.Selection.Texts.Count == 1,
-                WalkthroughSteps.Remaining(deadline), "the window did not show the held project");
+                    walkthrough.Workspace.Selection.Texts.Count == 1 &&
+                    walkthrough.Workspace.Context.Setup?.IsOpen == true,
+                WalkthroughSteps.Remaining(deadline), "the window did not show the held project and its setup");
+            walkthrough.SkipSetup();
             walkthrough.ShowPage(WorkspacePage.Review);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Context.Changes.Items.Count == 1,
@@ -52,37 +54,49 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
     }
 
     [Fact]
-    public void AFieldWorksSaveShowsSavedSinceWithTheComposedClock()
+    public void AFieldWorksSaveShowsSavedSince()
     {
         using var project = new WalkthroughProject(pristine);
-        var clock = new FixedTimeProvider(DateTimeOffset.Now.AddHours(2));
-        var simulator = new FieldWorksSimulator(project.FwDataPath, clock);
+        var capturedAt = new DateTime(2026, 3, 2, 9, 15, 0, DateTimeKind.Local);
+        var savedAt = new DateTime(2026, 3, 4, 10, 30, 0, DateTimeKind.Local);
+        File.SetLastWriteTime(project.FwDataPath, capturedAt);
+        var simulator = new FieldWorksSimulator(project.FwDataPath,
+            new FixedClock(new DateTimeOffset(savedAt), TimeZoneInfo.Local));
         var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
-            using var walkthrough = new WalkthroughWindow(
-                project.ManagedRoot, project.FwDataPath, timeProvider: clock);
-            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
-            var numbersAt = walkthrough.Workspace.Baseline.SourceLastWriteUtc!.Value;
-            simulator.SaveEdit(cache =>
+            var culture = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            try
             {
-                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances().First();
-                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
-                    () => wordform.SpellingStatus = 1);
-            });
+                using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
+                WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
+                Assert.Equal(capturedAt.ToUniversalTime(),
+                    walkthrough.Workspace.Baseline.SourceLastWriteUtc!.Value.UtcDateTime);
+                simulator.SaveEdit(cache =>
+                {
+                    var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances().First();
+                    NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
+                        () => wordform.SpellingStatus = 1);
+                });
 
-            var check = walkthrough.Workspace.CheckFreshnessAsync();
-            walkthrough.WaitUntil(() => check.IsCompleted, TimeSpan.FromSeconds(30),
-                "the window did not check FieldWorks' save");
-            check.GetAwaiter().GetResult();
+                var check = walkthrough.Workspace.CheckFreshnessAsync();
+                walkthrough.WaitUntil(() => check.IsCompleted, TimeSpan.FromSeconds(30),
+                    "the window did not check FieldWorks' save");
+                check.GetAwaiter().GetResult();
 
-            var savedAt = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FwDataPath), TimeSpan.Zero);
-            var expected = $"{Path.GetFileNameWithoutExtension(project.FwDataPath)} saved {When(savedAt)}; " +
-                $"the numbers still describe {When(numbersAt)} until you refresh.";
-            Assert.Equal(ProjectFreshness.SavedSince, walkthrough.Workspace.Freshness);
-            Assert.Equal("FieldWorks saved since", walkthrough.Workspace.FreshnessLabel);
-            Assert.Equal(expected, walkthrough.Workspace.FreshnessDetail);
+                Assert.Equal(ProjectFreshness.SavedSince, walkthrough.Workspace.Freshness);
+                Assert.Equal("FieldWorks saved since", walkthrough.Workspace.FreshnessLabel);
+                Assert.Equal(
+                    $"{Path.GetFileNameWithoutExtension(project.FwDataPath)} saved Wed 4 Mar, 10:30; " +
+                    "the numbers still describe Mon 2 Mar, 09:15 until you refresh.",
+                    walkthrough.Workspace.FreshnessDetail);
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = culture;
+            }
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
@@ -115,21 +129,5 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 CanonicalId.FromGuid(wordformId).Value, form)), CancellationToken.None)
             .GetAwaiter().GetResult();
         Assert.True(put.Succeeded, put.Refusal?.Message);
-    }
-
-    private static string When(DateTimeOffset at)
-    {
-        var local = at.ToLocalTime();
-        return local.Date == DateTime.Today
-            ? local.ToString("t", CultureInfo.CurrentCulture) + " today"
-            : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) +
-              local.ToString("t", CultureInfo.CurrentCulture);
-    }
-
-    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
-
-        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Local;
     }
 }

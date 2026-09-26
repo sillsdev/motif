@@ -8,6 +8,7 @@ using SIL.Motif.App.Composition;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Lifetime;
@@ -23,7 +24,7 @@ public sealed class AppStartupCompositionTests
             managedRoot,
             Path.Combine(managedRoot, "pangloss.exe"),
             new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, Path.Combine(managedRoot, "pangloss.exe"))),
-            new FixedTimeProvider(new DateTimeOffset(2026, 9, 25, 12, 0, 0, TimeSpan.Zero)),
+            new FixedClock(new DateTimeOffset(2026, 9, 25, 12, 0, 0, TimeSpan.Zero)),
             new CancelProjectPicker(),
             new CancelFolderPicker(),
             new NoOpDragSource());
@@ -55,13 +56,6 @@ public sealed class AppStartupCompositionTests
             Dispatcher.UIThread.RunJobs();
             if (Directory.Exists(managedRoot)) Directory.Delete(managedRoot, recursive: true);
         }
-    }
-
-    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
-
-        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
     }
 
     private sealed class CancelProjectPicker : IProjectPicker

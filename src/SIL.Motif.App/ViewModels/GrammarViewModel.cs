@@ -16,13 +16,15 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class GrammarViewModel : ObservableObject
 {
     private readonly ICommandClient _commandClient;
+    private readonly TimeProvider _timeProvider;
     private string? _projectPath;
     private int _generation;
 
-    public GrammarViewModel(ICommandClient commandClient)
+    public GrammarViewModel(ICommandClient commandClient, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         CheckCommand = new AsyncRelayCommand(CheckAsync, () => _projectPath is not null);
         Warnings.PropertyChanged += OnWarningsChanged;
     }
@@ -138,12 +140,13 @@ public sealed partial class GrammarViewModel : ObservableObject
         ElapsedSeconds = 0;
 
         var checking = _commandClient.CheckGrammarAsync(new GrammarCheckRequest(path), cancellationToken);
-        var started = System.Diagnostics.Stopwatch.StartNew();
+        var started = _timeProvider.GetTimestamp();
         while (!checking.IsCompleted)
         {
-            await Task.WhenAny(checking, Task.Delay(1000, CancellationToken.None)).ConfigureAwait(true);
+            await Task.WhenAny(checking, Task.Delay(TimeSpan.FromSeconds(1), _timeProvider, CancellationToken.None))
+                .ConfigureAwait(true);
             if (generation != _generation) return;
-            ElapsedSeconds = (int)started.Elapsed.TotalSeconds;
+            ElapsedSeconds = (int)_timeProvider.GetElapsedTime(started).TotalSeconds;
         }
 
         var outcome = await checking.ConfigureAwait(true);
