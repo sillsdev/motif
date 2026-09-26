@@ -435,6 +435,15 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         var generation = _refreshGeneration;
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
         if (!IsCurrentRefresh(generation, path)) return;
+        try
+        {
+            await Project.LoadKnownProjectsAsync().ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // A failed recent-project read must not undo the Baseline already captured.
+        }
+        if (!IsCurrentRefresh(generation, path)) return;
         await Context.PublishBaselineCapturedAsync().ConfigureAwait(true);
     }
 
