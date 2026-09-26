@@ -43,6 +43,8 @@ public static class ProposalCommandRenderer
             PreflightResponse p => RenderPreflight(p),
             PendingChangesSnapshot p => RenderPendingChanges(p),
             ApplyProjection p => ProjectionText.Render(p),
+            ApplyPendingResult { Receipt: { } receipt } => ProjectionText.Render(receipt),
+            ApplyPendingResult => "Nothing to apply." + Environment.NewLine,
             AppliedLogProjection p => ProjectionText.Render(p),
             DraftCreatedResponse r => RenderDraftCreated(r),
             SetGlossAddedResponse r => RenderSetGlossAdded(r),

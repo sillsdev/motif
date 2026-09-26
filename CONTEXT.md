@@ -180,7 +180,8 @@ _Avoid_: drift, merge conflict, failed assessment
 
 **Receipt**:
 The record that one Proposal was applied to one project, naming the before and after state. The
-durable edge in a project's history.
+durable edge in a project's history. It carries the short message the person gave when applying, which
+is pre-filled with a summary of the changes, so they can later recognise what they did.
 _Avoid_: application receipt, success result, audit log
 
 **Report**:

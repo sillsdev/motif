@@ -427,6 +427,11 @@ try
                 return Usage(
                     "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] [--json]", asJson);
             }
+            var dryRunWaitTimeout = JobCommands.DefaultWaitTimeout;
+            if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
+                "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] " +
+                "[--wait-timeout-ms <ms>] [--json]", asJson, out dryRunWaitTimeout) is { } dryRunUsage)
+                return dryRunUsage;
             result = RenderCommand(
                 JobCommands.EnqueueDryRun(
                     new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0]), usage),
@@ -436,21 +441,51 @@ try
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var dryRunJobId = result.Output.Trim();
-                var waitTimeout = flags.TryGetValue("wait-timeout-ms", out var waitTimeoutRaw) &&
-                    int.TryParse(waitTimeoutRaw, out var waitTimeoutMs)
-                    ? TimeSpan.FromMilliseconds(waitTimeoutMs)
-                    : JobCommands.DefaultWaitTimeout;
                 result = RenderCommand(JobCommands.WaitForDryRun(new WaitForDryRunRequest(
-                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, waitTimeout)));
+                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, dryRunWaitTimeout)));
             }
             break;
 
         case "trial":
+            if (flags.ContainsKey("pending"))
+            {
+                if (positionals.Count != 0 || !flags.ContainsKey("wait") ||
+                    !flags.TryGetValue("project", out var pendingTrialProject) ||
+                    !flags.TryGetValue("words", out var pendingTrialWords))
+                {
+                    return Usage(
+                        "Usage: motif trial --pending --project <fwdata> [--draft <id>] [--revision <r>] " +
+                        "--words <w,…> --wait [--wait-timeout-ms <ms>] " +
+                        "[--before-correctness <assessmentId>] [--json]", asJson);
+                }
+                var words = pendingTrialWords.Split(',',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (words.Length == 0)
+                    return Usage("Usage: motif trial --pending requires at least one --words value.", asJson);
+                if (ParseWaitTimeout(flags,
+                    "Usage: motif trial --pending --project <fwdata> [--draft <id>] [--revision <r>] " +
+                    "--words <w,…> --wait [--wait-timeout-ms <ms>] " +
+                    "[--before-correctness <assessmentId>] [--json]", asJson, out var pendingWaitTimeout)
+                    is { } pendingTrialUsage)
+                    return pendingTrialUsage;
+                result = RunWithConsoleCancellation(cancellationToken => RenderCommand(
+                    PendingChangesWorkflow.Measure(new MeasurePendingRequest(
+                        pendingTrialProject, flags.GetValueOrDefault("draft"),
+                        flags.GetValueOrDefault("revision"), words,
+                        flags.GetValueOrDefault("before-correctness")), new Progress<MeasureProgress>(),
+                        cancellationToken, pendingWaitTimeout).GetAwaiter().GetResult()));
+                break;
+            }
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var trialProject))
             {
                 return Usage(
                     "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]", asJson);
             }
+            var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
+            if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
+                "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] " +
+                "[--wait] [--wait-timeout-ms <ms>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
+                return trialUsage;
             result = RenderCommand(
                 JobCommands.EnqueueTrial(
                     new EnqueueTrialRequest(
@@ -463,16 +498,25 @@ try
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var trialJobId = result.Output.Trim();
-                var trialWaitTimeout = flags.TryGetValue("wait-timeout-ms", out var trialWaitTimeoutRaw) &&
-                    int.TryParse(trialWaitTimeoutRaw, out var trialWaitTimeoutMs)
-                    ? TimeSpan.FromMilliseconds(trialWaitTimeoutMs)
-                    : JobCommands.DefaultWaitTimeout;
                 result = RenderCommand(JobCommands.WaitForJob(
                     new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout)));
             }
             break;
 
         case "apply":
+            if (flags.ContainsKey("all-pending"))
+            {
+                if (positionals.Count != 0 || !flags.TryGetValue("project", out var pendingApplyProject))
+                    return Usage(
+                        "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] " +
+                        "[--user <name>] [--json]", asJson);
+                var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
+                    DraftId: null, Revision: flags.GetValueOrDefault("revision"),
+                    User: flags.GetValueOrDefault("user") ?? Environment.UserName);
+                result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
+                    PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
+                break;
+            }
             if (positionals.Count != 1 ||
                 !flags.TryGetValue("project", out var applyProject) ||
                 !flags.TryGetValue("user", out var applyUser))
@@ -911,6 +955,16 @@ int Usage(string message, bool asJson = false, bool withUsageBanner = false)
     return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
 }
 
+int? ParseWaitTimeout(Dictionary<string, string> flags, string usageLine, bool asJson, out TimeSpan timeout)
+{
+    timeout = JobCommands.DefaultWaitTimeout;
+    if (!flags.TryGetValue("wait-timeout-ms", out var raw)) return null;
+    if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var milliseconds))
+        return Usage(usageLine, asJson);
+    timeout = TimeSpan.FromMilliseconds(milliseconds);
+    return null;
+}
+
 static string ConfigUsage() => UsageLineFor("config show");
 
 static string ReportUsage() => UsageLineFor("report");
@@ -945,6 +999,25 @@ static string JobsUsage() =>
     "motif jobs cancel <jobId> --project <fwdata> [--json] OR motif jobs requeue <jobId> --project <fwdata> " +
     "[--json] OR " + JobsMoveUsage();
 
+static CommandResult RunWithConsoleCancellation(Func<CancellationToken, CommandResult> run)
+{
+    using var cancellation = new CancellationTokenSource();
+    ConsoleCancelEventHandler handler = (_, eventArgs) =>
+    {
+        eventArgs.Cancel = true;
+        cancellation.Cancel();
+    };
+    Console.CancelKeyPress += handler;
+    try
+    {
+        return run(cancellation.Token);
+    }
+    finally
+    {
+        Console.CancelKeyPress -= handler;
+    }
+}
+
 static string JobsMoveUsage() => UsageLineFor("jobs move");
 
 /// <summary>The one printed usage line CliVerbCatalog holds for a catalogued command name.</summary>
@@ -968,6 +1041,10 @@ static string ResolveCommandName(string[] invocation)
     if (invocation.Length == 0) return string.Empty;
 
     var first = invocation[0];
+    if (first == "apply" && invocation.Contains("--all-pending", StringComparer.Ordinal))
+        return "apply --all-pending";
+    if (first == "trial" && invocation.Contains("--pending", StringComparer.Ordinal))
+        return "trial --pending";
     if (first is "config" or "baseline" or "jobs" or "selection" or "texts" or "setup")
     {
         var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;

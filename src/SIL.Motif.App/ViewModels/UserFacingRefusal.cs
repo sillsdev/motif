@@ -22,7 +22,7 @@ internal static class UserFacingRefusal
         "change.cannot-compose" => "This change could not be added. Refresh the changes and try again.",
         "change.no-effect" => "This change would not alter the project.",
         "apply.project-in-use" => "FieldWorks has this project open. Close it before applying changes.",
-        "apply.change-no-longer-fits" or "review.change-no-longer-fits" =>
+        "apply.change-no-longer-fits" =>
             "One or more changes no longer fit. Remove those changes first.",
         "apply.reconciliation-needed" =>
             "Applying may have completed, but its result could not be confirmed. Check the project before retrying.",
@@ -31,11 +31,15 @@ internal static class UserFacingRefusal
         "apply.regression" => "The check found worse results for words already measured. Review them before applying.",
         "apply.not-ready" or "apply.dry-run-missing" =>
             "The check did not give enough evidence to apply these changes. Check them again.",
-        "review.changes-changed" => "The changes have changed. Check the numbers again before applying.",
-        "review.reopen-failed" =>
+        "apply.changes-changed" => "The changes changed. Refresh them before applying.",
+        "apply.reopen-failed" =>
             "The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.",
-        "review.measurement-incomplete" => "The check did not finish. Try it again.",
-        "review.measurement-cancelled" => "The check was cancelled.",
+        "trial.measurement-incomplete" => "The check did not finish. Try it again.",
+        "job.wait-cancelled" => "The check was cancelled.",
+        "job.wait-timeout" => "The check took too long and was stopped. Your changes are unchanged; try applying again.",
+        "trial.nothing-pending" => "There are no changes to check.",
+        "trial.changes-changed" => "The changes were updated while they were being checked. Check them again.",
+        "project.wait-cancelled" => "Waiting to use the project was cancelled.",
         _ => "Motif could not complete this request. Review the project and try again.",
     };
 }

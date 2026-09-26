@@ -13,6 +13,19 @@ using SIL.Motif.Model.Receipts;
 
 namespace SIL.Motif.Worker.Store;
 
+/// <summary>The result of committing a Draft.</summary>
+public enum DraftFinalizationResult
+{
+    /// <summary>The Draft became its Proposal's first committed revision.</summary>
+    Finalized,
+
+    /// <summary>The Draft became a new revision of a Proposal that was already committed.</summary>
+    Amended,
+
+    /// <summary>The Draft no longer matches the expected revision, and no store rows changed.</summary>
+    DraftChanged,
+}
+
 /// <summary>Durable Proposal workflow access through a worker-owned Motif database.</summary>
 public interface IProposalRepository
 {
@@ -49,8 +62,19 @@ public interface IProposalRepository
     /// already recorded under this Proposal) leaves the Draft exactly as it was — none of the four
     /// effects is observable without all of them.
     /// </summary>
-    /// <returns><c>true</c> when this id already carried a committed revision — an amend, not a first commit.</returns>
-    bool Finalize(string draftName, string intentDigest, string proposalJson, string label, string comment);
+    /// <param name="draftName">The name identifying the Draft to commit.</param>
+    /// <param name="intentDigest">The digest of the finalized Proposal content.</param>
+    /// <param name="proposalJson">The finalized Proposal JSON, stored as the new revision.</param>
+    /// <param name="label">The Proposal's short description.</param>
+    /// <param name="comment">The Proposal's extended explanation.</param>
+    /// <param name="expectedDraftRevision">The expected Draft content revision, or <see langword="null"/> to skip the check.</param>
+    /// <returns>
+    /// <see cref="DraftFinalizationResult.Finalized"/> for a first commit,
+    /// <see cref="DraftFinalizationResult.Amended"/> for a new revision, or
+    /// <see cref="DraftFinalizationResult.DraftChanged"/> when the expected revision no longer matches and no rows changed.
+    /// </returns>
+    DraftFinalizationResult Finalize(string draftName, string intentDigest, string proposalJson, string label, string comment,
+        string? expectedDraftRevision = null);
     /// <summary>
     /// Loads one finalized Proposal, verifying that its recorded revision exists and that the
     /// revision's own embedded id and recomputed digest agree with the pointer that named it.
@@ -382,7 +406,8 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     /// <inheritdoc />
-    public bool Finalize(string draftName, string intentDigest, string proposalJson, string label, string comment)
+    public DraftFinalizationResult Finalize(string draftName, string intentDigest, string proposalJson, string label, string comment,
+        string? expectedDraftRevision = null)
     {
         if (string.IsNullOrWhiteSpace(intentDigest) || string.IsNullOrWhiteSpace(proposalJson))
             throw new ArgumentException("Finalize requires an intent digest and Proposal content.", nameof(intentDigest));
@@ -390,16 +415,20 @@ public sealed class ProposalRepository : IProposalRepository
         using var transaction = connection.BeginTransaction();
         string proposalId;
         bool wasAmend;
+        string? draftJson;
         using (var find = connection.CreateCommand())
         {
             find.Transaction = transaction;
-            find.CommandText = "SELECT ProposalId, CurrentIntentDigest FROM Proposals WHERE DraftName = $name;";
+            find.CommandText = "SELECT ProposalId, CurrentIntentDigest, DraftJson FROM Proposals WHERE DraftName = $name;";
             find.Parameters.AddWithValue("$name", draftName);
             using var reader = find.ExecuteReader();
             if (!reader.Read()) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
             proposalId = reader.GetString(0);
             wasAmend = !reader.IsDBNull(1);
+            draftJson = reader.IsDBNull(2) ? null : reader.GetString(2);
         }
+        if (expectedDraftRevision is not null && DraftRevision.Compute(draftJson) != expectedDraftRevision)
+            return DraftFinalizationResult.DraftChanged;
         var bytes = Encoding.UTF8.GetBytes(proposalJson);
         bool revisionExists;
         using (var existing = connection.CreateCommand())
@@ -442,7 +471,7 @@ public sealed class ProposalRepository : IProposalRepository
             commit.ExecuteNonQuery();
         }
         transaction.Commit();
-        return wasAmend;
+        return wasAmend ? DraftFinalizationResult.Amended : DraftFinalizationResult.Finalized;
     }
 
     /// <inheritdoc />

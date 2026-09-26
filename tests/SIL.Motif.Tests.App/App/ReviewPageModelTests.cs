@@ -85,7 +85,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult("job/one", "revision/one", "complete", true));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one", "complete", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.PublishProjectOpenedAsync(ProjectPath);
@@ -110,7 +110,7 @@ public sealed class ReviewPageModelTests
         context.OpenPage(WorkspacePage.Review);
 
         Assert.Empty(fake.AssessRequests);
-        Assert.Empty(fake.ReviewTrialRequests);
+        Assert.Empty(fake.MeasurePendingRequests);
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -130,8 +130,114 @@ public sealed class ReviewPageModelTests
         await page.MeasureCommand.ExecuteAsync(null);
 
         Assert.True(page.CanApply);
-        Assert.Equal(["first"], Assert.Single(fake.ReviewTrialRequests).Words);
+        Assert.Equal(["first"], Assert.Single(fake.MeasurePendingRequests).Words);
         Assert.Contains("1 search completed", page.NumbersText);
+    }
+
+    [Fact]
+    public async Task ACancelledMeasurementShowsTheCancellationMessage()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingRefusal = new Refusal("job.wait-cancelled", FailureReason.Cancelled,
+            "Waiting for job 'job/one' was cancelled.");
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        Assert.Equal("The check was cancelled.", page.MeasurementError);
+    }
+
+    [Fact]
+    public async Task ACheckOfChangesThatChangedMeanwhileRefreshesThemAndAsksForAnotherCheck()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingRefusal = new Refusal("trial.changes-changed", FailureReason.Refused,
+            "The changes changed. Reload them before measuring.");
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
+            [Change("kept", "first"), Change("added", "second")],
+            [new ChangeFit("kept", true, []), new ChangeFit("added", true, [])]));
+
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        Assert.Equal("revision/two", context.Changes.Snapshot.Revision);
+        Assert.Equal("The changes were updated while they were being checked. Check them again.",
+            page.MeasurementError);
+    }
+
+    [Theory]
+    [InlineData("trial.nothing-pending", "There are no changes to check.")]
+    [InlineData("apply.nothing-pending", "Motif could not complete this request. Review the project and try again.")]
+    public void CheckRefusalsUseTheWindowsWords(string code, string expected) =>
+        Assert.Equal(expected, UserFacingRefusal.MessageOf(new Refusal(code, FailureReason.Refused, "detail")));
+
+    [Fact]
+    public async Task ATimedOutApplyShowsThatTheCheckWasStopped()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+            "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
+        fake.ApplyPendingRefusal = new Refusal("job.wait-timeout", FailureReason.Busy,
+            "The wait expired.");
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+
+        await page.MeasureCommand.ExecuteAsync(null);
+        await page.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Equal("The check took too long and was stopped. Your changes are unchanged; try applying again.",
+            page.ApplyError);
+    }
+
+    [Fact]
+    public async Task OpeningAnotherProjectCancelsApplyAndDiscardsTheOldProjectResult()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one", "complete", true));
+        var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.ApplyPendingHandler = async (_, cancellationToken) =>
+        {
+            started.SetResult(cancellationToken);
+            var cancellationSignal = Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            if (await Task.WhenAny(cancellationSignal, release.Task) == cancellationSignal)
+            {
+                try { await cancellationSignal; }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+            }
+            return CommandOutcome<ApplyPendingResult>.Refused(new Refusal(
+                "job.wait-cancelled", FailureReason.Cancelled, "Waiting for the Dry Run was cancelled."));
+        };
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        var applying = page.ApplyCommand.ExecuteAsync(null);
+        var applyToken = await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await context.PublishProjectOpenedAsync(@"C:\projects\two.fwdata");
+        var cancelled = applyToken.IsCancellationRequested;
+        release.TrySetResult();
+        await applying.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(cancelled);
+        Assert.False(page.IsApplying);
+        Assert.Null(page.ApplyError);
+        Assert.Contains(fake.PendingLoadRequests,
+            request => request.FwDataPath == @"C:\projects\two.fwdata");
     }
 
     [Fact]
@@ -140,9 +246,9 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
-        fake.ReviewApplyCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
+        fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -153,8 +259,31 @@ public sealed class ReviewPageModelTests
 
         Assert.Empty(context.Changes.Items);
         Assert.Equal("draft/one", page.Receipt!.ProposalId);
-        Assert.Equal("revision/one", Assert.Single(fake.ReviewApplyRequests).Revision);
+        Assert.Equal("revision/one", Assert.Single(fake.ApplyPendingRequests).Revision);
         Assert.True(context.AppliedSinceRefresh);
+    }
+
+    [Fact]
+    public async Task AnApplyThatFoundNothingPendingShowsNoReceiptAndLeavesTheProjectUnchanged()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+            "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
+        fake.ApplyPendingHandler = (_, _) =>
+            Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        await page.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Null(page.Receipt);
+        Assert.False(page.HasReceipt);
+        Assert.Null(page.ApplyError);
+        Assert.False(context.AppliedSinceRefresh);
     }
 
     [Fact]
@@ -163,9 +292,9 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
-        fake.ReviewApplyRefusal = new Refusal("apply.regression", FailureReason.Refused,
+        fake.ApplyPendingRefusal = new Refusal("apply.regression", FailureReason.Refused,
             "Approved readings matched less often.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -193,7 +322,7 @@ public sealed class ReviewPageModelTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first") with { OriginPage = "Warnings" }],
             [new ChangeFit("kept", true, [])]));
-        fake.ReviewTrialCompletesWith(new ReviewTrialResult(
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);

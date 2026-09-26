@@ -1,3 +1,4 @@
+using SIL.LCModel;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -26,7 +27,9 @@ public static partial class ProposalCommands
                 return CommandOutcome<PreflightResponse>.Success(
                     new PreflightResponse(id, ChangeFitPreflight.Check(cache, proposal, currentBaseline)));
             }
-            catch (Exception ex)
+            // A held or saving project is busy, not refused; the store boundary classifies those for a retry.
+            catch (Exception ex) when (ex is not (LcmFileLockedException or ProjectSavingException
+                or ProjectBaselineBusyException))
             {
                 return CommandOutcome<PreflightResponse>.Refused(new Refusal(
                     "preflight.unavailable", FailureReason.Refused, ex.Message,

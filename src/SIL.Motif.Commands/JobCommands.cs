@@ -49,8 +49,6 @@ public static class JobCommands
     /// <summary><c>--wait</c>'s default bound before it gives up and reports the job still unfinished.</summary>
     public static readonly TimeSpan DefaultWaitTimeout = TimeSpan.FromMinutes(2);
 
-    private static readonly TimeSpan WaitPollInterval = TimeSpan.FromMilliseconds(200);
-
     /// <summary>Queues a Baseline refresh for one project and returns the job id that names it.</summary>
     public static CommandOutcome<JobEnqueuedResponse> EnqueueBaselineRefresh(EnqueueBaselineRefreshRequest request)
     {
@@ -127,6 +125,13 @@ public static class JobCommands
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
 
+            if (record.DraftName is not null && request.ExpectedDraftRevision is { } expectedRevision &&
+                DraftRevision.Compute(record.ProposalJson) != expectedRevision)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                    "draft.revision-conflict", FailureReason.Refused,
+                    "The Draft changed after it was checked. Reload it before queueing a Trial.",
+                    new Dictionary<string, string>(StringComparer.Ordinal) { ["draftName"] = record.DraftName }));
+
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
@@ -150,30 +155,18 @@ public static class JobCommands
     /// A job still not terminal when <see cref="WaitForDryRunRequest.Timeout"/> elapses is reported as its
     /// own distinct refusal rather than as though the Dry Run had failed.
     /// </summary>
-    public static CommandOutcome<DryRunProjection> WaitForDryRun(WaitForDryRunRequest request)
+    public static CommandOutcome<DryRunProjection> WaitForDryRun(
+        WaitForDryRunRequest request, CancellationToken cancellationToken = default,
+        bool cancelOnTimeout = false)
     {
+        var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellationToken,
+            request.Timeout, request.ProductVersion, cancelOnTimeout).GetAwaiter().GetResult();
+        if (!waited.Succeeded) return CommandOutcome<DryRunProjection>.Refused(waited.Refusal!);
+
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
-            var jobs = new JobRepository(database);
-            var deadline = DateTimeOffset.UtcNow + request.Timeout;
-            JobRecord? job;
-            while (true)
-            {
-                job = jobs.Get(request.JobId);
-                if (job is null) return CommandOutcome<DryRunProjection>.Refused(JobNotFound(request.JobId));
-                if (JobStateMachine.IsTerminal(job.Status)) break;
-                if (DateTimeOffset.UtcNow >= deadline)
-                {
-                    return CommandOutcome<DryRunProjection>.Refused(new Refusal(
-                        "job.wait-timeout", FailureReason.Busy,
-                        "Timed out after " + request.Timeout + " waiting for Dry Run job '" + request.JobId +
-                        "' to finish; it is still " + JobStatusJson.ToWire(job.Status) +
-                        ". Check again with 'jobs show " + request.JobId + " --project <fwdata>'.",
-                        Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(job.Status)))));
-                }
-                Thread.Sleep(WaitPollInterval);
-            }
-
+            var job = new JobRepository(database).Get(request.JobId);
+            if (job is null) return CommandOutcome<DryRunProjection>.Refused(JobNotFound(request.JobId));
             if (job.Status != JobStatus.CompletedDryRunOnly || job.DryRunJson is null)
             {
                 return CommandOutcome<DryRunProjection>.Refused(new Refusal(
@@ -207,35 +200,9 @@ public static class JobCommands
     /// does — used by verbs, such as <c>trial</c>, whose completion has no Dry-Run-specific anchor to
     /// bind and so needs no projection of its own beyond the job's own terminal status.
     /// </summary>
-    public static CommandOutcome<JobStatusResponse> WaitForJob(WaitForJobRequest request)
-    {
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-        {
-            var jobs = new JobRepository(database);
-            var deadline = DateTimeOffset.UtcNow + request.Timeout;
-            JobRecord? job;
-            while (true)
-            {
-                job = jobs.Get(request.JobId);
-                if (job is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
-                if (JobStateMachine.IsTerminal(job.Status)) break;
-                if (DateTimeOffset.UtcNow >= deadline)
-                {
-                    return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
-                        "job.wait-timeout", FailureReason.Busy,
-                        "Timed out after " + request.Timeout + " waiting for job '" + request.JobId +
-                        "' to finish; it is still " + JobStatusJson.ToWire(job.Status) +
-                        ". Check again with 'jobs show " + request.JobId + " --project <fwdata>'.",
-                        Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(job.Status)))));
-                }
-                Thread.Sleep(WaitPollInterval);
-            }
-
-            return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(job.JobId, job.ProjectKey, true,
-                job.Kind, job.Status, job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory,
-                job.Version));
-        });
-    }
+    public static CommandOutcome<JobStatusResponse> WaitForJob(WaitForJobRequest request) =>
+        JobWait.WaitAsync(request.FwDataPath, request.JobId, null, CancellationToken.None,
+            request.Timeout, request.ProductVersion).GetAwaiter().GetResult();
 
     /// <summary>Reports what the durable store currently says about one job.</summary>
     public static CommandOutcome<JobStatusResponse> Show(ShowJobRequest request)

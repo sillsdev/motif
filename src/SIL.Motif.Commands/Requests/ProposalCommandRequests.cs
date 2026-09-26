@@ -47,7 +47,8 @@ public sealed record LabelRequest(string FwDataPath, string ProductVersion, stri
 
 public sealed record CommentRequest(string FwDataPath, string ProductVersion, string DraftName, string Text);
 
-public sealed record FinalizeRequest(string FwDataPath, string ProductVersion, string DraftName);
+public sealed record FinalizeRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string? ExpectedRevision = null);
 
 public sealed record DiscardDraftRequest(string FwDataPath, string ProductVersion, string DraftName);
 

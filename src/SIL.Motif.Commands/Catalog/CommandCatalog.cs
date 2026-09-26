@@ -17,19 +17,17 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="BaselineCaptureCommand"/>,
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
-/// <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>, and
-/// <see cref="JobCommands"/>.
+/// <see cref="TimingCommand"/>, <see cref="HandoffCommand"/>,
+/// <see cref="JobCommands"/>, and <see cref="PendingChangesWorkflow"/>.
 /// </summary>
 /// <remarks>
-/// Four names each cover two entries because one CLI verb reaches two distinct handlers under
-/// different flags: <c>report</c> reaches <see cref="ReportCommands.Produce"/> by default and
-/// <see cref="ReportCommands.ListKinds"/> under <c>--list-kinds</c>; <c>dry-run</c> reaches
-/// <see cref="JobCommands.EnqueueDryRun"/> and then, under <c>--wait</c>,
-/// <see cref="JobCommands.WaitForDryRun"/>; <c>trial</c> reaches <see cref="JobCommands.EnqueueTrial"/>
-/// and then, under <c>--wait</c>, <see cref="JobCommands.WaitForJob"/>. Every other name is the literal
-/// CLI verb (or, for a nested subcommand, its complete space-separated form, e.g. <c>"jobs show"</c>)
-/// that reaches exactly the one handler it names — pinned equal to the CLI's own <c>CliVerbCatalog.All</c>,
-/// by <c>CommandCatalogParityTests.EveryCataloguedCommandHasExactlyOneCliVerb</c>.
+/// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
+/// <see cref="JobCommands.WaitForDryRun"/>, waited Trials reach <see cref="JobCommands.WaitForJob"/>,
+/// pending Trials reach <see cref="PendingChangesWorkflow.Measure"/>, and pending Apply reaches
+/// <see cref="PendingChangesWorkflow.Apply"/>. Each has its own entry. Every other name is the literal CLI
+/// verb (or its complete space-separated nested form, such as <c>"jobs show"</c>) that reaches its one named
+/// handler, pinned equal to <c>CliVerbCatalog.All</c> by
+/// <c>CommandCatalogParityTests.EveryCataloguedCommandHasExactlyOneCliVerb</c>.
 /// </remarks>
 public static class CommandCatalog
 {
@@ -47,6 +45,10 @@ public static class CommandCatalog
             typeof(PendingChangesSnapshot), CommandSurface.Developer),
         new CommandDescriptor("recheck-pending-changes", typeof(RecheckPendingChangesRequest),
             typeof(PendingChangesSnapshot), CommandSurface.Developer),
+        new CommandDescriptor("apply --all-pending", typeof(ApplyPendingRequest),
+            typeof(ApplyPendingResult), CommandSurface.Released),
+        new CommandDescriptor("trial --pending", typeof(MeasurePendingRequest),
+            typeof(MeasurePendingResult), CommandSurface.Developer),
         new CommandDescriptor("review-numbers", typeof(ReviewNumbersCommand.Request),
             typeof(ReviewNumbersCommand.Response), CommandSurface.Developer),
         new CommandDescriptor("add-set-gloss", typeof(AddSetGlossRequest), typeof(SetGlossAddedResponse), CommandSurface.Developer),

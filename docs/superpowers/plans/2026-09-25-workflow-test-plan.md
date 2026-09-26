@@ -1504,3 +1504,43 @@ the shared-words rule for losses) are not asked again.
 10. **Should closing the window during a run cancel it, or let it finish in the background?**
     *Recommended:* cancel it cleanly and keep nothing partial (`RES-01`). A run that survives closing needs a
     durable Assessment job first, and that is a product decision, not a test.
+
+## 9. Owner rulings, 2026-09-25 (grilling)
+
+The owner answered §8 and the follow-up questions the same day. Where a ruling differs from a recommendation above, the ruling wins. The tests of §2 and the build order of §7 follow it.
+
+1. **Native Windows lane (question 1): yes, small.** The five smoke tests start through the real startup: the same `App`, `OnFrameworkInitializationCompleted` and classic desktop lifetime, with Avalonia.Headless and Skia (`SetupWithLifetime`). Only the parser, the pickers and the clock are swapped. A handful of FlaUI tests drive the built exe on this machine, outside `./test.ps1` and hosted CI. They cover native dialogs, the UIA tree, activation and DPI, which headless can't prove.
+2. **Real-parser skips (question 2): yes.** Run a separate real-parser lane, and make any skip in it loud.
+3. **Agent change verbs (question 3): not now.** The pending-change verbs, `preflight`, `trial --pending` and `apply --all-pending` stay developer-only. The full set of AI commands comes in a later release, after its own design and test coverage. `AGENT-03` is tested with developer commands on.
+4. **Reloading on window activation (question 4): yes, stored data only.** Refresh is always manual. It records when it ran and when the FieldWorks project was last saved (CONTEXT.md, Refresh).
+5. **Reopening a project (question 5):** it opens on Overview. The History page (item 13 below) takes the place of "the last Receipt".
+6. **One word, one analysis (question 6):** unchanged from the recorded rulings.
+7. **Per-word progress (question 7): no.** Words will be parsed in parallel, so a run shows no "current word". `RUN-09` asserts only stage progress, and the missing-capability row for per-word progress is withdrawn.
+8. **Undo an Apply (question 8): no.** A change can be undone only while it is still in Review changes. The Receipt says there is no undo.
+9. **A store Motif refuses (question 9): before 1.0, a button deletes it.** The window names the file and offers a button that deletes it so Motif can recreate it. After 1.0, stored shapes need migrations. 1.0 is the release with real Proposals (AGENTS.md rule 18).
+10. **Closing during a run (question 10), replaced.** A popup names the running work. Enter picks the default; Esc means Keep Motif open. The words:
+
+    > **Motif is still measuring words**
+    > Measuring 40 words in *Texts*, started 2 minutes ago.
+    > [Keep Motif open] [Stop measuring and close] [**Close and finish in the background**]
+
+    Work that can't be stopped (Apply, Baseline capture) gets no choice: "Motif is applying your changes to the FieldWorks project. It will close as soon as that's done."
+
+    To support this, the window's Assessments, and the measuring step of Refresh, move to the background job runner. Cancel becomes a quick stop request. Reopening a project shows a run that finished while Motif was closed, or its live progress. `motif assess` as a background job for agents waits for the AI-commands release. `RES-01` changes to test all three choices.
+11. **Crash popup (bug 1): yes.** `Program.Main` calls `CrashDialogs.Suppress()`. Errors that escape the UI thread open a Motif error window with:
+    - a plain summary;
+    - expandable details;
+    - **Copy details**, **Save report**, **Email maintainer** and **Close**.
+
+    Email opens the mail program with a short body, and the full report is a saved `.txt` to attach. Closing that window closes Motif. The address is `john_lambert@sil.org`, held in one `SupportEmail` constant next to Motif's version. The model is libpalaso's WinForms `ExceptionReportingDialog`; no Avalonia version exists yet.
+12. **Texts and changes: keep the Baseline plus dots.** A preview "as it would be after these changes" (a Dry Run on a copy) waits for 1.0. Add a scale test with a Proposal of thousands of changes. F14's stored text words go ahead. They are display data only, never fit evidence.
+13. **History, P1, after this test work:**
+    - **(a) A message at Apply.** The person can give a message at Apply, pre-filled with a summary ("approved 10 words, added analysis for 52 words"). It is limited to the existing 128-character description, with a live counter, and is checked as they type.
+    - **(b) A "since Motif's last change" line** on Overview and the Receipt. It uses only cheap, true facts:
+      - the last Apply, who made it, and its message;
+      - whether FieldWorks saved since;
+      - Send/Receive authors, read with FLEx Bridge's `hg.exe` when `.hg` exists;
+      - entries and texts changed, by `DateModified`.
+
+      It never counts word-analysis changes or claims who made a local edit.
+    - **(c) An exact "something changed" check.** Each Receipt stores the project's save time and semantic fingerprint after Apply.
