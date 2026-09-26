@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -53,6 +54,14 @@ public sealed partial class MainWindow : Window
 
         workspace.UpdateWindowWidth(Width);
         SizeChanged += (_, e) => workspace.UpdateWindowWidth(e.NewSize.Width);
+        if (this.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout projectMenu)
+            projectMenu.Opened += (_, _) => _ = workspace.RefreshKnownProjectsAsync();
+        workspace.OpenRecentProjectCommand.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(workspace.OpenRecentProjectCommand.IsRunning) &&
+                workspace.OpenRecentProjectCommand.IsRunning)
+                Dispatcher.UIThread.Post(HideProjectMenu);
+        };
         // Coming back from FieldWorks is when a save it made is news; this reads, it never reruns.
         Activated += (_, _) => _ = workspace.CheckFreshnessAsync();
         workspace.RecentProjects.CollectionChanged += (_, _) => RebuildRecentProjects(workspace);
@@ -84,7 +93,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => HideProjectMenu();
+    private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(HideProjectMenu);
 
     private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
 
