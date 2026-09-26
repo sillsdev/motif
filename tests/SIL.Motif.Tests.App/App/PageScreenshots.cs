@@ -2,6 +2,7 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using SIL.Motif.App.Services;
@@ -97,7 +98,7 @@ public sealed class PageScreenshots
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         }
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
-        frame.Save(path);
+        frame.Save(path, PngBitmapEncoderOptions.Default);
     }
 
     private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData()

@@ -110,8 +110,9 @@ public sealed class DifferenceViewModelTests
         await assess.RerunAsync(["alimpiga"], 30_000);
 
         Assert.True(assess.LastRunWasRerun);
-        Assert.Equal(["alimpiga"], fake.AssessRequests[^1].Selection.Words);
-        Assert.Equal(30_000, fake.AssessRequests[^1].PerWordLimitMs);
+        var request = fake.AssessRequests[^1];
+        Assert.Equal(["alimpiga"], request.Selection!.Words);
+        Assert.Equal(30_000, request.PerWordLimitMs);
         var settled = Assert.Single(assess.Difference.Moves, move => move.Kind != MoveKind.Unchanged);
         Assert.Equal(MoveKind.Settled, settled.Kind);
         Assert.Equal("This run: 1 word again at 30 s each", assess.Difference.AfterLabel);

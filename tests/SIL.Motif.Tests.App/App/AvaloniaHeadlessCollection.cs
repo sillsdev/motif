@@ -72,7 +72,8 @@ internal static class AvaloniaHeadlessPlatform
         {
             var ready = new TaskCompletionSource();
             _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = "Avalonia headless" };
-            _thread.SetApartmentState(ApartmentState.STA);
+            if (OperatingSystem.IsWindows())
+                _thread.SetApartmentState(ApartmentState.STA);
             _thread.Start();
             ready.Task.GetAwaiter().GetResult();
         }

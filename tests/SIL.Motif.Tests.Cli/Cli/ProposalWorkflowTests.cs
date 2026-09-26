@@ -490,7 +490,7 @@ public sealed class ProposalWorkflowTests
     }
 
     [Fact]
-    public void ApplyRefusesAnIdLoggedWithDifferentContentWithoutClaimingRollback()
+    public async Task ApplyRefusesAnIdLoggedWithDifferentContentWithoutClaimingRollback()
     {
         var proposalId = FinalizeSetGloss("logged-elsewhere",
             CanonicalId.FromGuid(_seed.FirstSenseId).Value, "new gloss");
@@ -533,8 +533,8 @@ public sealed class ProposalWorkflowTests
         var error = process.StandardError.ReadToEndAsync();
         Assert.True(process.WaitForExit(60000));
         Assert.Equal(2, process.ExitCode);
-        Assert.Empty(output.GetAwaiter().GetResult());
-        var failure = JsonNode.Parse(error.GetAwaiter().GetResult())!;
+        Assert.Empty(await output);
+        var failure = JsonNode.Parse(await error)!;
         Assert.Equal("apply.applied-content-mismatch", failure["code"]?.GetValue<string>());
         Assert.DoesNotContain("rollback", failure["message"]?.GetValue<string>() ?? "",
             StringComparison.OrdinalIgnoreCase);

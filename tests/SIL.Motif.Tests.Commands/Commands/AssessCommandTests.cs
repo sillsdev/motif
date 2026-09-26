@@ -144,9 +144,10 @@ public sealed class AssessCommandTests : IDisposable
         var parseAssessment = assessed.Value.AssessmentIds
             .Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
-        Assert.Equal(parseAssessment.Words!.Select(word => word.ProjectStanding),
+        var parseWords = parseAssessment.Words!;
+        Assert.Equal(parseWords.Select(word => word.ProjectStanding),
             assessed.Value.Words.Select(word => word.ProjectStanding));
-        Assert.Equal(parseAssessment.Words.Select(word => word.ReadingGrades),
+        Assert.Equal(parseWords.Select(word => word.ReadingGrades),
             assessed.Value.Words.Select(word => word.ReadingGrades));
         Assert.Single(parseAssessment.ObjectTimings);
         Assert.Equal(1, parseAssessment.ObjectTimings.Single(row =>
@@ -582,14 +583,15 @@ public sealed class AssessCommandTests : IDisposable
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var response = outcome.Value!;
         Assert.Equal(["warning: dropped allomorph", "capability: missing boundary marker"], response.GrammarWarnings);
-        Assert.Equal(2, response.Words[0].Morphology!.Analyses.Count);
-        Assert.Equal(2, response.Words[0].Morphology.Analyses[0].Morphs.Count);
+        var morphology = response.Words[0].Morphology!;
+        Assert.Equal(2, morphology.Analyses.Count);
+        Assert.Equal(2, morphology.Analyses[0].Morphs.Count);
         Assert.Equal(
             ["11111111-1111-1111-1111-111111111111", "33333333-3333-3333-3333-333333333333",
                 "66666666-6666-6666-6666-666666666666"],
-            response.Words[0].Morphology.Analyses.SelectMany(analysis => analysis.Morphs)
+            morphology.Analyses.SelectMany(analysis => analysis.Morphs)
                 .Select(morph => morph.Form));
-        Assert.Equal("guess-a", response.Words[0].Morphology.Analyses[0].Morphs[0].GuessedString);
+        Assert.Equal("guess-a", morphology.Analyses[0].Morphs[0].GuessedString);
         Assert.True(response.Words[1].IsIncomplete);
         Assert.Single(response.Words[1].Morphology!.Analyses);
         Assert.Equal("source identity unavailable", response.Words[2].Morphology!.Unavailable.Single());
