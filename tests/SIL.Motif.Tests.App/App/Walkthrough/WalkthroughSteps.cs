@@ -112,9 +112,11 @@ internal static class WalkthroughSteps
     internal static void RunAssessmentOverPastedWords(WalkthroughWindow walkthrough, long deadline)
     {
         StartAssessmentOverPastedWords(walkthrough, deadline);
+        // The pages go on loading what the run published, and a click aimed meanwhile can miss as they fill in.
         walkthrough.WaitUntil(
-            () => walkthrough.Workspace.Assess.State == RunState.Completed,
-            Remaining(deadline), "the Assessment did not complete");
+            () => walkthrough.Workspace.Assess.State == RunState.Completed &&
+                walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+            Remaining(deadline), "the Assessment did not complete and reach every page");
     }
 
     internal static void StartSlowAssessment(WalkthroughWindow walkthrough, long deadline)
