@@ -130,8 +130,8 @@ Package S1's first commits are spikes that must pass before it writes a whole sa
 
 1. **The parser accepts a builder-made project**: a ten-word spec parses under the real PanGloss through
    `motif assess`.
-2. **FieldWorks opens it**: the `.fwdata` model version equals what current FieldWorks writes (compare the
-   conformance fixture's), and the `.fwbackup` restores. The owner confirms the restore by hand once.
+2. **FieldWorks opens it**: the `.fwdata` model version equals what current FieldWorks writes (`7000072`, as in
+   the conformance fixture), and the `.fwbackup` restores. The owner confirms the restore by hand once.
 3. **Writing systems resolve offline**: the chosen tags need no network at build time.
 4. **Tagalog's constructs parse** (infix, reduplication) — spiked at the start of S3; if one does not, S3
    swaps it for another feature and says so rather than shipping a sample that fails for the wrong reason.
@@ -163,4 +163,5 @@ mechanical.
 **Gates for every package:** `./build.ps1` and `./test.ps1` green (in a sandbox, CLI failures that say "could
 not be recorded" are the sandbox, proven by rerunning the CLI project with a worktree-local
 `MOTIF_WORKER_ROOT`); `cd site; npm test; npm run build` for H; for S packages, the gated real-parser test run
-locally against `C:\Users\johnm\Documents\repos\pangloss-releases\v0.3.0\pangloss.exe` or the bundled release.
+locally with `MOTIF_PANGLOSS_EXE` naming a real `pangloss.exe`
+(on the owner's machine, `C:\Users\johnm\Documents\repos\pangloss-releases\v0.3.0\pangloss.exe`).
