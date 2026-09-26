@@ -80,11 +80,12 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     [ObservableProperty]
     private bool _isOpen;
 
+    /// <summary>Why the last step was refused, in the window's words.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRefusal))]
-    private string? _refusalMessage;
+    private WindowRefusal? _shownRefusal;
 
-    public bool HasRefusal => !string.IsNullOrWhiteSpace(RefusalMessage);
+    public bool HasRefusal => ShownRefusal is not null;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StepLimitValidationMessage))]
@@ -150,14 +151,14 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         IsOpen = false;
         ProjectPath = projectPath;
         Step = 0;
-        RefusalMessage = null;
+        ShownRefusal = null;
 
         var saved = await _context.Commands.ReadDefaultSelectionAsync(
             new ReadDefaultSelectionRequest(projectPath), cancellationToken).ConfigureAwait(true);
         if (generation != _loadGeneration) return;
         if (!saved.Succeeded)
         {
-            RefusalMessage = saved.Refusal!.Message;
+            ShownRefusal = WindowRefusal.From(saved.Refusal!);
             return;
         }
 
@@ -171,7 +172,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         if (generation != _loadGeneration) return;
         if (!config.Succeeded)
         {
-            RefusalMessage = config.Refusal!.Message;
+            ShownRefusal = WindowRefusal.From(config.Refusal!);
             return;
         }
 
@@ -207,7 +208,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         _snapshot = null;
         _configuredStepLimit = StepCap.Default;
         IsEditingExistingSelection = false;
-        RefusalMessage = null;
+        ShownRefusal = null;
     }
 
     void IProjectStateParticipant.ClearProject() => ProjectCleared();
@@ -221,7 +222,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     public void OpenForConfiguration()
     {
         if (ProjectPath is null || _context.Baseline?.HasBaseline != true) return;
-        RefusalMessage = null;
+        ShownRefusal = null;
         if (_savedSelection is { } saved)
         {
             Selection.ApplyDefaultSelection(saved);
@@ -255,7 +256,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         }
         if (!Selection.CanAssess)
         {
-            RefusalMessage = "Choose at least one text or add a word before continuing.";
+            ShownRefusal = WindowRefusal.Plain("Choose at least one text or add a word before continuing.");
             return;
         }
 
@@ -270,7 +271,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             CancellationToken.None).ConfigureAwait(true);
         if (!saved.Succeeded)
         {
-            RefusalMessage = saved.Refusal!.Message;
+            ShownRefusal = WindowRefusal.From(saved.Refusal!);
             return;
         }
 
@@ -292,12 +293,12 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         {
             IsEditingExistingSelection = true;
             IsOpen = false;
-            RefusalMessage = null;
+            ShownRefusal = null;
         }
         else
         {
             IsEditingExistingSelection = false;
-            RefusalMessage = _context.Assess.Refusal?.Message;
+            ShownRefusal = _context.Assess.ShownRefusal;
         }
     }
 
@@ -311,13 +312,13 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             new SkipSetupRequest(projectPath), CancellationToken.None).ConfigureAwait(true);
         if (!result.Succeeded)
         {
-            RefusalMessage = result.Refusal!.Message;
+            ShownRefusal = WindowRefusal.From(result.Refusal!);
             return;
         }
         _setupSkipped = result.Value!.SetupSkipped;
         if (_snapshot is not null) RestoreSnapshot(_snapshot);
         IsOpen = false;
-        RefusalMessage = null;
+        ShownRefusal = null;
     }
 
     private void ApplyLimits(long timeLimitMs, StepCap stepLimit)

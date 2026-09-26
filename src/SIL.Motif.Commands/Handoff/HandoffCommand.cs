@@ -347,7 +347,8 @@ public static class HandoffCommand
                     if (import is not PanGlossOutcome.Completed)
                     {
                         return new Refusal("handoff.parser-unavailable", FailureReason.Refused, import.Message,
-                            Fact(("projectPath", request.ProjectPath)));
+                            ParserNotFoundFact.Mark(Fact(("projectPath", request.ProjectPath)),
+                                import is PanGlossOutcome.Unavailable { ExecutableMissing: true }));
                     }
 
                     if (request.Assess)

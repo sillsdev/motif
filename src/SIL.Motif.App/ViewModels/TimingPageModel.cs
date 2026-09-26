@@ -60,11 +60,11 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>Timing for the current stored Assessment across all its words.</summary>
     public TimingResponse? StoredTiming { get; private set; }
 
-    /// <summary>Why the requested stored timing could not be read.</summary>
-    public string? FocusedTimingError { get; private set; }
+    /// <summary>Why the requested stored timing could not be read, in the window's words.</summary>
+    public WindowRefusal? FocusedTimingRefusal { get; private set; }
 
-    /// <summary>Why the current stored timing could not be read.</summary>
-    public string? StoredTimingError { get; private set; }
+    /// <summary>Why the current stored timing could not be read, in the window's words.</summary>
+    public WindowRefusal? StoredTimingRefusal { get; private set; }
 
     public bool HasFocus => Focus is not null;
 
@@ -84,13 +84,13 @@ public sealed partial class TimingPageModel : PageModel
 
     public bool HasFocusedTiming => FocusedTiming is not null;
 
-    public bool HasFocusedTimingError => FocusedTimingError is not null;
+    public bool HasFocusedTimingRefusal => FocusedTimingRefusal is not null;
 
     /// <summary>Whether stored timing was read for the current Assessment.</summary>
     public bool HasStoredTiming => StoredTiming is not null;
 
     /// <summary>Whether the stored timing read returned a refusal.</summary>
-    public bool HasStoredTimingError => StoredTimingError is not null;
+    public bool HasStoredTimingRefusal => StoredTimingRefusal is not null;
 
     /// <summary>The stored timing response's word count and percentiles in one line.</summary>
     public string StoredTimingSummary => StoredTiming is not { } timing ? string.Empty :
@@ -119,8 +119,8 @@ public sealed partial class TimingPageModel : PageModel
     public bool ShowStaleTiming => HasTiming && Context.Evidence.IsStale;
     public bool HasRule => SelectedRule is not null;
     public bool HasRuleDetail => RuleDetail is not null;
-    public bool HasTimingError => TimingError is not null;
-    public string? TimingError { get; private set; }
+    public bool HasTimingRefusal => TimingRefusal is not null;
+    public WindowRefusal? TimingRefusal { get; private set; }
     public string WordSet => _wordSet.ToWireValue();
     public bool IsStepLimitSelected => _wordSet is TimingWordSet.StepLimited && _explicitWords is null;
     public bool IsSlowestSelected => _wordSet is TimingWordSet.Slowest && _explicitWords is null;
@@ -198,13 +198,13 @@ public sealed partial class TimingPageModel : PageModel
         _loadGeneration++;
         Focus = null;
         FocusedTiming = null;
-        FocusedTimingError = null;
+        FocusedTimingRefusal = null;
         StoredTiming = null;
-        StoredTimingError = null;
+        StoredTimingRefusal = null;
         KindTiming = null;
         RuleTiming = null;
         RuleDetail = null;
-        TimingError = null;
+        TimingRefusal = null;
         SelectedRule = null;
         _wordSet = new TimingWordSet.All();
         _explicitWords = null;
@@ -235,7 +235,7 @@ public sealed partial class TimingPageModel : PageModel
         if (evidence.ParseTimeAssessmentId is not { } assessmentId || Context.ProjectPath is not { } projectPath)
         {
             StoredTiming = null;
-            StoredTimingError = null;
+            StoredTimingRefusal = null;
             RaiseStoredTimingState();
             return;
         }
@@ -254,7 +254,7 @@ public sealed partial class TimingPageModel : PageModel
         _wordSet = new TimingWordSet.All();
         SelectedRule = timing.Rule;
         FocusedTiming = null;
-        FocusedTimingError = null;
+        FocusedTimingRefusal = null;
         RaiseFocusState();
         if (LoadFocusedTimingCommand.CanExecute(null)) _ = LoadFocusedTimingCommand.ExecuteAsync(null);
     }
@@ -329,7 +329,7 @@ public sealed partial class TimingPageModel : PageModel
         KindTiming = null;
         RuleTiming = null;
         RuleDetail = null;
-        TimingError = null;
+        TimingRefusal = null;
         RaiseTimingState();
         var top = _wordSet is TimingWordSet.Slowest ? Math.Max(1, SlowestCount) : 10;
         var kind = await Context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId,
@@ -338,9 +338,9 @@ public sealed partial class TimingPageModel : PageModel
         if (generation != _loadGeneration || Context.ProjectPath != projectPath) return;
         if (!kind.Succeeded)
         {
-            TimingError = kind.Refusal?.Message;
-            FocusedTimingError = Focus is null ? null : TimingError;
-            StoredTimingError = Focus is null ? TimingError : null;
+            TimingRefusal = kind.Refusal is null ? null : WindowRefusal.From(kind.Refusal);
+            FocusedTimingRefusal = Focus is null ? null : TimingRefusal;
+            StoredTimingRefusal = Focus is null ? TimingRefusal : null;
             RaiseTimingState();
             return;
         }
@@ -353,7 +353,7 @@ public sealed partial class TimingPageModel : PageModel
             OverrideAssessmentIds: CurrentTimingOverrides), cancellationToken).ConfigureAwait(true);
         if (generation != _loadGeneration || Context.ProjectPath != projectPath) return;
         RuleTiming = rule.Succeeded ? rule.Value : null;
-        TimingError = rule.Succeeded ? null : rule.Refusal?.Message;
+        TimingRefusal = rule.Succeeded || rule.Refusal is null ? null : WindowRefusal.From(rule.Refusal);
         if (RuleTiming is null || RuleTiming.Aggregates.All(row => row.Name != SelectedRule))
             SelectedRule = RuleTiming?.Aggregates.FirstOrDefault()?.Name;
         RaiseTimingState();
@@ -378,7 +378,7 @@ public sealed partial class TimingPageModel : PageModel
             CancellationToken.None).ConfigureAwait(true);
         if (generation != _loadGeneration || Context.ProjectPath != projectPath || SelectedRule != rule) return;
         RuleDetail = detail.Succeeded ? detail.Value : null;
-        TimingError = detail.Succeeded ? null : detail.Refusal?.Message;
+        TimingRefusal = detail.Succeeded || detail.Refusal is null ? null : WindowRefusal.From(detail.Refusal);
         if (Focus?.Rule is not null) FocusedTiming = RuleDetail;
         RaiseTimingState();
     }
@@ -414,7 +414,7 @@ public sealed partial class TimingPageModel : PageModel
                 if (Context.Assess.State == RunState.Cancelled || cancellation.IsCancellationRequested) break;
                 if (Context.Assess.State == RunState.Refused)
                 {
-                    RerunMessage = Context.Assess.Refusal?.Message;
+                    RerunMessage = Context.Assess.ShownRefusal?.Sentence;
                     break;
                 }
                 RerunCompleted++;
@@ -452,13 +452,13 @@ public sealed partial class TimingPageModel : PageModel
     {
         foreach (var property in new[]
         {
-            nameof(KindTiming), nameof(RuleTiming), nameof(RuleDetail), nameof(TimingError),
+            nameof(KindTiming), nameof(RuleTiming), nameof(RuleDetail), nameof(TimingRefusal),
             nameof(WordSet), nameof(IsStepLimitSelected), nameof(IsSlowestSelected),
             nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleRow), nameof(CostliestRuleWords),
             nameof(SelectedWords),
             nameof(SlowestWords), nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),
-            nameof(HasTimingError), nameof(ShowStaleTiming), nameof(ScopeLabel),
+            nameof(HasTimingRefusal), nameof(ShowStaleTiming), nameof(ScopeLabel),
             nameof(PercentileSummary), nameof(RuleSummary),
         }) OnPropertyChanged(property);
         RaiseFocusState();
@@ -477,17 +477,17 @@ public sealed partial class TimingPageModel : PageModel
         OnPropertyChanged(nameof(FocusSummary));
         OnPropertyChanged(nameof(FocusedTiming));
         OnPropertyChanged(nameof(HasFocusedTiming));
-        OnPropertyChanged(nameof(FocusedTimingError));
-        OnPropertyChanged(nameof(HasFocusedTimingError));
+        OnPropertyChanged(nameof(FocusedTimingRefusal));
+        OnPropertyChanged(nameof(HasFocusedTimingRefusal));
         LoadFocusedTimingCommand.NotifyCanExecuteChanged();
     }
 
     private void RaiseStoredTimingState()
     {
         OnPropertyChanged(nameof(StoredTiming));
-        OnPropertyChanged(nameof(StoredTimingError));
+        OnPropertyChanged(nameof(StoredTimingRefusal));
         OnPropertyChanged(nameof(HasStoredTiming));
-        OnPropertyChanged(nameof(HasStoredTimingError));
+        OnPropertyChanged(nameof(HasStoredTimingRefusal));
         OnPropertyChanged(nameof(ShowStoredTiming));
         OnPropertyChanged(nameof(ShowNoEvidence));
         OnPropertyChanged(nameof(StoredTimingSummary));

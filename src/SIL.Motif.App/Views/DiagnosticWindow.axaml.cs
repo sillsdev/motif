@@ -17,5 +17,5 @@ public sealed partial class DiagnosticWindow : Window
         this.FindControl<ContentControl>("PanelHost")!.Content = _panel;
     }
 
-    public void ShowDiagnosticError(string message) => _panel?.ShowError(message);
+    public void ShowDiagnosticError(WindowRefusal refusal) => _panel?.ShowError(refusal);
 }

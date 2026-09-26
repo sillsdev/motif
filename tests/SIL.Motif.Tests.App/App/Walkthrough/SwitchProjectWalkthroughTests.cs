@@ -58,7 +58,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 return !PanglossProcesses.AnyAlive(appeared);
             }, TimeSpan.FromSeconds(10), "switching projects left the first PanGloss process alive");
 
-            Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
+            Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
             Assert.Equal("Capture a Baseline to choose Texts.",
                 walkthrough.Workspace.Selection.TextsEmptyMessage);
 

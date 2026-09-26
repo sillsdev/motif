@@ -27,8 +27,9 @@ public sealed partial class ProjectHistoryViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading;
 
+    /// <summary>Why the last read or write was refused, in the window's words.</summary>
     [ObservableProperty]
-    private string? _refusalMessage;
+    private WindowRefusal? _shownRefusal;
 
     public bool HasEntries => Entries.Count > 0;
 
@@ -38,7 +39,7 @@ public sealed partial class ProjectHistoryViewModel : ObservableObject
         _projectPath = fwDataPath;
         _generation++;
         Entries.Clear();
-        RefusalMessage = null;
+        ShownRefusal = null;
         IsLoading = false;
         OnPropertyChanged(nameof(HasEntries));
         if (fwDataPath is not null) await LoadAsync(cancellationToken).ConfigureAwait(true);
@@ -58,11 +59,11 @@ public sealed partial class ProjectHistoryViewModel : ObservableObject
         IsLoading = false;
         if (!outcome.Succeeded)
         {
-            RefusalMessage = outcome.Refusal!.Message;
+            ShownRefusal = WindowRefusal.From(outcome.Refusal!);
             return;
         }
 
-        RefusalMessage = null;
+        ShownRefusal = null;
         Entries.Clear();
         foreach (var entry in outcome.Value!.Entries) Entries.Add(entry);
         OnPropertyChanged(nameof(HasEntries));

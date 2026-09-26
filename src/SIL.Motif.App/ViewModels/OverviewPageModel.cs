@@ -63,9 +63,9 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(WarningsDetails))]
     private OverviewResponse? _overview;
 
-    /// <summary>Why the stored Overview query was refused.</summary>
+    /// <summary>Why the stored Overview query was refused, in the window's words.</summary>
     [ObservableProperty]
-    private string? _overviewRefusalMessage;
+    private WindowRefusal? _overviewRefusal;
 
     /// <summary>Whether the response has an Assessment for its default Selection.</summary>
     public bool HasAssessment => Overview?.AssessmentId is not null;
@@ -228,7 +228,7 @@ public sealed partial class OverviewPageModel : PageModel
     {
         _readGeneration++;
         Overview = null;
-        OverviewRefusalMessage = null;
+        OverviewRefusal = null;
     }
 
     protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
@@ -263,7 +263,7 @@ public sealed partial class OverviewPageModel : PageModel
         if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal))
             return;
         Overview = overview.Succeeded ? overview.Value : null;
-        OverviewRefusalMessage = overview.Succeeded ? null : overview.Refusal?.Message;
+        OverviewRefusal = overview.Succeeded || overview.Refusal is null ? null : WindowRefusal.From(overview.Refusal);
     }
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)

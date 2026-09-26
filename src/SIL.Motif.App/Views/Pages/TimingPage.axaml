@@ -65,8 +65,7 @@
           <Button Content="Pick words" Command="{Binding UsePickedWordsCommand}" />
         </StackPanel>
 
-        <views:CopyableTextBlock Classes="error" Text="{Binding TimingError}"
-                                 IsVisible="{Binding HasTimingError}" />
+        <views:RefusalBlock DataContext="{Binding TimingRefusal}" />
         <Border Classes="notice" IsVisible="{Binding ShowStaleTiming}">
           <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers."
                                    TextWrapping="Wrap" />

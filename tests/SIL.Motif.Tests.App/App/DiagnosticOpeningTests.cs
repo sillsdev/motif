@@ -17,16 +17,18 @@ public sealed class DiagnosticOpeningTests
     public async Task InvalidDiagnosticReportsTheParserErrorWithoutShowingADiagnostic()
     {
         const string invalidJson = "{";
-        var expectedError = Assert.Throws<JsonException>(() => TraceWordViewModel.FromDiagnosticJson(invalidJson)).Message;
+        Assert.Throws<JsonException>(() => TraceWordViewModel.FromDiagnosticJson(invalidJson));
         var showDiagnosticCalls = 0;
-        string? shownError = null;
+        WindowRefusal? shownError = null;
 
         await SavedDiagnosticOpener.OpenAsync(
             () => Task.FromResult<string?>(invalidJson),
             _ => showDiagnosticCalls++,
             message => shownError = message);
 
-        Assert.Equal(expectedError, shownError);
+        var expected = WindowRefusal.From(TraceWordViewModel.LoadDiagnostic(invalidJson).Refusal!);
+        Assert.Equal(expected.Sentence, shownError?.Sentence);
+        Assert.Equal(expected.Details, shownError?.Details);
         Assert.Equal(0, showDiagnosticCalls);
     }
 

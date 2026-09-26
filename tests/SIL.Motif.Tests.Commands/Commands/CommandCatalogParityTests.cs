@@ -124,7 +124,7 @@ public sealed class CommandCatalogParityTests
         "timing.no-assessment", "timing.no-baseline", "timing.override-not-found",
         "timing.wrong-kind", "timing.word-set-not-found",
         "trial.changes-changed", "trial.measurement-incomplete", "trial.nothing-pending",
-        "store.inconsistent", "store.unsupported",
+        "store.inconsistent", "store.other-version", "store.unsupported",
         "texts.words-cancelled",
         "grammarcheck.cancelled", "grammarcheck.malformed-findings", "grammarcheck.unsupported-schema", "grammarcheck.parser-refused",
         "grammarcheck.parser-unavailable", "grammarcheck.timed-out",

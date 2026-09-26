@@ -125,7 +125,7 @@ public sealed class GrammarViewModelTests
     }
 
     [Fact]
-    public async Task ARefusalShowsItsMessageAndCountsAsCheckedForTheStepper()
+    public async Task ARefusalShowsTheWindowSentenceAndCountsAsCheckedForTheStepper()
     {
         var fake = new FakeCommandClient();
         var refusal = new Refusal("app.not-built", FailureReason.Refused, "The grammar check query is not built yet.");
@@ -137,7 +137,8 @@ public sealed class GrammarViewModelTests
         Assert.True(grammar.HasChecked);
         Assert.True(grammar.ShowRefused);
         Assert.Same(refusal, grammar.Refusal);
-        Assert.Equal(refusal.Message, grammar.SummaryText);
+        Assert.Equal(WindowRefusal.GenericSentence, grammar.SummaryText);
+        Assert.Contains(refusal.Message, grammar.ShownRefusal!.Details);
     }
 
     [Fact]

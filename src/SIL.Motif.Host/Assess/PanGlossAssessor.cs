@@ -81,7 +81,10 @@ public sealed class PanGlossAssessor : IAssessor
                 throw new OperationCanceledException(cancellationToken);
             if (outcome is not PanGlossOutcome.Completed { BatchEvidence: { } evidence } completed)
                 throw new AssessorUnavailableException(AssessorName,
-                    outcome is PanGlossOutcome.Completed ? "The invocation returned no retained evidence." : outcome.Message);
+                    outcome is PanGlossOutcome.Completed ? "The invocation returned no retained evidence." : outcome.Message)
+                {
+                    ExecutableMissing = outcome is PanGlossOutcome.Unavailable { ExecutableMissing: true },
+                };
             var matchingArtifacts = evidence.InvocationId == invocationId &&
                 Path.GetFullPath(evidence.SourcePath) == Path.Combine(Path.GetFullPath(directory), "source.fwdata");
             if (!matchingArtifacts || evidence.PerWordStepLimit != scope.PerWordStepLimit ||

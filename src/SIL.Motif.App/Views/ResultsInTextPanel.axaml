@@ -189,9 +189,7 @@
             <Button Content="Add parser readings as candidates" Command="{Binding $parent[views:ResultsInTextPanel].InText.AddChangeCommand}"
                     CommandParameter="add-candidate" />
           </WrapPanel>
-          <views:CopyableTextBlock Classes="error" Text="{Binding $parent[views:ResultsInTextPanel].InText.Changes.ErrorText}"
-                                   TextWrapping="Wrap"
-                                   IsVisible="{Binding $parent[views:ResultsInTextPanel].InText.Changes.HasError}" />
+          <views:RefusalBlock DataContext="{Binding $parent[views:ResultsInTextPanel].InText.Changes.ShownRefusal}" />
           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
             <Button Content="Try a Word" Command="{Binding $parent[views:ResultsInTextPanel].InText.TryWordCommand}" />
             <HyperlinkButton Content="Open in FieldWorks" NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"

@@ -42,9 +42,7 @@
                         Command="{Binding Words.ShowSeveralCommand}" />
     </WrapPanel>
 
-    <views:CopyableTextBlock Grid.Row="2" Classes="error" Text="{Binding Words.Refusal.Message}"
-                             IsVisible="{Binding Words.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-                             TextWrapping="Wrap" />
+    <views:RefusalBlock Grid.Row="2" DataContext="{Binding Words.ShownRefusal}" />
 
     <ListBox Grid.Row="3" Classes="denseWords" ItemsSource="{Binding Words.Rows}"
              AutomationProperties.Name="Words to test">

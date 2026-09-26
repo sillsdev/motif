@@ -280,7 +280,7 @@ public sealed class HandoffViewModelTests
 
         Assert.Equal(RunState.Refused, handoff.State);
         Assert.Same(refusal, handoff.Refusal);
-        Assert.Equal([$"outputDirectory: {@"C:\out"}"], handoff.RefusalFacts);
+        Assert.Contains($"outputDirectory: {@"C:\out"}", handoff.ShownRefusal!.Details);
         Assert.True(handoff.RunCommand.CanExecute(null));
     }
 

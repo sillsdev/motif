@@ -41,18 +41,7 @@
                   AutomationProperties.Name="Cancel the running AI Handoff" />
         </StackPanel>
 
-        <views:CopyableTextBlock Classes="error" Text="{Binding Handoff.Refusal.Message}"
-                   IsVisible="{Binding Handoff.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-        <Expander Header="Details" IsExpanded="False"
-                  IsVisible="{Binding Handoff.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
-          <ItemsControl ItemsSource="{Binding Handoff.RefusalFacts}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="x:String">
-                <views:CopyableTextBlock Text="{Binding}" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </Expander>
+        <views:RefusalBlock DataContext="{Binding Handoff.ShownRefusal}" />
 
         <!-- Before the first write: what the folder will hold, so nothing about it is a surprise. -->
         <Border Classes="card" IsVisible="{Binding !Handoff.HasCompletedFiles}"

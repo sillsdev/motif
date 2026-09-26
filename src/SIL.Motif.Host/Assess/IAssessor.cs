@@ -183,6 +183,9 @@ public sealed class AssessorUnavailableException : Exception
     }
 
     public string Assessor { get; }
+
+    /// <summary>Whether the cause is that no parser executable was found, rather than one that would not run.</summary>
+    public bool ExecutableMissing { get; init; }
 }
 
 /// <summary>

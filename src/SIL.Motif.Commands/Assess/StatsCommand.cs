@@ -167,7 +167,7 @@ public static class StatsCommand
             Fact(("projectPath", projectPath))),
         PanGlossOutcome.Unavailable unavailable => new Refusal(
             "stats.parser-unavailable", FailureReason.Refused, unavailable.Message,
-            Fact(("projectPath", projectPath))),
+            ParserNotFoundFact.Mark(Fact(("projectPath", projectPath)), unavailable.ExecutableMissing)),
         PanGlossOutcome.TimedOut timedOut => new Refusal(
             "stats.timed-out", FailureReason.Refused, timedOut.Message,
             Fact(("projectPath", projectPath),

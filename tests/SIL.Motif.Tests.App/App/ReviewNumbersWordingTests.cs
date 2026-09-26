@@ -46,7 +46,7 @@ public sealed class ReviewNumbersWordingTests
         Assert.NotNull(sentence);
         var page = await MeasuredPage(numbers);
 
-        foreach (var text in new[] { page.NumbersText, page.MeasurementError, page.ApplyBlockReason })
+        foreach (var text in new[] { page.NumbersText, page.MeasurementRefusal?.Sentence, page.ApplyBlockReason })
         {
             Assert.DoesNotContain("Assessment", text ?? string.Empty, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("Assessor", text ?? string.Empty, StringComparison.OrdinalIgnoreCase);

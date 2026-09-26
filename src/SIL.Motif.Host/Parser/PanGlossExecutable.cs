@@ -42,6 +42,38 @@ public static class PanGlossExecutable
         return ExistingFile(Path.Combine(applicationDirectory, fileName));
     }
 
+    /// <summary>
+    /// Why no parser was found, naming every place <see cref="TryLocate()"/> looked so a person can see where
+    /// PanGloss has to be.
+    /// </summary>
+    public static string NotFoundMessage => NotFoundMessageFor(PlacesSearched(
+        Environment.GetEnvironmentVariable(PathVariable), AppContext.BaseDirectory, FileName,
+        TryFindRepositoryRoot()));
+
+    /// <summary>The not-found sentence for the given places, in the order discovery looked at them.</summary>
+    internal static string NotFoundMessageFor(IReadOnlyList<string> places) =>
+        "Could not find the pangloss executable. Looked for it at: " + string.Join("; ", places) + ". " +
+        "Build it with `cargo build --release -p pg-cli` in the PanGloss checkout, or set " +
+        PathVariable + " to its path.";
+
+    /// <summary>The places <see cref="TryLocate(string?, string, string, string?)"/> looks, in its order.</summary>
+    internal static IReadOnlyList<string> PlacesSearched(
+        string? configuredPath, string applicationDirectory, string fileName, string? repositoryRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredPath)) return [Path.GetFullPath(configuredPath)];
+
+        var besideMotif = Path.GetFullPath(Path.Combine(applicationDirectory, fileName));
+        if (repositoryRoot is null) return [besideMotif];
+
+        var sibling = Path.GetFullPath(Path.Combine(repositoryRoot, "..", "PanGloss"));
+        return
+        [
+            Path.Combine(sibling, "dist", "<version>", fileName),
+            Path.Combine(sibling, "rust", "target", "release", fileName),
+            besideMotif,
+        ];
+    }
+
     // PanGloss's managed release build copies to dist/v<version>; a plain cargo build leaves rust/target/release.
     private static string? NewestSiblingBuild(string panGlossRoot, string fileName)
     {

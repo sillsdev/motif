@@ -67,9 +67,7 @@
         </StackPanel>
       </Expander>
 
-      <views:CopyableTextBlock Classes="error" Text="{Binding Selection.RefusalMessage}"
-                 IsVisible="{Binding Selection.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-                 TextWrapping="Wrap" />
+      <views:RefusalBlock DataContext="{Binding Selection.ShownRefusal}" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

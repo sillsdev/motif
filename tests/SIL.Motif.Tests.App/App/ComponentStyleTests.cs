@@ -96,6 +96,9 @@ public sealed class ComponentStyleTests
 
         yield return new("Notice", "a notice", host => Add(host, Box("notice")), Border.BackgroundProperty, "Intent.Warning.Fill");
         yield return new("Notice", "a notice", host => Add(host, Box("notice")), Border.PaddingProperty, "Component.Notice.Padding");
+        yield return new("Refusal", "a refusal", host => Add(host, Stack("refusal")), StackPanel.SpacingProperty, "Intent.Space.Minimal");
+        yield return new("Refusal", "a refusal's details", host => Add(host, Text("refusalDetails")),
+            TextBlock.ForegroundProperty, "Intent.TextMuted");
 
         yield return new("VerdictChip", "an approved chip", host => Add(host, Box("verdictChip", "approved")),
             Border.BackgroundProperty, "Intent.Approved.Fill");

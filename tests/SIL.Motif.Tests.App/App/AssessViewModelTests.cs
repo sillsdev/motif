@@ -203,7 +203,7 @@ public sealed class AssessViewModelTests
 
         Assert.Equal(RunState.Refused, assess.State);
         Assert.Same(refusal, assess.Refusal);
-        Assert.Equal([$"projectPath: {ProjectPath}"], assess.RefusalFacts);
+        Assert.Contains($"projectPath: {ProjectPath}", assess.ShownRefusal!.Details);
         Assert.True(assess.RunCommand.CanExecute(null));
     }
 

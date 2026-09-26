@@ -24,7 +24,7 @@ public sealed class SchemaVersionGateTests : IDisposable
         var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
 
-        var refusal = Assert.Throws<NotSupportedException>(() =>
+        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
             MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema - 1, new Version(1, 0)));
 
         // Naming the generations alone tells a user nothing they can do; the remedy has to be in the text.
@@ -46,7 +46,7 @@ public sealed class SchemaVersionGateTests : IDisposable
             command.ExecuteNonQuery();
         }
 
-        var refusal = Assert.Throws<NotSupportedException>(() =>
+        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
             MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
 
         // Pre-1.0 Motif has no upgrade path, so the remedy is deletion, not a version number to chase.

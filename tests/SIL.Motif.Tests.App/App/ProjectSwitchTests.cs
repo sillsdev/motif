@@ -399,11 +399,11 @@ public sealed class ProjectSwitchTests
 
         parts.Fake.MeasurePendingRefusal = new Refusal("job.wait-cancelled", FailureReason.Cancelled, "cancelled");
         await review.MeasureCommand.ExecuteAsync(null);
-        Assert.NotNull(review.MeasurementError);
+        Assert.NotNull(review.MeasurementRefusal);
 
         await OpenProjectAsync(parts.Workspace, ProjectB);
 
-        Assert.Null(review.MeasurementError);
+        Assert.Null(review.MeasurementRefusal);
         parts.Fake.PendingChangesIs(PendingWithChange("second"));
         await parts.Workspace.Context.Changes.ReloadAsync();
         parts.Fake.MeasurePendingRefusal = null;
@@ -411,11 +411,11 @@ public sealed class ProjectSwitchTests
         parts.Fake.ApplyPendingRefusal = new Refusal("apply.regression", FailureReason.Refused, "regression");
         await review.MeasureCommand.ExecuteAsync(null);
         await review.ApplyCommand.ExecuteAsync(null);
-        Assert.NotNull(review.ApplyError);
+        Assert.NotNull(review.ApplyRefusal);
 
         await OpenProjectAsync(parts.Workspace, ProjectA);
 
-        Assert.Null(review.ApplyError);
+        Assert.Null(review.ApplyRefusal);
     }
 
     [Fact]
@@ -489,7 +489,7 @@ public sealed class ProjectSwitchTests
                     parts.Workspace.Context.Setup?.ProjectPath is null &&
                     parts.Workspace.Baseline.Token is null &&
                     parts.Workspace.Context.Baseline is null &&
-                    review.MeasurementError is null && calls.Contains("probe-clear");
+                    review.MeasurementRefusal is null && calls.Contains("probe-clear");
             }
             return Task.FromResult(CommandOutcome<CurrentBaselineResponse>.Success(
                 new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));

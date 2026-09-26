@@ -22,8 +22,8 @@ internal static class WalkthroughSteps
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
             Remaining(deadline), "choosing the project did not load its initial window state");
-        Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
-        Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
+        Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
+        Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
         Assert.True(walkthrough.Find<Button>("Refresh the project").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
@@ -63,8 +63,8 @@ internal static class WalkthroughSteps
         Assert.Contains("last FieldWorks save ", projectDetails.Text, StringComparison.Ordinal);
         Assert.Equal("FieldWorks does not currently hold this project.",
             walkthrough.Workspace.Baseline.HeldStatusText);
-        Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
-        Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
+        Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
+        Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
         Assert.Equal(SeededProject.TextTitle, Assert.Single(walkthrough.Workspace.Selection.Texts).Title);
     }
 
@@ -82,8 +82,8 @@ internal static class WalkthroughSteps
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
                 walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
             Remaining(deadline), "choosing the conformance project did not show its initial state");
-        Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
-        Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
+        Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
+        Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
 
         walkthrough.Click("Refresh the project");
         walkthrough.WaitUntil(
@@ -98,8 +98,8 @@ internal static class WalkthroughSteps
             "first-time setup did not open after the Baseline was captured");
         walkthrough.SkipSetup();
         Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
-        Assert.Null(walkthrough.Workspace.Baseline.RefusalMessage);
-        Assert.Null(walkthrough.Workspace.Selection.RefusalMessage);
+        Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
+        Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
         Assert.Empty(walkthrough.Workspace.Selection.Texts);
     }
 

@@ -61,7 +61,7 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
     private TResponse? _result;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(RefusalFacts))]
+    [NotifyPropertyChangedFor(nameof(ShownRefusal))]
     private Refusal? _refusal;
 
     public IAsyncRelayCommand RunCommand { get; }
@@ -78,9 +78,8 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
     public double ProgressFraction =>
         Progress is { Total: { } total } && total > 0 ? (double)Progress.Completed / total : 0d;
 
-    /// <summary>The current refusal's facts, formatted for an expandable application details list.</summary>
-    public IReadOnlyList<string> RefusalFacts =>
-        Refusal is null ? [] : Refusal.Facts.Select(fact => $"{fact.Key}: {fact.Value}").ToList();
+    /// <summary>The current refusal in the window's words, with the command's own account under Details.</summary>
+    public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
 
     /// <summary>Clears the shared result and progress and invokes the adapter's reset hook.</summary>
     public void Reset()

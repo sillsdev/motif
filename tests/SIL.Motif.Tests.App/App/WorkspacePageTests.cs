@@ -402,7 +402,7 @@ public sealed class WorkspacePageTests
 
         Assert.Equal("Refresh refused", workspace.FreshnessLabel);
         Assert.Equal(string.Empty, workspace.FreshnessDetail);
-        Assert.Equal(refusal.Message, workspace.Baseline.RefusalMessage);
+        Assert.Contains(refusal.Message, workspace.Baseline.ShownRefusal!.Details);
         Assert.Equal("FieldWorks holds this project open right now.", workspace.Baseline.HeldStatusText);
         Assert.Empty(fake.AssessRequests);
     }

@@ -180,9 +180,9 @@ public sealed class PendingChangesViewModelTests
 
         await changes.PutAsync(new ChangeIntent("change/mine", "reject", "wordform/one", "word"));
 
-        Assert.Equal("This change could not be added. Refresh the changes and try again.", changes.ErrorText);
-        Assert.DoesNotContain("Draft", changes.ErrorText);
-        Assert.DoesNotContain(InternalId, changes.ErrorText);
+        Assert.Equal("This change could not be added. Refresh the changes and try again.", changes.ShownRefusal?.Sentence);
+        Assert.DoesNotContain("Draft", changes.ShownRefusal?.Sentence);
+        Assert.DoesNotContain(InternalId, changes.ShownRefusal?.Sentence);
     }
 
     [Fact]

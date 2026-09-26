@@ -83,7 +83,7 @@
           <views:CopyableTextBlock Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
                                    IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="error" Text="{Binding MeasurementError}" TextWrapping="Wrap" />
+          <views:RefusalBlock DataContext="{Binding MeasurementRefusal}" />
           <Button Content="Check these changes" Command="{Binding MeasureCommand}"
                   AutomationProperties.Name="Check what applying does to the numbers" />
           <Button Content="Cancel" Command="{Binding CancelMeasureCommand}"
@@ -96,11 +96,11 @@
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Changes.CountText}" />
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ApplyBlockReason}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="error" Text="{Binding ApplyError}" TextWrapping="Wrap" />
+          <views:RefusalBlock DataContext="{Binding ApplyRefusal}" />
           <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
                   IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project" />
           <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" />
-          <views:CopyableTextBlock Classes="error" Text="{Binding Changes.ErrorText}" TextWrapping="Wrap" />
+          <views:RefusalBlock DataContext="{Binding Changes.ShownRefusal}" />
           <HyperlinkButton Classes="reviewLink" Content="Check again against the refreshed project"
                            Command="{Binding CheckAgainCommand}"
                            IsVisible="{Binding HasNonFittingChanges}" />

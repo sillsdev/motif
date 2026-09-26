@@ -7,4 +7,7 @@ namespace SIL.Motif.Host.Parser;
 public sealed class ParserUnavailableException : Exception
 {
     public ParserUnavailableException(string message) : base(message) { }
+
+    /// <summary>Whether the cause is that no executable was found, rather than one that would not run.</summary>
+    public bool ExecutableMissing { get; init; }
 }
