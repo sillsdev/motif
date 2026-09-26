@@ -115,7 +115,7 @@ public class SourcePinsTests
         var pins = new[]
         {
             new SourceArtifact(
-                "liblcm", SourceArtifact.NuGetPackageKind, "11.0.0-beta0150", "", "MasterLCModel.xml", HashA,
+                "liblcm", SourceArtifact.NuGetPackageKind, "11.0.0-beta0182", "", "MasterLCModel.xml", HashA,
                 "2026-08-10T00:00:00Z"),
             Fw("build-1448-39-g41bf33b61", "41bf33b61188", HashB),
         };

@@ -83,8 +83,12 @@ hard-coded `Debug` makes a `Release` run drive the wrong build, or none at all.
 
 ## Building against a local libpalaso (opt-in, off by default)
 
-`SIL.WritingSystems`/`SIL.Core` are pinned directly (`SilVersions.props`), above the 17.x that `SIL.LCModel`
-asks for: 18.0.0-beta0042 is the first to recover from an abandoned machine-wide SLDR mutex.
+`SIL.Core`, `SIL.WritingSystems`, `SIL.Core.Desktop`, and `SIL.Lexicon` are pinned directly
+(`SilVersions.props`) above the 17.0.0 versions `SIL.LCModel` requests. `SIL.Core` and
+`SIL.WritingSystems` use 18.0.0-beta0043 to recover abandoned machine-wide SLDR mutexes. The
+`SIL.Core.Desktop` pin selects L10NSharp 10.0.0-beta0004, which ships a `netstandard2.0` asset and
+removes NU1701. The `SIL.Lexicon` pin keeps that dependency on the same LibPalaso release. The local
+library script still overrides only Core and WritingSystems.
 To build against a local libpalaso checkout instead — e.g. to pick up a fix before it ships in a
 package — pack it and point motif at the result:
 
@@ -256,7 +260,7 @@ host it was written for is going away, so there is nothing left for a second tar
 0040's other decisions — the database as the only coordination boundary between Motif's own processes, one
 shipped artifact at one version, no shared-XML peering — are unaffected and still bind.
 
-All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0150`.
+All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0182` through `SilVersions.props`.
 
 No product `.csproj` in this repository mentions `netstandard2.0`, and
 `CompatibilityTargetTests.EveryProductProjectTargetsOnlyNet10` fails the build if one starts to. Contract

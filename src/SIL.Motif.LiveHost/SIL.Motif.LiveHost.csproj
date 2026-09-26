@@ -11,12 +11,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SIL.LCModel" Version="11.0.0-beta0150" />
+    <PackageReference Include="SIL.LCModel" Version="$(SilLCModelPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="SIL.WritingSystems" Version="$(SilLibPalasoVersion)" />
     <PackageReference Include="SIL.Core" Version="$(SilLibPalasoVersion)" />
+    <PackageReference Include="SIL.Core.Desktop" Version="$(SilCoreDesktopVersion)" />
+    <PackageReference Include="SIL.Lexicon" Version="$(SilLexiconVersion)" />
   </ItemGroup>
 
 </Project>

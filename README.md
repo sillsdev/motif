@@ -313,7 +313,7 @@ non-.NET runner still reads `motif --json` against it as a wire description — 
 building it for `netstandard2.0`, because there is no `net48` host left to satisfy it. See
 [AGENTS.md](AGENTS.md#compatibility-targets) for the full rationale.
 
-All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0150`.
+All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0182`.
 
 Run the tests with:
 

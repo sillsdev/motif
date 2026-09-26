@@ -10,11 +10,9 @@
     -->
     <OutputType>Exe</OutputType>
     <!--
-      Single source of truth for the pinned SIL.LCModel version, read below by both the
-      PackageReference and the AssemblyMetadata attribute that lets ModelSource/ModelPathResolver.cs
-      recover the version at run time without a second hardcoded copy of the string.
+      SilVersions.props is the single source of truth for the SIL.LCModel version, read below by both
+      the PackageReference and the AssemblyMetadata attribute used by ModelPathResolver.cs.
     -->
-    <SilLCModelPackageVersion>11.0.0-beta0150</SilLCModelPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,10 +29,12 @@
     <AssemblyMetadata Include="SilLCModelPackageVersion" Value="$(SilLCModelPackageVersion)" />
   </ItemGroup>
 
-  <!-- Pins libpalaso above what SIL.LCModel asks for (SilVersions.props), and lets a local override apply. -->
+  <!-- Pins LibPalaso above SIL.LCModel's 17.x requests; only Core and WritingSystems use the local override. -->
   <ItemGroup>
     <PackageReference Include="SIL.WritingSystems" Version="$(SilLibPalasoVersion)" />
     <PackageReference Include="SIL.Core" Version="$(SilLibPalasoVersion)" />
+    <PackageReference Include="SIL.Core.Desktop" Version="$(SilCoreDesktopVersion)" />
+    <PackageReference Include="SIL.Lexicon" Version="$(SilLexiconVersion)" />
   </ItemGroup>
 
 </Project>
