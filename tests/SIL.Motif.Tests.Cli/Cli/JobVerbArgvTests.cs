@@ -71,6 +71,42 @@ public sealed class JobVerbArgvTests : IDisposable
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("Timed out after", result.Error);
         Assert.Contains("jobs show", result.Error);
+        Assert.DoesNotContain("cancellation", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DryRunWaitWithZeroTimeoutReturnsATypedRefusal()
+    {
+        var proposalId = FinalizeOneOperationProposal();
+
+        var result = Run($"dry-run --project \"{Project}\" {proposalId} --wait --wait-timeout-ms 0 --json");
+
+        Assert.Equal(3, result.ExitCode);
+        Assert.Equal("job.wait-timeout", Envelope(result.Error).Code);
+        Assert.Equal(FailureReason.Busy, Envelope(result.Error).Reason);
+    }
+
+    [Theory]
+    [InlineData("dry-run")]
+    [InlineData("trial")]
+    [InlineData("trial --pending")]
+    public void MalformedWaitTimeoutReturnsUsageBeforeStartingWork(string verb)
+    {
+        var arguments = verb switch
+        {
+            "dry-run" => $"dry-run --project \"{Project}\" agent_AAECAwQFBgcICQoLDA0ODw " +
+                "--wait --wait-timeout-ms invalid --json",
+            "trial" => $"trial --project \"{Project}\" agent_AAECAwQFBgcICQoLDA0ODw " +
+                "--wait --wait-timeout-ms invalid --json",
+            _ => $"trial --pending --project \"{Project}\" --words word --wait " +
+                "--wait-timeout-ms invalid --json",
+        };
+
+        var result = Run(arguments);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Equal(FailureReason.InvalidArgument, Envelope(result.Error).Reason);
+        Assert.Contains("Usage: motif", Envelope(result.Error).Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -226,6 +262,7 @@ public sealed class JobVerbArgvTests : IDisposable
         };
         // This suite asserts on the queue with nothing claiming it; a real kicked runner would race it.
         start.Environment[RunnerKick.SuppressVariable] = "1";
+        start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();

@@ -196,6 +196,51 @@ public sealed class ProposalRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void FinalizeRejectsAChangedDraftWithoutChangingItsRows()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "finalize-stale.fwdata"), "finalize-stale");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "finalize-stale.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Mint("proposal/");
+        const string draftJson = "{\"draft\":true}";
+        repository.CreateDraft("working", id, draftJson);
+
+        var result = repository.Finalize("working", "sha256:stale", "{}", "a label", "a comment",
+            expectedDraftRevision: "sha256:stale");
+
+        Assert.Equal(DraftFinalizationResult.DraftChanged, result);
+        var draft = repository.GetDraft("working");
+        Assert.Equal(draftJson, draft.ProposalJson);
+        Assert.Equal("draft", draft.Status);
+        Assert.Null(draft.IntentDigest);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM ProposalRevisions WHERE ProposalId = $id;";
+        command.Parameters.AddWithValue("$id", id.Value);
+        Assert.Equal(0L, (long)command.ExecuteScalar()!);
+    }
+
+    [Fact]
+    public void FinalizeSucceedsWhenTheExpectedDraftRevisionMatches()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "finalize-matching.fwdata"), "finalize-matching");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "finalize-matching.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Mint("proposal/");
+        const string draftJson = "{\"draft\":true}";
+        repository.CreateDraft("working", id, draftJson);
+
+        var result = repository.Finalize("working", "sha256:first", "{\"proposalId\":\"" + id.Value + "\"}",
+            "a label", "a comment", expectedDraftRevision: DraftRevision.Compute(draftJson));
+
+        Assert.Equal(DraftFinalizationResult.Finalized, result);
+        Assert.Equal("proposed", repository.Get(id).Status);
+        Assert.Throws<KeyNotFoundException>(() => repository.GetDraft("working"));
+    }
+
+    [Fact]
     public void FinalizeRollsBackEverythingWhenTheRevisionInsertHitsAGenuinePrimaryKeyCollision()
     {
         var project = new ProjectLocator(Path.Combine(_root, "finalize-rollback.fwdata"), "finalize-rollback");

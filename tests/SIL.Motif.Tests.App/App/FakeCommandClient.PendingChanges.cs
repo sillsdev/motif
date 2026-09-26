@@ -7,33 +7,40 @@ namespace SIL.Motif.Tests.App;
 
 public sealed partial class FakeCommandClient
 {
-    public List<ReviewTrialRequest> ReviewTrialRequests { get; } = [];
-    public List<ReviewApplyRequest> ReviewApplyRequests { get; } = [];
-    private ReviewTrialResult? _reviewTrial;
-    private ApplyProjection? _reviewApply;
-    public Refusal? ReviewApplyRefusal { get; set; }
+    public List<MeasurePendingRequest> MeasurePendingRequests { get; } = [];
+    public List<ApplyPendingRequest> ApplyPendingRequests { get; } = [];
+    private MeasurePendingResult? _measurement;
+    private ApplyProjection? _apply;
+    public Refusal? ApplyPendingRefusal { get; set; }
+    public Refusal? MeasurePendingRefusal { get; set; }
+    public Func<ApplyPendingRequest, CancellationToken, Task<CommandOutcome<ApplyPendingResult>>>? ApplyPendingHandler
+        { get; set; }
 
-    public void ReviewTrialCompletesWith(ReviewTrialResult result) => _reviewTrial = result;
-    public void ReviewApplyCompletesWith(ApplyProjection result) => _reviewApply = result;
+    public void MeasurePendingCompletesWith(MeasurePendingResult result) => _measurement = result;
+    public void ApplyPendingCompletesWith(ApplyProjection result) => _apply = result;
 
-    public Task<CommandOutcome<ApplyProjection>> ApplyReviewAsync(
-        ReviewApplyRequest request, CancellationToken cancellationToken)
+    public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
+        ApplyPendingRequest request, CancellationToken cancellationToken)
     {
-        ReviewApplyRequests.Add(request);
-        if (ReviewApplyRefusal is { } refusal)
-            return Task.FromResult(CommandOutcome<ApplyProjection>.Refused(refusal));
-        if (_reviewApply is not { } result) throw NotConfigured(nameof(ApplyReviewAsync));
+        ApplyPendingRequests.Add(request);
+        if (ApplyPendingHandler is { } handler) return handler(request, cancellationToken);
+        if (ApplyPendingRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<ApplyPendingResult>.Refused(refusal));
+        if (_apply is not { } result) throw NotConfigured(nameof(ApplyPendingAsync));
         _pending = new PendingChangesSnapshot(null, "none", [], []);
-        return Completed(result);
+        return Completed(ApplyPendingResult.AppliedWith(result));
     }
 
-    public Task<CommandOutcome<ReviewTrialResult>> RunReviewTrialAsync(
-        ReviewTrialRequest request, IProgress<ReviewTrialProgress> progress, CancellationToken cancellationToken)
+    public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
+        MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken)
     {
-        ReviewTrialRequests.Add(request);
-        return _reviewTrial is { } result ? Completed(result) : throw NotConfigured(nameof(RunReviewTrialAsync));
+        MeasurePendingRequests.Add(request);
+        if (MeasurePendingRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<MeasurePendingResult>.Refused(refusal));
+        return _measurement is { } result ? Completed(result) : throw NotConfigured(nameof(MeasurePendingAsync));
     }
     private PendingChangesSnapshot _pending = new(null, "none", [], []);
+    public List<PendingChangesRequest> PendingLoadRequests { get; } = [];
 
     public Refusal? PendingPutRefusal { get; set; }
     public int? PendingPutRefusalOnCall { get; set; }
@@ -56,7 +63,11 @@ public sealed partial class FakeCommandClient
     public void PendingChangesIs(PendingChangesSnapshot snapshot) => _pending = snapshot;
 
     public Task<CommandOutcome<PendingChangesSnapshot>> LoadPendingChangesAsync(
-        PendingChangesRequest request, CancellationToken cancellationToken) => Completed(_pending);
+        PendingChangesRequest request, CancellationToken cancellationToken)
+    {
+        PendingLoadRequests.Add(request);
+        return Completed(_pending);
+    }
 
     public Task<CommandOutcome<PendingChangesSnapshot>> PutPendingChangeAsync(
         PutPendingChangeRequest request, CancellationToken cancellationToken)

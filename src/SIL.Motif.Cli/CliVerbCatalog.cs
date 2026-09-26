@@ -134,8 +134,18 @@ public static class CliVerbCatalog
             new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]" }),
         new CliVerbDescriptor("Commands", "trial", "trial --wait", NoUsage),
         new CliVerbDescriptor(
+            "Commands", "trial", "trial --pending",
+            new[]
+            {
+                "trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> " +
+                "--wait [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]",
+            }),
+        new CliVerbDescriptor(
             "Commands", "apply", "apply",
             new[] { "apply <proposalId> --project <fwdata> --user <name> [--force] [--json]" }),
+        new CliVerbDescriptor(
+            "Commands", "apply", "apply --all-pending",
+            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]" }),
         new CliVerbDescriptor("Commands", "log", "log", new[] { "log --project <fwdata> [--json]" }),
 
         new CliVerbDescriptor(

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -15,6 +16,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed class ReviewPageModel : PageModel
 {
     private CancellationTokenSource? _measurementCancellation;
+    private CancellationTokenSource? _applyCancellation;
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
@@ -123,14 +125,14 @@ public sealed class ReviewPageModel : PageModel
         var revision = Changes.Snapshot.Revision;
         var words = Changes.Snapshot.Changes.Select(change => change.Word)
             .Distinct(StringComparer.Ordinal).ToArray();
-        CommandOutcome<ReviewTrialResult> result;
+        CommandOutcome<MeasurePendingResult> result;
         try
         {
-            result = await Context.Commands.RunReviewTrialAsync(
-                new ReviewTrialRequest(project, draft, revision, words,
+            result = await Context.Commands.MeasurePendingAsync(
+                new MeasurePendingRequest(project, draft, revision, words,
                     Context.Evidence?.Assessment.Measurements.FirstOrDefault(measurement =>
                         measurement.Kind == "Correctness")?.AssessmentId),
-                new Progress<ReviewTrialProgress>(OnMeasurementProgress),
+                new Progress<MeasureProgress>(OnMeasurementProgress),
                 _measurementCancellation.Token).ConfigureAwait(true);
         }
         finally
@@ -150,12 +152,13 @@ public sealed class ReviewPageModel : PageModel
         if (result.Value is { } evidence) NumbersText = evidence.NumbersText;
         OnPropertyChanged(nameof(NumbersText));
         OnPropertyChanged(nameof(MeasurementError));
+        if (result.Refusal?.Code == "trial.changes-changed") await Changes.ReloadAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
         ApplyCommand.NotifyCanExecuteChanged();
     }
 
-    private void OnMeasurementProgress(ReviewTrialProgress progress)
+    private void OnMeasurementProgress(MeasureProgress progress)
     {
         MeasurementProgressText = $"{progress.Completed} of {progress.Total} words checked" +
             (progress.CurrentWord is { Length: > 0 } word ? $" · {word}" : string.Empty);
@@ -167,23 +170,30 @@ public sealed class ReviewPageModel : PageModel
         if (!CanApply || Context.ProjectPath is not { } project || Changes.Snapshot.DraftId is not { } draft)
             return;
         IsApplying = true;
+        _applyCancellation?.Dispose();
+        _applyCancellation = new CancellationTokenSource();
         OnPropertyChanged(nameof(IsApplying));
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
-        CommandOutcome<ApplyProjection> result;
+        CommandOutcome<ApplyPendingResult> result;
         try
         {
-            result = await Context.Commands.ApplyReviewAsync(new ReviewApplyRequest(
-                project, draft, Changes.Snapshot.Revision), CancellationToken.None).ConfigureAwait(true);
+            result = await Context.Commands.ApplyPendingAsync(new ApplyPendingRequest(
+                project, draft, Changes.Snapshot.Revision, Environment.UserName),
+                _applyCancellation.Token).ConfigureAwait(true);
         }
         finally
         {
+            var cancellation = _applyCancellation;
+            _applyCancellation = null;
+            cancellation?.Dispose();
             IsApplying = false;
             OnPropertyChanged(nameof(IsApplying));
             OnPropertyChanged(nameof(CanApply));
             OnPropertyChanged(nameof(ApplyBlockReason));
             ApplyCommand.NotifyCanExecuteChanged();
         }
+        if (Context.ProjectPath != project) return;
         if (!result.Succeeded)
         {
             ApplyError = UserFacingRefusal.MessageOf(result.Refusal!);
@@ -191,9 +201,9 @@ public sealed class ReviewPageModel : PageModel
             await Changes.ReloadAsync().ConfigureAwait(true);
             return;
         }
-        Receipt = result.Value;
+        Receipt = result.Value!.Receipt;
         ApplyError = null;
-        Context.AppliedSinceRefresh = true;
+        if (result.Value.Applied) Context.AppliedSinceRefresh = true;
         await Changes.ReloadAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));
@@ -232,6 +242,11 @@ public sealed class ReviewPageModel : PageModel
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(WorkspaceContext.ProjectName)) OnPropertyChanged(nameof(ProjectName));
+        if (e.PropertyName == nameof(WorkspaceContext.ProjectPath))
+        {
+            _measurementCancellation?.Cancel();
+            _applyCancellation?.Cancel();
+        }
         if (e.PropertyName is nameof(WorkspaceContext.Baseline) or nameof(WorkspaceContext.CurrentEvidence))
         {
             OnPropertyChanged(nameof(CanApply));
@@ -244,6 +259,7 @@ public sealed class ReviewPageModel : PageModel
     protected override void OnProjectCleared()
     {
         _measurementCancellation?.Cancel();
+        _applyCancellation?.Cancel();
         Receipt = null;
         EvidenceComplete = false;
         OnPropertyChanged(nameof(Receipt));
@@ -255,6 +271,7 @@ public sealed class ReviewPageModel : PageModel
     protected override async Task OnStopWorkAsync()
     {
         _measurementCancellation?.Cancel();
+        _applyCancellation?.Cancel();
         if (MeasureCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
         if (ApplyCommand.ExecutionTask is { } applying) await applying.ConfigureAwait(true);
     }
