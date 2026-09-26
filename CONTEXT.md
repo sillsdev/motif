@@ -205,7 +205,7 @@ _Avoid_: query, sample, filter, scope, subset, test set, corpus descriptor
 **Default Selection**:
 The Selection a project measures when nobody names another: chosen Texts plus any added words, stored in
 the Motif store with the project and resolved to an exact word list and digest on every run. Chosen in the
-setup dialog the first time a project opens, and changed from Configure. Each Assessment keeps the list it
+setup dialog once the project's first Baseline exists, and changed from Configure. Each Assessment keeps the list it
 resolved, so changing the Default Selection never rewrites what an earlier run measured.
 _Avoid_: default corpus, word set, profile, preset
 
