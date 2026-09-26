@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
@@ -30,9 +31,15 @@ namespace SIL.Motif.Commands.Queries;
 /// </remarks>
 public static class TextWordsQuery
 {
-    /// <summary>Returns the chosen Texts' ordered words, occurrences, analyses and lines.</summary>
-    public static CommandOutcome<TextWordsResponse> Query(TextWordsRequest request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
+    /// <summary>
+    /// Returns the chosen Texts' ordered words, occurrences, analyses and lines, or a cancellation refusal once
+    /// <paramref name="cancellationToken"/> is cancelled: checked before the store is opened and before each Text.
+    /// </summary>
+    public static CommandOutcome<TextWordsResponse> Query(
+        TextWordsRequest request, CancellationToken cancellationToken = default)
+    {
+        if (cancellationToken.IsCancellationRequested) return Cancelled();
+        return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var current = new BaselineRepository(database).GetCurrentTextWords(workspaceKey, request.TextIds);
@@ -49,6 +56,7 @@ public static class TextWordsQuery
 
             foreach (var textId in request.TextIds)
             {
+                if (cancellationToken.IsCancellationRequested) return Cancelled();
                 if (!textsById.TryGetValue(textId, out var text)) continue;
                 var analyses = text.Analyses.ToDictionary(
                     stored => stored.Key, stored => ReadAnalysis(stored, projectName), StringComparer.Ordinal);
@@ -106,6 +114,10 @@ public static class TextWordsQuery
             return CommandOutcome<TextWordsResponse>.Success(new TextWordsResponse(words, texts, HasBaseline: true,
                 OccurrenceCount: words.Sum(word => word.Occurrences.Count)));
         });
+    }
+
+    private static CommandOutcome<TextWordsResponse> Cancelled() => CommandOutcome<TextWordsResponse>.Refused(
+        new Refusal("texts.words-cancelled", FailureReason.Cancelled, "Reading the chosen Texts' words was cancelled."));
 
     private static string? GlossOf(ProjectAnalysis? analysis) => analysis is null ? null
         : string.Join(" ", analysis.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
