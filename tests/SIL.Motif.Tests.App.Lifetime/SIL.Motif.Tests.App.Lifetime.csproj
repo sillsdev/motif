@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\SIL.Motif.Tests.App\App\Walkthrough\HeadlessClick.cs" Link="Walkthrough\HeadlessClick.cs" />
     <SupportedPlatform Include="windows" />
     <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
     <ProjectReference Include="..\..\src\SIL.Motif.App\SIL.Motif.App.csproj" />

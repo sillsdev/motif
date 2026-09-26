@@ -30,7 +30,6 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
             using var restartedWalkthrough = new WalkthroughWindow(
                 firstProject.ManagedRoot, firstProject.FwDataPath);
             restartedWalkthrough.Show();
-            restartedWalkthrough.LoadKnownProjects();
             restartedWalkthrough.SelectKnownProject(firstProject.FwDataPath);
             restartedWalkthrough.WaitUntil(
                 () => restartedWalkthrough.Workspace.Baseline.HasBaseline &&

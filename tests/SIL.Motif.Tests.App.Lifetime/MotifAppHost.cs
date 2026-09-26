@@ -31,7 +31,11 @@ public sealed class MotifAppHostCollection : ICollectionFixture<MotifAppHostExit
 /// </summary>
 public sealed class MotifAppHostExit : IDisposable
 {
-    public void Dispose() => MotifAppHost.Shared.ExitThroughLifetime();
+    public void Dispose()
+    {
+        if (Dispatcher.UIThread.InvokeAsync(() => { }).Status != DispatcherOperationStatus.Aborted)
+            MotifAppHost.Shared.ExitThroughLifetime();
+    }
 }
 
 /// <summary>
@@ -78,7 +82,7 @@ internal sealed class MotifAppHost
     /// <summary>
     /// Runs <paramref name="work"/> on the Avalonia thread, pumping the dispatcher until it completes, and
     /// fails with <paramref name="step"/> named when <paramref name="timeout"/> passes first. A session the
-    /// work leaves open is closed afterwards, so one failure cannot cascade into the next test.
+    /// work leaves open is closed afterwards unless its app has already exited.
     /// </summary>
     public void Run(string step, TimeSpan timeout, Func<Task> work) => Run(step, timeout, work, null);
 
@@ -100,13 +104,20 @@ internal sealed class MotifAppHost
             }
             if (_session is not null)
             {
-                try
+                if (Dispatcher.UIThread.InvokeAsync(() => { }).Status == DispatcherOperationStatus.Aborted)
                 {
-                    Pump("close after '" + step + "'", timeout, StopAsync());
+                    _session = null;
                 }
-                catch (Exception exception)
+                else
                 {
-                    failure = failure is null ? exception : new AggregateException(failure, exception);
+                    try
+                    {
+                        Pump("close after '" + step + "'", timeout, StopAsync());
+                    }
+                    catch (Exception exception)
+                    {
+                        failure = failure is null ? exception : new AggregateException(failure, exception);
+                    }
                 }
             }
             if (failure is not null) ExceptionDispatchInfo.Throw(failure);

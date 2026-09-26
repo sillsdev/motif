@@ -115,7 +115,6 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
                 parserPath: FakeParser.ExecutablePath);
             restarted.Show();
-            restarted.LoadKnownProjects();
             restarted.SelectKnownProject(project.FwDataPath);
             restarted.WaitUntil(
                 () => restarted.Workspace.Baseline.HasBaseline && restarted.Workspace.Selection.Texts.Count == 1,
@@ -177,7 +176,6 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
                 parserPath: FakeParser.ExecutablePath);
             restarted.Show();
-            restarted.LoadKnownProjects();
             restarted.SelectKnownProject(project.FwDataPath);
             Assert.Equal(project.FwDataPath, restarted.Workspace.Context.ProjectPath);
             return Task.CompletedTask;

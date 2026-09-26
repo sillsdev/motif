@@ -149,6 +149,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>Collapses or expands the sidebar for a window <paramref name="width"/> pixels wide.</summary>
     public void UpdateWindowWidth(double width) => IsSidebarCollapsed = width < SidebarCollapseWidth;
 
+    /// <summary>Re-reads the Known projects, keeping the last list if the read fails.</summary>
     public Task RefreshKnownProjectsAsync()
     {
         if (_knownProjectsRefreshTask is { IsCompleted: false } inProgress) return inProgress;
@@ -467,8 +468,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         if (Context.ProjectPath is not { } path) return;
         var generation = _refreshGeneration;
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
-        if (!IsCurrentRefresh(generation, path)) return;
-        await RefreshKnownProjectsAsync().ConfigureAwait(true);
         if (!IsCurrentRefresh(generation, path)) return;
         await Context.PublishBaselineCapturedAsync().ConfigureAwait(true);
     }

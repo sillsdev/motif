@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using SIL.Motif.App.Views;
@@ -30,12 +31,15 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
             CaptureBaseline(walkthrough, deadline);
             walkthrough.SkipSetup();
 
+            var firstProjectEntryName = $"Open {Path.GetFileNameWithoutExtension(firstProject.FwDataPath)}";
+            walkthrough.OpenProjectMenu();
             walkthrough.WaitUntil(
-                () => walkthrough.Workspace.RecentProjects.Any(project =>
-                    string.Equals(project.FullFwDataPath, firstProject.FwDataPath,
-                        StringComparison.OrdinalIgnoreCase)),
+                () => walkthrough.Window.RecentProjectItems.Any(item =>
+                    string.Equals(AutomationProperties.GetName(item), firstProjectEntryName,
+                        StringComparison.Ordinal)),
                 TimeSpan.FromSeconds(10),
-                "the first project did not appear under Open recent after its capture");
+                "the first project did not appear in the visible Open recent list");
+            walkthrough.CloseProjectMenu();
 
             walkthrough.SelectKnownProject(firstProject.FwDataPath);
 
@@ -51,11 +55,12 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
                     StringComparison.OrdinalIgnoreCase));
             File.Delete(secondProject.FwDataPath);
 
-            walkthrough.Click("Project menu");
+            walkthrough.OpenProjectMenu();
+            var secondProjectEntryName = $"Open {Path.GetFileNameWithoutExtension(secondProject.FwDataPath)}";
             walkthrough.WaitUntil(
-                () => walkthrough.Workspace.RecentProjects.All(project =>
-                    !string.Equals(project.FullFwDataPath, secondProject.FwDataPath,
-                        StringComparison.OrdinalIgnoreCase)),
+                () => walkthrough.Window.RecentProjectItems.All(item =>
+                    !string.Equals(AutomationProperties.GetName(item), secondProjectEntryName,
+                        StringComparison.Ordinal)),
                 TimeSpan.FromSeconds(10), "the missing project stayed under Open recent");
             Assert.False(walkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
 

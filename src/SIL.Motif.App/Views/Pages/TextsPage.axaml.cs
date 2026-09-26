@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
 
@@ -14,7 +15,9 @@ public sealed partial class TextsPage : UserControl
         AvaloniaXamlLoader.Load(this);
 
         Host("CompareHost").Content = new ComparePanel(page.Assess.Compare);
-        Host("SelectionHost").Content = new SelectionPanel(page.Selection, page.Words);
+        var selection = new SelectionPanel(page.Selection, page.Words);
+        selection.Bind(IsEnabledProperty, new Binding("Context.ProjectAndSelectionEnabled") { Source = page });
+        Host("SelectionHost").Content = selection;
         Host("AnalyzeReaderHost").Content = new ResultsInTextPanel(page.ResultsInText);
         Host("WordListHost").Content = new TextWordsPanel(page.Words);
         Host("ListsHost").Content = new TextsListsPanel(page.TextsLists);

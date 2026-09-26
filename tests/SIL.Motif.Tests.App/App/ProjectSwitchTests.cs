@@ -1,6 +1,10 @@
 using Avalonia.Input;
+using Avalonia.Automation;
+using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
@@ -16,6 +20,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class ProjectSwitchTests
 {
     private const string ProjectA = @"C:\projects\one.fwdata";
@@ -222,6 +227,78 @@ public sealed class ProjectSwitchTests
         Assert.Equal(tokenB, parts.Workspace.Baseline.Token);
         Assert.Empty(parts.Fake.AssessRequests);
         Assert.False(parts.Workspace.RerunOffered);
+    }
+
+    [Fact]
+    public void ProjectAndSelectionControlsDisableForAnAssessmentAndEnableAgainAfterward()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var parts = NewWorkspace();
+            var window = new MainWindow();
+            window.Compose(parts.Workspace);
+            parts.Workspace.CurrentPage = WorkspacePage.Texts;
+            parts.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+            window.Show();
+            window.ApplyTemplate();
+            window.UpdateLayout();
+            var assessmentStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseAssessment = new TaskCompletionSource<CommandOutcome<AssessCommandResponse>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var response = new AssessCommandResponse(
+                new BaselineCaptureResponse(NewToken(), ProjectA, DateTimeOffset.UtcNow, false, false),
+                new SelectionProjection([], []), ["assessment/one"], "summary");
+            Task? assessment = null;
+            parts.Fake.OnAssess((_, _, _) =>
+            {
+                assessmentStarted.TrySetResult();
+                return releaseAssessment.Task;
+            });
+
+            try
+            {
+                await OpenProjectAsync(parts.Workspace, ProjectA);
+                parts.Workspace.Selection.PastedWords = "word";
+                window.UpdateLayout();
+                var projectMenu = Assert.IsType<Button>(window.FindControl<Button>("ProjectMenuButton"));
+                var page = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var selectionHost = Assert.IsType<ContentControl>(page.FindControl<ContentControl>("SelectionHost"));
+                var search = Assert.Single(selectionHost.GetLogicalDescendants().OfType<TextBox>(), control =>
+                    AutomationProperties.GetName(control) == "Search texts");
+
+                assessment = parts.Workspace.Assess.RunCommand.ExecuteAsync(null);
+                await assessmentStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                parts.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+                window.UpdateLayout();
+
+                Assert.False(parts.Workspace.ProjectSwitchEnabled);
+                Assert.False(projectMenu.IsEffectivelyEnabled);
+                Assert.False(parts.Workspace.Context.ProjectAndSelectionEnabled);
+                Assert.False(selectionHost.IsEffectivelyEnabled);
+                var selectionPanel = Assert.IsType<SelectionPanel>(selectionHost.Content);
+                Assert.False(search.IsEffectivelyEnabled,
+                    $"panel={selectionPanel.IsEnabled}/{selectionPanel.IsEffectivelyEnabled}, " +
+                    $"host={selectionHost.IsEnabled}/{selectionHost.IsEffectivelyEnabled}, " +
+                    $"search={search.IsEnabled}/{search.IsEffectivelyEnabled}");
+
+                releaseAssessment.SetResult(CommandOutcome<AssessCommandResponse>.Success(response));
+                await assessment;
+                window.UpdateLayout();
+
+                Assert.True(parts.Workspace.ProjectSwitchEnabled);
+                Assert.True(projectMenu.IsEffectivelyEnabled);
+                Assert.True(parts.Workspace.Context.ProjectAndSelectionEnabled);
+                Assert.True(selectionHost.IsEffectivelyEnabled);
+                Assert.True(search.IsEffectivelyEnabled);
+            }
+            finally
+            {
+                releaseAssessment.TrySetResult(CommandOutcome<AssessCommandResponse>.Success(response));
+                if (assessment is not null) await assessment;
+                window.Close();
+                await parts.Workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(20));
     }
 
     [Fact]
