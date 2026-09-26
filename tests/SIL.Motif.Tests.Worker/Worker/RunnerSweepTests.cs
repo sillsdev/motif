@@ -196,6 +196,40 @@ public sealed class RunnerSweepTests : IDisposable
     }
 
     [Fact]
+    public async Task AMachineDatabaseFileDeletedBetweenSweepsFailsTheSweepAsAMachineDatabaseLoss()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        SeedProject(known, "file-lost");
+        // Unpooled connections are all closed between sweeps, so the file deletes as a user's root would.
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+            File.Delete(machine.FullPath + suffix);
+
+        var failure = await Assert.ThrowsAsync<IOException>(() => SIL.Motif.Worker.Program.SweepOnceAsync(known,
+            _runtimes, _lanes, _options, new FakeInvoker(), OwnerId, CancellationToken.None));
+
+        Assert.Contains("machine database", failure.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AMachineDatabaseMissingItsKnownProjectsTableFailsTheSweepAsAMachineDatabaseLoss()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        using (var connection = machine.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "DROP TABLE KnownProjects;";
+            command.ExecuteNonQuery();
+        }
+
+        var failure = await Assert.ThrowsAsync<IOException>(() => SIL.Motif.Worker.Program.SweepOnceAsync(known,
+            _runtimes, _lanes, _options, new FakeInvoker(), OwnerId, CancellationToken.None));
+
+        Assert.Contains("machine database", failure.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ASweepThatBeginsAfterShutdownClaimsNothing()
     {
         using var machine = MachineDatabase.Open(_options.Root);

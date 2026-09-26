@@ -269,11 +269,11 @@ internal static class Program
     {
         var opened = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop)>();
         var hasActiveWork = false;
-        foreach (var known in knownProjects.List())
+        foreach (var known in FromMachineDatabase(() => knownProjects.List()))
         {
             if (!File.Exists(known.FullFwDataPath))
             {
-                knownProjects.Forget(known.WorkspaceKey);
+                FromMachineDatabase(() => { knownProjects.Forget(known.WorkspaceKey); return true; });
                 continue;
             }
 
@@ -335,6 +335,30 @@ internal static class Program
         else
             await runClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
         return new SweepOutcome(claimed.JobId, true);
+    }
+
+    /// <summary>
+    /// Runs one read or write against the machine database, reporting any failure of it as the loss of that
+    /// database, whatever SQLite said.
+    /// </summary>
+    /// <remarks>
+    /// A root deleted under a live runner fails in more than one way: a missing directory, a missing file
+    /// that the next connection recreates empty so the query finds no table, or a lock left behind. Each
+    /// escapes the runner, which exits with the store failure code; this makes the report say which store
+    /// was lost, pinned by `AMachineDatabaseFileDeletedBetweenSweepsFailsTheSweepAsAMachineDatabaseLoss`.
+    /// </remarks>
+    internal static T FromMachineDatabase<T>(Func<T> operation)
+    {
+        try
+        {
+            return operation();
+        }
+        catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
+            InvalidDataException)
+        {
+            throw new IOException("The Motif machine database was lost or became unusable (" +
+                exception.Message + ").", exception);
+        }
     }
 
     /// <summary>One sweep tick's result: the job it ran, if any, and whether any project had active work.</summary>
