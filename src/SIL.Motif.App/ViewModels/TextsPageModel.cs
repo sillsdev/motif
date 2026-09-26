@@ -103,7 +103,12 @@ public sealed partial class TextsPageModel : PageModel
     /// <summary>Whether the word views have nothing to show and nothing to explain yet: no run, no refusal.</summary>
     public bool ShowEmptyResults => Context.HasNoEvidence && !Assess.IsActive && Assess.Refusal is null;
 
-    protected override void OnProjectCleared() => Words.ShowAssessment(null);
+    protected override void OnProjectCleared()
+    {
+        ResultsInText.ClearProject();
+        Words.ClearProject();
+        Words.ShowAssessment(null);
+    }
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
         Words.SetProjectAsync(projectPath, cancellationToken);

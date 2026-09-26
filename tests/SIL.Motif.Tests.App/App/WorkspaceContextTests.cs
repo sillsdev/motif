@@ -44,7 +44,7 @@ public sealed class WorkspaceContextTests
         var context = NewContext(fake);
         _ = new TextsPageModel(context);
         await context.Selection.SetProjectAsync(ProjectPath);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var completion = new TaskCompletionSource<CommandOutcome<TextWordsResponse>>(
@@ -77,7 +77,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         Assert.False(timing.Context.HasEvidence);
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         Assert.True(timing.Context.HasEvidence);
@@ -93,7 +93,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         var response = new TimingResponse("assessment-parse", "all", "kind", 1, 5, 8, [], [], []);
         fake.TimingCompletesWith(response);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
@@ -115,7 +115,7 @@ public sealed class WorkspaceContextTests
             {
                 Words = [new TimingWordRow("dogs", 1, 1, calls > 3 ? "Finished" : "Step limit")],
             })));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         var before = timing.KindTiming;
 
@@ -139,7 +139,7 @@ public sealed class WorkspaceContextTests
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse("assessment-parse", request.WordSet, request.By, 1, 1, 1, [],
                 request.By == "rule" ? [new TimingAggregateRow(refreshed ? "New rule" : "Old rule", 1, 1, 1, 1)] : [], []))));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         Assert.Equal("Old rule", timing.SelectedRule);
 
@@ -161,7 +161,7 @@ public sealed class WorkspaceContextTests
         fake.OverviewCompletesWith(overview);
         fake.ReadCurrentEvidenceCompletesWith(current);
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal(ProjectPath, Assert.Single(fake.OverviewRequests).ProjectPath);
         Assert.Equal(ProjectPath, Assert.Single(fake.CurrentEvidenceRequests));
@@ -178,7 +178,7 @@ public sealed class WorkspaceContextTests
         fake.OverviewCompletesWith(Overview());
         fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
             null, EvidenceFreshness.NoBaseline, null, null, null, null, null));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         Assert.False(overviewPage.HasWarningSummary);
         fake.OverviewCompletesWith(Overview() with
         {
@@ -205,7 +205,7 @@ public sealed class WorkspaceContextTests
         fake.OverviewCompletesWith(Overview());
         fake.TimingCompletesWith(response);
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         var request = Assert.Single(fake.TimingRequests.Where(item => item.By == "kind"));
         Assert.Equal(ProjectPath, request.ProjectPath);
@@ -246,7 +246,7 @@ public sealed class WorkspaceContextTests
         });
         fake.OverviewCompletesWith(Overview());
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal("dogs", Assert.Single(context.Assess.Words.AllRows).Word);
         Assert.Equal(1, texts.Assess.Compare.TotalCount);
@@ -271,7 +271,7 @@ public sealed class WorkspaceContextTests
             StoredAssessment() with { Words = [new AssessedWord("dogs", "timed-out", [])] }));
         fake.OverviewCompletesWith(Overview());
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         Assert.True(Assert.Single(context.Assess.Words.AllRows).IsIncomplete);
         Assert.Contains("1 incomplete", context.Assess.Result!.CompletionSummary);
@@ -287,7 +287,7 @@ public sealed class WorkspaceContextTests
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", wordSet, "kind", 1, 5, 8, [], [], []));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         timing.SlowestCount = 20;
@@ -315,7 +315,7 @@ public sealed class WorkspaceContextTests
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse("assessment-1", request.WordSet, request.By, 2, 5, 8, [],
                 request.By == "kind" ? kindRows : ruleRows, []))));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
@@ -346,7 +346,7 @@ public sealed class WorkspaceContextTests
             new TimingResponse("assessment-1", request.WordSet, request.By, 6, 5, 8, [],
                 request.By == "rule" ? [new TimingAggregateRow("Verb template", 10, 1, 20, 6)] : [],
                 request.Rule is null ? [] : costliest))));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         await timing.SelectWordSetCommand.ExecuteAsync("all");
 
@@ -366,7 +366,7 @@ public sealed class WorkspaceContextTests
             Words = [new TimingWordRow("dogs", 5, 2, "Finished"),
                 new TimingWordRow("cats", 8, 4, "Step limit")],
         });
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         timing.PickedWords = "dogs\ncats";
@@ -383,7 +383,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "cell:approved:no-parse", "kind",
             1, 5, 8, [], [], []));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         timing.SelectedMatrixCell = new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.NoParse);
 
@@ -399,7 +399,7 @@ public sealed class WorkspaceContextTests
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 1, 5, 8, [], [], []));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         context.Assess.Compare.Load([
             new AssessWordRowViewModel(new AssessmentWordResult("dogs", "analysed", false, "Finished", 5, null)),
@@ -419,7 +419,7 @@ public sealed class WorkspaceContextTests
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 1, 5, 8, [], [], []));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.Assess.Compare.Load([
             new AssessWordRowViewModel(new AssessmentWordResult("dogs", "analysed", false, "Finished", 5, null)),
             new AssessWordRowViewModel(new AssessmentWordResult("cats", "no-parse", false, "Finished", 8, null)),
@@ -443,7 +443,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "step-limit", "kind", 0, null, null,
             [], [], []));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
 
@@ -464,7 +464,7 @@ public sealed class WorkspaceContextTests
                 new TimingWordRow("cats", 8, 4, "Finished")],
         });
         fake.AssessCompletesWith(Assessment());
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.Assess.ProjectPath = ProjectPath;
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         timing.PickedWords = "dogs\ncats";
@@ -502,7 +502,7 @@ public sealed class WorkspaceContextTests
                 new TimingWordRow("cats", 8, 4, "Finished")],
         });
         fake.AssessBlocksUntilCancelled(new Refusal("assessment.cancelled", FailureReason.Cancelled, "Cancelled."));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.Assess.ProjectPath = ProjectPath;
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         timing.PickedWords = "dogs\ncats";
@@ -526,7 +526,7 @@ public sealed class WorkspaceContextTests
         var handoff = new AiHandoffPageModel(context);
         Assert.Equal("Write the AI Handoff", handoff.HandoffActionText);
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         Assert.Equal("invocation/one", handoff.Handoff.InvocationId);
         Assert.StartsWith("Covers the Assessment of ", handoff.Handoff.CoverageText);
@@ -541,7 +541,7 @@ public sealed class WorkspaceContextTests
     {
         var context = NewContext();
         var review = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         Assert.Equal(ProjectPath, context.Changes.ProjectPath);
         Assert.Equal(string.Empty, review.Badge);
 
@@ -552,7 +552,7 @@ public sealed class WorkspaceContextTests
         Assert.False(context.Changes.HasItems);
         Assert.Equal(string.Empty, review.Badge);
 
-        await context.PublishProjectOpenedAsync(OtherProjectPath);
+        await context.OpenProjectAsync(OtherProjectPath);
         Assert.Equal(OtherProjectPath, context.Changes.ProjectPath);
         Assert.False(context.Changes.HasItems);
         Assert.Equal(string.Empty, review.Badge);
@@ -735,15 +735,16 @@ public sealed class WorkspaceContextTests
     public async Task AnalyzeOpinionSendsTheChosenAnalysisAndReadingIndex()
     {
         var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
         var selection = new SelectionViewModel(fake);
         var changes = new ChangesViewModel(fake);
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection), changes, fake,
-            new NoFolderPicker(), new NoDragSource());
+            new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake));
         var texts = new TextsPageModel(context);
         var first = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
         var second = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000002", null, null)]);
         fake.ListTextWordsCompletesWith(new TextWordsResponse([], [], HasBaseline: true));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         changes.AssessmentId = "assessment/one";
         context.Assess.Result = Assessment() with
         {
@@ -782,7 +783,7 @@ public sealed class WorkspaceContextTests
         var first = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
         var second = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000002", null, null)]);
         fake.ListTextWordsCompletesWith(new TextWordsResponse([], [], HasBaseline: true));
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.Changes.AssessmentId = "assessment/one";
         context.Assess.Result = Assessment() with
         {
@@ -835,7 +836,7 @@ public sealed class WorkspaceContextTests
         var result = new TimingResponse("assessment-1", "all", "kind", 1, 5, 5, [],
             [new TimingAggregateRow("Affix template", 5, 1, 2, 1)], []);
         fake.TimingCompletesWith(result);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         context.OpenTiming(["dogs"], null);
@@ -859,7 +860,7 @@ public sealed class WorkspaceContextTests
         var result = new TimingResponse("assessment-1", "all", "rule", 1, 5, 5, [],
             [new TimingAggregateRow("Plural", 5, 1, 2, 1)], [new WordRuleTiming("dogs", 5, 2)]);
         fake.TimingCompletesWith(result);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         context.OpenTiming(["dogs"], "Plural");
@@ -899,7 +900,7 @@ public sealed class WorkspaceContextTests
             _ => new Avalonia.Controls.Border());
         var model = (ElsewherePageModel)entry.CreateModel(context);
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         Assert.Equal(1, model.Queried);
 
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -916,7 +917,7 @@ public sealed class WorkspaceContextTests
         var context = NewContext();
         var page = new LoadingPageModel(context);
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         Assert.Equal(ProjectPath, page.Opened);
         Assert.Equal(ProjectPath, context.ProjectPath);
 
@@ -993,6 +994,8 @@ public sealed class WorkspaceContextTests
 
     internal static WorkspaceContext NewContext(ICommandClient commands)
     {
+        if (commands is FakeCommandClient fake)
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
         var selection = new SelectionViewModel(commands);
         return new WorkspaceContext(
             selection,
@@ -1000,7 +1003,8 @@ public sealed class WorkspaceContextTests
             new ChangesViewModel(commands),
             commands,
             new NoFolderPicker(),
-            new NoDragSource());
+            new NoDragSource(),
+            new BaselineViewModel(commands));
     }
 
     private static (FakeCommandClient Fake, WorkspaceContext Context) NewContextWithFake()

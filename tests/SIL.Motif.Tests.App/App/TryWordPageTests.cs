@@ -291,9 +291,10 @@ public sealed class TryWordPageTests
     private static (WorkspaceContext Context, FakeCommandClient Fake) NewContext()
     {
         var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         var selection = new SelectionViewModel(fake);
         return (new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
-            new NoFolderPicker(), new NoDragSource()), fake);
+            new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake)), fake);
     }
 
     private static AssessmentWordResult WordWithExpectedAnalysis(string word, string? storedAnalysisId,

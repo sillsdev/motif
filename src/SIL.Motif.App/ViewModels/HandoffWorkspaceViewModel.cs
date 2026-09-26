@@ -29,6 +29,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private bool _isRefreshing;
     private bool _refreshCancelled;
     private bool _refreshed;
+    private int _refreshGeneration;
 
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
@@ -50,7 +51,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             KnownProjects = project.KnownProjects,
             BrowseForProjectCommand = project.BrowseCommand,
             OpenProjectCommand = new AsyncRelayCommand<string>(path =>
-                path is null ? Task.CompletedTask : SetProjectAsync(path)),
+                path is null ? Task.CompletedTask : OpenProjectSafelyAsync(path)),
             RefreshBaselineCommand = baseline.RefreshCommand,
         };
         PublishBaseline();
@@ -64,7 +65,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(recent =>
-            recent is null ? Task.CompletedTask : SetProjectAsync(recent.FullFwDataPath));
+            recent is null ? Task.CompletedTask : OpenProjectSafelyAsync(recent.FullFwDataPath));
         ConfigureCommand = new RelayCommand(() => OpenConfiguration?.Invoke());
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
@@ -134,6 +135,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     /// <summary>Whether a project has been chosen in this window.</summary>
     public bool HasProject => Context.HasProject;
 
+    /// <summary>Whether the project menu can switch projects while shell work is active.</summary>
+    public bool ProjectSwitchEnabled => Context.ProjectAndSelectionEnabled && !_isRefreshing;
+
     /// <summary>Browses for a <c>.fwdata</c> file and opens it: the project menu's Select new.</summary>
     public IAsyncRelayCommand SelectNewProjectCommand { get; }
 
@@ -171,6 +175,14 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     /// <summary>Whether the last Baseline capture was refused.</summary>
     public bool HasRefreshRefusal => Baseline.RefusalMessage is not null;
+
+    /// <summary>The fixed sentence shown when Motif cannot open a chosen project.</summary>
+    public string? OpenRefusalMessage { get; private set; }
+
+    /// <summary>The copyable error details from the refused project open.</summary>
+    public string? OpenRefusalDetail { get; private set; }
+
+    public bool HasOpenRefusal => OpenRefusalMessage is not null;
 
     /// <summary>The freshness line's state in words.</summary>
     public string FreshnessLabel => HasRefreshRefusal ? "Refresh refused" : Freshness switch
@@ -309,26 +321,46 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public async Task SetProjectAsync(string fwDataPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
+        InvalidateRefreshForProjectSwitch();
         RerunOffered = false;
         _refreshed = false;
         Project.ShowChosen(fwDataPath);
         var opening = Context.OpenProjectAsync(fwDataPath, cancellationToken);
-        RefreshRecentProjects();
         RaiseFreshness();
-        await opening.ConfigureAwait(true);
-        RaiseFreshness();
+        try
+        {
+            await opening.ConfigureAwait(true);
+        }
+        finally
+        {
+            RefreshRecentProjects();
+            RaiseFreshness();
+        }
     }
 
-    private async void OnProjectChosen(object? sender, string fwDataPath)
+    private void OnProjectChosen(object? sender, string fwDataPath) => _ = OpenProjectSafelyAsync(fwDataPath);
+
+    private async Task OpenProjectSafelyAsync(string fwDataPath)
     {
+        OpenRefusalMessage = null;
+        OpenRefusalDetail = null;
+        OnPropertyChanged(nameof(HasOpenRefusal));
         try
         {
             await SetProjectAsync(fwDataPath).ConfigureAwait(true);
         }
+        catch (OperationCanceledException)
+        {
+        }
         catch (Exception exception)
         {
-            Baseline.RefusalMessage = exception.Message;
+            OpenRefusalMessage = "Motif could not open this project.";
+            OpenRefusalDetail = exception.Message;
+            OnPropertyChanged(nameof(OpenRefusalMessage));
+            OnPropertyChanged(nameof(OpenRefusalDetail));
+            OnPropertyChanged(nameof(HasOpenRefusal));
         }
+        RaiseFreshness();
     }
 
     private void OnBaselineRefreshed(object? sender, EventArgs e) => _reloadAfterRefresh = ReloadAfterRefreshAsync();
@@ -337,7 +369,9 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     private async Task ReloadAfterRefreshAsync()
     {
         if (Context.ProjectPath is not { } path) return;
+        var generation = _refreshGeneration;
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
+        if (!IsCurrentRefresh(generation, path)) return;
         await Context.PublishBaselineCapturedAsync().ConfigureAwait(true);
     }
 
@@ -345,6 +379,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private async Task RefreshAsync()
     {
+        var generation = ++_refreshGeneration;
+        var projectPath = Context.ProjectPath;
         _isRefreshing = true;
         _refreshCancelled = false;
         _refreshed = false;
@@ -352,21 +388,39 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         try
         {
             await Baseline.RefreshCommand.ExecuteAsync(null).ConfigureAwait(true);
+            if (!IsCurrentRefresh(generation, projectPath)) return;
             if (Baseline.RefusalMessage is not null) return;
             await _reloadAfterRefresh.ConfigureAwait(true);
-            if (_refreshCancelled || !Assess.RunCommand.CanExecute(null)) return;
+            if (!IsCurrentRefresh(generation, projectPath) || _refreshCancelled ||
+                !Assess.RunCommand.CanExecute(null)) return;
 
             // The run this Refresh starts is the rerun a fresh Baseline would otherwise offer.
             RerunOffered = false;
             await Assess.RunCommand.ExecuteAsync(null).ConfigureAwait(true);
-            _refreshed = Assess.State == RunState.Completed;
+            if (IsCurrentRefresh(generation, projectPath)) _refreshed = Assess.State == RunState.Completed;
         }
         finally
         {
-            _isRefreshing = false;
-            RaiseFreshness();
+            if (generation == _refreshGeneration)
+            {
+                _isRefreshing = false;
+                RaiseFreshness();
+            }
         }
     }
+
+    private void InvalidateRefreshForProjectSwitch()
+    {
+        _refreshGeneration++;
+        _refreshCancelled = true;
+        if (!_isRefreshing) return;
+        _isRefreshing = false;
+        RaiseFreshness();
+    }
+
+    private bool IsCurrentRefresh(int generation, string? projectPath) =>
+        generation == _refreshGeneration && projectPath is not null &&
+        string.Equals(projectPath, Context.ProjectPath, StringComparison.OrdinalIgnoreCase);
 
     private void CancelRefresh()
     {
@@ -384,6 +438,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         OnPropertyChanged(nameof(FreshnessIsStale));
         OnPropertyChanged(nameof(FreshnessIsBusy));
         OnPropertyChanged(nameof(HasRefreshRefusal));
+        OnPropertyChanged(nameof(ProjectSwitchEnabled));
         OnPropertyChanged(nameof(ShowsSeeWhatChanged));
         RefreshCommand.NotifyCanExecuteChanged();
         CancelRefreshCommand.NotifyCanExecuteChanged();
@@ -404,7 +459,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private void OnBaselinePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        PublishBaseline();
+        if (Context.ProjectPath is null) Context.Baseline = null;
+        else PublishBaseline();
         if (Context.CurrentEvidence is { } evidence && Baseline.HasBaseline)
             Context.CurrentEvidence = evidence with
             {
@@ -432,6 +488,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
             case nameof(WorkspaceContext.ProjectPath):
                 OnPropertyChanged(nameof(ProjectName));
                 OnPropertyChanged(nameof(HasProject));
+                OnPropertyChanged(nameof(ProjectSwitchEnabled));
                 break;
             case nameof(WorkspaceContext.Evidence):
                 // Freshness describes the evidence on screen, whether a run just produced it or the store held it.
@@ -454,6 +511,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         if (e.PropertyName == nameof(AssessViewModel.IsActive))
         {
             RefreshCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(ProjectSwitchEnabled));
             // A run started from Refresh leaves the person where they are; the top bar says how it is going.
             if (Assess.IsActive && !_isRefreshing &&
                 !(Assess.LastRunWasRerun && Context.CurrentPage == WorkspacePage.Timing))
@@ -475,7 +533,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         if (Assess.RunCommand.CanExecute(null)) await Assess.RunCommand.ExecuteAsync(null);
     }
 
-    // Awaits each command's own unwind rather than disposing it: the workspace outlives one project.
     /// <summary>Cancels and awaits any active run, so nothing keeps running past this workspace's lifetime.</summary>
     public async ValueTask DisposeAsync()
     {

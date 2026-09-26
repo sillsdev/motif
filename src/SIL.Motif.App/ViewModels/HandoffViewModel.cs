@@ -180,6 +180,10 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     protected override void OnReset()
     {
         InvocationId = null;
+        ChosenWords = null;
+        CoverageText = null;
+        LatestAssessmentAt = null;
+        WrittenAt = null;
         _pendingFolder = null;
         Files.Clear();
         OutputDirectory = null;

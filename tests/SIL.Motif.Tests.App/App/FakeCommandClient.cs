@@ -69,6 +69,8 @@ public sealed partial class FakeCommandClient : ICommandClient
     public List<SetDefaultSelectionRequest> SetDefaultSelectionRequests { get; } = [];
     public List<SkipSetupRequest> SkipSetupRequests { get; } = [];
     public List<ShowConfigRequest> ShowConfigRequests { get; } = [];
+    public Func<ReadDefaultSelectionRequest, CancellationToken,
+        Task<CommandOutcome<DefaultSelectionResponse>>>? DefaultSelectionHandler { get; set; }
 
     public void OnCaptureBaseline(
         Func<BaselineCaptureRequest, CancellationToken, Task<CommandOutcome<BaselineCaptureResponse>>> behavior) =>
@@ -214,6 +216,7 @@ public sealed partial class FakeCommandClient : ICommandClient
         ReadDefaultSelectionRequest request, CancellationToken cancellationToken)
     {
         DefaultSelectionRequests.Add(request);
+        if (DefaultSelectionHandler is { } handler) return handler(request, cancellationToken);
         return _readDefaultSelection(request, cancellationToken);
     }
 

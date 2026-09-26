@@ -178,6 +178,12 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     partial void OnFilterChanged(ResultsInTextFilter value) => RefreshLines();
 
+    internal void ClearProject()
+    {
+        SelectedText = null;
+        SelectedToken = null;
+    }
+
     partial void OnSelectedTokenChanging(ResultsTokenViewModel? oldValue, ResultsTokenViewModel? newValue)
     {
         if (oldValue is not null) oldValue.PropertyChanged -= OnSelectedTokenPropertyChanged;

@@ -15,6 +15,7 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed class ReviewPageModel : PageModel
 {
+    private const string NumbersPrompt = "See what applying does to the numbers.";
     private CancellationTokenSource? _measurementCancellation;
     private CancellationTokenSource? _applyCancellation;
 
@@ -84,7 +85,7 @@ public sealed class ReviewPageModel : PageModel
     public string ApplyButtonText => "Apply to FieldWorks project";
 
     /// <summary>The command's measured word counts for this exact pending revision.</summary>
-    public string NumbersText { get; private set; } = "See what applying does to the numbers.";
+    public string NumbersText { get; private set; } = NumbersPrompt;
 
     /// <summary>Why the last requested measurement could not complete.</summary>
     public string? MeasurementError { get; private set; }
@@ -222,7 +223,7 @@ public sealed class ReviewPageModel : PageModel
         if (e.PropertyName == nameof(ChangesViewModel.Snapshot))
         {
             EvidenceComplete = false;
-            NumbersText = "See what applying does to the numbers.";
+            NumbersText = NumbersPrompt;
             OnPropertyChanged(nameof(NumbersText));
         }
         if (e.PropertyName == nameof(ChangesViewModel.Count))
@@ -263,7 +264,7 @@ public sealed class ReviewPageModel : PageModel
         Receipt = null;
         ApplyError = null;
         MeasurementError = null;
-        NumbersText = "See what applying does to the numbers.";
+        NumbersText = NumbersPrompt;
         EvidenceComplete = false;
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));

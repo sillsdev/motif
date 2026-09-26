@@ -29,13 +29,14 @@ public sealed class ProjectOpenFailureTests
         var workspace = new HandoffWorkspaceViewModel(new ProjectViewModel(fake, picker), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection), new FakeFolderPicker(), new FakeDragSource(), fake);
         var refusalShown = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        workspace.Baseline.PropertyChanged += OnBaselinePropertyChanged;
+        workspace.PropertyChanged += OnWorkspacePropertyChanged;
 
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
         var refusal = await refusalShown.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal("The project could not be read.", refusal);
-        Assert.True(workspace.HasRefreshRefusal);
+        Assert.Equal("Motif could not open this project.", refusal);
+        Assert.Equal("The project could not be read.", workspace.OpenRefusalDetail);
+        Assert.False(workspace.HasRefreshRefusal);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         picker.PathToReturn = ProjectB;
 
@@ -43,12 +44,33 @@ public sealed class ProjectOpenFailureTests
 
         Assert.Equal(ProjectB, workspace.Context.ProjectPath);
 
-        void OnBaselinePropertyChanged(object? sender, PropertyChangedEventArgs args)
+        void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
         {
-            if (args.PropertyName == nameof(BaselineViewModel.RefusalMessage) &&
-                workspace.Baseline.RefusalMessage is { } message)
+            if (args.PropertyName == nameof(HandoffWorkspaceViewModel.OpenRefusalMessage) &&
+                workspace.OpenRefusalMessage is { } message)
                 refusalShown.TrySetResult(message);
         }
+    }
+
+    [Fact]
+    public async Task AFailureWhileOpeningFromOpenRecentShowsARefusal()
+    {
+        var fake = new FakeCommandClient();
+        var token = new BaselineToken("project-1", Digest, "1", "2026-09-05T00:00:00Z", BundleDigest);
+        fake.OnGetCurrentBaseline((_, _) => Task.FromException<CommandOutcome<CurrentBaselineResponse>>(
+            new InvalidOperationException("The project could not be read.")));
+        var selection = new SelectionViewModel(fake);
+        var workspace = new HandoffWorkspaceViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
+            new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
+            new FakeFolderPicker(), new FakeDragSource(), fake);
+
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectA));
+
+        Assert.Equal("Motif could not open this project.", workspace.OpenRefusalMessage);
+        Assert.Equal("The project could not be read.", workspace.OpenRefusalDetail);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectB));
+        Assert.Equal(ProjectB, workspace.Context.ProjectPath);
     }
 
     private sealed class FakeProjectPicker : IProjectPicker

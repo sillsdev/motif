@@ -24,7 +24,7 @@ public sealed class ReviewPageModelTests
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         Assert.False(page.CanApply);
         Assert.Contains("No longer fits", page.ApplyBlockReason);
@@ -46,7 +46,7 @@ public sealed class ReviewPageModelTests
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", false, ["Wordform was deleted."])]));
 
@@ -66,7 +66,7 @@ public sealed class ReviewPageModelTests
              new ChangeFit("deleted", false, ["Wordform was deleted."])]));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         fake.RecheckCompletesWith(new PendingChangesSnapshot("draft/one", "revision/two",
             [Change("kept", "first"), Change("deleted", "second")],
             [new ChangeFit("kept", true, []),
@@ -88,7 +88,7 @@ public sealed class ReviewPageModelTests
         fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one", "complete", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         await page.MeasureCommand.ExecuteAsync(null);
         Assert.True(page.CanApply);
 
@@ -106,7 +106,7 @@ public sealed class ReviewPageModelTests
         var context = NewContext(fake);
         _ = new ReviewPageModel(context);
 
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.OpenPage(WorkspacePage.Review);
 
         Assert.Empty(fake.AssessRequests);
@@ -123,7 +123,7 @@ public sealed class ReviewPageModelTests
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         Assert.False(page.CanApply);
         Assert.Equal("Apply to FieldWorks project", page.ApplyButtonText);
@@ -144,7 +144,7 @@ public sealed class ReviewPageModelTests
             "Waiting for job 'job/one' was cancelled.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         await page.MeasureCommand.ExecuteAsync(null);
 
@@ -161,7 +161,7 @@ public sealed class ReviewPageModelTests
             "The changes changed. Reload them before measuring.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
             [Change("kept", "first"), Change("added", "second")],
             [new ChangeFit("kept", true, []), new ChangeFit("added", true, [])]));
@@ -191,7 +191,7 @@ public sealed class ReviewPageModelTests
             "The wait expired.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
 
         await page.MeasureCommand.ExecuteAsync(null);
         await page.ApplyCommand.ExecuteAsync(null);
@@ -223,12 +223,12 @@ public sealed class ReviewPageModelTests
         };
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         await page.MeasureCommand.ExecuteAsync(null);
 
         var applying = page.ApplyCommand.ExecuteAsync(null);
         var applyToken = await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await context.PublishProjectOpenedAsync(@"C:\projects\two.fwdata");
+        await context.OpenProjectAsync(@"C:\projects\two.fwdata");
         var cancelled = applyToken.IsCancellationRequested;
         release.TrySetResult();
         await applying.WaitAsync(TimeSpan.FromSeconds(5));
@@ -252,7 +252,7 @@ public sealed class ReviewPageModelTests
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         await page.MeasureCommand.ExecuteAsync(null);
 
         await page.ApplyCommand.ExecuteAsync(null);
@@ -275,7 +275,7 @@ public sealed class ReviewPageModelTests
             Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         await page.MeasureCommand.ExecuteAsync(null);
 
         await page.ApplyCommand.ExecuteAsync(null);
@@ -298,7 +298,7 @@ public sealed class ReviewPageModelTests
             "Approved readings matched less often.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         await page.MeasureCommand.ExecuteAsync(null);
 
         await page.ApplyCommand.ExecuteAsync(null);
@@ -326,7 +326,7 @@ public sealed class ReviewPageModelTests
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
-        await context.PublishProjectOpenedAsync(ProjectPath);
+        await context.OpenProjectAsync(ProjectPath);
         context.OpenPage(WorkspacePage.Texts);
         context.OpenPage(WorkspacePage.Warnings);
         context.OpenPage(WorkspacePage.Timing);
@@ -349,9 +349,10 @@ public sealed class ReviewPageModelTests
 
     private static WorkspaceContext NewContext(FakeCommandClient fake)
     {
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         var selection = new SelectionViewModel(fake);
         return new WorkspaceContext(selection, new AssessViewModel(fake, selection),
-            new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource());
+            new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
     }
 
     private sealed class FolderPicker : IHandoffFolderPicker

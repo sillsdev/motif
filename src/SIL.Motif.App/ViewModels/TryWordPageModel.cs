@@ -87,6 +87,7 @@ public sealed class TryWordPageModel : PageModel
         _assessmentId = null;
         _timingGeneration++;
         Trace.Reset();
+        Trace.WordToTry = string.Empty;
         _expectedAnalysis = null;
         NotifyExpectedAnalysisChanged();
         RecentWords.Clear();

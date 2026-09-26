@@ -212,6 +212,8 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     void IProjectStateParticipant.ClearProject() => ProjectCleared();
 
+    ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Setup;
+
     Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
         ProjectOpenedAsync(projectPath, cancellationToken);
 

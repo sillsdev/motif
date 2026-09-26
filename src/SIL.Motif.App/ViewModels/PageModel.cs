@@ -4,22 +4,6 @@ using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.App.ViewModels;
 
-internal interface IProjectStateParticipant
-{
-    void ClearProject();
-
-    Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken);
-}
-
-internal sealed class DelegateProjectStateParticipant(
-    Action clearProject, Func<string, CancellationToken, Task> openProject) : IProjectStateParticipant
-{
-    public void ClearProject() => clearProject();
-
-    public Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
-        openProject(projectPath, cancellationToken);
-}
-
 /// <summary>
 /// A page's own view model, built from a <see cref="WorkspaceContext"/> alone. It reacts to the project and
 /// evidence the context publishes and to the <see cref="PageRequest"/>s addressed to it, and owns what its page
@@ -97,6 +81,8 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
     internal void Requested(PageRequest request) => OnRequested(request);
 
     void IProjectStateParticipant.ClearProject() => ProjectCleared();
+
+    ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Independent;
 
     Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
         ProjectOpenedAsync(projectPath, cancellationToken);

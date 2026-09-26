@@ -83,7 +83,7 @@ public sealed class MainWindowSmokeTests
                 fake.OverviewCompletesWith(overview);
                 fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
                     null, EvidenceFreshness.Stale, null, null, null, null, null));
-                await workspace.Context.PublishProjectOpenedAsync(projectPath);
+                await workspace.Context.OpenProjectAsync(projectPath);
                 Assert.Empty(fake.AssessRequests);
                 window.Show();
                 window.ApplyTemplate();
