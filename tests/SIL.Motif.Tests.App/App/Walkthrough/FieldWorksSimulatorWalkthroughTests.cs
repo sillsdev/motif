@@ -1,15 +1,5 @@
 using System.Diagnostics;
-using SIL.LCModel;
-using SIL.LCModel.Core.Text;
-using SIL.LCModel.Infrastructure;
-using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
-using SIL.Motif.Commands;
-using SIL.Motif.Commands.Baselines;
-using SIL.Motif.Contract.Ids;
-using SIL.Motif.Contract.Requests;
-using SIL.Motif.Host;
-using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -22,8 +12,8 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
     public void FieldWorksHoldingTheProjectShowsHeldAndBlocksApply()
     {
         using var project = new WalkthroughProject(pristine);
-        var wordformId = CreateWordform(project.FwDataPath, "held-change-word");
-        AddPendingSpellingChange(project, wordformId, "held-change-word");
+        PendingChangeFixture.AddIncorrectSpelling(
+            project.FwDataPath, project.ManagedRoot, "held-change-word");
         using var held = new FieldWorksSimulator(project.FwDataPath).Hold();
         var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
 
@@ -50,35 +40,5 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 review.ApplyBlockReason);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    private static Guid CreateWordform(string projectPath, string form)
-    {
-        Guid wordformId = Guid.Empty;
-        new FieldWorksSimulator(projectPath).SaveEdit(cache =>
-            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                    .Create(TsStringUtils.MakeString(form, cache.DefaultVernWs)).Guid));
-        return wordformId;
-    }
-
-    private static void AddPendingSpellingChange(WalkthroughProject project, Guid wordformId, string form)
-    {
-        var productVersion = MotifProductVersion.CurrentText;
-        var capture = BaselineCaptureCommand.Capture(
-            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
-        Assert.True(capture.Succeeded, capture.Refusal?.Message);
-
-        var client = RealCommandClient.Create(project.ManagedRoot);
-        var loaded = client.LoadPendingChangesAsync(
-            new PendingChangesRequest(project.FwDataPath, productVersion), CancellationToken.None)
-            .GetAwaiter().GetResult();
-        Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
-        var put = client.PutPendingChangeAsync(new PutPendingChangeRequest(
-            project.FwDataPath, productVersion, loaded.Value!.Revision,
-            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
-                CanonicalId.FromGuid(wordformId).Value, form)), CancellationToken.None)
-            .GetAwaiter().GetResult();
-        Assert.True(put.Succeeded, put.Refusal?.Message);
     }
 }
