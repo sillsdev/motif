@@ -213,6 +213,13 @@ public sealed partial record WindowRefusal
     /// <summary>The command's facts, such as the store path a delete button would need.</summary>
     public IReadOnlyDictionary<string, string> Facts { get; }
 
+    /// <summary>
+    /// Whether this refusal is a store made by another version of Motif that names its file, the one refusal a
+    /// person can clear by deleting that file so Motif recreates it.
+    /// </summary>
+    public bool OffersStoreDeletion =>
+        Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StorePath);
+
     /// <summary>Presents a command's refusal in the window's words.</summary>
     public static WindowRefusal From(Refusal refusal)
     {

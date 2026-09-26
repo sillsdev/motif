@@ -104,6 +104,10 @@ public sealed partial class CommandClient : ICommandClient
                 progress.Report, cancellationToken), cancellationToken));
     }
 
+    public Task<CommandOutcome<ProjectStoreResetResponse>> DeleteRefusedStoreAsync(
+        ProjectStoreResetRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => ProjectStoreReset.DeleteRefused(request));
+
     private async Task<T> AfterStartGate<T>(GatedCommand command, Func<Task<T>> run)
     {
         if (_options.StartGate is { } gate) await gate.WaitToStartAsync(command).ConfigureAwait(false);

@@ -110,7 +110,20 @@
       </Border>
       <Border Grid.Row="1" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
         <StackPanel>
-          <views:RefusalBlock DataContext="{Binding Baseline.ShownRefusal}" />
+          <views:RefusalBlock DataContext="{Binding Baseline.ShownRefusal}"
+                              StoreDeletionCommand="{Binding $parent[Border].((vm:WorkspaceShellViewModel)DataContext).DeleteRefusedStoreCommand}"
+                              AutomationProperties.Name="Refresh refusal" />
+          <StackPanel x:Name="StoreDeletionQuestion" Classes="refusal" IsVisible="{Binding IsConfirmingStoreDeletion}">
+            <views:CopyableTextBlock Text="{x:Static vm:WorkspaceShellViewModel.StoreDeletionWarning}" TextWrapping="Wrap" />
+            <StackPanel Classes="refusalActions" Orientation="Horizontal">
+              <Button Content="Delete and reopen"
+                      Command="{Binding ConfirmStoreDeletionCommand}"
+                      AutomationProperties.Name="Delete Motif's file and reopen the project" />
+              <Button Content="Cancel"
+                      Command="{Binding CancelStoreDeletionCommand}"
+                      AutomationProperties.Name="Keep Motif's file" />
+            </StackPanel>
+          </StackPanel>
           <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>

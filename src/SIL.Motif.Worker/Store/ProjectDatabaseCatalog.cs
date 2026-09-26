@@ -30,6 +30,19 @@ public sealed class ProjectDatabaseCatalog
             ownershipPatience);
     }
 
+    /// <summary>
+    /// Deletes the project sibling database if another version of Motif made it, under its creation lock; see
+    /// <see cref="MotifDatabase.DeleteIfOtherVersion"/>.
+    /// </summary>
+    /// <param name="project">The project locator bound to the sibling database.</param>
+    /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
+    public bool DeleteIfOtherVersion(ProjectLocator project, TimeSpan? ownershipPatience = null)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        return MotifDatabase.DeleteIfOtherVersion(DatabasePathFor(project), project, _supportedSchema, _workerVersion,
+            ownershipPatience);
+    }
+
     /// <summary>Derives the sibling <c>.motif.db</c> path from a project data-file locator.</summary>
     public static string DatabasePathFor(ProjectLocator project)
     {

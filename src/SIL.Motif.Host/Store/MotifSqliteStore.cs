@@ -96,30 +96,7 @@ internal sealed class MotifSqliteStore : IDisposable
             if (NeedsCreation(fullPath))
                 ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
             using var connection = OpenInspectionConnection(fullPath);
-            var applicationId = PragmaInt(connection, "application_id");
-            var schema = PragmaInt(connection, "user_version");
-            if (applicationId != 0 && applicationId != descriptor.ApplicationId)
-                throw new InvalidDataException($"The file is not a {descriptor.Name}.");
-            if (schema < 0)
-                throw new InvalidDataException($"The {descriptor.Name} has an invalid schema generation.");
-            if (schema > descriptor.CurrentSchema)
-                throw new MotifStoreVersionException(fullPath,
-                    $"This {descriptor.Name} is at schema {schema} and this build understands " +
-                    $"{descriptor.CurrentSchema}. " +
-                    "Something newer opened it; update Motif and try again.");
-
-            var hasTables = HasUserTables(connection);
-            if (applicationId == 0 && schema != 0)
-                throw new InvalidDataException($"A {descriptor.Name} with a schema must have its application id.");
-            if (schema == 0 && hasTables)
-                throw new InvalidDataException($"The existing database has no registered {descriptor.Name} schema.");
-
-            // Pre-1.0 Motif never migrates: a stored schema below this build's is refused, not upgraded.
-            if (schema != 0 && schema != descriptor.CurrentSchema)
-                throw new MotifStoreVersionException(fullPath,
-                    $"The {descriptor.Name} at '{fullPath}' is schema {schema}, but this build requires " +
-                    $"exactly schema {descriptor.CurrentSchema}. Motif does not migrate before 1.0 — delete " +
-                    "the database file and let Motif recreate it.");
+            var schema = Inspect(connection, descriptor, fullPath);
 
             if (schema == 0)
             {
@@ -141,8 +118,7 @@ internal sealed class MotifSqliteStore : IDisposable
             }
             else
             {
-                descriptor.ValidateSchema(connection, null);
-                descriptor.BeforeOpen?.Invoke(connection);
+                ValidateExisting(connection, descriptor);
             }
 
             SqliteConnections.EnableWal(connection);
@@ -165,6 +141,41 @@ internal sealed class MotifSqliteStore : IDisposable
             ownership?.Dispose();
             throw;
         }
+    }
+
+    /// <summary>
+    /// Deletes the store if <see cref="Open"/> would refuse it with a <see cref="MotifStoreVersionException"/>,
+    /// deciding and deleting under the creation lock, the one lock that orders against the store's creation.
+    /// </summary>
+    /// <returns><c>true</c> when the file was deleted; <c>false</c> when it is absent, empty, or usable.</returns>
+    public static bool DeleteIfOtherVersion(string path, MotifSqliteStoreDescriptor descriptor,
+        TimeSpan? ownershipPatience = null, Action? onWaitingForOwnership = null)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        var fullPath = Path.GetFullPath(path);
+        using var ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience,
+            onWaitingForOwnership);
+        if (!File.Exists(fullPath)) return false;
+        try
+        {
+            using var connection = OpenInspectionConnection(fullPath);
+            if (Inspect(connection, descriptor, fullPath) != 0) ValidateExisting(connection, descriptor);
+            return false;
+        }
+        catch (MotifStoreVersionException)
+        {
+        }
+        catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
+        {
+            throw new InvalidDataException($"The {descriptor.Name} is corrupt or is not a database.", exception);
+        }
+        catch (SqliteException exception)
+        {
+            throw new IOException($"The {descriptor.Name} is unavailable.", exception);
+        }
+
+        File.Delete(fullPath);
+        return true;
     }
 
     public SqliteConnection OpenConnection()
@@ -295,6 +306,42 @@ internal sealed class MotifSqliteStore : IDisposable
         }
     }
 
+    /// Throws for a file that is not this store at this build's schema; returns its schema, 0 before creation.
+    private static int Inspect(SqliteConnection connection, MotifSqliteStoreDescriptor descriptor, string fullPath)
+    {
+        var applicationId = PragmaInt(connection, "application_id");
+        var schema = PragmaInt(connection, "user_version");
+        if (applicationId != 0 && applicationId != descriptor.ApplicationId)
+            throw new InvalidDataException($"The file is not a {descriptor.Name}.");
+        if (schema < 0)
+            throw new InvalidDataException($"The {descriptor.Name} has an invalid schema generation.");
+        if (schema > descriptor.CurrentSchema)
+            throw new MotifStoreVersionException(fullPath,
+                $"This {descriptor.Name} is at schema {schema} and this build understands " +
+                $"{descriptor.CurrentSchema}. " +
+                "Something newer opened it; update Motif and try again.");
+
+        var hasTables = HasUserTables(connection);
+        if (applicationId == 0 && schema != 0)
+            throw new InvalidDataException($"A {descriptor.Name} with a schema must have its application id.");
+        if (schema == 0 && hasTables)
+            throw new InvalidDataException($"The existing database has no registered {descriptor.Name} schema.");
+
+        // Pre-1.0 Motif never migrates: a stored schema below this build's is refused, not upgraded.
+        if (schema != 0 && schema != descriptor.CurrentSchema)
+            throw new MotifStoreVersionException(fullPath,
+                $"The {descriptor.Name} at '{fullPath}' is schema {schema}, but this build requires " +
+                $"exactly schema {descriptor.CurrentSchema}. Motif does not migrate before 1.0 — delete " +
+                "the database file and let Motif recreate it.");
+        return schema;
+    }
+
+    private static void ValidateExisting(SqliteConnection connection, MotifSqliteStoreDescriptor descriptor)
+    {
+        descriptor.ValidateSchema(connection, null);
+        descriptor.BeforeOpen?.Invoke(connection);
+    }
+
     /// True when the file is absent or empty, so it still needs its schema created.
     private static bool NeedsCreation(string path)
     {
@@ -311,7 +358,7 @@ internal sealed class MotifSqliteStore : IDisposable
     }
 
     // Waits rather than fails: two processes opening a database that needs migrating is ordinary.
-    private static FileStream AcquireOwnership(string path, TimeSpan patience)
+    private static FileStream AcquireOwnership(string path, TimeSpan patience, Action? onWaiting = null)
     {
         var deadline = DateTime.UtcNow.Add(patience);
         while (true)
@@ -319,6 +366,8 @@ internal sealed class MotifSqliteStore : IDisposable
             try { return AcquireOwnershipCore(path); }
             catch (IOException) when (DateTime.UtcNow < deadline)
             {
+                onWaiting?.Invoke();
+                onWaiting = null;
                 Thread.Sleep(25);
             }
         }

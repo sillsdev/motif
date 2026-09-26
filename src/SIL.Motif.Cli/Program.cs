@@ -780,6 +780,13 @@ try
             result = RenderCommand(ProjectSetupCommands.Skip(new SkipSetupRequest(setupProject)));
             break;
 
+        case "store":
+            if (positionals.Count != 1 || positionals[0] != "delete-refused" ||
+                !flags.TryGetValue("project", out var storeProject))
+                return Usage(UsageLineFor("store delete-refused"), asJson);
+            result = RenderCommand(ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(storeProject)));
+            break;
+
         case "assess":
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
             var assessRetryFailed = flags.ContainsKey("retry-failed");
@@ -1053,7 +1060,7 @@ static string ResolveCommandName(string[] invocation)
         return "apply --all-pending";
     if (first == "trial" && invocation.Contains("--pending", StringComparer.Ordinal))
         return "trial --pending";
-    if (first is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup")
+    if (first is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup" or "store")
     {
         var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;
