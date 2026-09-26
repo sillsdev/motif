@@ -122,6 +122,11 @@ public sealed class ReopenRealClientTests(PristineProjectFixture pristine)
                     words.SequenceEqual(["motifa"]));
             Assert.Equal(assessmentId, ruleTiming.AssessmentId);
             Assert.Equal("SeededRule", Assert.Single(tryWord.RulesOnBestPath).Rule);
+
+            using var verificationDatabase = ProjectMotifDatabase.Open(project.FwDataPath);
+            var storedAssessment = Assert.Single(
+                new AssessmentRepository(verificationDatabase).ListBaselineAssessments(AssessmentKinds.ParseTime));
+            Assert.Equal(assessmentId, storedAssessment.AssessmentId);
         }, TimeSpan.FromMilliseconds(Math.Max(1, (deadline - DateTimeOffset.UtcNow).TotalMilliseconds)));
     }
 
