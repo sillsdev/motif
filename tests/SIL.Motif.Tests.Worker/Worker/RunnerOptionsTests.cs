@@ -3,8 +3,22 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
 
+/// <summary>Serializes the tests that set runner variables, so no concurrently spawned child inherits them.</summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class RunnerEnvironmentCollection
+{
+    public const string Name = "Runner environment (serialized: its tests set process-wide variables)";
+}
+
+[Collection(RunnerEnvironmentCollection.Name)]
 public sealed class RunnerOptionsTests : IDisposable
 {
+    private static readonly string[] RunnerVariables =
+    [
+        RunnerOptions.RootVariable, RunnerOptions.NamespaceVariable, RunnerOptions.IdleVariable,
+        RunnerOptions.LeaseVariable,
+    ];
+
     private readonly string _directory =
         Path.Combine(Path.GetTempPath(), "motif-runner-options-" + Guid.NewGuid().ToString("N"));
 
@@ -13,17 +27,17 @@ public sealed class RunnerOptionsTests : IDisposable
     [Fact]
     public void ExplicitArgumentsSelectTheRootParserNamespaceIdleAndLease()
     {
-        var root = Path.Combine(_directory, "worker-root");
+        var root = Path.Combine(_directory, "runner-root");
         var parser = ExistingParser();
 
-        var options = RunnerOptions.Read(
+        var options = WithConflictingEnvironment(() => RunnerOptions.Read(
         [
             RunnerOptions.RootArgument, root,
             RunnerOptions.ParserArgument, parser,
             RunnerOptions.NamespaceArgument, "isolated-namespace",
             RunnerOptions.IdleArgument, "1500",
             RunnerOptions.LeaseArgument, "2500",
-        ]);
+        ]));
 
         Assert.Equal(root, options.Root);
         Assert.Equal(parser, options.ParserPath);
@@ -48,28 +62,45 @@ public sealed class RunnerOptionsTests : IDisposable
     [Fact]
     public void ResolveRootAndReadTakeTheRootVariable()
     {
-        var previous = Environment.GetEnvironmentVariable(RunnerOptions.RootVariable);
-        try
-        {
-            Environment.SetEnvironmentVariable(RunnerOptions.RootVariable, _directory);
+        var environmentRoot = Path.Combine(_directory, "environment-root");
 
-            Assert.Equal(_directory, RunnerOptions.ResolveRoot());
-            Assert.Equal(_directory, RunnerOptions.Read([]).Root);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(RunnerOptions.RootVariable, previous);
-        }
+        var (resolved, read) = WithConflictingEnvironment(() => (RunnerOptions.ResolveRoot(), RunnerOptions.Read([])));
+
+        Assert.Equal(environmentRoot, resolved);
+        Assert.Equal(environmentRoot, read.Root);
+        Assert.Equal("environment-namespace", read.OwnerNamespace);
+        Assert.Equal(TimeSpan.FromSeconds(7), read.IdleTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(11), read.Lease);
     }
 
     [Fact]
     public void OptionsBuiltInCodeReadNothingFromTheEnvironment()
     {
-        var options = new RunnerOptions { Root = _directory };
+        var options = WithConflictingEnvironment(() => new RunnerOptions { Root = _directory });
 
         Assert.Equal(_directory, options.Root);
         Assert.Null(options.ParserPath);
         Assert.Null(options.OwnerNamespace);
+        Assert.Equal(TimeSpan.FromMinutes(5), options.IdleTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(5), options.Lease);
+    }
+
+    private T WithConflictingEnvironment<T>(Func<T> read)
+    {
+        var previous = RunnerVariables.ToDictionary(name => name, Environment.GetEnvironmentVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(RunnerOptions.RootVariable, Path.Combine(_directory, "environment-root"));
+            Environment.SetEnvironmentVariable(RunnerOptions.NamespaceVariable, "environment-namespace");
+            Environment.SetEnvironmentVariable(RunnerOptions.IdleVariable, "7");
+            Environment.SetEnvironmentVariable(RunnerOptions.LeaseVariable, "11");
+            return read();
+        }
+        finally
+        {
+            foreach (var (name, value) in previous)
+                Environment.SetEnvironmentVariable(name, value);
+        }
     }
 
     private string ExistingParser()

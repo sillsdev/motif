@@ -11,8 +11,9 @@ namespace SIL.Motif.Worker;
 /// the default for a runner started by hand. The runner is a per-user singleton: a launch that finds one
 /// already running starts nothing, and the running one keeps the settings it started with.
 /// <see cref="Read"/> and <see cref="ResolveRoot"/> consult the environment, pinned by
-/// `ResolveRootAndReadTakeTheRootVariable`; options built in code carry exactly what they are given, pinned by
-/// `OptionsBuiltInCodeReadNothingFromTheEnvironment`.
+/// `ResolveRootAndReadTakeTheRootVariable`, and an argument wins over it, pinned by
+/// `ExplicitArgumentsSelectTheRootParserNamespaceIdleAndLease`. Options built in code carry exactly what they
+/// are given, pinned by `OptionsBuiltInCodeReadNothingFromTheEnvironment`.
 /// </remarks>
 public sealed record RunnerOptions
 {

@@ -62,6 +62,40 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void EveryRunnerSettingTravelsAsALaunchArgumentAndTheExecutableDoesNot()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "motif-launch-arguments-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var parser = Path.Combine(directory, "pangloss.exe");
+            File.WriteAllText(parser, "");
+            var executable = Path.Combine(directory, "runner.exe");
+            var options = new JobRunnerLaunchOptions(Path.Combine(directory, "root"), parser)
+            {
+                WorkerExecutable = executable,
+                OwnerNamespace = "launch-namespace",
+                IdleTimeout = TimeSpan.FromMilliseconds(1500),
+                Lease = TimeSpan.FromMilliseconds(2500),
+            };
+
+            var arguments = ProcessRunnerLauncher.LaunchArguments(options).ToArray();
+            var read = RunnerOptions.Read(arguments);
+
+            Assert.Equal(options.Root, read.Root);
+            Assert.Equal(parser, read.ParserPath);
+            Assert.Equal("launch-namespace", read.OwnerNamespace);
+            Assert.Equal(TimeSpan.FromMilliseconds(1500), read.IdleTimeout);
+            Assert.Equal(TimeSpan.FromMilliseconds(2500), read.Lease);
+            Assert.DoesNotContain(executable, arguments);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void AConfiguredRunnerThatDoesNotExistIsNotStarted()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-missing-runner-" + Guid.NewGuid().ToString("N"));
