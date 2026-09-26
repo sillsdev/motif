@@ -80,7 +80,9 @@ internal sealed class MotifAppHost
     /// fails with <paramref name="step"/> named when <paramref name="timeout"/> passes first. A session the
     /// work leaves open is closed afterwards, so one failure cannot cascade into the next test.
     /// </summary>
-    public void Run(string step, TimeSpan timeout, Func<Task> work)
+    public void Run(string step, TimeSpan timeout, Func<Task> work) => Run(step, timeout, work, null);
+
+    private void Run(string step, TimeSpan timeout, Func<Task> work, Func<string>? pending)
     {
         var completion = new TaskCompletionSource();
         _queue.Add((() =>
@@ -90,7 +92,7 @@ internal sealed class MotifAppHost
             {
                 // Awaits in the work must resume on this thread, which is the only one Avalonia accepts.
                 AvaloniaSynchronizationContext.InstallIfNeeded();
-                Pump(step, timeout, work());
+                Pump(step, timeout, work(), pending);
             }
             catch (Exception exception)
             {
@@ -166,6 +168,14 @@ internal sealed class MotifAppHost
     /// Starts a last session and exits through the lifetime's own shutdown, requiring its exit to close the
     /// session. Nothing can start afterwards: the shutdown ends the dispatcher.
     /// </summary>
+    /// <remarks>
+    /// Startup's Known-project load is awaited before the shutdown, not after it. The load reads the machine
+    /// database on the thread pool and resumes on the dispatcher, and once the dispatcher has shut down
+    /// Avalonia 12.1.2 aborts every operation posted to it (<c>Dispatcher.InvokeAsyncImpl</c> checks
+    /// <c>_hasShutdownFinished</c>), so a load still reading at that moment never completes. Whether it is
+    /// still reading depends on how busy the machine is, so awaiting it after the shutdown hangs only while
+    /// other processes keep the machine busy.
+    /// </remarks>
     public void ExitThroughLifetime()
     {
         if (_lifetime is null || _options is not { } last) return;
@@ -175,16 +185,19 @@ internal sealed class MotifAppHost
             ManagedRoot = root,
             RunnerLauncher = new NoRunnerLauncher(last.RunnerLauncher.Options with { Root = root }),
         };
+        MotifDesktopSession? exiting = null;
         try
         {
             Run("exit through the classic desktop lifetime", ExitLimit, async () =>
             {
                 var session = Start(options);
+                exiting = session;
+                // The load resumes on the dispatcher, whose shutdown aborts every later post, so it must end first.
+                await session.KnownProjectsLoaded;
                 _session = null;
                 _lifetime.Shutdown();
                 await session.Closed;
-                await session.KnownProjectsLoaded;
-            });
+            }, () => exiting is null ? "the session never started" : Awaiting(exiting));
         }
         finally
         {
@@ -192,7 +205,13 @@ internal sealed class MotifAppHost
         }
     }
 
-    private static void Pump(string step, TimeSpan timeout, Task task)
+    // Names what a stuck exit still awaits, so a timeout says which part of shutdown never finished.
+    private static string Awaiting(MotifDesktopSession session) =>
+        "session closed " + session.Closed.IsCompleted +
+        ", Known-project load finished " + session.KnownProjectsLoaded.IsCompleted +
+        "; a post to the dispatcher is now " + Dispatcher.UIThread.InvokeAsync(() => { }).Status;
+
+    private static void Pump(string step, TimeSpan timeout, Task task, Func<string>? pending = null)
     {
         var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
         while (!task.IsCompleted && Stopwatch.GetTimestamp() < deadline)
@@ -201,7 +220,9 @@ internal sealed class MotifAppHost
             Thread.Yield();
         }
         Dispatcher.UIThread.RunJobs();
-        if (!task.IsCompleted) throw new TimeoutException($"'{step}' did not finish within {timeout}.");
+        if (!task.IsCompleted)
+            throw new TimeoutException($"'{step}' did not finish within {timeout}" +
+                (pending is null ? "." : "; " + pending() + "."));
         task.GetAwaiter().GetResult();
     }
 
