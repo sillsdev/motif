@@ -4,11 +4,13 @@ namespace SIL.Motif.App.Services;
 /// What a view model holds when it was built without a clipboard or diagnostic file dialogs: every use
 /// throws, so a composition that forgot one fails where it is used rather than doing nothing.
 /// </summary>
-internal sealed class NoDesktopServices : IClipboard, IDiagnosticFilePicker
+internal sealed class NoDesktopServices : IClipboard, IDiagnosticFilePicker, IDiagnosticWindowDialogs
 {
     internal static NoDesktopServices Instance { get; } = new();
 
     private NoDesktopServices() { }
+
+    public IDiagnosticFilePicker For(Avalonia.Controls.TopLevel window) => this;
 
     public Task SetTextAsync(string text, CancellationToken cancellationToken = default) =>
         throw new InvalidOperationException("This window was composed without a clipboard.");

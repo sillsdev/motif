@@ -160,6 +160,9 @@ public sealed class DiagnosticPanelBehaviorTests
         });
     }
 
-    private static DiagnosticToolsViewModel ToolsFor(TraceWordViewModel trace) =>
-        new(trace, new RecordingClipboard(), new ScriptedDiagnosticFiles());
+    private static DiagnosticToolsViewModel ToolsFor(TraceWordViewModel trace)
+    {
+        var files = new ScriptedDiagnosticFiles();
+        return new(trace, new RecordingClipboard(), files, files);
+    }
 }

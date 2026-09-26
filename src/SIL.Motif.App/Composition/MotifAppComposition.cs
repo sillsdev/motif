@@ -17,8 +17,9 @@ namespace SIL.Motif.App.Composition;
 /// <param name="HandoffFolderPicker">Chooses a Handoff folder, or <see langword="null"/> for the native dialog.</param>
 /// <param name="FileDragSource">Drags Handoff files out, or <see langword="null"/> for the native drag.</param>
 /// <param name="Clipboard">Takes what a person copies, or <see langword="null"/> for the window's own clipboard.</param>
-/// <param name="DiagnosticFilePicker">
-/// Opens and saves diagnostic JSON, or <see langword="null"/> for the native dialogs.
+/// <param name="DiagnosticDialogs">
+/// Gives each window that opens and saves diagnostic JSON its dialogs, or <see langword="null"/> for the native
+/// dialogs, each owned by the window whose action started it.
 /// </param>
 /// <param name="RememberBounds">
 /// Whether the window restores and saves its size and place in the person's settings; off unless installed,
@@ -33,7 +34,7 @@ public sealed record MotifAppOptions(
     IHandoffFolderPicker? HandoffFolderPicker = null,
     IFileDragSource? FileDragSource = null,
     IClipboard? Clipboard = null,
-    IDiagnosticFilePicker? DiagnosticFilePicker = null,
+    IDiagnosticWindowDialogs? DiagnosticDialogs = null,
     bool RememberBounds = false)
 {
     /// <summary>
@@ -67,6 +68,7 @@ public static class MotifAppComposition
 
         var window = new MainWindow(options.RememberBounds);
         var nativePickers = new AvaloniaStoragePickers(window);
+        var diagnosticDialogs = options.DiagnosticDialogs ?? nativePickers;
         var commandClient = new CommandClient(new CommandClientOptions(
             options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate));
         var selection = new SelectionViewModel(commandClient);
@@ -81,7 +83,8 @@ public static class MotifAppComposition
             commandClient,
             options.TimeProvider,
             options.Clipboard ?? new AvaloniaClipboard(window),
-            options.DiagnosticFilePicker ?? nativePickers);
+            diagnosticDialogs.For(window),
+            diagnosticDialogs);
         window.Compose(workspace);
         return new MotifAppCompositionResult(window, workspace);
     }

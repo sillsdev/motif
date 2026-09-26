@@ -24,7 +24,7 @@ public sealed class WorkspaceContextWidthTests
             typeof(GrammarSummary), typeof(ChangesViewModel), typeof(AssessViewModel), typeof(SelectionViewModel),
             typeof(SetupViewModel),
             typeof(ICommandClient), typeof(IHandoffFolderPicker), typeof(IFileDragSource), typeof(IClipboard),
-            typeof(IDiagnosticFilePicker),
+            typeof(IDiagnosticFilePicker), typeof(IDiagnosticWindowDialogs),
             typeof(IAsyncRelayCommand), typeof(IAsyncRelayCommand<string>),
             typeof(System.Collections.ObjectModel.ObservableCollection<KnownProjectSummary>),
         ];

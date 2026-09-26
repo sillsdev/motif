@@ -30,8 +30,8 @@ public sealed partial class TryWordPanel : UserControl
     private async void OnOpenDiagnosticClick(object? sender, RoutedEventArgs e) =>
         await Model.OpenSavedDiagnosticAsync();
 
-    private void OnSavedDiagnosticOpened(DiagnosticToolsViewModel opened)
+    private void OnSavedDiagnosticOpened(OpenedDiagnostic opened)
     {
-        if (TopLevel.GetTopLevel(this) is Window owner) new DiagnosticWindow(opened).Show(owner);
+        if (TopLevel.GetTopLevel(this) is Window owner) new DiagnosticWindow(opened, Model.Diagnostics).Show(owner);
     }
 }

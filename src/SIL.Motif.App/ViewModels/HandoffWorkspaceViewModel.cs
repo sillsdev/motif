@@ -36,7 +36,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public HandoffWorkspaceViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient, TimeProvider? clock = null, IClipboard? clipboard = null,
-        IDiagnosticFilePicker? diagnosticFiles = null)
+        IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -49,7 +49,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         Project = project;
         Baseline = baseline;
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
-            dragSource, baseline, clock, clipboard, diagnosticFiles)
+            dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs)
         {
             KnownProjects = project.KnownProjects,
             BrowseForProjectCommand = project.BrowseCommand,

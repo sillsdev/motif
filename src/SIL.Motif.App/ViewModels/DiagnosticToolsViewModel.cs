@@ -3,11 +3,20 @@ using SIL.Motif.App.Services;
 
 namespace SIL.Motif.App.ViewModels;
 
+/// <summary>A saved diagnostic that was chosen, to be shown in a window of its own.</summary>
+/// <param name="Trace">The diagnostic's trace, or an empty trace when the file could not be shown.</param>
+/// <param name="Refusal">Why the file could not be shown, or <see langword="null"/> when it was.</param>
+public sealed record OpenedDiagnostic(TraceWordViewModel Trace, WindowRefusal? Refusal);
+
 /// <summary>
 /// The diagnostic tools beside one trace: copy its JSON or the instructions for a chat model, save its JSON,
 /// or open a saved diagnostic. A failure shows as <see cref="Error"/> beside the trace; a diagnostic opened
 /// here is announced through <see cref="DiagnosticOpened"/> for the view to present in a window of its own.
 /// </summary>
+/// <remarks>
+/// Each new action clears the last action's <see cref="Error"/> before it starts, so an error left from an earlier
+/// attempt never stands beside a new one.
+/// </remarks>
 public sealed partial class DiagnosticToolsViewModel : ObservableObject
 {
     /// <summary>Where a chat model reads how a saved diagnostic is laid out.</summary>
@@ -26,15 +35,19 @@ public sealed partial class DiagnosticToolsViewModel : ObservableObject
     /// <summary>Puts the tools beside <paramref name="trace"/>.</summary>
     /// <param name="trace">The trace whose diagnostic the tools copy and save.</param>
     /// <param name="clipboard">Where the copy actions put their text.</param>
-    /// <param name="files">The dialogs that open and save diagnostic JSON.</param>
-    public DiagnosticToolsViewModel(TraceWordViewModel trace, IClipboard clipboard, IDiagnosticFilePicker files)
+    /// <param name="files">The open and save dialogs of the window hosting these tools.</param>
+    /// <param name="windowDialogs">Gives the window a diagnostic opens in dialogs of its own.</param>
+    public DiagnosticToolsViewModel(
+        TraceWordViewModel trace, IClipboard clipboard, IDiagnosticFilePicker files, IDiagnosticWindowDialogs windowDialogs)
     {
         ArgumentNullException.ThrowIfNull(trace);
         ArgumentNullException.ThrowIfNull(clipboard);
         ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(windowDialogs);
         Trace = trace;
         _clipboard = clipboard;
         _files = files;
+        WindowDialogs = windowDialogs;
     }
 
     /// <summary>The trace whose diagnostic the tools act on.</summary>
@@ -47,17 +60,23 @@ public sealed partial class DiagnosticToolsViewModel : ObservableObject
     /// <summary>The file name the save dialog offers: the traced word's, or a generic one without a result.</summary>
     public string SuggestedFileName => $"{Trace.Result?.Word ?? "diagnostic"}.trace.json";
 
-    /// <summary>Raised with the tools for a saved diagnostic that <see cref="OpenAsync"/> read and validated.</summary>
-    public event Action<DiagnosticToolsViewModel>? DiagnosticOpened;
+    /// <summary>
+    /// Gives the window a diagnostic opens in dialogs of its own. The view that builds that window calls it; these
+    /// tools only carry it.
+    /// </summary>
+    public IDiagnosticWindowDialogs WindowDialogs { get; }
 
-    /// <summary>The same tools beside another trace, sharing this one's clipboard and dialogs.</summary>
-    public DiagnosticToolsViewModel For(TraceWordViewModel trace) => new(trace, _clipboard, _files);
+    /// <summary>Raised with a saved diagnostic that <see cref="OpenAsync"/> read and validated.</summary>
+    public event Action<OpenedDiagnostic>? DiagnosticOpened;
 
-    /// <summary>Tools beside an empty trace that already say why a saved diagnostic could not be shown.</summary>
-    public DiagnosticToolsViewModel ForRefusal(WindowRefusal refusal)
+    /// <summary>
+    /// The tools for a window showing <paramref name="opened"/>: its trace, with its refusal as the
+    /// <see cref="Error"/>, this clipboard, and <paramref name="files"/>, the dialogs of that window.
+    /// </summary>
+    public DiagnosticToolsViewModel ForOpened(OpenedDiagnostic opened, IDiagnosticFilePicker files)
     {
-        ArgumentNullException.ThrowIfNull(refusal);
-        return new DiagnosticToolsViewModel(new TraceWordViewModel(), _clipboard, _files) { Error = refusal };
+        ArgumentNullException.ThrowIfNull(opened);
+        return new DiagnosticToolsViewModel(opened.Trace, _clipboard, files, WindowDialogs) { Error = opened.Refusal };
     }
 
     /// <summary>Copies the trace's full diagnostic JSON.</summary>
@@ -88,7 +107,7 @@ public sealed partial class DiagnosticToolsViewModel : ObservableObject
     {
         Error = null;
         return SavedDiagnosticOpener.OpenFromPickerAsync(
-            _files, trace => DiagnosticOpened?.Invoke(For(trace)), refusal => Error = refusal);
+            _files, trace => DiagnosticOpened?.Invoke(new OpenedDiagnostic(trace, null)), refusal => Error = refusal);
     }
 
     private async Task CopyAsync(string text, string failure)

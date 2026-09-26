@@ -28,7 +28,8 @@ public sealed class DesktopFileAndClipboardSeamTests
     private readonly ScriptedDiagnosticFiles _files = new();
 
     private DiagnosticToolsViewModel ToolsFor(string? json = null) =>
-        new(json is null ? new TraceWordViewModel() : TraceWordViewModel.FromDiagnosticJson(json), _clipboard, _files);
+        new(json is null ? new TraceWordViewModel() : TraceWordViewModel.FromDiagnosticJson(json), _clipboard, _files,
+            _files);
 
     [Fact]
     public async Task CopyingTheDiagnosticPutsItsExactJsonOnTheClipboard()
@@ -116,21 +117,55 @@ public sealed class DesktopFileAndClipboardSeamTests
     }
 
     [Fact]
-    public async Task OpeningAValidFileHandsItOnWithTheSameClipboardAndDialogs()
+    public async Task OpeningAValidFileHandsItOnForAWindowWithItsOwnDialogs()
     {
         var tools = ToolsFor();
-        DiagnosticToolsViewModel? opened = null;
+        OpenedDiagnostic? opened = null;
         tools.DiagnosticOpened += diagnostic => opened = diagnostic;
         _files.NextOpenReads(ValidDiagnosticJson);
 
         await tools.OpenAsync();
 
         Assert.NotNull(opened);
-        Assert.NotSame(tools, opened);
         Assert.Equal(ValidDiagnosticJson, opened!.Trace.DiagnosticJson);
+        Assert.Null(opened.Refusal);
         Assert.Null(tools.Error);
-        await opened.CopyJsonAsync();
+
+        var windowsDialogs = new ScriptedDiagnosticFiles();
+        var windowTools = tools.ForOpened(opened, windowsDialogs);
+        await windowTools.SaveAsync();
+        await windowTools.CopyJsonAsync();
+        Assert.Equal(("word.trace.json", ValidDiagnosticJson), Assert.Single(windowsDialogs.Saved));
+        Assert.Empty(_files.Saved);
         Assert.Equal(ValidDiagnosticJson, Assert.Single(_clipboard.Copied));
+    }
+
+    [Fact]
+    public async Task ACancelledReadIsACancelledOpenNotAnUnreadableFile()
+    {
+        var tools = ToolsFor();
+        var openedCount = 0;
+        tools.DiagnosticOpened += _ => openedCount++;
+        _files.NextOpenFails(new OperationCanceledException());
+
+        await tools.OpenAsync();
+
+        Assert.Equal(1, _files.OpenPrompts);
+        Assert.Equal(0, openedCount);
+        Assert.Null(tools.Error);
+    }
+
+    [Fact]
+    public async Task TheOpenerTreatsACancelledReadAsACancelledOpen()
+    {
+        var shown = 0;
+        var refused = 0;
+
+        await SavedDiagnosticOpener.OpenAsync(
+            () => Task.FromCanceled<string?>(new CancellationToken(canceled: true)), _ => shown++, _ => refused++);
+
+        Assert.Equal(0, shown);
+        Assert.Equal(0, refused);
     }
 
     [Fact]
@@ -178,14 +213,14 @@ public sealed class DesktopFileAndClipboardSeamTests
     public async Task TryAWordOpensAValidSavedDiagnosticForAWindowOfItsOwn()
     {
         var page = new TryWordPageModel(NewContext());
-        DiagnosticToolsViewModel? opened = null;
+        OpenedDiagnostic? opened = null;
         page.SavedDiagnosticOpened += diagnostic => opened = diagnostic;
         _files.NextOpenReads(ValidDiagnosticJson);
 
         await page.OpenSavedDiagnosticAsync();
 
         Assert.Equal(ValidDiagnosticJson, opened?.Trace.DiagnosticJson);
-        Assert.Null(opened?.Error);
+        Assert.Null(opened?.Refusal);
         Assert.Null(page.Diagnostics.Error);
         Assert.False(page.Trace.HasResult);
     }
@@ -194,16 +229,17 @@ public sealed class DesktopFileAndClipboardSeamTests
     public async Task TryAWordShowsARefusedSavedDiagnosticInAWindowOfItsOwn()
     {
         var page = new TryWordPageModel(NewContext());
-        DiagnosticToolsViewModel? opened = null;
+        OpenedDiagnostic? opened = null;
         page.SavedDiagnosticOpened += diagnostic => opened = diagnostic;
         _files.NextOpenReads("{");
 
         await page.OpenSavedDiagnosticAsync();
 
         Assert.NotNull(opened);
-        Assert.Equal(RefusalCodes.WordTraceMalformedDiagnostic, opened!.Error?.Code);
+        Assert.Equal(RefusalCodes.WordTraceMalformedDiagnostic, opened!.Refusal?.Code);
         Assert.False(opened.Trace.HasResult);
         Assert.Null(page.Diagnostics.Error);
+        Assert.Equal(opened.Refusal, page.Diagnostics.ForOpened(opened, _files).Error);
     }
 
     [Fact]
@@ -286,7 +322,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         var selection = new SelectionViewModel(fake);
         return new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
             new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake), clipboard: _clipboard,
-            diagnosticFiles: _files);
+            diagnosticFiles: _files, diagnosticDialogs: _files);
     }
 
     private sealed class NoFolderPicker : IHandoffFolderPicker

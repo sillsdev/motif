@@ -27,6 +27,9 @@ public sealed class DesktopSeamWalkthroughTests
         var clipboard = new RecordingClipboard();
         List<(string SuggestedFileName, string Json)> saved = [];
         var openPrompts = 0;
+        List<TopLevel> dialogOwners = [];
+        TopLevel? mainWindow = null;
+        TopLevel? diagnosticWindow = null;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -41,6 +44,8 @@ public sealed class DesktopSeamWalkthroughTests
             walkthrough.DiagnosticFiles.NextOpenReads(DiagnosticJson);
             walkthrough.Click("Open a saved diagnostic");
             var diagnostic = Assert.IsType<DiagnosticWindow>(Assert.Single(walkthrough.Window.OwnedWindows));
+            mainWindow = walkthrough.Window;
+            diagnosticWindow = diagnostic;
             try
             {
                 diagnostic.UpdateLayout();
@@ -60,10 +65,12 @@ public sealed class DesktopSeamWalkthroughTests
 
             saved.AddRange(walkthrough.DiagnosticFiles.Saved);
             openPrompts = walkthrough.DiagnosticFiles.OpenPrompts;
+            dialogOwners.AddRange(walkthrough.DiagnosticFiles.DialogOwners);
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(30));
 
         Assert.Equal(2, openPrompts);
+        Assert.Equal([mainWindow!, diagnosticWindow!], dialogOwners);
         Assert.Equal(("word.trace.json", DiagnosticJson), Assert.Single(saved));
         Assert.Equal(DiagnosticJson, Assert.Single(clipboard.Copied));
     }

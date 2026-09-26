@@ -28,7 +28,7 @@ public sealed partial class DiagnosticPanel : UserControl
         ShowResultSummary = showResultSummary;
         DataContext = tools.Trace;
         AvaloniaXamlLoader.Load(this);
-        tools.DiagnosticOpened += opened => new DiagnosticWindow(opened).Show();
+        tools.DiagnosticOpened += opened => new DiagnosticWindow(opened, tools).Show();
     }
 
     /// <summary>The tools beside the trace, which also say why the last of them failed.</summary>

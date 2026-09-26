@@ -24,7 +24,10 @@ internal static class SavedDiagnosticOpener
     }
 
     /// <summary>Reads and parses diagnostic JSON supplied by the caller.</summary>
-    /// <param name="readDiagnostic">Reads the selected file, or returns null when the picker was cancelled.</param>
+    /// <param name="readDiagnostic">
+    /// Reads the selected file, or returns null when the picker was cancelled; a read that is cancelled counts as a
+    /// cancelled pick, not a file that cannot be read.
+    /// </param>
     /// <param name="showDiagnostic">Displays a diagnostic after it has been read and validated.</param>
     /// <param name="showError">Displays why reading or parsing the file failed.</param>
     /// <returns>A task that completes after the diagnostic has been handled.</returns>
@@ -41,6 +44,10 @@ internal static class SavedDiagnosticOpener
         try
         {
             json = await readDiagnostic();
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch (Exception exception)
         {

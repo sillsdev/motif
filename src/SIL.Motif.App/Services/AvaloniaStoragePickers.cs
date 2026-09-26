@@ -9,9 +9,11 @@ namespace SIL.Motif.App.Services;
 /// Wraps one window's <see cref="TopLevel"/> — its storage provider and its drag-and-drop entry point —
 /// behind <see cref="IProjectPicker"/>, <see cref="IHandoffFolderPicker"/>, <see cref="IDiagnosticFilePicker"/>,
 /// and <see cref="IFileDragSource"/>, so no view model needs to name <see cref="TopLevel"/>,
-/// <see cref="IStorageProvider"/>, <see cref="IStorageFile"/>, or <see cref="IDataTransfer"/>.
+/// <see cref="IStorageProvider"/>, <see cref="IStorageFile"/>, or <see cref="IDataTransfer"/>. As
+/// <see cref="IDiagnosticWindowDialogs"/> it gives another window dialogs of its own.
 /// </summary>
-public sealed class AvaloniaStoragePickers : IProjectPicker, IHandoffFolderPicker, IDiagnosticFilePicker, IFileDragSource
+public sealed class AvaloniaStoragePickers :
+    IProjectPicker, IHandoffFolderPicker, IDiagnosticFilePicker, IDiagnosticWindowDialogs, IFileDragSource
 {
     private static readonly FilePickerFileType FwDataFileType =
         new("FieldWorks project") { Patterns = ["*.fwdata"] };
@@ -51,6 +53,12 @@ public sealed class AvaloniaStoragePickers : IProjectPicker, IHandoffFolderPicke
             AllowMultiple = false,
         });
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
+    }
+
+    public IDiagnosticFilePicker For(TopLevel window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        return ReferenceEquals(window, _topLevel) ? this : new AvaloniaStoragePickers(window);
     }
 
     public async Task<string?> OpenDiagnosticAsync(CancellationToken cancellationToken = default)

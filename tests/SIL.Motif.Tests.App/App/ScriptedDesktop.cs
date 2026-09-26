@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using SIL.Motif.App.Services;
 
 namespace SIL.Motif.Tests.App;
@@ -21,11 +22,15 @@ public sealed class RecordingClipboard : IClipboard
 
 /// <summary>
 /// Answers the diagnostic open and save dialogs from a script: each open returns the next scripted text, and
-/// cancels once the script is empty; each save records what it was given unless told to cancel or fail.
+/// cancels once the script is empty; each save records what it was given unless told to cancel or fail. Every
+/// window that asks for its own dialogs gets this same script, and is recorded.
 /// </summary>
-public sealed class ScriptedDiagnosticFiles : IDiagnosticFilePicker
+public sealed class ScriptedDiagnosticFiles : IDiagnosticFilePicker, IDiagnosticWindowDialogs
 {
     private readonly Queue<Func<string?>> _opens = new();
+
+    /// <summary>The windows that asked for their own dialogs, oldest first.</summary>
+    public List<TopLevel> DialogOwners { get; } = [];
 
     /// <summary>The saves that were written, oldest first.</summary>
     public List<(string SuggestedFileName, string Json)> Saved { get; } = [];
@@ -50,6 +55,12 @@ public sealed class ScriptedDiagnosticFiles : IDiagnosticFilePicker
 
     /// <summary>The next open chooses a file that cannot be read.</summary>
     public void NextOpenFails(Exception failure) => _opens.Enqueue(() => throw failure);
+
+    public IDiagnosticFilePicker For(TopLevel window)
+    {
+        DialogOwners.Add(window);
+        return this;
+    }
 
     public Task<string?> OpenDiagnosticAsync(CancellationToken cancellationToken = default)
     {
