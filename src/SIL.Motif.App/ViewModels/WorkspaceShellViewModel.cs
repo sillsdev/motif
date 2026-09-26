@@ -29,6 +29,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public const string StoreDeletionWarning =
         "Changes not applied yet are lost. Your FieldWorks project is not touched.";
 
+    /// <summary>What the project menu's Configure entry says while the project has no Baseline to choose Texts from.</summary>
+    public const string ConfigureNeedsBaselineText = "Refresh first to choose Texts";
+
     /// <summary>Below this window width the sidebar shows icons alone, with each label as a tooltip.</summary>
     public const double SidebarCollapseWidth = 1100;
 
@@ -78,7 +81,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(recent =>
             recent is null ? Task.CompletedTask : OpenProjectSafelyAsync(recent.FullFwDataPath));
-        ConfigureCommand = new RelayCommand(() => OpenConfiguration?.Invoke());
+        ConfigureCommand = new RelayCommand(() => OpenConfiguration?.Invoke(), () => CanConfigure);
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         CancelRefreshCommand = new RelayCommand(CancelRefresh, () => _isRefreshing);
@@ -195,6 +198,17 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>What the project menu's Configure entry opens.</summary>
     public Action? OpenConfiguration { get; set; }
+
+    /// <summary>
+    /// Whether the project menu offers Configure: only once the open project has a Baseline, which a Refresh
+    /// captures. Pinned by `WithoutABaselineConfigureIsUnavailableAndSaysToRefreshFirst`.
+    /// </summary>
+    public bool CanConfigure => HasProject && Context.Baseline?.HasBaseline == true;
+
+    /// <summary>The Configure entry's second line: what it changes, or what to do first when it cannot open yet.</summary>
+    public string ConfigureDetailText => HasProject && !CanConfigure
+        ? ConfigureNeedsBaselineText
+        : "Texts, added words and limits";
 
     /// <summary>Whether the numbers on screen describe the project as FieldWorks last saved it.</summary>
     public ProjectFreshness Freshness =>
@@ -571,8 +585,19 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 OnPropertyChanged(nameof(ProjectName));
                 OnPropertyChanged(nameof(HasProject));
                 OnPropertyChanged(nameof(ProjectSwitchEnabled));
+                RaiseConfigure();
+                break;
+            case nameof(WorkspaceContext.Baseline):
+                RaiseConfigure();
                 break;
         }
+    }
+
+    private void RaiseConfigure()
+    {
+        OnPropertyChanged(nameof(CanConfigure));
+        OnPropertyChanged(nameof(ConfigureDetailText));
+        ConfigureCommand.NotifyCanExecuteChanged();
     }
 
     // Freshness describes the evidence on screen, whether a run just produced it or the store held it.

@@ -56,12 +56,6 @@ public sealed partial class MainWindow : Window
         SizeChanged += (_, e) => workspace.UpdateWindowWidth(e.NewSize.Width);
         if (this.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout projectMenu)
             projectMenu.Opened += (_, _) => _ = workspace.RefreshKnownProjectsAsync();
-        workspace.OpenRecentProjectCommand.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(workspace.OpenRecentProjectCommand.IsRunning) &&
-                workspace.OpenRecentProjectCommand.IsRunning)
-                Dispatcher.UIThread.Post(HideProjectMenu);
-        };
         // Coming back from FieldWorks is when a save it made is news; this reads, it never reruns.
         Activated += (_, _) => _ = workspace.CheckFreshnessAsync();
         workspace.RecentProjects.CollectionChanged += (_, _) => RebuildRecentProjects(workspace);
@@ -88,11 +82,13 @@ public sealed partial class MainWindow : Window
             };
             ToolTip.SetTip(item, recent.FullFwDataPath);
             Avalonia.Automation.AutomationProperties.SetName(item, recent.AutomationName);
-            item.Click += (_, _) => HideProjectMenu();
+            // Handled too, as running its Command marks the Click handled: pinned by `OpenRecentClosesTheProjectMenu`.
+            item.AddHandler(MenuItem.ClickEvent, (_, _) => HideProjectMenu(), handledEventsToo: true);
             menu.Items.Add(item);
         }
     }
 
+    // Hide after the Command runs, as hiding unbinds it: pinned by `ConfigureReopensSetupAfterSkipAndRefresh`.
     private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(HideProjectMenu);
 
     private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();

@@ -91,13 +91,6 @@ public sealed class WalkthroughWindow : IDisposable
         WaitUntil(() => !setup.IsOpen, TimeSpan.FromSeconds(30), "skipping setup did not close the dialog");
     }
 
-    public void LoadKnownProjects()
-    {
-        var loading = Workspace.Project.LoadKnownProjectsAsync();
-        WaitUntil(() => loading.IsCompleted, TimeSpan.FromSeconds(30), "Known projects did not load");
-        loading.GetAwaiter().GetResult();
-    }
-
     public void OpenProjectMenu()
     {
         if (!ProjectMenuFlyout.IsOpen) Click("Project menu");
@@ -113,12 +106,8 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void ChooseNewProject()
     {
-        OpenProjectMenu();
-        var entry = FindProjectMenuEntry<Button>("Select a new project");
-        Assert.True(entry.IsEffectivelyEnabled, "'Select a new project' is not effectively enabled.");
-        Assert.Same(Workspace.SelectNewProjectCommand, entry.Command);
         var selectedPath = _projectPicker.Path;
-        ClickControl(entry, "Select a new project");
+        ClickProjectMenuEntry("Select a new project");
         var selectionTask = Workspace.SelectNewProjectCommand.ExecutionTask;
         Assert.NotNull(selectionTask);
         WaitUntil(() => !ProjectMenuFlyout.IsOpen,
@@ -132,6 +121,57 @@ public sealed class WalkthroughWindow : IDisposable
             (Workspace.Baseline.ProjectLastWriteUtc is not null || Workspace.Baseline.ShownRefusal is not null),
             TimeSpan.FromSeconds(60), "the selected project did not finish opening");
     }
+
+    /// <summary>Clicks the project menu's Configure entry through the pointer, in the menu's own popup.</summary>
+    public void ConfigureFromProjectMenu() => ClickProjectMenuEntry("Configure the project");
+
+    /// <summary>Opens the project menu and clicks the entry named <paramref name="accessibleName"/> through the pointer.</summary>
+    public void ClickProjectMenuEntry(string accessibleName)
+    {
+        OpenProjectMenu();
+        var entry = FindProjectMenuEntry<Button>(accessibleName);
+        var menu = TopLevel.GetTopLevel(entry)
+            ?? throw new InvalidOperationException($"The project menu's '{accessibleName}' is not in a top level.");
+        HeadlessClick.Click(menu, entry, accessibleName);
+        Window.UpdateLayout();
+        Pump();
+        Assert.False(ProjectMenuFlyout.IsOpen, $"Clicking '{accessibleName}' left the project menu open.");
+    }
+
+    /// <summary>Focuses the project menu entry named <paramref name="accessibleName"/> and presses <paramref name="key"/> on it.</summary>
+    public void PressKeyOnProjectMenuEntry(string accessibleName, Key key, PhysicalKey physicalKey)
+    {
+        OpenProjectMenu();
+        var entry = FindProjectMenuEntry<Button>(accessibleName);
+        Assert.True(entry.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
+        var menu = TopLevel.GetTopLevel(entry)
+            ?? throw new InvalidOperationException($"The project menu's '{accessibleName}' is not in a top level.");
+        Assert.True(entry.Focus(NavigationMethod.Tab), $"'{accessibleName}' did not take the keyboard focus.");
+        Pump();
+        menu.KeyPress(key, RawInputModifiers.None, physicalKey, null);
+        menu.KeyRelease(key, RawInputModifiers.None, physicalKey, null);
+        Window.UpdateLayout();
+        Pump();
+        Assert.False(ProjectMenuFlyout.IsOpen, $"Pressing {key} on '{accessibleName}' left the project menu open.");
+    }
+
+    /// <summary>Double-clicks the project menu entry named <paramref name="accessibleName"/>; returns its clicks.</summary>
+    public int DoubleClickProjectMenuEntry(string accessibleName)
+    {
+        OpenProjectMenu();
+        var entry = FindProjectMenuEntry<Button>(accessibleName);
+        var menu = TopLevel.GetTopLevel(entry)
+            ?? throw new InvalidOperationException($"The project menu's '{accessibleName}' is not in a top level.");
+        var clicks = HeadlessClick.DoubleClick(menu, entry, accessibleName);
+        Window.UpdateLayout();
+        Pump();
+        Assert.False(ProjectMenuFlyout.IsOpen, $"Double-clicking '{accessibleName}' left the project menu open.");
+        return clicks;
+    }
+
+    /// <summary>Whether the setup dialog is on screen over the window, not merely open in its view model.</summary>
+    public bool SetupDialogIsShown =>
+        Window.GetLogicalDescendants().OfType<SetupDialog>().Single().IsEffectivelyVisible;
 
     public T FindProjectMenuEntry<T>(string accessibleName) where T : Control =>
         (ProjectMenuFlyout.Content as Control)?.GetLogicalDescendants().OfType<T>().Single(control =>
@@ -268,61 +308,30 @@ public sealed class WalkthroughWindow : IDisposable
     public void SelectKnownProject(string projectPath)
     {
         OpenProjectMenu();
-        var refresh = Workspace.RefreshKnownProjectsAsync();
-        WaitUntil(() => refresh.IsCompleted, TimeSpan.FromSeconds(10), "Open recent did not finish refreshing known projects");
-        refresh.GetAwaiter().GetResult();
+        var automationName = $"Open {Path.GetFileNameWithoutExtension(projectPath)}";
+        WaitUntil(() => Window.RecentProjectItems.Any(candidate =>
+                string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate), automationName,
+                    StringComparison.Ordinal)),
+            TimeSpan.FromSeconds(10), $"'{automationName}' did not appear under Open recent");
         var project = Workspace.RecentProjects.Single(known =>
             string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
         var openRecent = FindProjectMenuEntry<Button>("Open a recent project");
-        Assert.True(openRecent.IsEffectivelyEnabled, "'Open a recent project' is not effectively enabled.");
-        Assert.IsType<MenuFlyout>(openRecent.Flyout).ShowAt(openRecent);
+        var recentMenu = Assert.IsType<MenuFlyout>(openRecent.Flyout);
+        HeadlessClick.Click(TopLevel.GetTopLevel(openRecent)!, openRecent, "Open a recent project");
+        Assert.True(recentMenu.IsOpen, "Clicking 'Open a recent project' did not open its list.");
         var item = Window.RecentProjectItems.Single(candidate =>
             string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate),
                 project.AutomationName, StringComparison.Ordinal));
-        Assert.True(item.IsEffectivelyEnabled, $"'{project.AutomationName}' is not effectively enabled.");
         Assert.Same(Workspace.OpenRecentProjectCommand, item.Command);
-        Assert.Equal(project.FullFwDataPath,
-            Assert.IsType<RecentProjectViewModel>(item.CommandParameter).FullFwDataPath);
-        var previousOpenTask = Workspace.OpenRecentProjectCommand.ExecutionTask;
-        ClickPopupMenuItem(item, project.AutomationName);
-        var openTask = Workspace.OpenRecentProjectCommand.ExecutionTask;
-        Assert.NotNull(openTask);
-        Assert.NotSame(previousOpenTask, openTask);
-        WaitUntil(() => !ProjectMenuFlyout.IsOpen,
-            TimeSpan.FromSeconds(10), "opening a recent project did not close the project menu");
+        Assert.Same(project, item.CommandParameter);
+        var before = Workspace.OpenRecentProjectCommand.ExecutionTask;
+        HeadlessClick.Click(TopLevel.GetTopLevel(item)!, item, project.AutomationName);
         Pump();
-        WaitUntil(() => openTask.IsCompleted,
+        Assert.NotSame(before, Workspace.OpenRecentProjectCommand.ExecutionTask);
+        Assert.False(ProjectMenuFlyout.IsOpen, $"Clicking '{project.AutomationName}' left the project menu open.");
+        // The Baseline and Texts load partway through the open; the recent list is right only once it ends.
+        WaitUntil(() => Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
             TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
-    }
-
-    private static void ClickPopupMenuItem(MenuItem item, string accessibleName)
-    {
-        var topLevel = TopLevel.GetTopLevel(item);
-        Assert.NotNull(topLevel);
-        item.BringIntoView();
-        Dispatcher.UIThread.RunJobs();
-        topLevel.UpdateLayout();
-        var point = item.TranslatePoint(new Point(item.Bounds.Width / 2, item.Bounds.Height / 2), topLevel);
-        Assert.NotNull(point);
-        var pressed = false;
-        var released = false;
-        void OnPressed(object? sender, PointerPressedEventArgs e) => pressed = true;
-        void OnReleased(object? sender, PointerReleasedEventArgs e) => released = true;
-        item.AddHandler(InputElement.PointerPressedEvent, OnPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
-        item.AddHandler(InputElement.PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
-        try
-        {
-            topLevel.MouseMove(point.Value);
-            topLevel.MouseDown(point.Value, MouseButton.Left);
-            topLevel.MouseUp(point.Value, MouseButton.Left);
-        }
-        finally
-        {
-            item.RemoveHandler(InputElement.PointerPressedEvent, OnPressed);
-            item.RemoveHandler(InputElement.PointerReleasedEvent, OnReleased);
-        }
-        Dispatcher.UIThread.RunJobs();
-        Assert.True(pressed && released, $"The pointer click missed '{accessibleName}'.");
     }
 
     private Flyout ProjectMenuFlyout =>
