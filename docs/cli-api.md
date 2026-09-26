@@ -116,8 +116,12 @@ the project, calls the verb, then reloads the project. It accepts an optional `-
 revision FieldWorks previously checked and an optional `--user` for the Receipt; without `--user`, Motif uses
 the current account. Nothing pending is a success, not a refusal: the verb exits `0`, writes nothing to
 stderr and records no Receipt, and prints `Nothing to apply.` or, with `--json`, `{"ok":true,"applied":false}`
-on stdout. An Apply that ran exits `0` and prints its Receipt. Every nonzero exit code is a refusal or an
-error, with its failure envelope on stderr, so FieldWorks can treat exit `0` alone as "continue".
+on stdout. An Apply that ran exits `0` and prints its Receipt; with `--json` that is
+`{"ok":true,"applied":true,"receipt":{…}}`, the Receipt object nested under `receipt`. Both JSON documents are
+the Contract's `ApplyPendingResult`. "Nothing pending" means the pending Draft holds no operations, the same
+test `trial --pending` uses. Every nonzero exit code is a refusal or an error, with its failure on stderr (a
+failure envelope under `--json`), so FieldWorks can treat exit `0` alone as "continue". A project another
+program still holds is `Busy`, exit `3`: release it and retry.
 
 `preflight` reads the live project and reports each collected change as `still fits` or
 `no longer fits`, with an operation id and reason. `--json` returns the same entries as structured
