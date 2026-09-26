@@ -24,7 +24,7 @@ public sealed class MotifDesktopSession
     public MainWindow Window { get; }
 
     /// <summary>The workspace the window shows.</summary>
-    public HandoffWorkspaceViewModel Workspace { get; }
+    public WorkspaceShellViewModel Workspace { get; }
 
     /// <summary>Completes when startup's Known-project load has finished; it never faults.</summary>
     public Task KnownProjectsLoaded { get; }

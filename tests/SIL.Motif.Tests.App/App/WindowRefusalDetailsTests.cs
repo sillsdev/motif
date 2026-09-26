@@ -124,7 +124,7 @@ public sealed class WindowRefusalDetailsTests
         fake.OnGetCurrentBaseline((_, _) => Task.FromException<CommandOutcome<CurrentBaselineResponse>>(
             new InvalidOperationException("The project could not be read.")));
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(new ProjectViewModel(fake, new NoProjectPicker()),
+        var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, new NoProjectPicker()),
             new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
             new NoFolderPicker(), new NoDragSource(), fake);
 

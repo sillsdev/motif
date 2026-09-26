@@ -26,7 +26,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Composes <see cref="MainWindow"/> from a <see cref="HandoffWorkspaceViewModel"/> built over fakes, and
+/// Composes <see cref="MainWindow"/> from a <see cref="WorkspaceShellViewModel"/> built over fakes, and
 /// checks what a headless platform can actually verify: every panel is attached and bound to its own
 /// child view model, every input and button carries an accessible name (its own explicit
 /// <see cref="AutomationProperties.NameProperty"/> or, for a <see cref="Button"/> or
@@ -1181,7 +1181,7 @@ public sealed class MainWindowSmokeTests
         || visual.FindAncestorOfType<TextBox>(includeSelf: false) is not null;
 
     // A page nobody has opened has no template applied, so its controls join the tree only once it is shown.
-    private static void ShowEveryStage(MainWindow window, HandoffWorkspaceViewModel workspace)
+    private static void ShowEveryStage(MainWindow window, WorkspaceShellViewModel workspace)
     {
         foreach (var page in Enum.GetValues<WorkspacePage>())
         foreach (var tab in Enum.GetValues<TextsTab>())
@@ -1232,14 +1232,14 @@ public sealed class MainWindowSmokeTests
         return control is ContentControl { Content: string text } ? text : null;
     }
 
-    private static (HandoffWorkspaceViewModel Workspace, MainWindow Window, FakeDragSource DragSource)
+    private static (WorkspaceShellViewModel Workspace, MainWindow Window, FakeDragSource DragSource)
         NewComposedWindow()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var dragSource = new FakeDragSource();
         var window = new MainWindow();
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new FakeProjectPicker()),
             new BaselineViewModel(fake),
             selection,

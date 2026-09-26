@@ -13,14 +13,14 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins <see cref="HandoffWorkspaceViewModel"/>'s composition: choosing a project loads Baseline and Text
+/// Pins <see cref="WorkspaceShellViewModel"/>'s composition: choosing a project loads Baseline and Text
 /// state and propagates the project to every child; a completed Assessment feeds
 /// <see cref="BaselineViewModel.HasAssessment"/> and <see cref="StatisticsViewModel.SummaryMarkdown"/>; a
 /// Refresh that replaces an already-assessed Baseline offers a rerun, which Accept and Dismiss resolve;
 /// and choosing another project clears what the previous one displayed. The last test exercises the whole
 /// agreed workflow end to end.
 /// </summary>
-public sealed class HandoffWorkspaceViewModelTests
+public sealed class WorkspaceShellViewModelTests
 {
     private const string Digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     private const string BundleDigest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -41,14 +41,14 @@ public sealed class HandoffWorkspaceViewModelTests
     };
 
     private static (FakeCommandClient Fake, FakeProjectPicker ProjectPicker, FakeFolderPicker FolderPicker,
-        FakeDragSource DragSource, HandoffWorkspaceViewModel Workspace) NewWorkspace()
+        FakeDragSource DragSource, WorkspaceShellViewModel Workspace) NewWorkspace()
     {
         var fake = new FakeCommandClient();
         var projectPicker = new FakeProjectPicker();
         var folderPicker = new FakeFolderPicker();
         var dragSource = new FakeDragSource();
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, projectPicker),
             new BaselineViewModel(fake),
             selection,
@@ -59,7 +59,7 @@ public sealed class HandoffWorkspaceViewModelTests
     }
 
     private static async Task ChooseProjectAsync(
-        FakeCommandClient fake, FakeProjectPicker projectPicker, HandoffWorkspaceViewModel workspace,
+        FakeCommandClient fake, FakeProjectPicker projectPicker, WorkspaceShellViewModel workspace,
         string projectPath, BaselineToken? token = null)
     {
         token ??= NewToken();

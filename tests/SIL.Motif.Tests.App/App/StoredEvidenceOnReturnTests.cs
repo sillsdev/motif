@@ -103,7 +103,7 @@ public sealed class StoredEvidenceOnReturnTests
             "invocation/" + assessmentId)],
     };
 
-    private static (FakeCommandClient Fake, HandoffWorkspaceViewModel Workspace) NewWorkspace()
+    private static (FakeCommandClient Fake, WorkspaceShellViewModel Workspace) NewWorkspace()
     {
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false)
@@ -112,7 +112,7 @@ public sealed class StoredEvidenceOnReturnTests
         });
         fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
         var selection = new SelectionViewModel(fake);
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new ProjectPicker()), new BaselineViewModel(fake), selection,
             new AssessViewModel(fake, selection), new FolderPicker(), new DragSource(), fake);
         return (fake, workspace);

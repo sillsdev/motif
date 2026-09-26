@@ -73,7 +73,7 @@ public static class MotifAppComposition
             options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate));
         var selection = new SelectionViewModel(commandClient);
         var assess = new AssessViewModel(commandClient, selection, options.TimeProvider);
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(commandClient, options.ProjectPicker ?? nativePickers),
             new BaselineViewModel(commandClient),
             selection,
@@ -91,4 +91,4 @@ public static class MotifAppComposition
 }
 
 /// <summary>The window and workspace composed together for one Motif desktop lifetime.</summary>
-public sealed record MotifAppCompositionResult(MainWindow Window, HandoffWorkspaceViewModel Workspace);
+public sealed record MotifAppCompositionResult(MainWindow Window, WorkspaceShellViewModel Workspace);

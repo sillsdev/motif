@@ -3,7 +3,7 @@
         xmlns:views="clr-namespace:SIL.Motif.App.Views"
         xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         x:Class="SIL.Motif.App.Views.MainWindow"
-        x:DataType="vm:HandoffWorkspaceViewModel"
+        x:DataType="vm:WorkspaceShellViewModel"
         Title="Motif"
         Icon="avares://SIL.Motif.App/Assets/motif.ico"
         Width="{DynamicResource Component.Shell.Width}"

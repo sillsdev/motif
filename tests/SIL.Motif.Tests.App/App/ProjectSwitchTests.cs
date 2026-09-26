@@ -40,13 +40,13 @@ public sealed class ProjectSwitchTests
         var projectPicker = new FakeProjectPicker();
         var commands = client ?? fake;
         var selection = new SelectionViewModel(commands);
-        var workspace = new HandoffWorkspaceViewModel(
+        var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(commands, projectPicker), new BaselineViewModel(commands), selection,
             new AssessViewModel(commands, selection), new FakeFolderPicker(), new FakeDragSource(), commands);
         return new WorkspaceParts(fake, projectPicker, workspace);
     }
 
-    private static Task OpenProjectAsync(HandoffWorkspaceViewModel workspace, string path) =>
+    private static Task OpenProjectAsync(WorkspaceShellViewModel workspace, string path) =>
         workspace.SetProjectAsync(path);
 
     [Fact]
@@ -513,7 +513,7 @@ public sealed class ProjectSwitchTests
         "sha256:grammar", null, null, null, "2026-09-24T12:00:00.0000000+00:00", Words: []);
 
     private sealed record WorkspaceParts(FakeCommandClient Fake, FakeProjectPicker ProjectPicker,
-        HandoffWorkspaceViewModel Workspace);
+        WorkspaceShellViewModel Workspace);
 
     private sealed class ProbePageModel(WorkspaceContext context, List<string> calls) : PageModel(context)
     {
