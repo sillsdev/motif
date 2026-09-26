@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Text.Json;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -47,17 +46,8 @@ public sealed class RunnerKickRaceTests : IDisposable
         Thread.Sleep(500);
         occupying.Dispose();
 
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-        string status;
-        do
-        {
-            status = StatusOf(project, jobId);
-            if (status is "completed" or "failed" or "cancelled") break;
-            Thread.Sleep(50);
-        } while (DateTime.UtcNow < deadline);
-
-        Assert.NotEqual("queued", status);
-        Assert.NotEqual("running", status);
+        // Bounded by progress, not by how long a loaded machine takes to capture a Baseline.
+        JobProgress.WaitUntilFinished(project, jobId, "The kicked runner's Baseline refresh");
     }
 
     [Fact]
@@ -71,14 +61,6 @@ public sealed class RunnerKickRaceTests : IDisposable
         Assert.Equal(0, run.ExitCode);
         Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(8),
             $"Reading the CLI's output took {elapsed.Elapsed}: the kicked runner held its standard handles.");
-    }
-
-    private string StatusOf(string project, string jobId)
-    {
-        var shown = Cli($"jobs show {jobId} --project \"{project}\" --json");
-        Assert.Equal(0, shown.ExitCode);
-        using var document = JsonDocument.Parse(shown.Output);
-        return document.RootElement.GetProperty("status").GetString()!;
     }
 
     /// Runs the real CLI with the kick enabled, sharing this test's isolated root and runner namespace.
@@ -101,11 +83,17 @@ public sealed class RunnerKickRaceTests : IDisposable
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        var output = outputTask.GetAwaiter().GetResult();
-        var error = errorTask.GetAwaiter().GetResult();
-        Assert.True(process.WaitForExit(120000), "The CLI did not exit within its bound.");
-        return new CliRun(process.ExitCode, output, error);
+        // One bound over exit and both drains: a handle held open blocks a drain as surely as a hung exit.
+        if (!Task.WhenAll(outputTask, errorTask, process.WaitForExitAsync()).Wait(CliBound))
+        {
+            try { process.Kill(entireProcessTree: true); }
+            catch (InvalidOperationException) { }
+            Assert.Fail("'motif " + arguments + "' did not exit and close its output within " + CliBound + ".");
+        }
+        return new CliRun(process.ExitCode, outputTask.Result, errorTask.Result);
     }
+
+    private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
 

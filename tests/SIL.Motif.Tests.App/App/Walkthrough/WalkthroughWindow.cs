@@ -112,13 +112,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void ChooseNewProject()
     {
-        OpenProjectMenu();
-        var entry = FindProjectMenuEntry<Button>("Select a new project");
-        Assert.True(entry.IsEffectivelyEnabled, "'Select a new project' is not effectively enabled.");
-        Assert.Same(Workspace.SelectNewProjectCommand, entry.Command);
-        entry.Command!.Execute(entry.CommandParameter);
-        ProjectMenuFlyout.Hide();
-        Pump();
+        ClickProjectMenuEntry("Select a new project");
     }
 
     /// <summary>Clicks the project menu's Configure entry through the pointer, in the menu's own popup.</summary>
