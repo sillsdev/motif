@@ -27,7 +27,7 @@ public sealed class PanGlossAssessmentProcess : IPanGlossAssessor
     public PanGlossAssessmentProcess(string? executablePath = null)
     {
         _executable = executablePath ?? PanGlossExecutable.TryLocate()
-            ?? throw new ParserUnavailableException(PanGlossExecutable.NotFoundMessage);
+            ?? throw new ParserUnavailableException(PanGlossExecutable.NotFoundMessage) { ExecutableMissing = true };
     }
 
     /// <summary>

@@ -61,7 +61,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         if (cap <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(wallClockCap), "A cap must be positive.");
         request.Validate();
 
-        if (_executable is null) return new PanGlossOutcome.Unavailable(MissingExecutableMessage);
+        if (_executable is null)
+            return new PanGlossOutcome.Unavailable(MissingExecutableMessage) { ExecutableMissing = true };
 
         try
         {

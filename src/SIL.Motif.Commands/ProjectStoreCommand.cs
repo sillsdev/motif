@@ -76,7 +76,7 @@ public static class ProjectStoreCommand
                 exception.Message, new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["fwDataPath"] = fwDataPath,
-                    ["storePath"] = exception.StorePath,
+                    [RefusalFactNames.StorePath] = exception.StorePath,
                 }));
         }
         catch (NotSupportedException exception)
