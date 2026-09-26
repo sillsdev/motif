@@ -9,12 +9,14 @@ namespace SIL.Motif.Worker;
 /// <remarks>
 /// Launch arguments configure the runner that a launch starts, and win over the environment, which stays
 /// the default for a runner started by hand. The runner is a per-user singleton: a launch that finds one
-/// already running starts nothing, and the running one keeps the settings it started with. Only
-/// <see cref="Read"/> consults the environment; options built in code carry exactly what they are given.
+/// already running starts nothing, and the running one keeps the settings it started with.
+/// <see cref="Read"/> and <see cref="ResolveRoot"/> consult the environment, pinned by
+/// `ResolveRootAndReadTakeTheRootVariable`; options built in code carry exactly what they are given, pinned by
+/// `OptionsBuiltInCodeReadNothingFromTheEnvironment`.
 /// </remarks>
 public sealed record RunnerOptions
 {
-    /// <summary>Explicitly selects the worker root for a launched process.</summary>
+    /// <summary>Explicitly selects the root directory for a launched process.</summary>
     public const string RootArgument = "--root";
 
     /// <summary>Explicitly selects the parser for a launched process.</summary>
@@ -56,7 +58,7 @@ public sealed record RunnerOptions
     /// </summary>
     public const string IdleVariable = "MOTIF_RUNNER_IDLE_SECONDS";
 
-    /// <summary>The worker root whose Known projects and machine database this runner uses.</summary>
+    /// <summary>The root directory whose Known projects and machine database this runner uses.</summary>
     public required string Root { get; init; }
 
     /// <summary>The parser a Trial runs, or <see langword="null"/> when this runner runs no Trials.</summary>
@@ -84,7 +86,7 @@ public sealed record RunnerOptions
             TimeSpan.FromMinutes(5),
     };
 
-    /// <summary>The worker root any process (runner or CLI) uses: <see cref="RootVariable"/>, or the per-user default.</summary>
+    /// <summary>The root any process (runner or CLI) uses: <see cref="RootVariable"/>, or the per-user default.</summary>
     public static string ResolveRoot() => Value(RootVariable) ?? DefaultRoot;
 
     /// <summary>The per-user root used when no command-line configuration supplies another location.</summary>

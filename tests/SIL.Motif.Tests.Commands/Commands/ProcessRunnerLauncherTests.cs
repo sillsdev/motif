@@ -31,7 +31,7 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
     ];
 
     [Fact]
-    public async Task ALaunchedWorkerDrainsTheQueueUnderItsOwnRootWithoutProcessEnvironment()
+    public async Task ALaunchedRunnerDrainsTheQueueUnderItsOwnRootWithoutProcessEnvironment()
     {
         var before = MotifVariables();
         Assert.All(RunnerVariables, name => Assert.Null(Environment.GetEnvironmentVariable(name)));
@@ -42,7 +42,7 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
             wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
                 .Create(TsStringUtils.MakeString("launched-word", scratch.DefaultVernWs)).Guid);
         new FwDataProjectLoader().Save(scratch);
-        var root = Path.Combine(Path.GetDirectoryName(path)!, "launched-worker-root");
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "launched-runner-root");
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
         var version = MotifProductVersion.CurrentText;
         var initial = PendingChanges.Load(new PendingChangesRequest(path, version)).Value!;
@@ -57,14 +57,14 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
         Assert.True(measured.Succeeded, measured.Refusal?.Message);
         Assert.Equal(JobStatus.Completed, JobCommands.Show(new ShowJobRequest(path,
             measured.Value!.JobId, version)).Value!.Status);
-        Assert.True(File.Exists(Path.Combine(root, "motif.db")), "The worker did not open its root's machine database.");
+        Assert.True(File.Exists(Path.Combine(root, "motif.db")), "The runner did not open its root's machine database.");
         Assert.Equal(before, MotifVariables());
     }
 
     [Fact]
-    public void AConfiguredWorkerThatDoesNotExistIsNotStarted()
+    public void AConfiguredRunnerThatDoesNotExistIsNotStarted()
     {
-        var root = Path.Combine(Path.GetTempPath(), "motif-missing-worker-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(Path.GetTempPath(), "motif-missing-runner-" + Guid.NewGuid().ToString("N"));
         var launcher = new ProcessRunnerLauncher(IsolatedRunner.Options(root) with
         {
             WorkerExecutable = Path.Combine(root, "absent", "SIL.Motif.Worker.exe"),

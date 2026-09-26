@@ -16,8 +16,11 @@ namespace SIL.Motif.Commands;
 /// through nothing but the named ownership mutex the runner already guards itself with, so spawning is
 /// unconditional — an already-alive runner makes this a no-op, and keeps its own settings — and
 /// best-effort: a runner that fails to start leaves the row queued for the next enqueue to wake instead of
-/// failing the one that just queued it. Every setting in <see cref="Options"/> travels as a launch argument,
-/// which the runner prefers over its environment.
+/// failing the one that just queued it. Every runner setting in <see cref="Options"/> travels as a launch
+/// argument, which the runner prefers over its environment, pinned by
+/// `ALaunchedRunnerDrainsTheQueueUnderItsOwnRootWithoutProcessEnvironment`. The exception is
+/// <see cref="JobRunnerLaunchOptions.WorkerExecutable"/>, which chooses the executable to start rather than
+/// travelling to it, pinned by `AConfiguredRunnerThatDoesNotExistIsNotStarted`.
 /// </remarks>
 public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
 {

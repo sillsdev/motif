@@ -46,6 +46,23 @@ public sealed class RunnerOptionsTests : IDisposable
             [RunnerOptions.ParserArgument, Path.Combine(_directory, "absent", "pangloss.exe")]).ParserPath);
 
     [Fact]
+    public void ResolveRootAndReadTakeTheRootVariable()
+    {
+        var previous = Environment.GetEnvironmentVariable(RunnerOptions.RootVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(RunnerOptions.RootVariable, _directory);
+
+            Assert.Equal(_directory, RunnerOptions.ResolveRoot());
+            Assert.Equal(_directory, RunnerOptions.Read([]).Root);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(RunnerOptions.RootVariable, previous);
+        }
+    }
+
+    [Fact]
     public void OptionsBuiltInCodeReadNothingFromTheEnvironment()
     {
         var options = new RunnerOptions { Root = _directory };
