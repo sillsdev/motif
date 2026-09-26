@@ -5,6 +5,7 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
@@ -118,6 +119,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         start.Environment[PanGlossExecutable.PathVariable] = runner.ParserPath;
         start.Environment[RunnerOptions.NamespaceVariable] = runner.OwnerNamespace;
         start.Environment[RunnerOptions.IdleVariable] = "1";
+        start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
         return start;
     }
 
