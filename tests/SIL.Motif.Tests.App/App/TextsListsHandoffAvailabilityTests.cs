@@ -29,12 +29,14 @@ public sealed class TextsListsHandoffAvailabilityTests
                 var texts = window.GetLogicalDescendants().OfType<ListBoxItem>().Single(item =>
                     AutomationProperties.GetName(item) == "Texts page");
                 HeadlessClick.Click(window, texts, "Texts page");
-                Click(window, "Lists tab");
+                FakeComposedWindow.Click(window, "Lists tab");
 
                 var lists = workspace.PageModel<TextsPageModel>().TextsLists;
                 var emptyListReason = "No words in this list to send to AI Handoff.";
-                var wholeListButton = FindButton(window, "AI Handoff for the whole selected list");
-                var checkedWordsButton = FindButton(window, "AI Handoff for ticked words in the selected list");
+                var wholeListButton = FakeComposedWindow.FindButton(
+                    window, "AI Handoff for the whole selected list");
+                var checkedWordsButton = FakeComposedWindow.FindButton(
+                    window, "AI Handoff for ticked words in the selected list");
                 Assert.False(wholeListButton.IsEffectivelyEnabled);
                 Assert.False(checkedWordsButton.IsEffectivelyEnabled);
                 Assert.Equal(emptyListReason, lists.HandOffListDisabledReason);
@@ -85,16 +87,5 @@ public sealed class TextsListsHandoffAvailabilityTests
             .Where(text => text.IsEffectivelyVisible && text.Text is { } value && reasons.Contains(value))
             .Select(text => text.Text).ToArray();
     }
-
-    private static void Click(MainWindow window, string name)
-    {
-        var button = window.GetLogicalDescendants().OfType<Button>().Single(control =>
-            string.Equals(AutomationProperties.GetName(control), name, StringComparison.Ordinal));
-        HeadlessClick.Click(window, button, name);
-    }
-
-    private static Button FindButton(MainWindow window, string name) =>
-        window.GetLogicalDescendants().OfType<Button>().Single(control =>
-            string.Equals(AutomationProperties.GetName(control), name, StringComparison.Ordinal));
 
 }

@@ -143,13 +143,13 @@ public sealed partial class TimingPageModel : PageModel
 
     public string UseMatrixCellDisabledReason => Context.ProjectPath is null
         ? "Open a project first."
-        : SelectedMatrixCell is null ? "Choose a matrix cell from Texts first." : string.Empty;
+        : SelectedMatrixCell is null ? "Choose a matrix cell above first." : string.Empty;
 
     public bool UseMatrixCellUnavailable => UseMatrixCellDisabledReason.Length > 0;
 
     public string UseTextsListDisabledReason => Context.ProjectPath is null
         ? "Open a project first."
-        : SelectedTextsList is null ? "Choose a word list from Texts first."
+        : SelectedTextsList is null ? "Choose a word list above first."
         : Context.Assess.Compare.WordsInFamily(SelectedTextsList.Family).Count == 0
             ? "No words in this list to use for Timing." : string.Empty;
 
@@ -341,7 +341,12 @@ public sealed partial class TimingPageModel : PageModel
 
     private bool CanUseMatrixCell() => Context.ProjectPath is not null && SelectedMatrixCell is not null;
 
-    private void OnCheckedWordsChanged(object? sender, EventArgs e) => NotifySourceAvailability();
+    private void OnCheckedWordsChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(MatrixCells));
+        OnPropertyChanged(nameof(TextsLists));
+        NotifySourceAvailability();
+    }
 
     private void NotifySourceAvailability()
     {

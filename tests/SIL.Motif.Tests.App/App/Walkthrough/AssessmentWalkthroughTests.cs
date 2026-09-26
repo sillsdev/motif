@@ -21,7 +21,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void TimingSourceButtonsExplainOrDisableEmptyInputs()
+    public void OverviewAccuracyOpensTextsAndTimingSourcesExplainEmptyInputs()
     {
         using var project = new WalkthroughProject(pristine);
         var deadline = Stopwatch.GetTimestamp() + 360 * Stopwatch.Frequency;
@@ -50,8 +50,8 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
                 .Single(button => Equals(button.Content, name));
             var sources = new[]
             {
-                ("Use cell", "Choose a matrix cell from Texts first."),
-                ("Use list", "Choose a word list from Texts first."),
+                ("Use cell", "Choose a matrix cell above first."),
+                ("Use list", "Choose a word list above first."),
                 ("Pick words", "Enter one or more words, one per line."),
                 ("Chosen in Texts", "Tick words in Texts first."),
             };
@@ -115,6 +115,12 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             walkthrough.ShowPage(WorkspacePage.Timing);
             Assert.True(SourceButton("Chosen in Texts").IsEffectivelyEnabled);
             Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Chosen in Texts"))));
+            var pickedScope = timing.ScopeLabel;
+            walkthrough.Click("Chosen in Texts");
+            walkthrough.WaitUntil(() => !timing.UseCheckedWordsCommand.IsRunning &&
+                    timing.KindTiming is { WordCount: 1 },
+                WalkthroughSteps.Remaining(deadline), "Timing did not load the ticked word from Texts");
+            Assert.NotEqual(pickedScope, timing.ScopeLabel);
 
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));

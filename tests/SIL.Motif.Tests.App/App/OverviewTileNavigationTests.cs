@@ -1,10 +1,6 @@
-using Avalonia.Automation;
-using Avalonia.Controls;
-using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
-using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -12,6 +8,34 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewTileNavigationTests
 {
+    [Theory]
+    [InlineData("Open Timing", WorkspacePage.Timing)]
+    [InlineData("Open Warnings", WorkspacePage.Warnings)]
+    [InlineData("Start an AI Handoff", WorkspacePage.AiHandoff)]
+    public void OverviewDetailTilesOpenTheirPages(string tileName, WorkspacePage expectedPage)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var (workspace, window) = FakeComposedWindow.Create();
+            try
+            {
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                FakeComposedWindow.Click(window, tileName);
+
+                Assert.Equal(expectedPage, workspace.CurrentPage);
+            }
+            finally
+            {
+                Close(workspace, window);
+            }
+
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+    }
+
     [Fact]
     public void TextsRequestAppliesItsCellSelectionOnArrival()
     {
@@ -24,11 +48,7 @@ public sealed class OverviewTileNavigationTests
                     new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.Match),
                     new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.NoParse),
                 ];
-                var constructor = typeof(OpenTextsRequest).GetConstructor(
-                    [typeof(TextsTab), typeof(IReadOnlyList<TextsListCell>)]);
-                Assert.NotNull(constructor);
-
-                workspace.Context.Open((PageRequest)constructor!.Invoke([TextsTab.Matrix, cells]));
+                workspace.Context.Open(new OpenTextsRequest(TextsTab.Matrix, cells));
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
                 Assert.Equal(cells.ToHashSet(), workspace.PageModel<TextsPageModel>().Assess.Compare.Cells
@@ -58,11 +78,11 @@ public sealed class OverviewTileNavigationTests
                 var compare = workspace.PageModel<TextsPageModel>().Assess.Compare;
                 compare.SelectCells([new TextsListCell(WordProjectStatus.Candidate, CompareColumnKind.Match)]);
 
-                Click(window, "Open Text Coverage in Texts");
+                FakeComposedWindow.Click(window, "Open Text Coverage in Texts");
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
                 Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
-                Assert.Empty(compare.Cells.Where(cell => cell.IsSelected));
+                Assert.DoesNotContain(compare.Cells, cell => cell.IsSelected);
             }
             finally
             {
@@ -85,7 +105,7 @@ public sealed class OverviewTileNavigationTests
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                Click(window, "Open accuracy in Texts");
+                FakeComposedWindow.Click(window, "Open accuracy in Texts");
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
                 Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
@@ -103,17 +123,9 @@ public sealed class OverviewTileNavigationTests
         }, TimeSpan.FromSeconds(10));
     }
 
-    private static void Click(MainWindow window, string name)
-    {
-        var button = window.GetLogicalDescendants().OfType<Button>().Single(control =>
-            string.Equals(AutomationProperties.GetName(control), name, StringComparison.Ordinal));
-        HeadlessClick.Click(window, button, name);
-    }
-
     private static void Close(WorkspaceShellViewModel workspace, MainWindow window)
     {
         window.Close();
         workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
-
 }

@@ -1,11 +1,22 @@
+using Avalonia.Automation;
+using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Tests.App.Walkthrough;
 
 namespace SIL.Motif.Tests.App;
 
 internal static class FakeComposedWindow
 {
+    public static void Click(MainWindow window, string name) =>
+        HeadlessClick.Click(window, FindButton(window, name), name);
+
+    public static Button FindButton(MainWindow window, string name) =>
+        window.GetLogicalDescendants().OfType<Button>().Single(button =>
+            string.Equals(AutomationProperties.GetName(button), name, StringComparison.Ordinal));
+
     public static (WorkspaceShellViewModel Workspace, MainWindow Window) Create(FakeCommandClient? fake = null)
     {
         fake ??= new FakeCommandClient();

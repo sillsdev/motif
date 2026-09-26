@@ -134,7 +134,6 @@ public sealed class MainWindowSmokeTests
                     "FieldWorks still has the project open.", StringComparison.Ordinal) == true));
                 Assert.Equal(1, visibleText.Count(item => item == "FieldWorks holds this project open right now."));
                 Assert.Empty(fake.AssessRequests);
-
             }
             finally
             {

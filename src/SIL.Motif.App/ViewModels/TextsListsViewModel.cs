@@ -127,12 +127,8 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public bool HandOffListUnavailable => HandOffListDisabledReason.Length > 0;
 
-    public string HandOffCheckedWordsDisabledReason => SelectedList is not { } list
-        ? string.Empty
-        : !list.HasWords ? string.Empty
-        : Compare.CheckedWordsInCells(list.Cells).Count == 0
-            ? "Tick words in this list before starting an AI Handoff."
-            : string.Empty;
+    public string HandOffCheckedWordsDisabledReason => SelectedList is { HasWords: true }
+        ? HandOffCheckedWordsHelpText : string.Empty;
 
     public bool HandOffCheckedWordsUnavailable => HandOffCheckedWordsDisabledReason.Length > 0;
 
