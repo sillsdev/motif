@@ -1,6 +1,6 @@
 # Read grammar warnings
 
-`warnings` reads grammar-check findings already stored for a project. It can filter by an exact diagnostic code or show only findings at warning level.
+`warnings` reads grammar-check findings already stored for a project. It can filter by diagnostic code or show only findings at warning level.
 
 ## When to use it
 
@@ -14,7 +14,7 @@ motif warnings --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --left-out --
 
 ## What it prints
 
-The response includes counts and findings with descriptions, guidance, subjects, and links where available. Before any check is stored, the command reports that the grammar has not been checked.
+The response includes counts and findings with descriptions, guidance, subjects, and links where available. With no Baseline, the command says to capture one; when a Baseline has no stored check, it says the grammar has not been checked yet.
 
 ## Related commands
 

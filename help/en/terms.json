@@ -1,26 +1,26 @@
 {
   "assessment": {
     "title": "A recorded measurement",
-    "description": "An Assessment stores one kind of measurement from one Assessor. A parse run commonly records how a Selection behaves under PanGloss.",
+    "description": "An Assessment is one immutable measurement of one kind, made by an Assessor. A PanGloss run may produce several Assessments, such as parse timing and correctness for a Selection.",
     "source": "Hand-written from CONTEXT.md."
   },
   "baseline": {
     "title": "A saved project starting point",
-    "description": "A Baseline is a saved, minimal copy of the FieldWorks project used to reproduce later measurements. It represents the project as of FieldWorks' last save.",
+    "description": "A Baseline is a saved, minimal, file-backed copy of a project from which Motif can make independent Dry Run copies. When captured from a project FieldWorks holds open, it reflects FieldWorks' last save.",
     "source": "Hand-written from CONTEXT.md."
   },
   "default-selection": {
-    "title": "The project's usual word list",
-    "description": "The Default Selection is the exact Texts and added words Motif measures when a person does not name another Selection.",
+    "title": "Words measured by default",
+    "description": "A project's Default Selection is the chosen Texts plus any added words Motif measures when no other Selection is named. Motif resolves it to an exact word list for each run.",
     "source": "Hand-written from CONTEXT.md."
   },
   "drift": {
     "title": "Evidence no longer matches",
-    "description": "Drift means the project moved after a Dry Run, so its recorded effects no longer describe what Apply would do.",
+    "description": "Drift means a Dry Run or an individual change no longer matches the project state it was made against. In the window, a change with missing or changed inputs is shown as ‘no longer fits’.",
     "source": "Hand-written from CONTEXT.md."
   },
   "dry-run": {
-    "title": "A measured change preview",
+    "title": "Effects measured on a copy",
     "description": "A Dry Run applies a Proposal to a throwaway project copy and reads back the effects. It leaves the live model unchanged.",
     "source": "Hand-written from CONTEXT.md."
   },
@@ -31,7 +31,7 @@
   },
   "preflight": {
     "title": "The final fit check",
-    "description": "Preflight compares pending changes with the live model immediately before Apply. A change whose inputs moved or disappeared no longer fits.",
+    "description": "The CLI's preflight command checks changes against the live model before Apply. A change whose required inputs changed or disappeared no longer fits.",
     "source": "Hand-written from CONTEXT.md."
   },
   "proposal": {
@@ -46,7 +46,7 @@
   },
   "walkthrough": {
     "title": "A tested window guide",
-    "description": "A Walkthrough is a script that acts on the real Motif window using fixed data. The script also produces its screenshots and short silent clip.",
+    "description": "A Walkthrough is a script that tests the real Motif window using fixed data and produces screenshots at marked steps. It can also render a short, silent clip.",
     "source": "Hand-written from CONTEXT.md."
   }
 }

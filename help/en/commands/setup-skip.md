@@ -1,6 +1,6 @@
 # Skip project setup
 
-`setup skip` records that first-open Selection setup has been skipped for this project.
+`setup skip` records that first-time Selection setup has been skipped for this project.
 
 ## When to use it
 

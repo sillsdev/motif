@@ -1,10 +1,10 @@
 # Inspect a job
 
-`jobs show` reads the state and progress of one durable job for a project.
+`jobs show` reads the stored status of one durable job for a project.
 
 ## When to use it
 
-Use this after a command returns a job id, or when a job appears in the queue. A job can represent a Baseline Refresh, Dry Run, or Trial; its status tells you whether to wait, inspect results, or respond to a refusal.
+Use this after a command returns a job id, or when a job appears in the queue. A job can represent a Baseline Refresh, Dry Run, Trial, or Apply; its status shows where that work is in its lifecycle.
 
 ## Example
 
@@ -14,7 +14,7 @@ motif jobs show <jobId> --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --js
 
 ## What it prints
 
-The response includes the job status and recorded progress. JSON gives a structured status object that an agent can poll across separate CLI calls.
+Human output shows the job kind, status, attempt number, update time, and queue order when available. JSON returns the structured status, cancellation and failure details, queue order, and Trial word progress when available.
 
 ## Related commands
 

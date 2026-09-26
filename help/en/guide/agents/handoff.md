@@ -11,7 +11,7 @@ python parse_grammar_texts_assessment.py --help
 python parse_grammar_texts_assessment.py word --help
 ```
 
-The current CLI exports a retained Assessment invocation rather than silently running a fresh one. To create an assessed folder, first run [assess](cmd:assess) with `--json`, read `invocationId` from its response, then pass that value to [handoff](cmd:handoff):
+For an assessed folder, the current CLI exports a retained Assessment invocation rather than silently running a fresh one. To create one, first run [assess](cmd:assess) with `--json`, read `invocationId` from its response, then pass that value to [handoff](cmd:handoff):
 
 ```powershell
 motif handoff "C:\Projects\Sena.fwdata" --out "C:\handoffs\Sena" --invocation <invocationId> --json

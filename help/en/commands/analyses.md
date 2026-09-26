@@ -1,10 +1,10 @@
 # Inspect word analyses
 
-`analyses` reads the project's manually approved analyses. With an Assessment id and both current digests, it can also compare those analyses with the recorded parser results.
+`analyses` reads the project's manually approved analyses. With an Assessment id and both current digests, it also returns that Assessment's parser results and says whether they still describe the project.
 
 ## When to use it
 
-Use this command when you need to inspect analysis evidence without starting PanGloss. The Assessment form checks that the Selection and grammar digests you provide match the evidence being read.
+Use this command when you need to inspect analysis evidence without starting PanGloss. The Assessment form reports whether the current Selection and grammar digests match the evidence.
 
 ## Example
 
@@ -14,7 +14,7 @@ motif analyses --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
 
 ## What it prints
 
-Without `--assessment`, the response lists manually approved analyses. With an Assessment and its current Selection and grammar SHA-256 values, the response includes the matching stored parser evidence. JSON returns the same information in a structured response.
+Without `--assessment`, the response lists manually approved analyses. With an Assessment and current Selection and grammar SHA-256 values, it includes the stored parser results and says whether that evidence still describes the project. JSON returns the same information in a structured response.
 
 ## Related commands
 

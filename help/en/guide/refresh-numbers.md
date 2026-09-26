@@ -1,6 +1,6 @@
 # Refreshing numbers
 
-Use **Refresh** after saving changes in FieldWorks when you want Motif’s results to reflect that saved state. Refresh is an action, not an automatic update: it captures a new [Baseline](term:baseline) from the saved project and then assesses the current [Default Selection](term:default-selection), when one is available.
+Use **Refresh** after saving changes in FieldWorks when you want Motif’s results to reflect that saved state. Refresh is an action, not an automatic update: it captures a new [Baseline](term:baseline) from the saved project, checks the grammar for **Warnings**, and assesses the current [Default Selection](term:default-selection), when one is available.
 
 1. Save your work in FieldWorks.
 2. In Motif, choose **Refresh** in the top bar and let it finish.

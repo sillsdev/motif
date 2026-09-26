@@ -1,7 +1,5 @@
-# Drift: when a change no longer fits
+# Stale numbers and changes
 
-In the window, Motif says a pending change **No longer fits** when the FieldWorks project has changed something that choice depended on. For example, the word form may have changed or an analysis the choice referred to may be missing. The project’s changed state means the choice cannot safely be applied as written.
+In the window, Motif marks a pending change as [**No longer fits**](term:drift) when the FieldWorks project has changed something that choice depended on, such as the word form or an analysis. This means the pending choice cannot safely be applied as written. It is different from stale numbers, which mean stored measurement evidence describes an earlier project state.
 
-Open **Review changes** and read the reason. Save the project in FieldWorks, choose **Refresh**, then choose **Check again against the refreshed project** if it is available. Motif checks the original choice against the refreshed project. If it still does not fit, remove it and make a new choice in **Texts**.
-
-Apply stays blocked while a change does not fit, and the window provides no force option for it. This is different from stale numbers: refreshed measurement evidence may be needed even when every individual change still fits. See **Review changes** and [Baseline](term:baseline).
+For steps to check or remove a change, see **When a change no longer fits**.

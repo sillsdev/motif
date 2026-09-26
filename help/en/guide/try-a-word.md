@@ -2,7 +2,7 @@
 
 Use **Try a Word** to trace one word through the grammar in the current [Baseline](term:baseline). The word does not need to appear in a chosen text or even exist in the FieldWorks project.
 
-1. Enter a word in **Type any word…**.
+1. Enter a word in **Type any word...**.
 2. Choose **Try it** and wait for the trace. You can choose **Cancel** while it is running.
 3. Read whether the word parsed, the project’s expected analyses, and the parser’s furthest attempt. The trace lists rule steps and explains where the search stopped or what each step produced.
 4. Use **Open in Texts** to inspect a project word there, or follow a timing link when one is available.

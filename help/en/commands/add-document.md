@@ -1,6 +1,6 @@
 # Add a Corpus Document
 
-`add-document` records one source file or URL as a Document in a named Corpus. It captures source, title, and licence information without treating the Document as a FieldWorks Text.
+`add-document` reads one source file or URL and stores its text as a Document in a named Corpus. It records the source, title, and licence without treating the Document as a FieldWorks Text.
 
 ## When to use it
 
@@ -14,7 +14,7 @@ motif add-document --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --corpus 
 
 ## What it prints
 
-The command confirms the Corpus and Document ids. `--json` returns the recorded Document details for a script or an AI agent.
+Human output confirms the Corpus and Document ids and shows the title, source, character count, content hash, and licence when supplied.
 
 ## Related commands
 

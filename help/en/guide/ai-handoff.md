@@ -1,8 +1,8 @@
 # AI Handoff
 
-**AI Handoff** writes a folder you can share with a chat model. It includes project context for the selected Assessment and a starter question. The page shows what it plans to write and a data-sensitivity notice before you start; the folder can include real grammar rules, lexicon entries, and text.
+**AI Handoff** writes a folder you can share with a chat model. It includes project context for the selected Assessment and a starter question. The page shows what it plans to write and a data-sensitivity notice before you start; the folder can include real grammar rules, lexicon entries, and sentences from the selected Texts.
 
-1. Read the notice and check which Assessment and words the Handoff covers.
+1. Read the notice. If it says the files will include only words chosen on the Texts page, choose **Hand off the whole Assessment instead** to use the completed Assessment.
 2. Choose **Write the AI Handoff**. If you have already written one, the button says **Write the AI Handoff again**.
 3. Choose an output folder when prompted and wait for Motif to finish writing.
 4. Review the files, then drag the files into your chat or use the page’s copy actions for the prompt and paths.

@@ -14,7 +14,7 @@ motif add-corpus --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --id "stori
 
 ## What it prints
 
-The command confirms the recorded Corpus id and provenance. Add `--json` when a script needs a structured result.
+Human output confirms the Corpus id and shows its origin, location when supplied, licence, tokenisation, and derivation note.
 
 ## Related commands
 

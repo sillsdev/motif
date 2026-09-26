@@ -13,6 +13,6 @@ Handled failures requested with `--json` write a failure object to stderr and no
 }
 ```
 
-`code` and `detail` are optional. The `reason` is a stable failure class; `message` is for a person. Exit codes are `1` for an invalid invocation, `2` for a refusal or missing item, `3` when the request cannot be attempted now (such as a busy project), and `4` for an inconsistent store or unexpected failure. Retry a `3` later; do not retry a refusal unchanged.
+`code` and `detail` are optional. The `reason` is a stable failure class; `message` is for a person. Exit codes are `1` for an invalid invocation, `2` for a refusal, missing item, or cancellation, `3` when the request cannot be attempted now (such as a busy project), and `4` for an inconsistent store or unexpected failure. Retry a `3` later; do not retry a refusal unchanged.
 
-There is one current exception to the JSON failure shape: an unexpected exception escaping the top-level command handler prints plain `error: ...` to stderr and exits `4`, even when `--json` was supplied. Treat any nonzero exit as failure and keep stdout and stderr separate.
+The `help` command has its own plain stderr errors and exits `2` for invalid help syntax or an unknown entry; it does not use the failure object. An unexpected exception escaping the top-level command handler also prints plain `error: ...` to stderr and exits `4`, even when `--json` was supplied. Treat any nonzero exit as failure and keep stdout and stderr separate.

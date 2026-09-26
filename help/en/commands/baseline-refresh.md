@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Use this when a Refresh should run through the job queue and be inspected later. For an immediate saved-file capture, use `baseline capture` instead.
+Use this when you want the Baseline capture to run through the job queue and inspect its status later. For an immediate capture, use `baseline capture` instead.
 
 ## Example
 
@@ -14,7 +14,7 @@ motif baseline-refresh --project "C:\FieldWorks\Projects\Koro\Koro.fwdata"
 
 ## What it prints
 
-The command prints the job id when work is queued. Use that id to check progress and read any Assessments produced by the job.
+The command prints the job id when work is queued. Use that id to check whether the Baseline capture completed.
 
 ## Related commands
 

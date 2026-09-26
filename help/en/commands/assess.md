@@ -1,10 +1,10 @@
 # Measure a Selection
 
-`assess` sends a Selection of words through PanGloss and stores the resulting Assessments. It uses an existing Baseline when available and captures one when the project has none.
+`assess` sends a Selection of words through PanGloss and stores the resulting Assessments. It uses the project's stored Baseline when one exists and captures one only when the project has none.
 
 ## When to use it
 
-Use this to measure how a grammar parses the project's usual words, named Texts, every wordform, or a supplied word list. Choose explicit sources when the question is narrower than the saved Default Selection.
+Use this to measure how a grammar parses the project's usual words, named Texts, every wordform, or a supplied word list. After FieldWorks saves grammar changes, capture a new Baseline before measuring them.
 
 ## Example
 

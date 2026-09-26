@@ -2,13 +2,13 @@
 
 These commands answer different questions. `grammar check` asks PanGloss to inspect the whole grammar and stores findings for the current [Baseline](term:baseline). It does not parse selected words. `assess` parses a Selection and records one or more [Assessments](term:assessment). `overview` reads stored summaries; `stats` queries statistics from a stored run.
 
-Capture a Baseline explicitly with [baseline capture](cmd:baseline capture) when you want to name that step:
+Capture a Baseline explicitly with [baseline capture](cmd:baseline%20capture) when you want to name that step:
 
 ```powershell
 motif baseline capture "C:\Projects\Sena.fwdata" --json
 ```
 
-Then use [assess](cmd:assess) to measure the saved Default Selection, or name a source such as all wordforms. Read stored summaries with [overview](cmd:overview) and query a stored statistics cache with [stats](cmd:stats):
+Then use [assess](cmd:assess) to measure the saved Default Selection, or name a source such as all wordforms. Read stored summaries with [overview](cmd:overview) and query statistics by replaying the retained parser evidence and cache for a stored Assessment with [stats](cmd:stats):
 
 ```powershell
 motif assess "C:\Projects\Sena.fwdata" --all-wordforms --json
@@ -36,7 +36,7 @@ The successful `assess --json` response includes the invocation identifier and t
 
 Use `invocationId` when you need to create a [Handoff](cmd:handoff) for this exact retained run. The number and kinds of `measurements` can vary with the Assessor’s supported kinds; do not assume a fixed Assessment count.
 
-Use [grammar check](cmd:grammar check) to check the whole grammar. [warnings](cmd:warnings) reads findings that have already been stored:
+Use [grammar check](cmd:grammar%20check) to check the whole grammar. [warnings](cmd:warnings) reads findings that have already been stored:
 
 ```powershell
 motif grammar check --project "C:\Projects\Sena.fwdata" --json

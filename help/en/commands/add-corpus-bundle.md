@@ -1,6 +1,6 @@
 # Load a Corpus bundle
 
-`add-corpus-bundle` reads the file a fetching tool writes to describe a Corpus and its Documents. The bundle names document sources and licences; it does not contain the source text files.
+`add-corpus-bundle` reads a bundle from a fetching tool, then reads each listed source to add its Document to a Corpus. The bundle records source locations and licences; it does not contain the source text files.
 
 ## When to use it
 
@@ -9,12 +9,12 @@ Use this when an outside tool has prepared a Corpus bundle and you want Motif to
 ## Example
 
 ```powershell
-motif add-corpus-bundle --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --bundle "C:\Temp\stories-bundle.json" --json
+motif add-corpus-bundle --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --bundle "C:\Temp\stories-bundle.json"
 ```
 
 ## What it prints
 
-The response identifies the added Corpus and Documents. JSON returns their recorded ids and source details; no source text is copied into the project.
+Human output identifies the Corpus and document count, then shows its origin, licence, derivation restrictions, and accuracy-claim qualification. Motif stores the fetched text with the Corpus; it does not copy text into the FieldWorks project.
 
 ## Related commands
 

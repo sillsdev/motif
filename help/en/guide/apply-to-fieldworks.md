@@ -1,4 +1,4 @@
-# Applying changes to the FieldWorks project
+# Applying changes
 
 Apply writes the pending analysis changes to the FieldWorks project as one operation. Before starting, save your work in FieldWorks and close the project there; Motif blocks Apply while FieldWorks is holding it open.
 
