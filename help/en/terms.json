@@ -1,0 +1,47 @@
+{
+  "proposal": {
+    "title": "A reviewable set of changes",
+    "description": "A Proposal groups related Motif operations so a person can inspect, measure, and apply them as one unit.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "dry-run": {
+    "title": "A measured change preview",
+    "description": "A Dry Run applies a Proposal to a throwaway project copy and reads back the effects. It leaves the live model unchanged.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "assessment": {
+    "title": "A recorded measurement",
+    "description": "An Assessment stores one kind of measurement from one Assessor. A parse run commonly records how a Selection behaves under PanGloss.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "baseline": {
+    "title": "A saved project starting point",
+    "description": "A Baseline is a saved, minimal copy of the FieldWorks project used to reproduce later measurements. It represents the project as of FieldWorks' last save.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "preflight": {
+    "title": "The final fit check",
+    "description": "Preflight compares pending changes with the live model immediately before Apply. A change whose inputs moved or disappeared no longer fits.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "drift": {
+    "title": "Evidence no longer matches",
+    "description": "Drift means the project moved after a Dry Run, so its recorded effects no longer describe what Apply would do.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "default-selection": {
+    "title": "The project's usual word list",
+    "description": "The Default Selection is the exact Texts and added words Motif measures when a person does not name another Selection.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "overview": {
+    "title": "The latest stored evidence",
+    "description": "The Overview presents project counts and measurements already recorded by Motif. Reading it does not start a Refresh or Assessment.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "walkthrough": {
+    "title": "A tested window guide",
+    "description": "A Walkthrough is a script that acts on the real Motif window using fixed data. The script also produces its screenshots and short silent clip.",
+    "source": "Hand-written from CONTEXT.md."
+  }
+}

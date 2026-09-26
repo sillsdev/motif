@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
 /// ADR 0023 decision 5 as amended: a description is mandatory for every emitted kind, and one that merely
-/// restates the label fails. The second half is what these tests are mostly about — presence alone was the
+/// restates the title fails. The second half is what these tests are mostly about — presence alone was the
 /// bar the original decision left unspecified, and the label harvest showed why that is not enough (768
 /// labels, 20 with prose).
 /// </summary>
@@ -32,8 +32,8 @@ public class DescriptionCheckTests
         ComparisonClass: "unordered", Verbs: "set|clear", HcReachable: "yes",
         EnumValues: "", Rationale: "test fixture");
 
-    private static KindDescription Desc(string cls, string field, string label, string description) =>
-        new(cls, field, label, description, "unsourced");
+    private static KindDescription Desc(string cls, string field, string title, string description) =>
+        new(cls, field, title, description, "unsourced");
 
     [Fact]
     public void AUsableDescription_Passes()
@@ -66,7 +66,7 @@ public class DescriptionCheckTests
 
     /// <summary>The bar the original presence-only check was missing.</summary>
     [Fact]
-    public void ADescriptionThatOnlyRestatesTheLabel_Fails()
+    public void ADescriptionThatOnlyRestatesTheTitle_Fails()
     {
         var ex = Assert.Throws<GeneratorException>(() =>
             DescriptionCheck.CheckEmittedKinds(
@@ -77,7 +77,7 @@ public class DescriptionCheckTests
     }
 
     /// <summary>
-    /// Punctuation and spacing must not disguise a restatement — "Is Abstract." is the label with a space
+    /// Punctuation and spacing must not disguise a restatement — "Is Abstract." is the title with a space
     /// and a full stop, and would pass a naive equality check.
     /// </summary>
     [Fact]
@@ -91,9 +91,9 @@ public class DescriptionCheckTests
         Assert.Contains("only restates", ex.Message);
     }
 
-    /// <summary>A field with no harvested label must still not be described by its own name.</summary>
+    /// <summary>A field with no title must still not be described by its own name.</summary>
     [Fact]
-    public void ADescriptionThatOnlyRestatesTheFieldName_FailsEvenWithNoLabel()
+    public void ADescriptionThatOnlyRestatesTheFieldName_FailsEvenWithNoTitle()
     {
         var ex = Assert.Throws<GeneratorException>(() =>
             DescriptionCheck.CheckEmittedKinds(
@@ -191,7 +191,7 @@ public class DescriptionCheckTests
 
     /// <summary>
     /// The 14 shipped descriptions must all clear the bar. This is the real file, so it fails if someone
-    /// adds a row that restates its label.
+    /// adds a row that restates its title.
     /// </summary>
     [Fact]
     public void TheShippedDescriptionsFile_ParsesAndEveryRowClearsTheBar()
@@ -208,12 +208,36 @@ public class DescriptionCheckTests
     public void DuplicateDescriptionsForOneField_AreRejectedByTheParser()
     {
         const string text =
-            "\"Class\"\t\"Field\"\t\"Label\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\r\n" +
+            "\"Class\"\t\"Field\"\t\"Title\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\r\n" +
             "\"LexSense\"\t\"Gloss\"\t\"Gloss\"\t\"First sentence about the gloss.\"\t\"unsourced\"\t\"\"\t\"\"\t\"\"\r\n" +
             "\"LexSense\"\t\"Gloss\"\t\"Gloss\"\t\"Second, conflicting sentence.\"\t\"unsourced\"\t\"\"\t\"\"\t\"\"\r\n";
 
         var ex = Assert.Throws<GeneratorException>(() => KindDescriptionTsvParser.ParseText("test.tsv", text));
 
         Assert.Contains("already has a description", ex.Message);
+    }
+
+    [Fact]
+    public void KindDescriptionExposesTitleWithoutALabelAlias()
+    {
+        const string text =
+            "\"Class\"\t\"Field\"\t\"Title\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\r\n" +
+            "\"LexSense\"\t\"Gloss\"\t\"Gloss\"\t\"Set the short meaning.\"\t\"unsourced\"\t\"\"\t\"\"\t\"\"\r\n";
+
+        var row = KindDescriptionTsvParser.ParseText("test.tsv", text).Single();
+
+        Assert.Equal("Gloss", typeof(KindDescription).GetProperty("Title")?.GetValue(row));
+        Assert.Null(typeof(KindDescription).GetProperty("Label"));
+    }
+
+    [Fact]
+    public void ParserRejectsTheOldLabelColumnHeader()
+    {
+        const string text =
+            "\"Class\"\t\"Field\"\t\"Label\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\r\n";
+
+        var ex = Assert.Throws<GeneratorException>(() => KindDescriptionTsvParser.ParseText("test.tsv", text));
+
+        Assert.Contains("Title", ex.Message);
     }
 }
