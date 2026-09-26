@@ -39,8 +39,10 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
                 CanonicalId.FromGuid(wordformId).Value, "pending-trial-word", OriginPage: "Texts")));
         Assert.True(pending.Succeeded, pending.Refusal?.Message);
 
-        var result = await RunAsync(root, "trial", "--pending", "--project", path,
-            "--words", "pending-trial-word", "--wait", "--wait-timeout-ms", "30000", "--json");
+        // The CLI's own wait outlasts the progress bound, so a slow Trial fails only if it stops progressing.
+        var result = await RunAsync(root, "trial", "--pending", "--project", path, "--words", "pending-trial-word",
+            "--wait", "--wait-timeout-ms", ((int)(JobProgress.Cap + TimeSpan.FromMinutes(1)).TotalMilliseconds)
+                .ToString(System.Globalization.CultureInfo.InvariantCulture), "--json");
 
         Assert.Equal(0, result.ExitCode);
         using var response = JsonDocument.Parse(result.Output);
@@ -79,8 +81,50 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
         using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
+        var finished = Task.WhenAll(outputTask, errorTask, process.WaitForExitAsync());
+        var project = ProjectArgument(arguments);
+        if (root is null || project is null)
+        {
+            await finished.WaitAsync(TimeSpan.FromSeconds(60));
+        }
+        else
+        {
+            var stalled = await WatchTrialAsync(project, finished);
+            if (stalled is not null)
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) { }
+                Assert.Fail("'motif " + string.Join(' ', arguments) + "': " + stalled);
+            }
+        }
         return new CliRun(process.ExitCode, await outputTask, await errorTask);
+    }
+
+    // Why the Trial the CLI queued stopped progressing before the CLI finished, or null once it finishes.
+    private static async Task<string?> WatchTrialAsync(string project, Task finished)
+    {
+        var progress = new JobProgress();
+        var enqueueDeadline = DateTime.UtcNow + JobProgress.ClaimBound;
+        while (!finished.IsCompleted)
+        {
+            var jobId = JobProgress.LatestJobId(project, JobCommands.TrialKind);
+            if (jobId is null && DateTime.UtcNow > enqueueDeadline)
+                return "no Trial was queued within " + JobProgress.ClaimBound;
+            if (jobId is not null && JobProgress.Read(project, jobId) is var job &&
+                progress.Stalled(job) is { } stalled)
+                return stalled + " (" + JobProgress.Describe(job) + ")";
+            await Task.WhenAny(finished, Task.Delay(TimeSpan.FromMilliseconds(100)));
+        }
+        await finished;
+        return null;
+    }
+
+    private static string? ProjectArgument(string[] arguments)
+    {
+        var index = Array.IndexOf(arguments, "--project");
+        return index >= 0 && index + 1 < arguments.Length && File.Exists(arguments[index + 1])
+            ? arguments[index + 1]
+            : null;
     }
 
     private static FailureEnvelope Envelope(string text) =>
