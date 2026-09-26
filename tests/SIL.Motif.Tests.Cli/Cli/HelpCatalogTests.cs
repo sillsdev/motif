@@ -32,7 +32,7 @@ public sealed class HelpCatalogTests
         Assert.All(new[]
         {
             "proposal", "dry-run", "assessment", "baseline", "preflight", "drift",
-            "default-selection", "overview", "walkthrough",
+            "default-selection", "overview", "walkthrough", "text-coverage",
         }, code => Assert.NotNull(catalog.Find(HelpEntryKind.Term, code)));
         Assert.Empty(catalog.ValidateLinks());
     }

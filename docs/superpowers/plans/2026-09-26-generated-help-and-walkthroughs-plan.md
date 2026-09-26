@@ -10,6 +10,13 @@ Three packages run in parallel from branch `feat/generated-help`; a fourth follo
 The interfaces below are fixed so that no package waits on another. A package that finds one of them
 unworkable stops and reports rather than changing it alone.
 
+## Where this stands
+
+Packages A, C and E are built and merged together: `motif help`, the Help text for every Released command and
+the glossary terms, the Guide, and the Starlight site building from them. Package B is parked with its first
+AutomationIds on branch `gh/walk`, and Package D waits for it; the Walkthroughs to build are chosen in
+`2026-09-26-docs-content-plan.md` once the App tests in flight have landed.
+
 ## Shared interfaces (binding on every package)
 
 ### Help content layout — repository root `help/`
