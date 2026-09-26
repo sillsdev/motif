@@ -32,14 +32,13 @@ internal static class UserFacingRefusal
         "apply.not-ready" or "apply.dry-run-missing" =>
             "The check did not give enough evidence to apply these changes. Check them again.",
         "apply.changes-changed" => "The changes changed. Refresh them before applying.",
-        "apply.nothing-pending" => "There are no pending changes to apply.",
         "apply.reopen-failed" =>
             "The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.",
         "trial.measurement-incomplete" => "The check did not finish. Try it again.",
         "job.wait-cancelled" => "The check was cancelled.",
         "job.wait-timeout" => "The check took too long and was stopped. Your changes are unchanged; try applying again.",
-        "trial.nothing-pending" => "There are no pending changes to measure.",
-        "trial.changes-changed" => "The changes changed. Reload them before measuring.",
+        "trial.nothing-pending" => "There are no changes to check.",
+        "trial.changes-changed" => "The changes were updated while they were being checked. Check them again.",
         "project.wait-cancelled" => "Waiting to use the project was cancelled.",
         _ => "Motif could not complete this request. Review the project and try again.",
     };

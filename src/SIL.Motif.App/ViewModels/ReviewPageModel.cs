@@ -152,6 +152,7 @@ public sealed class ReviewPageModel : PageModel
         if (result.Value is { } evidence) NumbersText = evidence.NumbersText;
         OnPropertyChanged(nameof(NumbersText));
         OnPropertyChanged(nameof(MeasurementError));
+        if (result.Refusal?.Code == "trial.changes-changed") await Changes.ReloadAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
         ApplyCommand.NotifyCanExecuteChanged();

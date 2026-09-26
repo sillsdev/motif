@@ -152,6 +152,34 @@ public sealed class ReviewPageModelTests
     }
 
     [Fact]
+    public async Task ACheckOfChangesThatChangedMeanwhileRefreshesThemAndAsksForAnotherCheck()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingRefusal = new Refusal("trial.changes-changed", FailureReason.Refused,
+            "The changes changed. Reload them before measuring.");
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.PublishProjectOpenedAsync(ProjectPath);
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
+            [Change("kept", "first"), Change("added", "second")],
+            [new ChangeFit("kept", true, []), new ChangeFit("added", true, [])]));
+
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        Assert.Equal("revision/two", context.Changes.Snapshot.Revision);
+        Assert.Equal("The changes were updated while they were being checked. Check them again.",
+            page.MeasurementError);
+    }
+
+    [Theory]
+    [InlineData("trial.nothing-pending", "There are no changes to check.")]
+    [InlineData("apply.nothing-pending", "Motif could not complete this request. Review the project and try again.")]
+    public void CheckRefusalsUseTheWindowsWords(string code, string expected) =>
+        Assert.Equal(expected, UserFacingRefusal.MessageOf(new Refusal(code, FailureReason.Refused, "detail")));
+
+    [Fact]
     public async Task ATimedOutApplyShowsThatTheCheckWasStopped()
     {
         var fake = new FakeCommandClient();
@@ -209,7 +237,7 @@ public sealed class ReviewPageModelTests
         Assert.False(page.IsApplying);
         Assert.Null(page.ApplyError);
         Assert.Contains(fake.PendingLoadRequests,
-            request => request.FwDataPath ==@"C:\projects\two.fwdata");
+            request => request.FwDataPath == @"C:\projects\two.fwdata");
     }
 
     [Fact]
@@ -244,7 +272,7 @@ public sealed class ReviewPageModelTests
         fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", "1 search completed; 0 incomplete.", true));
         fake.ApplyPendingHandler = (_, _) =>
-            Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(new ApplyPendingResult(false, null)));
+            Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.PublishProjectOpenedAsync(ProjectPath);
