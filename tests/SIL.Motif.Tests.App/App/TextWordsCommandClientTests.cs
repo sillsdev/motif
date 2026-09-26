@@ -6,8 +6,9 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins the production <see cref="CommandClient"/>'s Text words read: it answers a cancelled request with a typed
-/// cancellation and never starts the query, so a read the window has already superseded costs nothing.
+/// Pins that the production <see cref="CommandClient"/> hands its token to the Text words read: a cancelled request
+/// comes back as a typed cancellation before the project store is opened. It does not pin that the read runs
+/// outside the one-at-a-time project gate; a test that holds the gate while reading would.
 /// </summary>
 public sealed class TextWordsCommandClientTests : IDisposable
 {
@@ -17,7 +18,7 @@ public sealed class TextWordsCommandClientTests : IDisposable
     public TextWordsCommandClientTests() => Directory.CreateDirectory(_root);
 
     [Fact]
-    public async Task ACancelledReadIsATypedCancellationAndNeverRunsTheQuery()
+    public async Task ACancelledReadIsATypedCancellationBeforeTheStoreIsOpened()
     {
         var client = new CommandClient(Path.Combine(_root, "managed"));
         using var cancelled = new CancellationTokenSource();
