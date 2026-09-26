@@ -48,7 +48,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                 Assert.Single(restartedWalkthrough.Workspace.Project.KnownProjects).FullFwDataPath);
             restartedWalkthrough.OpenProjectMenu();
             Assert.False(restartedWalkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
-            restartedWalkthrough.Click("Project menu");
+            restartedWalkthrough.CloseProjectMenu();
 
             using var secondProject = new WalkthroughProject(pristine);
             restartedWalkthrough.ProjectPath = secondProject.FwDataPath;
