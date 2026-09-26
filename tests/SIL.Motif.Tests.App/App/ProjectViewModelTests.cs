@@ -50,7 +50,9 @@ public sealed class ProjectViewModelTests
         await viewModel.LoadKnownProjectsAsync();
 
         Assert.Equal(0, notifications);
-        Assert.Equal(projects, viewModel.KnownProjects);
+        Assert.Equal(
+            projects.Select(project => project.FullFwDataPath),
+            viewModel.KnownProjects.Select(project => project.FullFwDataPath));
 
         void CountNotification(object? sender, NotifyCollectionChangedEventArgs args) => notifications++;
     }

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
@@ -128,6 +129,11 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             var session = host.Start(options);
             await session.KnownProjectsLoaded;
 
+            int? exitCode = null;
+            EventHandler<ControlledApplicationLifetimeExitEventArgs> recordExitCode =
+                (_, args) => exitCode = args.ApplicationExitCode;
+            host.Lifetime.Exit += recordExitCode;
+
             Dispatcher.UIThread.Post(() => throw new InvalidOperationException("copied through the error window"));
             Dispatcher.UIThread.RunJobs();
 
@@ -142,6 +148,13 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 AutomationProperties.GetName(button) == "Close");
             HeadlessClick.Click(window, close, "Close");
             Assert.False(window.IsVisible, "The Close button left the error window open.");
+
+            var closed = await Task.WhenAny(session.Closed, Task.Delay(TimeSpan.FromSeconds(5)))
+                .ConfigureAwait(false);
+            Assert.Same(session.Closed, closed);
+            Assert.True(session.Closed.IsCompletedSuccessfully, "Closing the error window did not close its session.");
+            Assert.Equal(SIL.Motif.App.App.CrashExitCode, exitCode);
+            host.RecordErrorWindowExitProved();
         });
     }
 
@@ -380,6 +393,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
     }
 }
 
+/// <summary>Runs the error-window test last because closing its real window ends the Avalonia dispatcher.</summary>
 public sealed class AppStartupCompositionTestOrderer : Xunit.Sdk.ITestCaseOrderer
 {
     public IEnumerable<TTestCase> OrderTestCases<TTestCase>(IEnumerable<TTestCase> testCases)

@@ -24,17 +24,21 @@ public sealed class MotifAppHostCollection : ICollectionFixture<MotifAppHostExit
     public const string Name = "Real App startup (one Avalonia setup per process)";
 }
 
-/// <summary>
-/// Exits Motif through the classic desktop lifetime once every test in the collection has run, and fails
-/// the run if that exit does not close the session. It runs last because that shutdown also ends Avalonia's
-/// dispatcher, as <see cref="MotifAppHost"/> records.
-/// </summary>
+/// <summary>Verifies the collection's final Motif exit, through the error window or the classic lifetime.</summary>
 public sealed class MotifAppHostExit : IDisposable
 {
     public void Dispose()
     {
-        if (Dispatcher.UIThread.InvokeAsync(() => { }).Status != DispatcherOperationStatus.Aborted)
-            MotifAppHost.Shared.ExitThroughLifetime();
+        var dispatcherStopped = Dispatcher.UIThread.InvokeAsync(() => { }).Status ==
+            DispatcherOperationStatus.Aborted;
+        if (dispatcherStopped)
+        {
+            if (!MotifAppHost.Shared.ErrorWindowExitWasProved)
+                throw new InvalidOperationException("The dispatcher stopped before the error-window exit was proved.");
+            return;
+        }
+
+        MotifAppHost.Shared.ExitThroughLifetime();
     }
 }
 
@@ -51,7 +55,8 @@ public sealed class MotifAppHostExit : IDisposable
 /// <c>SetupWithLifetime</c>, which runs <c>OnFrameworkInitializationCompleted</c>; <see cref="StopAsync"/>
 /// closes the session with <see cref="MotifDesktopSession.CloseAsync"/>, which is what the lifetime's exit
 /// calls; and every later start composes into the same lifetime through <c>App.StartDesktop</c>, the method
-/// that override consists of. The lifetime's own exit runs once, from <see cref="MotifAppHostExit"/>.
+/// that override consists of. The collection's final exit is checked by its last error-window test when that
+/// Close ends the dispatcher, or by <see cref="MotifAppHostExit"/> when the dispatcher is still running.
 /// Everything runs on one dedicated thread, because Avalonia binds its dispatcher to the thread that set it
 /// up.
 /// </remarks>
@@ -76,6 +81,12 @@ internal sealed class MotifAppHost
     /// <summary>The process's one classic desktop lifetime.</summary>
     public IClassicDesktopStyleApplicationLifetime Lifetime =>
         _lifetime ?? throw new InvalidOperationException("Motif has not been started.");
+
+    /// <summary>Whether the final test proved that Close ended Motif and closed its session.</summary>
+    public bool ErrorWindowExitWasProved { get; private set; }
+
+    /// <summary>Records that the error-window test verified the lifetime exit and session closure.</summary>
+    public void RecordErrorWindowExitProved() => ErrorWindowExitWasProved = true;
 
     private static SIL.Motif.App.App CurrentApp => (SIL.Motif.App.App)Application.Current!;
 

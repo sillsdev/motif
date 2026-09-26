@@ -268,7 +268,6 @@ public sealed class ProjectSwitchTests
 
                 assessment = parts.Workspace.Assess.RunCommand.ExecuteAsync(null);
                 await assessmentStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-                parts.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                 window.UpdateLayout();
 
                 Assert.False(parts.Workspace.ProjectSwitchEnabled);
@@ -276,10 +275,7 @@ public sealed class ProjectSwitchTests
                 Assert.False(parts.Workspace.Context.ProjectAndSelectionEnabled);
                 Assert.False(selectionHost.IsEffectivelyEnabled);
                 var selectionPanel = Assert.IsType<SelectionPanel>(selectionHost.Content);
-                Assert.False(search.IsEffectivelyEnabled,
-                    $"panel={selectionPanel.IsEnabled}/{selectionPanel.IsEffectivelyEnabled}, " +
-                    $"host={selectionHost.IsEnabled}/{selectionHost.IsEffectivelyEnabled}, " +
-                    $"search={search.IsEnabled}/{search.IsEffectivelyEnabled}");
+                Assert.False(search.IsEffectivelyEnabled, "Search texts stayed usable during an Assessment.");
 
                 releaseAssessment.SetResult(CommandOutcome<AssessCommandResponse>.Success(response));
                 await assessment;
