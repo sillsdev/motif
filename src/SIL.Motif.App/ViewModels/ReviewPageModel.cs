@@ -65,7 +65,7 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>Whether Apply is writing the pending changes to FieldWorks.</summary>
     public bool IsApplying { get; private set; }
 
-    /// <summary>Completed words, total words, and current word while measuring.</summary>
+    /// <summary>Completed words out of the words requested, while measuring.</summary>
     public string MeasurementProgressText { get; private set; } = string.Empty;
 
     /// <summary>The result recorded when Apply wrote the changes.</summary>
@@ -191,8 +191,7 @@ public sealed class ReviewPageModel : PageModel
 
     private void OnMeasurementProgress(MeasureProgress progress)
     {
-        MeasurementProgressText = $"{progress.Completed} of {progress.Total} words checked" +
-            (progress.CurrentWord is { Length: > 0 } word ? $" · {word}" : string.Empty);
+        MeasurementProgressText = $"{progress.Completed} of {progress.Total} words checked";
         OnPropertyChanged(nameof(MeasurementProgressText));
     }
 
