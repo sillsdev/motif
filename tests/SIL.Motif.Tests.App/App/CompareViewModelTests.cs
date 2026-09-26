@@ -87,7 +87,7 @@ public sealed class CompareViewModelTests
     }
 
     [Fact]
-    public void AWordMissingFromTheProjectUsesTheNotStoredYetLabel()
+    public void AWordMissingFromTheProjectUsesTheNotPresentLabel()
     {
         Assert.Equal("Not present", CompareViewModel.RowLabelOf(WordProjectStatus.NotPresent));
     }

@@ -87,6 +87,7 @@ public sealed class ResultsInTextViewModelTests
         Assert.Equal(OccurrenceVerdict.Differs, line[1].Verdict);
         Assert.StartsWith("≠ parser:", line[1].ParserLine, StringComparison.Ordinal);
         Assert.Equal(OccurrenceVerdict.New, line[2].Verdict);
+        Assert.Equal("Not present", line[2].ProjectStatusLabel);
         Assert.Equal(OccurrenceVerdict.NoParse, line[3].Verdict);
         Assert.False(line[4].IsWord);
         Assert.Contains(line[0].Readings, reading => reading.IsStoredHere);
