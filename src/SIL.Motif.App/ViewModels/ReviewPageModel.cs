@@ -84,7 +84,7 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>The words on the action that writes the measured changes.</summary>
     public string ApplyButtonText => "Apply to FieldWorks project";
 
-    /// <summary>The command's measured word counts for this exact pending revision.</summary>
+    /// <summary>The measured word counts for this exact pending revision, worded for a linguist.</summary>
     public string NumbersText { get; private set; } = NumbersPrompt;
 
     /// <summary>Why the last requested measurement could not complete.</summary>
@@ -150,13 +150,32 @@ public sealed class ReviewPageModel : PageModel
         MeasurementError = result.Refusal is { } measureRefusal
             ? UserFacingRefusal.MessageOf(measureRefusal)
             : !EvidenceComplete ? "Some words did not finish or their analysis could not be checked." : null;
-        if (result.Value is { } evidence) NumbersText = evidence.NumbersText;
+        if (result.Value is { } evidence) NumbersText = WindowSentence(evidence.Numbers);
         OnPropertyChanged(nameof(NumbersText));
         OnPropertyChanged(nameof(MeasurementError));
         if (result.Refusal?.Code == "trial.changes-changed") await Changes.ReloadAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
         ApplyCommand.NotifyCanExecuteChanged();
+    }
+
+    private static string WindowSentence(ReviewNumbersResponse numbers)
+    {
+        var kept = $"{numbers.TouchedWordsCovered} of {numbers.TouchedWordCount} " +
+            $"{(numbers.TouchedWordCount == 1 ? "word" : "words")} you changed kept their approved analyses. ";
+        return numbers.Comparability switch
+        {
+            ReviewComparability.NoEarlierAssessment => kept + "Nothing was checked before to compare with.",
+            ReviewComparability.DifferentAssessor => kept +
+                "The earlier numbers came from a different parser, so they cannot be compared with these.",
+            ReviewComparability.NoSharedWords => kept +
+                "None of these words were checked before, so there is nothing to compare them with.",
+            ReviewComparability.Compared =>
+                $"Among {numbers.SharedWordCount} {(numbers.SharedWordCount == 1 ? "word" : "words")} also " +
+                $"checked before, {numbers.ApprovedKeptBefore} → {numbers.ApprovedKeptAfter} kept their approved " +
+                "analyses.",
+            _ => throw new ArgumentOutOfRangeException(nameof(numbers), numbers.Comparability, null),
+        };
     }
 
     private void OnMeasurementProgress(MeasureProgress progress)
