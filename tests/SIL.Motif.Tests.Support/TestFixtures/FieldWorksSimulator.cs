@@ -17,12 +17,17 @@ public sealed class FieldWorksSimulator
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
+    /// <summary>
+    /// Holds the project's lock file open exclusively, as a running FieldWorks does, until disposed. A lock
+    /// file that already existed is left behind on release; only one this hold created is removed.
+    /// </summary>
     public IDisposable Hold()
     {
         var lockPath = _projectPath + ".lock";
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(lockPath))!);
-        return new HeldProject(lockPath, new FileStream(
-            lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None));
+        var existed = File.Exists(lockPath);
+        return new HeldProject(lockPath, removeOnRelease: !existed, new FileStream(
+            lockPath, existed ? FileMode.Open : FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None));
     }
 
     public void SaveEdit(Action<LcmCache> edit)
@@ -48,11 +53,12 @@ public sealed class FieldWorksSimulator
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, wordform.Delete);
     });
 
-    private sealed class HeldProject(string lockPath, FileStream stream) : IDisposable
+    private sealed class HeldProject(string lockPath, bool removeOnRelease, FileStream stream) : IDisposable
     {
         public void Dispose()
         {
             stream.Dispose();
+            if (!removeOnRelease) return;
             try
             {
                 File.Delete(lockPath);
