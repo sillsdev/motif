@@ -44,7 +44,7 @@ public static class ChangeKinds
 /// <summary>
 /// The observable view of pending changes and each change's current fit with the FieldWorks project.
 /// </summary>
-public sealed partial class ChangesViewModel : ObservableObject
+public sealed partial class ChangesViewModel : ObservableObject, IProjectStateParticipant
 {
     private readonly ICommandClient _client;
     private readonly List<string> _collectionNotices = [];
@@ -216,6 +216,15 @@ public sealed partial class ChangesViewModel : ObservableObject
         OnPropertyChanged(nameof(HasError));
         Raise();
     }
+
+    void IProjectStateParticipant.ClearProject()
+    {
+        ProjectPath = null;
+        Reset();
+    }
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        OpenProjectAsync(projectPath, cancellationToken);
 
     private void Accept(CommandOutcome<PendingChangesSnapshot> outcome)
     {

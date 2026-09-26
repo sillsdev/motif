@@ -58,11 +58,11 @@ public abstract record PageRequest(WorkspacePage Page);
 /// <see cref="Assess"/> and <see cref="Selection"/> when their controls operate on the same run. Navigation
 /// requests, such as <see cref="OpenWord"/>, reach page models without giving them the shell.
 /// </remarks>
-public sealed partial class WorkspaceContext : ObservableObject
+public sealed partial class WorkspaceContext : ObservableObject, IProjectStateParticipant
 {
     public WorkspaceContext(
         SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
-        IFileDragSource dragSource)
+        IFileDragSource dragSource, BaselineViewModel? baseline = null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -77,6 +77,15 @@ public sealed partial class WorkspaceContext : ObservableObject
         FolderPicker = folderPicker;
         DragSource = dragSource;
         Assess.PropertyChanged += OnAssessPropertyChanged;
+        if (baseline is not null)
+        {
+            _projectParticipants.Add(new DelegateProjectStateParticipant(
+                () => ClearBaseline(baseline), baseline.SetProjectAsync));
+        }
+        _projectParticipants.Add(new DelegateProjectStateParticipant(
+            () => ClearSelection(Selection), Selection.SetProjectAsync));
+        _projectParticipants.Add(Changes);
+        _projectParticipants.Add(this);
     }
 
     /// <summary>What the one Assessment run measures; the Texts page edits it and the shell summarises it.</summary>
@@ -163,32 +172,88 @@ public sealed partial class WorkspaceContext : ObservableObject
     private WorkspacePage _currentPage;
 
     private readonly List<PageModel> _pages = [];
+    private readonly List<IProjectStateParticipant> _projectParticipants = [];
 
     // Called by each page model's constructor, so the context reaches a page only through its hooks.
-    internal void Attach(PageModel page) => _pages.Add(page);
+    internal void Attach(PageModel page)
+    {
+        _pages.Add(page);
+        _projectParticipants.Add(page);
+    }
 
     /// <summary>Registers the setup dialog that is shared by the shell.</summary>
-    internal void AttachSetup(SetupViewModel setup) => Setup = setup;
+    internal void AttachSetup(SetupViewModel setup)
+    {
+        Setup = setup;
+        _projectParticipants.Add(setup);
+    }
+
+    private static void ClearBaseline(BaselineViewModel baseline)
+    {
+        baseline.Token = null;
+        baseline.SourceLastWriteUtc = null;
+        baseline.ProjectLastWriteUtc = null;
+        baseline.FieldWorksHeldProject = false;
+        baseline.RefusalMessage = null;
+        baseline.HasAssessment = false;
+    }
+
+    private static void ClearSelection(SelectionViewModel selection)
+    {
+        selection.SearchText = string.Empty;
+        foreach (var text in selection.Texts.ToArray()) text.IsChecked = false;
+        selection.Texts.Clear();
+        selection.PastedWords = string.Empty;
+        selection.AllWordforms = false;
+        selection.RetryFailed = false;
+        selection.RetrySlowerThanMilliseconds = null;
+        selection.PerWordTimeLimitSeconds = null;
+        selection.PerWordStepLimit = null;
+        selection.PerWordStepLimitUnbounded = false;
+        selection.RefusalMessage = null;
+        selection.TextsEmptyMessage = null;
+    }
 
     /// <summary>Forgets the evidence and tells every page to drop what it showed for the previous project.</summary>
     public void ClearProject()
     {
-        Evidence = null;
-        CurrentEvidence = null;
-        Setup?.ProjectCleared();
-        foreach (var page in _pages) page.ProjectCleared();
+        foreach (var participant in _projectParticipants.ToArray()) participant.ClearProject();
     }
 
-    /// <summary>Opens <paramref name="projectPath"/> on every page, and returns once each has loaded it.</summary>
-    public async Task PublishProjectOpenedAsync(string projectPath, CancellationToken cancellationToken = default)
+    private void ClearOwnProjectState()
+    {
+        Assess.Reset();
+        Evidence = null;
+        CurrentEvidence = null;
+        Baseline = null;
+        GrammarSummary = new GrammarSummary("Not checked yet", false, string.Empty);
+        AppliedSinceRefresh = false;
+        CurrentPage = WorkspacePage.Overview;
+        ProjectPath = null;
+    }
+
+    /// <summary>Clears and opens every project-bound participant before returning.</summary>
+    public async Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
+        await StopProjectWorkAsync().ConfigureAwait(true);
+        var participants = _projectParticipants.ToArray();
+        foreach (var participant in participants) participant.ClearProject();
+
         ProjectPath = projectPath;
-        await Changes.OpenProjectAsync(projectPath, cancellationToken).ConfigureAwait(true);
-        foreach (var page in _pages.ToArray())
-            await page.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
-        if (Setup is not null) await Setup.ProjectOpenedAsync(projectPath, cancellationToken).ConfigureAwait(true);
+        Assess.ProjectPath = projectPath;
+        var independentLoads = participants
+            .Where(participant => !ReferenceEquals(participant, this) && participant is not SetupViewModel)
+            .Select(participant => participant.OpenProjectAsync(projectPath, cancellationToken))
+            .ToArray();
+        await Task.WhenAll(independentLoads).ConfigureAwait(true);
+        if (Setup is not null)
+            await ((IProjectStateParticipant)Setup).OpenProjectAsync(projectPath, cancellationToken).ConfigureAwait(true);
     }
+
+    /// <summary>Opens <paramref name="projectPath"/> through the project lifecycle.</summary>
+    public Task PublishProjectOpenedAsync(string projectPath, CancellationToken cancellationToken = default) =>
+        OpenProjectAsync(projectPath, cancellationToken);
 
     /// <summary>Tells every page a new Baseline was captured, and returns once each has reloaded.</summary>
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
@@ -203,6 +268,16 @@ public sealed partial class WorkspaceContext : ObservableObject
     public async Task StopPageWorkAsync()
     {
         foreach (var page in _pages.ToArray()) await page.StopWorkAsync().ConfigureAwait(true);
+    }
+
+    private async Task StopProjectWorkAsync()
+    {
+        if (Assess.IsActive)
+        {
+            Assess.CancelCommand.Execute(null);
+            if (Assess.RunCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
+        }
+        await StopPageWorkAsync().ConfigureAwait(true);
     }
 
     /// <summary>Publishes <paramref name="evidence"/> as what every page now shows.</summary>
@@ -269,4 +344,10 @@ public sealed partial class WorkspaceContext : ObservableObject
     {
         if (e.PropertyName == nameof(AssessViewModel.IsActive)) OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
     }
+
+    void IProjectStateParticipant.ClearProject() => ClearOwnProjectState();
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
 }

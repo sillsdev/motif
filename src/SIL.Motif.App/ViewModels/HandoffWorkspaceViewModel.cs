@@ -44,7 +44,8 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
         Project = project;
         Baseline = baseline;
-        Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker, dragSource)
+        Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
+            dragSource, baseline)
         {
             KnownProjects = project.KnownProjects,
             BrowseForProjectCommand = project.BrowseCommand,
@@ -308,25 +309,27 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public async Task SetProjectAsync(string fwDataPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
-
-        await CancelActiveWorkAsync().ConfigureAwait(true);
-        ClearProjectBoundState();
-        Context.ProjectPath = fwDataPath;
+        RerunOffered = false;
+        _refreshed = false;
         Project.ShowChosen(fwDataPath);
-        CurrentPage = WorkspacePage.Overview;
+        var opening = Context.OpenProjectAsync(fwDataPath, cancellationToken);
         RefreshRecentProjects();
         RaiseFreshness();
-
-        await Baseline.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
-        await Selection.SetProjectAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
-
-        Assess.ProjectPath = fwDataPath;
-        await Context.PublishProjectOpenedAsync(fwDataPath, cancellationToken).ConfigureAwait(true);
+        await opening.ConfigureAwait(true);
         RaiseFreshness();
     }
 
-    private async void OnProjectChosen(object? sender, string fwDataPath) =>
-        await SetProjectAsync(fwDataPath).ConfigureAwait(true);
+    private async void OnProjectChosen(object? sender, string fwDataPath)
+    {
+        try
+        {
+            await SetProjectAsync(fwDataPath).ConfigureAwait(true);
+        }
+        catch (Exception exception)
+        {
+            Baseline.RefusalMessage = exception.Message;
+        }
+    }
 
     private void OnBaselineRefreshed(object? sender, EventArgs e) => _reloadAfterRefresh = ReloadAfterRefreshAsync();
 
@@ -473,26 +476,6 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     }
 
     // Awaits each command's own unwind rather than disposing it: the workspace outlives one project.
-    private async Task CancelActiveWorkAsync()
-    {
-        if (Assess.IsActive)
-        {
-            Assess.CancelCommand.Execute(null);
-            if (Assess.RunCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
-        }
-
-        await Context.StopPageWorkAsync().ConfigureAwait(true);
-    }
-
-    private void ClearProjectBoundState()
-    {
-        RerunOffered = false;
-        _refreshed = false;
-
-        Assess.Reset();
-        Context.ClearProject();
-    }
-
     /// <summary>Cancels and awaits any active run, so nothing keeps running past this workspace's lifetime.</summary>
     public async ValueTask DisposeAsync()
     {

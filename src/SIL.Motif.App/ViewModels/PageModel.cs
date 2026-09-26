@@ -4,12 +4,28 @@ using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.App.ViewModels;
 
+internal interface IProjectStateParticipant
+{
+    void ClearProject();
+
+    Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken);
+}
+
+internal sealed class DelegateProjectStateParticipant(
+    Action clearProject, Func<string, CancellationToken, Task> openProject) : IProjectStateParticipant
+{
+    public void ClearProject() => clearProject();
+
+    public Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        openProject(projectPath, cancellationToken);
+}
+
 /// <summary>
 /// A page's own view model, built from a <see cref="WorkspaceContext"/> alone. It reacts to the project and
 /// evidence the context publishes and to the <see cref="PageRequest"/>s addressed to it, and owns what its page
 /// displays, including the count beside its sidebar label.
 /// </summary>
-public abstract partial class PageModel : ObservableObject
+public abstract partial class PageModel : ObservableObject, IProjectStateParticipant
 {
     protected PageModel(WorkspaceContext context)
     {
@@ -79,4 +95,9 @@ public abstract partial class PageModel : ObservableObject
     internal Task GrammarCheckedAsync(CancellationToken cancellationToken) => OnGrammarCheckedAsync(cancellationToken);
 
     internal void Requested(PageRequest request) => OnRequested(request);
+
+    void IProjectStateParticipant.ClearProject() => ProjectCleared();
+
+    Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken) =>
+        ProjectOpenedAsync(projectPath, cancellationToken);
 }

@@ -549,7 +549,8 @@ public sealed class WorkspaceContextTests
         Assert.Equal("1", review.Badge);
 
         context.ClearProject();
-        Assert.True(context.Changes.HasItems);
+        Assert.False(context.Changes.HasItems);
+        Assert.Equal(string.Empty, review.Badge);
 
         await context.PublishProjectOpenedAsync(OtherProjectPath);
         Assert.Equal(OtherProjectPath, context.Changes.ProjectPath);

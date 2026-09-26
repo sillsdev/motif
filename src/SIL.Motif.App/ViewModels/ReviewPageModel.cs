@@ -261,10 +261,16 @@ public sealed class ReviewPageModel : PageModel
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();
         Receipt = null;
+        ApplyError = null;
+        MeasurementError = null;
+        NumbersText = "See what applying does to the numbers.";
         EvidenceComplete = false;
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));
         OnPropertyChanged(nameof(ReceiptText));
+        OnPropertyChanged(nameof(ApplyError));
+        OnPropertyChanged(nameof(MeasurementError));
+        OnPropertyChanged(nameof(NumbersText));
         OnPropertyChanged(nameof(CanApply));
     }
 
