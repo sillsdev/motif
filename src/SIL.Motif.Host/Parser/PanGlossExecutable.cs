@@ -28,13 +28,6 @@ public static class PanGlossExecutable
             TryFindRepositoryRoot());
     }
 
-    /// <summary>Resolves the parser from the checkout or installation without reading process configuration.</summary>
-    public static string? TryLocateFromInstallation() => TryLocate(
-        null,
-        AppContext.BaseDirectory,
-        FileName,
-        TryFindRepositoryRoot());
-
     /// <summary>Resolves a parser from explicit configuration, a sibling checkout, or the application directory.</summary>
     internal static string? TryLocate(
         string? configuredPath, string applicationDirectory, string fileName, string? repositoryRoot)

@@ -19,7 +19,7 @@ public sealed class CommandClientCancellationTests(PristineProjectFixture pristi
     public async Task ACancellationBeforeTheCommandStartsIsStillATypedRefusal()
     {
         using var project = new WalkthroughProject(pristine);
-        var client = new CommandClient(project.ManagedRoot);
+        var client = RealCommandClient.Create(project.ManagedRoot);
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         var progress = new Progress<AssessmentProgress>();

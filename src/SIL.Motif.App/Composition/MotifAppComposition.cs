@@ -1,13 +1,22 @@
-using Avalonia.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
-using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.App.Composition;
 
 /// <summary>The replaceable desktop inputs used while composing Motif's real App.</summary>
+/// <param name="ManagedRoot">The worker root every command the window runs uses.</param>
+/// <param name="ParserPath">The parser the window's commands run, or <see langword="null"/> for none.</param>
+/// <param name="RunnerLauncher">Starts the job runner, for the same root and parser.</param>
+/// <param name="TimeProvider">The clock every timestamp the window shows is read from.</param>
+/// <param name="ProjectPicker">Chooses a project, or <see langword="null"/> for the native dialog.</param>
+/// <param name="HandoffFolderPicker">Chooses a Handoff folder, or <see langword="null"/> for the native dialog.</param>
+/// <param name="FileDragSource">Drags Handoff files out, or <see langword="null"/> for the native drag.</param>
+/// <param name="RememberBounds">
+/// Whether the window restores and saves its size and place in the person's settings; off unless installed,
+/// so a composed test window never writes the person's settings.
+/// </param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
     string? ParserPath,
@@ -15,14 +24,18 @@ public sealed record MotifAppOptions(
     TimeProvider TimeProvider,
     IProjectPicker? ProjectPicker = null,
     IHandoffFolderPicker? HandoffFolderPicker = null,
-    IFileDragSource? FileDragSource = null)
+    IFileDragSource? FileDragSource = null,
+    bool RememberBounds = false)
 {
-    /// <summary>Uses the installed parser and per-user worker root, with native desktop adapters.</summary>
+    /// <summary>
+    /// The installed window's inputs: the root, parser and runner the command line would use
+    /// (<see cref="CommandClientOptions.ForInstallation"/>), the system clock, and native desktop adapters.
+    /// </summary>
     public static MotifAppOptions ForInstallation()
     {
-        var commandOptions = CommandClientOptions.ForInstallation();
-        return new MotifAppOptions(commandOptions.ManagedRoot, commandOptions.ParserPath,
-            commandOptions.RunnerLauncher, TimeProvider.System);
+        var commands = CommandClientOptions.ForInstallation();
+        return new MotifAppOptions(commands.ManagedRoot, commands.ParserPath, commands.RunnerLauncher,
+            TimeProvider.System, RememberBounds: true);
     }
 }
 
@@ -30,18 +43,24 @@ public sealed record MotifAppOptions(
 public static class MotifAppComposition
 {
     /// <summary>Creates the window and workspace that the App installs into its desktop lifetime.</summary>
-    public static MotifAppCompositionResult Create(MotifAppOptions options, bool rememberBounds = false,
-        ICommandClient? commandClientOverride = null)
+    /// <param name="options">The inputs a test may replace; everything else is the product's own.</param>
+    /// <param name="decorateCommandClient">
+    /// Wraps the real command client built from <paramref name="options"/>, so a test can hold or observe a
+    /// call. It cannot replace the client, and the wrapper still runs against the options' root and parser.
+    /// </param>
+    public static MotifAppCompositionResult Create(MotifAppOptions options,
+        Func<ICommandClient, ICommandClient>? decorateCommandClient = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.ManagedRoot);
         ArgumentNullException.ThrowIfNull(options.RunnerLauncher);
         ArgumentNullException.ThrowIfNull(options.TimeProvider);
 
-        var window = new MainWindow(rememberBounds);
+        var window = new MainWindow(options.RememberBounds);
         var nativePickers = new AvaloniaStoragePickers(window);
-        var commandClient = commandClientOverride ?? new CommandClient(new CommandClientOptions(
+        ICommandClient commandClient = new CommandClient(new CommandClientOptions(
             options.ManagedRoot, options.ParserPath, options.RunnerLauncher));
+        if (decorateCommandClient is not null) commandClient = decorateCommandClient(commandClient);
         var selection = new SelectionViewModel(commandClient);
         var assess = new AssessViewModel(commandClient, selection, options.TimeProvider);
         var workspace = new HandoffWorkspaceViewModel(

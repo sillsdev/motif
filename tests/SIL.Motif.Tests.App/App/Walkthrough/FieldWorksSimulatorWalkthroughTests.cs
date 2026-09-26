@@ -104,7 +104,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
         Assert.True(capture.Succeeded, capture.Refusal?.Message);
 
-        var client = new CommandClient(project.ManagedRoot);
+        var client = RealCommandClient.Create(project.ManagedRoot);
         var loaded = client.LoadPendingChangesAsync(
             new PendingChangesRequest(project.FwDataPath, productVersion), CancellationToken.None)
             .GetAwaiter().GetResult();

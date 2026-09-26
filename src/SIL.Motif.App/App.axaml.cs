@@ -11,17 +11,11 @@ namespace SIL.Motif.App;
 public sealed partial class App : Application
 {
     private readonly MotifAppOptions _options;
-    private readonly bool _rememberBounds;
 
-    public App() : this(MotifAppOptions.ForInstallation(), rememberBounds: true) { }
+    public App() : this(MotifAppOptions.ForInstallation()) { }
 
-    public App(MotifAppOptions options) : this(options, rememberBounds: true) { }
-
-    public App(MotifAppOptions options, bool rememberBounds)
-    {
+    public App(MotifAppOptions options) =>
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _rememberBounds = rememberBounds;
-    }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -29,7 +23,7 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var composition = MotifAppComposition.Create(_options, _rememberBounds);
+            var composition = MotifAppComposition.Create(_options);
             desktop.MainWindow = composition.Window;
 
             desktop.Exit += (_, _) => _ = composition.Workspace.DisposeAsync();

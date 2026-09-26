@@ -40,7 +40,7 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
             new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
         AssertNoRunnerVariables();
-        var client = InProcessClient(project.ManagedRoot, FakeParser.ExecutablePath);
+        var client = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath);
         var loaded = await client.LoadPendingChangesAsync(
             new PendingChangesRequest(project.FwDataPath, productVersion), CancellationToken.None);
         Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
@@ -62,10 +62,6 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
         Assert.True(applied.Value!.Applied);
         AssertNoRunnerVariables();
     }
-
-    private static CommandClient InProcessClient(string managedRoot, string? parserPath) =>
-        new(new CommandClientOptions(managedRoot, parserPath,
-            new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath))));
 
     private static void AssertNoRunnerVariables()
     {
@@ -92,7 +88,7 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
         var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(locator))!;
         FakeParser.Behave(Path.GetDirectoryName(baseline.FwDataPath)!, new { heartbeatPath = heartbeat });
         AssertNoRunnerVariables();
-        var client = InProcessClient(project.ManagedRoot, FakeParser.ExecutablePath);
+        var client = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath);
         using var grammarCancellation = new CancellationTokenSource();
         var checking = client.CheckGrammarAsync(
             new GrammarCheckRequest(project.FwDataPath), grammarCancellation.Token);

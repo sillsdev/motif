@@ -1,5 +1,4 @@
 using SIL.Motif.Commands;
-using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.App.Services;
 
@@ -15,15 +14,14 @@ public sealed record CommandClientOptions(
     string? ParserPath,
     IJobRunnerLauncher RunnerLauncher)
 {
-    /// <summary>The local per-user root used when no client supplies an alternate location.</summary>
-    public static string DefaultManagedRoot => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SIL", "Motif");
-
-    /// <summary>Uses installation discovery without reading process-wide overrides.</summary>
+    /// <summary>
+    /// The installed window's settings, resolved once from the environment exactly as the command line
+    /// resolves them (<see cref="ProcessRunnerLauncher.FromEnvironment"/>), so the window and the CLI share
+    /// one worker root and one parser (ADR 0040).
+    /// </summary>
     public static CommandClientOptions ForInstallation()
     {
-        var parser = PanGlossExecutable.TryLocateFromInstallation();
-        return new(DefaultManagedRoot, parser,
-            new ProcessRunnerLauncher(new JobRunnerLaunchOptions(DefaultManagedRoot, parser)));
+        var runner = ProcessRunnerLauncher.FromEnvironment();
+        return new CommandClientOptions(runner.Options.Root, runner.Options.ParserPath, runner);
     }
 }

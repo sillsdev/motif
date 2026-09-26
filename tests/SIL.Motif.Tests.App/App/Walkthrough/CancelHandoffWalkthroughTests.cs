@@ -28,11 +28,10 @@ public sealed class CancelHandoffWalkthroughTests
         {
             AvaloniaHeadlessFixture.RunUntilComplete(() =>
             {
-                var holdingClient = new HoldingCommandClient(
-                    new CommandClient(new CommandClientOptions(project.ManagedRoot, PanGlossExecutable.TryLocate(),
-                        new ProcessRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, PanGlossExecutable.TryLocate())))), holdHandoff: true);
+                HoldingCommandClient? holdingClient = null;
                 using var walkthrough = new WalkthroughWindow(
-                    project.ManagedRoot, project.FwDataPath, outputDirectory, holdingClient);
+                    project.ManagedRoot, project.FwDataPath, outputDirectory,
+                    real => holdingClient = new HoldingCommandClient(real, holdHandoff: true));
                 WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);
                 walkthrough.TypePastedWords(string.Join(Environment.NewLine,
                     ConformanceProject.OneAnalysisShort,
@@ -54,7 +53,7 @@ public sealed class CancelHandoffWalkthroughTests
                 Assert.True(walkthrough.Find<Avalonia.Controls.Button>(
                     "Cancel the running AI Handoff").IsEffectivelyEnabled);
                 walkthrough.Click("Cancel the running AI Handoff");
-                holdingClient.ReleaseHandoff();
+                holdingClient!.ReleaseHandoff();
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Cancelled,
                     WalkthroughSteps.Remaining(deadline), "the Handoff cancellation did not unwind");

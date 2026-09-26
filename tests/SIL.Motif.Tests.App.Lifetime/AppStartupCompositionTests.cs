@@ -15,21 +15,6 @@ namespace SIL.Motif.Tests.App.Lifetime;
 public sealed class AppStartupCompositionTests
 {
     [Fact]
-    public void WorkerReadsExplicitRootAndParserArguments()
-    {
-        var root = Path.Combine(Path.GetTempPath(), "worker-root");
-        var parser = Path.Combine(Path.GetTempPath(), "pangloss.exe");
-        var options = SIL.Motif.Worker.RunnerOptions.Read(
-            [SIL.Motif.Worker.RunnerOptions.RootArgument, root,
-                SIL.Motif.Worker.RunnerOptions.ParserArgument, parser]);
-
-        Assert.Equal(root, options.Root);
-        Assert.Equal(parser, options.ParserPath);
-        Assert.Null(SIL.Motif.Worker.RunnerOptions.Read(
-            [SIL.Motif.Worker.RunnerOptions.NoParserArgument]).ParserPath);
-    }
-
-    [Fact]
     public void AppComposesItsMainWindowThroughTheClassicDesktopLifetime()
     {
         var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.AppStartup", Guid.NewGuid().ToString("N"));
@@ -50,7 +35,7 @@ public sealed class AppStartupCompositionTests
 
         try
         {
-            AppBuilder.Configure(() => new SIL.Motif.App.App(options, rememberBounds: false))
+            AppBuilder.Configure(() => new SIL.Motif.App.App(options))
                 .UseSkia()
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                 .SetupWithLifetime(lifetime);

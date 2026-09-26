@@ -22,23 +22,30 @@ public sealed class WalkthroughWindow : IDisposable
     private readonly ScriptedFolderPicker _folderPicker;
     private readonly RecordingDragSource _dragSource;
 
+    /// <summary>Composes the real window over <paramref name="managedRoot"/> with scripted desktop inputs.</summary>
+    /// <param name="decorateCommandClient">Wraps the real command client, for example to hold a call.</param>
+    /// <param name="parserPath">The parser to run; <see langword="null"/> locates the real one.</param>
+    /// <param name="runnerLauncher">
+    /// Starts queued work; <see langword="null"/> drains it in this process with the same root and parser.
+    /// </param>
     public WalkthroughWindow(
-        string managedRoot, string projectPath, string? folderPath = null, ICommandClient? commandClient = null,
-        TimeProvider? timeProvider = null)
+        string managedRoot, string projectPath, string? folderPath = null,
+        Func<ICommandClient, ICommandClient>? decorateCommandClient = null, TimeProvider? timeProvider = null,
+        string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null)
     {
         _projectPicker = new ScriptedProjectPicker(projectPath);
         _folderPicker = new ScriptedFolderPicker(folderPath);
         _dragSource = new RecordingDragSource();
 
-        var parserPath = PanGlossExecutable.TryLocate();
+        parserPath ??= PanGlossExecutable.TryLocate();
         var composition = MotifAppComposition.Create(new MotifAppOptions(
             managedRoot,
             parserPath,
-            new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath)),
+            runnerLauncher ?? new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath)),
             timeProvider ?? TimeProvider.System,
             _projectPicker,
             _folderPicker,
-            _dragSource), commandClientOverride: commandClient);
+            _dragSource), decorateCommandClient);
         Window = composition.Window;
         Workspace = composition.Workspace;
     }
