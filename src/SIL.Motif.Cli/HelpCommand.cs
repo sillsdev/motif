@@ -207,6 +207,6 @@ public static class HelpCommand
     private static int Usage(TextWriter error)
     {
         error.WriteLine("Usage: motif help [<command> [--full | --json]] | --all --json");
-        return 2;
+        return 1;
     }
 }
