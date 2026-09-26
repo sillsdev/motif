@@ -70,8 +70,10 @@ rules and FieldWorks' settings, and Motif supplies the evidence both need. That 
 documentation exists. The hero leads with "Motif can help you teach a dumb computer your language"; a section
 right after it explains the partnership, and a "Who it's for" row names the field linguist, the translator, the
 native speaker and the language technologist. The visual design comes from the design canvas
-(<https://claude.ai/artifact/KnD9nsgWEjptjPBGxjUK1D>), with SIL's own typefaces (Charis SIL, Andika) and the SIL
-logo once the owner supplies the brand assets.
+(<https://claude.ai/artifact/KnD9nsgWEjptjPBGxjUK1D>). Motif is an SIL Language Technology product site, so it
+follows <https://software.sil.org/>, not SIL corporate: Noto Sans, purple `#800493` for primary actions, green
+`#007a32` for links and Download, white surfaces with `#ddd` borders, the SIL glyph beside Motif's own logo, and
+the FieldWorks product-page pattern (product name and tagline, Download, quick tour, feature sections, help).
 
 **D10. One sample teaches speed.** `sample-turkish` carries a planted bug whose symptom is slowness, not
 failure, and its fixed variant is dramatically faster (aim: ten times or more). `expected.json` records a
