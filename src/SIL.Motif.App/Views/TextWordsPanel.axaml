@@ -30,7 +30,7 @@
                         IsVisible="{Binding Words.RejectedFilterCount}"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Rejected}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Rejected}" />
-      <views:FilterChip Label="Not stored yet" Count="{Binding Words.NotPresentFilterCount}" Verdict="New"
+      <views:FilterChip Label="Not present" Count="{Binding Words.NotPresentFilterCount}" Verdict="New"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.NotPresent}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.NotPresent}" />
       <views:FilterChip Label="Incorrect spelling" Count="{Binding Words.IncorrectSpellingFilterCount}" Verdict="Several"

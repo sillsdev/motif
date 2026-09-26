@@ -351,7 +351,7 @@ public sealed class ReviewAnalysisViewModel
             _ => analysis.Opinion,
         } : analysis.Opinion is ReadingGrade.Approved or ReadingGrade.Disapproved or ReadingGrade.Candidate
             ? ReadingGradeLabels.Of(analysis.Opinion)
-            : "Not stored yet";
+            : ReadingGradeLabels.NotPresent;
     }
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }

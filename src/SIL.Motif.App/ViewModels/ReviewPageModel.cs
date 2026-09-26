@@ -65,7 +65,7 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>Whether Apply is writing the pending changes to FieldWorks.</summary>
     public bool IsApplying { get; private set; }
 
-    /// <summary>Completed words, total words, and current word while measuring.</summary>
+    /// <summary>Completed words out of the words requested, while measuring.</summary>
     public string MeasurementProgressText { get; private set; } = string.Empty;
 
     /// <summary>The result recorded when Apply wrote the changes.</summary>
@@ -95,7 +95,7 @@ public sealed class ReviewPageModel : PageModel
     public bool CanApply => Changes.HasItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
         Context.Baseline?.FieldWorksHeldProject != true &&
         !Context.Evidence.IsStale &&
-        EvidenceComplete && !IsMeasuring && !IsApplying;
+        EvidenceComplete && WordsLosingApprovedAnalysis.Count == 0 && !IsMeasuring && !IsApplying;
 
     /// <summary>What prevents Apply, in words shown beside the action.</summary>
     public string ApplyBlockReason => IsApplying ? "Applying changes to FieldWorks..." :
@@ -106,9 +106,17 @@ public sealed class ReviewPageModel : PageModel
                 ? "FieldWorks saved since these numbers were measured. Refresh before applying."
             : Context.Baseline?.FieldWorksHeldProject == true
                 ? "FieldWorks has this project open. Close it before applying changes."
+            : WordsLosingApprovedAnalysis.Count > 0 ? LostAnalysisSentence(WordsLosingApprovedAnalysis)
                 : !EvidenceComplete ? "See what applying does to the numbers before applying." : string.Empty;
 
     private bool EvidenceComplete { get; set; }
+
+    private IReadOnlyList<string> WordsLosingApprovedAnalysis { get; set; } = [];
+
+    private static string LostAnalysisSentence(IReadOnlyList<string> words) =>
+        $"Applying these changes would lose an approved analysis for {words.Count} " +
+        $"{(words.Count == 1 ? "word" : "words")}: {string.Join(", ", words)}. " +
+        "Change or remove the changes that cause it before applying.";
 
     private async Task MeasureAsync()
     {
@@ -117,6 +125,7 @@ public sealed class ReviewPageModel : PageModel
         _measurementCancellation = new CancellationTokenSource();
         IsMeasuring = true;
         EvidenceComplete = false;
+        WordsLosingApprovedAnalysis = [];
         MeasurementRefusal = null;
         OnPropertyChanged(nameof(IsMeasuring));
         OnPropertyChanged(nameof(CanApply));
@@ -147,6 +156,8 @@ public sealed class ReviewPageModel : PageModel
         if (revision != Changes.Snapshot.Revision) return;
         EvidenceComplete = result.Succeeded && result.Value is { EvidenceComplete: true } measured &&
             measured.Revision == revision;
+        WordsLosingApprovedAnalysis = result.Value is { } checkedChanges && checkedChanges.Revision == revision
+            ? checkedChanges.Numbers.WordsLosingApprovedAnalysis : [];
         MeasurementRefusal = result.Refusal is { } measureRefusal
             ? WindowRefusal.From(measureRefusal)
             : !EvidenceComplete ? WindowRefusal.Plain("Some words did not finish or their analysis could not be checked.") : null;
@@ -180,8 +191,7 @@ public sealed class ReviewPageModel : PageModel
 
     private void OnMeasurementProgress(MeasureProgress progress)
     {
-        MeasurementProgressText = $"{progress.Completed} of {progress.Total} words checked" +
-            (progress.CurrentWord is { Length: > 0 } word ? $" · {word}" : string.Empty);
+        MeasurementProgressText = $"{progress.Completed} of {progress.Total} words checked";
         OnPropertyChanged(nameof(MeasurementProgressText));
     }
 
@@ -242,13 +252,16 @@ public sealed class ReviewPageModel : PageModel
         if (e.PropertyName == nameof(ChangesViewModel.Snapshot))
         {
             EvidenceComplete = false;
+            WordsLosingApprovedAnalysis = [];
             NumbersText = NumbersPrompt;
             OnPropertyChanged(nameof(NumbersText));
+            RaiseApplyState();
         }
         if (e.PropertyName == nameof(ChangesViewModel.Count))
         {
             Badge = Changes.Count > 0 ? Changes.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
             EvidenceComplete = false;
+            WordsLosingApprovedAnalysis = [];
             OnPropertyChanged(nameof(CanApply));
             OnPropertyChanged(nameof(ApplyBlockReason));
             OnPropertyChanged(nameof(HasNonFittingChanges));
@@ -292,6 +305,7 @@ public sealed class ReviewPageModel : PageModel
         MeasurementRefusal = null;
         NumbersText = NumbersPrompt;
         EvidenceComplete = false;
+        WordsLosingApprovedAnalysis = [];
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));
         OnPropertyChanged(nameof(ReceiptText));

@@ -51,4 +51,13 @@ public sealed record ReviewNumbersResponse(
     int ApprovedKeptAfter,
     int TouchedWordCount,
     int TouchedWordsCovered,
-    bool EvidenceComplete);
+    bool EvidenceComplete)
+{
+    /// <summary>
+    /// The shared words that matched an approved analysis in the earlier Assessment and no longer match it in
+    /// the Trial, in the Trial's word order: applying these changes would lose that approved analysis. The
+    /// window disables Apply while this is non-empty, pinned by `ALostApprovedAnalysisDisablesApplyBeforeAnyClick`.
+    /// Empty unless <see cref="Comparability"/> is <see cref="ReviewComparability.Compared"/>.
+    /// </summary>
+    public IReadOnlyList<string> WordsLosingApprovedAnalysis { get; init; } = [];
+}

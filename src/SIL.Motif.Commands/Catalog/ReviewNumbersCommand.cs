@@ -67,6 +67,9 @@ public static class ReviewNumbersCommand
         if (!finding.CanCompare) return Numbers(ReviewComparability.NoSharedWords);
         var shared = before.Selection.Words.Intersect(trial.Selection.Words, StringComparer.Ordinal).Count();
         return Numbers(ReviewComparability.Compared, shared, finding.PreviousCoverage.Analysed,
-            finding.CandidateCoverage.Analysed);
+            finding.CandidateCoverage.Analysed) with
+        {
+            WordsLosingApprovedAnalysis = finding.LostAnalyses.Select(change => change.Word).ToArray(),
+        };
     }
 }
