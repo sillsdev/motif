@@ -20,7 +20,8 @@ public static class PendingChangesWorkflow
     /// <param name="dryRunTimeout">The wait bound, or <see langword="null"/> to use the command default.</param>
     public static CommandOutcome<ApplyPendingResult> Apply(
         ApplyPendingRequest request, CancellationToken cancellationToken = default,
-        TimeSpan? dryRunTimeout = null)
+        TimeSpan? dryRunTimeout = null, JobRunnerLaunchOptions? runnerOptions = null,
+        IJobRunnerLauncher? runnerLauncher = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var version = MotifProductVersion.CurrentText;
@@ -61,7 +62,7 @@ public static class PendingChangesWorkflow
 
         var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(request.ProjectPath, version, proposalId));
         if (!queued.Succeeded) return ReopenAfterRefusal(resolvedRequest, queued.Refusal!);
-        RunnerKick.After();
+        KickRunner(request.ProjectPath, runnerOptions, runnerLauncher);
         var dryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(
             request.ProjectPath, version, proposalId, queued.Value!.JobId,
             dryRunTimeout ?? JobCommands.DefaultWaitTimeout), cancellationToken, cancelOnTimeout: true);
@@ -85,7 +86,9 @@ public static class PendingChangesWorkflow
         MeasurePendingRequest request,
         IProgress<MeasureProgress> progress,
         CancellationToken cancellationToken,
-        TimeSpan? waitTimeout = null)
+        TimeSpan? waitTimeout = null,
+        JobRunnerLaunchOptions? runnerOptions = null,
+        IJobRunnerLauncher? runnerLauncher = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(progress);
@@ -108,7 +111,7 @@ public static class PendingChangesWorkflow
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
         if (!queued.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(queued.Refusal!);
         var jobId = queued.Value!.JobId;
-        RunnerKick.After();
+        KickRunner(request.ProjectPath, runnerOptions, runnerLauncher);
 
         MeasureProgress? lastProgress = null;
         var jobProgress = new JobStatusProgress(status =>
@@ -155,6 +158,17 @@ public static class PendingChangesWorkflow
             return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(new PendingDraftIdentity(
                 draft.ProposalId.Value, DraftRevision.Compute(json))));
         });
+
+    private static void KickRunner(string projectPath, JobRunnerLaunchOptions? options, IJobRunnerLauncher? launcher)
+    {
+        if (launcher is null)
+        {
+            RunnerKick.After();
+            return;
+        }
+
+        RunnerKick.After(projectPath, options ?? JobRunnerLaunchOptions.ForCommandDefaults(), launcher);
+    }
 
     private static CommandOutcome<ApplyPendingResult> ReopenAfterRefusal(
         ApplyPendingRequest request, Refusal reason)

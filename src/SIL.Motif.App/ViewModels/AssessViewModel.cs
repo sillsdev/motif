@@ -17,13 +17,15 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 {
     private readonly ICommandClient _commandClient;
     private readonly SelectionViewModel _selection;
+    private readonly TimeProvider _timeProvider;
 
-    public AssessViewModel(ICommandClient commandClient, SelectionViewModel selection)
+    public AssessViewModel(ICommandClient commandClient, SelectionViewModel selection, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         ArgumentNullException.ThrowIfNull(selection);
         _commandClient = commandClient;
         _selection = selection;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
         Trace = new TraceWordViewModel(commandClient);
         PropertyChanged += OnResultChanged;
@@ -170,7 +172,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     private void OnResultChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(Result)) return;
-        if (Result is not null) CompletedAt = DateTimeOffset.Now;
+        if (Result is not null) CompletedAt = _timeProvider.GetLocalNow();
         Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null);
         Compare.Load(Result is null ? null : Words.AllRows);
         // A run clears the result as it starts; the comparison waits for the new result rather than emptying.

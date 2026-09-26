@@ -1,10 +1,12 @@
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.App.Services;
 
@@ -33,15 +35,24 @@ namespace SIL.Motif.App.Services;
 /// </remarks>
 public sealed partial class CommandClient : ICommandClient
 {
+    private readonly CommandClientOptions _options;
     private readonly string _managedRoot;
     private readonly SemaphoreSlim _projectGate = new(1, 1);
 
-    public CommandClient() : this(SIL.Motif.Worker.RunnerOptions.ResolveRoot()) { }
+    public CommandClient() : this(CommandClientOptions.ForInstallation()) { }
 
-    public CommandClient(string managedRoot)
+    public CommandClient(string managedRoot) : this(new CommandClientOptions(
+        managedRoot, PanGlossExecutable.TryLocateFromInstallation(), new ProcessRunnerLauncher()))
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(managedRoot);
-        _managedRoot = managedRoot;
+    }
+
+    public CommandClient(CommandClientOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.ManagedRoot);
+        ArgumentNullException.ThrowIfNull(options.RunnerLauncher);
+        _options = options;
+        _managedRoot = options.ManagedRoot;
     }
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
@@ -64,19 +75,21 @@ public sealed partial class CommandClient : ICommandClient
     {
         ArgumentNullException.ThrowIfNull(progress);
         return OneAtATime(
-            () => AssessCommand.Assess(request, _managedRoot, progress.Report, cancellationToken));
+            () => AssessCommand.Assess(request, _managedRoot, _options.ParserPath,
+                progress.Report, cancellationToken));
     }
 
     public Task<CommandOutcome<StatsCommandResponse>> StatsAsync(
         StatsRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => StatsCommand.Stats(request, cancellationToken));
+        Task.Run(() => StatsCommand.Stats(request, _options.ParserPath, cancellationToken));
 
     public Task<CommandOutcome<HandoffCommandResponse>> HandoffAsync(
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
         return OneAtATime(
-            () => HandoffCommand.Handoff(request, _managedRoot, progress.Report, cancellationToken));
+            () => HandoffCommand.Handoff(request, _managedRoot, _options.ParserPath,
+                progress.Report, cancellationToken));
     }
 
     // Waits without the caller's token, so a cancelled wait still reaches the command's own typed refusal.

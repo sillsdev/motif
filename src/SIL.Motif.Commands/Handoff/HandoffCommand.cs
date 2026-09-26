@@ -72,6 +72,17 @@ public static class HandoffCommand
         return Run(request, managedRoot, assessor, invoker, onProgress, cancellationToken);
     }
 
+    /// <summary>Writes a Handoff using the parser selected by the App composition options.</summary>
+    public static CommandOutcome<HandoffCommandResponse> Handoff(
+        HandoffRequest request, string managedRoot, string? parserPath,
+        Action<AssessmentProgress>? onProgress = null, CancellationToken cancellationToken = default)
+    {
+        var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
+        using var invoker = new PanGlossInvoker(parserPath);
+        var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(new StatsCacheStore(ownership), invoker));
+        return Run(request, managedRoot, assessor, invoker, onProgress, cancellationToken);
+    }
+
     /// <summary>
     /// Writes a Handoff folder against explicitly supplied collaborators — a fake Assessor and a fake
     /// invoker stand in for a real PanGloss in tests. Admission and containment are the invoker's.

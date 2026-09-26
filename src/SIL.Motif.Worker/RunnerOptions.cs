@@ -1,16 +1,26 @@
 using System;
 using System.Globalization;
 using System.IO;
+using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Worker;
 
 /// <summary>What one job runner process was told about where to work and how long to hold a job.</summary>
 /// <remarks>
-/// Read from the environment rather than the command line so that a parent which starts a runner does not
-/// have to reconstruct its arguments, following the same convention as the other Motif overrides.
+/// Explicit launch arguments bind a worker to the root and parser selected by its caller. Environment values
+/// remain defaults for a worker started directly or by a command-line invocation.
 /// </remarks>
 public sealed record RunnerOptions
 {
+    /// <summary>Explicitly selects the worker root for a launched process.</summary>
+    public const string RootArgument = "--root";
+
+    /// <summary>Explicitly selects the parser for a launched process.</summary>
+    public const string ParserArgument = "--parser";
+
+    /// <summary>Explicitly disables parser selection for a launched process.</summary>
+    public const string NoParserArgument = "--no-parser";
+
     /// <summary>Relocates everything the runner owns. An operator needs this to run two installations.</summary>
     public const string RootVariable = "MOTIF_WORKER_ROOT";
 
@@ -38,25 +48,32 @@ public sealed record RunnerOptions
 
     public string Root { get; init; } = ResolveRoot();
 
+    /// <summary>The parser path passed to this worker, or null when no parser was selected.</summary>
+    public string? ParserPath { get; init; }
+
     public TimeSpan Lease { get; init; } = TimeSpan.FromMinutes(5);
 
     public string? OwnerNamespace { get; init; }
 
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromMinutes(5);
 
-    /// <summary>Reads the environment and the one argument the runner still takes.</summary>
+    /// <summary>Reads explicit launch arguments first, then the runner's environment defaults.</summary>
     public static RunnerOptions Read(string[] args) => new()
     {
-        Root = ResolveRoot(),
+        Root = ArgumentValue(args, RootArgument) ?? ResolveRoot(),
+        ParserPath = HasArgument(args, NoParserArgument)
+            ? null
+            : ArgumentValue(args, ParserArgument) ?? PanGlossExecutable.TryLocate(),
         Lease = Seconds(Value(LeaseVariable)) ?? TimeSpan.FromMinutes(5),
         OwnerNamespace = Value(NamespaceVariable),
         IdleTimeout = IdleFrom(args) ?? Seconds(Value(IdleVariable)) ?? TimeSpan.FromMinutes(5),
     };
 
     /// <summary>The worker root any process (runner or CLI) uses: <see cref="RootVariable"/>, or the per-user default.</summary>
-    public static string ResolveRoot() => Value(RootVariable) ?? DefaultRoot();
+    public static string ResolveRoot() => Value(RootVariable) ?? DefaultRoot;
 
-    private static string DefaultRoot() => Path.Combine(
+    /// <summary>The per-user root used when no command-line configuration supplies another location.</summary>
+    public static string DefaultRoot => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SIL", "Motif");
 
     private static string? Value(string name)
@@ -64,6 +81,18 @@ public sealed record RunnerOptions
         var value = Environment.GetEnvironmentVariable(name);
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
+
+    private static string? ArgumentValue(string[] args, string name)
+    {
+        for (var index = 0; index + 1 < args.Length; index++)
+            if (string.Equals(args[index], name, StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(args[index + 1]))
+                return args[index + 1];
+        return null;
+    }
+
+    private static bool HasArgument(string[] args, string name) =>
+        Array.Exists(args, argument => string.Equals(argument, name, StringComparison.Ordinal));
 
     private static TimeSpan? Seconds(string? value) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) &&

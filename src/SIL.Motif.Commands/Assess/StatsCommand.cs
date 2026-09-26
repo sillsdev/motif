@@ -43,6 +43,14 @@ public static class StatsCommand
         return Run(request, invoker, cancellationToken);
     }
 
+    /// <summary>Queries statistics through the parser selected by the App composition options.</summary>
+    public static CommandOutcome<StatsCommandResponse> Stats(
+        StatsRequest request, string? parserPath, CancellationToken cancellationToken = default)
+    {
+        using var invoker = new PanGlossInvoker(parserPath);
+        return Run(request, invoker, cancellationToken);
+    }
+
     /// <summary>
     /// Queries statistics through an explicitly supplied invoker — a fake stands in for PanGloss in tests.
     /// Admission and containment are the invoker's, so this command holds no queue and no governor.

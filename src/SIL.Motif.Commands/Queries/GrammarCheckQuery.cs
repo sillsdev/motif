@@ -38,6 +38,14 @@ public static class GrammarCheckQuery
         return Query(request, invoker, cancellationToken, ParserStamp());
     }
 
+    /// <summary>Checks the current Baseline with the parser selected by the App composition options.</summary>
+    public static CommandOutcome<GrammarCheckResponse> Query(
+        GrammarCheckRequest request, string? parserPath, CancellationToken cancellationToken = default)
+    {
+        using var invoker = new PanGlossInvoker(parserPath);
+        return Query(request, invoker, cancellationToken, ParserStamp(parserPath));
+    }
+
     /// <summary>Checks through an explicitly supplied invoker, which allows tests to stand in for PanGloss.</summary>
     /// <param name="parserStamp">Identifies the parser build recorded with the findings.</param>
     internal static CommandOutcome<GrammarCheckResponse> Query(
@@ -118,7 +126,12 @@ public static class GrammarCheckQuery
 
     private static string? ParserStamp()
     {
-        if (PanGlossExecutable.TryLocate() is not { } exe || !File.Exists(exe)) return null;
+        return ParserStamp(PanGlossExecutable.TryLocate());
+    }
+
+    private static string? ParserStamp(string? parserPath)
+    {
+        if (parserPath is not { } exe || !File.Exists(exe)) return null;
         // Path, size, and write time distinguish a rebuilt or replaced parser executable.
         var info = new FileInfo(exe);
         return string.Create(CultureInfo.InvariantCulture, $"{info.FullName}|{info.Length}|{info.LastWriteTimeUtc:O}");

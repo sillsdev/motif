@@ -4,6 +4,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -27,7 +28,11 @@ public sealed class CancelHandoffWalkthroughTests
             AvaloniaHeadlessFixture.RunUntilComplete(() =>
             {
                 var holdingClient = new HoldingCommandClient(
-                    new CommandClient(project.ManagedRoot), holdHandoff: true);
+                    new CommandClient(CommandClientOptions.ForInstallation() with
+                    {
+                        ManagedRoot = project.ManagedRoot,
+                        ParserPath = PanGlossExecutable.TryLocate(),
+                    }), holdHandoff: true);
                 using var walkthrough = new WalkthroughWindow(
                     project.ManagedRoot, project.FwDataPath, outputDirectory, holdingClient);
                 WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);

@@ -50,6 +50,14 @@ public static class RunnerKick
         }
     }
 
+    /// <summary>Starts the configured runner adapter for one project's queued work.</summary>
+    public static void After(string projectPath, JobRunnerLaunchOptions options,
+        IJobRunnerLauncher launcher, Action<string>? reportWarning = null)
+    {
+        ArgumentNullException.ThrowIfNull(launcher);
+        launcher.Start(projectPath, options, reportWarning);
+    }
+
     private const int StdInputHandle = -10;
     private const int StdOutputHandle = -11;
     private const int StdErrorHandle = -12;

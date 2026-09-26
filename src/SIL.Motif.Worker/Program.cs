@@ -86,7 +86,7 @@ internal static class Program
 
         using var machine = MachineDatabase.Open(options.Root);
         // One parser queue for the runner's life: every sweep tick reuses it rather than starting another.
-        using var invoker = new PanGlossInvoker();
+        using var invoker = new PanGlossInvoker(options.ParserPath);
         var knownProjects = new KnownProjectRegistry(machine);
         var activity = new SweepActivity();
         var sweeping = SweepUntilCancelledAsync(knownProjects, runtimes, host.ProjectLanes, options, invoker,
@@ -346,7 +346,7 @@ internal static class Program
         IPanGlossInvoker invoker)
     {
         // No executable, no Trial handler: a Trial job would otherwise fail on every attempt.
-        if (PanGlossExecutable.TryLocate() is null) return null;
+        if (options.ParserPath is null) return null;
         IAssessorCatalog catalog;
         try
         {

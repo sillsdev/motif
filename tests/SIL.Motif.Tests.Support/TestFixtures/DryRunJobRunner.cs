@@ -37,6 +37,14 @@ internal static class DryRunJobRunner
             return CommandOutcome<DryRunProjection>.Refused(enqueued.Refusal!);
         var jobId = enqueued.Value!.JobId;
 
+        DrainQueued(fwDataPath);
+
+        return JobCommands.WaitForDryRun(new WaitForDryRunRequest(
+            fwDataPath, productVersion, proposalId, jobId, TimeSpan.FromSeconds(5)));
+    }
+
+    public static void DrainQueued(string fwDataPath)
+    {
         var full = Path.GetFullPath(fwDataPath);
         var project = new ProjectLocator(full, Path.GetFileNameWithoutExtension(full));
         var workspaceKey = ProjectWorkspaceKey.Compute(project);
@@ -70,11 +78,8 @@ internal static class DryRunJobRunner
                 new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal)
                 {
                     [JobCommands.DryRunKind] = (job, token) => handler.RunAsync(job, project, token),
-                });
+            });
             loop.RunUntilIdleAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
-
-        return JobCommands.WaitForDryRun(new WaitForDryRunRequest(
-            fwDataPath, productVersion, proposalId, jobId, TimeSpan.FromSeconds(5)));
     }
 }

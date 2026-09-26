@@ -24,6 +24,14 @@ public static class WordTraceQuery
         return Query(request, new PanGlossTracer(invoker), cancellationToken);
     }
 
+    /// <summary>Traces a word with the parser selected by the App composition options.</summary>
+    public static CommandOutcome<WordTraceResponse> Query(
+        WordTraceRequest request, string? parserPath, CancellationToken cancellationToken = default)
+    {
+        using var invoker = new PanGlossInvoker(parserPath);
+        return Query(request, new PanGlossTracer(invoker), cancellationToken);
+    }
+
     internal static CommandOutcome<WordTraceResponse> Query(
         WordTraceRequest request, IPanGlossTracer tracer, CancellationToken cancellationToken)
     {

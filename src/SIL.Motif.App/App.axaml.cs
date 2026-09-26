@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using SIL.Motif.App.Composition;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -9,38 +10,33 @@ namespace SIL.Motif.App;
 
 public sealed partial class App : Application
 {
+    private readonly MotifAppOptions _options;
+    private readonly bool _rememberBounds;
+
+    public App() : this(MotifAppOptions.ForInstallation(), rememberBounds: true) { }
+
+    public App(MotifAppOptions options) : this(options, rememberBounds: true) { }
+
+    public App(MotifAppOptions options, bool rememberBounds)
+    {
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _rememberBounds = rememberBounds;
+    }
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var window = new MainWindow(rememberBounds: true);
-            var workspace = ComposeWorkspace(window);
-            window.Compose(workspace);
-            desktop.MainWindow = window;
+            var composition = MotifAppComposition.Create(_options, _rememberBounds);
+            desktop.MainWindow = composition.Window;
 
-            desktop.Exit += (_, _) => _ = workspace.DisposeAsync();
-            LoadKnownProjects(workspace.Project);
+            desktop.Exit += (_, _) => _ = composition.Workspace.DisposeAsync();
+            LoadKnownProjects(composition.Workspace.Project);
         }
 
         base.OnFrameworkInitializationCompleted();
-    }
-
-    // The one composition root: nowhere else names a concrete ICommandClient, picker, or drag source.
-    private static HandoffWorkspaceViewModel ComposeWorkspace(MainWindow window)
-    {
-        var commandClient = new CommandClient();
-        var pickers = new AvaloniaStoragePickers(window);
-        var selection = new SelectionViewModel(commandClient);
-
-        return new HandoffWorkspaceViewModel(
-            new ProjectViewModel(commandClient, pickers),
-            new BaselineViewModel(commandClient),
-            selection,
-            new AssessViewModel(commandClient, selection),
-            pickers, pickers,
-            commandClient);
     }
 
     // Fire-and-forget by design: nothing else in startup waits for the Known-project list to resolve.

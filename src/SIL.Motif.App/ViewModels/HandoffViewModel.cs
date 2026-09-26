@@ -36,11 +36,12 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     private readonly ICommandClient _commandClient;
     private readonly IHandoffFolderPicker _folderPicker;
     private readonly IFileDragSource _dragSource;
+    private TimeProvider _timeProvider = TimeProvider.System;
     private string? _pendingFolder;
 
     public HandoffViewModel(
         ICommandClient commandClient, SelectionViewModel selection,
-        IHandoffFolderPicker folderPicker, IFileDragSource dragSource)
+        IHandoffFolderPicker folderPicker, IFileDragSource dragSource, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         ArgumentNullException.ThrowIfNull(selection);
@@ -49,7 +50,11 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         _commandClient = commandClient;
         _folderPicker = folderPicker;
         _dragSource = dragSource;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
+
+    internal void SetTimeProvider(TimeProvider timeProvider) =>
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     /// <summary>The project this Handoff publishes, or <c>null</c> before a project has been chosen.</summary>
     [ObservableProperty]
@@ -169,7 +174,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     protected override void OnRunSucceeded(HandoffCommandResponse response)
     {
-        WrittenAt = DateTimeOffset.Now;
+        WrittenAt = _timeProvider.GetLocalNow();
         OutputDirectory = response.OutputDirectory;
         PastedHeader = response.PastedHeader;
         HandoffMarkdown = response.HandoffMarkdown;

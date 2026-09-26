@@ -5,9 +5,12 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using SIL.Motif.App.Composition;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -19,24 +22,23 @@ public sealed class WalkthroughWindow : IDisposable
     private readonly RecordingDragSource _dragSource;
 
     public WalkthroughWindow(
-        string managedRoot, string projectPath, string? folderPath = null, ICommandClient? commandClient = null)
+        string managedRoot, string projectPath, string? folderPath = null, ICommandClient? commandClient = null,
+        TimeProvider? timeProvider = null)
     {
         _projectPicker = new ScriptedProjectPicker(projectPath);
         _folderPicker = new ScriptedFolderPicker(folderPath);
         _dragSource = new RecordingDragSource();
 
-        commandClient ??= new CommandClient(managedRoot);
-        var selection = new SelectionViewModel(commandClient);
-        Workspace = new HandoffWorkspaceViewModel(
-            new ProjectViewModel(commandClient, _projectPicker),
-            new BaselineViewModel(commandClient),
-            selection,
-            new AssessViewModel(commandClient, selection),
-            _folderPicker, _dragSource,
-            commandClient);
-
-        Window = new MainWindow();
-        Window.Compose(Workspace);
+        var composition = MotifAppComposition.Create(new MotifAppOptions(
+            managedRoot,
+            PanGlossExecutable.TryLocate(),
+            new InProcessRunnerLauncher(),
+            timeProvider ?? TimeProvider.System,
+            _projectPicker,
+            _folderPicker,
+            _dragSource), commandClientOverride: commandClient);
+        Window = composition.Window;
+        Workspace = composition.Workspace;
     }
 
     public MainWindow Window { get; }

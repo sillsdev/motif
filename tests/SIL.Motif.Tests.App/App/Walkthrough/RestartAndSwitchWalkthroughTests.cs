@@ -67,32 +67,32 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
             Assert.False(restartedWalkthrough.Workspace.Context.HasEvidence);
             Assert.Equal("Nothing selected yet.", restartedWalkthrough.Workspace.Selection.SummaryText);
 
-            var lockPath = secondProject.FwDataPath + ".lock";
-            var lockBytes = new byte[] { 0x4D, 0x6F, 0x74, 0x69, 0x66, 0x2D, 0x6C, 0x6F, 0x63, 0x6B };
-            File.WriteAllBytes(lockPath, lockBytes);
-            ChooseProject(restartedWalkthrough, secondProject.FwDataPath);
-            restartedWalkthrough.WaitUntil(
-                () => restartedWalkthrough.Workspace.Baseline.HeldStatusText ==
-                        "FieldWorks holds this project open right now." &&
-                    restartedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
-                WalkthroughSteps.Remaining(deadline),
-                "choosing the held second project did not observe its lock file");
-            restartedWalkthrough.SkipSetup();
-            restartedWalkthrough.Click("Refresh the project");
-            restartedWalkthrough.WaitUntil(
-                () => restartedWalkthrough.Workspace.Baseline.HasBaseline &&
-                    restartedWalkthrough.Workspace.Selection.Texts.Count == 1 &&
-                    restartedWalkthrough.Workspace.Context.Setup?.IsOpen == true,
-                WalkthroughSteps.Remaining(deadline),
-                "capturing a Baseline for the held second project did not show setup");
-            restartedWalkthrough.SkipSetup();
-            Assert.Null(restartedWalkthrough.Workspace.Baseline.RefusalMessage);
-            Assert.Null(restartedWalkthrough.Workspace.Selection.RefusalMessage);
-            Assert.True(File.Exists(lockPath));
-            Assert.Equal(lockBytes, File.ReadAllBytes(lockPath));
-            Assert.Equal(
-                SeededProject.TextTitle,
-                Assert.Single(restartedWalkthrough.Workspace.Selection.Texts).Title);
+            var simulator = new FieldWorksSimulator(secondProject.FwDataPath);
+            using (simulator.Hold())
+            {
+                ChooseProject(restartedWalkthrough, secondProject.FwDataPath);
+                restartedWalkthrough.WaitUntil(
+                    () => restartedWalkthrough.Workspace.Baseline.HeldStatusText ==
+                            "FieldWorks holds this project open right now." &&
+                        restartedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
+                    WalkthroughSteps.Remaining(deadline),
+                    "choosing the held second project did not observe its lock file");
+                restartedWalkthrough.SkipSetup();
+                restartedWalkthrough.Click("Refresh the project");
+                restartedWalkthrough.WaitUntil(
+                    () => restartedWalkthrough.Workspace.Baseline.HasBaseline &&
+                        restartedWalkthrough.Workspace.Selection.Texts.Count == 1 &&
+                        restartedWalkthrough.Workspace.Context.Setup?.IsOpen == true,
+                    WalkthroughSteps.Remaining(deadline),
+                    "capturing a Baseline for the held second project did not show setup");
+                restartedWalkthrough.SkipSetup();
+                Assert.Null(restartedWalkthrough.Workspace.Baseline.RefusalMessage);
+                Assert.Null(restartedWalkthrough.Workspace.Selection.RefusalMessage);
+                Assert.True(File.Exists(secondProject.FwDataPath + ".lock"));
+                Assert.Equal(
+                    SeededProject.TextTitle,
+                    Assert.Single(restartedWalkthrough.Workspace.Selection.Texts).Title);
+            }
 
             Assert.Equal(firstProject.SourceSha256, WalkthroughStoreAssertions.Sha256(firstProject.FwDataPath));
             Assert.Equal(secondProject.SourceSha256, WalkthroughStoreAssertions.Sha256(secondProject.FwDataPath));
