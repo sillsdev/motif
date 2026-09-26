@@ -70,7 +70,6 @@ public static class ParserReadingReader
         var form = Find<IMoForm>(objects, morph.Form);
         var msa = Find<IMoMorphSynAnalysis>(objects, morph.Msa);
         var inflectionType = Find<ILexEntryInflType>(objects, morph.InflType);
-        var entry = (ICmObject?)form?.Owner ?? msa?.Owner;
 
         var formText = morph.GuessedString
             ?? (form is null ? Missing(morph.Form) : Marked(form));
