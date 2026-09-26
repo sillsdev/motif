@@ -125,6 +125,38 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
         }
     }
 
+    [Fact]
+    public async Task ACallCancelledAsTheProjectIsHandedToItDoesNotStartAndGivesTheProjectBack()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.AdapterCancellationTests", Guid.NewGuid().ToString("N"));
+        using var cancellation = new CancellationTokenSource();
+        var gate = new CancelledOnEntryGate(cancellation);
+        var client = new CommandClient(new CommandClientOptions(root, FakeParser.ExecutablePath,
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(root, FakeParser.ExecutablePath))), gate);
+
+        var outcome = await client.SkipSetupAsync(
+            new SkipSetupRequest(Path.Combine(root, "absent.fwdata")), cancellation.Token);
+
+        Assert.Equal("project.wait-cancelled", outcome.Refusal?.Code);
+        Assert.Equal(1, gate.Exits);
+    }
+
+    // The project is busy when asked, then handed over just as the caller cancels.
+    private sealed class CancelledOnEntryGate(CancellationTokenSource cancellation) : IProjectGate
+    {
+        public int Exits { get; private set; }
+
+        public bool TryEnter() => false;
+
+        public Task EnterAsync(CancellationToken cancellationToken)
+        {
+            cancellation.Cancel();
+            return Task.CompletedTask;
+        }
+
+        public void Exit() => Exits++;
+    }
+
     private sealed record OutcomeCall(string Name, Func<CancellationToken, Task<Observed>> Run);
 
     private sealed record Observed(bool Succeeded, Refusal? Refusal);

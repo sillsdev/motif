@@ -43,12 +43,15 @@ public sealed partial class CommandClient : ICommandClient
 {
     private readonly CommandClientOptions _options;
     private readonly string _managedRoot;
-    private readonly SemaphoreSlim _projectGate = new(1, 1);
+    private readonly IProjectGate _projectGate;
 
     public CommandClient() : this(CommandClientOptions.ForInstallation()) { }
 
-    public CommandClient(CommandClientOptions options)
+    public CommandClient(CommandClientOptions options) : this(options, new ProjectGate()) { }
+
+    internal CommandClient(CommandClientOptions options, IProjectGate projectGate)
     {
+        ArgumentNullException.ThrowIfNull(projectGate);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.ManagedRoot);
         ArgumentNullException.ThrowIfNull(options.RunnerLauncher);
@@ -61,6 +64,7 @@ public sealed partial class CommandClient : ICommandClient
                 nameof(options));
         _options = options;
         _managedRoot = options.ManagedRoot;
+        _projectGate = projectGate;
     }
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
@@ -111,14 +115,21 @@ public sealed partial class CommandClient : ICommandClient
         where T : class =>
         Task.Run(async () =>
         {
-            if (!_projectGate.Wait(0))
+            if (!_projectGate.TryEnter())
             {
                 try
                 {
-                    await _projectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    await _projectGate.EnterAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
+                    return WaitCancelled<T>();
+                }
+
+                // The project can be handed over just as the caller cancels; a cancelled waiter still never starts.
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _projectGate.Exit();
                     return WaitCancelled<T>();
                 }
             }
@@ -129,7 +140,7 @@ public sealed partial class CommandClient : ICommandClient
             }
             finally
             {
-                _projectGate.Release();
+                _projectGate.Exit();
             }
         });
 
