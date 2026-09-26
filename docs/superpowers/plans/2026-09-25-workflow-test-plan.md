@@ -1568,3 +1568,64 @@ The owner answered §8 and the follow-up questions the same day. Where a ruling 
 
       It never counts word-analysis changes or claims who made a local edit.
     - **(c) An exact "something changed" check.** Each Receipt stores the project's save time and semantic fingerprint after Apply.
+
+## 10. Coverage audit, 2026-09-26
+
+**In plain terms.** On 26 September the owner clicked **Project menu → Configure…**, and nothing happened. The tests had it covered in name only:
+- a unit test drove it through the fake client;
+- a shell test checked only that the menu entry's name existed;
+- the walkthrough helpers ran menu commands directly instead of clicking them.
+
+Three read-only audits then looked for other places where a "tested" workflow couldn't fail for the real product:
+- controls: `_briefs/audit/report-controls.md`;
+- states: `report-states.md`;
+- trust in the kept tests: `report-trust.md`.
+
+This section merges what they found. It adds to §2 and §7; it doesn't replace them.
+
+**Why Configure… slipped through.** Its cause was `MainWindow.axaml.cs`: the entry's Click handler hid the flyout before the button ran its bound Command, which unparented the entry and emptied the binding. Select new… had the same bug. The fix is on `fix/configure-reopens-setup`.
+
+The lessons are rules for every lane from now on:
+1. **Click menu entries and dialog buttons for real** in S tests. Never run their commands directly in a walkthrough helper.
+2. **Every enabled control must do something observable.** When a command has a precondition, `IsEnabled` must follow the same condition, and a test covers the disabled state.
+3. **A "keep" test proves a data or state claim only if it runs at a real seam** (S, or I over the real client). One over the fake counts as U, whatever its row claims.
+
+### 10.1 Gaps, ranked
+
+| # | Pri | What the linguist or agent does | What's wrong now | Test to add (seam) | Product |
+|---|---|---|---|---|---|
+| G1 | P0 | Opens project A, then B, and expects A under Open recent | Known projects load only at startup, and the restart test reloads them by hand | S `ProjectMenuItemsOpenAndSwitchProjects`: click Select new…, then a recent entry, and check that A is listed after opening B | Suspected bug. This is §6 bug 2 |
+| G2 | P0 | Configure… before any Baseline | It was enabled but did nothing | S click tests, on the fix branch | Fixed on `fix/configure-reopens-setup` |
+| G3 | P0 | First-time setup: Next, Back, change a Text and a limit, Finish; then Skip on another project; reopen | Only Skip is ever clicked. Finish and the per-project Skip are covered over the fake only | S `FirstRunSetupAdvancesAndSavesTheSelection`; I `SetupRealClientTests.FinishingSetupSavesTheSelectionAndLimitsAndANewWindowReadsThemBack`, `…ASkipIsKeptForThatProjectOnly`, `…ConfigureShowsTheStoredChoicesAndTheNextRunUsesTheNewOnes` | Untested |
+| G4 | P0 | Reopens a project and sees its stored numbers and pending changes on every page | The stored-evidence tests build their responses by hand | I `ReopenRealClientTests.ANewWindowOverTheSameStoreShowsStoredEvidenceAndPendingChanges`, which checks that no Assessment or Baseline is created | Untested |
+| G5 | P0 | Returns to the window after FieldWorks saved | The test calls `CheckFreshnessAsync` directly and skips the Activated event | S `ActivationRealClientTests.ActivatingAfterFieldWorksSaveReadsTheSaveAndRunsNothing` | Untested |
+| G6 | P0 | Clicks Check these changes, then Apply to FieldWorks project, and sees the Receipt | Apply is covered only at the model level, over the fake | S `ApplyClickWritesChangesAndShowsReceipt`: the Receipt shows, the badge clears, the `.fwdata` value changed, and the old numbers are marked stale | Untested |
+| G7 | P0 | Clicks a Coverage or Accuracy tile and lands on the filtered words | The tile command runs directly, the filter isn't asserted, and fake counts are asserted as data | S: click the tile in the first-project smoke. U: assert the filter. Trim the fake data assertions from `MainWindowSmokeTests` | Untested |
+| G8 | P0 | Agent runs `motif assess`, reads timing and overview, then interrupts a run | Only argv and refusal cases are tested | I `AssessRoundTripArgvTests.AssessAsJsonStoresARunThatTimingAndOverviewRead`, `…InterruptingAssessStopsTheParserAndStoresNothing` | Bug. §6 bug 8: assess ignores Ctrl+C |
+| G9 | P0 | Agent puts, lists, rechecks and removes a pending change with the executable | Only put, Trial and apply are covered | I `AgentChangesArgvTests.PutListRecheckAndRemoveRoundTripThroughTheExecutable` (developer commands on) | Untested |
+| G10 | P1 | Timing: Use cell, Use list, Pick words or Chosen in Texts with nothing to use | The buttons stay enabled and do nothing | S `TimingSourceButtonsExplainOrDisableEmptyInputs` | Suspected UX bug (rule 2) |
+| G11 | P1 | Opens a store Motif refuses, expands Details, deletes it after confirming, and reopens | Covered only over the fake | I/S `StoreRefusalRealClientTests.AnOldSchemaStoreIsRefusedAndOnceDeletedIsRecreated`, with visible clicks for Details, Delete, Cancel and Confirm | Untested |
+| G12 | P1 | Agent writes an AI Handoff from a stored run | No successful run of the executable is tested | I `AgentHandoffArgvTests.AHandoffFromARetainedRunWritesFiveFilesAndRefusesAFullFolder` | Untested |
+| G13 | P1 | While a run is going, the project menu and the Selection controls are disabled | The test sets state by hand and checks one button | Extend the U test to cover the Selection controls | Untested |
+| G14 | P1 | Crash window: Close, and one report action, reached through the real app | Only the window itself is tested headless | S: raise it through the real host and click Close and Copy details | Untested |
+
+The inventory also gets two corrections, which the audits confirmed:
+- the pending put, Trial and apply are already covered end to end in `PendingChangesCliAppTests`, `PendingTrialArgvTests` and `PendingApplyArgvTests`;
+- the grammar-check read back through the CLI is already covered by `GrammarCheckArgvTests`.
+
+### 10.2 Build order
+
+The lanes run in parallel, one worktree each. Every lane follows three rules:
+1. **Test first:** red at the named seam, then the fix.
+2. **Its own helpers:** a lane adds walkthrough helpers in its own new file, a partial class or an extension, and never edits another lane's.
+3. **Real clicks:** it clicks rather than calling commands.
+
+| Lane | Gaps |
+|---|---|
+| setup | G3 |
+| reopen | G4 and G5 |
+| apply | G6 |
+| reading pages | G7 and G10 |
+| CLI | G8, G9 and G12, with the Ctrl+C fix |
+| store | G11 |
+| shell | G1, G13 and G14. This lane starts after `fix/configure-reopens-setup` merges, because both touch `MainWindow.axaml.cs` and `WalkthroughWindow.cs` |
