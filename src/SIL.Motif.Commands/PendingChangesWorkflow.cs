@@ -24,12 +24,15 @@ public static class PendingChangesWorkflow
     {
         ArgumentNullException.ThrowIfNull(request);
         var version = MotifProductVersion.CurrentText;
+        var identity = ReadPendingIdentity(request.ProjectPath);
+        if (!identity.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(identity.Refusal!);
+        if (identity.Value!.Current is null)
+            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending);
         var pending = PendingChanges.Load(new PendingChangesRequest(request.ProjectPath, version));
         if (!pending.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(pending.Refusal!);
         var snapshot = pending.Value!;
-        if (snapshot.Changes.Count == 0 || snapshot.DraftId is not { } draftId)
-            return CommandOutcome<ApplyPendingResult>.Success(new ApplyPendingResult(false, null));
-        if (request.DraftId is { } expectedDraft && expectedDraft != draftId ||
+        if (snapshot.DraftId is not { } draftId ||
+            request.DraftId is { } expectedDraft && expectedDraft != draftId ||
             request.Revision is { } expectedRevision && expectedRevision != snapshot.Revision)
             return RefuseApply("apply.changes-changed",
                 "The changes changed. Reload and check them before applying.");
@@ -67,7 +70,7 @@ public static class PendingChangesWorkflow
         var applied = ProposalCommands.Apply(new ApplyRequest(
             request.ProjectPath, version, proposalId, request.User));
         if (applied.Succeeded)
-            return CommandOutcome<ApplyPendingResult>.Success(new ApplyPendingResult(true, applied.Value!));
+            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied.Value!));
         if (applied.Refusal?.Code == "apply.reconciliation-needed")
             return CommandOutcome<ApplyPendingResult>.Refused(applied.Refusal!);
         return ReopenAfterRefusal(resolvedRequest, applied.Refusal!);
@@ -92,13 +95,17 @@ public static class PendingChangesWorkflow
 
         var identity = await Task.Run(() => ReadPendingIdentity(request.ProjectPath)).ConfigureAwait(false);
         if (!identity.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(identity.Refusal!);
-        var current = identity.Value!;
+        if (identity.Value!.Current is not { } current)
+            return RefuseMeasure("trial.nothing-pending", "There are no pending changes to measure.");
         if (request.DraftId is { } expectedDraft && expectedDraft != current.DraftId ||
             request.Revision is { } expectedRevision && expectedRevision != current.Revision)
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
 
         var queued = await Task.Run(() => JobCommands.EnqueueTrial(new EnqueueTrialRequest(
-            request.ProjectPath, version, current.DraftId, Words: request.Words))).ConfigureAwait(false);
+            request.ProjectPath, version, current.DraftId, Words: request.Words,
+            ExpectedDraftRevision: current.Revision))).ConfigureAwait(false);
+        if (queued.Refusal?.Code == "draft.revision-conflict")
+            return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
         if (!queued.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(queued.Refusal!);
         var jobId = queued.Value!.JobId;
         RunnerKick.After();
@@ -135,7 +142,8 @@ public static class PendingChangesWorkflow
             jobId, current.Revision, numbers.Value!.Text, numbers.Value.EvidenceComplete));
     }
 
-    private static CommandOutcome<PendingDraftIdentity> ReadPendingIdentity(string projectPath) =>
+    // The one definition of "nothing pending" for both workflows: no Draft, or a Draft with no operations.
+    private static CommandOutcome<PendingDraftRead> ReadPendingIdentity(string projectPath) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
         {
             var repository = new ProposalRepository(database);
@@ -143,10 +151,9 @@ public static class PendingChangesWorkflow
                 ? repository.GetDraft(PendingChanges.DraftName) : null;
             if (draft?.ProposalJson is not { } json || JsonSerializer.Deserialize<DraftDocument>(json,
                     new JsonSerializerOptions(JsonSerializerDefaults.Web))?.Operations.Count is null or 0)
-                return CommandOutcome<PendingDraftIdentity>.Refused(new Refusal(
-                    "trial.nothing-pending", FailureReason.Refused, "There are no pending changes to measure."));
-            return CommandOutcome<PendingDraftIdentity>.Success(new PendingDraftIdentity(
-                draft.ProposalId.Value, DraftRevision.Compute(json)));
+                return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(null));
+            return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(new PendingDraftIdentity(
+                draft.ProposalId.Value, DraftRevision.Compute(json))));
         });
 
     private static CommandOutcome<ApplyPendingResult> ReopenAfterRefusal(
@@ -171,6 +178,8 @@ public static class PendingChangesWorkflow
             "job.wait-cancelled", FailureReason.Cancelled, "The check was cancelled."));
 
     private sealed record PendingDraftIdentity(string DraftId, string Revision);
+
+    private sealed record PendingDraftRead(PendingDraftIdentity? Current);
 
     private sealed class JobStatusProgress(Action<JobStatusResponse> report) : IProgress<JobStatusResponse>
     {

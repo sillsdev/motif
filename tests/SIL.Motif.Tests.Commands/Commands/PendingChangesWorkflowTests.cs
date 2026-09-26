@@ -141,6 +141,56 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ApplyAllPendingWhileTheProjectIsHeldIsBusyAndReopensTheChanges()
+    {
+        string path;
+        Guid wordformId = Guid.Empty;
+        using (var scratch = pristine.NewScratch())
+        {
+            NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+                wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("held-apply", scratch.DefaultVernWs)).Guid);
+            new FwDataProjectLoader().Save(scratch);
+            path = scratch.ProjectId.Path;
+        }
+        var root = NewManagedRoot(path);
+        using var environment = new RunnerEnvironment(root, suppressKick: true);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "held-apply");
+
+        CommandOutcome<ApplyPendingResult> outcome;
+        using (new FileStream(path + ".lock", FileMode.Create, FileAccess.ReadWrite, FileShare.None))
+            outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null, "test-user"));
+
+        Assert.Equal(FailureReason.Busy, outcome.Refusal?.Reason);
+        Assert.Equal(3, FailureEnvelope.ExitCodeFor(outcome.Refusal!.Reason));
+        var reopened = LoadPending(path);
+        Assert.Equal(pending.DraftId, reopened.DraftId);
+        Assert.Single(reopened.Changes);
+    }
+
+    [Fact]
+    public void ApplyNeverReportsNothingPendingWhileThePendingDraftHoldsAnOperation()
+    {
+        string path;
+        using (var scratch = pristine.NewScratch())
+            path = scratch.ProjectId.Path;
+        var root = NewManagedRoot(path);
+        using var environment = new RunnerEnvironment(root, suppressKick: true);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(path, ProductVersion, PendingChanges.DraftName,
+            "a label")).Succeeded);
+        var added = ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, ProductVersion,
+            PendingChanges.DraftName, CanonicalId.Mint().Value, "en", "a gloss without a change id"));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+
+        var outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null, "test-user"));
+
+        Assert.False(outcome.Succeeded && !outcome.Value!.Applied,
+            "The save boundary reported nothing to apply while the Draft held an operation.");
+    }
+
+    [Fact]
     public void ApplyingWhenNoChangesArePendingReturnsTheNoWorkOutcome()
     {
         using var scratch = pristine.NewScratch();
@@ -308,32 +358,58 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public async Task JobCompletionDuringCancelledDelayReturnsTheTerminalResult()
+    public async Task AJobThatFinishesAsTheWaitIsCancelledReturnsItsTerminalResult()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        using var environment = new RunnerEnvironment(NewManagedRoot(path), suppressKick: true);
+        var jobId = QueueJobThatFinishesOnFirstPoll(path, out var finishOnFirstPoll);
+        using var cancellation = new CancellationTokenSource();
+        var progress = new ActionProgress<JobStatusResponse>(_ =>
+        {
+            if (finishOnFirstPoll()) cancellation.Cancel();
+        });
+
+        var outcome = await JobWait.WaitAsync(path, jobId, progress, cancellation.Token, null, ProductVersion)
+            .WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(JobStatus.Completed, outcome.Value!.Status);
+    }
+
+    [Fact]
+    public async Task AJobThatFinishesAsTheWaitTimesOutReturnsItsTerminalResult()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        using var environment = new RunnerEnvironment(NewManagedRoot(path), suppressKick: true);
+        var jobId = QueueJobThatFinishesOnFirstPoll(path, out var finishOnFirstPoll);
+        var progress = new ActionProgress<JobStatusResponse>(_ => finishOnFirstPoll());
+
+        var outcome = await JobWait.WaitAsync(path, jobId, progress, CancellationToken.None, TimeSpan.Zero,
+            ProductVersion, cancelOnTimeout: true).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(JobStatus.Completed, outcome.Value!.Status);
+    }
+
+    [Fact]
+    public async Task ATimeoutThatOnlyRequestsCancellationOfARunningJobSaysSo()
     {
         using var scratch = pristine.NewScratch();
         var path = scratch.ProjectId.Path;
         using var environment = new RunnerEnvironment(NewManagedRoot(path), suppressKick: true);
         var queued = JobCommands.EnqueueBaselineRefresh(new EnqueueBaselineRefreshRequest(path, ProductVersion));
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
-        using var cancellation = new CancellationTokenSource();
-        var firstPoll = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var progress = new ActionProgress<JobStatusResponse>(_ => firstPoll.TrySetResult());
-
-        var waiting = JobWait.WaitAsync(path, queued.Value!.JobId, progress, cancellation.Token, null, ProductVersion);
-        await firstPoll.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await Task.Delay(50);
         using (var database = ProjectMotifDatabase.Open(path))
-        {
-            var jobs = new JobRepository(database);
-            jobs.Transition(queued.Value.JobId, JobStatus.Running);
-            jobs.Transition(queued.Value.JobId, JobStatus.Completed, "{}");
-        }
-        cancellation.Cancel();
+            new JobRepository(database).Transition(queued.Value!.JobId, JobStatus.Running);
 
-        var outcome = await waiting.WaitAsync(TimeSpan.FromSeconds(10));
+        var outcome = await JobWait.WaitAsync(path, queued.Value!.JobId, null, CancellationToken.None,
+            TimeSpan.Zero, ProductVersion, cancelOnTimeout: true).WaitAsync(TimeSpan.FromSeconds(10));
 
-        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        Assert.Equal(JobStatus.Completed, outcome.Value!.Status);
+        Assert.Equal("job.wait-timeout", outcome.Refusal?.Code);
+        Assert.Equal("true", outcome.Refusal!.Facts!["jobCancelled"]);
+        Assert.Contains("requested cancellation", outcome.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -425,6 +501,26 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
             await Task.Delay(20);
         }
         throw new TimeoutException("The workflow did not enqueue its job.");
+    }
+
+    // Completes the job inside the first progress report, after the poll read it as queued.
+    private static string QueueJobThatFinishesOnFirstPoll(string path, out Func<bool> finishOnFirstPoll)
+    {
+        var queued = JobCommands.EnqueueBaselineRefresh(new EnqueueBaselineRefreshRequest(path, ProductVersion));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        var jobId = queued.Value!.JobId;
+        var finished = false;
+        finishOnFirstPoll = () =>
+        {
+            if (finished) return false;
+            finished = true;
+            using var database = ProjectMotifDatabase.Open(path);
+            var jobs = new JobRepository(database);
+            jobs.Transition(jobId, JobStatus.Running);
+            jobs.Transition(jobId, JobStatus.Completed, "{}");
+            return true;
+        };
+        return jobId;
     }
 
     private sealed class ActionProgress<T>(Action<T> report) : IProgress<T>
