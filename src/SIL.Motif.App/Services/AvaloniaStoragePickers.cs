@@ -8,18 +8,22 @@ namespace SIL.Motif.App.Services;
 /// <summary>
 /// Wraps one window's <see cref="TopLevel"/> — its storage provider and its drag-and-drop entry point —
 /// behind <see cref="IProjectPicker"/>, <see cref="IHandoffFolderPicker"/>, <see cref="IDiagnosticFilePicker"/>,
-/// and <see cref="IFileDragSource"/>, so no view model needs to name <see cref="TopLevel"/>,
+/// <see cref="IReportFilePicker"/>, and <see cref="IFileDragSource"/>, so no view model needs to name <see cref="TopLevel"/>,
 /// <see cref="IStorageProvider"/>, <see cref="IStorageFile"/>, or <see cref="IDataTransfer"/>. As
 /// <see cref="IDiagnosticWindowDialogs"/> it gives another window dialogs of its own.
 /// </summary>
 public sealed class AvaloniaStoragePickers :
-    IProjectPicker, IHandoffFolderPicker, IDiagnosticFilePicker, IDiagnosticWindowDialogs, IFileDragSource
+    IProjectPicker, IHandoffFolderPicker, IDiagnosticFilePicker, IDiagnosticWindowDialogs, IFileDragSource,
+    IReportFilePicker
 {
     private static readonly FilePickerFileType FwDataFileType =
         new("FieldWorks project") { Patterns = ["*.fwdata"] };
 
     private static readonly FilePickerFileType DiagnosticFileType =
         new("Motif diagnostic JSON") { Patterns = ["*.json"] };
+
+    private static readonly FilePickerFileType ReportFileType =
+        new("Text report") { Patterns = ["*.txt"] };
 
     private readonly TopLevel _topLevel;
 
@@ -77,23 +81,31 @@ public sealed class AvaloniaStoragePickers :
         return await reader.ReadToEndAsync(cancellationToken);
     }
 
-    public async Task<bool> SaveDiagnosticAsync(
-        string suggestedFileName, string json, CancellationToken cancellationToken = default)
+    public Task<bool> SaveDiagnosticAsync(
+        string suggestedFileName, string json, CancellationToken cancellationToken = default) =>
+        SaveTextAsync("Save diagnostic JSON", DiagnosticFileType, suggestedFileName, json, cancellationToken);
+
+    public Task<bool> SaveReportAsync(
+        string suggestedFileName, string text, CancellationToken cancellationToken = default) =>
+        SaveTextAsync("Save error report", ReportFileType, suggestedFileName, text, cancellationToken);
+
+    private async Task<bool> SaveTextAsync(string title, FilePickerFileType fileType, string suggestedFileName,
+        string text, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(json);
+        ArgumentNullException.ThrowIfNull(text);
         cancellationToken.ThrowIfCancellationRequested();
         var file = await _topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save diagnostic JSON",
+            Title = title,
             SuggestedFileName = suggestedFileName,
-            FileTypeChoices = [DiagnosticFileType],
+            FileTypeChoices = [fileType],
         });
         if (file is null) return false;
 
         await using var stream = await file.OpenWriteAsync();
         if (stream.CanSeek) stream.SetLength(0);
         await using var writer = new StreamWriter(stream, Encoding.UTF8);
-        await writer.WriteAsync(json.AsMemory(), cancellationToken);
+        await writer.WriteAsync(text.AsMemory(), cancellationToken);
         await writer.FlushAsync(cancellationToken);
         return true;
     }
