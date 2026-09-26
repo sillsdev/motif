@@ -32,7 +32,7 @@ renders as its alt text, so the pages can be written now and gain pictures later
 | --- | --- | --- |
 | `what-is-motif` | What Motif does | Measuring a grammar, trying changes safely, applying them; how it relates to FieldWorks and PanGloss |
 | `install` | Installing Motif | Installer, the parser, where Motif keeps its data |
-| `open-a-project` | Opening a project | Choosing a `.fwdata`, what happens the first time, FieldWorks must be closed or saved |
+| `open-a-project` | Opening a project | Choosing a `.fwdata`, what happens the first time; numbers reflect the last FieldWorks save, and Apply waits while FieldWorks holds the project |
 | `first-run-setup` | Choosing what to measure | The setup dialog and the Default Selection |
 | `reading-the-overview` | Reading the Overview | Headline numbers, stale numbers, Refresh |
 
@@ -99,13 +99,13 @@ says whether it needs PanGloss (the suite's fake parser, or a recorded result) t
 | `texts-choose-texts` | Pick texts, see Text Coverage change | `texts` | — | fake |
 | `try-a-word-parses` | Type a word, see its parse | `try-a-word` | — | fake |
 | `try-a-word-why-not` | A word that fails, and the reason shown | `try-a-word` | — | fake |
-| `timing-slow-words` | Sort by time, open the slowest word | `timing` | — | fake |
+| `timing-slow-words` | Choose the Slowest word set, open the slowest word | `timing` | — | fake |
 | `warnings-filter` | Filter findings, open one | `warnings` | `ConformanceGrammarWalkthroughTests` | no |
 | `change-an-analysis` | Make a change; the "not applied yet" count rises | `change-an-analysis` | — | no |
 | `replace-a-pending-change` | Replace a pending change with another | `replace-a-pending-change` | `PendingChangeReplacementWalkthroughTests` | no |
 | `review-changes` | Open Review changes, read what applying would write and do | `review-changes` | — | fake |
 | `no-longer-fits` | FieldWorks saves underneath; the change is flagged and Apply is blocked | `when-a-change-no-longer-fits` | `FieldWorksSimulatorWalkthroughTests` | no |
-| `apply-to-fieldworks` | Apply, and the confirmation | `apply-to-fieldworks` | — | no |
+| `apply-to-fieldworks` | Apply, and read the Receipt | `apply-to-fieldworks` | — | no |
 | `ai-handoff` | Prepare a Handoff and copy it | `ai-handoff` | `HandoffWalkthroughTests` | fake |
 | `cancel-a-handoff` | Start and cancel a Handoff | `cancel-a-long-run` | `CancelHandoffWalkthroughTests` | fake |
 | `cancel-an-assessment` | Start and cancel a run | `cancel-a-long-run` | `CancelAssessmentWalkthroughTests` | fake |

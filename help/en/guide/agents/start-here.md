@@ -10,6 +10,6 @@ motif assess "C:\Projects\Sena.fwdata" --all-wordforms --json
 motif jobs list --all --json
 ```
 
-The current CLI does not implement a `help` verb or `motif help --all --json`; with no arguments it prints the usage catalog to stderr and exits with code 1. The planned `llms.txt` index is also not generated in this worktree. For current syntax, use each command’s usage line and the command catalog; the checked-in API guide has known areas of drift.
+To learn every released command in one call, run `motif help --all --json`. It returns each command's code, Title, Description, usage lines, full Help page and online address, plus the glossary terms. For one command, `motif help <verb>` prints its Title, Description and usage; add `--full` for the whole Help page or `--json` for the same data as JSON. The documentation website also publishes `llms.txt`, a plain-text index of every page. With no arguments, `motif` prints the usage catalog to stderr and exits with code 1.
 
 Developer commands are not enabled by default. To use `dry-run` or `trial` in a development environment, set `MOTIF_DEVELOPER_COMMANDS` to exactly `1` before starting Motif. Most commands run synchronously, but `baseline-refresh`, `dry-run`, and `trial` enqueue jobs. See **Working with jobs**. For errors and retry decisions, see **Output and exit codes**.

@@ -22,7 +22,7 @@
 ## Gaps and source limitations
 
 - The repository does not define an end-user Motif installer or download steps. It also does not document how a linguist obtains or installs PanGloss, or the installed application’s user-data folder. The Install page intentionally leaves those details to the package maintainer.
-- The current CLI has no `help` verb and does not implement `motif help --all --json`; it prints its command catalog when invoked without arguments. No generated `llms.txt` is present. The start page points agents to the current usage/catalog surface and marks the planned help export as unavailable.
+- Resolved on merge: `motif help`, `motif help --all --json` and the site's `llms.txt` now exist, and the agent start page says so.
 - `--json` is command-specific, not available on every command. Enqueue-only successes can be a bare job ID, and an unexpected top-level exception still prints plain text with exit code 4. The output page records those exceptions.
 - The current `docs/cli-api.md` Handoff section and parts of its Assessment description do not match the code. The Handoff implementation requires `--invocation <id>` or `--no-assess`, exports the current five-file format (four files with `--no-assess`), and ignores the catalogued `--flextext` option. Current Assessments can include Correctness in addition to ParseTime and ObjectTiming. The agent pages follow the code and tests; the CLI API guide needs its own correction.
 - The Timing page has a **Slowest** word-set choice and a slowest-words list, but no explicit “sort by time” control. The content plan’s `timing-slow-words` description should be revised to match those controls.

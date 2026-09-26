@@ -139,7 +139,9 @@ function resolveHelpTarget(kind, code, entries, walkthroughs) {
 		return publicWalkthroughAsset(id, step.screenshot);
 	}
 
+	// CommonMark forbids spaces in a link target, so multi-word codes arrive percent-encoded, as HelpCatalog expects.
 	const entryKind = kind === 'cmd' ? 'command' : kind;
+	code = decodeURIComponent(code);
 	const entry = entries.find((candidate) => candidate.kind === entryKind && candidate.code === code);
 	if (!entry) throw new Error(`Unknown ${kind} help link: ${code}`);
 	return `/${entryKindPath(entry)}/`;

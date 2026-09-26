@@ -1,6 +1,6 @@
 # Working with jobs
 
-The Motif job runner handles durable work that outlives the command that queued it. [baseline-refresh](cmd:baseline-refresh), and the Developer commands [dry-run](cmd:dry-run) and [trial](cmd:trial), enqueue jobs. A synchronous [assess](cmd:assess) command is not a job.
+The Motif job runner handles durable work that outlives the command that queued it. [baseline-refresh](cmd:baseline-refresh), and the Developer commands `dry-run` and `trial`, enqueue jobs. A synchronous [assess](cmd:assess) command is not a job.
 
 ```powershell
 motif jobs list --all --json

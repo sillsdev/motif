@@ -34,7 +34,9 @@ help/
   `source` is free text naming where the prose came from (`hand-written`, a FieldWorks string, a doc path).
 - Help pages are plain CommonMark: no MDX, no HTML components, no front matter. Cross-links use
   `[text](cmd:<code>)`, `[text](term:<code>)`, `[text](ui:<AutomationId>)`; images use
-  `![alt](shot:<walkthroughId>/<stepId>)`. Readers resolve these into their own kind of link.
+  `![alt](shot:<walkthroughId>/<stepId>)`. CommonMark forbids spaces in a link target, so a multi-word code is
+  percent-encoded: `[text](cmd:baseline%20capture)`. Links name Released commands only. Readers decode the code
+  and resolve it into their own kind of link.
 - A new language is a sibling folder (`help/es/...`) with the same shape; English is the fallback per key.
 
 ### Help URL

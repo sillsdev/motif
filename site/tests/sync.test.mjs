@@ -57,7 +57,7 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 	);
 	await writeFile(path.join(help, 'terms', 'proposal.md'), '# Proposal\n\nA named set of changes.\n');
 	await writeFile(path.join(help, 'guide', 'what-is-motif.md'), '# What Motif does\n\nMeasure a grammar and try changes safely.\n\n![Picture coming later](shot:not-built/step-one)\n');
-	await writeFile(path.join(help, 'guide', 'open-a-project.md'), '# Opening a project\n\nOpen a project with [open project](cmd:open project).\n');
+	await writeFile(path.join(help, 'guide', 'open-a-project.md'), '# Opening a project\n\nOpen a project with [open project](cmd:open%20project).\n');
 	await writeFile(path.join(help, 'guide', 'agents', 'start-here.md'), '# Using Motif from an agent\n\nStart with [Proposal](term:proposal).\n');
 	await writeFile(path.join(docs, 'adr', '0001-example.md'), '---\nlayout: old\n---\n\n# Example decision\n\n<!-- remove this -->\n\n[Design](../design.md#rules)\n');
 	await writeFile(path.join(docs, 'design.md'), '# Design\n\n## Rules\n');
