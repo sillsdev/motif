@@ -68,9 +68,9 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
         Directory.CreateDirectory(directory);
         try
         {
-            var parser = Path.Combine(directory, "pangloss.exe");
+            var parser = Path.Combine(directory, FakeParser.ExecutableFileName);
             File.WriteAllText(parser, "");
-            var executable = Path.Combine(directory, "runner.exe");
+            var executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "runner.exe" : "runner");
             var options = new JobRunnerLaunchOptions(Path.Combine(directory, "root"), parser)
             {
                 WorkerExecutable = executable,
@@ -101,7 +101,8 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
         var root = Path.Combine(Path.GetTempPath(), "motif-missing-runner-" + Guid.NewGuid().ToString("N"));
         var launcher = new ProcessRunnerLauncher(IsolatedRunner.Options(root) with
         {
-            WorkerExecutable = Path.Combine(root, "absent", "SIL.Motif.Worker.exe"),
+            WorkerExecutable = Path.Combine(root, "absent",
+                OperatingSystem.IsWindows() ? "SIL.Motif.Worker.exe" : "SIL.Motif.Worker"),
         });
         var warnings = new List<string>();
 

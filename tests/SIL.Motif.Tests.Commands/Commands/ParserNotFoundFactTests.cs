@@ -49,7 +49,7 @@ public sealed class ParserNotFoundFactTests : IDisposable
             @"Local\MotifParserNotFoundTests-" + Guid.NewGuid().ToString("N") + "-1",
         });
         using var absent = new PanGlossInvoker(executablePath: null, queue);
-        using var wontStart = new PanGlossInvoker(Path.Combine(_root, "no-such-pangloss.exe"), queue);
+        using var wontStart = new PanGlossInvoker(Path.Combine(_root, "no-such-", FakeParser.ExecutableFileName), queue);
         var project = Path.Combine(_root, "p.fwdata");
         File.WriteAllText(project, "the parser never reads this.");
         var request = new PanGlossRequest.Import(project, Path.Combine(_root, "g.json"));

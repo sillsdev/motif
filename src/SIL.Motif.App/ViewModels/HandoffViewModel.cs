@@ -231,12 +231,15 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         }
     }
 
-    // A trailing separator on the root keeps a bare prefix match from letting "C:\out-evil" pass "C:\out".
+    // A trailing separator on the root keeps a sibling folder from passing the prefix check.
     private static bool IsWithinOutputDirectory(string filePath, string outputDirectory)
     {
         var fullFile = Path.GetFullPath(filePath);
         var fullRoot = Path.GetFullPath(outputDirectory);
         var prefix = fullRoot + Path.DirectorySeparatorChar;
-        return fullFile.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        return fullFile.StartsWith(prefix, comparison);
     }
 }

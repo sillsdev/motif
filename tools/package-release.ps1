@@ -3,6 +3,8 @@ param(
     # Defaults to downloading the release pangloss-release.json pins; a supplied file must match it.
     [string] $ParserArtifact,
 
+    [string] $RuntimeIdentifier,
+
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')]
     [string] $ProductVersion,
@@ -14,21 +16,48 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-if (-not [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
-        [System.Runtime.InteropServices.OSPlatform]::Windows)) {
-    throw 'The portable package is Windows x64 only.'
+if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
+    $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    if ([OperatingSystem]::IsWindows() -and $architecture -eq [System.Runtime.InteropServices.Architecture]::X64) {
+        $RuntimeIdentifier = 'win-x64'
+    }
+    elseif ([OperatingSystem]::IsLinux() -and $architecture -eq [System.Runtime.InteropServices.Architecture]::X64) {
+        $RuntimeIdentifier = 'linux-x64'
+    }
+    elseif ([OperatingSystem]::IsMacOS() -and $architecture -eq [System.Runtime.InteropServices.Architecture]::Arm64) {
+        $RuntimeIdentifier = 'osx-arm64'
+    }
+    elseif ([OperatingSystem]::IsMacOS() -and $architecture -eq [System.Runtime.InteropServices.Architecture]::X64) {
+        $RuntimeIdentifier = 'osx-x64'
+    }
+    else {
+        throw "Cannot select a supported RID for $([System.Runtime.InteropServices.RuntimeInformation]::OSDescription) $architecture."
+    }
 }
 
 $parserPin = Get-Content -LiteralPath (Join-Path $repoRoot 'pangloss-release.json') -Raw | ConvertFrom-Json
-if ($parserPin.sha256 -notmatch '^[0-9a-f]{64}$') {
+$supportedRids = @('win-x64', 'linux-x64', 'osx-arm64', 'osx-x64')
+if ($RuntimeIdentifier -notin $supportedRids) {
+    throw "Unsupported runtime identifier '$RuntimeIdentifier'; expected one of: $($supportedRids -join ', ')."
+}
+$parserAssetProperty = $parserPin.assets.PSObject.Properties[$RuntimeIdentifier]
+if ($null -eq $parserAssetProperty) {
+    throw "no PanGloss build for $RuntimeIdentifier"
+}
+$parserAsset = $parserAssetProperty.Value
+if ($parserAsset.sha256 -notmatch '^[0-9a-f]{64}$') {
     throw 'pangloss-release.json does not carry a lowercase SHA-256.'
 }
+$isWindows = $RuntimeIdentifier.StartsWith('win-', [System.StringComparison]::Ordinal)
+$parserFileName = if ($isWindows) { 'pangloss.exe' } else { 'pangloss' }
+$entryPointSuffix = if ($isWindows) { '.exe' } else { '' }
 if ([string]::IsNullOrWhiteSpace($ParserArtifact)) {
-    $downloadDirectory = Join-Path $repoRoot ".tmp\pangloss\$($parserPin.tag)"
-    $ParserArtifact = Join-Path $downloadDirectory 'pangloss.exe'
+    $downloadDirectory = Join-Path $repoRoot ".tmp/pangloss/$($parserPin.tag)/$RuntimeIdentifier"
+    $downloadFileName = [System.IO.Path]::GetFileName([Uri] $parserAsset.url)
+    $ParserArtifact = Join-Path $downloadDirectory $downloadFileName
     if (-not (Test-Path -LiteralPath $ParserArtifact -PathType Leaf)) {
         New-Item -ItemType Directory -Path $downloadDirectory -Force | Out-Null
-        Invoke-WebRequest -Uri $parserPin.url -OutFile $ParserArtifact
+        Invoke-WebRequest -Uri $parserAsset.url -OutFile $ParserArtifact
     }
 }
 
@@ -41,12 +70,12 @@ if ($parser.PSIsContainer) {
 }
 
 $pinnedParserHash = (Get-FileHash -LiteralPath $parser.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($pinnedParserHash -ne $parserPin.sha256) {
-    throw "PanGloss artifact is not the pinned $($parserPin.tag) (sha256 $pinnedParserHash): $($parser.FullName)"
+if ($pinnedParserHash -ne $parserAsset.sha256) {
+    throw "PanGloss artifact is not the pinned $($parserPin.tag) for $RuntimeIdentifier (sha256 $pinnedParserHash): $($parser.FullName)"
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    $OutputDirectory = Join-Path $repoRoot ".tmp\release-candidate\$ProductVersion"
+    $OutputDirectory = Join-Path $repoRoot ".tmp/release-candidate/$ProductVersion"
 }
 $outputInfo = [System.IO.DirectoryInfo]::new($OutputDirectory)
 $output = $outputInfo.FullName
@@ -95,7 +124,8 @@ function Assert-SafeStagePath {
     $resolvedParent = [System.IO.Path]::GetFullPath(
         [System.IO.Path]::GetDirectoryName($resolvedStage))
     $resolvedExpectedParent = [System.IO.Path]::GetFullPath($ExpectedParent)
-    if (-not [System.StringComparer]::OrdinalIgnoreCase.Equals(
+    $pathComparer = if ($isWindows) { [System.StringComparer]::OrdinalIgnoreCase } else { [System.StringComparer]::Ordinal }
+    if (-not $pathComparer.Equals(
             $resolvedParent, $resolvedExpectedParent)) {
         throw "Staging path is outside the output parent: $resolvedStage"
     }
@@ -123,7 +153,7 @@ function Publish-MotifProject {
     $arguments = @(
         $ProjectPath,
         '--configuration', 'Release',
-        '--runtime', 'win-x64',
+            '--runtime', $RuntimeIdentifier,
         '--self-contained', 'true',
         '--output', $Destination,
         "-p:Version=$ProductVersion",
@@ -160,11 +190,14 @@ try {
 
     $appDirectory = Join-Path $stage 'app'
     $cliDirectory = Join-Path $stage 'cli'
-    Publish-MotifProject (Join-Path $repoRoot 'src\SIL.Motif.App\SIL.Motif.App.csproj') $appDirectory
-    Publish-MotifProject (Join-Path $repoRoot 'src\SIL.Motif.Cli\SIL.Motif.Cli.csproj') $cliDirectory
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $appDirectory
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $cliDirectory
 
-    $appEntryPoint = Join-Path $appDirectory 'SIL.Motif.App.exe'
-    $cliEntryPoint = Join-Path $cliDirectory 'motif.exe'
+    $appEntryPointName = "SIL.Motif.App$entryPointSuffix"
+    $cliEntryPointName = "motif$entryPointSuffix"
+    $workerEntryPointName = "SIL.Motif.Worker$entryPointSuffix"
+    $appEntryPoint = Join-Path $appDirectory $appEntryPointName
+    $cliEntryPoint = Join-Path $cliDirectory $cliEntryPointName
     foreach ($entryPoint in @($appEntryPoint, $cliEntryPoint)) {
         if (-not (Test-Path -LiteralPath $entryPoint -PathType Leaf)) {
             throw "Published entry point is missing: $entryPoint"
@@ -172,11 +205,11 @@ try {
     }
 
     $sourceParserHash = (Get-FileHash -LiteralPath $parser.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($sourceParserHash -ne $parserPin.sha256) {
+    if ($sourceParserHash -ne $parserAsset.sha256) {
         throw 'PanGloss changed after it was verified; no package was published.'
     }
     $forbiddenWorkerAssets = @(
-        'SIL.Motif.Worker.exe',
+        $workerEntryPointName,
         'SIL.Motif.Worker.deps.json',
         'SIL.Motif.Worker.runtimeconfig.json'
     )
@@ -190,11 +223,13 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $directory 'SIL.Motif.Worker.dll') -PathType Leaf)) {
             throw "Portable package is missing required Worker library: $directory"
         }
-        Copy-Item -LiteralPath $parser.FullName -Destination (Join-Path $directory 'pangloss.exe')
+        Copy-Item -LiteralPath $parser.FullName -Destination (Join-Path $directory $parserFileName)
     }
 
-    $appParserHash = (Get-FileHash -LiteralPath (Join-Path $appDirectory 'pangloss.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
-    $cliParserHash = (Get-FileHash -LiteralPath (Join-Path $cliDirectory 'pangloss.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+    $appParserPath = Join-Path $appDirectory $parserFileName
+    $cliParserPath = Join-Path $cliDirectory $parserFileName
+    $appParserHash = (Get-FileHash -LiteralPath $appParserPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $cliParserHash = (Get-FileHash -LiteralPath $cliParserPath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($appParserHash -ne $sourceParserHash -or $cliParserHash -ne $sourceParserHash) {
         throw 'PanGloss changed while it was being copied; no package was published.'
     }
@@ -211,15 +246,15 @@ try {
         manifestVersion = 1
         product = 'Motif'
         productVersion = $ProductVersion
-        runtimeIdentifier = 'win-x64'
+        runtimeIdentifier = $RuntimeIdentifier
         distribution = 'portable-development-candidate'
         entryPoints = @(
-            [ordered]@{ name = 'app'; path = 'app/SIL.Motif.App.exe' },
-            [ordered]@{ name = 'cli'; path = 'cli/motif.exe' }
+            [ordered]@{ name = 'app'; path = "app/$appEntryPointName" },
+            [ordered]@{ name = 'cli'; path = "cli/$cliEntryPointName" }
         )
         dependencies = @(
-            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserPin.url; path = 'app/pangloss.exe'; sha256 = $appParserHash },
-            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserPin.url; path = 'cli/pangloss.exe'; sha256 = $cliParserHash }
+            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserAsset.url; path = "app/$parserFileName"; sha256 = $appParserHash },
+            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserAsset.url; path = "cli/$parserFileName"; sha256 = $cliParserHash }
         )
         files = $fileRecords
     }

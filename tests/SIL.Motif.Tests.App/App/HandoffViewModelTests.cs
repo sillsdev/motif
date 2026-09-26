@@ -21,10 +21,14 @@ public sealed class HandoffViewModelTests
 {
     private const string Digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     private const string BundleDigest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-    private const string ProjectPath = @"C:\projects\one.fwdata";
+    private static readonly string ProjectPath = Path.Combine(Path.GetTempPath(), "motif-handoff-project.fwdata");
+    private static readonly string OutputDirectory = Path.Combine(Path.GetTempPath(), "motif-handoff-out");
+
+    private static (FakeCommandClient Fake, FakeDragSource DragSource, HandoffViewModel Handoff) NewViewModel() =>
+        NewViewModel(OutputDirectory);
 
     private static (FakeCommandClient Fake, FakeDragSource DragSource, HandoffViewModel Handoff) NewViewModel(
-        string? folder = @"C:\out")
+        string? folder)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -57,9 +61,9 @@ public sealed class HandoffViewModelTests
         var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake) { AllWordforms = true };
-        var handoff = new HandoffViewModel(fake, selection, new FakeFolderPicker(@"C:\out"), new FakeDragSource(),
+        var handoff = new HandoffViewModel(fake, selection, new FakeFolderPicker(OutputDirectory), new FakeDragSource(),
             clock) { ProjectPath = ProjectPath, InvocationId = "invocation/one" };
-        fake.HandoffCompletesWith(NewResponse(@"C:\out", "handoff.md"));
+        fake.HandoffCompletesWith(NewResponse(OutputDirectory, "handoff.md"));
 
         await handoff.RunCommand.ExecuteAsync(null);
 
@@ -71,7 +75,7 @@ public sealed class HandoffViewModelTests
     public async Task FilesWrittenBeforeTheLatestAssessmentSayTheyAreOutOfDate()
     {
         var (fake, _, handoff) = NewViewModel();
-        fake.HandoffCompletesWith(NewResponse(@"C:\out", "handoff.md"));
+        fake.HandoffCompletesWith(NewResponse(OutputDirectory, "handoff.md"));
         handoff.InvocationId = "assessment/one";
 
         await handoff.RunCommand.ExecuteAsync(null);
@@ -129,7 +133,7 @@ public sealed class HandoffViewModelTests
     public async Task RunningWritesTheDestinationAndExposesEveryFileAsADraggableRow()
     {
         var (fake, _, handoff) = NewViewModel();
-        var response = NewResponse(@"C:\out", "grammar.json", "texts/one.flextext.json");
+        var response = NewResponse(OutputDirectory, "grammar.json", "texts/one.flextext.json");
         fake.HandoffCompletesWith(response);
 
         await handoff.RunCommand.ExecuteAsync(null);
@@ -139,26 +143,45 @@ public sealed class HandoffViewModelTests
         Assert.Equal("invocation/one", request.InvocationId);
         Assert.Empty(request.Selection.TextIds);
         Assert.Empty(request.Selection.Words);
-        Assert.Equal(@"C:\out", handoff.OutputDirectory);
+        Assert.Equal(OutputDirectory, handoff.OutputDirectory);
         Assert.Equal(
             new[] { "grammar.json", "texts/one.flextext.json" },
             handoff.Files.Select(file => file.RelativePath));
-        Assert.Equal(
-            new[] { Path.GetFullPath(@"C:\out\grammar.json"), Path.GetFullPath(@"C:\out\texts\one.flextext.json") },
-            handoff.Files.Select(file => file.FullPath));
+        var expectedFiles = new[]
+        {
+            Path.GetFullPath(Path.Combine(OutputDirectory, "grammar.json")),
+            Path.GetFullPath(Path.Combine(OutputDirectory, "texts", "one.flextext.json")),
+        };
+        Assert.Equal(expectedFiles, handoff.Files.Select(file => file.FullPath));
     }
 
     [Fact]
     public async Task PathsThatEscapeTheOutputDirectoryDoNotBecomeDraggableRows()
     {
         var (fake, _, handoff) = NewViewModel();
-        var response = NewResponse(@"C:\out", "grammar.json", @"C:\out-evil\file.txt");
+        var outsideFile = Path.Combine(
+            Path.GetDirectoryName(OutputDirectory)!, "motif-handoff-out-evil", "file.txt");
+        var response = NewResponse(OutputDirectory, "grammar.json", outsideFile);
         fake.HandoffCompletesWith(response);
 
         await handoff.RunCommand.ExecuteAsync(null);
 
         var row = Assert.Single(handoff.Files);
         Assert.Equal("grammar.json", row.RelativePath);
+    }
+
+    [Fact]
+    public async Task PathComparisonFollowsTheOperatingSystemsCaseRules()
+    {
+        var (fake, _, handoff) = NewViewModel();
+        var differentlyCasedDirectory = Path.Combine(
+            Path.GetDirectoryName(OutputDirectory)!, "MOTIF-HANDOFF-OUT");
+        fake.HandoffCompletesWith(NewResponse(OutputDirectory,
+            Path.Combine(differentlyCasedDirectory, "file.txt")));
+
+        await handoff.RunCommand.ExecuteAsync(null);
+
+        Assert.Equal(OperatingSystem.IsWindows(), handoff.Files.Count == 1);
     }
 
     // ADR 0045 decision 13: what leaves the machine is stated once beside the tiles, not read from a file.
@@ -190,7 +213,7 @@ public sealed class HandoffViewModelTests
     public async Task RunningPopulatesThePastedHeaderAndHandoffMarkdownFromTheResponse()
     {
         var (fake, _, handoff) = NewViewModel();
-        var response = NewResponseWithHeader(@"C:\out", "pasted header text", "# handoff.md content");
+        var response = NewResponseWithHeader(OutputDirectory, "pasted header text", "# handoff.md content");
         fake.HandoffCompletesWith(response);
 
         await handoff.RunCommand.ExecuteAsync(null);
@@ -222,7 +245,7 @@ public sealed class HandoffViewModelTests
             new AssessmentProgress(AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."),
             new AssessmentProgress(AssessmentStage.Complete, 0, null, "Handoff complete."),
         };
-        fake.HandoffCompletesWith(NewResponse(@"C:\out"), steps);
+        fake.HandoffCompletesWith(NewResponse(OutputDirectory), steps);
         var observed = new List<AssessmentProgress>();
         handoff.PropertyChanged += (_, e) =>
         {
@@ -273,14 +296,14 @@ public sealed class HandoffViewModelTests
         var refusal = new Refusal(
             "handoff.destination-exists", FailureReason.InvalidArgument,
             "The destination already exists and is not empty.",
-            new Dictionary<string, string> { ["outputDirectory"] = @"C:\out" });
+            new Dictionary<string, string> { ["outputDirectory"] = OutputDirectory });
         fake.HandoffRefusesWith(refusal);
 
         await handoff.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(RunState.Refused, handoff.State);
         Assert.Same(refusal, handoff.Refusal);
-        Assert.Contains($"outputDirectory: {@"C:\out"}", handoff.ShownRefusal!.Details);
+        Assert.Contains($"outputDirectory: {OutputDirectory}", handoff.ShownRefusal!.Details);
         Assert.True(handoff.RunCommand.CanExecute(null));
     }
 
@@ -304,7 +327,7 @@ public sealed class HandoffViewModelTests
     public async Task DragFileAsyncHandsTheDragAdapterExactlyThatFilesPath()
     {
         var (fake, dragSource, handoff) = NewViewModel();
-        fake.HandoffCompletesWith(NewResponse(@"C:\out", "grammar.json", "texts/one.flextext.json"));
+        fake.HandoffCompletesWith(NewResponse(OutputDirectory, "grammar.json", "texts/one.flextext.json"));
         await handoff.RunCommand.ExecuteAsync(null);
         var file = handoff.Files.Single(row => row.RelativePath == "texts/one.flextext.json");
 
@@ -317,7 +340,7 @@ public sealed class HandoffViewModelTests
     public async Task DragAllFilesAsyncHandsTheDragAdapterEveryFilesPath()
     {
         var (fake, dragSource, handoff) = NewViewModel();
-        fake.HandoffCompletesWith(NewResponse(@"C:\out", "grammar.json", "texts/one.flextext.json"));
+        fake.HandoffCompletesWith(NewResponse(OutputDirectory, "grammar.json", "texts/one.flextext.json"));
         await handoff.RunCommand.ExecuteAsync(null);
 
         await handoff.DragAllFilesAsync(null!);
