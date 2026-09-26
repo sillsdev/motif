@@ -1,0 +1,14 @@
+{
+  "id": "sample-turkish",
+  "title": "Turkish (teaching sample)",
+  "language": {
+    "name": "Turkish",
+    "tag": "tr"
+  },
+  "teaches": [
+    "suffix slots in order",
+    "vowel harmony"
+  ],
+  "summary": "Practice measuring a small grammar and tracing why a word did not parse.",
+  "disclaimer": "A simplified teaching grammar for learning Motif; not a description of Turkish."
+}
