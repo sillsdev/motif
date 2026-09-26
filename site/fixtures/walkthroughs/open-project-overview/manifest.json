@@ -1,0 +1,28 @@
+{
+  "id": "open-project-overview",
+  "locale": "en",
+  "title": "Open a project",
+  "description": "Open a language project and see its Overview.",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "steps": [
+    {
+      "id": "overview",
+      "caption": "The Overview shows the latest stored measurements.",
+      "startMs": 0,
+      "endMs": 3000,
+      "screenshot": "steps/01-overview.png",
+      "annotated": "steps/01-overview-annotated.png",
+      "callouts": [
+        { "x": 80, "y": 110, "width": 360, "height": 150, "label": "1" }
+      ]
+    }
+  ],
+  "clip": {
+    "webm": "clip.webm",
+    "mp4": "clip.mp4",
+    "webp": "clip.webp",
+    "poster": "poster.png"
+  }
+}

@@ -1,0 +1,305 @@
+---
+const { manifest, assetBase } = Astro.props;
+const steps = manifest.steps;
+const hasClip = manifest.clip !== null;
+const captions = `${assetBase}/captions.${manifest.locale}.vtt`;
+---
+
+<section
+	class="walkthrough"
+	data-walkthrough
+	data-has-clip={String(hasClip)}
+	data-steps={JSON.stringify(steps.map(({ startMs, endMs }) => ({ startMs, endMs })))}
+>
+	<div class="walkthrough-grid">
+		{hasClip && (
+			<div class="clip-frame">
+				<video
+					muted
+					loop
+					autoplay
+					playsinline
+					controls
+					preload="metadata"
+					poster={`${assetBase}/${manifest.clip.poster}`}
+					aria-label={manifest.title}
+					data-player
+				>
+					<source src={`${assetBase}/${manifest.clip.webm}`} type="video/webm" />
+					<source src={`${assetBase}/${manifest.clip.mp4}`} type="video/mp4" />
+					<track kind="captions" src={captions} srclang={manifest.locale} label={manifest.locale} default />
+				</video>
+			</div>
+		)}
+		<div class="fallback-view" aria-label="Walkthrough steps">
+			{steps.map((step, index) => (
+				<figure class="fallback-frame" data-frame data-index={index} hidden={index !== 0}>
+					<div class="screenshot">
+						<img src={`${assetBase}/${step.screenshot}`} alt={step.caption} width={manifest.width} height={manifest.height} />
+						<div class="callouts" aria-hidden="true">
+							{step.callouts.map((callout) => (
+								<span
+									class="callout"
+									style={`left:${callout.x / manifest.width * 100}%;top:${callout.y / manifest.height * 100}%;width:${callout.width / manifest.width * 100}%;height:${callout.height / manifest.height * 100}%`}
+								>
+									<b>{callout.label}</b>
+								</span>
+							))}
+						</div>
+					</div>
+					<figcaption>{step.caption}</figcaption>
+				</figure>
+			))}
+		</div>
+	</div>
+
+	<div class="step-controls">
+		<ol class="step-list" aria-label="Walkthrough steps">
+			{steps.map((step, index) => (
+				<li>
+					<button type="button" data-step-index={index} aria-current={index === 0 ? 'step' : undefined}>
+						<span class="step-number">{index + 1}</span>
+						<span>{step.caption}</span>
+					</button>
+				</li>
+			))}
+		</ol>
+		<button class="next-step" type="button" data-next>Next</button>
+	</div>
+</section>
+
+<script>
+	import { getActiveStepIndex, getNextStepIndex, getSeekTime } from '../scripts/walkthrough-state.mjs';
+
+	for (const walkthrough of document.querySelectorAll('[data-walkthrough]')) {
+		const video = walkthrough.querySelector('[data-player]');
+		const buttons = [...walkthrough.querySelectorAll('[data-step-index]')];
+		const frames = [...walkthrough.querySelectorAll('[data-frame]')];
+		const manifestSteps = JSON.parse(walkthrough.dataset.steps ?? '[]');
+		let activeIndex = 0;
+
+		const setActive = (index, seek) => {
+			activeIndex = index;
+			buttons.forEach((button, buttonIndex) => {
+				if (buttonIndex === index) button.setAttribute('aria-current', 'step');
+				else button.removeAttribute('aria-current');
+			});
+			frames.forEach((frame, frameIndex) => {
+				frame.hidden = frameIndex !== index;
+			});
+			if (seek && video && manifestSteps[index]) {
+				video.currentTime = getSeekTime(manifestSteps, index);
+			}
+		};
+
+		buttons.forEach((button, index) => {
+			button.addEventListener('click', () => setActive(index, true));
+		});
+		walkthrough.querySelector('[data-next]')?.addEventListener('click', () => {
+			setActive(getNextStepIndex(manifestSteps, activeIndex), true);
+		});
+		video?.addEventListener('timeupdate', () => {
+			const nextIndex = getActiveStepIndex(manifestSteps, video.currentTime);
+			if (nextIndex >= 0 && nextIndex !== activeIndex) setActive(nextIndex, false);
+		});
+
+		const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+		const narrowScreen = window.matchMedia('(max-width: 42rem)');
+		const updatePlayback = () => {
+			if (reducedMotion.matches || narrowScreen.matches) video?.pause();
+			else if (video?.autoplay) video.play().catch(() => {});
+		};
+		reducedMotion.addEventListener('change', updatePlayback);
+		narrowScreen.addEventListener('change', updatePlayback);
+		updatePlayback();
+	}
+</script>
+
+<style>
+	.walkthrough {
+		margin-block: 1.5rem;
+	}
+
+	.walkthrough-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1.55fr) minmax(15rem, 1fr);
+		gap: 1rem;
+		align-items: start;
+	}
+
+	.clip-frame,
+	.screenshot {
+		position: relative;
+		overflow: hidden;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.75rem;
+		background: var(--sl-color-bg-inline-code);
+	}
+
+	.clip-frame video,
+	.screenshot img {
+		display: block;
+		width: 100%;
+		height: auto;
+	}
+
+	.fallback-view {
+		display: none;
+	}
+
+	.fallback-frame {
+		margin: 0;
+	}
+
+	.fallback-frame[hidden] {
+		display: none;
+	}
+
+	.fallback-frame figcaption {
+		margin-block-start: 0.75rem;
+		color: var(--sl-color-text);
+	}
+
+	.callouts {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+
+	.callout {
+		position: absolute;
+		border: 2px solid var(--sl-color-accent);
+		border-radius: 0.35rem;
+		background: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+	}
+
+	.callout b {
+		position: absolute;
+		inset-block-start: -0.75rem;
+		inset-inline-start: -0.75rem;
+		display: grid;
+		width: 1.5rem;
+		aspect-ratio: 1;
+		place-items: center;
+		border-radius: 50%;
+		background: var(--sl-color-accent);
+		color: var(--sl-color-black);
+		font-size: 0.8rem;
+		font-weight: 700;
+	}
+
+	.step-list {
+		display: grid;
+		gap: 0.5rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.step-list button {
+		display: grid;
+		grid-template-columns: 2rem 1fr;
+		gap: 0.65rem;
+		width: 100%;
+		padding: 0.7rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.65rem;
+		background: var(--sl-color-bg);
+		color: var(--sl-color-text);
+		text-align: start;
+		cursor: pointer;
+	}
+
+	.step-list button[aria-current='step'] {
+		border-color: var(--sl-color-accent);
+		background: var(--sl-color-accent-low);
+	}
+
+	.step-number {
+		display: grid;
+		width: 1.75rem;
+		aspect-ratio: 1;
+		place-items: center;
+		border-radius: 50%;
+		background: var(--sl-color-gray-6);
+		font-weight: 700;
+	}
+
+	.next-step {
+		display: none;
+		margin-block-start: 0.75rem;
+		padding: 0.6rem 1rem;
+		border: 0;
+		border-radius: 0.5rem;
+		background: var(--sl-color-accent);
+		color: var(--sl-color-black);
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.walkthrough[data-has-clip='false'] .walkthrough-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.walkthrough[data-has-clip='false'] .fallback-view {
+		display: block;
+	}
+
+	.walkthrough[data-has-clip='false'] .step-controls {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 0.75rem;
+		align-items: end;
+	}
+
+	.walkthrough[data-has-clip='false'] .next-step {
+		display: inline-block;
+	}
+
+	@media (prefers-reduced-motion: reduce), (max-width: 42rem) {
+		.walkthrough-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.clip-frame {
+			display: none;
+		}
+
+		.fallback-view {
+			display: block;
+		}
+
+		.step-controls {
+			display: grid;
+			grid-template-columns: 1fr auto;
+			gap: 0.75rem;
+			align-items: end;
+		}
+
+		.next-step {
+			display: inline-block;
+		}
+	}
+
+	@media print {
+		.clip-frame {
+			display: none !important;
+		}
+
+		.fallback-view {
+			display: grid !important;
+			gap: 1rem;
+		}
+
+		.fallback-frame,
+		.fallback-frame[hidden] {
+			display: block !important;
+			break-inside: avoid;
+		}
+
+		.next-step {
+			display: none !important;
+		}
+	}
+</style>
