@@ -834,9 +834,9 @@ try
                 ? new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
                     assessWords, assessRetryFailed, assessRetrySlowerThan, assessRetrySource)
                 : null;
-            result = RenderCommand(AssessCommand.Assess(
+            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(AssessCommand.Assess(
                 new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap),
-                asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
+                asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
             break;
 
         case "stats":
