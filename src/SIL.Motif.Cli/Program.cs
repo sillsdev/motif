@@ -708,7 +708,8 @@ try
             if (positionals.Count != 1 || positionals[0] != "check" ||
                 !flags.TryGetValue("project", out var grammarProject))
                 return Usage(UsageLineFor("grammar check"), asJson);
-            result = RenderCommand(GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject)));
+            result = RunWithConsoleCancellation(token => RenderCommand(
+                GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject), token)));
             break;
 
         case "timing":

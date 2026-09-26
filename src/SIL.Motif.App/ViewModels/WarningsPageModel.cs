@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 

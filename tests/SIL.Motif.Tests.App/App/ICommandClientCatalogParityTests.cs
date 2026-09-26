@@ -32,7 +32,8 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.RecheckPendingChangesAsync)] = "recheck-pending-changes",
         };
 
-    private static readonly HashSet<string> StoreFreeReads = new(StringComparer.Ordinal)
+    // A store-writing client method must map to a catalogued CLI verb.
+    private static readonly HashSet<string> ReadsThatNeverWriteTheStore = new(StringComparer.Ordinal)
     {
         nameof(ICommandClient.ListKnownProjectsAsync),
         nameof(ICommandClient.GetCurrentBaselineAsync),
@@ -47,10 +48,10 @@ public sealed class ICommandClientCatalogParityTests
     public void EveryClientMethodMapsToACataloguedCommandOrAStoreFreeRead()
     {
         var methods = typeof(ICommandClient).GetMethods().ToDictionary(method => method.Name, StringComparer.Ordinal);
-        var accountedFor = CataloguedCommands.Keys.Concat(StoreFreeReads).ToArray();
+        var accountedFor = CataloguedCommands.Keys.Concat(ReadsThatNeverWriteTheStore).ToArray();
 
         Assert.Equal(methods.Keys.Order(StringComparer.Ordinal), accountedFor.Order(StringComparer.Ordinal));
-        Assert.Empty(CataloguedCommands.Keys.Intersect(StoreFreeReads, StringComparer.Ordinal));
+        Assert.Empty(CataloguedCommands.Keys.Intersect(ReadsThatNeverWriteTheStore, StringComparer.Ordinal));
 
         foreach (var (methodName, commandName) in CataloguedCommands)
         {
