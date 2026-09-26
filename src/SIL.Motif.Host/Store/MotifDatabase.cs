@@ -62,7 +62,7 @@ public sealed class MotifDatabase : IDisposable
                 var metadata = MotifSchema.ReadMetadata(connection);
                 EnsureLocatorMatches(metadata.Project, project);
                 if (workerVersion < metadata.MinimumWorkerVersion)
-                    throw new NotSupportedException(
+                    throw new MotifStoreVersionException(Path.GetFullPath(path),
                         $"Worker {workerVersion} is older than database minimum {metadata.MinimumWorkerVersion}.");
             }
         };

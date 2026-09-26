@@ -70,6 +70,15 @@ public static class ProjectStoreCommand
         {
             return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.store-io", fwDataPath));
         }
+        catch (MotifStoreVersionException exception)
+        {
+            return CommandOutcome<T>.Refused(new Refusal("store.other-version", FailureReason.Refused,
+                exception.Message, new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["fwDataPath"] = fwDataPath,
+                    ["storePath"] = exception.StorePath,
+                }));
+        }
         catch (NotSupportedException exception)
         {
             return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.store-io", fwDataPath));
