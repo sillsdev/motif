@@ -13,7 +13,7 @@ internal static class PanGlossSurface
     internal const int DefaultDescriptionCapSeconds = 15;
 
     internal static async Task<PanGlossSurfaceCheck> CheckAsync(
-        string executable, Action<Process> contain, CancellationToken cancellationToken,
+        string executable, PanGlossContainmentJob containment, CancellationToken cancellationToken,
         TimeSpan? descriptionCap = null)
     {
         var cap = descriptionCap ?? TimeSpan.FromSeconds(DefaultDescriptionCapSeconds);
@@ -27,10 +27,10 @@ internal static class PanGlossSurface
         PanGlossProcessEnvironment.Configure(startInfo);
         startInfo.ArgumentList.Add("--describe");
 
-        Process? process;
+        PanGlossChildProcess? process;
         try
         {
-            process = Process.Start(startInfo);
+            process = containment.Start(startInfo);
         }
         catch (Exception exception) when (
             exception is Win32Exception or InvalidOperationException or ArgumentException or UnauthorizedAccessException)
@@ -41,9 +41,8 @@ internal static class PanGlossSurface
 
         using (process)
         {
-            contain(process);
-            var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
-            var error = process.StandardError.ReadToEndAsync(CancellationToken.None);
+            var output = process.ReadStandardOutputAsync();
+            var error = process.ReadStandardErrorAsync();
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(cap);
             try
@@ -52,9 +51,7 @@ internal static class PanGlossSurface
             }
             catch (OperationCanceledException)
             {
-                try { process.Kill(entireProcessTree: true); }
-                catch (InvalidOperationException) { }
-                catch (Win32Exception) { }
+                containment.Terminate(process);
                 if (cancellationToken.IsCancellationRequested) throw;
                 var seconds = cap.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
                 var unit = cap == TimeSpan.FromSeconds(1) ? "second" : "seconds";

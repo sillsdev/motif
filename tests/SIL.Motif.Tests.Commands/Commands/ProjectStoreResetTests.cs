@@ -226,7 +226,8 @@ public sealed class ProjectStoreResetTests : IDisposable
 
     // The lock a store's first opener takes while it creates the store; holding it stands in for that opener.
     private static FileStream HoldCreationLock(string storePath) => new(storePath + ".owner.lock",
-        FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+        FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1,
+        OperatingSystem.IsWindows() ? FileOptions.DeleteOnClose : FileOptions.None);
 
     private static SqliteConnection Connection(string databasePath)
     {

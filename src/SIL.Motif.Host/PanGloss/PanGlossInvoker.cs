@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.Versioning;
 using System.Text;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
@@ -9,7 +8,7 @@ using SIL.Motif.Host.Parser;
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// Runs the <c>pangloss</c> executable: one queue slot, one job object, both streams drained, one wall-clock
+/// Runs the <c>pangloss</c> executable: one queue slot, one containment job, both streams drained, one wall-clock
 /// cap, and an outcome for whatever happened.
 /// </summary>
 /// <remarks>
@@ -23,7 +22,6 @@ namespace SIL.Motif.Host.PanGloss;
 /// per-word limit is a <see cref="PanGlossRequest.Batch"/> argument and bounds a word, not the process.
 /// </para>
 /// </remarks>
-[SupportedOSPlatform("windows")]
 public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 {
     /// <summary>The parser's ratified execution limit, applied to every invocation that names no cap.</summary>
@@ -67,16 +65,24 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         try
         {
             return await _queue.RunAsync(label,
-                async (cpuJob, token) =>
+                async (containment, token) =>
                 {
-                    if (request is PanGlossRequest.Batch or PanGlossRequest.Stats or PanGlossRequest.GrammarHealth)
+                    try
                     {
-                        var surface = await VerifySurfaceAsync(_executable, cpuJob.AssignProcess, token)
-                            .ConfigureAwait(false);
-                        if (!surface.IsValid) return new PanGlossOutcome.Unavailable(surface.Message);
+                        if (request is PanGlossRequest.Batch or PanGlossRequest.Stats or PanGlossRequest.GrammarHealth)
+                        {
+                            var surface = await VerifySurfaceAsync(_executable, containment, token)
+                                .ConfigureAwait(false);
+                            if (!surface.IsValid)
+                                return new PanGlossOutcome.Unavailable(surface.Message) { Containment = containment.Report };
+                        }
+                        var outcome = await LaunchAsync(_executable, request, containment, cap, token).ConfigureAwait(false);
+                        return outcome with { Containment = containment.Report };
                     }
-                    return await LaunchAsync(_executable, request, cpuJob.AssignProcess, cap, token)
-                        .ConfigureAwait(false);
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        return new PanGlossOutcome.Cancelled() { Containment = containment.Report };
+                    }
                 },
                 cancellationToken).ConfigureAwait(false);
         }
@@ -93,14 +99,14 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     }
 
     private async Task<PanGlossSurfaceCheck> VerifySurfaceAsync(
-        string executable, Action<Process> contain, CancellationToken cancellationToken)
+        string executable, PanGlossContainmentJob containment, CancellationToken cancellationToken)
     {
         var path = Path.GetFullPath(executable);
         await _surfaceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (_surfaceChecks.TryGetValue(path, out var cached)) return cached;
-            var check = await PanGlossSurface.CheckAsync(path, contain, cancellationToken).ConfigureAwait(false);
+            var check = await PanGlossSurface.CheckAsync(path, containment, cancellationToken).ConfigureAwait(false);
             _surfaceChecks[path] = check;
             return check;
         }
@@ -111,12 +117,11 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     }
 
     /// <summary>
-    /// The launch itself, after admission: <paramref name="contain"/> receives the process the instant it
-    /// starts, before either side knows whether the run will succeed.
+    /// The launch itself, after admission, under the supplied platform-specific containment job.
     /// </summary>
     internal static async Task<PanGlossOutcome> LaunchAsync(
-        string executable, PanGlossRequest request, Action<Process> contain, TimeSpan cap,
-        CancellationToken cancellationToken)
+        string executable, PanGlossRequest request, PanGlossContainmentJob containment, TimeSpan cap,
+        CancellationToken cancellationToken, Action<PanGlossChildProcess>? onStarted = null)
     {
         var scratch = Path.Combine(Path.GetTempPath(), "SIL.Motif.PanGloss", Guid.NewGuid().ToString("N"));
         var retained = request is PanGlossRequest.Batch { ArtifactDirectory: not null };
@@ -165,10 +170,10 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
             PanGlossProcessEnvironment.Configure(startInfo);
             request.AddArguments(startInfo, scratch);
 
-            Process? process;
+            PanGlossChildProcess? process;
             try
             {
-                process = Process.Start(startInfo);
+                process = containment.Start(startInfo);
             }
             catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
             {
@@ -178,18 +183,17 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 
             using (process)
             {
+                onStarted?.Invoke(process);
                 using var progressStop = new CancellationTokenSource();
                 var progressTask = request is PanGlossRequest.Batch { OnProgress: not null } batch
                     ? MonitorBatchProgressAsync(batch, Path.Combine(scratch, "out.tsv"), progressStop.Token)
                     : Task.CompletedTask;
                 try
                 {
-                contain(process);
                 var clock = Stopwatch.StartNew();
 
-                // Read both streams before waiting: a full pipe buffer deadlocks a process that is still writing.
-                var stdErrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
-                var stdOutTask = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+                var stdErrTask = process.ReadStandardErrorAsync();
+                var stdOutTask = process.ReadStandardOutputAsync();
 
                 using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 deadline.CancelAfter(cap);
@@ -199,9 +203,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 }
                 catch (OperationCanceledException)
                 {
-                    try { process.Kill(entireProcessTree: true); }
-                    catch (InvalidOperationException) { }
-                    catch (Win32Exception) { }
+                    containment.Terminate(process);
                     using var stopped = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                     try
                     {

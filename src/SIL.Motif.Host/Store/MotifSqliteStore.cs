@@ -373,6 +373,10 @@ internal sealed class MotifSqliteStore : IDisposable
         }
     }
 
+    /// <summary>Acquires a database's ownership file for a platform-specific lock test.</summary>
+    internal static FileStream AcquireOwnershipForTesting(string path, TimeSpan patience) =>
+        AcquireOwnership(path, patience);
+
     private static FileStream AcquireOwnershipCore(string path)
     {
         var lockPath = path + ".owner.lock";
@@ -385,7 +389,7 @@ internal sealed class MotifSqliteStore : IDisposable
                 FileAccess.ReadWrite,
                 FileShare.None,
                 1,
-                FileOptions.DeleteOnClose);
+                OperatingSystem.IsWindows() ? FileOptions.DeleteOnClose : FileOptions.None);
         }
         catch (IOException exception) when (IsOwnershipLockContention(exception))
         {
@@ -394,7 +398,7 @@ internal sealed class MotifSqliteStore : IDisposable
 
         try
         {
-            stream.Lock(0, 1);
+            if (OperatingSystem.IsWindows()) stream.Lock(0, 1);
             return stream;
         }
         catch (IOException exception) when (IsOwnershipLockContention(exception))
@@ -411,7 +415,9 @@ internal sealed class MotifSqliteStore : IDisposable
 
     private static bool IsOwnershipLockContention(IOException exception)
     {
-        return exception.HResult is unchecked((int)0x80070020) or unchecked((int)0x80070021);
+        var errorCode = exception.HResult & 0xffff;
+        return exception.HResult is unchecked((int)0x80070020) or unchecked((int)0x80070021) ||
+            errorCode is 11 or 35;
     }
 
     private static bool HasUserTables(SqliteConnection connection)
