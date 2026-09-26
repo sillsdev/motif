@@ -86,8 +86,9 @@ public static class WordProjectStatuses
 /// <summary>
 /// Reads words from the selected Texts for the Words table: one row per distinct form, its
 /// occurrences, and what the project holds for it. Reloads whenever <see cref="SelectionViewModel.ChosenTextIds"/>
-/// changes, guarded by a generation counter rather than a timer so a rapid run of checkbox clicks only
-/// ever applies the last one's answer.
+/// changes. A newer selection cancels the read it replaces, and only the current generation's answer is ever
+/// applied, so a rapid run of checkbox clicks shows the last one's words. A read that fails clears the words it
+/// would have replaced and sets <see cref="Refusal"/> instead of throwing.
 /// </summary>
 public sealed partial class TextWordsViewModel : ObservableObject
 {
@@ -225,18 +226,10 @@ public sealed partial class TextWordsViewModel : ObservableObject
             _generation++;
         }
         Cancel(superseded);
-        foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
-        _all.Clear();
-        Rows.Clear();
+        ClearWords();
         HasBaseline = true;
         IsLoading = false;
         Refusal = null;
-        OccurrenceCount = 0;
-        ApprovedCount = 0;
-        Response = null;
-        OnPropertyChanged(nameof(CheckedWordCount));
-        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
-        RaiseCounts();
         if (fwDataPath is not null) await ReloadAsync(cancellationToken).ConfigureAwait(true);
     }
 
@@ -273,7 +266,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
             if (!outcome.Succeeded)
             {
-                Refusal = outcome.Refusal;
+                // A read the caller cancelled says nothing about the words, so the page stays as it is.
+                if (!loadCancellation.IsCancellationRequested) ShowFailure(outcome.Refusal);
                 return;
             }
 
@@ -308,7 +302,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         catch (Exception exception)
         {
             if (generation == _generation)
-                Refusal = new Refusal("texts.words-query-failed", FailureReason.Refused, exception.Message);
+                ShowFailure(new Refusal("texts.words-query-failed", FailureReason.Refused, exception.Message));
         }
         finally
         {
@@ -339,6 +333,28 @@ public sealed partial class TextWordsViewModel : ObservableObject
         }
         Cancel(activeCancellation);
         await Task.WhenAll(activeLoads).ConfigureAwait(true);
+    }
+
+    // Empties the Words table and its counts, so no earlier selection's words outlive a reset or a failure.
+    private void ClearWords()
+    {
+        foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
+        _all.Clear();
+        Rows.Clear();
+        OccurrenceCount = 0;
+        ApprovedCount = 0;
+        Response = null;
+        OnPropertyChanged(nameof(CheckedWordCount));
+        HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ProjectWords));
+        RaiseCounts();
+    }
+
+    private void ShowFailure(Refusal? refusal)
+    {
+        ClearWords();
+        _selection.ClearTextCounts();
+        Refusal = refusal;
     }
 
     private static void Cancel(CancellationTokenSource? cancellation)

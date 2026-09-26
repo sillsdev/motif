@@ -100,6 +100,63 @@ public sealed class TextWordsReloadTests
     }
 
     [Fact]
+    public async Task ARefusedReadClearsThePreviousSelectionsWords()
+    {
+        var refusal = new Refusal("store.inconsistent", FailureReason.StoreInconsistent, "stored words are damaged");
+        var (selection, words) = await LoadFirstTextThenFailSecond(
+            () => Task.FromResult(CommandOutcome<TextWordsResponse>.Refused(refusal)));
+
+        AssertCleared(selection, words);
+        Assert.Equal(refusal, words.Refusal);
+    }
+
+    [Fact]
+    public async Task AReadThatThrowsClearsThePreviousSelectionsWords()
+    {
+        var (selection, words) = await LoadFirstTextThenFailSecond(
+            () => Task.FromException<CommandOutcome<TextWordsResponse>>(new IOException("store unavailable")));
+
+        AssertCleared(selection, words);
+        Assert.Equal("store unavailable", words.Refusal?.Message);
+    }
+
+    private static async Task<(SelectionViewModel Selection, TextWordsViewModel Words)> LoadFirstTextThenFailSecond(
+        Func<Task<CommandOutcome<TextWordsResponse>>> secondRead)
+    {
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake);
+        var words = new TextWordsViewModel(fake, selection);
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(FirstTextId, "Alpha"), new TextChoiceSummary(SecondTextId, "Beta")],
+            HasBaseline: true));
+        await selection.SetProjectAsync(ProjectPath);
+        await words.SetProjectAsync(ProjectPath);
+        fake.OnListTextWords((request, _) => request.TextIds.Contains(SecondTextId)
+            ? secondRead()
+            : Task.FromResult(CommandOutcome<TextWordsResponse>.Success(new TextWordsResponse(
+                [new TextWord("alpha", null, [new WordOccurrence(FirstTextId, "Alpha", 1, "alpha.", "unanalysed", null)],
+                    [], [])],
+                [new TextLines(FirstTextId, "Alpha", [])], HasBaseline: true, OccurrenceCount: 1))));
+
+        selection.Texts[0].IsChecked = true;
+        Assert.Equal("alpha", Assert.Single(words.Rows).Form);
+        Assert.NotNull(selection.Texts[0].CountsText);
+
+        selection.Texts[1].IsChecked = true;
+        return (selection, words);
+    }
+
+    private static void AssertCleared(SelectionViewModel selection, TextWordsViewModel words)
+    {
+        Assert.Empty(words.Rows);
+        Assert.Null(words.Response);
+        Assert.Equal(0, words.WordCount);
+        Assert.Equal(0, words.OccurrenceCount);
+        Assert.All(selection.Texts, text => Assert.True(string.IsNullOrEmpty(text.CountsText)));
+        Assert.False(words.IsLoading);
+    }
+
+    [Fact]
     public async Task AFailedReadInTheSelectionHandlerDoesNotEscapeIt()
     {
         var fake = new FakeCommandClient();
