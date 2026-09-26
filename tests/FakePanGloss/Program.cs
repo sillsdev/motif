@@ -532,8 +532,10 @@ internal static class Program
         internal static Behaviour Read(string? directory)
         {
             if (directory is null) return new Behaviour();
+            var besideGrammar = Path.Combine(directory, BehaviourFileName);
+            // A copy of the fake can carry its own behaviour, for a candidate exported where no test can reach.
             var path = Environment.GetEnvironmentVariable("FAKE_PANGLOSS_BEHAVIOUR_PATH")
-                ?? Path.Combine(directory, BehaviourFileName);
+                ?? (File.Exists(besideGrammar) ? besideGrammar : Path.Combine(AppContext.BaseDirectory, BehaviourFileName));
             if (!File.Exists(path)) return new Behaviour();
             return JsonSerializer.Deserialize<Behaviour>(File.ReadAllText(path),
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();

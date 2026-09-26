@@ -37,6 +37,13 @@ internal static class FakeParser
         File.WriteAllText(Path.Combine(candidateDirectory, BehaviourFileName),
             JsonSerializer.Serialize(behaviour));
 
+    /// <summary>
+    /// Tells one copy of the fake (from <see cref="Copy"/>) how to behave wherever its candidate is exported,
+    /// for work such as a Trial whose candidate lands in a directory the test cannot know in advance.
+    /// </summary>
+    internal static void BehaveBesideExecutable(string copiedExecutable, object behaviour) =>
+        Behave(Path.GetDirectoryName(copiedExecutable)!, behaviour);
+
     internal static string CopyWithWrongDescription(string candidateDirectory)
     {
         return CopyWithSentinel(candidateDirectory, WrongDescriptionFileName);

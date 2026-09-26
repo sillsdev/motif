@@ -40,7 +40,9 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
             new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
         AssertNoRunnerVariables();
-        var client = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath);
+        await using var runner = new InProcessRunnerLauncher(
+            new JobRunnerLaunchOptions(project.ManagedRoot, FakeParser.ExecutablePath));
+        var client = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath, runner);
         var loaded = await client.LoadPendingChangesAsync(
             new PendingChangesRequest(project.FwDataPath, productVersion), CancellationToken.None);
         Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
@@ -60,6 +62,7 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
 
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
+        await runner.WhenIdleAsync();
         AssertNoRunnerVariables();
     }
 
