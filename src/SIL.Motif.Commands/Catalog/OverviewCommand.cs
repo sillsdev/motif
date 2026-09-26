@@ -114,7 +114,7 @@ internal static class OverviewMetrics
                 word.IsIncomplete, word.Morphology,
                 word.ReadingGrades, word.MissedApprovedCount ?? 0));
             rejectedAnalysesRebuilt += word.ReadingGrades?.Count(grade =>
-                StringComparer.Ordinal.Equals(grade, "disapproved")) ?? 0;
+                StringComparer.Ordinal.Equals(grade, ReadingGrade.Disapproved)) ?? 0;
             switch (placement.Column)
             {
                 case CompareColumnKind.Match:

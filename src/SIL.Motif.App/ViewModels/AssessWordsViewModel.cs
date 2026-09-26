@@ -226,9 +226,9 @@ public sealed class AssessWordRowViewModel
 
         // A word never tried, or stopped at a limit, may still have the approved analysis: neither is a miss.
         VsProject = MissedApproved.Count > 0 ? (Result == "Skipped" ? "Not tried" : IsIncomplete ? "Not reached" : "Missed")
-            : Readings.Any(reading => reading.Grade == "disapproved") ? "Disapproved"
-            : Readings.Any(reading => reading.Grade == "approved") ? "Approved"
-            : Readings.Any(reading => reading.Grade == "candidate") ? "Candidate"
+            : Readings.Any(reading => reading.Grade == ReadingGrade.Disapproved) ? "Disapproved"
+            : Readings.Any(reading => reading.Grade == ReadingGrade.Approved) ? "Approved"
+            : Readings.Any(reading => reading.Grade == ReadingGrade.Candidate) ? "Candidate"
             : Readings.Count > 0 && grades is not null ? "No opinion"
             : "—";
 
@@ -345,19 +345,16 @@ public sealed class ParserReadingViewModel
         Text = string.Join(" + ", Morphs.Select(morph => morph.Form)) + " = " +
                string.Join(" + ", Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
         Grade = grade;
-        IsApproved = grade == "approved";
-        IsDisapproved = grade == "disapproved";
+        IsApproved = grade == ReadingGrade.Approved;
+        IsDisapproved = grade == ReadingGrade.Disapproved;
         IsMissed = grade is "missed" or "not-reached" or "not-tried";
         GradeLabel = grade switch
         {
-            "approved" => "Project ✓",
-            "disapproved" => "Disapproved",
+            ReadingGrade.Approved => "Project ✓",
             "missed" => "Missed",
             "not-reached" => "Not reached",
             "not-tried" => "Not tried",
-            "candidate" => "Candidate",
-            "no-opinion" => "No opinion",
-            _ => string.Empty,
+            _ => ReadingGradeLabels.Of(grade),
         };
     }
 
@@ -378,9 +375,9 @@ public sealed class ParserReadingViewModel
     /// <summary>The shared meaning behind <see cref="Grade"/>, so a reading is coloured like everything else.</summary>
     public Verdict Meaning => Grade switch
     {
-        "approved" => Verdict.Agrees,
-        "disapproved" => Verdict.Differs,
-        "candidate" => Verdict.Candidate,
+        ReadingGrade.Approved => Verdict.Agrees,
+        ReadingGrade.Disapproved => Verdict.Differs,
+        ReadingGrade.Candidate => Verdict.Candidate,
         "missed" => Verdict.NoResult,
         "not-reached" or "not-tried" => Verdict.Limit,
         _ => Verdict.New,

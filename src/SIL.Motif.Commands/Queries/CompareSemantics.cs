@@ -51,10 +51,10 @@ public static class CompareSemantics
         bool Built(string grade) => grades.Any(value => StringComparer.Ordinal.Equals(value, grade));
         var matched = standing switch
         {
-            ProjectStanding.Approved => Built("approved") && word.MissedApprovedCount == 0,
-            ProjectStanding.Candidate => Built("candidate"),
-            ProjectStanding.Rejected => Built("disapproved"),
-            _ => Built("approved") || Built("candidate") || Built("disapproved"),
+            ProjectStanding.Approved => Built(ReadingGrade.Approved) && word.MissedApprovedCount == 0,
+            ProjectStanding.Candidate => Built(ReadingGrade.Candidate),
+            ProjectStanding.Rejected => Built(ReadingGrade.Disapproved),
+            _ => Built(ReadingGrade.Approved) || Built(ReadingGrade.Candidate) || Built(ReadingGrade.Disapproved),
         };
         return new ComparePlacement(standing, matched ? CompareColumnKind.Match : CompareColumnKind.NoMatch);
     }
