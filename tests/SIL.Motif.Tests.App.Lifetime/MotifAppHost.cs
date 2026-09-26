@@ -8,6 +8,7 @@ using Avalonia.Headless;
 using Avalonia.Threading;
 using SIL.Motif.App.Composition;
 using SIL.Motif.Commands;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Lifetime;
@@ -17,7 +18,8 @@ namespace SIL.Motif.Tests.App.Lifetime;
 /// process allows, never run at once, and end with the process's one real exit.
 /// </summary>
 [CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class MotifAppHostCollection : ICollectionFixture<MotifAppHostExit>
+public sealed class MotifAppHostCollection : ICollectionFixture<MotifAppHostExit>,
+    ICollectionFixture<PristineProjectFixture>
 {
     public const string Name = "Real App startup (one Avalonia setup per process)";
 }
@@ -86,6 +88,8 @@ internal sealed class MotifAppHost
             Exception? failure = null;
             try
             {
+                // Awaits in the work must resume on this thread, which is the only one Avalonia accepts.
+                AvaloniaSynchronizationContext.InstallIfNeeded();
                 Pump(step, timeout, work());
             }
             catch (Exception exception)
@@ -124,6 +128,7 @@ internal sealed class MotifAppHost
                 .UseSkia()
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                 .SetupWithLifetime(_lifetime);
+            AvaloniaSynchronizationContext.InstallIfNeeded();
             _session = CurrentApp.Session;
         }
         else

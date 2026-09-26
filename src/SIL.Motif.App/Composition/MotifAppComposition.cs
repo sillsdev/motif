@@ -9,7 +9,10 @@ namespace SIL.Motif.App.Composition;
 /// <param name="ManagedRoot">The worker root every command the window runs uses.</param>
 /// <param name="ParserPath">The parser the window's commands run, or <see langword="null"/> for none.</param>
 /// <param name="RunnerLauncher">Starts the job runner, for the same root and parser.</param>
-/// <param name="TimeProvider">The clock every timestamp the window shows is read from.</param>
+/// <param name="TimeProvider">
+/// The clock read for when an Assessment completed and when a Handoff was written. The shell's
+/// FieldWorks-freshness sentence and the grammar check's elapsed time read the system clock instead.
+/// </param>
 /// <param name="ProjectPicker">Chooses a project, or <see langword="null"/> for the native dialog.</param>
 /// <param name="HandoffFolderPicker">Chooses a Handoff folder, or <see langword="null"/> for the native dialog.</param>
 /// <param name="FileDragSource">Drags Handoff files out, or <see langword="null"/> for the native drag.</param>

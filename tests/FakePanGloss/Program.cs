@@ -34,6 +34,12 @@ internal static class Program
 
     internal const string EnvironmentFileName = "_pangloss-environment.json";
 
+    /// <summary>Beside a copy of the fake, asks it to log every command it runs to <see cref="InvocationsFileName"/>.</summary>
+    internal const string RecordInvocationsSentinel = "_fake-pangloss-record-invocations";
+
+    /// <summary>One command name per line, for each invocation of a copy that carries the sentinel.</summary>
+    internal const string InvocationsFileName = "_pangloss-invocations.log";
+
     private sealed record Flag(string Name, bool TakesValue);
 
     private sealed record Command(string Name, string[] Positionals, Flag[] Flags, Func<string[], int> Run);
@@ -171,8 +177,8 @@ internal static class Program
                 }
                 else File.WriteAllText(outPath, BatchTsv(behaviour, words));
                 if (analysesPath is not null) File.WriteAllText(analysesPath, BatchMorphology(behaviour, words));
-                // Motif digests the cache and never reads it, so any bytes stand in for PanGloss's SQLite.
-                if (cachePath is not null) File.WriteAllText(cachePath, "fake stats cache");
+                if (cachePath is not null)
+                    StatsCache.Write(cachePath, words.Where(word => !string.IsNullOrWhiteSpace(word)).ToArray());
                 return behaviour.ExitCode;
         }
     }
@@ -434,6 +440,9 @@ internal static class Program
 
     private static void RecordArgv(string? directory, string[] args)
     {
+        // Only a copy carrying the sentinel logs, so the shared fake never accumulates a record.
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, RecordInvocationsSentinel)))
+            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, InvocationsFileName), args[0] + "\n");
         var serialized = JsonSerializer.Serialize(args);
         if (directory is null) return;
         File.WriteAllText(Path.Combine(directory, ArgvFileName), serialized);

@@ -7,7 +7,8 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// </summary>
 public sealed class FixedClock(DateTimeOffset now, TimeZoneInfo? localTimeZone = null) : TimeProvider
 {
-    private DateTimeOffset _now = now;
+    // TimeProvider.GetLocalNow shifts GetUtcNow's clock time by the zone offset, so it must carry offset zero.
+    private DateTimeOffset _now = now.ToUniversalTime();
 
     public override DateTimeOffset GetUtcNow() => _now;
 
