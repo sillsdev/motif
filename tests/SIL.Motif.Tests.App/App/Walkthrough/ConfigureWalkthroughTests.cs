@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Tests.TestFixtures;
@@ -12,7 +13,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void ConfigureReopensSetupAfterItWasSkippedAndAfterARefresh()
+    public void ConfigureReopensSetupAfterSkipAndRefresh()
     {
         using var project = new WalkthroughProject(pristine);
         var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
@@ -31,6 +32,61 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
 
             RefreshAfterAFieldWorksSave(walkthrough, project, deadline);
             ConfigureAndExpectSetup(walkthrough, "after a Refresh");
+            return Task.CompletedTask;
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    [Fact]
+    public void ConfigureOpensFromTheKeyboard()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
+                parserPath: FakeParser.ExecutablePath);
+            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
+            var setup = walkthrough.Workspace.Context.Setup!;
+
+            foreach (var (key, physicalKey) in new[] { (Key.Enter, PhysicalKey.Enter), (Key.Space, PhysicalKey.Space) })
+            {
+                walkthrough.PressKeyOnProjectMenuEntry("Configure the project", key, physicalKey);
+                Assert.True(setup.IsOpen, $"pressing {key} on Configure… did not reopen setup");
+                Assert.True(walkthrough.SetupDialogIsShown, $"pressing {key} opened setup, but it is not on screen");
+                Assert.Equal(0, setup.Step);
+                walkthrough.SkipSetup();
+            }
+            return Task.CompletedTask;
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    [Fact]
+    public void DoubleClickingConfigureOpensSetupOnce()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
+                parserPath: FakeParser.ExecutablePath);
+            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
+            var setup = walkthrough.Workspace.Context.Setup!;
+            var opened = 0;
+            setup.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(SetupViewModel.IsOpen) && setup.IsOpen) opened++;
+            };
+
+            var clicks = walkthrough.DoubleClickProjectMenuEntry("Configure the project");
+
+            Assert.True(clicks >= 1, "the double-click never clicked Configure…");
+            Assert.Equal(1, opened);
+            Assert.True(walkthrough.SetupDialogIsShown, "double-clicking Configure… did not leave setup on screen");
+            Assert.Equal(0, setup.Step);
+            walkthrough.SkipSetup();
+            Assert.False(setup.IsOpen);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
@@ -102,6 +158,28 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
                 text => text.Text == "Texts, added words and limits" && text.IsEffectivelyVisible);
             walkthrough.CloseProjectMenu();
             ConfigureAndExpectSetup(walkthrough, "after the first Refresh");
+            return Task.CompletedTask;
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    [Fact]
+    public void OpenRecentClosesTheProjectMenu()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            using (var first = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
+                       parserPath: FakeParser.ExecutablePath))
+                WalkthroughSteps.ChooseProjectAndCaptureBaseline(first, deadline);
+
+            using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
+                parserPath: FakeParser.ExecutablePath);
+            restarted.Show();
+            restarted.LoadKnownProjects();
+            restarted.SelectKnownProject(project.FwDataPath);
+            Assert.Equal(project.FwDataPath, restarted.Workspace.Context.ProjectPath);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }

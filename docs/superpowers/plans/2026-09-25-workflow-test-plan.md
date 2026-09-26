@@ -195,8 +195,10 @@ it.*
 | A limit that is not a positive number, or a step limit that is not a whole number, cannot be saved | U | `SetupLimitsTests.ALimitThatIsNotAPositiveWholeNumberCannotBeSaved` | No | fake | new |
 | Configure shows the stored Texts and limits; changing them makes the next run use the new ones | I | `SetupRealClientTests.ConfigureShowsTheStoredChoicesAndTheNextRunUsesTheNewOnes` | No | `SeededProject`, `FakePanGloss` | new |
 | A Refresh keeps a checked Text the new Baseline still holds | U | `HandoffWorkspaceViewModelTests.RefreshingKeepsACheckedTextTheNewBaselineStillHoldsAndTheOtherSources` | No | fake | keep |
-| Clicking Configure… in the project menu reopens setup after Skip and after a Refresh | S | `ConfigureWalkthroughTests.ConfigureReopensSetupAfterItWasSkippedAndAfterARefresh` | No | `SeededProject`, `FakePanGloss` | new |
+| Clicking Configure… in the project menu reopens setup after Skip and after a Refresh | S | `ConfigureWalkthroughTests.ConfigureReopensSetupAfterSkipAndRefresh` | No | `SeededProject`, `FakePanGloss` | new |
 | Clicking Configure… shows the saved Selection after Finish, a Refresh, and reopening from Open recent | S | `ConfigureWalkthroughTests.ConfigureShowsTheSavedSelectionAfterFinishARefreshAndARestart` | No | `SeededProject`, `FakePanGloss` | new |
+| Configure… opens once from Enter, from Space, and from a double-click | S | `ConfigureWalkthroughTests.ConfigureOpensFromTheKeyboard`, `DoubleClickingConfigureOpensSetupOnce` | No | `SeededProject`, `FakePanGloss` | new |
+| Choosing a project from Open recent opens it and closes the project menu | S | `ConfigureWalkthroughTests.OpenRecentClosesTheProjectMenu` | No | `SeededProject`, `FakePanGloss` | new |
 | Before the first Refresh, Configure… is unavailable and says to refresh first | S | `ConfigureWalkthroughTests.BeforeTheFirstRefreshConfigureIsUnavailableAndSaysToRefreshFirst` | No | `SeededProject`, `FakePanGloss` | new |
 | Configure opens with the saved values after Finish, Skip, a Refresh and a reopen, and not before a Baseline | U | `WorkspaceShellViewModelTests.ConfigureAfter*`, `WithoutABaselineConfigureIsUnavailableAndSaysToRefreshFirst` | No | fake | new |
 

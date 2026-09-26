@@ -181,8 +181,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public Action? OpenConfiguration { get; set; }
 
     /// <summary>
-    /// Whether Configure has something to show: setup chooses Texts from the Baseline, so a project with none yet
-    /// offers Configure only once a Refresh has captured one.
+    /// Whether the project menu offers Configure: only once the open project has a Baseline, which a Refresh
+    /// captures. Pinned by `WithoutABaselineConfigureIsUnavailableAndSaysToRefreshFirst`.
     /// </summary>
     public bool CanConfigure => HasProject && Context.Baseline?.HasBaseline == true;
 

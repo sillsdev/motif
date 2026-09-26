@@ -80,12 +80,13 @@ public sealed partial class MainWindow : Window
             };
             ToolTip.SetTip(item, recent.FullFwDataPath);
             Avalonia.Automation.AutomationProperties.SetName(item, recent.AutomationName);
-            item.Click += (_, _) => HideProjectMenu();
+            // Handled too, as running its Command marks the Click handled: pinned by `OpenRecentClosesTheProjectMenu`.
+            item.AddHandler(MenuItem.ClickEvent, (_, _) => HideProjectMenu(), handledEventsToo: true);
             menu.Items.Add(item);
         }
     }
 
-    // Hiding unparents the menu, which unbinds the entry's Command before the Button runs it, so hide after.
+    // Hide after the Command runs, as hiding unbinds it: pinned by `ConfigureReopensSetupAfterSkipAndRefresh`.
     private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(HideProjectMenu);
 
     private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
