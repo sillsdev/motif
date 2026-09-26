@@ -31,6 +31,13 @@ namespace SIL.Motif.App.Services;
 /// because the parser reads that same file. The store-only reads do not, the Text words among them: those are
 /// stored with the Baseline, so a superseded read neither waits behind LibLCM work nor holds it up.
 /// </para>
+/// <para>
+/// A call that has to wait for another stops waiting as soon as its token is cancelled and returns a
+/// <c>project.wait-cancelled</c> refusal without starting its work, pinned by
+/// <c>AdapterCancellationTests.ACallWaitingForTheProjectIsCancelledPromptlyAndNeverStarts</c>. A call that finds
+/// the project free starts at once, so a command handed an already-cancelled token still answers with its own
+/// cancellation refusal, or, when it takes no token, simply completes.
+/// </para>
 /// </remarks>
 public sealed partial class CommandClient : ICommandClient
 {
@@ -58,7 +65,7 @@ public sealed partial class CommandClient : ICommandClient
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => BaselineCaptureCommand.Capture(request, _managedRoot));
+        OneAtATime(() => BaselineCaptureCommand.Capture(request, _managedRoot), cancellationToken);
 
     public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
         Task.Run(() => KnownProjectsQuery.List(_managedRoot));
@@ -69,7 +76,7 @@ public sealed partial class CommandClient : ICommandClient
 
     public Task<CommandOutcome<TextInventoryResponse>> ListTextsAsync(
         TextInventoryRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => TextInventoryQuery.Query(request));
+        OneAtATime(() => TextInventoryQuery.Query(request), cancellationToken);
 
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
@@ -77,7 +84,7 @@ public sealed partial class CommandClient : ICommandClient
         ArgumentNullException.ThrowIfNull(progress);
         return AfterStartGate(GatedCommand.Assess, () => OneAtATime(
             () => AssessCommand.Assess(request, _managedRoot, _options.ParserPath,
-                progress.Report, cancellationToken)));
+                progress.Report, cancellationToken), cancellationToken));
     }
 
     public Task<CommandOutcome<StatsCommandResponse>> StatsAsync(
@@ -90,7 +97,7 @@ public sealed partial class CommandClient : ICommandClient
         ArgumentNullException.ThrowIfNull(progress);
         return AfterStartGate(GatedCommand.Handoff, () => OneAtATime(
             () => HandoffCommand.Handoff(request, _managedRoot, _options.ParserPath,
-                progress.Report, cancellationToken)));
+                progress.Report, cancellationToken), cancellationToken));
     }
 
     private async Task<T> AfterStartGate<T>(GatedCommand command, Func<Task<T>> run)
@@ -99,30 +106,21 @@ public sealed partial class CommandClient : ICommandClient
         return await run().ConfigureAwait(false);
     }
 
-    // Waits without the caller's token, so a cancelled wait still reaches the command's own typed refusal.
-    private Task<T> OneAtATime<T>(Func<T> work) => Task.Run(async () =>
-    {
-        await _projectGate.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            return work();
-        }
-        finally
-        {
-            _projectGate.Release();
-        }
-    });
-
-    private Task<T> OneAtATime<T>(Func<T> work, CancellationToken cancellationToken, Func<T> cancelled) =>
+    // A free project starts the work at once, so a command handed a cancelled token reports that itself.
+    private Task<CommandOutcome<T>> OneAtATime<T>(Func<CommandOutcome<T>> work, CancellationToken cancellationToken)
+        where T : class =>
         Task.Run(async () =>
         {
-            try
+            if (!_projectGate.Wait(0))
             {
-                await _projectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return cancelled();
+                try
+                {
+                    await _projectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return WaitCancelled<T>();
+                }
             }
 
             try
@@ -134,4 +132,8 @@ public sealed partial class CommandClient : ICommandClient
                 _projectGate.Release();
             }
         });
+
+    private static CommandOutcome<T> WaitCancelled<T>() where T : class =>
+        CommandOutcome<T>.Refused(new Refusal(
+            "project.wait-cancelled", FailureReason.Cancelled, "Waiting to use the project was cancelled."));
 }

@@ -14,7 +14,7 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
         string projectPath, CancellationToken cancellationToken) =>
-        Task.Run(() => CurrentEvidenceQuery.ReadCurrentEvidence(projectPath), cancellationToken);
+        Task.Run(() => CurrentEvidenceQuery.ReadCurrentEvidence(projectPath));
 
     public Task<CommandOutcome<TimingResponse>> TimingAsync(
         TimingRequest request, CancellationToken cancellationToken) =>
@@ -26,11 +26,11 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<GrammarCheckResponse>> CheckGrammarAsync(
         GrammarCheckRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => GrammarCheckQuery.Query(request, _options.ParserPath, cancellationToken));
+        OneAtATime(() => GrammarCheckQuery.Query(request, _options.ParserPath, cancellationToken), cancellationToken);
 
     public Task<CommandOutcome<StoredGrammarCheckResponse>> ReadStoredGrammarCheckAsync(
         GrammarCheckRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => StoredGrammarCheckQuery.Query(request), cancellationToken);
+        Task.Run(() => StoredGrammarCheckQuery.Query(request));
 
     public Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
         TextWordsRequest request, CancellationToken cancellationToken) =>
@@ -38,6 +38,6 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => WordTraceQuery.Query(request, _options.ParserPath, cancellationToken));
+        OneAtATime(() => WordTraceQuery.Query(request, _options.ParserPath, cancellationToken), cancellationToken);
 
 }
