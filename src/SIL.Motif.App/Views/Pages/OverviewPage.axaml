@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:queries="clr-namespace:SIL.Motif.Commands.Queries;assembly=SIL.Motif.Commands"
@@ -25,7 +26,8 @@
           </Grid>
           <UniformGrid Classes="overviewCounts" Rows="1" Columns="5">
             <StackPanel Classes="overviewCount">
-              <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding SelectionWordCountText}" />
+              <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding SelectionWordCountText}"
+                                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSelectionWordCount}" />
               <views:CopyableTextBlock Classes="overviewMuted" Text="words in Selection" />
             </StackPanel>
             <StackPanel Classes="overviewCount">

@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SIL.Motif.App"
         xmlns:views="clr-namespace:SIL.Motif.App.Views"
         xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         x:Class="SIL.Motif.App.Views.MainWindow"
@@ -24,7 +25,8 @@
         <Button x:Name="ProjectMenuButton" DockPanel.Dock="Left" VerticalAlignment="Center"
                 Theme="{DynamicResource OutlineButton}" Classes="Tertiary projectMenu"
                 IsEnabled="{Binding ProjectSwitchEnabled}"
-                AutomationProperties.Name="Project menu">
+                AutomationProperties.Name="Project menu"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectMenu}">
           <StackPanel Classes="topBarGroup" Orientation="Horizontal">
             <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />
             <TextBlock Classes="disclosure" Text="&#x25BE;" VerticalAlignment="Center" />
@@ -33,7 +35,8 @@
             <Flyout Placement="BottomEdgeAlignedLeft">
               <StackPanel Classes="menu">
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
-                        Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="Select a new project">
+                        Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="Select a new project"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.SelectNewProject}">
                   <StackPanel>
                     <TextBlock Classes="menuTitle" Text="Select new&#x2026;" />
                     <TextBlock Classes="menuDetail" Text="Choose another .fwdata file" />
@@ -81,6 +84,7 @@
           <Button Content="Refresh" Command="{Binding RefreshCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding !FreshnessIsBusy}" AutomationProperties.Name="Refresh the project"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.RefreshProject}"
                   ToolTip.Tip="Capture a new Baseline from FieldWorks' last save, then assess the Selection against it." />
         </StackPanel>
 
