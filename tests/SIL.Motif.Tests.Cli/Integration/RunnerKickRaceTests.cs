@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Text.Json;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Integration;
@@ -47,18 +49,39 @@ public sealed class RunnerKickRaceTests : IDisposable
         Thread.Sleep(500);
         occupying.Dispose();
 
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-        string status;
-        do
+        // Bounded by progress, not by how long a loaded machine takes to capture a Baseline.
+        var claimDeadline = DateTime.UtcNow + ClaimBound;
+        var finishDeadline = DateTime.UtcNow + FinishBound;
+        JobRecord job;
+        while (!JobStateMachine.IsTerminal((job = JobOf(project, jobId)).Status))
         {
-            status = StatusOf(project, jobId);
-            if (status is "completed" or "failed" or "cancelled") break;
+            var now = DateTime.UtcNow;
+            Assert.False(job.Status == JobStatus.Queued && now > claimDeadline,
+                "No runner claimed the job within " + ClaimBound + ": " + Describe(job));
+            Assert.False(job.Status == JobStatus.Running && HeartbeatAge(job, now) > StaleHeartbeat,
+                "The runner that claimed the job stopped renewing it: " + Describe(job));
+            Assert.True(now < finishDeadline, "The job did not finish within " + FinishBound + ": " + Describe(job));
             Thread.Sleep(50);
-        } while (DateTime.UtcNow < deadline);
-
-        Assert.NotEqual("queued", status);
-        Assert.NotEqual("running", status);
+        }
     }
+
+    private static readonly TimeSpan ClaimBound = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan FinishBound = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan StaleHeartbeat = TimeSpan.FromSeconds(30);
+
+    private static JobRecord JobOf(string project, string jobId)
+    {
+        using var database = ProjectMotifDatabase.Open(project);
+        return new JobRepository(database).Get(jobId) ?? throw new InvalidOperationException(jobId + " is gone.");
+    }
+
+    private static TimeSpan HeartbeatAge(JobRecord job, DateTime now) => job.HeartbeatUtc is { } beat
+        ? now - DateTime.Parse(beat, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
+        : TimeSpan.MaxValue;
+
+    private static string Describe(JobRecord job) =>
+        JobStatusJson.ToWire(job.Status) + ", owner " + (job.OwnerId ?? "none") + ", attempt " + job.Attempt +
+        ", created " + job.CreatedUtc + ", heartbeat " + (job.HeartbeatUtc ?? "never");
 
     [Fact]
     public void ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked()
@@ -71,14 +94,6 @@ public sealed class RunnerKickRaceTests : IDisposable
         Assert.Equal(0, run.ExitCode);
         Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(8),
             $"Reading the CLI's output took {elapsed.Elapsed}: the kicked runner held its standard handles.");
-    }
-
-    private string StatusOf(string project, string jobId)
-    {
-        var shown = Cli($"jobs show {jobId} --project \"{project}\" --json");
-        Assert.Equal(0, shown.ExitCode);
-        using var document = JsonDocument.Parse(shown.Output);
-        return document.RootElement.GetProperty("status").GetString()!;
     }
 
     /// Runs the real CLI with the kick enabled, sharing this test's isolated root and runner namespace.
@@ -101,11 +116,17 @@ public sealed class RunnerKickRaceTests : IDisposable
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        var output = outputTask.GetAwaiter().GetResult();
-        var error = errorTask.GetAwaiter().GetResult();
-        Assert.True(process.WaitForExit(120000), "The CLI did not exit within its bound.");
-        return new CliRun(process.ExitCode, output, error);
+        // One bound over exit and both drains: a handle held open blocks a drain as surely as a hung exit.
+        if (!Task.WhenAll(outputTask, errorTask, process.WaitForExitAsync()).Wait(CliBound))
+        {
+            try { process.Kill(entireProcessTree: true); }
+            catch (InvalidOperationException) { }
+            Assert.Fail("'motif " + arguments + "' did not exit and close its output within " + CliBound + ".");
+        }
+        return new CliRun(process.ExitCode, outputTask.Result, errorTask.Result);
     }
+
+    private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
 
