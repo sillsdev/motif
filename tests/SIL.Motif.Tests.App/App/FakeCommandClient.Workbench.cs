@@ -65,6 +65,10 @@ public sealed partial class FakeCommandClient
     public void ReadCurrentEvidenceCompletesWith(CurrentEvidenceSnapshot snapshot) =>
         _currentEvidence = (_, _) => Completed(snapshot);
 
+    public void OnReadCurrentEvidence(
+        Func<string, CancellationToken, Task<CommandOutcome<CurrentEvidenceSnapshot>>> behavior) =>
+        _currentEvidence = behavior;
+
     public void ProjectHistoryIs(ProjectHistoryResponse response) => OnProjectHistory((_, _) => Completed(response));
 
     public void OnCheckGrammar(
