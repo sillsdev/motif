@@ -16,6 +16,10 @@ namespace SIL.Motif.App.Composition;
 /// <param name="ProjectPicker">Chooses a project, or <see langword="null"/> for the native dialog.</param>
 /// <param name="HandoffFolderPicker">Chooses a Handoff folder, or <see langword="null"/> for the native dialog.</param>
 /// <param name="FileDragSource">Drags Handoff files out, or <see langword="null"/> for the native drag.</param>
+/// <param name="Clipboard">Takes what a person copies, or <see langword="null"/> for the window's own clipboard.</param>
+/// <param name="DiagnosticFilePicker">
+/// Opens and saves diagnostic JSON, or <see langword="null"/> for the native dialogs.
+/// </param>
 /// <param name="RememberBounds">
 /// Whether the window restores and saves its size and place in the person's settings; off unless installed,
 /// so a composed test window never writes the person's settings.
@@ -28,6 +32,8 @@ public sealed record MotifAppOptions(
     IProjectPicker? ProjectPicker = null,
     IHandoffFolderPicker? HandoffFolderPicker = null,
     IFileDragSource? FileDragSource = null,
+    IClipboard? Clipboard = null,
+    IDiagnosticFilePicker? DiagnosticFilePicker = null,
     bool RememberBounds = false)
 {
     /// <summary>
@@ -73,7 +79,9 @@ public static class MotifAppComposition
             options.HandoffFolderPicker ?? nativePickers,
             options.FileDragSource ?? nativePickers,
             commandClient,
-            options.TimeProvider);
+            options.TimeProvider,
+            options.Clipboard ?? new AvaloniaClipboard(window),
+            options.DiagnosticFilePicker ?? nativePickers);
         window.Compose(workspace);
         return new MotifAppCompositionResult(window, workspace);
     }

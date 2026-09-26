@@ -21,6 +21,7 @@ public sealed class WalkthroughWindow : IDisposable
     private readonly ScriptedProjectPicker _projectPicker;
     private readonly ScriptedFolderPicker _folderPicker;
     private readonly RecordingDragSource _dragSource;
+    private readonly ScriptedDiagnosticFiles _diagnosticFiles = new();
     private readonly InProcessRunnerLauncher? _ownedRunner;
 
     /// <summary>Composes the real window over <paramref name="managedRoot"/> with scripted desktop inputs.</summary>
@@ -29,10 +30,13 @@ public sealed class WalkthroughWindow : IDisposable
     /// <param name="runnerLauncher">
     /// Starts queued work; <see langword="null"/> drains it in this process with the same root and parser.
     /// </param>
+    /// <param name="clipboard">
+    /// Takes what the window copies; <see langword="null"/> keeps the headless window's own clipboard.
+    /// </param>
     public WalkthroughWindow(
         string managedRoot, string projectPath, string? folderPath = null,
         ICommandStartGate? startGate = null, TimeProvider? timeProvider = null,
-        string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null)
+        string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null, IClipboard? clipboard = null)
     {
         _projectPicker = new ScriptedProjectPicker(projectPath);
         _folderPicker = new ScriptedFolderPicker(folderPath);
@@ -48,7 +52,9 @@ public sealed class WalkthroughWindow : IDisposable
             timeProvider ?? TimeProvider.System,
             _projectPicker,
             _folderPicker,
-            _dragSource), startGate);
+            _dragSource,
+            clipboard,
+            _diagnosticFiles), startGate);
         Window = composition.Window;
         Workspace = composition.Workspace;
     }
@@ -58,6 +64,9 @@ public sealed class WalkthroughWindow : IDisposable
     public HandoffWorkspaceViewModel Workspace { get; }
 
     public IReadOnlyList<string> DraggedPaths => _dragSource.Paths;
+
+    /// <summary>The diagnostic open and save dialogs; an open with nothing scripted is cancelled.</summary>
+    public ScriptedDiagnosticFiles DiagnosticFiles => _diagnosticFiles;
 
     public string ProjectPath
     {

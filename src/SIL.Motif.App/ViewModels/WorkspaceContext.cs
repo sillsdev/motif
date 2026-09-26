@@ -73,7 +73,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 {
     public WorkspaceContext(
         SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
-        IFileDragSource dragSource, BaselineViewModel baseline, TimeProvider? clock = null)
+        IFileDragSource dragSource, BaselineViewModel baseline, TimeProvider? clock = null, IClipboard? clipboard = null,
+        IDiagnosticFilePicker? diagnosticFiles = null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -88,6 +89,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Commands = commands;
         FolderPicker = folderPicker;
         DragSource = dragSource;
+        Clipboard = clipboard ?? NoDesktopServices.Instance;
+        DiagnosticFiles = diagnosticFiles ?? NoDesktopServices.Instance;
         Clock = clock ?? TimeProvider.System;
         Assess.PropertyChanged += OnAssessPropertyChanged;
         Evidence.PropertyChanged += OnEvidencePropertyChanged;
@@ -124,6 +127,12 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>How a page lets a person drag files out of the window.</summary>
     public IFileDragSource DragSource { get; }
+
+    /// <summary>Where a page puts text a person copies; one composed without it fails each copy.</summary>
+    public IClipboard Clipboard { get; }
+
+    /// <summary>The dialogs a page opens and saves diagnostic JSON through; one composed without them fails each use.</summary>
+    public IDiagnosticFilePicker DiagnosticFiles { get; }
 
     /// <summary>The changes collected on any page and not applied yet; the Review changes page lists them.</summary>
     public ChangesViewModel Changes { get; }
