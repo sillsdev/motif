@@ -152,7 +152,7 @@ public sealed class ReviewPageModelTests
 
         await page.MeasureCommand.ExecuteAsync(null);
 
-        Assert.Equal("The check was cancelled.", page.MeasurementError);
+        Assert.Equal("The check was cancelled.", page.MeasurementRefusal?.Sentence);
     }
 
     [Fact]
@@ -174,14 +174,14 @@ public sealed class ReviewPageModelTests
 
         Assert.Equal("revision/two", context.Changes.Snapshot.Revision);
         Assert.Equal("The changes were updated while they were being checked. Check them again.",
-            page.MeasurementError);
+            page.MeasurementRefusal?.Sentence);
     }
 
     [Theory]
     [InlineData("trial.nothing-pending", "There are no changes to check.")]
     [InlineData("apply.nothing-pending", "Motif could not complete this request. Review the project and try again.")]
     public void CheckRefusalsUseTheWindowsWords(string code, string expected) =>
-        Assert.Equal(expected, UserFacingRefusal.MessageOf(new Refusal(code, FailureReason.Refused, "detail")));
+        Assert.Equal(expected, WindowRefusal.From(new Refusal(code, FailureReason.Refused, "detail")).Sentence);
 
     [Fact]
     public async Task ATimedOutApplyShowsThatTheCheckWasStopped()
@@ -201,7 +201,7 @@ public sealed class ReviewPageModelTests
         await page.ApplyCommand.ExecuteAsync(null);
 
         Assert.Equal("The check took too long and was stopped. Your changes are unchanged; try applying again.",
-            page.ApplyError);
+            page.ApplyRefusal?.Sentence);
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public sealed class ReviewPageModelTests
 
         Assert.True(cancelled);
         Assert.False(page.IsApplying);
-        Assert.Null(page.ApplyError);
+        Assert.Null(page.ApplyRefusal);
         Assert.Contains(fake.PendingLoadRequests,
             request => request.FwDataPath == @"C:\projects\two.fwdata");
     }
@@ -286,7 +286,7 @@ public sealed class ReviewPageModelTests
 
         Assert.Null(page.Receipt);
         Assert.False(page.HasReceipt);
-        Assert.Null(page.ApplyError);
+        Assert.Null(page.ApplyRefusal);
         Assert.False(context.Evidence.AppliedSinceRefresh);
     }
 
@@ -307,7 +307,7 @@ public sealed class ReviewPageModelTests
 
         await page.ApplyCommand.ExecuteAsync(null);
 
-        Assert.Contains("worse results", page.ApplyError);
+        Assert.Contains("worse results", page.ApplyRefusal?.Sentence);
     }
 
     [Fact]

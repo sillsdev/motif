@@ -24,8 +24,7 @@
         <Button Content="Cancel" Command="{Binding Trace.CancelCommand}"
                 AutomationProperties.Name="Cancel the trace" />
       </StackPanel>
-      <views:CopyableTextBlock Classes="error" Text="{Binding Trace.Refusal.Message}"
-                               IsVisible="{Binding Trace.Refusal, Converter={x:Static conv:ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+      <views:RefusalBlock DataContext="{Binding Trace.ShownRefusal}" />
 
       <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
             IsVisible="{Binding Trace.HasResult}">

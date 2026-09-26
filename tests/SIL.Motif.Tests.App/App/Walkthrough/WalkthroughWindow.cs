@@ -283,15 +283,15 @@ public sealed class WalkthroughWindow : IDisposable
         Pump();
         Assert.True(predicate(),
             $"{why}; baseline='{Workspace.Baseline.CapturedTimeText}', " +
-            $"baseline refusal='{Workspace.Baseline.RefusalMessage}', " +
+            $"baseline refusal='{Workspace.Baseline.ShownRefusal?.Sentence}', " +
             $"selection empty='{Workspace.Selection.TextsEmptyMessage}', " +
-            $"selection refusal='{Workspace.Selection.RefusalMessage}', " +
+            $"selection refusal='{Workspace.Selection.ShownRefusal?.Sentence}', " +
             $"Assess.State='{Workspace.Assess.State}', " +
             $"Assess.Refusal?.Message='{Workspace.Assess.Refusal?.Message}', " +
             $"Assess.Progress='{Workspace.Assess.Progress}', " +
             $"Refresh.IsRunning='{Workspace.RefreshCommand.IsRunning}', " +
             $"Overview.loaded='{Workspace.PageModel<OverviewPageModel>().Overview is not null}', " +
-            $"Overview.refusal='{Workspace.PageModel<OverviewPageModel>().OverviewRefusalMessage}', " +
+            $"Overview.refusal='{Workspace.PageModel<OverviewPageModel>().OverviewRefusal?.Sentence}', " +
             $"Handoff.State='{Workspace.PageModel<AiHandoffPageModel>().Handoff.State}', " +
             $"Handoff.Refusal?.Message='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Message}', " +
             $"Handoff.Progress='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Progress}', " +

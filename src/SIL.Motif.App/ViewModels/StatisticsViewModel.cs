@@ -148,7 +148,11 @@ public sealed partial class StatisticsViewModel : ObservableObject
     private bool _isStale;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShownRefusal))]
     private Refusal? _refusal;
+
+    /// <summary>The current refusal in the window's words, with the command's own account under Details.</summary>
+    public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
 
     /// <summary>PanGloss's rendered statistics summary, set by whoever ran the producing Assessment.</summary>
     [ObservableProperty]

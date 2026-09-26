@@ -56,6 +56,7 @@ public sealed partial class GrammarViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowNoFindings))]
     [NotifyPropertyChangedFor(nameof(ShowFindings))]
     [NotifyPropertyChangedFor(nameof(SummaryText))]
+    [NotifyPropertyChangedFor(nameof(ShownRefusal))]
     private Refusal? _refusal;
 
     [ObservableProperty]
@@ -90,9 +91,12 @@ public sealed partial class GrammarViewModel : ObservableObject
     public bool ShowNoFindings => !IsLoading && HasChecked && Refusal is null && HasBaseline && !Warnings.HasAny;
     public bool ShowFindings => !IsLoading && HasChecked && Refusal is null && HasBaseline && Warnings.HasAny;
 
+    /// <summary>The current refusal in the window's words, with the command's own account under Details.</summary>
+    public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
+
     /// <summary>What the Grammar page shows for this check.</summary>
     public string SummaryText => IsLoading ? "Checking grammar..."
-        : Refusal is { } refusal ? refusal.Message
+        : ShownRefusal is { } refusal ? refusal.Sentence
         : !HasChecked ? "Not checked yet"
         : !HasBaseline ? "Capture a Baseline first"
         : Warnings.HasAny ? (Warnings.TotalCount == 1 ? "1 finding" : $"{Warnings.TotalCount} findings")

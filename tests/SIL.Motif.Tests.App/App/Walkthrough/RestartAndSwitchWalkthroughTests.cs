@@ -86,8 +86,8 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                     WalkthroughSteps.Remaining(deadline),
                     "capturing a Baseline for the held second project did not show setup");
                 restartedWalkthrough.SkipSetup();
-                Assert.Null(restartedWalkthrough.Workspace.Baseline.RefusalMessage);
-                Assert.Null(restartedWalkthrough.Workspace.Selection.RefusalMessage);
+                Assert.Null(restartedWalkthrough.Workspace.Baseline.ShownRefusal);
+                Assert.Null(restartedWalkthrough.Workspace.Selection.ShownRefusal);
                 Assert.True(File.Exists(secondProject.FwDataPath + ".lock"));
                 Assert.Equal(
                     SeededProject.TextTitle,

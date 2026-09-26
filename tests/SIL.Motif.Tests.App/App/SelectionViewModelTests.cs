@@ -196,7 +196,7 @@ public sealed class SelectionViewModelTests
         await viewModel.SetProjectAsync(ProjectPath);
 
         Assert.Empty(viewModel.Texts);
-        Assert.Equal(refusal.Message, viewModel.RefusalMessage);
+        Assert.Contains(refusal.Message, viewModel.ShownRefusal!.Details);
     }
 
     [Fact]

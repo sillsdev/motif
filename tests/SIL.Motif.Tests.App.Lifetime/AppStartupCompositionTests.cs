@@ -119,7 +119,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 await Until(() => workspace.Baseline.HasBaseline,
                     () => "the chosen project did not open with its Baseline: project " +
                         workspace.Context.ProjectPath + ", Baseline " + workspace.Baseline.HasBaseline + " (" +
-                        workspace.Baseline.RefusalMessage + ")");
+                        workspace.Baseline.ShownRefusal?.Sentence + ")");
                 Assert.NotEqual(true, workspace.Context.Setup?.IsOpen);
 
                 workspace.Selection.PastedWords = word;
@@ -146,7 +146,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 await Until(() => review.MeasureCommand.CanExecute(null), "the pending change did not reach Review");
                 Assert.Equal(draft, workspace.Context.Changes.Snapshot.DraftId);
                 await review.MeasureCommand.ExecuteAsync(null);
-                Assert.Null(review.MeasurementError);
+                Assert.Null(review.MeasurementRefusal);
                 Assert.True(review.CanApply, "The Trial did not run through the substituted runner and parser: " +
                     review.ApplyBlockReason);
                 Assert.True(FakeParser.Invocations(parser).Count(command => command == "batch") > windowRuns,

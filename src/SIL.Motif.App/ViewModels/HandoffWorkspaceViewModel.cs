@@ -177,7 +177,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
     public bool HasFreshness => Freshness != ProjectFreshness.NoProject;
 
     /// <summary>Whether the last Baseline capture was refused.</summary>
-    public bool HasRefreshRefusal => Baseline.RefusalMessage is not null;
+    public bool HasRefreshRefusal => Baseline.ShownRefusal is not null;
 
     /// <summary>The fixed sentence shown when Motif cannot open a chosen project.</summary>
     public string? OpenRefusalMessage { get; private set; }
@@ -391,7 +391,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
         {
             await Baseline.RefreshCommand.ExecuteAsync(null).ConfigureAwait(true);
             if (!IsCurrentRefresh(generation, projectPath)) return;
-            if (Baseline.RefusalMessage is not null) return;
+            if (Baseline.ShownRefusal is not null) return;
             await _reloadAfterRefresh.ConfigureAwait(true);
             if (!IsCurrentRefresh(generation, projectPath) || _refreshCancelled ||
                 !Assess.RunCommand.CanExecute(null)) return;
@@ -468,7 +468,7 @@ public sealed partial class HandoffWorkspaceViewModel : ObservableObject, IAsync
 
     private void PublishBaseline() => Context.Baseline = new WorkspaceBaseline(
         Baseline.HasBaseline, Baseline.CapturedTimeText, Baseline.SavedText, Baseline.CapturedAtText,
-        Baseline.HeldStatusText, Baseline.RefusalMessage)
+        Baseline.HeldStatusText, Baseline.ShownRefusal?.Sentence)
     {
         FieldWorksHeldProject = Baseline.FieldWorksHeldProject,
         SourceLastWriteUtc = Baseline.SourceLastWriteUtc,

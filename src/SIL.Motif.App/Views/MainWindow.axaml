@@ -110,7 +110,7 @@
       </Border>
       <Border Grid.Row="1" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
         <StackPanel>
-          <views:CopyableTextBlock Classes="error" Text="{Binding Baseline.RefusalMessage}" TextWrapping="Wrap" />
+          <views:RefusalBlock DataContext="{Binding Baseline.ShownRefusal}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>

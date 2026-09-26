@@ -20,8 +20,7 @@
             <StackPanel Grid.Column="1" Classes="overviewFingerprints" HorizontalAlignment="Right">
               <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding FingerprintSummary}" TextAlignment="Right" />
               <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding BaselineDetails}" TextAlignment="Right" />
-              <views:CopyableTextBlock Classes="error" Text="{Binding OverviewRefusalMessage}" TextWrapping="Wrap"
-                                       IsVisible="{Binding OverviewRefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+              <views:RefusalBlock DataContext="{Binding OverviewRefusal}" />
             </StackPanel>
           </Grid>
           <UniformGrid Classes="overviewCounts" Rows="1" Columns="5">
@@ -142,8 +141,7 @@
       <Expander Classes="overviewHistory" Header="Project history" AutomationProperties.Name="Project history">
         <StackPanel Classes="overviewHistoryContent">
           <views:CopyableTextBlock Classes="overviewMuted" Text="Loading history..." IsVisible="{Binding History.IsLoading}" />
-          <views:CopyableTextBlock Classes="error" Text="{Binding History.RefusalMessage}" TextWrapping="Wrap"
-                                   IsVisible="{Binding History.RefusalMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          <views:RefusalBlock DataContext="{Binding History.ShownRefusal}" />
           <views:CopyableTextBlock Classes="overviewMuted" Text="Nothing recorded for this project yet."
                                    IsVisible="{Binding !History.HasEntries}" />
           <ItemsControl ItemsSource="{Binding History.Entries}" AutomationProperties.Name="Project history entries">

@@ -50,7 +50,7 @@ public sealed class ProjectHistoryViewModelTests
         await history.SetProjectAsync(ProjectPath);
 
         Assert.False(history.HasEntries);
-        Assert.Equal(refusal.Message, history.RefusalMessage);
+        Assert.Contains(refusal.Message, history.ShownRefusal!.Details);
     }
 
     [Fact]

@@ -66,7 +66,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
     partial void OnIsLoadingChanged(bool value) => CancelCommand.NotifyCanExecuteChanged();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShownRefusal))]
     private Refusal? _refusal;
+
+    /// <summary>The current refusal in the window's words, with the command's own account under Details.</summary>
+    public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
 
     [ObservableProperty]
     private WordTraceResponse? _result;
