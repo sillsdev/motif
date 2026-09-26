@@ -100,11 +100,12 @@ public sealed class BaselineRepository
     // BaselinePublication is internal: every caller (BaselineCapturePublisher, BaselineRefresh) lives here too.
     internal BaselineRecord Record(
         string projectKey, BaselinePublication publication, DateTimeOffset publishedUtc,
-        DateTimeOffset sourceLastWriteUtc, ProjectSummarySnapshot? projectSummary = null,
-        TextWordsProjection? textWordsProjection = null)
+        DateTimeOffset sourceLastWriteUtc, TextWordsProjection textWordsProjection,
+        ProjectSummarySnapshot? projectSummary = null)
     {
         RequireProjectKey(projectKey);
         ArgumentNullException.ThrowIfNull(publication);
+        ArgumentNullException.ThrowIfNull(textWordsProjection);
         if (publishedUtc.Offset != TimeSpan.Zero)
             throw new ArgumentException("The publication time must be UTC.", nameof(publishedUtc));
         if (sourceLastWriteUtc.Offset != TimeSpan.Zero)
@@ -156,9 +157,8 @@ public sealed class BaselineRepository
                 projectSummary ?? ProjectSummarySnapshot.Empty, MotifJson.CreateOptions()));
             summaryCommand.ExecuteNonQuery();
         }
-        if (textWordsProjection is not null)
+        using (var textWordsCommand = connection.CreateCommand())
         {
-            using var textWordsCommand = connection.CreateCommand();
             textWordsCommand.Transaction = transaction;
             textWordsCommand.CommandText = """
                 INSERT INTO BaselineTextWords (ProjectKey, BundleDigest, ProjectionJson)

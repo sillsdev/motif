@@ -3,6 +3,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
@@ -141,7 +142,8 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         var token = new BaselineToken("project-identity", "sha256:" + new string('a', 64), "1",
             _now.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"), "sha256:" + new string('b', 64));
         runtime.Baselines.Record(runtime.WorkspaceKey,
-            new BaselinePublication(_root, Path.Combine(_root, "baseline.zip"), token), _now, _now);
+            new BaselinePublication(_root, Path.Combine(_root, "baseline.zip"), token), _now, _now,
+            TestTextWords.Empty);
     }
 
     /// Drives one baseline-refresh attempt straight to a bounded infrastructure failure.

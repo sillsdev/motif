@@ -2,6 +2,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
 using Xunit;
 
@@ -25,7 +26,7 @@ public sealed class BaselineRepositoryTests : IDisposable
         {
             var repository = new BaselineRepository(database);
             repository.Record("workspace", Publication("a", "sha256:" + new string('a', 64)),
-                DateTimeOffset.Parse("2026-08-23T12:00:00Z"), sourceLastWriteUtc);
+                DateTimeOffset.Parse("2026-08-23T12:00:00Z"), sourceLastWriteUtc, TestTextWords.Empty);
         }
 
         using var reopened = MotifDatabase.OpenOwned(
@@ -53,15 +54,15 @@ public sealed class BaselineRepositoryTests : IDisposable
         var first = Publication("first", "sha256:" + new string('a', 64));
         var second = Publication("second", "sha256:" + new string('b', 64));
         repository.Record("workspace", first, DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
-            DateTimeOffset.Parse("2026-08-23T11:00:00Z"));
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty);
         repository.Record("workspace", first, DateTimeOffset.Parse("2026-08-23T13:00:00Z"),
-            DateTimeOffset.Parse("2026-08-23T11:00:00Z"));
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty);
 
         Assert.Equal(DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
             repository.GetCurrent("workspace")!.PublishedUtc);
 
         repository.Record("workspace", second, DateTimeOffset.Parse("2026-08-23T14:00:00Z"),
-            DateTimeOffset.Parse("2026-08-23T13:30:00Z"));
+            DateTimeOffset.Parse("2026-08-23T13:30:00Z"), TestTextWords.Empty);
 
         var replaced = repository.GetCurrent("workspace")!;
         Assert.Equal(second.Token, replaced.Token);
@@ -75,7 +76,7 @@ public sealed class BaselineRepositoryTests : IDisposable
         var repository = new BaselineRepository(database);
         repository.Record("workspace", Publication("evidence", "sha256:" + new string('a', 64)),
             DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
-            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), Summary());
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
 
         var evidence = repository.GetCurrentEvidence("workspace");
 
@@ -104,7 +105,7 @@ public sealed class BaselineRepositoryTests : IDisposable
         var repository = new BaselineRepository(database);
         repository.Record("workspace", Publication("missing-summary", "sha256:" + new string('a', 64)),
             DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
-            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), Summary());
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
         Execute(database, "DELETE FROM BaselineSummaries WHERE ProjectKey = $project;", "workspace", null);
 
         var exception = Assert.Throws<InvalidDataException>(() => repository.GetCurrentEvidence("workspace"));
@@ -122,7 +123,7 @@ public sealed class BaselineRepositoryTests : IDisposable
         var repository = new BaselineRepository(database);
         repository.Record("workspace", Publication("malformed-summary", "sha256:" + new string('a', 64)),
             DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
-            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), Summary());
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
         Execute(database, "UPDATE BaselineSummaries SET SummaryJson = $summary WHERE ProjectKey = $project;",
             "workspace", summaryJson);
 
@@ -142,7 +143,7 @@ public sealed class BaselineRepositoryTests : IDisposable
         Assert.Throws<ArgumentException>(() => repository.Record("workspace",
             Publication("offset", "sha256:" + new string('a', 64)),
             DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
-            new DateTimeOffset(2026, 8, 23, 11, 0, 0, TimeSpan.FromHours(1))));
+            new DateTimeOffset(2026, 8, 23, 11, 0, 0, TimeSpan.FromHours(1)), TestTextWords.Empty));
     }
 
     public void Dispose()

@@ -109,7 +109,7 @@ public static class BaselineCaptureCommand
 
                     publication = new BaselineCapturePublisher(database, managedRoot)
                         .PublishAsync(project, bundlePath, declaredToken, copy.SourceLastWriteUtc,
-                            CancellationToken.None, projectSummary, textWordsProjection)
+                            textWordsProjection, CancellationToken.None, projectSummary)
                         .GetAwaiter().GetResult();
                 }
                 catch (InvalidDataException ex)
