@@ -46,7 +46,7 @@ public class KindDescriptionTsvWriterTests
             var text = File.ReadAllText(path);
 
             Assert.StartsWith(
-                "\"Class\"\t\"Field\"\t\"Label\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\r\n",
+                "\"Class\"\t\"Field\"\t\"Title\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\r\n",
                 text);
             Assert.Contains("\"A\"\t\"B\"\t\"C\"\t\"D\"\t\"unsourced\"\t\"\"\t\"\"\t\"\"\r\n", text);
         }
