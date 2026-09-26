@@ -1,10 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
-using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
-using SIL.Motif.Worker.Jobs;
-using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Integration;
@@ -50,38 +47,8 @@ public sealed class RunnerKickRaceTests : IDisposable
         occupying.Dispose();
 
         // Bounded by progress, not by how long a loaded machine takes to capture a Baseline.
-        var claimDeadline = DateTime.UtcNow + ClaimBound;
-        var finishDeadline = DateTime.UtcNow + FinishBound;
-        JobRecord job;
-        while (!JobStateMachine.IsTerminal((job = JobOf(project, jobId)).Status))
-        {
-            var now = DateTime.UtcNow;
-            Assert.False(job.Status == JobStatus.Queued && now > claimDeadline,
-                "No runner claimed the job within " + ClaimBound + ": " + Describe(job));
-            Assert.False(job.Status == JobStatus.Running && HeartbeatAge(job, now) > StaleHeartbeat,
-                "The runner that claimed the job stopped renewing it: " + Describe(job));
-            Assert.True(now < finishDeadline, "The job did not finish within " + FinishBound + ": " + Describe(job));
-            Thread.Sleep(50);
-        }
+        JobProgress.WaitUntilFinished(project, jobId, "The kicked runner's Baseline refresh");
     }
-
-    private static readonly TimeSpan ClaimBound = TimeSpan.FromSeconds(60);
-    private static readonly TimeSpan FinishBound = TimeSpan.FromMinutes(3);
-    private static readonly TimeSpan StaleHeartbeat = TimeSpan.FromSeconds(30);
-
-    private static JobRecord JobOf(string project, string jobId)
-    {
-        using var database = ProjectMotifDatabase.Open(project);
-        return new JobRepository(database).Get(jobId) ?? throw new InvalidOperationException(jobId + " is gone.");
-    }
-
-    private static TimeSpan HeartbeatAge(JobRecord job, DateTime now) => job.HeartbeatUtc is { } beat
-        ? now - DateTime.Parse(beat, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
-        : TimeSpan.MaxValue;
-
-    private static string Describe(JobRecord job) =>
-        JobStatusJson.ToWire(job.Status) + ", owner " + (job.OwnerId ?? "none") + ", attempt " + job.Attempt +
-        ", created " + job.CreatedUtc + ", heartbeat " + (job.HeartbeatUtc ?? "never");
 
     [Fact]
     public void ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked()
