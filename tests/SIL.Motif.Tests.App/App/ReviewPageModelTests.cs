@@ -138,6 +138,53 @@ public sealed class ReviewPageModelTests
         Assert.Contains("kept their approved analyses", page.NumbersText);
     }
 
+    [Theory]
+    [InlineData(new[] { "first" }, "Applying these changes would lose an approved analysis for 1 word: first. " +
+        "Change or remove the changes that cause it before applying.")]
+    [InlineData(new[] { "first", "second" }, "Applying these changes would lose an approved analysis for 2 words: " +
+        "first, second. Change or remove the changes that cause it before applying.")]
+    public async Task ALostApprovedAnalysisDisablesApplyBeforeAnyClick(string[] lost, string reason)
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first"), Change("other", "second")],
+            [new ChangeFit("kept", true, []), new ChangeFit("other", true, [])]));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+            FakeCommandClient.CompleteNumbers with { WordsLosingApprovedAnalysis = lost }));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        Assert.False(page.CanApply);
+        Assert.False(page.ApplyCommand.CanExecute(null));
+        Assert.Equal(reason, page.ApplyBlockReason);
+    }
+
+    [Fact]
+    public async Task ChangingTheChangesClearsTheLostAnalysisReasonUntilTheyAreCheckedAgain()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+            FakeCommandClient.CompleteNumbers with { WordsLosingApprovedAnalysis = ["first"] }));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        var raised = new List<string?>();
+        page.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
+            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
+        await context.Changes.ReloadAsync();
+
+        Assert.Equal("See what applying does to the numbers before applying.", page.ApplyBlockReason);
+        Assert.Contains(nameof(ReviewPageModel.ApplyBlockReason), raised);
+    }
+
     [Fact]
     public async Task ACancelledMeasurementShowsTheCancellationMessage()
     {

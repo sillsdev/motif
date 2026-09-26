@@ -28,6 +28,29 @@ public sealed class ReviewNumbersCommandTests
     }
 
     [Fact]
+    public void ReviewNumbersNameEveryWordThatLostAnApprovedAnalysis()
+    {
+        var before = Record("before", [CorrectnessFixture.Word("cat", true), CorrectnessFixture.Word("dog", true),
+            CorrectnessFixture.Word("fish", false)]);
+        var after = Record("after", [CorrectnessFixture.Word("cat", false), CorrectnessFixture.Word("dog", true),
+            CorrectnessFixture.Word("fish", false)]);
+
+        var numbers = ReviewNumbersCommand.Summarize(before, after, 3);
+
+        Assert.Equal(["cat"], numbers.WordsLosingApprovedAnalysis);
+    }
+
+    [Fact]
+    public void WithoutAnEarlierAssessmentNoWordIsSaidToLoseAnApprovedAnalysis()
+    {
+        var after = Record("after", [CorrectnessFixture.Word("cat", false)]);
+
+        var numbers = ReviewNumbersCommand.Summarize(null, after, 1);
+
+        Assert.Empty(numbers.WordsLosingApprovedAnalysis);
+    }
+
+    [Fact]
     public void DisjointReviewNumbersReportThatTheyCannotBeCompared()
     {
         var before = Record("before", [CorrectnessFixture.Word("dog", true)]);
