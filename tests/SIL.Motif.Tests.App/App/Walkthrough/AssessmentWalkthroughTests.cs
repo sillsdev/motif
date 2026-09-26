@@ -71,10 +71,17 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             walkthrough.Window.UpdateLayout();
             walkthrough.Click("Refresh statistics");
             var statisticsDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.Rows.Count > 0 &&
-                    walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecutionTask is not { IsCompleted: false },
-                WalkthroughSteps.Remaining(statisticsDeadline), "statistics did not load any rows");
+            var statistics = walkthrough.Workspace.PageModel<TimingPageModel>().Statistics;
+            try
+            {
+                walkthrough.WaitUntil(
+                    () => statistics.Rows.Count > 0 && statistics.LoadCommand.ExecutionTask is not { IsCompleted: false },
+                    WalkthroughSteps.Remaining(statisticsDeadline), "statistics did not load any rows");
+            }
+            catch (Xunit.Sdk.XunitException failure)
+            {
+                Assert.Fail(failure.Message + "; " + StatisticsState(statistics));
+            }
 
             Assert.True(walkthrough.Workspace.Baseline.HasAssessment);
             var projectLocator = new ProjectLocator(
@@ -92,4 +99,11 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
         }, WalkthroughSteps.Remaining(deadline));
     }
 
+    // Read when the wait gives up, so a failure tells a refusal from a load that never finished.
+    private static string StatisticsState(StatisticsViewModel statistics) =>
+        $"statistics refusal code='{statistics.Refusal?.Code}', " +
+        $"statistics refusal='{statistics.Refusal?.Message}', stale='{statistics.IsStale}', " +
+        $"fetched rows='{statistics.RowCount}', visible rows='{statistics.Rows.Count}', " +
+        $"load running='{statistics.LoadCommand.IsRunning}', " +
+        $"load task='{statistics.LoadCommand.ExecutionTask?.Status.ToString() ?? "never started"}'";
 }
