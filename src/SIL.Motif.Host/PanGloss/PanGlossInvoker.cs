@@ -358,7 +358,5 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
             started is { } current && current >= completed ? words[current] : null) : null;
     }
 
-    private static string MissingExecutableMessage =>
-        "Could not find the pangloss executable. Build it with `cargo build --release -p pg-cli` in the " +
-        $"PanGloss checkout, or set {PanGlossExecutable.PathVariable} to its path.";
+    private static string MissingExecutableMessage => PanGlossExecutable.NotFoundMessage;
 }
