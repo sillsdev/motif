@@ -56,6 +56,7 @@ public static class OverviewCommand
                     warningCounts.TotalCount, warningCounts.WarningCount, largestKind?.GroupName,
                     largestKind?.Count)
                 {
+                    ErrorCount = warningCounts.ErrorCount,
                     WarningCount = warningCounts.WarningCount,
                     InformationCount = warningCounts.InformationCount,
                     ByKind = warningCounts.ByKind,

@@ -1,0 +1,18 @@
+morpheme_id	form	allomorphs	gloss	category	slot_or_position	conditioning_environment	source
+N.STEM	lexical stem	lemma-specific	lexical base	stem	noun base	precedes the noun suffix sequence	YAE2019 §2.2; §4.2 Table 12; UM Turkish
+N.PL	-lAr	-lar, -ler	plural	suffix	noun slot 1	A is a after a back vowel and e after a front vowel	YAE2019 §2.1 Table 13; §4.2 Table 12; UM Turkish
+N.PSS.1PL	-(I)mIz	-ımız, -imiz, -umuz, -ümüz; -mız, -miz, -muz, -müz	possessive first-person plural	suffix	noun slot 2	the first I occurs after a consonant and is absent after a vowel; final I follows four-way harmony; follows plural	YAE2019 §2.1 Table 13; §4.2 Table 12; UM Turkish
+N.PSS.3SG	-(s)I	-ı, -i, -u, -ü; -sı, -si, -su, -sü	possessive third-person singular	suffix	noun slot 2	I follows four-way harmony; s appears after a vowel-final stem; precedes case	YAE2019 §2.1 Table 13; §4.2 Table 12; UM Turkish
+N.CASE.ACC	-(y)I	-ı, -i, -u, -ü; -yı, -yi, -yu, -yü	accusative	suffix	noun slot 3	I follows four-way harmony; y links vowel-final unpossessed stems	YAE2019 §2.1 Table 13; §2.2; UM Turkish
+N.CASE.DAT	-(y)A	-a, -e; -ya, -ye	dative	suffix	noun slot 3	A follows two-way harmony; y links vowel-final unpossessed stems	YAE2019 §2.1 Table 13; §4.3; UM Turkish
+N.CASE.LOC	-DA	-da, -de, -ta, -te	locative	suffix	noun slot 3	A follows two-way harmony; D is t after a voiceless consonant, otherwise d	YAE2019 §2.1 Table 13; UM Turkish
+N.CASE.ABL	-DAn	-dan, -den, -tan, -ten	ablative	suffix	noun slot 3	A follows two-way harmony; D is t after a voiceless consonant, otherwise d	YAE2019 §2.1 Table 13; UM Turkish
+N.CASE.GEN	-(n)In	-ın, -in, -un, -ün; -nın, -nin, -nun, -nün	genitive	suffix	noun slot 3	I follows four-way harmony; n links vowel-final unpossessed stems	YAE2019 §2.1 Table 13; §4.3; UM Turkish
+N.CASE.INST	-(y)lA	-la, -le; -yla, -yle	instrumental/with	suffix	noun slot 3	A follows two-way harmony; y links a vowel-final unpossessed stem	YAE2019 §2.1 Table 13; §2.2
+N.BUF.Y	y	y	linking consonant	infix	before vowel-initial case suffix	after a vowel-final unpossessed noun stem with accusative or dative	YAE2019 §2.1 Table 3; §4.3; UM Turkish
+N.BUF.N	n	n	linking consonant	infix	between third-person possessive and case	after third-person possessive before case suffix	YAE2019 §4.2 Table 12; §4.3; UM Turkish
+V.INF	-mAk	-mak, -mek	infinitive	suffix	verb citation form	A follows two-way harmony	YAE2019 §2; UM Turkish
+V.PROG	-(I)yor	-ıyor, -iyor, -uyor, -üyor; -yor after some vowel-final stems	progressive	suffix	verb stem before person marking	I follows four-way harmony; some vowel-final and a/e-final stems show stem alternation	YAE2019 §2; UM Turkish
+V.PST	-DI	-dı, -di, -du, -dü, -tı, -ti, -tu, -tü	past	suffix	verb stem before person marking	I follows four-way harmony; D becomes t after a voiceless consonant	YAE2019 §2; UM Turkish
+V.AGR.1SG	-(I)m / -m	-ım, -im, -um, -üm; -m	first-person singular agreement	suffix	after finite tense/aspect	high-vowel agreement follows four-way harmony; past first-person singular uses -m	YAE2019 §2; UM Turkish
+V.AGR.3SG	Ø	zero	third-person singular agreement	suffix	finite verb ending	no overt marker in the selected indicative forms	YAE2019 §2; UM Turkish

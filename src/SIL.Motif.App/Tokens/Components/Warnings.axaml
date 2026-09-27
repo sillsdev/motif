@@ -28,6 +28,9 @@
   <Style Selector=":is(TextBlock).warningSeverity.warning">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning}" />
   </Style>
+  <Style Selector=":is(TextBlock).warningSeverity.error">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+  </Style>
   <Style Selector=":is(TextBlock).warningSeverity.info">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
   </Style>

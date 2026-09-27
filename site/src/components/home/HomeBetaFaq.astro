@@ -1,0 +1,25 @@
+---
+const t = Astro.locals.t;
+---
+
+<section id="before-you-start" class="home-section home-beta-faq">
+	<h2>{t('home.beforeYouStart')}</h2>
+	<div class="home-card-grid home-card-grid--three">
+		<article class="home-beta-faq__card">
+			<h3>{t('home.betaFaqReadyQuestion')}</h3>
+			<p>{t('home.betaFaqReadyAnswer')}</p>
+		</article>
+		<article class="home-beta-faq__card">
+			<h3>{t('home.betaFaqOfficialQuestion')}</h3>
+			<p>{t('home.betaFaqOfficialAnswer')}</p>
+		</article>
+		<article class="home-beta-faq__card">
+			<h3>{t('home.betaFaqProblemQuestion')}</h3>
+			<p>
+				{t('home.betaFaqProblemBeforeLink')}
+				<a href="https://github.com/sillsdev/motif/issues">{t('home.betaFaqProblemLink')}</a>
+				{t('home.betaFaqProblemAfterLink')}
+			</p>
+		</article>
+	</div>
+</section>

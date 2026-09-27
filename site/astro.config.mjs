@@ -54,6 +54,7 @@ export default defineConfig({
 				},
 			],
 			components: {
+				Header: './src/components/home/BetaHeader.astro',
 				SiteTitle: './src/components/home/HomeSiteTitle.astro',
 				SocialIcons: './src/components/home/HomePrimaryNav.astro',
 				Sidebar: './src/components/home/HomeLearnSidebar.astro',

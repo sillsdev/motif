@@ -61,7 +61,7 @@ Half my plural nouns won’t parse, but only the ones with back vowels. What am 
 <div style="font-size: 13px; font-weight: 700; color: {{accent}}; margin-bottom: 6px">AI consultant, reading Motif’s Handoff</div>
 Every failing word stops at the plural. Your <em>-lar</em> allomorph has an environment that only allows front vowels before it. In FieldWorks, open the plural suffix and change that environment to back vowels — then Refresh in Motif to check.
 </div>
-<div style="font-size: 13px; color: #555555; padding-left: 4px">[Illustrative exchange — replace with a real one from the Turkish sample]</div>
+<div style="font-size: 13px; color: #555555; padding-left: 4px">[Illustrative exchange — replace with a real one from the synthetic Turkic-style sample]</div>
 </div>
 </section>
 
@@ -165,16 +165,16 @@ $ motif handoff Sample.fwdata --out handoff --no-assess
 <div style="display: flex; flex-direction: column; gap: 14px">
 <div style="font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">Faster parsing</div>
 <h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 38px; line-height: 1.15; font-weight: 700">A grammar that parses right can still parse slowly.</h2>
-<p style="margin: 0; font-size: 18px; line-height: 1.6; color: #555555">Timing shows which words take longest and which rules do the work. One small change — a slot left too open, an environment too broad — can make a grammar dramatically faster. The Turkish sample shows one.</p>
+<p style="margin: 0; font-size: 18px; line-height: 1.6; color: #555555">Timing shows which words take longest and which rules do the work. One small change — a slot left too open, an environment too broad — can make a grammar dramatically faster. The synthetic Turkic-style sample shows one.</p>
 <a href="#" style="font-weight: 700">Lesson: the grammar that took all night →</a>
 </div>
 <div style="display: flex; flex-direction: column; gap: 18px">
 <div style="display: flex; flex-direction: column; gap: 8px">
-<div style="display: flex; justify-content: space-between; font-size: 15px"><span>Turkish sample, broken</span><span style="font-weight: 700">[time]</span></div>
+<div style="display: flex; justify-content: space-between; font-size: 15px"><span>Synthetic Turkic-style sample, broken</span><span style="font-weight: 700">[time]</span></div>
 <div style="height: 22px; border-radius: 6px; background: #999999"></div>
 </div>
 <div style="display: flex; flex-direction: column; gap: 8px">
-<div style="display: flex; justify-content: space-between; font-size: 15px"><span>Turkish sample, fixed</span><span style="font-weight: 700">[time]</span></div>
+<div style="display: flex; justify-content: space-between; font-size: 15px"><span>Synthetic Turkic-style sample, fixed</span><span style="font-weight: 700">[time]</span></div>
 <div style="height: 22px; width: 8%; border-radius: 6px; background: #007a32"></div>
 </div>
 <div style="font-size: 14px; color: #555555">[Measured speed-up from the sample’s pinned results, e.g. “× faster on the same texts”]</div>
@@ -209,13 +209,14 @@ $ motif handoff Sample.fwdata --out handoff --no-assess
 
 <section style="padding: 112px 80px 0; display: flex; flex-direction: column; gap: 32px">
 <div style="display: flex; flex-direction: column; gap: 12px; max-width: 800px">
-<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 40px; font-weight: 700">Practise on a sample language</h2>
-<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #555555">Each sample comes broken and fixed. Open the broken one, find what Motif flags, fix it in FieldWorks — with an AI if you like — and watch the numbers rise.</p>
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 40px; font-weight: 700">Practise on a synthetic sample</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #555555"><strong>These are synthetic examples, generated to show what Motif can do — not real language data.</strong> Each comes broken and fixed. Open the broken one, find what Motif flags, fix it in FieldWorks — with an AI if you like — and watch the numbers rise.</p>
 </div>
 <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
 <sc-for list="{{samples}}" as="s" hint-placeholder-count="3">
 <div style="display: flex; flex-direction: column; gap: 16px; padding: 28px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD">
-<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 28px; font-weight: 700">{{s.name}}</div>
+<span style="align-self: flex-start; padding: 3px 10px; border-radius: 4px; background: #FFF4D1; color: #3D2E00; border: 1px solid #F0DC9A; font-size: 12px; font-weight: 800; letter-spacing: 0.06em">SYNTHETIC EXAMPLE</span>
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 26px; font-weight: 700">{{s.name}}</div>
 <div style="font-size: 15px; line-height: 1.5; color: #555555">Teaches {{s.teaches}}</div>
 <sc-if value="{{s.fast}}" hint-placeholder-val="{{false}}">
 <div style="align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: #FFF4D1; color: #6B4E00; font-size: 13px; font-weight: 700">Includes a speed lesson</div>
@@ -225,7 +226,7 @@ $ motif handoff Sample.fwdata --out handoff --no-assess
 <a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid #CCCCCC; color: #333333; font-weight: 700; text-decoration: none">Fixed ↓</a>
 <a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; color: {{accent}}; font-weight: 700; text-decoration: none">Lessons →</a>
 </div>
-<div style="font-size: 13px; line-height: 1.5; color: #555555">A simplified teaching grammar for learning Motif; not a description of {{s.name}}.</div>
+<div style="font-size: 14px; line-height: 1.5; color: #3D2E00; padding: 10px 12px; border-radius: 8px; background: #FFF4D1">Generated to demonstrate Motif. Modelled loosely on {{s.lang}}; it is not real {{s.lang}}, has not been checked by speakers, and is not a description of any language.</div>
 </div>
 </sc-for>
 </div>
@@ -294,9 +295,9 @@ features: [
 { title: 'AI Handoff', body: 'Everything your AI consultant needs, in five files.' }
 ],
 samples: [
-{ name: 'Turkish', teaches: 'suffix order, vowel harmony — and a slow grammar made fast.', fast: true },
-{ name: 'Swahili', teaches: 'noun-class prefixes and agreement.', fast: false },
-{ name: 'Tagalog', teaches: 'infixes and reduplication.', fast: false }
+{ name: 'Synthetic Turkic-style', lang: 'Turkish', teaches: 'suffix order, vowel harmony — and a slow grammar made fast.', fast: true },
+{ name: 'Synthetic Bantu-style', lang: 'Swahili', teaches: 'noun-class prefixes and agreement.', fast: false },
+{ name: 'Synthetic Philippine-style', lang: 'Tagalog', teaches: 'infixes and reduplication.', fast: false }
 ]
 };
 }

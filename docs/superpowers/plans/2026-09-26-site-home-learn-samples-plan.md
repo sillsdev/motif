@@ -208,4 +208,4 @@ mechanical.
 not be recorded" are the sandbox, proven by rerunning the CLI project with a worktree-local
 `MOTIF_WORKER_ROOT`); `cd site; npm test; npm run build` for H; for S packages, the gated real-parser test run
 locally with `MOTIF_PANGLOSS_EXE` naming a real `pangloss.exe`
-(the release `pangloss-release.json` pins, v0.3.2; older releases lack what `motif assess` needs).
+(the release `pangloss-release.json` pins, v0.5.0; older releases lack what `motif assess` needs).

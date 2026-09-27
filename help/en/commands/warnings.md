@@ -14,7 +14,7 @@ motif warnings --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --left-out --
 
 ## What it prints
 
-The response includes counts and findings with descriptions, guidance, subjects, and links where available. With no Baseline, the command says to capture one; when a Baseline has no stored check, it says the grammar has not been checked yet.
+The response includes separate error, warning, and information counts, plus findings with descriptions, guidance, subjects, and links where available. `--left-out` keeps warning-level findings only. With no Baseline, the command says to capture one; when a Baseline has no stored check, it says the grammar has not been checked yet.
 
 ## Related commands
 

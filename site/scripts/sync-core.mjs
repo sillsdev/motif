@@ -61,6 +61,19 @@ const guideSections = [
 	},
 ];
 const guideOrder = new Map(guideSections.flatMap((section, sectionIndex) => section.pages.map(([slug], pageIndex) => [slug, sectionIndex * 100 + pageIndex])));
+const learnSidebarOrder = [
+	'index',
+	'what-the-parser-knows',
+	'stems-and-the-lexicon',
+	'affixes-slots-and-templates',
+	'allomorphs-and-environments',
+	'phonological-rules',
+	'reading-why-a-word-fails',
+	'why-a-grammar-is-slow',
+	'working-with-an-ai-consultant',
+];
+const learnOrderBySlug = new Map(learnSidebarOrder.map((slug, index) => [slug, index]));
+const sampleIdByLearnPrefix = new Map([['turkish', 'synthetic-turkic']]);
 
 function yamlString(value) {
 	return JSON.stringify(value ?? '');
@@ -239,8 +252,13 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 		await writeFile(destination, `${frontmatter(title, description, page.order)}${body}\n`);
 	}
 
+	const orderedLearnPages = [...learnPages].sort(([leftSlug], [rightSlug]) => {
+		const leftOrder = learnOrderBySlug.get(leftSlug) ?? Number.MAX_SAFE_INTEGER;
+		const rightOrder = learnOrderBySlug.get(rightSlug) ?? Number.MAX_SAFE_INTEGER;
+		return leftOrder - rightOrder || leftSlug.localeCompare(rightSlug);
+	});
 	const learnLinks = [];
-	for (const [slug, page] of learnPages) {
+	for (const [index, [slug, page]] of orderedLearnPages.entries()) {
 		const markdown = stripFrontmatterAndComments(await readFile(page.sourcePath, 'utf8'));
 		const title = markdownTitle(markdown, slug.split('/').at(-1));
 		const description = markdownDescription(markdown, `Learn from ${title}.`);
@@ -248,7 +266,7 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 		const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
 		const destination = path.join(localeRoot, 'learn', `${slug}.md`);
 		await mkdir(path.dirname(destination), { recursive: true });
-		await writeFile(destination, `${frontmatter(title, description)}${body}\n`);
+		await writeFile(destination, `${frontmatter(title, description, index + 1)}${body}\n`);
 		const localePrefix = locale === 'en' ? '' : `/${locale}`;
 		learnLinks.push(`- [${title}](${localePrefix}/learn/${slug}/)`);
 	}
@@ -265,11 +283,15 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 	await writeFile(indexPage, `${frontmatter('Guide', 'Learn to use Motif and follow its pages in the order designed for linguists.', 0)}${sections.join('\n\n')}\n`);
 	const learnIndex = path.join(localeRoot, 'learn', 'index.md');
 	await mkdir(path.dirname(learnIndex), { recursive: true });
-	await writeFile(learnIndex, `${frontmatter('Learn', 'Step-by-step lessons for learning Motif with sample language projects.')}${learnLinks.join('\n')}\n`);
+	await writeFile(learnIndex, `${frontmatter('Learn', 'Step-by-step lessons for learning Motif with sample language projects.', 0)}${learnLinks.join('\n')}\n`);
 	const lessonsBySample = new Map();
 	const speedLessons = new Map();
-	for (const slug of learnPages.keys()) {
-		const sampleId = `sample-${slug.split('/')[0].split('-')[0]}`;
+	for (const [slug] of orderedLearnPages) {
+		const lessonPrefix = slug.split('/')[0];
+		const languagePrefix = lessonPrefix.split('-')[0];
+		const sampleId = lessonPrefix.startsWith('synthetic-')
+			? lessonPrefix.split('-').slice(0, 2).join('-')
+			: sampleIdByLearnPrefix.get(languagePrefix) ?? `sample-${languagePrefix}`;
 		if (!lessonsBySample.has(sampleId)) lessonsBySample.set(sampleId, slug);
 		if (/(^|[-/])speed([-/.]|$)/.test(slug)) speedLessons.set(sampleId, slug);
 	}
@@ -356,10 +378,11 @@ async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRo
 	const dataRoot = path.join(site, 'src', 'data');
 	await mkdir(dataRoot, { recursive: true });
 	await writeFile(path.join(dataRoot, 'samples.json'), `${JSON.stringify(homeSamples, null, 2)}\n`);
-	const performancePath = path.join(dataRoot, 'sample-turkish-performance.json');
+	const performancePath = path.join(dataRoot, 'synthetic-turkic-performance.json');
 	await rm(performancePath, { force: true });
 	try {
-		const expected = JSON.parse(await readFile(path.join(samplesRoot, 'sample-turkish', 'expected.json'), 'utf8'));
+		const expectedPath = path.join(samplesRoot, 'synthetic-turkic', 'expected.json');
+		const expected = JSON.parse(await readFile(expectedPath, 'utf8'));
 		const performance = Object.fromEntries(['fixed', 'broken'].map((variant) => [variant, {
 			words: expected[variant]?.words,
 			parsed: expected[variant]?.parsed,
@@ -370,7 +393,7 @@ async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRo
 			if (!Number.isInteger(values?.words) || !Number.isInteger(values?.parsed) || !Number.isFinite(values?.textCoverage)
 				|| values.words < 0 || values.parsed < 0 || values.parsed > values.words
 				|| values.textCoverage < 0 || values.textCoverage > 1) {
-				throw new Error(`Invalid sample performance data: ${path.join(samplesRoot, 'sample-turkish', 'expected.json')}`);
+				throw new Error(`Invalid sample performance data: ${expectedPath}`);
 			}
 		}
 		await writeFile(performancePath, `${JSON.stringify(performance, null, 2)}\n`);

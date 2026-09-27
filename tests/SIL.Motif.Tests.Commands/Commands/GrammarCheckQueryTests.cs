@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Generator;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -141,6 +142,27 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void AVersionThreeReportRetainsErrorsAsDistinctFindings()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var fixturePath = Path.Combine(RepoPaths.FindRepoRoot(), "tests", "SIL.Motif.Tests.Support",
+            "TestFixtures", "GrammarHealth", "schema-v3-error.json");
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(File.ReadAllText(fixturePath), string.Empty, TimeSpan.Zero),
+        };
+
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var error = Assert.Single(outcome.Value!.Findings);
+        Assert.Equal("error", error.Severity.ToWireValue());
+        Assert.Equal("error: hc-invalid-feature-system: A feature system could not be loaded.", error.Text);
+        Assert.Equal("error", outcome.Value.Summary.Single().Level.ToWireValue());
+    }
+
+    [Fact]
     public void AReportWithTheOldFindingsMemberIsRejected()
     {
         var fwDataPath = _pristine.CopyProjectFile();
@@ -160,7 +182,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
 
     [Theory]
     [InlineData(1)]
-    [InlineData(3)]
+    [InlineData(4)]
     public void AnUnsupportedSchemaVersionNamesTheVersionAndUpdateRequirement(int schemaVersion)
     {
         var fwDataPath = _pristine.CopyProjectFile();
@@ -176,7 +198,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.False(outcome.Succeeded);
         Assert.Equal("grammarcheck.unsupported-schema", outcome.Refusal!.Code);
         Assert.Contains($"version {schemaVersion}", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("version 2", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("versions 2 and 3", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("update PanGloss and Motif", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
     }
 

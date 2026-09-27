@@ -1,5 +1,5 @@
 ---
-const metrics = Object.values(import.meta.glob('../../data/sample-turkish-performance.json', {
+const metrics = Object.values(import.meta.glob('../../data/synthetic-turkic-performance.json', {
 	eager: true,
 	import: 'default',
 }))[0];
@@ -7,8 +7,10 @@ const samples = Object.values(import.meta.glob('../../data/samples.json', {
 	eager: true,
 	import: 'default',
 }))[0] ?? [];
-const { beforeLabel, afterLabel, textCoverageLabel, lessonLabel } = Astro.props;
-const speedLessonHref = samples.find((sample) => sample.id === 'sample-turkish')?.speedLessonHref;
+const { textCoverageLabel, lessonLabel } = Astro.props;
+const beforeLabel = Astro.locals.t('home.syntheticSpeedBefore');
+const afterLabel = Astro.locals.t('home.syntheticSpeedAfter');
+const speedLessonHref = samples.find((sample) => sample.id === 'synthetic-turkic')?.speedLessonHref;
 const variants = metrics && [
 	{ label: beforeLabel, values: metrics.broken },
 	{ label: afterLabel, values: metrics.fixed },
