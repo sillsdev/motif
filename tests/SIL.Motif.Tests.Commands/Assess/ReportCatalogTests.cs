@@ -98,7 +98,7 @@ public sealed class ReportProducerTests
     [Fact]
     public void Coverage_ComputesFromStoredWordsAndOutcomes_WithNoAssessorRegistered()
     {
-        using var culture = new CultureScope(CultureInfo.InvariantCulture);
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var assessment = Build("ParseTime", ("motifa", true), ("motifb", false));
         var producer = new CoverageReportProducer();
 

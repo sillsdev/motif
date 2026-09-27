@@ -85,7 +85,7 @@ public sealed class ReportCommandsTests : IDisposable
     [Fact]
     public void ACoverageReport_IsComputedStoredAndReadableWithNoAssessorAnywhereInTheProcess()
     {
-        using var culture = new CultureScope(CultureInfo.InvariantCulture);
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var assessmentId = RecordAssessment("ParseTime", ("motifa", true), ("motifb", false));
 
         var jsonResult = ReportCommands.Produce(

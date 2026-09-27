@@ -309,7 +309,7 @@ public sealed class WorkspaceContextTests
     [Fact]
     public async Task TimingPageShowsTheCommandsKindAndRuleAggregatesUnchanged()
     {
-        using var culture = new CultureScope(CultureInfo.InvariantCulture);
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         var kindRows = new[] { new TimingAggregateRow("morph_rule", 12, 1, 30, 2) };
