@@ -19,6 +19,8 @@ public abstract record PanGlossRequest
     /// <summary>The subcommand this request runs, as the binary spells it.</summary>
     public abstract string Subcommand { get; }
 
+    internal virtual bool AcceptsNonzeroExit => false;
+
     /// <summary>Throws for a request a caller has built wrongly; this is programmer error, not an outcome.</summary>
     internal abstract void Validate();
 
@@ -28,7 +30,7 @@ public abstract record PanGlossRequest
     /// <summary>Appends the subcommand and its arguments, one item each so paths need no quoting.</summary>
     internal abstract void AddArguments(ProcessStartInfo startInfo, string scratch);
 
-    /// <summary>Turns a zero exit into the request's output, or reports what the parser promised and did not write.</summary>
+    /// <summary>Turns process output into the request's outcome.</summary>
     internal abstract PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed);
 
     /// <summary>
@@ -173,9 +175,12 @@ public abstract record PanGlossRequest
     /// (<c>grammar</c> plus an optional <c>out.json</c>), where reading standard output instead would supply
     /// only the first of the two and fail that conformance check on every invocation, not only this one's own.
     /// </summary>
+    /// <remarks>PanGloss can exit nonzero after writing an error report; that report remains usable. A nonzero exit
+    /// without a report is refused.</remarks>
     public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName) : PanGlossRequest
     {
         public override string Subcommand => "grammar-health";
+        internal override bool AcceptsNonzeroExit => true;
 
         internal override void Validate()
         {
@@ -201,7 +206,7 @@ public abstract record PanGlossRequest
             return File.Exists(path)
                 ? new PanGlossOutcome.Completed(File.ReadAllText(path), standardError, elapsed)
                 : new PanGlossOutcome.Incomplete(
-                    $"pangloss grammar-health exited 0 but wrote no findings to '{path}'.", standardError);
+                    $"pangloss grammar-health wrote no report to '{path}'.", standardError);
         }
     }
 
