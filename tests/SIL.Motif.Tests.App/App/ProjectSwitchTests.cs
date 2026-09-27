@@ -64,7 +64,8 @@ public sealed class ProjectSwitchTests
         parts.Fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         parts.Fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
-            new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")));
+            new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
+            "Applied pending changes.");
         await review.MeasureCommand.ExecuteAsync(null);
         await review.ApplyCommand.ExecuteAsync(null);
         Assert.True(parts.Workspace.Context.Evidence.AppliedSinceRefresh);

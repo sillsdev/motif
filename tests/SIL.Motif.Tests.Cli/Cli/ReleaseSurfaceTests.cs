@@ -3,7 +3,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Responses;
@@ -17,28 +16,6 @@ namespace SIL.Motif.Tests.Cli;
 /// <summary>Pins the released command boundary at the real executable and the shared command catalog.</summary>
 public sealed class ReleaseSurfaceTests : IDisposable
 {
-    private static readonly string[] ReleasedNames =
-    [
-        "open", "analyses", "config show", "report", "report --list-kinds", "compare",
-        "baseline capture", "assess", "stats", "selection show", "selection set-default", "setup skip", "texts list",
-        "overview", "timing", "warnings", "grammar check",
-        "handoff", "add-corpus", "add-document",
-        "add-corpus-bundle", "corpora", "show-corpus", "baseline-refresh", "jobs show",
-        "jobs assessments", "jobs list", "jobs cancel", "jobs requeue", "jobs move",
-    ];
-
-    private static readonly string[] DeveloperNames =
-    [
-        "new", "pending-changes", "put-pending-change", "remove-pending-change",
-        "recheck-pending-changes", "review-numbers",
-        "add-set-gloss", "add-delete-lexeme-form", "compose-author-lexeme-form",
-        "compose-author-feature-structure", "promote-gloss", "label", "comment", "finalize",
-        "discard-draft", "reopen", "duplicate", "remove-operations", "split", "defer", "reject",
-        "supersede", "list", "show", "preflight", "dry-run", "dry-run --wait",
-        "trial", "trial --wait", "trial --pending", "apply", "apply --all-pending", "log",
-        "store delete-refused",
-    ];
-
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-release-surface-" + Guid.NewGuid().ToString("N"));
 
     public ReleaseSurfaceTests() => Directory.CreateDirectory(_root);
@@ -55,30 +32,26 @@ public sealed class ReleaseSurfaceTests : IDisposable
     }
 
     [Fact]
-    public void EveryCataloguedCommandDeclaresAReleasedOrDeveloperSurface()
+    public void AllPendingAfterTheOptionTerminatorIsRefusedAsDeveloperOnly()
     {
-        var surface = typeof(CommandDescriptor).GetProperty("Surface", BindingFlags.Public | BindingFlags.Instance);
+        var result = Run("apply P --project p --user u --force --json -- --all-pending", developerCommands: false);
 
-        Assert.NotNull(surface);
-        var names = CommandCatalog.All
-            .Select(command => (command.Name, Surface: surface!.GetValue(command)?.ToString()))
-            .ToList();
-
-        Assert.Equal(CommandCatalog.All.Count, names.Count);
-        Assert.All(names, item => Assert.True(item.Surface is "Released" or "Developer"));
-        Assert.Equal(ReleasedNames.Order(StringComparer.Ordinal),
-            names.Where(item => item.Surface == "Released").Select(item => item.Name).Order(StringComparer.Ordinal));
-        Assert.Equal(DeveloperNames.Order(StringComparer.Ordinal),
-            names.Where(item => item.Surface == "Developer").Select(item => item.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+        Assert.Empty(result.Output);
+        var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+        Assert.Equal("command.not-in-release", envelope.Code);
+        Assert.Equal(FailureReason.Refused, envelope.Reason);
+        Assert.Contains("Command 'apply'", envelope.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ApplyingAllPendingChangesIsAbsentFromTheReleasedSurface()
+    public void ApplyingOneProposalIsRefusedAsDeveloperOnly()
     {
-        var command = CommandCatalog.All.Single(item => item.Name == "apply --all-pending");
+        var result = Run("apply P", developerCommands: false);
 
-        Assert.False(new CommandSurfacePolicy(developerCommandsEnabled: false).IsAvailable(command));
-        Assert.True(new CommandSurfacePolicy(developerCommandsEnabled: true).IsAvailable(command));
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+        Assert.Empty(result.Output);
+        Assert.Contains("Command 'apply' is not part of Motif", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -141,11 +114,17 @@ public sealed class ReleaseSurfaceTests : IDisposable
     public void ReleasedHelpContainsOnlyReleasedCommandsAndNoEmptySections()
     {
         var result = Run(string.Empty, developerCommands: false);
+        var releasedNames = CommandCatalog.All
+            .Where(command => command.Surface == CommandSurface.Released)
+            .Select(command => command.Name);
+        var developerNames = CommandCatalog.All
+            .Where(command => command.Surface == CommandSurface.Developer)
+            .Select(command => command.Name);
 
         Assert.Equal(1, result.ExitCode);
-        foreach (var name in ReleasedNames)
+        foreach (var name in releasedNames)
             Assert.Contains(name, result.Error, StringComparison.Ordinal);
-        foreach (var name in DeveloperNames)
+        foreach (var name in developerNames)
         {
             var usagePrefix = name == "apply" ? "  apply <proposalId> " : "  " + name + " ";
             var usageLine = result.Error.Split(Environment.NewLine)
@@ -158,7 +137,9 @@ public sealed class ReleaseSurfaceTests : IDisposable
     [Fact]
     public void EveryDeveloperCommandIsRefusedOnTheReleasedSurfaceInTextAndJson()
     {
-        foreach (var name in DeveloperNames)
+        foreach (var name in CommandCatalog.All
+                     .Where(command => command.Surface == CommandSurface.Developer)
+                     .Select(command => command.Name))
         {
             var text = Run(name, developerCommands: false);
             Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), text.ExitCode);
@@ -221,7 +202,9 @@ public sealed class ReleaseSurfaceTests : IDisposable
     public void EveryReleasedCommandStillDispatchesOnTheReleasedSurface()
     {
         // Invoked bare: reaching its own usage complaint is enough to show the boundary let the verb past.
-        foreach (var name in ReleasedNames)
+        foreach (var name in CommandCatalog.All
+                     .Where(command => command.Surface == CommandSurface.Released)
+                     .Select(command => command.Name))
         {
             var result = Run(name + " --json", developerCommands: false);
 

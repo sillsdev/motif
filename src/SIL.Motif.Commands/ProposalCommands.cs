@@ -1768,6 +1768,7 @@ public static partial class ProposalCommands
     /// A caught exception knows more than a broad catch does; anything else is refused, which does not retry.
     private static FailureReason ReasonFor(Exception exception) => exception switch
     {
+        NeedsReconciliationException => FailureReason.StoreInconsistent,
         FileNotFoundException or DirectoryNotFoundException => FailureReason.InvalidArgument,
         ArgumentException => FailureReason.InvalidArgument,
         KeyNotFoundException => FailureReason.NotFound,

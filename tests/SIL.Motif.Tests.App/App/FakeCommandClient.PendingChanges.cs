@@ -11,6 +11,7 @@ public sealed partial class FakeCommandClient
     public List<ApplyPendingRequest> ApplyPendingRequests { get; } = [];
     private MeasurePendingResult? _measurement;
     private ApplyProjection? _apply;
+    private string? _applySummary;
     public Refusal? ApplyPendingRefusal { get; set; }
     public Refusal? MeasurePendingRefusal { get; set; }
     public Func<ApplyPendingRequest, CancellationToken, Task<CommandOutcome<ApplyPendingResult>>>? ApplyPendingHandler
@@ -20,7 +21,11 @@ public sealed partial class FakeCommandClient
 
     public static ReviewNumbersResponse CompleteNumbers { get; } =
         new(ReviewComparability.Compared, 1, 0, 1, 1, 1, EvidenceComplete: true);
-    public void ApplyPendingCompletesWith(ApplyProjection result) => _apply = result;
+    public void ApplyPendingCompletesWith(ApplyProjection result, string summary)
+    {
+        _apply = result;
+        _applySummary = summary;
+    }
 
     public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken)
@@ -29,9 +34,10 @@ public sealed partial class FakeCommandClient
         if (ApplyPendingHandler is { } handler) return handler(request, cancellationToken);
         if (ApplyPendingRefusal is { } refusal)
             return Task.FromResult(CommandOutcome<ApplyPendingResult>.Refused(refusal));
-        if (_apply is not { } result) throw NotConfigured(nameof(ApplyPendingAsync));
+        if (_apply is not { } result || _applySummary is not { } summary)
+            throw NotConfigured(nameof(ApplyPendingAsync));
         _pending = new PendingChangesSnapshot(null, "none", [], []);
-        return Completed(ApplyPendingResult.AppliedWith(result));
+        return Completed(ApplyPendingResult.AppliedWith(result, summary));
     }
 
     public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(

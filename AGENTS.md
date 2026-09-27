@@ -263,14 +263,13 @@ No product `.csproj` in this repository mentions `netstandard2.0`, and
 carries no explicit `System.Text.Json` pin either: `net10.0` supplies it, and the old pin tracked the last
 release line that still built for `netstandard2.0`.
 
-**Not yet built:** the FieldWorks-side Motif surface. A separate FieldWorks integrates by running exactly one
-CLI call, `motif apply --all-pending`, at a save boundary with the project released, and reloads afterward —
-the FLExBridge pattern. It references nothing of Motif's, not even `SIL.Motif.Contract`, because it reads an
-exit code and a summary rather than deserialising a typed result.
+**FieldWorks integration contract:** At its save boundary, FieldWorks releases the project and calls
+`motif apply --all-pending`. It reads the exit code and the JSON fields `ok`, `applied`, `summary`, and failure
+`code`; it reloads after a confirmed Apply or an ambiguous reconciliation result. It references no Motif
+assembly and reads the command's JSON rather than Motif's internal stores.
 
-**Also not yet built, and a prerequisite for that surface:** the records `--json` serialises live in
-`SIL.Motif.Projection`, which references LibLCM. They must move to Contract, leaving the
-`LcmCache`-dependent builders behind, before any consumer can bind to them.
+The JSON response records live in `SIL.Motif.Contract`, which has no LibLCM reference. Their
+`LcmCache`-dependent builders remain in `SIL.Motif.Projection`.
 
 ## Definition of done for each operation family
 

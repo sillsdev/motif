@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Runner.Composers;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
@@ -74,7 +75,8 @@ public static class PendingChangesWorkflow
         var applied = ProposalCommands.Apply(new ApplyRequest(
             request.ProjectPath, version, proposalId, request.User));
         if (applied.Succeeded)
-            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied.Value!));
+            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(
+                applied.Value!, SummaryOf(snapshot.Changes)));
         if (applied.Refusal?.Code == "apply.reconciliation-needed")
             return CommandOutcome<ApplyPendingResult>.Refused(applied.Refusal!);
         return ReopenAfterRefusal(resolvedRequest, applied.Refusal!);
@@ -177,6 +179,31 @@ public static class PendingChangesWorkflow
 
     private static CommandOutcome<ApplyPendingResult> RefuseApply(string code, string message) =>
         CommandOutcome<ApplyPendingResult>.Refused(new Refusal(code, FailureReason.Refused, message));
+
+    private static string SummaryOf(IReadOnlyList<PendingChange> changes)
+    {
+        var parts = new List<string>();
+        Add(AnalysisChangeKinds.Approve, "Approved", "analysis", "analyses");
+        Add(AnalysisChangeKinds.Reject, "Rejected", "analysis", "analyses");
+        var returned = Count(AnalysisChangeKinds.Candidate);
+        if (returned > 0)
+            parts.Add($"Returned {Counted(returned, "analysis", "analyses")} to candidate status");
+        Add(AnalysisChangeKinds.AddCandidate, "Added", "candidate analysis", "candidate analyses");
+        Add(AnalysisChangeKinds.IncorrectSpelling, "Marked", "word as incorrectly spelled",
+            "words as incorrectly spelled");
+        return parts.Count == 0 ? "Applied pending changes." : string.Join(", ", parts) + ".";
+
+        void Add(string kind, string verb, string singular, string plural)
+        {
+            var count = Count(kind);
+            if (count > 0) parts.Add($"{verb} {Counted(count, singular, plural)}");
+        }
+
+        int Count(string kind) => changes.Count(change => change.Kind == kind);
+    }
+
+    private static string Counted(int count, string singular, string plural) =>
+        $"{count} {(count == 1 ? singular : plural)}";
 
     private static CommandOutcome<MeasurePendingResult> RefuseMeasure(string code, string message) =>
         CommandOutcome<MeasurePendingResult>.Refused(new Refusal(

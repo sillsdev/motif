@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -81,6 +82,11 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         Assert.True(applied.Succeeded, "the first Apply: " + applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
         Assert.Equal(pending.DraftId, applied.Value.Receipt!.ProposalId);
+        using (var response = JsonDocument.Parse(ProjectionJson.Serialize(applied.Value)))
+        {
+            var summary = response.RootElement.GetProperty("summary").GetString();
+            Assert.Equal("Marked 1 word as incorrectly spelled.", summary);
+        }
         Assert.Empty(LoadPending(path).Changes);
         using var database = ProjectMotifDatabase.Open(path);
         var proposal = new ProposalRepository(database).Get(CanonicalId.Parse(pending.DraftId!));
