@@ -153,6 +153,11 @@ $jobs = foreach ($project in $testProjects) {
             ('"{0}"' -f $projectResults)
             '--logger'
             ('"trx;LogFileName={0}.trx"' -f $name)
+            # A hung test fails and names itself in the blame sequence file instead of stalling the run.
+            '--blame-hang-timeout'
+            '10m'
+            '--blame-hang-dump-type'
+            'none'
         )
         # Without -NoNewWindow, Start-Process gives every project its own console window for the whole run.
         $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru -NoNewWindow `

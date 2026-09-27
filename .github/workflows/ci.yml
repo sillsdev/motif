@@ -14,6 +14,7 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-22.04, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     env:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
@@ -53,7 +54,7 @@ jobs:
 
       # A console summary names failing tests but not why; the per-project logs and TRX files do.
       - name: Upload test results
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.os }}
