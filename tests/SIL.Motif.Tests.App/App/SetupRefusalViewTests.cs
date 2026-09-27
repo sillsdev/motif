@@ -89,6 +89,31 @@ public sealed class SetupRefusalViewTests
         });
     }
 
+    [Fact]
+    public void NoStepLimitGuidanceStillNamesThePerWordTimeLimit()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var dialog = new SetupDialog();
+            var window = new Window { Content = dialog, Width = 1000, Height = 800 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var guidance = dialog.GetLogicalDescendants().OfType<TextBlock>()
+                    .Select(block => block.Text ?? string.Empty)
+                    .Single(text => text.Contains("50,000,000 steps", StringComparison.Ordinal));
+                Assert.Contains("per-word time limit", guidance, StringComparison.OrdinalIgnoreCase);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private sealed class FakeProjectPicker : IProjectPicker
     {
         public string? PathToReturn { get; set; }

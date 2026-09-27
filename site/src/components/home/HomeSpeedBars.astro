@@ -1,0 +1,38 @@
+---
+const metrics = Object.values(import.meta.glob('../../data/synthetic-turkic-performance.json', {
+	eager: true,
+	import: 'default',
+}))[0];
+const samples = Object.values(import.meta.glob('../../data/samples.json', {
+	eager: true,
+	import: 'default',
+}))[0] ?? [];
+const { textCoverageLabel, lessonLabel } = Astro.props;
+const beforeLabel = Astro.locals.t('home.syntheticSpeedBefore');
+const afterLabel = Astro.locals.t('home.syntheticSpeedAfter');
+const speedLessonHref = samples.find((sample) => sample.id === 'synthetic-turkic')?.speedLessonHref;
+const variants = metrics && [
+	{ label: beforeLabel, values: metrics.broken },
+	{ label: afterLabel, values: metrics.fixed },
+];
+const maxCoverage = variants && Math.max(...variants.map(({ values }) => values.textCoverage), 0.01);
+---
+
+{variants && (
+	<div class="home-speed-bars">
+		{variants.map(({ label, values }) => {
+			const coverage = Math.round(values.textCoverage * 100);
+			const width = Math.max(4, values.textCoverage / maxCoverage * 100);
+			return (
+				<div class="home-speed-bar">
+					<div class="home-speed-bar__label"><span>{label}</span><strong>{values.parsed} / {values.words}</strong></div>
+					<div class="home-speed-bar__track" role="img" aria-label={`${label}: ${values.parsed} of ${values.words} words parsed; ${textCoverageLabel} ${coverage}%`}>
+						<span style={`width:${width}%`} />
+					</div>
+					<p>{textCoverageLabel}: {coverage}%</p>
+				</div>
+			);
+		})}
+	</div>
+)}
+{speedLessonHref && <a href={speedLessonHref}>{lessonLabel} →</a>}

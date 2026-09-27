@@ -1,0 +1,172 @@
+---
+title: Motif
+description: Motif helps you teach a FieldWorks parser your language with clear evidence.
+template: splash
+---
+
+import HomeHero from '../../components/home/HomeHero.astro';
+import HomeSection from '../../components/home/HomeSection.astro';
+import HomeFeatureGrid from '../../components/home/HomeFeatureGrid.astro';
+import HomeClipSlots from '../../components/home/HomeClipSlots.astro';
+import HomeSampleCards from '../../components/home/HomeSampleCards.astro';
+import HomeSpeedBars from '../../components/home/HomeSpeedBars.astro';
+import HomeMarquee from '../../components/home/HomeMarquee.astro';
+import HowItFits from '../../components/home/HowItFits.astro';
+import HomeBetaFaq from '../../components/home/HomeBetaFaq.astro';
+import HomeLocalizedText from '../../components/home/HomeLocalizedText.astro';
+
+<div class="home-page">
+	<HomeHero>
+		<p class="home-eyebrow"><HomeLocalizedText message="home.betaHeroEyebrow" /></p>
+		<h1>Motif can help you teach a dumb computer your language.</h1>
+		<p>You know the linguistics. An AI consultant knows the parser, the rules and FieldWorks’ settings. Motif gives you both the evidence: which words fail, why, and what is slow — and checks every fix.</p>
+		<nav aria-label="Home actions">
+			<a class="home-button home-button--download" href="https://github.com/sillsdev/motif/releases/latest"><HomeLocalizedText message="home.betaDownload" /></a>
+			<a class="home-button home-button--outline" href="#work-with-ai">See how the AI helps</a>
+		</nav>
+		<p class="home-release-status"><HomeLocalizedText message="home.betaStatus" /></p>
+		<div slot="exchange" class="home-exchange">
+			<article class="home-exchange__person">
+				<h2>You</h2>
+				<p>Half my plural nouns won’t parse, but only the ones with back vowels. What am I missing?</p>
+			</article>
+			<article class="home-exchange__consultant">
+				<h2>AI consultant, reading Motif’s Handoff</h2>
+				<p>Every failing word stops at the plural. Your <em>-lar</em> allomorph has an environment that only allows front vowels before it. In FieldWorks, open the plural suffix and change that environment to back vowels — then Refresh in Motif to check.</p>
+			</article>
+			<p class="home-exchange__note"><HomeLocalizedText message="home.syntheticExchangeNote" /></p>
+		</div>
+	</HomeHero>
+
+	<HomeMarquee label="What Motif does" phrases={[
+		{ text: 'You know when a word is right. Motif helps the computer learn it too.', strong: true },
+		{ text: 'The parser isn’t smart. It’s literal. Motif shows you what it took literally.' },
+		{ text: 'You’ve described the morphology. Now get the computer to agree.' },
+		{ text: 'A grammar that parses right can still parse slowly. Find the one change that fixes it.' },
+		{ text: 'The AI doesn’t replace your judgement. It translates it into rules.' },
+	]} />
+
+	<section class="home-works-with" aria-label="FieldWorks and FLExTrans">
+		<p>Works on the same <strong>FieldWorks</strong> projects that <strong>FLExTrans</strong> uses. A grammar that parses better — and faster — helps both. Motif does not connect to FLExTrans.</p>
+		<nav aria-label="Related tools">
+			<a href="https://software.sil.org/fieldworks/">FieldWorks ↗</a>
+			<a href="https://software.sil.org/flextrans/">FLExTrans ↗</a>
+		</nav>
+	</section>
+
+	<HomeSection id="work-with-ai" className="home-ai-section">
+		<header>
+			<h2>Writing a parser is computer science. You shouldn’t have to do it alone.</h2>
+			<p>Getting a parser to accept a language means turning linguistics into rules a machine follows literally. Motif puts an AI consultant beside you — and gives it everything it needs to be useful: your measured results, the exact reason each word fails, and documentation written for it to read.</p>
+		</header>
+		<div class="home-card-grid home-card-grid--three">
+			<article class="home-card">
+				<p class="home-card__eyebrow">You bring</p>
+				<h3>The language</h3>
+				<p>Which words are right, what the morphemes mean, how sounds change. The judgement no machine has.</p>
+			</article>
+			<article class="home-card home-card--tinted">
+				<p class="home-card__eyebrow">The AI brings</p>
+				<h3>The machinery</h3>
+				<p>How the parser reads rules, slots and environments; which FieldWorks setting to change; why a grammar is slow; what to try next.</p>
+			</article>
+			<article class="home-card">
+				<p class="home-card__eyebrow">Motif brings</p>
+				<h3>The evidence</h3>
+				<p>Coverage over your texts, the reason every word fails, timing, and a Handoff folder you drag into any AI chat. It checks each fix before it reaches your project.</p>
+			</article>
+		</div>
+		<aside class="home-ai-band">
+			<div>
+				<h3>Works with the AI you already use</h3>
+				<p>Drag the AI Handoff into a chat, or let an agent drive Motif directly: every command answers in JSON, and one call describes them all.</p>
+			</div>
+			<pre><code>{'motif help --all --json\nmotif handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]'}</code></pre>
+			<p><a href="/llms.txt">/llms.txt — the full site index for agents</a></p>
+		</aside>
+	</HomeSection>
+
+	<HomeSection id="who-its-for">
+		<h2><HomeLocalizedText message="home.audienceHeading" /></h2>
+		<div class="home-card-grid home-card-grid--four">
+			<article class="home-card home-card--audience">
+				<h3>Field linguist</h3>
+				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceFieldLinguistSituation" /></p>
+				<p>See exactly where each word stops, and have the AI turn your analysis into rules the parser accepts.</p>
+			</article>
+			<article class="home-card home-card--audience">
+				<h3>Translator</h3>
+				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceTranslatorSituation" /></p>
+				<p>Find the few grammar fixes that make most of your text parse, without learning parser theory first.</p>
+			</article>
+			<article class="home-card home-card--audience">
+				<h3>Native speaker</h3>
+				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceNativeSpeakerSituation" /></p>
+				<p>Your judgement is the ground truth; Motif and the AI help the computer catch up to it.</p>
+			</article>
+			<article class="home-card home-card--audience">
+				<h3>Language technologist</h3>
+				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceTechnologistSituation" /></p>
+				<p>Timing, JSON output for every command, and documentation written for agents.</p>
+			</article>
+		</div>
+	</HomeSection>
+
+	<HomeSection id="clips">
+		<header>
+			<h2>Measure, understand, fix</h2>
+			<p>The loop Motif is built around, in clips under thirty seconds each.</p>
+		</header>
+		<HomeClipSlots slots={[
+			{ title: 'See where your grammar stands', walkthroughId: 'measure', description: 'Open a project and read how much of your own texts parses.' },
+			{ title: 'Find out why a word fails', walkthroughId: 'open-project-overview', description: 'Try a Word shows the parse — or the exact step where the grammar gave up. Hand it to the AI.' },
+			{ title: 'Fix it and check before you apply', walkthroughId: 'fix-a-word', description: 'Review changes shows what a fix would write and what it does to the numbers.' },
+		]} />
+	</HomeSection>
+
+	<HomeSection id="faster-parsing" className="home-faster-band">
+		<div class="home-faster-copy">
+			<p class="home-eyebrow">Faster parsing</p>
+			<h2>A grammar that parses right can still parse slowly.</h2>
+			<p>Timing shows which words take longest and which rules do the work. One small change — a slot left too open, an environment too broad — can make a grammar dramatically faster. <HomeLocalizedText message="home.syntheticSpeedSentence" /></p>
+		</div>
+		<HomeSpeedBars textCoverageLabel="Text Coverage" lessonLabel="Lesson: the grammar that took all night" />
+	</HomeSection>
+
+	<HomeSection id="features">
+		<h2>Everything in one window</h2>
+		<HomeFeatureGrid features={[
+			{ title: 'Overview', href: 'guide/overview/', description: 'Where the grammar stands, from the last run.' },
+			{ title: 'Texts', href: 'guide/texts/', description: 'Text Coverage, and which texts to measure.' },
+			{ title: 'Try a Word', href: 'guide/try-a-word/', description: 'Parse one word and see why.' },
+			{ title: 'Timing', href: 'guide/timing/', description: 'Which words are slow, and what makes them slow.' },
+			{ title: 'Warnings', href: 'guide/warnings/', description: 'Grammar findings and what to do about them.' },
+			{ title: 'Review changes', href: 'guide/review-changes/', description: 'What applying your changes would do.' },
+			{ title: 'AI Handoff', href: 'guide/ai-handoff/', description: 'Everything your AI consultant needs, in five files.' },
+		]} guideHref="guide/" guideTitle="Read the Guide →" guideDescription="Every page, step by step." />
+	</HomeSection>
+
+	<HowItFits id="how-it-fits" diagramAlt="FieldWorks holds the project. Motif measures it with the PanGloss parser and explains which words fail and why. You fix the grammar in FieldWorks, or apply a reviewed change from Motif, then refresh.">
+		<h2>How it fits</h2>
+		<p>Motif doesn’t replace FieldWorks. FieldWorks keeps your data; Motif measures it and explains what it finds; you and your AI consultant decide the fix.</p>
+		<div slot="diagram-labels" class="home-diagram__labels">
+			<span class="home-diagram__flow-label home-diagram__flow-label--read" aria-hidden="true">reads</span>
+			<span class="home-diagram__flow-label home-diagram__flow-label--shows" aria-hidden="true">shows</span>
+			<article><h3>FieldWorks</h3><p>Owns your data</p><ul><li>Lexicon and grammar</li><li>Texts</li><li>Your analyses</li></ul></article>
+			<article><h3>Motif</h3><p>Measures and explains</p><ul><li>Parses every word with PanGloss</li><li>Text Coverage and timing</li><li>Why a word fails</li><li>What a change would do</li></ul><small>Reads the project; never edits it silently</small></article>
+			<article><h3>You + an AI consultant</h3><p>Decide the fix</p><ul><li>The AI reads the Handoff</li><li>You fix it in FieldWorks</li><li>— or apply a reviewed change</li></ul></article>
+		</div>
+		<p slot="diagram-loop" class="home-diagram__loop">Save, then Refresh</p>
+	</HowItFits>
+
+	<HomeSection id="samples">
+		<header>
+			<h2>Practise on a sample language</h2>
+			<p>Each sample comes broken and fixed. Open the broken one, find what Motif flags, fix it in FieldWorks — with an AI if you like — and watch the numbers rise.</p>
+		</header>
+		<HomeSampleCards speedLessonLabel="Includes a speed lesson" brokenLabel="Broken ↓" fixedLabel="Fixed ↓" lessonsLabel="Lessons →" teachesLabel="Teaches" />
+		<p><a href="samples/">Browse all sample languages</a></p>
+	</HomeSection>
+
+	<HomeBetaFaq />
+</div>

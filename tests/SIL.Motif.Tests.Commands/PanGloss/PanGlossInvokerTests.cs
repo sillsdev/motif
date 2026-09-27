@@ -103,6 +103,21 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task GrammarHealthReturnsItsReportWhenPanGlossExitsNonzero()
+    {
+        var grammar = Project("grammar-health-error");
+        const string report = "{\"schema_version\":3,\"fieldworks_project\":{\"name\":\"p\",\"source\":\"argument\"},\"summary\":[],\"diagnostics\":[]}";
+        FakeParser.Behave(_root, new { ExitCode = 1, GrammarHealthReportJson = report });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.GrammarHealth(grammar, "p"), "test:grammar-health-error", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Equal(report, completed.Output);
+    }
+
+    [Fact]
     public async Task ChildEnvironmentDoesNotReceiveAnUnrelatedParentVariable()
     {
         var grammar = Project("minimal-environment");

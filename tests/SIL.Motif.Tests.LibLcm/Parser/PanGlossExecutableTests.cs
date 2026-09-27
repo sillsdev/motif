@@ -39,8 +39,8 @@ public sealed class PanGlossExecutableTests : IDisposable
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
         var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;
         var cargo = Touch(DevelopmentParserPath(repositoryRoot));
-        var older = Touch(ReleaseCopyPath(repositoryRoot, "v0.3.2"));
-        var newest = Touch(ReleaseCopyPath(repositoryRoot, "v0.3.3"));
+        var older = Touch(ReleaseCopyPath(repositoryRoot, "v0.4.0"));
+        var newest = Touch(ReleaseCopyPath(repositoryRoot, "v0.5.0"));
         File.SetLastWriteTimeUtc(cargo, DateTime.UtcNow.AddHours(-2));
         File.SetLastWriteTimeUtc(older, DateTime.UtcNow.AddHours(-1));
 

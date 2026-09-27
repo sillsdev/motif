@@ -54,5 +54,8 @@ __pycache__/
 /site/src/content/docs/reference/controls/
 /site/src/content/docs/reference/api/
 /site/src/content/docs/guide/
-/site/src/data/walkthroughs/
+/site/src/content/docs/learn/
+/site/src/content/docs/samples/
+/site/src/data/
 /site/public/walkthroughs/
+/site/public/downloads/samples/

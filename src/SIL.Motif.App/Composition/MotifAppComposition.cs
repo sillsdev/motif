@@ -29,6 +29,7 @@ namespace SIL.Motif.App.Composition;
 /// Whether the window restores and saves its size and place in the person's settings; off unless installed,
 /// so a composed test window never writes the person's settings.
 /// </param>
+/// <param name="BetaNoticePreferences">Where the installed window remembers acknowledgment of the beta notice.</param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
     string? ParserPath,
@@ -40,7 +41,8 @@ public sealed record MotifAppOptions(
     IClipboard? Clipboard = null,
     IDiagnosticWindowDialogs? DiagnosticDialogs = null,
     CrashWindowServices? CrashWindow = null,
-    bool RememberBounds = false)
+    bool RememberBounds = false,
+    IBetaNoticePreferences? BetaNoticePreferences = null)
 {
     /// <summary>
     /// The installed window's inputs: the root, parser and runner the command line would use
@@ -50,7 +52,7 @@ public sealed record MotifAppOptions(
     {
         var commands = CommandClientOptions.ForInstallation();
         return new MotifAppOptions(commands.ManagedRoot, commands.ParserPath, commands.RunnerLauncher,
-            TimeProvider.System, RememberBounds: true);
+            TimeProvider.System, RememberBounds: true, BetaNoticePreferences: FileBetaNoticePreferences.ForInstallation());
     }
 }
 
@@ -74,6 +76,9 @@ public static class MotifAppComposition
         var window = new MainWindow(options.RememberBounds);
         var nativePickers = new AvaloniaStoragePickers(window);
         var diagnosticDialogs = options.DiagnosticDialogs ?? nativePickers;
+        var betaNotice = options.BetaNoticePreferences is { } preferences
+            ? new BetaNoticeViewModel(preferences, new AvaloniaLauncher(window))
+            : null;
         var commandClient = new CommandClient(new CommandClientOptions(
             options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate));
         var selection = new SelectionViewModel(commandClient);
@@ -89,7 +94,8 @@ public static class MotifAppComposition
             options.TimeProvider,
             options.Clipboard ?? new AvaloniaClipboard(window),
             diagnosticDialogs.For(window),
-            diagnosticDialogs);
+            diagnosticDialogs,
+            betaNotice);
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
         return new MotifAppCompositionResult(window, workspace, crashes);

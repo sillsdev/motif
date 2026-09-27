@@ -73,7 +73,7 @@ that dispatches them.
 | `warnings` | Released | `warnings --project <fwdata> [--kind <code>] [--left-out] [--json]` |
 | `grammar check` | Released | `grammar check --project <fwdata> [--json]` |
 | `timing` | Released | `timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind\|rule] [--rule <name>] [--top N] [--json]` |
-| `handoff` | Released | `handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]` |
+| `handoff` | Released | `handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]` |
 | `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |
 | `add-document` | Released | `add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> [--title <text>] [--licence <text>] [--may-derive true\|false] [--licence-basis <text>]` |
 | `add-corpus-bundle` | Released | `add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)` |
@@ -81,9 +81,9 @@ that dispatches them.
 | `show-corpus` | Released | `show-corpus --project <fwdata> <corpusId> [--json]` |
 | `baseline-refresh` | Released | `baseline-refresh --project <fwdata>` |
 | `dry-run` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
-| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
+| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--json]` |
 | `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
-| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
+| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] --wait [--wait-timeout-ms <ms>] [--json]` |
 | `trial --pending` | Developer | `trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> --wait [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]` |
 | `jobs show` | Released | `jobs show <jobId> --project <fwdata> [--json]` |
 | `jobs assessments` | Released | `jobs assessments <jobId> --project <fwdata> [--json]` |
@@ -482,9 +482,10 @@ the Assessment, so partial statistics cannot look complete. Opening Overview or 
 
 The Warnings page reads PanGloss's grammar-health report last stored for the current Baseline. Opening the page
 or running `warnings` never invokes PanGloss. The App's **Reload grammar** action and the CLI check run PanGloss
-`grammar-health` on the current Baseline. A successful run replaces that Baseline's one stored result. The store
-also records the resolved default Selection digest at check time when one exists, but grammar findings remain
-valid after the Selection changes.
+`grammar-health` on the current Baseline. A written report replaces that Baseline's one stored result. PanGloss
+v0.5.0 may exit nonzero after writing a report that contains error-level findings; Motif still reads and stores
+that report. A nonzero exit without a report is a refusal. The store also records the resolved default Selection
+digest at check time when one exists, but grammar findings remain valid after the Selection changes.
 
 **`grammar check --project <fwdata> [--json]`** performs a new check. With no Baseline it succeeds with
 `hasBaseline: false` and no findings. `--json` emits `GrammarCheckResponse`. Its refusal codes are
@@ -493,13 +494,15 @@ valid after the Selection changes.
 
 **`warnings --project <fwdata> [--kind <code>] [--left-out] [--json]`** reads those stored findings.
 `--kind` matches one stable diagnostic code exactly, ignoring case. `--left-out` keeps only findings whose
-level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result.
+level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result,
+including separate counts for `error`, `warning`, and `info` findings.
 `warnings` reads the stored result. Without a check, text says the grammar has not been checked and JSON has
 `hasCheck: false` with empty findings.
-`--json` emits `WarningsResponse`, including each finding's description, origin, guidance, subjects, and links.
+`--json` emits `WarningsResponse`, including `ErrorCount`, `WarningCount`, and `InformationCount`, plus each
+finding's description, origin, guidance, subjects, and links.
 
-PanGloss v2 writes an object with `schema_version: 2`, `fieldworks_project`, `summary`, and `diagnostics`.
-The summary groups by `code` and includes `group_name`, `level` (`warning` or `info`), and `count`. Each
+PanGloss v0.5.0 writes an object with `schema_version: 3`, `fieldworks_project`, `summary`, and `diagnostics`.
+The summary groups by `code` and includes `group_name`, `level` (`error`, `warning`, or `info`), and `count`. Each
 diagnostic includes `level`, `code`, `group_name`, `origin` (`check` or `import`), `description`, nullable
 `guidance`, and `subjects`.
 
@@ -510,9 +513,9 @@ Import diagnostics appear as **From import**, while grammar-check diagnostics ap
 Motif does not publish an audience property; support can be added when PanGloss includes audience in the report.
 Standard-error warning lines are not read as grammar findings.
 
-Motif reads schema version 2 only. A bare array or an earlier findings envelope is refused as
+Schema version 3 adds the `error` level. Motif reads schema versions 2 and 3. A bare array or an earlier findings envelope is refused as
 `grammarcheck.malformed-findings`. A different integer version is refused as
-`grammarcheck.unsupported-schema`, with the received and expected versions; update PanGloss and Motif together.
+`grammarcheck.unsupported-schema`, with the received version and the accepted versions; update PanGloss and Motif together.
 
 **`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
 straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —
@@ -548,7 +551,7 @@ recorded without a statistics cache), `stats.parser-unavailable` (the executable
 `stats.cancelled`. Every statistics invocation takes machine-queue admission and runs inside the
 Windows job object, with a default ten-minute wall-clock cap.
 
-**`handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]`** writes the AI Handoff of
+**`handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]`** writes the AI Handoff of
 [ADR 0045](adr/0045-the-handoff-is-five-files-and-a-pasted-header.md): exactly five flat files a person drags
 into a chat model — the grammar PanGloss parsed with, the chosen Texts, the retained Assessment, a reader script,
 and a `handoff.md` that explains the rest. It shares the same project/store refusals every verb behind

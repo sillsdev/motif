@@ -98,7 +98,7 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                 <TextBlock Text="Parser step limit per word" FontWeight="SemiBold" />
-                <TextBlock Classes="setupMuted" Text="50,000,000 steps is the default. Choose no limit to let parsing continue until it finishes." TextWrapping="Wrap" />
+                <TextBlock Classes="setupMuted" Text="50,000,000 steps is the default. Choose no limit to let parsing continue until it finishes, subject to the per-word time limit." TextWrapping="Wrap" />
               </StackPanel>
               <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding StepLimitSteps}"
                              Minimum="1" Increment="1000000" FormatString="N0"

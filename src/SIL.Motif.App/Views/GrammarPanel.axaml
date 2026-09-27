@@ -50,6 +50,9 @@
             <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
                               IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
                               Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}" />
+            <views:FilterChip Label="Errors" Count="{Binding Grammar.Warnings.ErrorCount}" Verdict="Differs"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Errors}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Errors}" />
             <views:FilterChip Label="Warnings" Count="{Binding Grammar.Warnings.WarningCount}" Verdict="Differs"
                               IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Warnings}}"
                               Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Warnings}" />
@@ -69,6 +72,24 @@
           <!-- Left: every kind of finding, the ones where the parser left something out first. -->
           <ScrollViewer Grid.Column="0" Classes="warningKinds">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="muted warningHeading"
+                         Text="{Binding Grammar.Warnings.ErrorCount, StringFormat='ERRORS · {0}'}"
+                         IsVisible="{Binding Grammar.Warnings.HasErrorGroups}" />
+              <ItemsControl ItemsSource="{Binding Grammar.Warnings.ErrorGroups}" IsVisible="{Binding Grammar.Warnings.HasErrorGroups}"
+                            AutomationProperties.Name="Kinds of errors">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
+                    <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
+                            Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.SelectGroupCommand}"
+                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
+                      <DockPanel>
+                        <views:VerdictChip DockPanel.Dock="Right" Verdict="{Binding Meaning}" Text="{Binding Count}" Compact="True" />
+                        <TextBlock Classes="groupName" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                      </DockPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
               <views:CopyableTextBlock Classes="muted warningHeading"
                          Text="{Binding Grammar.Warnings.WarningCount, StringFormat='WARNINGS · {0}'}"
                          IsVisible="{Binding Grammar.Warnings.HasWarningGroups}" />
@@ -151,8 +172,9 @@
                                     ClipboardContentBinding="{ReflectionBinding Severity}">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <TextBlock Classes="warningSeverity warningCell" Classes.warning="{Binding IsWarning}"
-                             Classes.info="{Binding IsInfo}" Text="{Binding Severity}" />
+                  <TextBlock Classes="warningSeverity warningCell" Classes.error="{Binding IsError}"
+                             Classes.warning="{Binding IsWarning}" Classes.info="{Binding IsInfo}"
+                             Text="{Binding Severity}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>

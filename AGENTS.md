@@ -243,7 +243,7 @@ sync script. It is not yet part of `./build.ps1` or CI.
     read on, the body is for whoever implements or audits it. A status line like "Slice A built;
     the poisoning guard now fires for real" fails the rule — it names machinery only.
 
-18. **No migration code before 1.0.** Motif is pre-alpha: there is no database, no file, and no
+18. **No migration code before 1.0.** Users see Motif as a beta; for storage it is pre-1.0: there is no database, no file, and no
     on-disk shape in the world worth preserving, and every line written to carry an old one forward
     is a line paid for with nothing. A stored shape is either the current one or it is refused with
     an error telling the developer to delete it and let Motif recreate it. This applies to schema

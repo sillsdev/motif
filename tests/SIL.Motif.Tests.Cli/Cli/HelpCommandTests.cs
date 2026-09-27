@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
+using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -16,6 +17,7 @@ public sealed class HelpCommandTests
         var result = Run("help");
 
         Assert.Equal(0, result.ExitCode);
+        Assert.Matches(@"^Motif \(beta\) (?:—|-) report problems at https://github\.com/sillsdev/motif/issues", result.Output);
         Assert.Contains("Open a project", result.Output, StringComparison.Ordinal);
         Assert.Contains("Measure a Selection", result.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("Create a Draft", result.Output, StringComparison.Ordinal);
@@ -41,6 +43,44 @@ public sealed class HelpCommandTests
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("When to use", result.Output, StringComparison.Ordinal);
         Assert.Contains("motif help overview", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MalformedHelpCallUsesTheInvocationErrorExitCode()
+    {
+        var result = Run("help", "--json");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: motif help", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnknownHelpNameKeepsTheUnknownNameExitCode()
+    {
+        var result = Run("help", "not-a-released-command");
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("No released command or glossary term", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HandoffUsageIncludesTheTextsOption()
+    {
+        var descriptor = Assert.Single(CliVerbCatalog.All, item => item.CommandName == "handoff");
+
+        var usage = Assert.Single(descriptor.UsageLines);
+        Assert.Contains("OR motif handoff", usage, StringComparison.Ordinal);
+        Assert.Contains("--no-assess [--texts <id,…>]", usage, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("dry-run --wait")]
+    [InlineData("trial --wait")]
+    public void JobWaitUsageIncludesTheWaitTimeoutOption(string command)
+    {
+        var descriptor = Assert.Single(CliVerbCatalog.All, item => item.CommandName == command);
+
+        Assert.Contains("--wait-timeout-ms <ms>", Assert.Single(descriptor.UsageLines), StringComparison.Ordinal);
     }
 
     [Fact]
