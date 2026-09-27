@@ -74,26 +74,27 @@ public sealed class ProjectStoreResetTests : IDisposable
         Assert.Equal("kept", (string)Scalar(storePath, "SELECT CreatedUtc FROM MotifMetadata WHERE Id = 1;"));
     }
 
-    [WindowsFileLockFact]
+    [Fact]
     public void AStoreSomethingElseHoldsOpenIsRefusedAndKept()
     {
         var project = Project("held");
         var storePath = StorePathOf(project);
         Open(project);
-        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
-        using var holder = Connection(storePath);
-        using (var read = holder.CreateCommand())
-        {
-            read.CommandText = "PRAGMA user_version;";
-            read.ExecuteScalar();
-        }
+        using var holder = MotifDatabase.OpenOwned(storePath, Locator(project), MotifSchema.CurrentSchema,
+            new Version(1, 0));
+        using var concurrentHolder = MotifDatabase.OpenOwned(storePath, Locator(project), MotifSchema.CurrentSchema,
+            new Version(1, 0));
+        Assert.Equal(storePath, concurrentHolder.FullPath);
+        using var connection = holder.OpenConnection();
+        Execute(connection, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
 
         var outcome = ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(project), "1.0");
 
         Assert.False(outcome.Succeeded);
-        Assert.Equal(RefusalCodes.ProjectStoreIo, outcome.Refusal!.Code);
+        Assert.Equal(RefusalCodes.ProjectBusy, outcome.Refusal!.Code);
         Assert.Equal(storePath, outcome.Refusal.Facts[RefusalFactNames.StorePath]);
         Assert.True(File.Exists(storePath));
+        Assert.Equal((long)(MotifSchema.CurrentSchema - 1), Scalar(storePath, "PRAGMA user_version;"));
     }
 
     [Fact]

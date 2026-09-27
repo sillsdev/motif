@@ -32,16 +32,16 @@ public sealed record ProjectStoreResetResponse(string StorePath, bool Deleted);
 /// under its own code with the file untouched, pinned by `ADamagedStoreIsRefusedAsItsOwnFailureAndLeftByteForByte`.
 /// </para>
 /// <para>
-/// The decision and the deletion are made under the store's creation lock, so it never deletes a store this
-/// version can use; <see cref="MotifDatabase.DeleteIfOtherVersion"/> states why that lock is enough. A store
-/// created while this waited is kept, pinned by `ADatabaseCreatedWhileTheDeleteWaitsIsKept`. A lock not freed in
-/// time is a busy refusal, pinned by
+/// The creation lock orders reset against first creation, and an exclusive use lease protects an incompatible
+/// store from deletion while Motif has it open; <see cref="MotifDatabase.DeleteIfOtherVersion"/> details both.
+/// A store created while this waited is kept, pinned by `ADatabaseCreatedWhileTheDeleteWaitsIsKept`. A creation
+/// lock not freed in time is a busy refusal, pinned by
 /// `NothingIsDeletedWhileAnotherOpenerHoldsTheStoresCreationLock`.
 /// </para>
 /// <para>
 /// Every change not yet applied lives in that store and is lost with it; a caller confirms that with the person
-/// first. A store another process holds open cannot be deleted, and is refused as a store input/output failure,
-/// pinned by `AStoreSomethingElseHoldsOpenIsRefusedAndKept`.
+/// first. A store another Motif process holds open cannot be deleted and is refused as busy, pinned by
+/// `AStoreSomethingElseHoldsOpenIsRefusedAndKept`.
 /// </para>
 /// </remarks>
 public static class ProjectStoreReset
