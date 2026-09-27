@@ -314,7 +314,7 @@ public sealed class WorkspacePageTests
     public async Task TheProjectMenuOpensAnotherKnownProjectFromTheOverview()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
-        const string other = @"C:\projects\two.fwdata";
+        var other = Path.Combine(Path.GetTempPath(), "projects", "two.fwdata");
         fake.KnownProjectsListIs([new KnownProjectSummary(other, Saved)]);
         await workspace.Project.LoadKnownProjectsAsync();
         await ChooseProjectAsync(fake, projectPicker, workspace);

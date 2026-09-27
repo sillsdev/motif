@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
@@ -10,6 +11,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -108,6 +110,7 @@ public sealed class TryWordPageTests
     {
         RunOnAvalonia(async () =>
         {
+            using var culture = new CultureScope(CultureInfo.InvariantCulture);
             var (context, fake) = NewContext();
             context.ProjectPath = ProjectPath;
             context.Assess.ProjectPath = ProjectPath;

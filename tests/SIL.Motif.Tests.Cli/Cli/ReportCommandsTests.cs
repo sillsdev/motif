@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using SIL.Motif.Cli.Rendering;
@@ -84,6 +85,7 @@ public sealed class ReportCommandsTests : IDisposable
     [Fact]
     public void ACoverageReport_IsComputedStoredAndReadableWithNoAssessorAnywhereInTheProcess()
     {
+        using var culture = new CultureScope(CultureInfo.InvariantCulture);
         var assessmentId = RecordAssessment("ParseTime", ("motifa", true), ("motifb", false));
 
         var jsonResult = ReportCommands.Produce(

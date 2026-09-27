@@ -1,6 +1,8 @@
+using System.Globalization;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Assess;
@@ -96,6 +98,7 @@ public sealed class ReportProducerTests
     [Fact]
     public void Coverage_ComputesFromStoredWordsAndOutcomes_WithNoAssessorRegistered()
     {
+        using var culture = new CultureScope(CultureInfo.InvariantCulture);
         var assessment = Build("ParseTime", ("motifa", true), ("motifb", false));
         var producer = new CoverageReportProducer();
 
