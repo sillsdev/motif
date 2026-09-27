@@ -91,6 +91,23 @@ Apply and to keep a FieldWorks backup, repeats the backup line in Review changes
 window and `motif help` at <https://github.com/sillsdev/motif/issues>. The developer rule of no migration code before
 1.0 is unchanged.
 
+**D12. The samples are synthetic, and say so everywhere.** They are generated to demonstrate Motif, modelled
+loosely on real languages, and are not real language data. Their ids and names say it: `synthetic-turkic`
+("Synthetic Turkic-style sample"), `synthetic-bantu` (Swahili-style) and `synthetic-philippine` (Tagalog-style),
+replacing `sample-turkish`, `sample-swahili` and `sample-tagalog` wherever this plan uses them. Every surface that
+shows one — the spec, the FieldWorks project's own description, `bugs.json`, the Samples page, the home page cards,
+every lesson — carries a prominent label: "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif.
+It is modelled loosely on <language>, but it is not real <language>, has not been checked by speakers, and must not
+be used as a description of any language."
+
+**D13. Language content escalates by model.** A Luna worker builds each sample's structure and mechanics; a Sol
+worker grounds its language content in published analyses found online, cited in
+`docs/research/synthetic-samples/<language>.md`; Astra is used only if Sol's result is still not good enough.
+
+**D14. PanGloss v0.5.0 is the pinned parser.** It is the release that has `grammar-health --fw-project`, which Motif
+already calls; its grammar-health report is schema version 3 with an `error` level and a non-zero exit on errors,
+which Motif's reader must handle.
+
 ## 3. Interfaces (binding)
 
 ### Sample metadata — the part the site reads
