@@ -73,7 +73,7 @@ that dispatches them.
 | `warnings` | Released | `warnings --project <fwdata> [--kind <code>] [--left-out] [--json]` |
 | `grammar check` | Released | `grammar check --project <fwdata> [--json]` |
 | `timing` | Released | `timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind\|rule] [--rule <name>] [--top N] [--json]` |
-| `handoff` | Released | `handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]` |
+| `handoff` | Released | `handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]` |
 | `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |
 | `add-document` | Released | `add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> [--title <text>] [--licence <text>] [--may-derive true\|false] [--licence-basis <text>]` |
 | `add-corpus-bundle` | Released | `add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)` |
@@ -81,9 +81,9 @@ that dispatches them.
 | `show-corpus` | Released | `show-corpus --project <fwdata> <corpusId> [--json]` |
 | `baseline-refresh` | Released | `baseline-refresh --project <fwdata>` |
 | `dry-run` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
-| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
+| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--json]` |
 | `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
-| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
+| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] --wait [--wait-timeout-ms <ms>] [--json]` |
 | `trial --pending` | Developer | `trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> --wait [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]` |
 | `jobs show` | Released | `jobs show <jobId> --project <fwdata> [--json]` |
 | `jobs assessments` | Released | `jobs assessments <jobId> --project <fwdata> [--json]` |
@@ -548,7 +548,7 @@ recorded without a statistics cache), `stats.parser-unavailable` (the executable
 `stats.cancelled`. Every statistics invocation takes machine-queue admission and runs inside the
 Windows job object, with a default ten-minute wall-clock cap.
 
-**`handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]`** writes the AI Handoff of
+**`handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]`** writes the AI Handoff of
 [ADR 0045](adr/0045-the-handoff-is-five-files-and-a-pasted-header.md): exactly five flat files a person drags
 into a chat model — the grammar PanGloss parsed with, the chosen Texts, the retained Assessment, a reader script,
 and a `handoff.md` that explains the rest. It shares the same project/store refusals every verb behind
