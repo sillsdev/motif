@@ -152,10 +152,20 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         {
             var kibibytes = (_memoryLimitBytes + 1023) / 1024;
             var resource = _linux ? 'v' : 'd';
+            var resourceName = _linux ? "RLIMIT_AS" : "RLIMIT_DATA";
             var limit = kibibytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            script.Append("ulimit -S -").Append(resource).Append(' ').Append(limit)
-                .Append(" 2>/dev/null && ulimit -H -").Append(resource).Append(' ').Append(limit)
-                .Append(" 2>/dev/null || exit 125; ");
+            script.Append("resource_hard=$(ulimit -H -").Append(resource).Append(") || exit 125; ")
+                .Append("case \"$resource_hard\" in ")
+                .Append("unlimited) resource_effective=").Append(limit).Append(" ;; ")
+                .Append("''|*[!0-9]*) exit 125 ;; ")
+                .Append("*) if [ \"$resource_hard\" -gt ").Append(limit)
+                .Append(" ]; then resource_effective=").Append(limit)
+                .Append("; else resource_effective=$resource_hard; fi ;; ")
+                .Append("esac; ")
+                .Append("ulimit -S -").Append(resource).Append(" \"$resource_effective\" 2>/dev/null || { printf '%s\\n' 'Could not set soft ")
+                .Append(resourceName).Append(".' >&2; exit 125; }; ")
+                .Append("ulimit -H -").Append(resource).Append(" \"$resource_effective\" 2>/dev/null || { printf '%s\\n' 'Could not set hard ")
+                .Append(resourceName).Append(".' >&2; exit 125; }; ");
         }
         script.Append("exec \"$0\" \"$@\"");
         return script.ToString();
@@ -211,7 +221,7 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             }
             : new[]
             {
-                "macOS has no cgroup equivalent; CPU rate and aggregate memory are uncapped, and RLIMIT_DATA covers only each process's data segment.",
+                "macOS has no cgroup equivalent; CPU rate and aggregate memory are uncapped, and RLIMIT_DATA limits each process's data segment.",
                 "A descendant that deliberately leaves the process group can outlive the job."
             };
         return new PanGlossContainmentReport(null, memoryLimitBytes, false,
