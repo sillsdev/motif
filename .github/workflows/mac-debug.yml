@@ -16,6 +16,7 @@ jobs:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
       AVALONIA_TELEMETRY_OPTOUT: '1'
+      MOTIF_DEVELOPER_COMMANDS: '1'
     steps:
       - uses: actions/checkout@v4
 
