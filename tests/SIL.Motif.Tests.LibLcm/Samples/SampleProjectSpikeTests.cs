@@ -85,6 +85,8 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                   "title": "Test sample",
                   "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
                   "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+                  "teaches": ["parser basics"],
+                  "summary": "A synthetic parser test.",
                   "language": { "name": "Synthetic test", "tag": "tr" },
                   "phonemes": ["a"],
                   "partsOfSpeech": [{ "id": "noun", "name": "Noun" }],
@@ -97,6 +99,42 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
             Assert.NotEqual(0, result.ExitCode);
             Assert.Contains("Stem 'car' form 'ar' uses undeclared character 'r'.", result.StandardError);
+        }
+        finally
+        {
+            DeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public async Task BuilderDoesNotTreatTheBaseOfADiacriticPhonemeAsDeclared()
+    {
+        var root = NewRoot();
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var specPath = Path.Combine(root, "invalid-sample.json");
+            await File.WriteAllTextAsync(specPath, """
+                {
+                  "id": "sample-test",
+                  "title": "Test sample",
+                  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+                  "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+                  "teaches": ["parser basics"],
+                  "summary": "A synthetic parser test.",
+                  "language": { "name": "Synthetic test", "tag": "tr" },
+                  "phonemes": ["ç"],
+                  "partsOfSpeech": [{ "id": "noun", "name": "Noun" }],
+                  "stems": [{ "id": "car", "form": "c", "partOfSpeech": "noun", "gloss": "car" }],
+                  "texts": [{ "id": "one", "title": "One", "sentences": ["c"] }]
+                }
+                """);
+
+            var result = await RunBuilderAsync(root, specPath);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("Stem 'car' form 'c' uses undeclared character 'c'.", result.StandardError);
         }
         finally
         {
@@ -161,7 +199,13 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                 Assert.All(words, word => Assert.Equal("analysed", word.GetProperty("outcome").GetString()));
                 parsedWords += words.Length;
             }
-            Assert.Equal(16, parsedWords);
+            var samplePath = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic", "sample.json");
+            using var sample = JsonDocument.Parse(await File.ReadAllTextAsync(samplePath));
+            var expectedWords = sample.RootElement.GetProperty("texts").EnumerateArray()
+                .Sum(text => text.GetProperty("sentences").EnumerateArray()
+                    .SelectMany(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                    .Distinct(StringComparer.Ordinal).Count());
+            Assert.Equal(expectedWords, parsedWords);
         }
         finally
         {
@@ -187,12 +231,14 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
             var bugIds = definitions.Select(bug => bug.GetProperty("id").GetString()!).ToArray();
             var textCount = spec.RootElement.GetProperty("texts").EnumerateArray()
                 .Sum(text => text.GetProperty("sentences").EnumerateArray()
-                    .Sum(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length));
+                    .SelectMany(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                    .Distinct(StringComparer.Ordinal).Count());
 
             using var fixedBuild = await BuildVariantAsync(root, specPath, bugsPath, [], "fixed");
             var fixedResult = await AssessTextsAsync(root, fixedBuild.RootElement, trace: true);
             Assert.Equal(textCount, fixedResult.Words);
-            Assert.Equal(fixedResult.Words, fixedResult.Parsed);
+            Assert.True(fixedResult.Words == fixedResult.Parsed,
+                $"Fixed sample has unparsed words: {string.Join("; ", fixedResult.TraceFailures.Select(pair => $"{pair.Key}: {pair.Value}"))}");
 
             var variantResults = new Dictionary<string, AssessmentSnapshot>(StringComparer.Ordinal)
             {
@@ -219,10 +265,10 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                     Assert.Empty(actualFailures);
                     variantFailures.Add(bugId, new(StringComparer.Ordinal));
                     var slowestWords = SlowestWords(result);
-                    output.WriteLine($"slow variant steps={result.Steps}; fixed steps={fixedResult.Steps}; ratio={(double)result.Steps / fixedResult.Steps:F2}x; slowest={string.Join(", ", slowestWords)}");
+                    output.WriteLine($"slow variant work={result.Work}; fixed work={fixedResult.Work}; ratio={(double)result.Work / fixedResult.Work:F2}x; steps={result.Steps}/{fixedResult.Steps}; slowest={string.Join(", ", slowestWords)}");
                     Assert.Equal(expectedWords, slowestWords);
-                    Assert.True(result.Steps >= fixedResult.Steps * 10,
-                        $"Slow bug '{bugId}' needs 10x parser steps; fixed={fixedResult}, broken={result}.");
+                    Assert.True(result.Work >= fixedResult.Work * 10,
+                        $"Slow bug '{bugId}' needs 10x parser work; fixed={fixedResult}, broken={result}.");
                 }
                 else
                 {
@@ -284,6 +330,8 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                   "title": "Synthetic slow spike",
                   "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
                   "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+                  "teaches": ["parser performance"],
+                  "summary": "A synthetic parser performance test.",
                   "language": { "name": "Synthetic Turkic-style", "tag": "tr" },
                   "phonemes": ["a", "e", "l", "r", "v"],
                   "naturalClasses": [
@@ -427,7 +475,8 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         var wallClockMs = 0L;
         var work = 0L;
         var steps = 0L;
-        var wordSteps = new Dictionary<string, long>(StringComparer.Ordinal);
+        var wordWork = new Dictionary<string, long>(StringComparer.Ordinal);
+        var traceFailures = new Dictionary<string, string>(StringComparer.Ordinal);
         var invoker = trace ? new PanGlossInvoker() : null;
         var tracer = invoker is null ? null : new PanGlossTracer(invoker);
         try
@@ -464,17 +513,31 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                     else
                         outcomes.Add(normalizedForm, outcome);
                     if (outcome == "analysed") parsedCount++;
-                    if (tracer is null || outcome != "analysed") continue;
+                    if (tracer is null) continue;
                     var traceResult = await tracer.TraceAsync(buildResult.GetProperty("projectPath").GetString()!,
                         form, CancellationToken.None, TimeSpan.FromSeconds(30));
                     var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(traceResult);
                     var details = Assert.IsType<PanGlossTraceDetails>(completed.Details);
                     steps += details.Steps;
                     work += details.Categories.Sum(category => category.Work);
-                    wordSteps[normalizedForm] = wordSteps.GetValueOrDefault(normalizedForm) + details.Steps;
+                    var workForWord = details.Categories.Sum(category => category.Work);
+                    wordWork[normalizedForm] = wordWork.GetValueOrDefault(normalizedForm) + workForWord;
+                    if (outcome != "analysed")
+                    {
+                        var attempts = completed.Document!.Attempts
+                            .Select(attempt => string.Join("/", new[]
+                            {
+                                attempt.EventType,
+                                attempt.FailureReason,
+                                attempt.FailureContext,
+                                attempt.FailureEnvironment,
+                            }.Where(value => !string.IsNullOrWhiteSpace(value))))
+                            .Where(value => value.Length > 0);
+                        traceFailures[normalizedForm] = string.Join(", ", attempts);
+                    }
                 }
             }
-            return new AssessmentSnapshot(outcomes, wordCount, parsedCount, work, steps, wallClockMs, wordSteps);
+            return new AssessmentSnapshot(outcomes, wordCount, parsedCount, work, steps, wallClockMs, wordWork, traceFailures);
         }
         finally
         {
@@ -488,7 +551,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
             result.Work, result.Steps, result.WallClockMs,
             SlowestWords(result), failing ?? new Dictionary<string, string>(StringComparer.Ordinal));
 
-    private static string[] SlowestWords(AssessmentSnapshot result) => result.WordSteps
+    private static string[] SlowestWords(AssessmentSnapshot result) => result.WordWork
         .OrderByDescending(pair => pair.Value)
         .ThenBy(pair => pair.Key, StringComparer.Ordinal)
         .Take(4)
@@ -548,7 +611,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
     private sealed record WorkSnapshot(long Work, long Steps, long WallClockMs, double ParserElapsedMs);
     private sealed record AssessmentSnapshot(
         Dictionary<string, string> Outcomes, int Words, int Parsed, long Work, long Steps, long WallClockMs,
-        Dictionary<string, long> WordSteps);
+        Dictionary<string, long> WordWork, Dictionary<string, string> TraceFailures);
     private sealed record SampleExpected(
         string Disclaimer, SampleVariantExpected Fixed, SampleVariantExpected Broken,
         Dictionary<string, SampleVariantExpected> Variants);
