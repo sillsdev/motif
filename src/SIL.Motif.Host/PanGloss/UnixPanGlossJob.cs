@@ -293,8 +293,9 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
         return (status & 0x7f) == 0 ? (status >> 8) & 0xff : 128 + (status & 0x7f);
     }
 
-    private static async Task<string> ReadAsync(FileStream stream)
+    private async Task<string> ReadAsync(FileStream stream)
     {
+        await _exitCode.ConfigureAwait(false);
         await stream.FlushAsync().ConfigureAwait(false);
         stream.Position = 0;
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true,
