@@ -277,7 +277,7 @@ public sealed class WorkspaceCleaner
     }
 
     private static bool IsSafeSegment(string value) => !string.IsNullOrWhiteSpace(value) && value is not ("." or "..") &&
-        value.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, ':']) < 0;
+        value.IndexOfAny(['/', '\\', ':']) < 0;
 
     private static WorkspaceCleanupResult Failure(string path, string message) =>
         new([], [new WorkspaceCleanupFailure(path, message)]);
