@@ -482,9 +482,10 @@ the Assessment, so partial statistics cannot look complete. Opening Overview or 
 
 The Warnings page reads PanGloss's grammar-health report last stored for the current Baseline. Opening the page
 or running `warnings` never invokes PanGloss. The App's **Reload grammar** action and the CLI check run PanGloss
-`grammar-health` on the current Baseline. A successful run replaces that Baseline's one stored result. The store
-also records the resolved default Selection digest at check time when one exists, but grammar findings remain
-valid after the Selection changes.
+`grammar-health` on the current Baseline. A written report replaces that Baseline's one stored result. PanGloss
+v0.5.0 may exit nonzero after writing a report that contains error-level findings; Motif still reads and stores
+that report. A nonzero exit without a report is a refusal. The store also records the resolved default Selection
+digest at check time when one exists, but grammar findings remain valid after the Selection changes.
 
 **`grammar check --project <fwdata> [--json]`** performs a new check. With no Baseline it succeeds with
 `hasBaseline: false` and no findings. `--json` emits `GrammarCheckResponse`. Its refusal codes are
@@ -493,13 +494,15 @@ valid after the Selection changes.
 
 **`warnings --project <fwdata> [--kind <code>] [--left-out] [--json]`** reads those stored findings.
 `--kind` matches one stable diagnostic code exactly, ignoring case. `--left-out` keeps only findings whose
-level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result.
+level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result,
+including separate counts for `error`, `warning`, and `info` findings.
 `warnings` reads the stored result. Without a check, text says the grammar has not been checked and JSON has
 `hasCheck: false` with empty findings.
-`--json` emits `WarningsResponse`, including each finding's description, origin, guidance, subjects, and links.
+`--json` emits `WarningsResponse`, including `ErrorCount`, `WarningCount`, and `InformationCount`, plus each
+finding's description, origin, guidance, subjects, and links.
 
-PanGloss v2 writes an object with `schema_version: 2`, `fieldworks_project`, `summary`, and `diagnostics`.
-The summary groups by `code` and includes `group_name`, `level` (`warning` or `info`), and `count`. Each
+PanGloss v0.5.0 writes an object with `schema_version: 3`, `fieldworks_project`, `summary`, and `diagnostics`.
+The summary groups by `code` and includes `group_name`, `level` (`error`, `warning`, or `info`), and `count`. Each
 diagnostic includes `level`, `code`, `group_name`, `origin` (`check` or `import`), `description`, nullable
 `guidance`, and `subjects`.
 
@@ -510,9 +513,9 @@ Import diagnostics appear as **From import**, while grammar-check diagnostics ap
 Motif does not publish an audience property; support can be added when PanGloss includes audience in the report.
 Standard-error warning lines are not read as grammar findings.
 
-Motif reads schema version 2 only. A bare array or an earlier findings envelope is refused as
+Schema version 3 adds the `error` level. Motif reads schema versions 2 and 3. A bare array or an earlier findings envelope is refused as
 `grammarcheck.malformed-findings`. A different integer version is refused as
-`grammarcheck.unsupported-schema`, with the received and expected versions; update PanGloss and Motif together.
+`grammarcheck.unsupported-schema`, with the received version and the accepted versions; update PanGloss and Motif together.
 
 **`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
 straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —
