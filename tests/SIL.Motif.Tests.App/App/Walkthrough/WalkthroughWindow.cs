@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using SIL.Motif.App.Composition;
@@ -90,13 +91,6 @@ public sealed class WalkthroughWindow : IDisposable
         WaitUntil(() => !setup.IsOpen, TimeSpan.FromSeconds(30), "skipping setup did not close the dialog");
     }
 
-    public void LoadKnownProjects()
-    {
-        var loading = Workspace.Project.LoadKnownProjectsAsync();
-        WaitUntil(() => loading.IsCompleted, TimeSpan.FromSeconds(30), "Known projects did not load");
-        loading.GetAwaiter().GetResult();
-    }
-
     public void OpenProjectMenu()
     {
         if (!ProjectMenuFlyout.IsOpen) Click("Project menu");
@@ -112,7 +106,20 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void ChooseNewProject()
     {
+        var selectedPath = _projectPicker.Path;
         ClickProjectMenuEntry("Select a new project");
+        var selectionTask = Workspace.SelectNewProjectCommand.ExecutionTask;
+        Assert.NotNull(selectionTask);
+        WaitUntil(() => !ProjectMenuFlyout.IsOpen,
+            TimeSpan.FromSeconds(10), "selecting a new project did not close the project menu");
+        WaitUntil(() => selectionTask.IsCompleted,
+            TimeSpan.FromSeconds(30), "the project picker did not finish");
+        WaitUntil(() => string.Equals(Workspace.Context.ProjectPath, selectedPath,
+                StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(Workspace.Context.Setup?.ProjectPath, selectedPath,
+                StringComparison.OrdinalIgnoreCase) &&
+            (Workspace.Baseline.ProjectLastWriteUtc is not null || Workspace.Baseline.ShownRefusal is not null),
+            TimeSpan.FromSeconds(60), "the selected project did not finish opening");
     }
 
     /// <summary>Clicks the project menu's Configure entry through the pointer, in the menu's own popup.</summary>
@@ -296,30 +303,6 @@ public sealed class WalkthroughWindow : IDisposable
         Window.KeyTextInput(text);
         Pump();
         Assert.Equal(text, textBox.Text);
-    }
-
-    public void SelectKnownProject(string projectPath)
-    {
-        var project = Workspace.RecentProjects.Single(known =>
-            string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
-        OpenProjectMenu();
-        var openRecent = FindProjectMenuEntry<Button>("Open a recent project");
-        var recentMenu = Assert.IsType<MenuFlyout>(openRecent.Flyout);
-        HeadlessClick.Click(TopLevel.GetTopLevel(openRecent)!, openRecent, "Open a recent project");
-        Assert.True(recentMenu.IsOpen, "Clicking 'Open a recent project' did not open its list.");
-        var item = Window.RecentProjectItems.Single(candidate =>
-            string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate),
-                project.AutomationName, StringComparison.Ordinal));
-        Assert.Same(Workspace.OpenRecentProjectCommand, item.Command);
-        Assert.Same(project, item.CommandParameter);
-        var before = Workspace.OpenRecentProjectCommand.ExecutionTask;
-        HeadlessClick.Click(TopLevel.GetTopLevel(item)!, item, project.AutomationName);
-        Pump();
-        Assert.NotSame(before, Workspace.OpenRecentProjectCommand.ExecutionTask);
-        Assert.False(ProjectMenuFlyout.IsOpen, $"Clicking '{project.AutomationName}' left the project menu open.");
-        // The Baseline and Texts load partway through the open; the recent list is right only once it ends.
-        WaitUntil(() => Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
-            TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
     }
 
     private Flyout ProjectMenuFlyout =>

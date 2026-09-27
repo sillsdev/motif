@@ -33,8 +33,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
 
             using var reopened = NewWindow(project);
             reopened.Show();
-            reopened.LoadKnownProjects();
-            reopened.SelectKnownProject(project.FwDataPath);
+            reopened.OpenRecentProjectByClick(project.FwDataPath);
             Assert.False(reopened.Workspace.Context.Setup!.IsOpen);
             Assert.Equal(selectedTextId, Assert.Single(reopened.Workspace.Selection.ChosenTextIds));
             Assert.Equal(2.7m, reopened.Workspace.Selection.PerWordTimeLimitSeconds);
@@ -76,8 +75,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
 
             using var reopened = NewWindow(projectB, managedRoot);
             reopened.Show();
-            reopened.LoadKnownProjects();
-            reopened.SelectKnownProject(projectB.FwDataPath);
+            reopened.OpenRecentProjectByClick(projectB.FwDataPath);
             Assert.False(reopened.Workspace.Context.Setup!.IsOpen);
             var commands = Assert.IsType<CommandClient>(reopened.Workspace.Context.Commands);
             var skippedAgain = await commands.ReadDefaultSelectionAsync(

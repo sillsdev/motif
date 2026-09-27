@@ -11,19 +11,27 @@ internal static class WalkthroughWindowReopen
         ArgumentNullException.ThrowIfNull(walkthrough);
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
 
-        walkthrough.LoadKnownProjects();
+        walkthrough.OpenProjectMenu();
+        var automationName = $"Open {Path.GetFileNameWithoutExtension(projectPath)}";
+        walkthrough.WaitUntil(() => walkthrough.Window.RecentProjectItems.Any(candidate =>
+                string.Equals(AutomationProperties.GetName(candidate), automationName, StringComparison.Ordinal)),
+            TimeSpan.FromSeconds(10), $"'{automationName}' did not appear under Open recent");
         var project = walkthrough.Workspace.RecentProjects.Single(known =>
             string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
-        walkthrough.OpenProjectMenu();
         var openRecent = walkthrough.FindProjectMenuEntry<Button>("Open a recent project");
-        Assert.True(openRecent.IsEffectivelyEnabled, "'Open a recent project' is not effectively enabled.");
-        HeadlessClick.Click(walkthrough.Window, openRecent, "Open a recent project");
+        var recentMenu = Assert.IsType<MenuFlyout>(openRecent.Flyout);
+        HeadlessClick.Click(TopLevel.GetTopLevel(openRecent)!, openRecent, "Open a recent project");
+        Assert.True(recentMenu.IsOpen, "Clicking 'Open a recent project' did not open its list.");
         var item = walkthrough.Window.RecentProjectItems.Single(candidate =>
             string.Equals(AutomationProperties.GetName(candidate), project.AutomationName, StringComparison.Ordinal));
-        Assert.True(item.IsEffectivelyEnabled, $"'{project.AutomationName}' is not effectively enabled.");
-        HeadlessClick.Click(walkthrough.Window, item, project.AutomationName);
-        walkthrough.WaitUntil(
-            () => walkthrough.Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
+        var command = walkthrough.Workspace.OpenRecentProjectCommand;
+        Assert.Same(command, item.Command);
+        Assert.Same(project, item.CommandParameter);
+        var before = command.ExecutionTask;
+        HeadlessClick.Click(TopLevel.GetTopLevel(item)!, item, project.AutomationName);
+        walkthrough.WaitUntil(() => !recentMenu.IsOpen &&
+                !ReferenceEquals(before, command.ExecutionTask) && command.ExecutionTask is { IsCompleted: true },
             TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
+        Assert.NotSame(before, command.ExecutionTask);
     }
 }

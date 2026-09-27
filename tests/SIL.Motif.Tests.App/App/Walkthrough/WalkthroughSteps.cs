@@ -16,7 +16,6 @@ internal static class WalkthroughSteps
         Assert.Empty(walkthrough.Workspace.Project.KnownProjects);
         walkthrough.OpenProjectMenu();
         Assert.True(walkthrough.FindProjectMenuEntry<Button>("Select a new project").IsEffectivelyEnabled);
-        Assert.False(walkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
         walkthrough.ChooseNewProject();
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&

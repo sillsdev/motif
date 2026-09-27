@@ -41,6 +41,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private bool _isRefreshing;
     private bool _refreshCancelled;
     private bool _refreshed;
+    private Task? _knownProjectsRefreshTask;
     private int _refreshGeneration;
 
     public WorkspaceShellViewModel(
@@ -147,6 +148,25 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>Collapses or expands the sidebar for a window <paramref name="width"/> pixels wide.</summary>
     public void UpdateWindowWidth(double width) => IsSidebarCollapsed = width < SidebarCollapseWidth;
+
+    /// <summary>Re-reads the Known projects, keeping the last list if the read fails.</summary>
+    public Task RefreshKnownProjectsAsync()
+    {
+        if (_knownProjectsRefreshTask is { IsCompleted: false } inProgress) return inProgress;
+        return _knownProjectsRefreshTask = RefreshKnownProjectsCoreAsync();
+    }
+
+    private async Task RefreshKnownProjectsCoreAsync()
+    {
+        try
+        {
+            await Project.LoadKnownProjectsAsync().ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // A failed Known projects read should preserve the last usable list.
+        }
+    }
 
     /// <summary>The chosen project's file name for the top bar, or a prompt before one is chosen.</summary>
     public string ProjectName => Context.ProjectName;
