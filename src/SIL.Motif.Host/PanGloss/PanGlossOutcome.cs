@@ -11,7 +11,7 @@ public abstract record PanGlossOutcome
     /// <summary>One human sentence saying what happened, suitable for a Refusal's message.</summary>
     public abstract string Message { get; }
 
-    /// <summary>The parser exited zero and wrote what the request promised.</summary>
+    /// <summary>The request wrote what it promised, including a grammar-health report that contains errors.</summary>
     /// <param name="Output">What the subcommand produced: the JSONL or text rows of <c>stats</c>, the TSV rows of
     /// <c>batch</c>, nothing for <c>import</c>.</param>
     /// <param name="StandardError">Everything the parser wrote to its error stream, kept for its warnings.</param>
