@@ -1,0 +1,54 @@
+[
+  {
+    "id": "plural-case-slots-swapped",
+    "title": "Plural and case slots are reversed",
+    "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+    "symptom": {
+      "kind": "failure",
+      "words": ["balalarımı", "sökelerimi", "pörularımı", "gürülerimi", "kavoumu", "neliimi", "püümü", "zöpaımı", "balaımı", "moruumu"],
+      "reason": "The template orders Case before Possessive and Plural, but these constructed forms require the slots in a different order or omit one."
+    },
+    "fix": [
+      "Open the noun affix template in FieldWorks.",
+      "Move the Plural slot before the Possessive and Case slots.",
+      "Save the project and refresh the Assessment."
+    ],
+    "patch": [
+      { "op": "swapSlots", "templateId": "noun", "firstSlotId": "plural", "secondSlotId": "case" }
+    ]
+  },
+  {
+    "id": "missing-stem",
+    "title": "A stem is missing from the lexicon",
+    "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+    "symptom": {
+      "kind": "failure",
+      "words": ["böre"],
+      "reason": "No lexical entry supplies the stem for this word, so its Text token cannot be analyzed."
+    },
+    "fix": [
+      "Open Lexicon in FieldWorks and create a noun entry with the form böre.",
+      "Add the gloss book and set its part of speech to Noun.",
+      "Save the project and refresh the Assessment."
+    ],
+    "patch": [{ "op": "removeStem", "stemId": "bore" }]
+  },
+  {
+    "id": "repeated-optional-plural-slot",
+    "title": "Repeated optional plural slots slow parsing",
+    "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+    "symptom": {
+      "kind": "slow",
+      "words": ["balalar", "balalarımı", "balaımı", "sökelerimi"],
+      "reason": "The noun template repeats a copied optional Plural slot many times, so the parser explores redundant placements of the same affix on every word."
+    },
+    "fix": [
+      "Open the noun affix template in FieldWorks.",
+      "Remove the copied Plural slots and keep one Plural slot in its ordered position.",
+      "Check that the plural affix uses only that slot, then save and refresh the Assessment."
+    ],
+    "patch": [
+      { "op": "duplicateOptionalSlot", "templateId": "noun", "slotId": "plural", "count": 48 }
+    ]
+  }
+]

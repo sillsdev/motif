@@ -17,6 +17,7 @@ internal static class Program
     {
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         Converters = { new JsonStringEnumConverter() },
     };
 
@@ -67,6 +68,7 @@ internal sealed record SampleSpec
 {
     public string Id { get; init; } = "";
     public string Title { get; init; } = "";
+    public string[] Teaches { get; init; } = [];
     public string Summary { get; init; } = "";
     public string Disclaimer { get; init; } = "";
     public string Description { get; init; } = "";
@@ -95,11 +97,13 @@ internal sealed record AffixTemplateSpec(
     string Id, string Name, string PartOfSpeech, string[] PrefixSlots, string[] SuffixSlots, bool Final);
 internal sealed record PhonologicalRuleSpec(string Id, string Name, string Input, string Output, string Environment);
 internal sealed record TextSpec(string Id, string Title, string[] Sentences);
-internal sealed record BugSpec(string Id, string Title, BugSymptom? Symptom, string[] Fix, PatchOperation[] Patch);
+internal sealed record BugSpec(
+    string Id, string Title, string Disclaimer, BugSymptom? Symptom, string[] Fix, PatchOperation[] Patch);
 internal sealed record BugSymptom(string Kind, string[] Words, string Reason);
 internal sealed record PatchOperation(
     string Op,
     string? AllomorphId = null,
+    string? Form = null,
     string? EnvironmentId = null,
     string? AffixId = null,
     string? StemId = null,
@@ -123,7 +127,7 @@ internal static class SampleBuilder
         SampleSpec source, string outputRoot, IReadOnlyList<BugSpec> bugs, IReadOnlyList<string> bugIds)
     {
         var spec = ApplyBugs(source, bugs, bugIds);
-        Validate(spec);
+        Validate(spec, bugs);
         Directory.CreateDirectory(outputRoot);
         var isBroken = bugIds.Count > 0;
         var projectName = ProjectName(spec.Id) + (isBroken ? "Broken" : "");
@@ -170,6 +174,7 @@ internal static class SampleBuilder
     private static SampleSpec ApplyPatch(SampleSpec spec, PatchOperation patch) => patch.Op switch
     {
         "setEnvironment" => SetEnvironment(spec, patch),
+        "setAllomorphForm" => SetAllomorphForm(spec, patch),
         "removeStem" => spec with
         {
             Stems = spec.Stems.Where(stem => stem.Id != Required(patch.StemId, "stemId")).ToArray(),
@@ -225,6 +230,24 @@ internal static class SampleBuilder
         };
     }
 
+    private static SampleSpec SetAllomorphForm(SampleSpec spec, PatchOperation patch)
+    {
+        var allomorphId = Required(patch.AllomorphId, "allomorphId");
+        var form = Required(patch.Form, "form");
+        var matches = spec.Affixes.SelectMany(affix => affix.Allomorphs)
+            .Count(allomorph => allomorph.Id == allomorphId);
+        if (matches != 1) throw new InvalidDataException($"Allomorph '{allomorphId}' does not exist exactly once.");
+        return spec with
+        {
+            Affixes = spec.Affixes.Select(affix => affix with
+            {
+                Allomorphs = affix.Allomorphs.Select(allomorph => allomorph.Id == allomorphId
+                    ? allomorph with { Form = form }
+                    : allomorph).ToArray(),
+            }).ToArray(),
+        };
+    }
+
     private static SampleSpec SetAffixSlots(SampleSpec spec, PatchOperation patch)
     {
         var affixId = Required(patch.AffixId, "affixId");
@@ -244,7 +267,7 @@ internal static class SampleBuilder
         var slotId = Required(patch.SlotId, "slotId");
         var templateId = Required(patch.TemplateId, "templateId");
         var count = patch.Count ?? throw new InvalidDataException("duplicateOptionalSlot needs count.");
-        if (count is < 1 or > 32) throw new InvalidDataException("duplicateOptionalSlot count must be from 1 to 32.");
+        if (count is < 1 or > 64) throw new InvalidDataException("duplicateOptionalSlot count must be from 1 to 64.");
         var sourceSlot = spec.AffixSlots.SingleOrDefault(slot => slot.Id == slotId)
             ?? throw new InvalidDataException($"Slot '{slotId}' does not exist.");
         var copies = Enumerable.Range(1, count).Select(index => sourceSlot with
@@ -270,10 +293,13 @@ internal static class SampleBuilder
     private static string Required(string? value, string name) =>
         string.IsNullOrWhiteSpace(value) ? throw new InvalidDataException($"Patch operation needs {name}.") : value;
 
-    private static void Validate(SampleSpec spec)
+    private static void Validate(SampleSpec spec, IReadOnlyList<BugSpec> bugs)
     {
-        if (string.IsNullOrWhiteSpace(spec.Id) || string.IsNullOrWhiteSpace(spec.Language.Tag))
-            throw new InvalidDataException("Sample id and vernacular writing-system tag are required.");
+        if (string.IsNullOrWhiteSpace(spec.Id) || string.IsNullOrWhiteSpace(spec.Title) ||
+            spec.Teaches.Length == 0 || string.IsNullOrWhiteSpace(spec.Summary) ||
+            string.IsNullOrWhiteSpace(spec.Language.Tag) || string.IsNullOrWhiteSpace(spec.Disclaimer) ||
+            string.IsNullOrWhiteSpace(spec.Description))
+            throw new InvalidDataException("Sample id, title, description, disclaimer, and writing-system tag are required.");
         if (spec.Phonemes.Length == 0 || spec.PartsOfSpeech.Length == 0)
             throw new InvalidDataException("At least one phoneme and part of speech are required.");
         if (spec.Stems.Length == 0 || spec.Texts.Length == 0)
@@ -283,7 +309,14 @@ internal static class SampleBuilder
             .Select(rune => rune.ToString())
             .Append("+")
             .ToHashSet(StringComparer.Ordinal);
-        var partIds = spec.PartsOfSpeech.Select(part => part.Id).ToHashSet(StringComparer.Ordinal);
+        var partIds = UniqueById(spec.PartsOfSpeech, part => part.Id, "part of speech")
+            .Keys.ToHashSet(StringComparer.Ordinal);
+        UniqueById(spec.Stems, stem => stem.Id, "stem");
+        UniqueById(spec.Affixes, affix => affix.Id, "affix");
+        UniqueById(spec.NaturalClasses, item => item.Id, "natural class");
+        UniqueById(spec.Phonemes, phoneme => phoneme, "phoneme");
+        UniqueById(spec.Texts, text => text.Id, "Text");
+        UniqueById(spec.AffixTemplates, template => template.Id, "affix template");
         var slotById = UniqueById(spec.AffixSlots, slot => slot.Id, "affix slot");
         var environmentIds = UniqueById(spec.Environments, environment => environment.Id, "environment")
             .Keys.ToHashSet(StringComparer.Ordinal);
@@ -297,6 +330,7 @@ internal static class SampleBuilder
         }
         foreach (var affix in spec.Affixes)
         {
+            UniqueById(affix.Allomorphs, allomorph => allomorph.Id, $"allomorph in affix '{affix.Id}'");
             if (!partIds.Contains(affix.PartOfSpeech))
                 throw new InvalidDataException($"Affix '{affix.Id}' names an unknown part of speech.");
             if (affix.Allomorphs.Length == 0 || affix.Slots.Length == 0)
@@ -306,6 +340,8 @@ internal static class SampleBuilder
                     throw new InvalidDataException($"Affix '{affix.Id}' names an unknown or incompatible slot '{slotId}'.");
             foreach (var allomorph in affix.Allomorphs)
             {
+                if (string.IsNullOrWhiteSpace(allomorph.Id))
+                    throw new InvalidDataException($"Affix '{affix.Id}' has an allomorph without an id.");
                 ValidateVernacularCharacters(allomorph.Form,
                     $"Affix '{affix.Id}' allomorph '{allomorph.Id}' form '{allomorph.Form}'", declaredCharacters);
                 if (allomorph.Environment is not null && !environmentIds.Contains(allomorph.Environment))
@@ -330,6 +366,16 @@ internal static class SampleBuilder
             foreach (var word in text.Sentences.SelectMany(sentence =>
                          sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries)))
                 ValidateVernacularCharacters(word, $"Text '{text.Id}' word '{word}'", declaredCharacters);
+        }
+        foreach (var rule in spec.PhonologicalRules)
+            if (string.IsNullOrWhiteSpace(rule.Id) || string.IsNullOrWhiteSpace(rule.Name) ||
+                string.IsNullOrWhiteSpace(rule.Input) || string.IsNullOrWhiteSpace(rule.Output) ||
+                string.IsNullOrWhiteSpace(rule.Environment))
+                throw new InvalidDataException("Phonological rules need an id, name, input, output, and environment.");
+        foreach (var bug in bugs)
+        {
+            if (string.IsNullOrWhiteSpace(bug.Disclaimer))
+                throw new InvalidDataException($"Bug '{bug.Id}' needs its synthetic-data disclaimer.");
         }
     }
 
@@ -623,8 +669,9 @@ internal static class SampleBuilder
         }
     }
 
-    private static string ProjectName(string id) =>
-        string.Concat(id.Select(character => char.IsAsciiLetterOrDigit(character) ? character : '_'));
+    private static string ProjectName(string id) => "Motif" + string.Concat(id
+        .Split('-', StringSplitOptions.RemoveEmptyEntries)
+        .Select(segment => char.ToUpperInvariant(segment[0]) + segment[1..]));
 }
 
 internal static class Ids

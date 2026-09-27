@@ -1,0 +1,147 @@
+{
+  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+  "fixed": {
+    "words": 16,
+    "parsed": 16,
+    "textCoverage": 1,
+    "work": 5276,
+    "steps": 86,
+    "wallClockMs": 13097,
+    "slowestWords": [
+      "balalar\u0131m\u0131",
+      "bala\u0131m\u0131",
+      "g\u00FCr\u00FClerimi",
+      "s\u00F6kelerimi"
+    ],
+    "failing": {}
+  },
+  "broken": {
+    "words": 16,
+    "parsed": 4,
+    "textCoverage": 0.25,
+    "work": 4071,
+    "steps": 302,
+    "wallClockMs": 11422,
+    "slowestWords": [
+      "balalar",
+      "dori",
+      "lumu",
+      "pave"
+    ],
+    "failing": {
+      "balalar\u0131m\u0131": "plural-case-slots-swapped",
+      "bala\u0131m\u0131": "plural-case-slots-swapped",
+      "g\u00FCr\u00FClerimi": "plural-case-slots-swapped",
+      "kavoumu": "plural-case-slots-swapped",
+      "moruumu": "plural-case-slots-swapped",
+      "neliimi": "plural-case-slots-swapped",
+      "p\u00F6rular\u0131m\u0131": "plural-case-slots-swapped",
+      "p\u00FC\u00FCm\u00FC": "plural-case-slots-swapped",
+      "s\u00F6kelerimi": "plural-case-slots-swapped",
+      "z\u00F6pa\u0131m\u0131": "plural-case-slots-swapped",
+      "b\u00F6re": "missing-stem"
+    }
+  },
+  "variants": {
+    "fixed": {
+      "words": 16,
+      "parsed": 16,
+      "textCoverage": 1,
+      "work": 5276,
+      "steps": 86,
+      "wallClockMs": 13097,
+      "slowestWords": [
+        "balalar\u0131m\u0131",
+        "bala\u0131m\u0131",
+        "g\u00FCr\u00FClerimi",
+        "s\u00F6kelerimi"
+      ],
+      "failing": {}
+    },
+    "plural-case-slots-swapped": {
+      "words": 16,
+      "parsed": 5,
+      "textCoverage": 0.3125,
+      "work": 385,
+      "steps": 17,
+      "wallClockMs": 12446,
+      "slowestWords": [
+        "balalar",
+        "b\u00F6re",
+        "dori",
+        "lumu"
+      ],
+      "failing": {
+        "balalar\u0131m\u0131": "plural-case-slots-swapped",
+        "bala\u0131m\u0131": "plural-case-slots-swapped",
+        "g\u00FCr\u00FClerimi": "plural-case-slots-swapped",
+        "kavoumu": "plural-case-slots-swapped",
+        "moruumu": "plural-case-slots-swapped",
+        "neliimi": "plural-case-slots-swapped",
+        "p\u00F6rular\u0131m\u0131": "plural-case-slots-swapped",
+        "p\u00FC\u00FCm\u00FC": "plural-case-slots-swapped",
+        "s\u00F6kelerimi": "plural-case-slots-swapped",
+        "z\u00F6pa\u0131m\u0131": "plural-case-slots-swapped"
+      }
+    },
+    "missing-stem": {
+      "words": 16,
+      "parsed": 15,
+      "textCoverage": 0.9375,
+      "work": 5218,
+      "steps": 83,
+      "wallClockMs": 12644,
+      "slowestWords": [
+        "balalar\u0131m\u0131",
+        "bala\u0131m\u0131",
+        "g\u00FCr\u00FClerimi",
+        "s\u00F6kelerimi"
+      ],
+      "failing": {
+        "b\u00F6re": "missing-stem"
+      }
+    },
+    "repeated-optional-plural-slot": {
+      "words": 16,
+      "parsed": 16,
+      "textCoverage": 1,
+      "work": 19964,
+      "steps": 950,
+      "wallClockMs": 11775,
+      "slowestWords": [
+        "balalar",
+        "balalar\u0131m\u0131",
+        "bala\u0131m\u0131",
+        "s\u00F6kelerimi"
+      ],
+      "failing": {}
+    },
+    "all-bugs": {
+      "words": 16,
+      "parsed": 4,
+      "textCoverage": 0.25,
+      "work": 4071,
+      "steps": 302,
+      "wallClockMs": 11422,
+      "slowestWords": [
+        "balalar",
+        "dori",
+        "lumu",
+        "pave"
+      ],
+      "failing": {
+        "balalar\u0131m\u0131": "plural-case-slots-swapped",
+        "bala\u0131m\u0131": "plural-case-slots-swapped",
+        "g\u00FCr\u00FClerimi": "plural-case-slots-swapped",
+        "kavoumu": "plural-case-slots-swapped",
+        "moruumu": "plural-case-slots-swapped",
+        "neliimi": "plural-case-slots-swapped",
+        "p\u00F6rular\u0131m\u0131": "plural-case-slots-swapped",
+        "p\u00FC\u00FCm\u00FC": "plural-case-slots-swapped",
+        "s\u00F6kelerimi": "plural-case-slots-swapped",
+        "z\u00F6pa\u0131m\u0131": "plural-case-slots-swapped",
+        "b\u00F6re": "missing-stem"
+      }
+    }
+  }
+}

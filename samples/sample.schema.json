@@ -189,10 +189,11 @@
     "bug": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "title", "symptom", "fix", "patch"],
+      "required": ["id", "title", "disclaimer", "symptom", "fix", "patch"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "title": { "type": "string", "minLength": 1 },
+        "disclaimer": { "type": "string", "minLength": 1 },
         "symptom": { "$ref": "#/$defs/symptom" },
         "fix": { "$ref": "#/$defs/nonEmptyStrings" },
         "patch": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/patchOperation" } }
@@ -205,6 +206,7 @@
     "patchOperation": {
       "oneOf": [
         { "$ref": "#/$defs/setEnvironment" },
+        { "$ref": "#/$defs/setAllomorphForm" },
         { "$ref": "#/$defs/removeStem" },
         { "$ref": "#/$defs/swapSlots" },
         { "$ref": "#/$defs/setSlotOptional" },
@@ -220,6 +222,16 @@
         "op": { "const": "setEnvironment" },
         "allomorphId": { "$ref": "#/$defs/id" },
         "environmentId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "setAllomorphForm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "allomorphId", "form"],
+      "properties": {
+        "op": { "const": "setAllomorphForm" },
+        "allomorphId": { "$ref": "#/$defs/id" },
+        "form": { "type": "string", "minLength": 1 }
       }
     },
     "removeStem": {
@@ -270,7 +282,7 @@
         "op": { "const": "duplicateOptionalSlot" },
         "templateId": { "$ref": "#/$defs/id" },
         "slotId": { "$ref": "#/$defs/id" },
-        "count": { "type": "integer", "minimum": 1, "maximum": 32 }
+        "count": { "type": "integer", "minimum": 1, "maximum": 64 }
       }
     }
   }

@@ -1,0 +1,122 @@
+{
+  "id": "synthetic-turkic",
+  "title": "Synthetic Turkic-style sample",
+  "language": {
+    "name": "Synthetic Turkic-style",
+    "tag": "tr"
+  },
+  "teaches": [
+    "suffix slots in order",
+    "two-way plural vowel harmony",
+    "four-way possessive and case vowel harmony",
+    "parser work and grammar ambiguity"
+  ],
+  "summary": "A synthetic word list and parser-only Texts demonstrate ordered suffix slots, vowel harmony, and how an over-general grammar can slow parsing.",
+  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+  "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language. The stems and gloss pairings are invented. Noun suffixes use vowel-class environments because their stored allomorph forms alternate; no phonological rule changes segments. Texts are constructed parser exercises, not example utterances.",
+  "phonemes": ["a", "b", "d", "e", "g", "i", "ı", "k", "l", "m", "n", "o", "ö", "p", "r", "s", "t", "u", "ü", "v", "y", "z"],
+  "naturalClasses": [
+    { "id": "back-vowels", "name": "Back vowels", "abbreviation": "Back", "phonemes": ["a", "ı", "o", "u"] },
+    { "id": "front-vowels", "name": "Front vowels", "abbreviation": "Front", "phonemes": ["e", "i", "ö", "ü"] },
+    { "id": "unrounded-back-vowels", "name": "Unrounded back vowels", "abbreviation": "UBk", "phonemes": ["a", "ı"] },
+    { "id": "unrounded-front-vowels", "name": "Unrounded front vowels", "abbreviation": "UFr", "phonemes": ["e", "i"] },
+    { "id": "rounded-back-vowels", "name": "Rounded back vowels", "abbreviation": "RBk", "phonemes": ["o", "u"] },
+    { "id": "rounded-front-vowels", "name": "Rounded front vowels", "abbreviation": "RFr", "phonemes": ["ö", "ü"] },
+    { "id": "high-unrounded-back-vowels", "name": "High unrounded back vowels", "abbreviation": "HUBk", "phonemes": ["ı"] },
+    { "id": "high-unrounded-front-vowels", "name": "High unrounded front vowels", "abbreviation": "HUFr", "phonemes": ["i"] },
+    { "id": "high-rounded-back-vowels", "name": "High rounded back vowels", "abbreviation": "HRBk", "phonemes": ["u"] },
+    { "id": "high-rounded-front-vowels", "name": "High rounded front vowels", "abbreviation": "HRFr", "phonemes": ["ü"] },
+    { "id": "consonants", "name": "Consonants", "abbreviation": "C", "phonemes": ["b", "d", "g", "k", "l", "m", "n", "p", "r", "s", "t", "v", "y", "z"] }
+  ],
+  "environments": [
+    { "id": "after-back-vowel", "name": "After a back vowel", "representation": "/[Back vowels]_" },
+    { "id": "after-front-vowel", "name": "After a front vowel", "representation": "/[Front vowels]_" },
+    { "id": "after-unrounded-back-vowel", "name": "After an unrounded back vowel", "representation": "/[Unrounded back vowels]([Consonants])_" },
+    { "id": "after-unrounded-front-vowel", "name": "After an unrounded front vowel", "representation": "/[Unrounded front vowels]([Consonants])_" },
+    { "id": "after-rounded-back-vowel", "name": "After a rounded back vowel", "representation": "/[Rounded back vowels]([Consonants])_" },
+    { "id": "after-rounded-front-vowel", "name": "After a rounded front vowel", "representation": "/[Rounded front vowels]([Consonants])_" },
+    { "id": "after-high-unrounded-back-vowel", "name": "After a high unrounded back vowel", "representation": "/[High unrounded back vowels]([Consonants])_" },
+    { "id": "after-high-unrounded-front-vowel", "name": "After a high unrounded front vowel", "representation": "/[High unrounded front vowels]([Consonants])_" },
+    { "id": "after-high-rounded-back-vowel", "name": "After a high rounded back vowel", "representation": "/[High rounded back vowels]([Consonants])_" },
+    { "id": "after-high-rounded-front-vowel", "name": "After a high rounded front vowel", "representation": "/[High rounded front vowels]([Consonants])_" }
+  ],
+  "partsOfSpeech": [
+    { "id": "noun", "name": "Noun" },
+    { "id": "verb", "name": "Verb" }
+  ],
+  "stems": [
+    { "id": "bala", "form": "bala", "partOfSpeech": "noun", "gloss": "seed" },
+    { "id": "neli", "form": "neli", "partOfSpeech": "noun", "gloss": "house" },
+    { "id": "poru", "form": "pöru", "partOfSpeech": "noun", "gloss": "cup" },
+    { "id": "soke", "form": "söke", "partOfSpeech": "noun", "gloss": "bird" },
+    { "id": "doma", "form": "doma", "partOfSpeech": "noun", "gloss": "road" },
+    { "id": "guru", "form": "gürü", "partOfSpeech": "noun", "gloss": "tree" },
+    { "id": "kavo", "form": "kavo", "partOfSpeech": "noun", "gloss": "stone" },
+    { "id": "lima", "form": "lima", "partOfSpeech": "noun", "gloss": "water" },
+    { "id": "vori", "form": "vöri", "partOfSpeech": "noun", "gloss": "door" },
+    { "id": "zopa", "form": "zöpa", "partOfSpeech": "noun", "gloss": "child" },
+    { "id": "tave", "form": "tave", "partOfSpeech": "noun", "gloss": "boat" },
+    { "id": "moru", "form": "moru", "partOfSpeech": "noun", "gloss": "hand" },
+    { "id": "py", "form": "pü", "partOfSpeech": "noun", "gloss": "meal" },
+    { "id": "rava", "form": "rava", "partOfSpeech": "noun", "gloss": "star" },
+    { "id": "nove", "form": "növe", "partOfSpeech": "noun", "gloss": "room" },
+    { "id": "somi", "form": "somi", "partOfSpeech": "noun", "gloss": "fish" },
+    { "id": "polo", "form": "polo", "partOfSpeech": "noun", "gloss": "fruit" },
+    { "id": "bore", "form": "böre", "partOfSpeech": "noun", "gloss": "name" },
+    { "id": "dy", "form": "dü", "partOfSpeech": "noun", "gloss": "book" },
+    { "id": "goma", "form": "goma", "partOfSpeech": "noun", "gloss": "day" },
+    { "id": "dori", "form": "dori", "partOfSpeech": "verb", "gloss": "go" },
+    { "id": "pave", "form": "pave", "partOfSpeech": "verb", "gloss": "see" },
+    { "id": "lumu", "form": "lumu", "partOfSpeech": "verb", "gloss": "drink" },
+    { "id": "sati", "form": "sati", "partOfSpeech": "verb", "gloss": "eat" },
+    { "id": "vane", "form": "vane", "partOfSpeech": "verb", "gloss": "give" },
+    { "id": "nopa", "form": "nopa", "partOfSpeech": "verb", "gloss": "come" },
+    { "id": "giri", "form": "giri", "partOfSpeech": "verb", "gloss": "sleep" },
+    { "id": "buda", "form": "buda", "partOfSpeech": "verb", "gloss": "make" },
+    { "id": "koro", "form": "koro", "partOfSpeech": "verb", "gloss": "read" },
+    { "id": "zeli", "form": "zeli", "partOfSpeech": "verb", "gloss": "write" },
+    { "id": "tuma", "form": "tuma", "partOfSpeech": "verb", "gloss": "carry" },
+    { "id": "suru", "form": "sürü", "partOfSpeech": "verb", "gloss": "sit" },
+    { "id": "nori", "form": "nori", "partOfSpeech": "verb", "gloss": "know" },
+    { "id": "duna", "form": "duna", "partOfSpeech": "verb", "gloss": "find" },
+    { "id": "kema", "form": "kema", "partOfSpeech": "verb", "gloss": "take" },
+    { "id": "yara", "form": "yara", "partOfSpeech": "verb", "gloss": "say" },
+    { "id": "poli", "form": "pöli", "partOfSpeech": "verb", "gloss": "open" },
+    { "id": "luri", "form": "luri", "partOfSpeech": "verb", "gloss": "close" },
+    { "id": "mida", "form": "mida", "partOfSpeech": "verb", "gloss": "want" },
+    { "id": "bone", "form": "böne", "partOfSpeech": "verb", "gloss": "run" }
+  ],
+  "affixes": [
+    { "id": "plural", "partOfSpeech": "noun", "slots": ["plural"], "gloss": "plural", "allomorphs": [
+      { "id": "plural-back", "form": "lar", "environment": "after-back-vowel" },
+      { "id": "plural-front", "form": "ler", "environment": "after-front-vowel" }
+    ] },
+    { "id": "possessive", "partOfSpeech": "noun", "slots": ["possessive"], "gloss": "first-person singular possessive", "allomorphs": [
+      { "id": "possessive-ı", "form": "ım", "environment": "after-unrounded-back-vowel" },
+      { "id": "possessive-i", "form": "im", "environment": "after-unrounded-front-vowel" },
+      { "id": "possessive-u", "form": "um", "environment": "after-rounded-back-vowel" },
+      { "id": "possessive-ü", "form": "üm", "environment": "after-rounded-front-vowel" }
+    ] },
+    { "id": "accusative", "partOfSpeech": "noun", "slots": ["case"], "gloss": "accusative", "allomorphs": [
+      { "id": "case-ı", "form": "ı", "environment": "after-high-unrounded-back-vowel" },
+      { "id": "case-i", "form": "i", "environment": "after-high-unrounded-front-vowel" },
+      { "id": "case-u", "form": "u", "environment": "after-high-rounded-back-vowel" },
+      { "id": "case-ü", "form": "ü", "environment": "after-high-rounded-front-vowel" }
+    ] }
+  ],
+  "affixSlots": [
+    { "id": "plural", "name": "Plural", "partOfSpeech": "noun", "optional": true },
+    { "id": "possessive", "name": "Possessive", "partOfSpeech": "noun", "optional": true },
+    { "id": "case", "name": "Case", "partOfSpeech": "noun", "optional": true }
+  ],
+  "affixTemplates": [
+    { "id": "noun", "name": "Noun suffixes", "partOfSpeech": "noun", "suffixSlots": ["plural", "possessive", "case"], "final": true },
+    { "id": "verb", "name": "Verb suffixes", "partOfSpeech": "verb", "suffixSlots": [], "final": true }
+  ],
+  "phonologicalRules": [],
+  "texts": [
+    { "id": "plural-possessive-case", "title": "Plural plus possessive and case", "sentences": ["balalar balalarımı sökelerimi pörularımı gürülerimi"] },
+    { "id": "four-way-harmony", "title": "Four-way harmony", "sentences": ["kavoumu püümü neliimi zöpaımı"] },
+    { "id": "mixed-word-list", "title": "Mixed parsing practice", "sentences": ["dori balaımı pave sökelerimi lumu moruumu böre"] }
+  ]
+}
