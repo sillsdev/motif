@@ -108,13 +108,32 @@ public sealed class WorkspaceOwnership : IWorkspaceOwnership
         for (var current = path; !string.IsNullOrEmpty(current); current = Directory.GetParent(current)?.FullName)
         {
             if (!Directory.Exists(current)) continue;
-            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0 &&
+                !IsMacOsPrivateDirectoryAlias(current))
                 throw new ArgumentException("A reparse-point ancestor cannot contain a worker root.", nameof(path));
         }
         if (!Directory.Exists(path)) return;
         if (Directory.EnumerateFiles(path, "*.fwdata", SearchOption.TopDirectoryOnly).Any() ||
             Directory.EnumerateFiles(path, "*.motif.db", SearchOption.TopDirectoryOnly).Any())
             throw new ArgumentException("A project or database directory cannot be a worker root.", nameof(path));
+    }
+
+    private static bool IsMacOsPrivateDirectoryAlias(string path)
+    {
+        if (!OperatingSystem.IsMacOS()) return false;
+        var normalized = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar);
+        var targetPath = normalized switch
+        {
+            "/etc" => "/private/etc",
+            "/tmp" => "/private/tmp",
+            "/var" => "/private/var",
+            "/Users" => "/System/Volumes/Data/Users",
+            _ => null,
+        };
+        if (targetPath is null) return false;
+        var target = new DirectoryInfo(normalized).ResolveLinkTarget(returnFinalTarget: false);
+        return target is not null && string.Equals(
+            Path.GetFullPath(target.FullName).TrimEnd(Path.DirectorySeparatorChar), targetPath, StringComparison.Ordinal);
     }
 
     private static bool IsForbidden(string path) =>
