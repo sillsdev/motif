@@ -47,8 +47,6 @@ var rest = args[1..];
 
 try
 {
-    SIL.Motif.Host.LcmUtils.FwDataProjectLoader.Init();
-
     var (flags, positionals, forwardedArguments) = ParseArgs(rest);
 
     // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
