@@ -1,0 +1,79 @@
+name: Package install smoke
+
+on:
+  push:
+    branches: ['**', '!mac-debug/**', '!linux-debug/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+      HAS_TRUSTED_SIGNING_CREDENTIALS: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS != '' }}
+      PRODUCT_VERSION: '0.1.0'
+
+    steps:
+      - name: Set package directories
+        shell: pwsh
+        run: |
+          $runSuffix = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $paths = @(
+            "STAGE_DIRECTORY=$env:RUNNER_TEMP\motif-stage-$runSuffix",
+            "FEED_DIRECTORY=$env:RUNNER_TEMP\motif-feed-$runSuffix",
+            "INSTALL_DIRECTORY=$env:RUNNER_TEMP\motif-install-$runSuffix"
+          )
+          [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install pinned Velopack CLI
+        shell: pwsh
+        run: dotnet tool install --global vpk --version 1.2.158
+
+      - name: Stage Windows payload
+        shell: pwsh
+        run: ./tools/package-release.ps1 -RuntimeIdentifier win-x64 -ProductVersion $env:PRODUCT_VERSION -OutputDirectory $env:STAGE_DIRECTORY
+
+      - name: Sign staged executables when SIL credentials are available
+        if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
+        uses: sillsdev/codesign/trusted-signing-action@v3
+        with:
+          credentials: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS }}
+          files-folder: ${{ env.STAGE_DIRECTORY }}
+          files-folder-filter: exe
+          files-folder-recurse: true
+          description: Motif per-user Windows installer smoke build
+
+      - name: Pack Windows feed
+        shell: pwsh
+        run: >-
+          vpk pack --packId SIL.Motif --packVersion $env:PRODUCT_VERSION
+          --packDir $env:STAGE_DIRECTORY --outputDir $env:FEED_DIRECTORY
+          --channel win-x64 --runtime win-x64 --mainExe SIL.Motif.App.exe
+          --packTitle Motif --packAuthors SIL
+
+      - name: Sign Setup when SIL credentials are available
+        if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
+        uses: sillsdev/codesign/trusted-signing-action@v3
+        with:
+          credentials: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS }}
+          files-folder: ${{ env.FEED_DIRECTORY }}
+          files-folder-filter: exe
+          files-folder-recurse: true
+          description: Motif per-user Windows installer smoke build
+
+      - name: Install, invoke, and uninstall from the Windows package
+        shell: pwsh
+        run: ./tools/package-smoke.ps1 -FeedDirectory $env:FEED_DIRECTORY -InstallDirectory $env:INSTALL_DIRECTORY -ProductVersion $env:PRODUCT_VERSION

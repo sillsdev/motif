@@ -257,6 +257,9 @@ try {
         if (-not $destinationPath.StartsWith($stagePrefix, $pathComparison)) {
             throw "SIL ICU destination escapes the package root: $($icuFile.destination)"
         }
+        if (Test-Path -LiteralPath $destinationPath) {
+            throw "SIL ICU destination would replace a staged file: $($icuFile.destination)"
+        }
         $destinationDirectory = [System.IO.Path]::GetDirectoryName($destinationPath)
         New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
         Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
@@ -303,6 +306,8 @@ try {
         (Join-Path $stage 'release-manifest.json'),
         $manifestJson + [Environment]::NewLine,
         [System.Text.UTF8Encoding]::new($false))
+
+    & (Join-Path $PSScriptRoot 'test-package-stage.ps1') -StageDirectory $stage -RuntimeIdentifier $RuntimeIdentifier
 
     Assert-SafeStagePath $stage $outputParentPath $stageName
     if (Test-Path -LiteralPath $output) {

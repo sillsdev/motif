@@ -1,5 +1,6 @@
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Installation;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -28,6 +29,19 @@ using SIL.Motif.Worker.Projects;
 using SIL.Motif.Help;
 
 CrashDialogs.Suppress();
+MotifInstallLifecycle.Initialize(args);
+
+if (args.Length > 0 && args[0] == "uninstall")
+{
+    Console.WriteLine(MotifInstallLifecycle.RemoveRegistration());
+    return 0;
+}
+
+if (args.Length == 1 && args[0] == "--version")
+{
+    Console.WriteLine(MotifProductVersion.CurrentText);
+    return 0;
+}
 
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
     Environment.GetEnvironmentVariable(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
