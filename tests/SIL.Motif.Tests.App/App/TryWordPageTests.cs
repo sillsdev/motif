@@ -110,7 +110,7 @@ public sealed class TryWordPageTests
     {
         RunOnAvalonia(async () =>
         {
-            using var culture = new CultureScope(CultureInfo.InvariantCulture);
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var (context, fake) = NewContext();
             context.ProjectPath = ProjectPath;
             context.Assess.ProjectPath = ProjectPath;
