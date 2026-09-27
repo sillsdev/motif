@@ -15,6 +15,18 @@
       "data/UnicodeDataOverrides.txt"
     ]
   },
+  "buildPatches": [
+    {
+      "id": "silmods-macos-malloc-header",
+      "path": "tools/patches/sil-icu-macos-malloc-header.patch",
+      "appliesTo": [
+        "osx-arm64",
+        "osx-x64"
+      ],
+      "reason": "silmods.cpp uses malloc/free, already declared by its stdlib.h include; malloc.h is unavailable on macOS.",
+      "upstreamFollowUp": "Send this portability fix to sillsdev/icu."
+    }
+  ],
   "rids": {
     "win-x64": {
       "nativeOutputDirectory": "lib/win-x64",

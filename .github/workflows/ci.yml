@@ -81,7 +81,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/sil-icu/${{ matrix.icu_rid }}/install
-          key: sil-icu-${{ matrix.icu_rid }}-${{ steps.sil-icu-source.outputs.commit }}
+          key: sil-icu-${{ matrix.icu_rid }}-${{ steps.sil-icu-source.outputs.commit }}-${{ hashFiles('tools/patches/sil-icu-macos-malloc-header.patch') }}
 
       - name: Build SIL ICU from source (macOS)
         if: runner.os == 'macOS'
@@ -107,6 +107,9 @@ jobs:
             fi
             git -C "$source_root" fetch --depth=1 origin "$commit"
             git -C "$source_root" checkout --detach FETCH_HEAD
+            patch=$(jq -r '.buildPatches[] | select(.id == "silmods-macos-malloc-header") | .path' "$GITHUB_WORKSPACE/$payload")
+            git -C "$source_root" apply --check "$GITHUB_WORKSPACE/$patch"
+            git -C "$source_root" apply "$GITHUB_WORKSPACE/$patch"
             cd "$source_root/$source_directory"
             ./runConfigureICU MacOSX --prefix="$prefix" --enable-shared --enable-static=no --with-data-packaging=library
             make -j"$(sysctl -n hw.ncpu)"

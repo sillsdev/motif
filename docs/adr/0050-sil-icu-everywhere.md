@@ -22,9 +22,11 @@ Windows uses `Icu4c.Win.Fw.Bin` and `Icu4c.Win.Fw.Lib` 70.1.182. The five runtim
 
 Linux uses the Jammy SIL experimental repository's `libicu70-fw` package for the five ICU shared libraries. The payload records the direct `.deb` URL, SHA-256, and size; the companion `icu70-bin-fw` package is recorded as a non-shipped build tool. CI extracts the runtime package instead of installing ICU system-wide and sets `$ORIGIN` on its copied libraries. The payload records the Ubuntu 22.04 baseline requirement of glibc 2.34 and libstdc++ 12.
 
-macOS builds the five shared libraries from `sillsdev/icu` for each runner architecture and caches the install by RID and commit. The Windows NuGet 70.1.182 nuspec identifies the repository but has no source commit; the `fw` branch head is not identified as its build source either. Motif therefore uses commit `107d90bbc550dacfad51f673b14ca3e834ed87c0`, recorded by the Linux SIL package, to align macOS with a known ICU source revision rather than guessing which revision produced the Windows package.
+macOS builds the five shared libraries from `sillsdev/icu` for each runner architecture and caches the install by RID, source commit, and build patch. The Windows NuGet 70.1.182 nuspec identifies the repository but has no source commit; the `fw` branch head is not identified as its build source either. Motif therefore uses commit `107d90bbc550dacfad51f673b14ca3e834ed87c0`, recorded by the Linux SIL package, to align macOS with a known ICU source revision rather than guessing which revision produced the Windows package.
 
-Before any cache is created, `FwDataProjectLoader` sets process-local `ICU_DATA` and `Icu.Wrapper.DataDirectory` to `AppContext.BaseDirectory/IcuData/icudt70l`, loads the native libraries from the runtime's bundled output directory, maps LibLCM's `icuuc70.dll` import to the matching bundled library, and calls `CustomIcu.InitIcuDataDir()`. It refuses to continue if a required data file or library is missing, if native loading fails, or if `CustomIcu.HaveCustomIcuLibrary` is false. The refusal reports the native paths loaded and the configured data directory.
+The pinned `silmods.cpp` includes `<malloc.h>` but only calls `malloc` and `free`; it already includes `<stdlib.h>`, which declares both. macOS CI applies `tools/patches/sil-icu-macos-malloc-header.patch` to remove that redundant, unavailable header before building. The payload records this patch and its upstream follow-up: send the portable include fix to `sillsdev/icu`.
+
+At the first project/cache open, `FwDataProjectLoader` sets process-local `ICU_DATA` and `Icu.Wrapper.DataDirectory` to `AppContext.BaseDirectory/IcuData/icudt70l`, loads the native libraries from the runtime's bundled output directory, maps LibLCM's `icuuc70.dll` import to the matching bundled library, and calls `CustomIcu.InitIcuDataDir()`. The CLI and worker leave ICU unloaded until that point. They refuse to continue opening a project if a required data file or library is missing, if native loading fails, or if `CustomIcu.HaveCustomIcuLibrary` is false. The refusal reports the native paths loaded and the configured data directory.
 
 One cross-platform test verifies that `SilIcuInit` succeeded and that `nfc_fw` reorders U+F170 before U+0327 according to SIL's custom combining-class data, while stock `nfc` keeps the original order. CI runs this test on Windows, Ubuntu 22.04, macOS arm64, and macOS x64.
 
@@ -32,5 +34,6 @@ One cross-platform test verifies that `SilIcuInit` succeeded and that `nfc_fw` r
 
 - Build and publish output carry the same FieldWorks normalization data and the runtime-specific SIL native libraries.
 - Linux and macOS CI must stage native files beside both product apphosts and test hosts before the suite runs.
-- A missing or mismatched ICU payload becomes a startup error instead of a silent change to text identity.
+- Process startup does not load SIL ICU; the first project/cache open initializes it and still fails loudly if the payload is incomplete.
+- A missing or mismatched ICU payload becomes a project-open error instead of a silent change to text identity.
 - `ICU_DATA` remains local to the Motif process and children it starts; FieldWorks' global ICU configuration is untouched.
