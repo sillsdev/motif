@@ -115,7 +115,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
                 parserPath: FakeParser.ExecutablePath);
             restarted.Show();
-            restarted.SelectKnownProject(project.FwDataPath);
+            restarted.OpenRecentProjectByClick(project.FwDataPath);
             restarted.WaitUntil(
                 () => restarted.Workspace.Baseline.HasBaseline && restarted.Workspace.Selection.Texts.Count == 1,
                 WalkthroughSteps.Remaining(deadline), "reopening from Open recent did not reload the Baseline");
@@ -176,7 +176,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
                 parserPath: FakeParser.ExecutablePath);
             restarted.Show();
-            restarted.SelectKnownProject(project.FwDataPath);
+        restarted.OpenRecentProjectByClick(project.FwDataPath);
             Assert.Equal(project.FwDataPath, restarted.Workspace.Context.ProjectPath);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));

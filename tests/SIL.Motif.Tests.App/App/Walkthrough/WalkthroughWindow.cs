@@ -305,35 +305,6 @@ public sealed class WalkthroughWindow : IDisposable
         Assert.Equal(text, textBox.Text);
     }
 
-    public void SelectKnownProject(string projectPath)
-    {
-        OpenProjectMenu();
-        var automationName = $"Open {Path.GetFileNameWithoutExtension(projectPath)}";
-        WaitUntil(() => Window.RecentProjectItems.Any(candidate =>
-                string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate), automationName,
-                    StringComparison.Ordinal)),
-            TimeSpan.FromSeconds(10), $"'{automationName}' did not appear under Open recent");
-        var project = Workspace.RecentProjects.Single(known =>
-            string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
-        var openRecent = FindProjectMenuEntry<Button>("Open a recent project");
-        var recentMenu = Assert.IsType<MenuFlyout>(openRecent.Flyout);
-        HeadlessClick.Click(TopLevel.GetTopLevel(openRecent)!, openRecent, "Open a recent project");
-        Assert.True(recentMenu.IsOpen, "Clicking 'Open a recent project' did not open its list.");
-        var item = Window.RecentProjectItems.Single(candidate =>
-            string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate),
-                project.AutomationName, StringComparison.Ordinal));
-        Assert.Same(Workspace.OpenRecentProjectCommand, item.Command);
-        Assert.Same(project, item.CommandParameter);
-        var before = Workspace.OpenRecentProjectCommand.ExecutionTask;
-        HeadlessClick.Click(TopLevel.GetTopLevel(item)!, item, project.AutomationName);
-        Pump();
-        Assert.NotSame(before, Workspace.OpenRecentProjectCommand.ExecutionTask);
-        Assert.False(ProjectMenuFlyout.IsOpen, $"Clicking '{project.AutomationName}' left the project menu open.");
-        // The Baseline and Texts load partway through the open; the recent list is right only once it ends.
-        WaitUntil(() => Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
-            TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
-    }
-
     private Flyout ProjectMenuFlyout =>
         Window.FindControl<Button>("ProjectMenuButton")?.Flyout as Flyout
         ?? throw new InvalidOperationException("The MainWindow has no project menu flyout.");

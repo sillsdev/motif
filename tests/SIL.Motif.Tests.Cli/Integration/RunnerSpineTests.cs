@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Cli;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Jobs;
 using Xunit;
 
 namespace SIL.Motif.Tests.Integration;
@@ -42,7 +44,7 @@ public sealed class RunnerSpineTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(jobId));
         Assert.Equal("queued", StatusOf(project, jobId));
 
-        RunRunnerToCompletion();
+        RunRunnerToCompletion((project, jobId));
 
         // The row moved because a different process moved it; nothing in this one touched the queue.
         Assert.NotEqual("queued", StatusOf(project, jobId));
@@ -72,7 +74,7 @@ public sealed class RunnerSpineTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(firstJobId));
         Assert.False(string.IsNullOrWhiteSpace(secondJobId));
 
-        RunRunnerToCompletion();
+        RunRunnerToCompletion((first, firstJobId), (second, secondJobId));
 
         Assert.True(StatusOf(first, firstJobId) != "queued" && StatusOf(second, secondJobId) != "queued",
             "A job was never claimed. CLI said: " + firstRun.Error + secondRun.Error + " Runner said: " + string.Join(" | ", _log));
@@ -127,7 +129,7 @@ public sealed class RunnerSpineTests : IDisposable
         // The dead runner cannot renew, so its one-second lease has lapsed by the time this returns.
         Thread.Sleep(1500);
 
-        RunRunnerToCompletion();
+        RunRunnerToCompletion((project, jobId));
 
         var final = Show(project, jobId);
         Assert.NotEqual("queued", final.Status);
@@ -164,18 +166,12 @@ public sealed class RunnerSpineTests : IDisposable
 
         var runner = StartRunner(leaseSeconds: 30);
         var sawWaitingForBaseline = false;
-        var deadline = DateTime.UtcNow.AddSeconds(60);
-        string status;
-        do
-        {
-            status = StatusOf(project, jobId);
-            if (status == "waiting-for-baseline") sawWaitingForBaseline = true;
-            if (status is "completed-dry-run-only" or "failed" or "cancelled") break;
-            Thread.Sleep(50);
-        } while (DateTime.UtcNow < deadline);
+        var final = JobProgress.WaitUntil(project, jobId,
+            job => job.Status is JobStatus.CompletedDryRunOnly or JobStatus.Failed or JobStatus.Cancelled,
+            "The parked Dry Run", job => sawWaitingForBaseline |= job.Status == JobStatus.WaitingForBaseline);
 
         Assert.True(sawWaitingForBaseline, "The job never parked at waiting-for-baseline.");
-        Assert.Equal("completed-dry-run-only", status);
+        Assert.Equal(JobStatus.CompletedDryRunOnly, final.Status);
 
         // No permanently parked row remains, so the runner idles out and exits on its own — never killed.
         Assert.True(runner.WaitForExit(30000),
@@ -201,8 +197,9 @@ public sealed class RunnerSpineTests : IDisposable
             var jobId = Cli($"baseline-refresh --project \"{project}\"").Output.Trim();
             // Killing before it claims would prove nothing, so wait until the row is genuinely held.
             var runner = StartRunner(leaseSeconds: 1);
-            Assert.True(WaitUntilRunning(project, jobId),
-                "The runner never claimed the job. Runner said: " + string.Join(" | ", _log));
+            JobProgress.WaitUntil(project, jobId,
+                job => job.Status == JobStatus.Running || JobStateMachine.IsTerminal(job.Status),
+                "The runner claiming the refresh; runner said: " + string.Join(" | ", _log));
             Kill(runner);
             if (StatusOf(project, jobId) == "running") return jobId;
         }
@@ -210,9 +207,12 @@ public sealed class RunnerSpineTests : IDisposable
             $"The runner finished the refresh before the kill landed, {rounds} rounds in a row.");
     }
 
-    private void RunRunnerToCompletion()
+    // Each job is awaited by its progress; only then is the runner, idle by then, bounded to exit.
+    private void RunRunnerToCompletion(params (string Project, string JobId)[] jobs)
     {
         var runner = StartRunner(leaseSeconds: 30);
+        foreach (var (project, jobId) in jobs)
+            JobProgress.WaitUntilFinished(project, jobId, "The runner's job in " + Path.GetFileName(project));
         if (!runner.WaitForExit(30000))
         {
             try { runner.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
@@ -243,17 +243,6 @@ public sealed class RunnerSpineTests : IDisposable
         _ = Task.Run(() => _log.Add("out: " + process.StandardOutput.ReadToEnd()));
         _ = Task.Run(() => _log.Add("err: " + process.StandardError.ReadToEnd()));
         return process;
-    }
-
-    private bool WaitUntilRunning(string project, string jobId)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (Show(project, jobId).Status == "running") return true;
-            Thread.Sleep(20);
-        }
-        return false;
     }
 
     private string StatusOf(string project, string jobId) => Show(project, jobId).Status;

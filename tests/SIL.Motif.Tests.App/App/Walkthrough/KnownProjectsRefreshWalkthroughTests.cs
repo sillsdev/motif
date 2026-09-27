@@ -41,7 +41,7 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
                 "the first project did not appear in the visible Open recent list");
             walkthrough.CloseProjectMenu();
 
-            walkthrough.SelectKnownProject(firstProject.FwDataPath);
+            walkthrough.OpenRecentProjectByClick(firstProject.FwDataPath);
 
             walkthrough.WaitUntil(
                 () => string.Equals(walkthrough.Workspace.Context.ProjectPath, firstProject.FwDataPath,
