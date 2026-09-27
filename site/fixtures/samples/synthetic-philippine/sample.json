@@ -1,0 +1,13 @@
+{
+  "id": "synthetic-philippine",
+  "title": "Synthetic Philippine-style sample",
+  "language": {
+    "name": "Tagalog",
+    "tag": "tl"
+  },
+  "teaches": [
+    "infixes and reduplication"
+  ],
+  "summary": "Practice tracing how a generated grammar handles infixes and reduplication.",
+  "disclaimer": "Generated to demonstrate Motif. Modelled loosely on Tagalog; not real Tagalog data and not a description of any language."
+}

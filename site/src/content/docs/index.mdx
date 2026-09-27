@@ -12,17 +12,19 @@ import HomeSampleCards from '../../components/home/HomeSampleCards.astro';
 import HomeSpeedBars from '../../components/home/HomeSpeedBars.astro';
 import HomeMarquee from '../../components/home/HomeMarquee.astro';
 import HowItFits from '../../components/home/HowItFits.astro';
+import HomeBetaFaq from '../../components/home/HomeBetaFaq.astro';
+import HomeLocalizedText from '../../components/home/HomeLocalizedText.astro';
 
 <div class="home-page">
 	<HomeHero>
-		<p class="home-eyebrow">For anyone getting a FieldWorks parser to work</p>
+		<p class="home-eyebrow"><HomeLocalizedText message="home.betaHeroEyebrow" /></p>
 		<h1>Motif can help you teach a dumb computer your language.</h1>
 		<p>You know the linguistics. An AI consultant knows the parser, the rules and FieldWorks’ settings. Motif gives you both the evidence: which words fail, why, and what is slow — and checks every fix.</p>
 		<nav aria-label="Home actions">
-			<a class="home-button home-button--download" href="#download">Download Motif</a>
+			<a class="home-button home-button--download" href="https://github.com/sillsdev/motif/releases/latest"><HomeLocalizedText message="home.betaDownload" /></a>
 			<a class="home-button home-button--outline" href="#work-with-ai">See how the AI helps</a>
 		</nav>
-		<p id="download" class="home-release-status">Downloads will be available when Motif has a release. · Free and open source · <a href="https://github.com/sillsdev/motif">GitHub</a></p>
+		<p class="home-release-status"><HomeLocalizedText message="home.betaStatus" /></p>
 		<div slot="exchange" class="home-exchange">
 			<article class="home-exchange__person">
 				<h2>You</h2>
@@ -32,7 +34,7 @@ import HowItFits from '../../components/home/HowItFits.astro';
 				<h2>AI consultant, reading Motif’s Handoff</h2>
 				<p>Every failing word stops at the plural. Your <em>-lar</em> allomorph has an environment that only allows front vowels before it. In FieldWorks, open the plural suffix and change that environment to back vowels — then Refresh in Motif to check.</p>
 			</article>
-			<p class="home-exchange__note">Illustrative exchange — replace with a real one from the Turkish sample.</p>
+			<p class="home-exchange__note"><HomeLocalizedText message="home.syntheticExchangeNote" /></p>
 		</div>
 	</HomeHero>
 
@@ -85,26 +87,26 @@ import HowItFits from '../../components/home/HowItFits.astro';
 	</HomeSection>
 
 	<HomeSection id="who-its-for">
-		<h2>Who it’s for</h2>
+		<h2><HomeLocalizedText message="home.audienceHeading" /></h2>
 		<div class="home-card-grid home-card-grid--four">
 			<article class="home-card home-card--audience">
 				<h3>Field linguist</h3>
-				<blockquote>I’ve described the morphology. The parser still disagrees.</blockquote>
+				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceFieldLinguistSituation" /></p>
 				<p>See exactly where each word stops, and have the AI turn your analysis into rules the parser accepts.</p>
 			</article>
 			<article class="home-card home-card--audience">
 				<h3>Translator</h3>
-				<blockquote>I just want my words glossed.</blockquote>
+				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceTranslatorSituation" /></p>
 				<p>Find the few grammar fixes that make most of your text parse, without learning parser theory first.</p>
 			</article>
 			<article class="home-card home-card--audience">
 				<h3>Native speaker</h3>
-				<blockquote>I know when a word is right. The computer doesn’t.</blockquote>
+				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceNativeSpeakerSituation" /></p>
 				<p>Your judgement is the ground truth; Motif and the AI help the computer catch up to it.</p>
 			</article>
 			<article class="home-card home-card--audience">
 				<h3>Language technologist</h3>
-				<blockquote>Which rule is slow, and why?</blockquote>
+				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceTechnologistSituation" /></p>
 				<p>Timing, JSON output for every command, and documentation written for agents.</p>
 			</article>
 		</div>
@@ -126,9 +128,9 @@ import HowItFits from '../../components/home/HowItFits.astro';
 		<div class="home-faster-copy">
 			<p class="home-eyebrow">Faster parsing</p>
 			<h2>A grammar that parses right can still parse slowly.</h2>
-			<p>Timing shows which words take longest and which rules do the work. One small change — a slot left too open, an environment too broad — can make a grammar dramatically faster. The Turkish sample shows one.</p>
+			<p>Timing shows which words take longest and which rules do the work. One small change — a slot left too open, an environment too broad — can make a grammar dramatically faster. <HomeLocalizedText message="home.syntheticSpeedSentence" /></p>
 		</div>
-		<HomeSpeedBars beforeLabel="Turkish sample, broken" afterLabel="Turkish sample, fixed" textCoverageLabel="Text Coverage" lessonLabel="Lesson: the grammar that took all night" />
+		<HomeSpeedBars textCoverageLabel="Text Coverage" lessonLabel="Lesson: the grammar that took all night" />
 	</HomeSection>
 
 	<HomeSection id="features">
@@ -165,4 +167,6 @@ import HowItFits from '../../components/home/HowItFits.astro';
 		<HomeSampleCards speedLessonLabel="Includes a speed lesson" brokenLabel="Broken ↓" fixedLabel="Fixed ↓" lessonsLabel="Lessons →" teachesLabel="Teaches" />
 		<p><a href="samples/">Browse all sample languages</a></p>
 	</HomeSection>
+
+	<HomeBetaFaq />
 </div>
