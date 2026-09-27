@@ -4,6 +4,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -73,7 +74,7 @@ public sealed class ProjectStoreResetTests : IDisposable
         Assert.Equal("kept", (string)Scalar(storePath, "SELECT CreatedUtc FROM MotifMetadata WHERE Id = 1;"));
     }
 
-    [Fact]
+    [WindowsFileLockFact]
     public void AStoreSomethingElseHoldsOpenIsRefusedAndKept()
     {
         var project = Project("held");
