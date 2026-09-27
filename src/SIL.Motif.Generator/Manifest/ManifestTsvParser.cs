@@ -2,7 +2,7 @@ namespace SIL.Motif.Generator.Manifest;
 
 /// <summary>
 /// Parses <c>manifest/liblcm-inventory.tsv</c>: 18 columns, tab-separated, every value
-/// double-quoted, CRLF line endings (the manifest README). This file is
+/// double-quoted, with platform-independent line ending support (the manifest README). This file is
 /// read-only to the generator — never modify it, per the manifest README's own instruction — so this
 /// class only ever reads.
 /// </summary>
@@ -22,8 +22,7 @@ public static class ManifestTsvParser
             throw new GeneratorException($"Could not read manifest '{path}': {ex.Message}", ex);
         }
 
-        // Splitting on "\r\n" rather than agnostically keeps an LF/CRLF drift visible instead of tolerated.
-        var lines = text.Split("\r\n");
+        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
 
         if (lines.Length == 0 || !lines[0].StartsWith("\"Class\"", StringComparison.Ordinal))
             throw new GeneratorException($"'{path}' does not start with the expected header row.");

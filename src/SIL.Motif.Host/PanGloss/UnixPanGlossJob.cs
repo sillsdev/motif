@@ -153,8 +153,8 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             var kibibytes = (_memoryLimitBytes + 1023) / 1024;
             var resource = _linux ? 'v' : 'd';
             var limit = kibibytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            script.Append("ulimit -H -").Append(resource).Append(' ').Append(limit)
-                .Append(" 2>/dev/null && ulimit -S -").Append(resource).Append(' ').Append(limit)
+            script.Append("ulimit -S -").Append(resource).Append(' ').Append(limit)
+                .Append(" 2>/dev/null && ulimit -H -").Append(resource).Append(' ').Append(limit)
                 .Append(" 2>/dev/null || exit 125; ");
         }
         script.Append("exec \"$0\" \"$@\"");
