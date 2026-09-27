@@ -51,6 +51,7 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
 
             Assert.Same(workspace, window.DataContext);
+            Assert.Equal("Motif (beta)", window.Title);
             Assert.Same(workspace.PageModel<OverviewPageModel>(),
                 Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>()).DataContext);
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
@@ -65,6 +66,50 @@ public sealed class MainWindowSmokeTests
             Assert.Same(
                 workspace.PageModel<TimingPageModel>().Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
             Assert.Same(workspace.PageModel<AiHandoffPageModel>().Handoff, Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>()).Handoff);
+        });
+    }
+
+    [Fact]
+    public void ReviewChangesShowsTheFieldWorksBackupReminder()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (_, window, _) = NewComposedWindow();
+            try
+            {
+                Assert.Contains("Beta: make sure you have a FieldWorks backup before applying.",
+                    window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void FirstRunBetaNoticeIsVisibleInTheWindow()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var notice = new BetaNoticeViewModel(new MemoryBetaNoticePreferences(), new RecordingUriLauncher());
+            var (_, window, _) = NewComposedWindow(notice);
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+
+                var banner = Assert.IsType<Border>(window.FindControl<Border>("BetaNotice"));
+                Assert.True(banner.IsVisible);
+                Assert.Contains(BetaNoticeViewModel.NoticeText,
+                    window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
+                Assert.Contains("Got it", window.GetLogicalDescendants().OfType<Button>()
+                    .Select(button => button.Content as string));
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 
@@ -1233,7 +1278,7 @@ public sealed class MainWindowSmokeTests
     }
 
     private static (WorkspaceShellViewModel Workspace, MainWindow Window, FakeDragSource DragSource)
-        NewComposedWindow()
+        NewComposedWindow(BetaNoticeViewModel? betaNotice = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -1245,7 +1290,7 @@ public sealed class MainWindowSmokeTests
             selection,
             new AssessViewModel(fake, selection),
             new FakeFolderPicker(), dragSource,
-            fake, clipboard: new AvaloniaClipboard(window));
+            fake, clipboard: new AvaloniaClipboard(window), betaNotice: betaNotice);
 
         window.Compose(workspace);
         return (workspace, window, dragSource);
@@ -1282,6 +1327,18 @@ public sealed class MainWindowSmokeTests
     {
         public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(null);
+    }
+
+    private sealed class MemoryBetaNoticePreferences : IBetaNoticePreferences
+    {
+        public bool HasSeenBetaNotice { get; private set; }
+
+        public void MarkBetaNoticeSeen() => HasSeenBetaNotice = true;
+    }
+
+    private sealed class RecordingUriLauncher : IUriLauncher
+    {
+        public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
     private sealed class FakeFolderPicker : IHandoffFolderPicker

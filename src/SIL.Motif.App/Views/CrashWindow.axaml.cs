@@ -8,7 +8,7 @@ namespace SIL.Motif.App.Views;
 
 /// <summary>
 /// Motif's error window: a plain summary of an error that escaped the UI thread, its details folded away, and
-/// Copy details, Save report, Email maintainer and Close.
+/// actions to report, copy, save, email and close.
 /// </summary>
 public sealed partial class CrashWindow : Window
 {
