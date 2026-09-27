@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.LcmUtils;
 
@@ -21,17 +22,36 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        if (args.Length != 3 || args[0] != "build")
+        if (args.Length < 3 || args[0] != "build")
         {
-            Console.Error.WriteLine("Usage: SIL.Motif.SampleProjects build <sample.json> <output-root>");
+            Console.Error.WriteLine("Usage: SIL.Motif.SampleProjects build <sample.json> <output-root> [--bugs <bugs.json> --bug <id> ...]");
             return 2;
         }
 
         try
         {
+            string? bugsPath = null;
+            var bugIds = new List<string>();
+            for (var index = 3; index < args.Length; index++)
+            {
+                if (args[index] == "--bugs" && index + 1 < args.Length)
+                    bugsPath = args[++index];
+                else if (args[index] == "--bug" && index + 1 < args.Length)
+                    bugIds.Add(args[++index]);
+                else
+                    throw new InvalidDataException($"Unknown or incomplete builder option '{args[index]}'.");
+            }
+
+            if (bugIds.Count > 0 && bugsPath is null)
+                throw new InvalidDataException("A bug list is required when applying bug patches.");
+
             var spec = JsonSerializer.Deserialize<SampleSpec>(File.ReadAllText(args[1]), JsonOptions)
                 ?? throw new InvalidDataException("The sample specification is empty.");
-            var result = SampleBuilder.Build(spec, Path.GetFullPath(args[2]));
+            var bugs = bugsPath is null
+                ? []
+                : JsonSerializer.Deserialize<BugSpec[]>(File.ReadAllText(bugsPath), JsonOptions)
+                  ?? throw new InvalidDataException("The bug list is empty.");
+            var result = SampleBuilder.Build(spec, Path.GetFullPath(args[2]), bugs, bugIds);
             Console.WriteLine(JsonSerializer.Serialize(result, JsonOptions));
             return 0;
         }
@@ -43,20 +63,52 @@ internal static class Program
     }
 }
 
-internal sealed record SampleSpec(
-    string Id,
-    string Title,
-    LanguageSpec Language,
-    string[] Phonemes,
-    PartOfSpeechSpec[] PartsOfSpeech,
-    StemSpec[] Stems,
-    TextSpec[] Texts);
+internal sealed record SampleSpec
+{
+    public string Id { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Summary { get; init; } = "";
+    public string Disclaimer { get; init; } = "";
+    public string Description { get; init; } = "";
+    public LanguageSpec Language { get; init; } = new("", "");
+    public string[] Phonemes { get; init; } = [];
+    public NaturalClassSpec[] NaturalClasses { get; init; } = [];
+    public EnvironmentSpec[] Environments { get; init; } = [];
+    public PartOfSpeechSpec[] PartsOfSpeech { get; init; } = [];
+    public StemSpec[] Stems { get; init; } = [];
+    public AffixSpec[] Affixes { get; init; } = [];
+    public AffixSlotSpec[] AffixSlots { get; init; } = [];
+    public AffixTemplateSpec[] AffixTemplates { get; init; } = [];
+    public PhonologicalRuleSpec[] PhonologicalRules { get; init; } = [];
+    public TextSpec[] Texts { get; init; } = [];
+}
 
 internal sealed record LanguageSpec(string Name, string Tag);
+internal sealed record NaturalClassSpec(string Id, string Name, string Abbreviation, string[] Phonemes);
+internal sealed record EnvironmentSpec(string Id, string Name, string Representation);
 internal sealed record PartOfSpeechSpec(string Id, string Name);
 internal sealed record StemSpec(string Id, string Form, string PartOfSpeech, string Gloss);
+internal sealed record AffixSpec(string Id, string PartOfSpeech, string[] Slots, string Gloss, AllomorphSpec[] Allomorphs);
+internal sealed record AllomorphSpec(string Id, string Form, string? Environment);
+internal sealed record AffixSlotSpec(string Id, string Name, string PartOfSpeech, bool Optional);
+internal sealed record AffixTemplateSpec(
+    string Id, string Name, string PartOfSpeech, string[] PrefixSlots, string[] SuffixSlots, bool Final);
+internal sealed record PhonologicalRuleSpec(string Id, string Name, string Input, string Output, string Environment);
 internal sealed record TextSpec(string Id, string Title, string[] Sentences);
-internal sealed record BuildResult(string ProjectPath, string BackupPath, BuiltText[] Texts);
+internal sealed record BugSpec(string Id, string Title, BugSymptom? Symptom, string[] Fix, PatchOperation[] Patch);
+internal sealed record BugSymptom(string Kind, string[] Words, string Reason);
+internal sealed record PatchOperation(
+    string Op,
+    string? AllomorphId = null,
+    string? EnvironmentId = null,
+    string? StemId = null,
+    string? TemplateId = null,
+    string? FirstSlotId = null,
+    string? SecondSlotId = null,
+    string? SlotId = null,
+    bool? Optional = null,
+    int? Count = null);
+internal sealed record BuildResult(string ProjectPath, string BackupPath, BuiltText[] Texts, string[] AppliedBugs);
 internal sealed record BuiltText(string Id, string Guid);
 
 internal static class SampleBuilder
@@ -65,11 +117,14 @@ internal static class SampleBuilder
     private const string ParserParametersXml =
         "<ParserParameters><HC><NoDefaultCompounding>true</NoDefaultCompounding><Strata /></HC></ParserParameters>";
 
-    public static BuildResult Build(SampleSpec spec, string outputRoot)
+    public static BuildResult Build(
+        SampleSpec source, string outputRoot, IReadOnlyList<BugSpec> bugs, IReadOnlyList<string> bugIds)
     {
+        var spec = ApplyBugs(source, bugs, bugIds);
         Validate(spec);
         Directory.CreateDirectory(outputRoot);
-        var projectName = ProjectName(spec.Id);
+        var isBroken = bugIds.Count > 0;
+        var projectName = ProjectName(spec.Id) + (isBroken ? "Broken" : "");
         var projectFolder = Path.Combine(outputRoot, projectName);
         var templatesFolder = Path.Combine(outputRoot, "Templates");
         Directory.CreateDirectory(projectFolder);
@@ -88,11 +143,115 @@ internal static class SampleBuilder
             new FwDataProjectLoader().Save(cache);
         }
 
-        var backupPath = Path.Combine(outputRoot, spec.Id + "-fixed.fwbackup");
+        var backupKind = isBroken ? "broken" : "fixed";
+        var backupPath = Path.Combine(outputRoot, spec.Id + "-" + backupKind + ".fwbackup");
         WriteBackup(fwDataPath, projectFolder, backupPath);
         return new BuildResult(fwDataPath, backupPath,
-            spec.Texts.Select(text => new BuiltText(text.Id, Ids.Create(spec.Id, "text/" + text.Id).ToString("D"))).ToArray());
+            spec.Texts.Select(text => new BuiltText(text.Id, Ids.Create(spec.Id, "text/" + text.Id).ToString("D"))).ToArray(),
+            [.. bugIds]);
     }
+
+    private static SampleSpec ApplyBugs(
+        SampleSpec source, IReadOnlyList<BugSpec> bugs, IReadOnlyList<string> bugIds)
+    {
+        var spec = source;
+        foreach (var bugId in bugIds)
+        {
+            var bug = bugs.SingleOrDefault(candidate => candidate.Id == bugId)
+                ?? throw new InvalidDataException($"Bug '{bugId}' is not declared in the bug list.");
+            foreach (var patch in bug.Patch)
+                spec = ApplyPatch(spec, patch);
+        }
+        return spec;
+    }
+
+    private static SampleSpec ApplyPatch(SampleSpec spec, PatchOperation patch) => patch.Op switch
+    {
+        "setEnvironment" => SetEnvironment(spec, patch),
+        "removeStem" => spec with
+        {
+            Stems = spec.Stems.Where(stem => stem.Id != Required(patch.StemId, "stemId")).ToArray(),
+        },
+        "swapSlots" => SwapSlots(spec, patch),
+        "setSlotOptional" => spec with
+        {
+            AffixSlots = spec.AffixSlots.Select(slot => slot.Id == Required(patch.SlotId, "slotId")
+                ? slot with { Optional = patch.Optional ?? throw new InvalidDataException("setSlotOptional needs optional.") }
+                : slot).ToArray(),
+        },
+        "duplicateOptionalSlot" => DuplicateOptionalSlot(spec, patch),
+        _ => throw new InvalidDataException($"Unknown patch operation '{patch.Op}'."),
+    };
+
+    private static SampleSpec SwapSlots(SampleSpec spec, PatchOperation patch)
+    {
+        var templateId = Required(patch.TemplateId, "templateId");
+        var first = Required(patch.FirstSlotId, "firstSlotId");
+        var second = Required(patch.SecondSlotId, "secondSlotId");
+        return spec with
+        {
+            AffixTemplates = spec.AffixTemplates.Select(template =>
+            {
+                if (template.Id != templateId) return template;
+                var firstIndex = Array.IndexOf(template.SuffixSlots, first);
+                var secondIndex = Array.IndexOf(template.SuffixSlots, second);
+                if (firstIndex < 0 || secondIndex < 0)
+                    throw new InvalidDataException($"Template '{templateId}' does not contain both slots.");
+                var suffixSlots = template.SuffixSlots.ToArray();
+                (suffixSlots[firstIndex], suffixSlots[secondIndex]) = (suffixSlots[secondIndex], suffixSlots[firstIndex]);
+                return template with { SuffixSlots = suffixSlots };
+            }).ToArray(),
+        };
+    }
+
+    private static SampleSpec SetEnvironment(SampleSpec spec, PatchOperation patch)
+    {
+        var allomorphId = Required(patch.AllomorphId, "allomorphId");
+        var environmentId = Required(patch.EnvironmentId, "environmentId");
+        var matches = spec.Affixes.SelectMany(affix => affix.Allomorphs)
+            .Count(allomorph => allomorph.Id == allomorphId);
+        if (matches != 1) throw new InvalidDataException($"Allomorph '{allomorphId}' does not exist exactly once.");
+        return spec with
+        {
+            Affixes = spec.Affixes.Select(affix => affix with
+            {
+                Allomorphs = affix.Allomorphs.Select(allomorph => allomorph.Id == allomorphId
+                    ? allomorph with { Environment = environmentId }
+                    : allomorph).ToArray(),
+            }).ToArray(),
+        };
+    }
+
+    private static SampleSpec DuplicateOptionalSlot(SampleSpec spec, PatchOperation patch)
+    {
+        var slotId = Required(patch.SlotId, "slotId");
+        var templateId = Required(patch.TemplateId, "templateId");
+        var count = patch.Count ?? throw new InvalidDataException("duplicateOptionalSlot needs count.");
+        if (count is < 1 or > 32) throw new InvalidDataException("duplicateOptionalSlot count must be from 1 to 32.");
+        var sourceSlot = spec.AffixSlots.SingleOrDefault(slot => slot.Id == slotId)
+            ?? throw new InvalidDataException($"Slot '{slotId}' does not exist.");
+        var copies = Enumerable.Range(1, count).Select(index => sourceSlot with
+        {
+            Id = $"{slotId}-copy-{index}",
+            Name = sourceSlot.Name + " copy " + index,
+            Optional = true,
+        }).ToArray();
+        var affixes = spec.Affixes.Select(affix => affix.Slots.Contains(slotId, StringComparer.Ordinal)
+            ? affix with { Slots = [.. affix.Slots, .. copies.Select(copy => copy.Id)] }
+            : affix).ToArray();
+        var templates = spec.AffixTemplates.Select(template => template.Id == templateId
+            ? template with { SuffixSlots = [.. template.SuffixSlots, .. copies.Select(copy => copy.Id)] }
+            : template).ToArray();
+        return spec with
+        {
+            AffixSlots = [.. spec.AffixSlots, .. copies],
+            Affixes = affixes,
+            AffixTemplates = templates,
+        };
+    }
+
+    private static string Required(string? value, string name) =>
+        string.IsNullOrWhiteSpace(value) ? throw new InvalidDataException($"Patch operation needs {name}.") : value;
 
     private static void Validate(SampleSpec spec)
     {
@@ -108,6 +267,9 @@ internal static class SampleBuilder
             .Append("+")
             .ToHashSet(StringComparer.Ordinal);
         var partIds = spec.PartsOfSpeech.Select(part => part.Id).ToHashSet(StringComparer.Ordinal);
+        var slotById = UniqueById(spec.AffixSlots, slot => slot.Id, "affix slot");
+        var environmentIds = UniqueById(spec.Environments, environment => environment.Id, "environment")
+            .Keys.ToHashSet(StringComparer.Ordinal);
         foreach (var stem in spec.Stems)
         {
             if (!partIds.Contains(stem.PartOfSpeech))
@@ -116,30 +278,63 @@ internal static class SampleBuilder
                 throw new InvalidDataException($"Stem '{stem.Id}' needs a form and gloss.");
             ValidateVernacularCharacters(stem.Form, $"Stem '{stem.Id}' form '{stem.Form}'", declaredCharacters);
         }
+        foreach (var affix in spec.Affixes)
+        {
+            if (!partIds.Contains(affix.PartOfSpeech))
+                throw new InvalidDataException($"Affix '{affix.Id}' names an unknown part of speech.");
+            if (affix.Allomorphs.Length == 0 || affix.Slots.Length == 0)
+                throw new InvalidDataException($"Affix '{affix.Id}' needs an allomorph and a slot.");
+            foreach (var slotId in affix.Slots)
+                if (!slotById.TryGetValue(slotId, out var slot) || slot.PartOfSpeech != affix.PartOfSpeech)
+                    throw new InvalidDataException($"Affix '{affix.Id}' names an unknown or incompatible slot '{slotId}'.");
+            foreach (var allomorph in affix.Allomorphs)
+            {
+                ValidateVernacularCharacters(allomorph.Form,
+                    $"Affix '{affix.Id}' allomorph '{allomorph.Id}' form '{allomorph.Form}'", declaredCharacters);
+                if (allomorph.Environment is not null && !environmentIds.Contains(allomorph.Environment))
+                    throw new InvalidDataException($"Allomorph '{allomorph.Id}' names an unknown environment.");
+            }
+        }
+        foreach (var template in spec.AffixTemplates)
+        {
+            if (!partIds.Contains(template.PartOfSpeech))
+                throw new InvalidDataException($"Template '{template.Id}' names an unknown part of speech.");
+            foreach (var slotId in (template.PrefixSlots ?? []).Concat(template.SuffixSlots ?? []))
+                if (!slotById.TryGetValue(slotId, out var slot) || slot.PartOfSpeech != template.PartOfSpeech)
+                    throw new InvalidDataException($"Template '{template.Id}' names an unknown or incompatible slot '{slotId}'.");
+        }
+        foreach (var group in spec.AffixTemplates.GroupBy(template => template.PartOfSpeech, StringComparer.Ordinal))
+            if (!group.Any(template => template.Final))
+                throw new InvalidDataException($"Templates for part of speech '{group.Key}' need a final template.");
         foreach (var text in spec.Texts)
         {
             if (text.Sentences.Length == 0 || text.Sentences.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException($"Text '{text.Id}' needs at least one sentence.");
-            var unknownWords = text.Sentences.SelectMany(sentence => sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                .Where(word => !spec.Stems.Any(stem => stem.Form == word)).Distinct(StringComparer.Ordinal).ToArray();
-            if (unknownWords.Length > 0)
-                throw new InvalidDataException($"Text '{text.Id}' uses unknown stems: {string.Join(", ", unknownWords)}.");
             foreach (var word in text.Sentences.SelectMany(sentence =>
                          sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries)))
                 ValidateVernacularCharacters(word, $"Text '{text.Id}' word '{word}'", declaredCharacters);
         }
     }
 
+    private static Dictionary<string, T> UniqueById<T>(
+        IEnumerable<T> records, Func<T, string> idSelector, string description)
+    {
+        var result = new Dictionary<string, T>(StringComparer.Ordinal);
+        foreach (var record in records)
+        {
+            var id = idSelector(record);
+            if (string.IsNullOrWhiteSpace(id) || !result.TryAdd(id, record))
+                throw new InvalidDataException($"The {description} id '{id}' is empty or duplicated.");
+        }
+        return result;
+    }
+
     private static void ValidateVernacularCharacters(
-        string form,
-        string description,
-        HashSet<string> declaredCharacters)
+        string form, string description, HashSet<string> declaredCharacters)
     {
         foreach (var rune in form.Normalize(NormalizationForm.FormD).EnumerateRunes())
-        {
             if (!declaredCharacters.Contains(rune.ToString()))
                 throw new InvalidDataException($"{description} uses undeclared character '{rune}'.");
-        }
     }
 
     private static void Seed(LcmCache cache, SampleSpec spec)
@@ -148,22 +343,40 @@ internal static class SampleBuilder
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             SetVernacularWritingSystem(cache, spec.Language.Tag);
+            cache.LangProject.Description.set_String(cache.DefaultAnalWs,
+                string.IsNullOrWhiteSpace(spec.Description) ? spec.Disclaimer : spec.Description);
             cache.LangProject.MorphologicalDataOA.ParserParameters = ParserParametersXml;
-            var positions = new Dictionary<string, IPartOfSpeech>(StringComparer.Ordinal);
-            foreach (var part in spec.PartsOfSpeech)
-            {
-                var possibilityList = cache.LangProject.PartsOfSpeechOA;
-                var position = services.GetInstance<IPartOfSpeechFactory>().Create(
-                    Ids.Create(spec.Id, "part-of-speech/" + part.Id), possibilityList);
-                position.Name.set_String(cache.DefaultAnalWs, part.Name);
-                positions.Add(part.Id, position);
-            }
-
-            foreach (var stem in spec.Stems)
-                AddStem(cache, spec.Id, stem, positions[stem.PartOfSpeech]);
-            AddPhonemes(cache, spec);
+            var positions = AddPartsOfSpeech(cache, spec);
+            AddStems(cache, spec, positions);
+            var phonemes = AddPhonemes(cache, spec);
+            AddNaturalClasses(cache, spec, phonemes);
+            var environments = AddEnvironments(cache, spec);
+            var slots = AddAffixSlots(cache, spec, positions);
+            AddAffixTemplates(cache, spec, positions, slots);
+            AddAffixes(cache, spec, positions, slots, environments);
             AddTexts(cache, spec);
         });
+    }
+
+    private static Dictionary<string, IPartOfSpeech> AddPartsOfSpeech(LcmCache cache, SampleSpec spec)
+    {
+        var positions = new Dictionary<string, IPartOfSpeech>(StringComparer.Ordinal);
+        foreach (var part in spec.PartsOfSpeech)
+        {
+            var possibilityList = cache.LangProject.PartsOfSpeechOA;
+            var position = cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(
+                Ids.Create(spec.Id, "part-of-speech/" + part.Id), possibilityList);
+            position.Name.set_String(cache.DefaultAnalWs, part.Name);
+            positions.Add(part.Id, position);
+        }
+        return positions;
+    }
+
+    private static void AddStems(
+        LcmCache cache, SampleSpec spec, IReadOnlyDictionary<string, IPartOfSpeech> positions)
+    {
+        foreach (var stem in spec.Stems)
+            AddStem(cache, spec.Id, stem, positions[stem.PartOfSpeech]);
     }
 
     private static void SetVernacularWritingSystem(LcmCache cache, string tag)
@@ -205,9 +418,10 @@ internal static class SampleBuilder
         sense.MorphoSyntaxAnalysisRA = msa;
     }
 
-    private static void AddPhonemes(LcmCache cache, SampleSpec spec)
+    private static Dictionary<string, IPhPhoneme> AddPhonemes(LcmCache cache, SampleSpec spec)
     {
         var services = cache.ServiceLocator;
+        var result = new Dictionary<string, IPhPhoneme>(StringComparer.Ordinal);
         var phonemeSets = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS;
         if (phonemeSets.Count == 0)
             phonemeSets.Add(services.GetInstance<IPhPhonemeSetFactory>().Create(
@@ -219,6 +433,7 @@ internal static class SampleBuilder
                 Ids.Create(spec.Id, "phoneme/" + phonemeText));
             phonemeSet.PhonemesOC.Add(phoneme);
             phoneme.Name.set_String(cache.DefaultVernWs, phonemeText);
+            result.Add(phonemeText, phoneme);
             var code = services.GetInstance<IPhCodeFactory>().Create(
                 Ids.Create(spec.Id, "phoneme/" + phonemeText + "/code"));
             phoneme.CodesOS.Add(code);
@@ -232,13 +447,119 @@ internal static class SampleBuilder
             Ids.Create(spec.Id, "phonology/morpheme-boundary/code"));
         boundary.CodesOS.Add(boundaryCode);
         boundaryCode.Representation.set_String(cache.DefaultVernWs, "+");
+        return result;
+    }
+
+    private static Dictionary<string, IPhNCSegments> AddNaturalClasses(
+        LcmCache cache, SampleSpec spec, IReadOnlyDictionary<string, IPhPhoneme> phonemes)
+    {
+        var result = new Dictionary<string, IPhNCSegments>(StringComparer.Ordinal);
+        foreach (var source in spec.NaturalClasses)
+        {
+            var naturalClass = cache.ServiceLocator.GetInstance<IPhNCSegmentsFactory>().Create(
+                Ids.Create(spec.Id, "natural-class/" + source.Id));
+            cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Add(naturalClass);
+            naturalClass.Name.set_String(cache.DefaultAnalWs, source.Name);
+            naturalClass.Abbreviation.set_String(cache.DefaultAnalWs, source.Abbreviation);
+            foreach (var phoneme in source.Phonemes)
+                naturalClass.SegmentsRC.Add(phonemes[phoneme]);
+            result.Add(source.Id, naturalClass);
+        }
+        return result;
+    }
+
+    private static Dictionary<string, IPhEnvironment> AddEnvironments(LcmCache cache, SampleSpec spec)
+    {
+        var result = new Dictionary<string, IPhEnvironment>(StringComparer.Ordinal);
+        foreach (var source in spec.Environments)
+        {
+            var environment = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create(
+                Ids.Create(spec.Id, "environment/" + source.Id));
+            cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+            environment.Name.set_String(cache.DefaultAnalWs, source.Name);
+            environment.StringRepresentation = TsStringUtils.MakeString(source.Representation, cache.DefaultVernWs);
+            result.Add(source.Id, environment);
+        }
+        return result;
+    }
+
+    private static Dictionary<string, IMoInflAffixSlot> AddAffixSlots(
+        LcmCache cache, SampleSpec spec, IReadOnlyDictionary<string, IPartOfSpeech> positions)
+    {
+        var result = new Dictionary<string, IMoInflAffixSlot>(StringComparer.Ordinal);
+        foreach (var source in spec.AffixSlots)
+        {
+            var slot = cache.ServiceLocator.GetInstance<IMoInflAffixSlotFactory>().Create(
+                Ids.Create(spec.Id, "affix-slot/" + source.Id));
+            positions[source.PartOfSpeech].AffixSlotsOC.Add(slot);
+            slot.Name.set_String(cache.DefaultAnalWs, source.Name);
+            slot.Optional = source.Optional;
+            result.Add(source.Id, slot);
+        }
+        return result;
+    }
+
+    private static void AddAffixTemplates(
+        LcmCache cache,
+        SampleSpec spec,
+        IReadOnlyDictionary<string, IPartOfSpeech> positions,
+        IReadOnlyDictionary<string, IMoInflAffixSlot> slots)
+    {
+        foreach (var source in spec.AffixTemplates)
+        {
+            var template = cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create(
+                Ids.Create(spec.Id, "affix-template/" + source.Id));
+            positions[source.PartOfSpeech].AffixTemplatesOS.Add(template);
+            template.Name.set_String(cache.DefaultAnalWs, source.Name);
+            template.Final = source.Final;
+            foreach (var slotId in source.PrefixSlots ?? [])
+                template.PrefixSlotsRS.Add(slots[slotId]);
+            foreach (var slotId in source.SuffixSlots ?? [])
+                template.SuffixSlotsRS.Add(slots[slotId]);
+        }
+    }
+
+    private static void AddAffixes(
+        LcmCache cache,
+        SampleSpec spec,
+        IReadOnlyDictionary<string, IPartOfSpeech> positions,
+        IReadOnlyDictionary<string, IMoInflAffixSlot> slots,
+        IReadOnlyDictionary<string, IPhEnvironment> environments)
+    {
+        foreach (var affix in spec.Affixes)
+        {
+            var services = cache.ServiceLocator;
+            var entry = services.GetInstance<ILexEntryFactory>().Create(
+                Ids.Create(spec.Id, "affix/" + affix.Id + "/entry"), cache.LangProject.LexDbOA);
+            for (var index = 0; index < affix.Allomorphs.Length; index++)
+            {
+                var source = affix.Allomorphs[index];
+                var allomorph = services.GetInstance<IMoAffixAllomorphFactory>().Create(
+                    Ids.Create(spec.Id, "affix/" + affix.Id + "/allomorph/" + source.Id));
+                if (index == 0) entry.LexemeFormOA = allomorph;
+                else entry.AlternateFormsOS.Add(allomorph);
+                allomorph.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>()
+                    .GetObject(MoMorphTypeTags.kguidMorphSuffix);
+                allomorph.Form.set_String(cache.DefaultVernWs, source.Form);
+                if (source.Environment is not null)
+                    allomorph.PhoneEnvRC.Add(environments[source.Environment]);
+            }
+            var msa = services.GetInstance<IMoInflAffMsaFactory>().Create(
+                entry, SandboxGenericMSA.Create(MsaType.kInfl, positions[affix.PartOfSpeech]));
+            foreach (var slotId in affix.Slots)
+                msa.SlotsRC.Add(slots[slotId]);
+            var sense = services.GetInstance<ILexSenseFactory>().Create(
+                Ids.Create(spec.Id, "affix/" + affix.Id + "/sense"));
+            entry.SensesOS.Add(sense);
+            sense.Gloss.set_String(cache.DefaultAnalWs, affix.Gloss);
+            sense.MorphoSyntaxAnalysisRA = msa;
+        }
     }
 
     private static void AddTexts(LcmCache cache, SampleSpec spec)
     {
         var services = cache.ServiceLocator;
-        var wordformFactory = services.GetInstance<IWfiWordformFactory>();
-        var identifiedWordformFactory = (ILcmFactory<IWfiWordform>)wordformFactory;
+        var wordformFactory = (ILcmFactory<IWfiWordform>)services.GetInstance<IWfiWordformFactory>();
         var wordforms = new Dictionary<string, IWfiWordform>(StringComparer.Ordinal);
         foreach (var source in spec.Texts)
         {
@@ -262,7 +583,7 @@ internal static class SampleBuilder
                     if (!wordforms.TryGetValue(form, out var wordform))
                     {
                         var objectKey = "wordform/" + form.Normalize(NormalizationForm.FormC);
-                        wordform = identifiedWordformFactory.Create(Ids.Create(spec.Id, objectKey));
+                        wordform = wordformFactory.Create(Ids.Create(spec.Id, objectKey));
                         wordform.Form.set_String(cache.DefaultVernWs, form);
                         wordforms.Add(form, wordform);
                     }
