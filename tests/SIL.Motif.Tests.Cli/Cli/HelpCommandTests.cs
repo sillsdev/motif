@@ -17,6 +17,7 @@ public sealed class HelpCommandTests
         var result = Run("help");
 
         Assert.Equal(0, result.ExitCode);
+        Assert.Matches(@"^Motif \(beta\) (?:—|-) report problems at https://github\.com/sillsdev/motif/issues", result.Output);
         Assert.Contains("Open a project", result.Output, StringComparison.Ordinal);
         Assert.Contains("Measure a Selection", result.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("Create a Draft", result.Output, StringComparison.Ordinal);

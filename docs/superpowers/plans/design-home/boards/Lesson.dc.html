@@ -14,7 +14,7 @@ body{margin:0;background:#FFFFFF;color:#333333;font-family:"Noto Sans",system-ui
 a{color:#007a32}a:hover{color:#005c25}
 </style>
 </helmet>
-<div style="width: 1280px; height: 1560px; box-sizing: border-box; background: #FFFFFF; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333; display: flex; flex-direction: column">
+<div style="width: 1280px; height: 1660px; box-sizing: border-box; background: #FFFFFF; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333; display: flex; flex-direction: column">
 <header style="height: 64px; padding: 0 40px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #DDDDDD; background: #FFFFFF">
 <div style="display: flex; align-items: center; gap: 12px"><img src="/_blob/ed56d12dc82aef245cc32cc08e7a8391" alt="SIL" style="height: 30px; width: 56px; display: block"><img src="/_blob/b5cfc56b302246be35abc96d5e19f301" alt="" style="height: 26px; width: 33px; display: block"><span style="font-size: 22px; font-weight: 800">Motif</span></div>
 <label style="display: flex; align-items: center; gap: 8px; width: 320px; height: 40px; padding: 0 12px; box-sizing: border-box; border-radius: 8px; border: 1px solid #DDDDDD; background: #FFFFFF; font-size: 14px; color: #555555">
@@ -24,7 +24,7 @@ a{color:#007a32}a:hover{color:#005c25}
 </header>
 <div style="flex-grow: 1; display: flex">
 <nav aria-label="Learn" style="width: 280px; flex-shrink: 0; box-sizing: border-box; padding: 32px 24px; border-right: 1px solid #DDDDDD; display: flex; flex-direction: column; gap: 8px; font-size: 15px">
-<div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #555555; padding: 0 12px 8px">Learn · Turkish</div>
+<div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #555555; padding: 0 12px 8px">Learn · Synthetic Turkic-style</div>
 <sc-for list="{{lessons}}" as="l" hint-placeholder-count="4">
 <a href="#" style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; text-decoration: none; color: #333333; background: {{l.bg}}; font-weight: {{l.weight}}">
 <span style="flex-shrink: 0; width: 22px; height: 22px; border-radius: 11px; border: 1.5px solid {{l.ring}}; color: {{l.ring}}; font-size: 12px; display: flex; align-items: center; justify-content: center">{{l.n}}</span>
@@ -32,16 +32,17 @@ a{color:#007a32}a:hover{color:#005c25}
 </a>
 </sc-for>
 <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #555555; padding: 24px 12px 8px">Other samples</div>
-<a href="#" style="padding: 8px 12px; color: #333333; text-decoration: none">Swahili</a>
-<a href="#" style="padding: 8px 12px; color: #333333; text-decoration: none">Tagalog</a>
+<a href="#" style="padding: 8px 12px; color: #333333; text-decoration: none">Synthetic Bantu-style</a>
+<a href="#" style="padding: 8px 12px; color: #333333; text-decoration: none">Synthetic Philippine-style</a>
 </nav>
 <main style="flex-grow: 1; box-sizing: border-box; padding: 48px 72px; display: flex; flex-direction: column; gap: 28px; max-width: 1000px">
-<div style="font-size: 14px; color: #555555">Learn › Turkish › Lesson 1 of 4 · about 10 minutes</div>
+<div style="font-size: 14px; color: #555555">Learn › Synthetic Turkic-style › Lesson 1 of 4 · about 10 minutes</div>
+<div role="note" style="padding: 14px 18px; border-radius: 10px; background: #FFF4D1; border: 1px solid #F0DC9A; color: #3D2E00; font-size: 15px; line-height: 1.55"><strong>SYNTHETIC EXAMPLE.</strong> This sample was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.</div>
 <h1 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 44px; line-height: 1.1; font-weight: 700">A plural that forgets vowel harmony</h1>
-<p style="margin: 0; font-size: 18px; line-height: 1.6; color: #555555">Turkish plurals are <em>-ler</em> after front vowels and <em>-lar</em> after back vowels. The computer knows only what the grammar tells it — so if the grammar gets one condition wrong, whole groups of words stop parsing. Here you’ll find which, and why.</p>
+<p style="margin: 0; font-size: 18px; line-height: 1.6; color: #555555">In this sample, as in Turkish, the plural is <em>-ler</em> after front vowels and <em>-lar</em> after back vowels. The computer knows only what the grammar tells it — so if the grammar gets one condition wrong, whole groups of words stop parsing. Here you’ll find which, and why.</p>
 <div style="display: flex; gap: 12px; padding: 16px 20px; border-radius: 10px; background: #FFFFFF; border: 1px solid #DDDDDD; font-size: 15px; line-height: 1.5; align-items: center">
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" style="stroke-width: 1.8; flex-shrink: 0"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>
-<span>Start with <a href="#">Turkish (broken).fwbackup</a> restored in FieldWorks and opened in Motif.</span>
+<span>Start with <a href="#">synthetic-turkic-broken.fwbackup</a> restored in FieldWorks and opened in Motif.</span>
 </div>
 <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
 <section style="display: flex; gap: 20px">
@@ -60,14 +61,14 @@ a{color:#007a32}a:hover{color:#005c25}
 <div style="font-size: 16px; line-height: 1.55">Text Coverage goes from [broken %] to [after fix %]. The plural words now parse; the other planted mistakes are still there for the next lessons.</div>
 </div>
 <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #DDDDDD">
-<a href="#" style="display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; text-decoration: none">← About the Turkish sample</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; text-decoration: none">← About this synthetic sample</a>
 <a href="#" style="display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; text-decoration: none">Lesson 2: Suffixes in the wrong order →</a>
 </div>
 </main>
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":1280,"height":1560}}'>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":1280,"height":1660}}'>
 class Component extends DCLogic {
 renderVals() {
 const accent = this.props.accent ?? '#800493';
@@ -81,7 +82,7 @@ weight: i === 0 ? '600' : '400',
 ring: i === 0 ? accent : '#8A919C'
 })),
 steps: [
-{ n: '1', title: 'Read the Overview', body: 'Text Coverage tells you what share of the words in your texts parse. Note the number — you’ll come back to it.', hasShot: true, shot: '[Screenshot: Overview of the broken Turkish sample, Text Coverage highlighted]' },
+{ n: '1', title: 'Read the Overview', body: 'Text Coverage tells you what share of the words in your texts parse. Note the number — you’ll come back to it.', hasShot: true, shot: '[Screenshot: Overview of the broken synthetic Turkic-style sample, Text Coverage highlighted]' },
 { n: '2', title: 'Find a word that fails', body: 'On Texts, sort by status and pick a plural that does not parse — for example kitaplar, “books”.', hasShot: true, shot: '[Screenshot: Texts, failing words listed]' },
 { n: '3', title: 'Ask why', body: 'Open Try a Word and type the word. Motif shows how far the parse got and where it stopped: the plural suffix was never allowed after a back vowel.', hasShot: true, shot: '[Clip: Try a Word showing the reason]' },
 { n: '4', title: 'Fix it in FieldWorks, then Refresh', body: 'In FieldWorks, open the plural suffix and correct the environment on its -lar allomorph. Save, return to Motif, and press Refresh.', hasShot: false, shot: '' }

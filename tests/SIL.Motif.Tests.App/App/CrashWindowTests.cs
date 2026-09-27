@@ -46,13 +46,30 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
                 Assert.False(details.IsExpanded);
                 Assert.Equal("Details", details.Header);
                 Assert.Equal(report.Details, Named<SelectableTextBlock>(window, "Crash details text").Text);
-                Assert.Equal(["Copy details", "Save report", "Email maintainer", "Close"],
+                Assert.Equal(["Report a problem", "Copy details", "Save report", "Email maintainer", "Close"],
                     window.GetLogicalDescendants().OfType<Button>().Select(button => button.Content as string));
             }
             finally
             {
                 window.Close();
             }
+        });
+    }
+
+    [Fact]
+    public void ReportProblemOpensTheIssuesPageAndThanksTheReporter()
+    {
+        RunWithWindow(Report(), async window =>
+        {
+            Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text),
+                text => text?.Contains("Thank you for helping improve Motif.", StringComparison.Ordinal) == true);
+
+            window.GetLogicalDescendants().OfType<HyperlinkButton>()
+                .Single(button => Equals(button.Content, "Report a problem"))
+                .Command!.Execute(null);
+            await Until(() => _launcher.Launched.Count == 1);
+
+            Assert.Equal(new Uri("https://github.com/sillsdev/motif/issues"), _launcher.Launched[0]);
         });
     }
 
