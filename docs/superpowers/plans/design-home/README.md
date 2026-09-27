@@ -62,6 +62,18 @@ then Motif's own logo (`src/SIL.Motif.App/Assets/motif.png`) beside the word "Mo
 
 All copy stays localizable, as the site already arranges.
 
+## Beta messaging (design canvas version 7)
+
+Above the header on every page, a dismissible banner on `#FFF4D1` with `#3D2E00` text: a purple **BETA** tag, then
+"Motif is a pilot project within SIL Language Technology. Try it on a copy of your project, and tell us what
+breaks." linking <https://github.com/sillsdev/motif/issues>. Hero eyebrow "Beta · For anyone getting a FieldWorks
+parser to work"; the green button reads **Download the beta**; the line under it reads "Beta for Windows · Free and
+open source · Not yet an officially supported SIL product". "Who it's for" cards carry no quotation marks: "You've
+described the morphology, but the parser still disagrees." / "You just want your text glossed." / "You know when a
+word is right. The computer doesn't — yet." / "You need to know which rule is slow, and why." A "Before you start"
+section before the footer holds three FAQ cards on `#F5F5F5` (see `boards/Main.dc.html`). Footer: "Motif (beta) is a
+pilot project within SIL Language Technology · Report a problem · [License]".
+
 ## Learn lesson page (`boards/Lesson.dc.html`)
 
 Lesson sidebar with numbered lessons (current one tinted), breadcrumb and duration, title, intro, the download

@@ -19,8 +19,12 @@ a{color:#007a32}a:hover{color:#005c25}
 @media (prefers-reduced-motion: reduce){.marquee-track{animation:none}}
 </style>
 </helmet>
-<div style="width: 1440px; height: 4860px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333">
+<div style="width: 1440px; height: 5360px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333">
 
+<div role="note" style="background: #FFF4D1; color: #3D2E00; padding: 10px 80px; font-size: 15px; line-height: 1.5; display: flex; gap: 12px; align-items: center; justify-content: space-between; border-bottom: 1px solid #F0DC9A">
+<div><span style="display: inline-block; margin-right: 10px; padding: 2px 8px; border-radius: 4px; background: #800493; color: #FFFFFF; font-size: 12px; font-weight: 800; letter-spacing: 0.06em">BETA</span>Motif is a pilot project within SIL Language Technology. Try it on a copy of your project, and <a href="https://github.com/sillsdev/motif/issues" style="color: #3D2E00; font-weight: 700">tell us what breaks</a>.</div>
+<button aria-label="Dismiss this notice" style="flex-shrink: 0; width: 44px; height: 44px; border: 0; background: transparent; color: #3D2E00; font-size: 20px">×</button>
+</div>
 <header style="height: 76px; box-sizing: border-box; padding: 0 80px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #DDDDDD">
 <div style="display: flex; align-items: center; gap: 16px">
 <a href="https://software.sil.org/" aria-label="SIL Language Technology"><img src="/_blob/ed56d12dc82aef245cc32cc08e7a8391" alt="SIL" style="height: 36px; width: 67px; display: block"></a>
@@ -39,14 +43,14 @@ a{color:#007a32}a:hover{color:#005c25}
 
 <section style="padding: 104px 80px 88px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: center">
 <div style="grid-column: span 7; display: flex; flex-direction: column; gap: 26px">
-<div style="font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">For anyone getting a FieldWorks parser to work</div>
+<div style="font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">Beta · For anyone getting a FieldWorks parser to work</div>
 <h1 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 62px; line-height: 1.08; font-weight: 700">Motif can help you teach a dumb computer your language.</h1>
 <p style="margin: 0; font-size: 21px; line-height: 1.55; color: #555555; max-width: 620px">You know the linguistics. An AI consultant knows the parser, the rules and FieldWorks’ settings. Motif gives you both the evidence: which words fail, why, and what is slow — and checks every fix.</p>
 <div style="display: flex; gap: 16px; align-items: center">
-<a href="#" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 26px; border-radius: 8px; background: #007a32; color: #FFFFFF; font-weight: 700; text-decoration: none">Download Motif</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 26px; border-radius: 8px; background: #007a32; color: #FFFFFF; font-weight: 700; text-decoration: none">Download the beta</a>
 <a href="#" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 24px; border-radius: 8px; border: 1px solid #CCCCCC; color: #333333; font-weight: 700; text-decoration: none">See how the AI helps</a>
 </div>
-<div style="font-size: 14px; color: #555555">[Release status] · Free and open source · <a href="https://github.com/sillsdev/motif">GitHub</a></div>
+<div style="font-size: 14px; color: #555555">Beta for Windows · Free and open source · Not yet an officially supported SIL product</div>
 </div>
 <div style="grid-column: 8 / span 5; display: flex; flex-direction: column; gap: 14px">
 <div style="padding: 22px 24px; border-radius: 14px 14px 14px 4px; background: #FFFFFF; border: 1px solid #DDDDDD; font-size: 16px; line-height: 1.55">
@@ -124,7 +128,7 @@ $ motif handoff Sample.fwdata --out handoff --no-assess
 <sc-for list="{{people}}" as="p" hint-placeholder-count="4">
 <div style="display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD">
 <div style="font-size: 19px; font-weight: 700">{{p.who}}</div>
-<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 18px; line-height: 1.45; color: #333333">“{{p.pain}}”</div>
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 18px; line-height: 1.45; color: #333333">{{p.pain}}</div>
 <div style="font-size: 15px; line-height: 1.5; color: #555555">{{p.help}}</div>
 </div>
 </sc-for>
@@ -227,21 +231,38 @@ $ motif handoff Sample.fwdata --out handoff --no-assess
 </div>
 </section>
 
+<section style="padding: 112px 80px 0; display: flex; flex-direction: column; gap: 28px">
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 40px; font-weight: 700">Before you start</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+<sc-for list="{{faq}}" as="q" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: 12px; background: #F5F5F5">
+<h3 style="margin: 0; font-size: 19px; font-weight: 700">{{q.q}}</h3>
+<p style="margin: 0; font-size: 16px; line-height: 1.6; color: #555555">{{q.a}}</p>
+</div>
+</sc-for>
+</div>
+</section>
+
 <footer style="margin-top: auto; padding: 40px 80px; border-top: 1px solid #DDDDDD; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #555555">
 <div style="display: flex; align-items: center; gap: 14px">
 <img src="/_blob/ed56d12dc82aef245cc32cc08e7a8391" alt="SIL" style="height: 30px; width: 56px; display: block">
-<span>Motif is part of <a href="https://software.sil.org/">SIL Language Technology</a>. [License]</span>
+<span>Motif (beta) is a pilot project within <a href="https://software.sil.org/">SIL Language Technology</a> · <a href="https://github.com/sillsdev/motif/issues">Report a problem</a> · [License]</span>
 </div>
 <div style="display: flex; gap: 24px"><a href="https://github.com/sillsdev/motif">GitHub</a><a href="https://software.sil.org/fieldworks/">FieldWorks</a><a href="https://software.sil.org/flextrans/">FLExTrans</a></div>
 </footer>
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":1440,"height":4860}}'>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":1440,"height":5360}}'>
 class Component extends DCLogic {
 renderVals() {
 const accent = this.props.accent ?? '#800493';
 return {
+faq: [
+{ q: 'Is Motif ready for my project?', a: 'Motif is in beta. It reads your project and changes nothing until you press Apply, and it checks each change first — but keep a FieldWorks backup, and try it on a copy before your real project.' },
+{ q: 'Is Motif an official SIL product?', a: 'Not yet. It is a pilot project within SIL Language Technology: free, open source and actively developed, but not yet officially supported.' },
+{ q: 'Something went wrong. What now?', a: 'Tell us on GitHub. In beta, every report shapes what Motif becomes — include what you did, what you expected, and what happened.' }
+],
 phrases: [
 { text: 'You know when a word is right. Motif helps the computer learn it too.', weight: '800' },
 { text: 'The parser isn’t smart. It’s literal. Motif shows you what it took literally.', weight: '400' },
@@ -253,10 +274,10 @@ accent,
 accentSoft: accent + '14',
 accentLine: accent + '40',
 people: [
-{ who: 'Field linguist', pain: 'I’ve described the morphology. The parser still disagrees.', help: 'See exactly where each word stops, and have the AI turn your analysis into rules the parser accepts.' },
-{ who: 'Translator', pain: 'I just want my words glossed.', help: 'Find the few grammar fixes that make most of your text parse, without learning parser theory first.' },
-{ who: 'Native speaker', pain: 'I know when a word is right. The computer doesn’t.', help: 'Your judgement is the ground truth; Motif and the AI help the computer catch up to it.' },
-{ who: 'Language technologist', pain: 'Which rule is slow, and why?', help: 'Timing, JSON output for every command, and documentation written for agents.' }
+{ who: 'Field linguist', pain: 'You’ve described the morphology, but the parser still disagrees.', help: 'See exactly where each word stops, and have the AI turn your analysis into rules the parser accepts.' },
+{ who: 'Translator', pain: 'You just want your text glossed.', help: 'Find the few grammar fixes that make most of your text parse, without learning parser theory first.' },
+{ who: 'Native speaker', pain: 'You know when a word is right. The computer doesn’t — yet.', help: 'Your judgement is the ground truth; Motif and the AI help the computer catch up to it.' },
+{ who: 'Language technologist', pain: 'You need to know which rule is slow, and why.', help: 'Timing, JSON output for every command, and documentation written for agents.' }
 ],
 clips: [
 { n: '1', title: 'See where your grammar stands', body: 'Open a project and read how much of your own texts parses.', placeholder: 'Clip: open project → Overview' },

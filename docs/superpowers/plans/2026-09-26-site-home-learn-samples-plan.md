@@ -80,6 +80,17 @@ failure, and its fixed variant is dramatically faster (aim: ten times or more). 
 machine-independent work measure per variant, with wall-clock time as information only, and the gated test pins
 the work ratio, never wall-clock time. The home page's "Faster parsing" band quotes that measurement.
 
+**D11. Motif says plainly that it is a beta.** It has no users yet and is one person's pilot within SIL Language
+Technology, not yet an officially supported SIL product. Every surface says so once, in a friendly way, and claims
+nothing it cannot back: a dismissible beta banner and "Download the beta" on the site, "Beta for Windows · Free
+and open source · Not yet an officially supported SIL product" under the hero, a footer naming it "a pilot project
+within SIL Language Technology", a short FAQ ("Is Motif ready for my project?", "Is Motif an official SIL
+product?", "Something went wrong?"), no testimonials or usage numbers, and "Who it's for" cards written as
+situations, not quotes. The app titles itself "Motif (beta)", shows a one-time notice that it writes nothing until
+Apply and to keep a FieldWorks backup, repeats the backup line in Review changes before Apply, and points the crash
+window and `motif help` at <https://github.com/sillsdev/motif/issues>. The developer rule of no migration code before
+1.0 is unchanged.
+
 ## 3. Interfaces (binding)
 
 ### Sample metadata — the part the site reads

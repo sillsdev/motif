@@ -18,7 +18,11 @@ a{color:#007a32}
 @media (prefers-reduced-motion: reduce){.marquee-track{animation:none}}
 </style>
 </helmet>
-<div style="width: 390px; height: 2420px; box-sizing: border-box; background: #FFFFFF; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333; display: flex; flex-direction: column">
+<div style="width: 390px; height: 2540px; box-sizing: border-box; background: #FFFFFF; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333; display: flex; flex-direction: column">
+<div role="note" style="background: #FFF4D1; color: #3D2E00; padding: 10px 16px; font-size: 14px; line-height: 1.5; display: flex; gap: 12px; align-items: center; justify-content: space-between; border-bottom: 1px solid #F0DC9A">
+<div><span style="display: inline-block; margin-right: 10px; padding: 2px 8px; border-radius: 4px; background: #800493; color: #FFFFFF; font-size: 12px; font-weight: 800; letter-spacing: 0.06em">BETA</span>Motif is a pilot project within SIL Language Technology. Try it on a copy of your project, and <a href="https://github.com/sillsdev/motif/issues" style="color: #3D2E00; font-weight: 700">tell us what breaks</a>.</div>
+<button aria-label="Dismiss this notice" style="flex-shrink: 0; width: 44px; height: 44px; border: 0; background: transparent; color: #3D2E00; font-size: 20px">×</button>
+</div>
 <header style="height: 60px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #DDDDDD">
 <div style="display: flex; align-items: center; gap: 10px"><img src="/_blob/ed56d12dc82aef245cc32cc08e7a8391" alt="SIL" style="height: 26px; width: 48px; display: block"><img src="/_blob/b5cfc56b302246be35abc96d5e19f301" alt="" style="height: 24px; width: 31px; display: block"><span style="font-size: 21px; font-weight: 800">Motif</span></div>
 <button aria-label="Open menu" style="width: 44px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center">
@@ -26,10 +30,10 @@ a{color:#007a32}
 </button>
 </header>
 <section style="padding: 40px 16px 32px; display: flex; flex-direction: column; gap: 20px">
-<div style="font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">For anyone getting a FieldWorks parser to work</div>
+<div style="font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">Beta · For anyone getting a FieldWorks parser to work</div>
 <h1 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 38px; line-height: 1.08; font-weight: 700">Motif can help you teach a dumb computer your language.</h1>
 <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #555555">You know the linguistics. An AI consultant knows the parser. Motif gives you both the evidence — and checks every fix.</p>
-<a href="#" style="display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 8px; background: #007a32; color: #FFFFFF; font-weight: 700; text-decoration: none">Download Motif</a>
+<a href="#" style="display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 8px; background: #007a32; color: #FFFFFF; font-weight: 700; text-decoration: none">Download the beta</a>
 <a href="https://github.com/sillsdev/motif" style="display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 8px; border: 1px solid #CCCCCC; color: #333333; font-weight: 700; text-decoration: none">See how the AI helps</a>
 <div style="aspect-ratio: 16 / 10; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD; display: flex; align-items: center; justify-content: center; padding: 16px; text-align: center; font-size: 14px; color: #555555">[Hero clip, silent loop]</div>
 </section>
@@ -87,10 +91,10 @@ a{color:#007a32}
 </a>
 </sc-for>
 </section>
-<footer style="margin-top: auto; padding: 32px 16px; border-top: 1px solid #DDDDDD; font-size: 14px; color: #555555">Part of SIL Language Technology · <a href="https://github.com/sillsdev/motif">GitHub</a></footer>
+<footer style="margin-top: auto; padding: 32px 16px; border-top: 1px solid #DDDDDD; font-size: 14px; color: #555555">Motif (beta) — a pilot project within SIL Language Technology · <a href="https://github.com/sillsdev/motif/issues">Report a problem</a></footer>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":390,"height":2420}}'>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":390,"height":2540}}'>
 class Component extends DCLogic {
 renderVals() {
 return {
