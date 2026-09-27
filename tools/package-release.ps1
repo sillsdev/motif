@@ -48,6 +48,19 @@ $parserAsset = $parserAssetProperty.Value
 if ($parserAsset.sha256 -notmatch '^[0-9a-f]{64}$') {
     throw 'pangloss-release.json does not carry a lowercase SHA-256.'
 }
+$icuPayloadPath = Join-Path $repoRoot 'tools/icu-payload.json'
+if (-not (Test-Path -LiteralPath $icuPayloadPath -PathType Leaf)) {
+    throw "SIL ICU payload declaration is missing: $icuPayloadPath"
+}
+$icuPayload = Get-Content -LiteralPath $icuPayloadPath -Raw | ConvertFrom-Json
+$icuRidProperty = $icuPayload.rids.PSObject.Properties[$RuntimeIdentifier]
+if ($null -eq $icuRidProperty) {
+    throw "no SIL ICU payload for $RuntimeIdentifier in tools/icu-payload.json"
+}
+$icuFiles = @($icuRidProperty.Value.files)
+if ($icuFiles.Count -eq 0) {
+    throw "SIL ICU payload for $RuntimeIdentifier has no files in tools/icu-payload.json"
+}
 $isWindows = $RuntimeIdentifier.StartsWith('win-', [System.StringComparison]::Ordinal)
 $parserFileName = if ($isWindows) { 'pangloss.exe' } else { 'pangloss' }
 $entryPointSuffix = if ($isWindows) { '.exe' } else { '' }
@@ -75,7 +88,7 @@ if ($pinnedParserHash -ne $parserAsset.sha256) {
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    $OutputDirectory = Join-Path $repoRoot ".tmp/release-candidate/$ProductVersion"
+    $OutputDirectory = Join-Path $repoRoot ".tmp/release-candidate/$ProductVersion/$RuntimeIdentifier"
 }
 $outputInfo = [System.IO.DirectoryInfo]::new($OutputDirectory)
 $output = $outputInfo.FullName
@@ -188,19 +201,24 @@ try {
     $stageCreated = $true
     Assert-SafeStagePath $stage $outputParentPath $stageName
 
-    $appDirectory = Join-Path $stage 'app'
-    $cliDirectory = Join-Path $stage 'cli'
-    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $appDirectory
-    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $cliDirectory
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $stage
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $stage
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $stage
 
     $appEntryPointName = "SIL.Motif.App$entryPointSuffix"
     $cliEntryPointName = "motif$entryPointSuffix"
     $workerEntryPointName = "SIL.Motif.Worker$entryPointSuffix"
-    $appEntryPoint = Join-Path $appDirectory $appEntryPointName
-    $cliEntryPoint = Join-Path $cliDirectory $cliEntryPointName
-    foreach ($entryPoint in @($appEntryPoint, $cliEntryPoint)) {
+    $appEntryPoint = Join-Path $stage $appEntryPointName
+    $cliEntryPoint = Join-Path $stage $cliEntryPointName
+    $workerEntryPoint = Join-Path $stage $workerEntryPointName
+    foreach ($entryPoint in @($appEntryPoint, $cliEntryPoint, $workerEntryPoint)) {
         if (-not (Test-Path -LiteralPath $entryPoint -PathType Leaf)) {
             throw "Published entry point is missing: $entryPoint"
+        }
+    }
+    foreach ($workerAsset in @('SIL.Motif.Worker.dll', 'SIL.Motif.Worker.deps.json', 'SIL.Motif.Worker.runtimeconfig.json')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $stage $workerAsset) -PathType Leaf)) {
+            throw "Published Worker asset is missing: $workerAsset"
         }
     }
 
@@ -208,29 +226,49 @@ try {
     if ($sourceParserHash -ne $parserAsset.sha256) {
         throw 'PanGloss changed after it was verified; no package was published.'
     }
-    $forbiddenWorkerAssets = @(
-        $workerEntryPointName,
-        'SIL.Motif.Worker.deps.json',
-        'SIL.Motif.Worker.runtimeconfig.json'
-    )
-    foreach ($directory in @($appDirectory, $cliDirectory)) {
-        foreach ($asset in $forbiddenWorkerAssets) {
-            if (Get-ChildItem -LiteralPath $directory -File -Recurse |
-                    Where-Object { $_.Name -eq $asset }) {
-                throw "Portable package contains forbidden Worker asset: $asset"
-            }
+    Copy-Item -LiteralPath $parser.FullName -Destination (Join-Path $stage $parserFileName)
+
+    $icuRecords = @()
+    foreach ($icuFile in $icuFiles) {
+        if ([string]::IsNullOrWhiteSpace($icuFile.source) -or [string]::IsNullOrWhiteSpace($icuFile.destination)) {
+            throw "Each SIL ICU file for $RuntimeIdentifier must declare source and destination."
         }
-        if (-not (Test-Path -LiteralPath (Join-Path $directory 'SIL.Motif.Worker.dll') -PathType Leaf)) {
-            throw "Portable package is missing required Worker library: $directory"
+        $sourcePath = [Environment]::ExpandEnvironmentVariables($icuFile.source)
+        if (-not [System.IO.Path]::IsPathRooted($sourcePath)) {
+            $sourcePath = Join-Path $repoRoot $sourcePath
         }
-        Copy-Item -LiteralPath $parser.FullName -Destination (Join-Path $directory $parserFileName)
+        $sourcePath = [System.IO.Path]::GetFullPath($sourcePath)
+        if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+            throw "SIL ICU payload file is missing for $RuntimeIdentifier`: $sourcePath"
+        }
+
+        if ([System.IO.Path]::IsPathRooted($icuFile.destination)) {
+            throw "SIL ICU destination must be relative to the package root: $($icuFile.destination)"
+        }
+        $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $stage $icuFile.destination))
+        $stagePrefix = $stage.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) +
+            [System.IO.Path]::DirectorySeparatorChar
+        $pathComparison = if ($isWindows) {
+            [System.StringComparison]::OrdinalIgnoreCase
+        }
+        else {
+            [System.StringComparison]::Ordinal
+        }
+        if (-not $destinationPath.StartsWith($stagePrefix, $pathComparison)) {
+            throw "SIL ICU destination escapes the package root: $($icuFile.destination)"
+        }
+        $destinationDirectory = [System.IO.Path]::GetDirectoryName($destinationPath)
+        New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
+        $icuRecords += [ordered]@{
+            path = Get-RelativePackagePath $stage $destinationPath
+            sha256 = (Get-FileHash -LiteralPath $destinationPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
     }
 
-    $appParserPath = Join-Path $appDirectory $parserFileName
-    $cliParserPath = Join-Path $cliDirectory $parserFileName
-    $appParserHash = (Get-FileHash -LiteralPath $appParserPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    $cliParserHash = (Get-FileHash -LiteralPath $cliParserPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($appParserHash -ne $sourceParserHash -or $cliParserHash -ne $sourceParserHash) {
+    $stagedParserPath = Join-Path $stage $parserFileName
+    $stagedParserHash = (Get-FileHash -LiteralPath $stagedParserPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($stagedParserHash -ne $sourceParserHash) {
         throw 'PanGloss changed while it was being copied; no package was published.'
     }
 
@@ -247,14 +285,16 @@ try {
         product = 'Motif'
         productVersion = $ProductVersion
         runtimeIdentifier = $RuntimeIdentifier
-        distribution = 'portable-development-candidate'
+        distribution = 'velopack-payload'
         entryPoints = @(
-            [ordered]@{ name = 'app'; path = "app/$appEntryPointName" },
-            [ordered]@{ name = 'cli'; path = "cli/$cliEntryPointName" }
+            [ordered]@{ name = 'app'; path = $appEntryPointName },
+            [ordered]@{ name = 'cli'; path = $cliEntryPointName },
+            [ordered]@{ name = 'worker'; path = $workerEntryPointName },
+            [ordered]@{ name = 'parser'; path = $parserFileName }
         )
         dependencies = @(
-            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserAsset.url; path = "app/$parserFileName"; sha256 = $appParserHash },
-            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserAsset.url; path = "cli/$parserFileName"; sha256 = $cliParserHash }
+            [ordered]@{ name = 'PanGloss'; version = $parserPin.version; source = $parserAsset.url; path = $parserFileName; sha256 = $stagedParserHash },
+            [ordered]@{ name = 'SIL ICU'; files = $icuRecords }
         )
         files = $fileRecords
     }
