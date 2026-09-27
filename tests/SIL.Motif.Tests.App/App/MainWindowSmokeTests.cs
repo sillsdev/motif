@@ -12,7 +12,9 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using LiveMarkdown.Avalonia;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -42,6 +44,41 @@ public sealed class MainWindowSmokeTests
     private readonly AvaloniaHeadlessFixture _avalonia;
 
     public MainWindowSmokeTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
+
+    [Fact]
+    public void F1OpensHelpForTheCurrentPage()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            workspace.CurrentPage = WorkspacePage.Timing;
+            try
+            {
+                window.Show();
+                window.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.None, null);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var helpButton = window.FindControl<Button>("HelpButton");
+                Assert.NotNull(helpButton);
+                Assert.True(helpButton.Flyout?.IsOpen);
+                var helpView = Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content);
+                Assert.Equal("Timing", helpView.FindControl<TextBlock>("HelpTitle")?.Text);
+                Assert.Contains("Timing shows where recorded parse time went",
+                    helpView.FindControl<TextBlock>("HelpDescription")?.Text);
+                var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
+                Assert.Contains("More time does not fix a search that reached its step limit",
+                    string.Join("\n", markdownRenderer.RenderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString())));
+                var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
+                Assert.Contains("More time does not fix a search that reached its step limit", help.Markdown);
+                Assert.Contains("Slowest words in Timing", help.Markdown);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
 
     [Fact]
     public void ComposeAttachesEveryPanelBoundToItsOwnChildViewModelAndSetsTheWindowsDataContext()

@@ -64,6 +64,14 @@
         </Button>
 
         <StackPanel Classes="topBarGroup" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="HelpButton" Content="Help" Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
+                  AutomationProperties.Name="Help for the current page">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight" Opened="OnHelpFlyoutOpened">
+                <views:HelpPopupView x:Name="HelpPopupView" />
+              </Flyout>
+            </Button.Flyout>
+          </Button>
           <Button Content="See what changed" Command="{Binding SeeWhatChangedCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsSeeWhatChanged}" AutomationProperties.Name="See what the refresh changed" />
