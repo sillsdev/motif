@@ -95,6 +95,9 @@
           <views:CopyableTextBlock Classes="section-title" Text="{Binding ProjectName, StringFormat='Apply to {0}'}"
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Changes.CountText}" />
+          <views:CopyableTextBlock Classes="reviewSmall"
+                                   Text="Beta: make sure you have a FieldWorks backup before applying."
+                                   TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ApplyBlockReason}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding ApplyRefusal}" />
           <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"

@@ -1,6 +1,6 @@
 {
-  "id": "sample-turkish",
-  "title": "Turkish (teaching sample)",
+  "id": "synthetic-turkic",
+  "title": "Synthetic Turkic-style sample",
   "language": {
     "name": "Turkish",
     "tag": "tr"
@@ -10,5 +10,5 @@
     "vowel harmony"
   ],
   "summary": "Practice measuring a small grammar and tracing why a word did not parse.",
-  "disclaimer": "A simplified teaching grammar for learning Motif; not a description of Turkish."
+  "disclaimer": "Generated to demonstrate Motif. Modelled loosely on Turkish; not real Turkish data and not a description of any language."
 }
