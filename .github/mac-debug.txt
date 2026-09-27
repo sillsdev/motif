@@ -1,2 +1,7 @@
-# <test project name> | <dotnet test --filter expression>; empty filter runs the whole project.
+# Run each failing project in full so the macOS runner can prove the whole fix set.
+SIL.Motif.Tests.Contract |
 SIL.Motif.Tests.Worker |
+SIL.Motif.Tests.Commands |
+SIL.Motif.Tests.App |
+SIL.Motif.Tests.App.Lifetime |
+SIL.Motif.Tests.Cli |
