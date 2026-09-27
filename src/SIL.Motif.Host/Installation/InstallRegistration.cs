@@ -162,7 +162,7 @@ internal static class InstallRegistration
         var image = ShellQuote(Path.GetFullPath(appImagePath));
         return "#!/bin/sh\nif [ ! -f " + image + " ]; then\n" +
             "  printf '%s\\n' 'Motif is not installed; run motif uninstall to remove its shell command.' >&2\n" +
-            "  exit 127\nfi\nexec " + image + " --cli \"$@\"\n";
+            "  exit 127\nfi\nexec " + image + " --appimage-extract-and-run --cli \"$@\"\n";
     }
 
     private static string[] SplitPath(string? path) =>

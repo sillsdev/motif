@@ -216,6 +216,18 @@ try {
             throw "Published entry point is missing: $entryPoint"
         }
     }
+    if (-not $isWindows) {
+        $executableMode = [System.IO.UnixFileMode]::UserRead -bor
+            [System.IO.UnixFileMode]::UserWrite -bor
+            [System.IO.UnixFileMode]::UserExecute -bor
+            [System.IO.UnixFileMode]::GroupRead -bor
+            [System.IO.UnixFileMode]::GroupExecute -bor
+            [System.IO.UnixFileMode]::OtherRead -bor
+            [System.IO.UnixFileMode]::OtherExecute
+        foreach ($entryPoint in @($appEntryPoint, $cliEntryPoint, $workerEntryPoint)) {
+            [System.IO.File]::SetUnixFileMode($entryPoint, $executableMode)
+        }
+    }
     foreach ($workerAsset in @('SIL.Motif.Worker.dll', 'SIL.Motif.Worker.deps.json', 'SIL.Motif.Worker.runtimeconfig.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $workerAsset) -PathType Leaf)) {
             throw "Published Worker asset is missing: $workerAsset"
@@ -227,6 +239,17 @@ try {
         throw 'PanGloss changed after it was verified; no package was published.'
     }
     Copy-Item -LiteralPath $parser.FullName -Destination (Join-Path $stage $parserFileName)
+    if (-not $isWindows) {
+        [System.IO.File]::SetUnixFileMode(
+            (Join-Path $stage $parserFileName),
+            [System.IO.UnixFileMode]::UserRead -bor
+                [System.IO.UnixFileMode]::UserWrite -bor
+                [System.IO.UnixFileMode]::UserExecute -bor
+                [System.IO.UnixFileMode]::GroupRead -bor
+                [System.IO.UnixFileMode]::GroupExecute -bor
+                [System.IO.UnixFileMode]::OtherRead -bor
+                [System.IO.UnixFileMode]::OtherExecute)
+    }
 
     $icuRecords = @()
     foreach ($icuFile in $icuFiles) {

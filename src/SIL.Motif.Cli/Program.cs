@@ -31,6 +31,9 @@ using SIL.Motif.Help;
 CrashDialogs.Suppress();
 MotifInstallLifecycle.Initialize(args);
 
+if (args.Length > 0 && args[0] == "--update-smoke")
+    return PackageUpdateSmoke.RunAsync(args).GetAwaiter().GetResult();
+
 if (args.Length > 0 && args[0] == "uninstall")
 {
     Console.WriteLine(MotifInstallLifecycle.RemoveRegistration());
@@ -942,9 +945,14 @@ try
                 ? new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
                     assessWords, assessRetryFailed, assessRetrySlowerThan, assessRetrySource)
                 : null;
-            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(AssessCommand.Assess(
-                new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap),
-                asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
+            using (var activityLease = MotifUpdateGate.TryAcquire())
+            {
+                if (activityLease is null)
+                    return RefuseActivityDuringUpdate();
+                result = RunWithConsoleCancellation(cancellationToken => RenderCommand(AssessCommand.Assess(
+                    new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap),
+                    asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
+            }
             break;
 
         case "stats":
@@ -970,9 +978,21 @@ try
             // No --texts means every wordform and every Text; a chosen list means only those Texts' words.
             var handoffSelection = new SelectionRequest(
                 handoffTextIds.Count == 0, handoffTextIds, Array.Empty<string>(), false, null);
-            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(HandoffCommand.Handoff(
-                new HandoffRequest(positionals[0], handoffOut, handoffSelection, !handoffNoAssess, handoffInvocation),
-                asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
+            if (handoffNoAssess)
+            {
+                result = RunWithConsoleCancellation(cancellationToken => RenderCommand(HandoffCommand.Handoff(
+                    new HandoffRequest(positionals[0], handoffOut, handoffSelection, false, handoffInvocation),
+                    asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
+            }
+            else
+            {
+                using var activityLease = MotifUpdateGate.TryAcquire();
+                if (activityLease is null)
+                    return RefuseActivityDuringUpdate();
+                result = RunWithConsoleCancellation(cancellationToken => RenderCommand(HandoffCommand.Handoff(
+                    new HandoffRequest(positionals[0], handoffOut, handoffSelection, true, handoffInvocation),
+                    asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
+            }
             break;
 
         case "jobs":
@@ -1077,6 +1097,12 @@ int Usage(string message, bool asJson = false, bool withUsageBanner = false)
     Console.Error.WriteLine(message);
     if (withUsageBanner) PrintUsage(Console.Error, commandPolicy);
     return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
+}
+
+int RefuseActivityDuringUpdate()
+{
+    Console.Error.WriteLine("Motif cannot update while a Worker job, Assessment, Handoff, or pending apply is running.");
+    return 3;
 }
 
 int? ParseWaitTimeout(Dictionary<string, string> flags, string usageLine, bool asJson, out TimeSpan timeout)

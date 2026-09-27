@@ -8,7 +8,17 @@ param(
 
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')]
-    [string] $ProductVersion
+    [string] $ProductVersion,
+
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')]
+    [string] $NextProductVersion,
+
+    [Parameter(Mandatory = $true)]
+    [string] $InitialPackagePath,
+
+    [Parameter(Mandatory = $true)]
+    [string] $WorkDirectory
 )
 
 Set-StrictMode -Version Latest
@@ -20,13 +30,14 @@ if (-not [OperatingSystem]::IsWindows()) {
 
 $feed = [System.IO.Path]::GetFullPath($FeedDirectory)
 $install = [System.IO.Path]::GetFullPath($InstallDirectory)
-$setups = @(Get-ChildItem -LiteralPath $feed -File -Filter '*Setup.exe')
-if ($setups.Count -ne 1) {
-    throw "Expected one Setup.exe in $feed; found $($setups.Count)."
+$initialPackage = [System.IO.Path]::GetFullPath($InitialPackagePath)
+$work = [System.IO.Path]::GetFullPath($WorkDirectory)
+if (-not (Test-Path -LiteralPath $initialPackage -PathType Leaf)) {
+    throw "The version N installer is missing: $initialPackage"
 }
 
 $setupArguments = @('--silent', '--installto', $install)
-$setupProcess = Start-Process -FilePath $setups[0].FullName -ArgumentList $setupArguments -Wait -PassThru
+$setupProcess = Start-Process -FilePath $initialPackage -ArgumentList $setupArguments -Wait -PassThru
 if ($setupProcess.ExitCode -ne 0) {
     throw "Velopack setup failed with exit code $($setupProcess.ExitCode)."
 }
@@ -66,6 +77,53 @@ if ($LASTEXITCODE -ne 0 -or [string]::Join('', $versionOutput).Trim() -ne $Produ
     throw "The installed CLI did not report version $ProductVersion."
 }
 
+$env:MOTIF_WORKER_ROOT = Join-Path $work 'worker'
+$env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = Join-Path $work 'writing-systems'
+New-Item -ItemType Directory -Path $env:MOTIF_WORKER_ROOT -Force | Out-Null
+New-Item -ItemType Directory -Path $env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH -Force | Out-Null
+
+$repoRoot = Split-Path $PSScriptRoot -Parent
+$fixtureSource = Join-Path $repoRoot 'tests/SIL.Motif.Tests.Support/TestFixtures/Conformance/deep-optional-affix-nesting'
+$projectDirectory = Join-Path $work 'DeepOptionalAffixNesting'
+New-Item -ItemType Directory -Path $projectDirectory -Force | Out-Null
+Get-ChildItem -LiteralPath $fixtureSource -Force | Copy-Item -Destination $projectDirectory -Recurse -Force
+$projectPath = Join-Path $projectDirectory 'DeepOptionalAffixNesting.fwdata'
+Move-Item -LiteralPath (Join-Path $projectDirectory 'project.fwdata') -Destination $projectPath
+
+$readOutput = & $cliPath analyses --project $projectPath
+if ($LASTEXITCODE -ne 0) {
+    throw "The installed CLI could not read the conformance project: $($readOutput -join [Environment]::NewLine)"
+}
+
+$jobId = (& $cliPath baseline-refresh --project $projectPath | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($jobId)) {
+    throw "The installed CLI did not queue a Worker job: $jobId"
+}
+$jobStatus = 'queued'
+for ($attempt = 0; $attempt -lt 120; $attempt++) {
+    $jobJson = & $cliPath jobs show $jobId --project $projectPath --json
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not read the installed Worker job $jobId."
+    }
+    $job = [string]::Join([Environment]::NewLine, $jobJson) | ConvertFrom-Json
+    $jobStatus = [string] $job.status
+    if ($jobStatus -eq 'completed') { break }
+    if ($jobStatus -in @('failed', 'cancelled')) {
+        throw "Installed Worker job $jobId ended as $jobStatus."
+    }
+    Start-Sleep -Seconds 1
+}
+if ($jobStatus -ne 'completed') {
+    throw "Installed Worker job $jobId did not complete; last status was $jobStatus."
+}
+
+$wordsPath = Join-Path $work 'words.txt'
+[System.IO.File]::WriteAllText($wordsPath, "k$([Environment]::NewLine)")
+$assessmentOutput = & $cliPath assess $projectPath --words $wordsPath
+if ($LASTEXITCODE -ne 0) {
+    throw "The installed CLI could not run PanGloss: $($assessmentOutput -join [Environment]::NewLine)"
+}
+
 $appExecutable = Join-Path $installedRoot 'SIL.Motif.App.exe'
 & $appExecutable --smoke
 if ($LASTEXITCODE -ne 0) {
@@ -76,6 +134,23 @@ $userDataDirectory = Join-Path $env:LOCALAPPDATA 'SIL/Motif'
 New-Item -ItemType Directory -Path $userDataDirectory -Force | Out-Null
 $userDataMarker = Join-Path $userDataDirectory ('package-smoke-' + [Guid]::NewGuid().ToString('N') + '.txt')
 [System.IO.File]::WriteAllText($userDataMarker, 'keep')
+
+& $cliPath --update-smoke $feed 'win-x64' $NextProductVersion
+if ($LASTEXITCODE -ne 0) {
+    throw "The installed update smoke exited with code $LASTEXITCODE."
+}
+$updated = $false
+for ($attempt = 0; $attempt -lt 120; $attempt++) {
+    $updatedVersion = (& $cliPath --version | Out-String).Trim()
+    if ($LASTEXITCODE -eq 0 -and $updatedVersion -eq $NextProductVersion) {
+        $updated = $true
+        break
+    }
+    Start-Sleep -Seconds 1
+}
+if (-not $updated) {
+    throw "Motif did not update from $ProductVersion to $NextProductVersion."
+}
 
 $updateExecutables = @(Get-ChildItem -LiteralPath $install -Filter 'Update.exe' -File -Recurse)
 if ($updateExecutables.Count -eq 0) {
@@ -112,4 +187,4 @@ if (-not (Test-Path -LiteralPath $userDataMarker -PathType Leaf)) {
 }
 Remove-Item -LiteralPath $userDataMarker -Force
 
-Write-Host "Windows package smoke passed for $ProductVersion." -ForegroundColor Green
+Write-Host "Windows package smoke passed for $ProductVersion to $NextProductVersion." -ForegroundColor Green

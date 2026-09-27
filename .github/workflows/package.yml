@@ -19,16 +19,21 @@ jobs:
       AVALONIA_TELEMETRY_OPTOUT: '1'
       HAS_TRUSTED_SIGNING_CREDENTIALS: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS != '' }}
       PRODUCT_VERSION: '0.1.0'
+      NEXT_PRODUCT_VERSION: '0.1.1'
+      RUNTIME_IDENTIFIER: win-x64
 
     steps:
       - name: Set package directories
         shell: pwsh
         run: |
           $runSuffix = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-          $paths = @(
+          [string[]] $paths = @(
             "STAGE_DIRECTORY=$env:RUNNER_TEMP\motif-stage-$runSuffix",
+            "NEXT_STAGE_DIRECTORY=$env:RUNNER_TEMP\motif-stage-next-$runSuffix",
             "FEED_DIRECTORY=$env:RUNNER_TEMP\motif-feed-$runSuffix",
-            "INSTALL_DIRECTORY=$env:RUNNER_TEMP\motif-install-$runSuffix"
+            "INSTALL_DIRECTORY=$env:RUNNER_TEMP\motif-install-$runSuffix",
+            "WORK_DIRECTORY=$env:RUNNER_TEMP\motif-work-$runSuffix",
+            "INITIAL_PACKAGE_PATH=$env:RUNNER_TEMP\motif-package-n-$runSuffix.exe"
           )
           [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
 
@@ -42,11 +47,11 @@ jobs:
         shell: pwsh
         run: dotnet tool install --global vpk --version 1.2.158
 
-      - name: Stage Windows payload
+      - name: Stage Windows payload N
         shell: pwsh
-        run: ./tools/package-release.ps1 -RuntimeIdentifier win-x64 -ProductVersion $env:PRODUCT_VERSION -OutputDirectory $env:STAGE_DIRECTORY
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:PRODUCT_VERSION -OutputDirectory $env:STAGE_DIRECTORY
 
-      - name: Sign staged executables when SIL credentials are available
+      - name: Sign staged Windows payload N when SIL credentials are available
         if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
         uses: sillsdev/codesign/trusted-signing-action@v3
         with:
@@ -56,15 +61,29 @@ jobs:
           files-folder-recurse: true
           description: Motif per-user Windows installer smoke build
 
-      - name: Pack Windows feed
+      - name: Stage Windows payload N plus one
+        shell: pwsh
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY
+
+      - name: Sign staged Windows payload N plus one when SIL credentials are available
+        if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
+        uses: sillsdev/codesign/trusted-signing-action@v3
+        with:
+          credentials: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS }}
+          files-folder: ${{ env.NEXT_STAGE_DIRECTORY }}
+          files-folder-filter: exe
+          files-folder-recurse: true
+          description: Motif per-user Windows installer smoke build
+
+      - name: Pack Windows version N
         shell: pwsh
         run: >-
           vpk pack --packId SIL.Motif --packVersion $env:PRODUCT_VERSION
           --packDir $env:STAGE_DIRECTORY --outputDir $env:FEED_DIRECTORY
-          --channel win-x64 --runtime win-x64 --mainExe SIL.Motif.App.exe
-          --packTitle Motif --packAuthors SIL
+          --channel $env:RUNTIME_IDENTIFIER --runtime $env:RUNTIME_IDENTIFIER
+          --mainExe SIL.Motif.App.exe --packTitle Motif --packAuthors SIL
 
-      - name: Sign Setup when SIL credentials are available
+      - name: Sign Windows Setup N when SIL credentials are available
         if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
         uses: sillsdev/codesign/trusted-signing-action@v3
         with:
@@ -74,6 +93,189 @@ jobs:
           files-folder-recurse: true
           description: Motif per-user Windows installer smoke build
 
-      - name: Install, invoke, and uninstall from the Windows package
+      - name: Save Windows installer N
         shell: pwsh
-        run: ./tools/package-smoke.ps1 -FeedDirectory $env:FEED_DIRECTORY -InstallDirectory $env:INSTALL_DIRECTORY -ProductVersion $env:PRODUCT_VERSION
+        run: |
+          $setups = @(Get-ChildItem -LiteralPath $env:FEED_DIRECTORY -File -Filter '*Setup.exe')
+          if ($setups.Count -ne 1) { throw "Expected one Setup.exe, found $($setups.Count)." }
+          Copy-Item -LiteralPath $setups[0].FullName -Destination $env:INITIAL_PACKAGE_PATH
+
+      - name: Pack Windows version N plus one
+        shell: pwsh
+        run: >-
+          vpk pack --packId SIL.Motif --packVersion $env:NEXT_PRODUCT_VERSION
+          --packDir $env:NEXT_STAGE_DIRECTORY --outputDir $env:FEED_DIRECTORY
+          --channel $env:RUNTIME_IDENTIFIER --runtime $env:RUNTIME_IDENTIFIER
+          --mainExe SIL.Motif.App.exe --packTitle Motif --packAuthors SIL
+
+      - name: Sign Windows Setup N plus one when SIL credentials are available
+        if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
+        uses: sillsdev/codesign/trusted-signing-action@v3
+        with:
+          credentials: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS }}
+          files-folder: ${{ env.FEED_DIRECTORY }}
+          files-folder-filter: exe
+          files-folder-recurse: true
+          description: Motif per-user Windows installer smoke build
+
+      - name: Install, invoke, update, and uninstall the Windows package
+        shell: pwsh
+        run: ./tools/package-smoke.ps1 -FeedDirectory $env:FEED_DIRECTORY -InstallDirectory $env:INSTALL_DIRECTORY -ProductVersion $env:PRODUCT_VERSION -NextProductVersion $env:NEXT_PRODUCT_VERSION -InitialPackagePath $env:INITIAL_PACKAGE_PATH -WorkDirectory $env:WORK_DIRECTORY
+
+  linux:
+    runs-on: ubuntu-22.04
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+      PRODUCT_VERSION: '0.1.0'
+      NEXT_PRODUCT_VERSION: '0.1.1'
+      RUNTIME_IDENTIFIER: linux-x64
+
+    steps:
+      - name: Set package directories
+        shell: bash
+        run: |
+          suffix="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          {
+            printf 'STAGE_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-stage-$suffix"
+            printf 'NEXT_STAGE_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-stage-next-$suffix"
+            printf 'FEED_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-feed-$suffix"
+            printf 'INSTALL_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-install-$suffix"
+            printf 'WORK_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-work-$suffix"
+            printf 'INITIAL_PACKAGE_PATH=%s\n' "$RUNNER_TEMP/motif-package-n-$suffix.AppImage"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install Xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb xauth
+
+      - name: Install pinned Velopack CLI
+        run: dotnet tool install --global vpk --version 1.2.158
+
+      - name: Add global tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Stage Linux payload N
+        shell: pwsh
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:PRODUCT_VERSION -OutputDirectory $env:STAGE_DIRECTORY
+
+      - name: Stage Linux payload N plus one
+        shell: pwsh
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY
+
+      - name: Pack Linux version N
+        run: >-
+          vpk pack --packId SIL.Motif --packVersion "$PRODUCT_VERSION"
+          --packDir "$STAGE_DIRECTORY" --outputDir "$FEED_DIRECTORY"
+          --channel "$RUNTIME_IDENTIFIER" --runtime "$RUNTIME_IDENTIFIER"
+          --mainExe SIL.Motif.App --icon src/SIL.Motif.App/Assets/motif.png
+          --packTitle Motif --packAuthors SIL
+
+      - name: Save Linux AppImage N
+        shell: bash
+        run: |
+          appimage=$(find "$FEED_DIRECTORY" -maxdepth 1 -type f -iname '*.appimage' -print -quit)
+          if [[ -z "$appimage" ]]; then
+            printf 'VPK did not create an AppImage in %s.\n' "$FEED_DIRECTORY" >&2
+            exit 1
+          fi
+          cp "$appimage" "$INITIAL_PACKAGE_PATH"
+          chmod +x "$INITIAL_PACKAGE_PATH"
+
+      - name: Pack Linux version N plus one
+        run: >-
+          vpk pack --packId SIL.Motif --packVersion "$NEXT_PRODUCT_VERSION"
+          --packDir "$NEXT_STAGE_DIRECTORY" --outputDir "$FEED_DIRECTORY"
+          --channel "$RUNTIME_IDENTIFIER" --runtime "$RUNTIME_IDENTIFIER"
+          --mainExe SIL.Motif.App --icon src/SIL.Motif.App/Assets/motif.png
+          --packTitle Motif --packAuthors SIL
+
+      - name: Install, invoke, update, and uninstall the Linux package
+        shell: bash
+        run: bash ./tools/package-smoke-unix.sh
+
+  macos:
+    runs-on: macos-latest
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+      PRODUCT_VERSION: '0.1.0'
+      NEXT_PRODUCT_VERSION: '0.1.1'
+      RUNTIME_IDENTIFIER: osx-arm64
+
+    steps:
+      - name: Set package directories
+        shell: bash
+        run: |
+          suffix="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          {
+            printf 'STAGE_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-stage-$suffix"
+            printf 'NEXT_STAGE_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-stage-next-$suffix"
+            printf 'FEED_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-feed-$suffix"
+            printf 'INSTALL_DIRECTORY=%s\n' "$HOME/Applications/motif-smoke-$suffix"
+            printf 'WORK_DIRECTORY=%s\n' "$RUNNER_TEMP/motif-work-$suffix"
+            printf 'INITIAL_PACKAGE_PATH=%s\n' "$RUNNER_TEMP/motif-package-n-$suffix.zip"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Verify arm64 runner
+        run: test "$(uname -m)" = arm64
+
+      - name: Install pinned Velopack CLI
+        run: dotnet tool install --global vpk --version 1.2.158
+
+      - name: Add global tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Create the macOS app icon
+        run: sips -s format icns src/SIL.Motif.App/Assets/motif.png --out "$RUNNER_TEMP/motif.icns"
+
+      - name: Stage macOS payload N
+        shell: pwsh
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:PRODUCT_VERSION -OutputDirectory $env:STAGE_DIRECTORY
+
+      - name: Stage macOS payload N plus one
+        shell: pwsh
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY
+
+      - name: Pack macOS version N
+        run: >-
+          vpk pack --packId SIL.Motif --packVersion "$PRODUCT_VERSION"
+          --packDir "$STAGE_DIRECTORY" --outputDir "$FEED_DIRECTORY"
+          --channel "$RUNTIME_IDENTIFIER" --runtime "$RUNTIME_IDENTIFIER"
+          --mainExe SIL.Motif.App --icon "$RUNNER_TEMP/motif.icns"
+          --packTitle Motif --packAuthors SIL
+
+      - name: Save macOS portable archive N
+        shell: bash
+        run: |
+          archive=$(find "$FEED_DIRECTORY" -maxdepth 1 -type f -name '*-Portable.zip' -print -quit)
+          if [[ -z "$archive" ]]; then
+            printf 'VPK did not create a portable zip in %s.\n' "$FEED_DIRECTORY" >&2
+            exit 1
+          fi
+          cp "$archive" "$INITIAL_PACKAGE_PATH"
+
+      - name: Pack macOS version N plus one
+        run: >-
+          vpk pack --packId SIL.Motif --packVersion "$NEXT_PRODUCT_VERSION"
+          --packDir "$NEXT_STAGE_DIRECTORY" --outputDir "$FEED_DIRECTORY"
+          --channel "$RUNTIME_IDENTIFIER" --runtime "$RUNTIME_IDENTIFIER"
+          --mainExe SIL.Motif.App --icon "$RUNNER_TEMP/motif.icns"
+          --packTitle Motif --packAuthors SIL
+
+      - name: Install, invoke, update, and uninstall the macOS package
+        shell: bash
+        run: bash ./tools/package-smoke-unix.sh

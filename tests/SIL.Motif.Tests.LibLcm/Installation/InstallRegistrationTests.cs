@@ -102,4 +102,12 @@ public sealed class InstallRegistrationTests
                 Directory.Delete(temporary, recursive: true);
         }
     }
+
+    [Fact]
+    public void AppImageShimUsesExtractAndRunForRunnersWithoutFuse()
+    {
+        var shim = InstallRegistration.BuildUnixShim("/home/user/.local/bin/motif", "/tmp/motif.AppImage");
+
+        Assert.Contains("--appimage-extract-and-run --cli", shim, StringComparison.Ordinal);
+    }
 }
