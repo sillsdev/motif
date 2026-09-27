@@ -399,9 +399,9 @@ internal sealed class MotifSqliteStore : IDisposable
         {
             try
             {
-                // A stable sibling lets every process hold the same shared Unix file lock.
+                // Shared access modes let every opener coexist and become shared Unix file locks.
                 return new FileStream(path + ".use.lock", FileMode.OpenOrCreate, FileAccess.Read,
-                    FileShare.Read, 1, FileOptions.None);
+                    FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.None);
             }
             catch (IOException exception) when (IsOwnershipLockContention(exception))
             {
