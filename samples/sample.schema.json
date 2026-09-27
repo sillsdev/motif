@@ -24,6 +24,7 @@
     "summary": { "type": "string", "minLength": 1 },
     "disclaimer": { "type": "string", "minLength": 1 },
     "description": { "type": "string", "minLength": 1 },
+    "research": { "$ref": "#/$defs/research" },
     "phonemes": { "$ref": "#/$defs/nonEmptyStrings" },
     "naturalClasses": { "type": "array", "items": { "$ref": "#/$defs/naturalClass" } },
     "environments": { "type": "array", "items": { "$ref": "#/$defs/environment" } },
@@ -36,6 +37,27 @@
     "texts": { "$ref": "#/$defs/nonEmptyTexts" }
   },
   "$defs": {
+    "research": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document", "sections"],
+      "properties": {
+        "document": { "type": "string", "minLength": 1 },
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["part", "section"],
+            "properties": {
+              "part": { "type": "string", "minLength": 1 },
+              "section": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
     "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
     "language": {
       "type": "object",
@@ -74,7 +96,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "name": { "type": "string", "minLength": 1 },
-        "representation": { "type": "string", "pattern": "^/.+_.+$" }
+        "representation": { "type": "string", "pattern": "^/.+_.*$" }
       }
     },
     "partOfSpeech": {
@@ -176,6 +198,7 @@
         "sentences": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
       }
     },
+    "nonEmptyTexts": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/text" } },
     "symptom": {
       "type": "object",
       "additionalProperties": false,
@@ -207,11 +230,13 @@
       "oneOf": [
         { "$ref": "#/$defs/setEnvironment" },
         { "$ref": "#/$defs/setAllomorphForm" },
+        { "$ref": "#/$defs/removeAllomorph" },
         { "$ref": "#/$defs/removeStem" },
         { "$ref": "#/$defs/swapSlots" },
         { "$ref": "#/$defs/setSlotOptional" },
         { "$ref": "#/$defs/setAffixSlots" },
-        { "$ref": "#/$defs/duplicateOptionalSlot" }
+        { "$ref": "#/$defs/duplicateOptionalSlot" },
+        { "$ref": "#/$defs/duplicateTemplate" }
       ]
     },
     "setEnvironment": {
@@ -232,6 +257,15 @@
         "op": { "const": "setAllomorphForm" },
         "allomorphId": { "$ref": "#/$defs/id" },
         "form": { "type": "string", "minLength": 1 }
+      }
+    },
+    "removeAllomorph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "allomorphId"],
+      "properties": {
+        "op": { "const": "removeAllomorph" },
+        "allomorphId": { "$ref": "#/$defs/id" }
       }
     },
     "removeStem": {
@@ -283,6 +317,16 @@
         "templateId": { "$ref": "#/$defs/id" },
         "slotId": { "$ref": "#/$defs/id" },
         "count": { "type": "integer", "minimum": 1, "maximum": 64 }
+      }
+    },
+    "duplicateTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "templateId", "count"],
+      "properties": {
+        "op": { "const": "duplicateTemplate" },
+        "templateId": { "$ref": "#/$defs/id" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 32 }
       }
     }
   }

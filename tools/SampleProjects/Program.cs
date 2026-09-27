@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -72,6 +73,7 @@ internal sealed record SampleSpec
     public string Summary { get; init; } = "";
     public string Disclaimer { get; init; } = "";
     public string Description { get; init; } = "";
+    public ResearchSpec? Research { get; init; }
     public LanguageSpec Language { get; init; } = new("", "");
     public string[] Phonemes { get; init; } = [];
     public NaturalClassSpec[] NaturalClasses { get; init; } = [];
@@ -86,6 +88,8 @@ internal sealed record SampleSpec
 }
 
 internal sealed record LanguageSpec(string Name, string Tag);
+internal sealed record ResearchSpec(string Document, ResearchSectionSpec[] Sections);
+internal sealed record ResearchSectionSpec(string Part, string Section);
 internal sealed record NaturalClassSpec(string Id, string Name, string Abbreviation, string[] Phonemes);
 internal sealed record EnvironmentSpec(string Id, string Name, string Representation);
 internal sealed record PartOfSpeechSpec(string Id, string Name);
@@ -188,6 +192,8 @@ internal static class SampleBuilder
         },
         "setAffixSlots" => SetAffixSlots(spec, patch),
         "duplicateOptionalSlot" => DuplicateOptionalSlot(spec, patch),
+        "removeAllomorph" => RemoveAllomorph(spec, patch),
+        "duplicateTemplate" => DuplicateTemplate(spec, patch),
         _ => throw new InvalidDataException($"Unknown patch operation '{patch.Op}'."),
     };
 
@@ -290,6 +296,44 @@ internal static class SampleBuilder
         };
     }
 
+    private static SampleSpec RemoveAllomorph(SampleSpec spec, PatchOperation patch)
+    {
+        var allomorphId = Required(patch.AllomorphId, "allomorphId");
+        if (spec.Affixes.SelectMany(affix => affix.Allomorphs)
+                .Count(allomorph => allomorph.Id == allomorphId) != 1)
+            throw new InvalidDataException($"Allomorph '{allomorphId}' does not exist exactly once.");
+        return spec with
+        {
+            Affixes = spec.Affixes.Select(affix =>
+            {
+                if (!affix.Allomorphs.Any(allomorph => allomorph.Id == allomorphId)) return affix;
+                var allomorphs = affix.Allomorphs
+                    .Where(allomorph => allomorph.Id != allomorphId)
+                    .ToArray();
+                if (allomorphs.Length == 0)
+                    throw new InvalidDataException($"Removing '{allomorphId}' would leave affix '{affix.Id}' without an allomorph.");
+                return affix with { Allomorphs = allomorphs };
+            }).ToArray(),
+        };
+    }
+
+    private static SampleSpec DuplicateTemplate(SampleSpec spec, PatchOperation patch)
+    {
+        var templateId = Required(patch.TemplateId, "templateId");
+        var count = patch.Count ?? throw new InvalidDataException("duplicateTemplate needs count.");
+        if (count is < 1 or > 32) throw new InvalidDataException("duplicateTemplate count must be from 1 to 32.");
+        var source = spec.AffixTemplates.SingleOrDefault(template => template.Id == templateId)
+            ?? throw new InvalidDataException($"Template '{templateId}' does not exist.");
+        var copies = Enumerable.Range(1, count).Select(index => source with
+        {
+            Id = $"{templateId}-copy-{index}",
+            Name = source.Name + " copy " + index,
+        }).ToArray();
+        if (copies.Any(copy => spec.AffixTemplates.Any(template => template.Id == copy.Id)))
+            throw new InvalidDataException($"Template '{templateId}' already has a generated copy id.");
+        return spec with { AffixTemplates = [.. spec.AffixTemplates, .. copies] };
+    }
+
     private static string Required(string? value, string name) =>
         string.IsNullOrWhiteSpace(value) ? throw new InvalidDataException($"Patch operation needs {name}.") : value;
 
@@ -305,8 +349,7 @@ internal static class SampleBuilder
         if (spec.Stems.Length == 0 || spec.Texts.Length == 0)
             throw new InvalidDataException("At least one stem and Text are required.");
         var declaredCharacters = spec.Phonemes
-            .SelectMany(phoneme => phoneme.Normalize(NormalizationForm.FormD).EnumerateRunes())
-            .Select(rune => rune.ToString())
+            .SelectMany(TextElements)
             .Append("+")
             .ToHashSet(StringComparer.Ordinal);
         var partIds = UniqueById(spec.PartsOfSpeech, part => part.Id, "part of speech")
@@ -395,9 +438,16 @@ internal static class SampleBuilder
     private static void ValidateVernacularCharacters(
         string form, string description, HashSet<string> declaredCharacters)
     {
-        foreach (var rune in form.Normalize(NormalizationForm.FormD).EnumerateRunes())
-            if (!declaredCharacters.Contains(rune.ToString()))
-                throw new InvalidDataException($"{description} uses undeclared character '{rune}'.");
+        foreach (var character in TextElements(form))
+            if (!declaredCharacters.Contains(character))
+                throw new InvalidDataException($"{description} uses undeclared character '{character}'.");
+    }
+
+    private static IEnumerable<string> TextElements(string value)
+    {
+        var enumerator = StringInfo.GetTextElementEnumerator(value.Normalize(NormalizationForm.FormC));
+        while (enumerator.MoveNext())
+            yield return enumerator.GetTextElement();
     }
 
     private static void Seed(LcmCache cache, SampleSpec spec)
