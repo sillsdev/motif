@@ -37,17 +37,16 @@ if (args.Length == 0)
     return 1;
 }
 
-var commandName = ResolveCommandName(args);
-var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
-if (command is not null && !commandPolicy.IsAvailable(command))
-    return RefuseUnavailableCommand(commandName, args.Contains("--json", StringComparer.Ordinal));
-
 var verb = args[0];
 var rest = args[1..];
 
 try
 {
     var (flags, positionals, forwardedArguments) = ParseArgs(rest);
+    var commandName = ResolveCommandName(verb, flags, positionals);
+    var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
+    if (command is not null && !commandPolicy.IsAvailable(command))
+        return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"));
 
     // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
     if (flags.TryGetValue("project", out var projectForRegistry))
@@ -1052,27 +1051,25 @@ static string AnalysesUsage() =>
     "--assessment <assessmentId> --current-selection-sha256 <sha256> " +
     "--current-grammar-sha256 <sha256> [--json]";
 
-static string ResolveCommandName(string[] invocation)
+static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
+    IReadOnlyList<string> positionals)
 {
-    if (invocation.Length == 0) return string.Empty;
-
-    var first = invocation[0];
-    if (first == "apply" && invocation.Contains("--all-pending", StringComparer.Ordinal))
+    if (verb == "apply" && flags.ContainsKey("all-pending"))
         return "apply --all-pending";
-    if (first == "trial" && invocation.Contains("--pending", StringComparer.Ordinal))
+    if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
-    if (first is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup" or "store")
+    if (verb is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup" or "store")
     {
-        var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;
+        var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;
-        return first;
+        return verb;
     }
 
-    if (first is "report" && invocation.Contains("--list-kinds", StringComparer.Ordinal))
+    if (verb == "report" && flags.ContainsKey("list-kinds"))
         return "report --list-kinds";
-    if (first is "dry-run" or "trial" && invocation.Contains("--wait", StringComparer.Ordinal))
-        return first + " --wait";
-    return first;
+    if (verb is "dry-run" or "trial" && flags.ContainsKey("wait"))
+        return verb + " --wait";
+    return verb;
 }
 
 static int RefuseUnavailableCommand(string commandName, bool asJson)
