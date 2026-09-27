@@ -53,7 +53,7 @@ that dispatches them.
 | `show` | Developer | `show --project <fwdata> <proposalId> [--json]` |
 | `preflight` | Developer | `preflight --project <fwdata> <proposalId> [--json]` |
 | `apply` | Developer | `apply <proposalId> --project <fwdata> --user <name> [--force] [--json]` |
-| `apply --all-pending` | Developer | `apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]` |
+| `apply --all-pending` | Released | `apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]` |
 | `log` | Developer | `log --project <fwdata> [--json]` |
 | `config show` | Released | `Usage: motif config show --project <fwdata> [--json]` |
 | `report` | Released | `Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]` |
@@ -104,27 +104,37 @@ The Released surface contains `open`, `analyses`, `config show`, `report`, `repo
 `compare`, `baseline capture`, `assess`, `stats`, `selection show`, `selection set-default`,
 `overview`, `warnings`, `grammar check`, `timing`, `handoff`, `add-corpus`, `add-document`,
 `add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
-`jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
+`jobs list`, `jobs cancel`, `jobs requeue`, `jobs move`, and `apply --all-pending`.
 
 The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
 `remove-pending-change`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
-`supersede`, `list`, `show`, `preflight`, `apply`, `apply --all-pending`, `log`, `dry-run`,
+`supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`,
 `dry-run --wait`, `trial`, `trial --wait`, and `trial --pending`.
 
-`apply --all-pending` is the save-boundary entry point specified for FieldWorks, and Developer-only for now
-(see the 2026-09-26 amendment): FieldWorks releases
-the project, calls the verb, then reloads the project. It accepts an optional `--revision` to require the exact
-revision FieldWorks previously checked and an optional `--user` for the Receipt; without `--user`, Motif uses
-the current account. Nothing pending is a success, not a refusal: the verb exits `0`, writes nothing to
-stderr and records no Receipt, and prints `Nothing to apply.` or, with `--json`, `{"ok":true,"applied":false}`
-on stdout. An Apply that ran exits `0` and prints its Receipt; with `--json` that is
-`{"ok":true,"applied":true,"receipt":{…}}`, the Receipt object nested under `receipt`. Both JSON documents are
-the Contract's `ApplyPendingResult`. "Nothing pending" means the pending Draft holds no operations, the same
-test `trial --pending` uses. Every nonzero exit code is a refusal or an error, with its failure on stderr (a
-failure envelope under `--json`), so FieldWorks can treat exit `0` alone as "continue". A project another
-program still holds is `Busy`, exit `3`: release it and retry.
+`apply --all-pending` is the one Released pending-change verb and the save-boundary entry point for
+FieldWorks. FieldWorks releases the project before calling it. On exit `0`, FieldWorks reloads only when
+`applied` is true; on exit `4` with `code: "apply.reconciliation-needed"`, it reloads and checks the project
+because a change may have happened. A no-op does not require a reload. The command accepts an optional
+`--revision` to require the exact revision FieldWorks previously checked and an optional `--user` for the
+Receipt; without `--user`, Motif uses the current account. Nothing pending is a success, not a refusal: the
+verb exits `0`, writes nothing to stderr and records no Receipt. With `--json`, its response has
+`ok: true`, `applied: false`, and `summary: "Nothing to apply.". An Apply that ran returns the top-level
+`receipt`, `applied: true`, and a short `summary` describing the authored pending changes rather than low-level
+effects. The summary text is English. These shapes are Contract's `ApplyPendingResult`; FieldWorks reads
+`ok`, `applied`, `summary`, and failure `code`, and ignores unknown fields. A per-Proposal list can be added
+if the command later applies multiple Proposals. "Nothing pending" means the pending Draft holds no operations,
+the same test `trial --pending` uses. Every nonzero exit code is a refusal or an error, with its failure on
+stderr (a failure envelope under `--json`), so FieldWorks can treat exit `0` alone as "continue". A project
+another program still holds is `Busy`, exit `3`: release it and retry.
+
+#### FieldWorks executable lookup
+
+FieldWorks first checks the `MOTIF_DIR` environment variable. When set, it names the directory containing
+`motif.exe`. If it is unset, FieldWorks reads the `InstallationDir` value under
+`HKLM\SOFTWARE\SIL\Motif`; that value names the same directory. FieldWorks does not search `PATH` for Motif.
+The release installer will write the registry value and verify it in a clean-machine install.
 
 `preflight` reads the live project and reports each collected change as `still fits` or
 `no longer fits`, with an operation id and reason. `--json` returns the same entries as structured
@@ -195,14 +205,15 @@ Under `--json`, a failure emits a single JSON object on stderr and nothing on st
 ```json
 {
   "ok": false,
-  "reason": "ProjectLocked",
+  "code": "project.busy",
+  "reason": "Busy",
   "message": "FieldWorks cannot open the project because another program is using it.",
   "detail": { "project": "…\\Sena 3.fwdata" }
 }
 ```
 
-`message` is the existing human wording, unchanged — the 59 sites keep their text. `reason` is a closed
-set of machine-stable codes; `detail` is optional and reason-specific. Without `--json` the current
+`code` is the stable machine key. `reason` is a closed set of broad failure categories; `detail` is optional
+and reason-specific. `message` is the existing human wording. Without `--json` the current
 `error: <message>` rendering stays exactly as it is, because that is the human interface and it works.
 
 Successful `--json` output stays as it is today: the projection itself, unwrapped. A consumer distinguishes
@@ -217,12 +228,13 @@ promise and a large set is a large promise:
 | --- | --- |
 | `0` | The verb did what it was asked. |
 | `1` | The invocation was wrong — unknown verb, missing or malformed flag. Retrying unchanged cannot help. |
-| `2` | The request was well-formed and Motif refused it. A Drift refusal, a failed precondition, a policy denial. The state is unchanged and the caller may act on `reason`. |
+| `2` | The request was well-formed and Motif refused it. A Drift refusal, a failed precondition, a policy denial. The state is unchanged and the caller may act on `code`. |
 | `3` | The request was well-formed and could not be attempted now — the project is locked, the store is busy, a lease is held. Retrying later may succeed. |
-| `4` | Motif failed unexpectedly. A bug, not a decision. |
+| `4` | The store may be inconsistent, or Motif failed unexpectedly; inspect `code` before continuing. |
 
-The `2` and `3` split is the one that earns its keep: an agent must not retry a refusal, and must be
-allowed to retry a lock.
+`apply.reconciliation-needed` uses exit `4`: a change may have happened; do not retry; the project must be
+checked. Other unexpected failures also use the fallback exit `4`. The `2` and `3` split lets a caller tell
+a refusal from a temporary lock.
 
 ### Versioning
 
@@ -410,6 +422,13 @@ invocation exposed a project-mutating command that ruling defers. It now answers
 without `MOTIF_DEVELOPER_COMMANDS=1`, pinned by `ApplyingAllPendingChangesIsAbsentFromTheReleasedSurface`.
 Its behaviour with the opt-in set is unchanged, and so is the FieldWorks save-boundary contract described
 above; that surface is not yet built, and making the verb Released again is part of building it.
+
+### 2026-09-26 — Supersede the Developer-only Apply ruling
+
+This amendment supersedes the preceding Developer-only ruling. FieldWorks may call `apply --all-pending`
+without `MOTIF_DEVELOPER_COMMANDS` at its save boundary after releasing the project; every other pending-change
+and Proposal lifecycle verb remains Developer-only. Exit `0` reports whether a change was applied, and exit `4`
+with code `apply.reconciliation-needed` means FieldWorks must check the project before continuing.
 
 ## Selection, Overview, and Timing
 
