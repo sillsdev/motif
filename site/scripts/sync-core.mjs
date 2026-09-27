@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { convertXmlDocsToMarkdown } from '../../tools/xml-docs-to-markdown.mjs';
 
@@ -217,10 +217,15 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 	const guideRoot = path.join(helpRoot, 'guide');
 	const sources = await markdownFiles(guideRoot).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
 	const pages = new Map();
+	const learnPages = new Map();
 	for (const sourcePath of sources) {
 		const slug = path.relative(guideRoot, sourcePath).replaceAll('\\', '/').replace(/\.md$/i, '');
-		if (!guideOrder.has(slug)) throw new Error(`Guide page is missing from the published outline: ${slug}`);
-		pages.set(slug, { sourcePath, order: guideOrder.get(slug) + 1 });
+		if (slug.startsWith('learn/')) {
+			learnPages.set(slug.slice('learn/'.length), { sourcePath });
+		} else {
+			if (!guideOrder.has(slug)) throw new Error(`Guide page is missing from the published outline: ${slug}`);
+			pages.set(slug, { sourcePath, order: guideOrder.get(slug) + 1 });
+		}
 	}
 
 	for (const [slug, page] of pages) {
@@ -234,6 +239,20 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 		await writeFile(destination, `${frontmatter(title, description, page.order)}${body}\n`);
 	}
 
+	const learnLinks = [];
+	for (const [slug, page] of learnPages) {
+		const markdown = stripFrontmatterAndComments(await readFile(page.sourcePath, 'utf8'));
+		const title = markdownTitle(markdown, slug.split('/').at(-1));
+		const description = markdownDescription(markdown, `Learn from ${title}.`);
+		const body = stripDuplicateTitle(rewriteHelpLinks(markdown, entries, walkthroughs), title);
+		const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
+		const destination = path.join(localeRoot, 'learn', `${slug}.md`);
+		await mkdir(path.dirname(destination), { recursive: true });
+		await writeFile(destination, `${frontmatter(title, description)}${body}\n`);
+		const localePrefix = locale === 'en' ? '' : `/${locale}`;
+		learnLinks.push(`- [${title}](${localePrefix}/learn/${slug}/)`);
+	}
+
 	const sections = guideSections.map((section) => {
 		const links = section.pages
 			.filter(([slug]) => pages.has(slug))
@@ -244,6 +263,121 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 	const indexPage = path.join(localeRoot, 'guide', 'index.md');
 	await mkdir(path.dirname(indexPage), { recursive: true });
 	await writeFile(indexPage, `${frontmatter('Guide', 'Learn to use Motif and follow its pages in the order designed for linguists.', 0)}${sections.join('\n\n')}\n`);
+	const learnIndex = path.join(localeRoot, 'learn', 'index.md');
+	await mkdir(path.dirname(learnIndex), { recursive: true });
+	await writeFile(learnIndex, `${frontmatter('Learn', 'Step-by-step lessons for learning Motif with sample language projects.')}${learnLinks.join('\n')}\n`);
+	const lessonsBySample = new Map();
+	const speedLessons = new Map();
+	for (const slug of learnPages.keys()) {
+		const sampleId = `sample-${slug.split('/')[0].split('-')[0]}`;
+		if (!lessonsBySample.has(sampleId)) lessonsBySample.set(sampleId, slug);
+		if (/(^|[-/])speed([-/.]|$)/.test(slug)) speedLessons.set(sampleId, slug);
+	}
+	return { learnLessons: learnPages.size, lessonsBySample, speedLessons };
+}
+
+function validSample(sample, directoryId) {
+	return sample.id === directoryId
+		&& /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(sample.id)
+		&& typeof sample.title === 'string' && sample.title.trim()
+		&& typeof sample.language?.name === 'string' && sample.language.name.trim()
+		&& typeof sample.language?.tag === 'string' && sample.language.tag.trim()
+		&& Array.isArray(sample.teaches) && sample.teaches.length > 0
+		&& sample.teaches.every((item) => typeof item === 'string' && item.trim())
+		&& typeof sample.summary === 'string' && sample.summary.trim()
+		&& typeof sample.disclaimer === 'string' && sample.disclaimer.trim();
+}
+
+function sampleText(value) {
+	return value.replace(/[&<>]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character]).replace(/\s+/g, ' ').trim();
+}
+
+async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRoot, site, locale, lessonsBySample, speedLessons }) {
+	const sampleDirectories = await readdir(samplesRoot, { withFileTypes: true }).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
+	const sampleIds = sampleDirectories.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+	const sections = [];
+	const homeSamples = [];
+	for (const directoryId of sampleIds) {
+		const metadataPath = path.join(samplesRoot, directoryId, 'sample.json');
+		const sample = JSON.parse(await readFile(metadataPath, 'utf8'));
+		if (!validSample(sample, directoryId)) throw new Error(`Invalid sample metadata: ${metadataPath}`);
+
+		const downloads = [];
+		const downloadUrls = { fixed: null, broken: null };
+		for (const variant of ['fixed', 'broken']) {
+			const filename = `${sample.id}-${variant}.fwbackup`;
+			const source = path.join(samplesOut, filename);
+			const destination = path.join(publicRoot, 'downloads', 'samples', filename);
+			try {
+				await access(source);
+				await mkdir(path.dirname(destination), { recursive: true });
+				await copyFile(source, destination);
+				downloads.push(`- [${variant === 'fixed' ? 'Fixed' : 'Broken'} project (.fwbackup)](/downloads/samples/${filename})`);
+				downloadUrls[variant] = `/downloads/samples/${filename}`;
+			} catch (error) {
+				if (error.code !== 'ENOENT') throw error;
+				downloads.push(`- ${variant === 'fixed' ? 'Fixed' : 'Broken'} project (.fwbackup) is available in release builds.`);
+			}
+		}
+
+		const speedLesson = speedLessons.get(sample.id);
+		const hasSpeedLesson = speedLesson !== undefined;
+		const lessonSlug = lessonsBySample.get(sample.id);
+		const localePrefix = locale === 'en' ? '' : `/${locale}`;
+		homeSamples.push({
+			id: sample.id,
+			title: sample.title,
+			language: sample.language,
+			teaches: sample.teaches,
+			summary: sample.summary,
+			disclaimer: sample.disclaimer,
+			downloads: downloadUrls,
+			lessonsHref: lessonSlug ? `${localePrefix}/learn/${lessonSlug}/` : null,
+			speedLesson: hasSpeedLesson,
+			speedLessonHref: speedLesson ? `${localePrefix}/learn/${speedLesson}/` : null,
+		});
+		sections.push([
+			`<a id="${sample.id}"></a>`,
+			`## ${sampleText(sample.title)}`,
+			`**Language:** ${sampleText(sample.language.name)} (${sampleText(sample.language.tag)})`,
+			sampleText(sample.summary),
+			`**Teaches:** ${sample.teaches.map(sampleText).join(', ')}`,
+			`> ${sampleText(sample.disclaimer)}`,
+			...(hasSpeedLesson ? ['**Includes a speed lesson**'] : []),
+			'### Downloads',
+			...downloads,
+		].join('\n\n'));
+	}
+
+	const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
+	const destination = path.join(localeRoot, 'samples', 'index.md');
+	await mkdir(path.dirname(destination), { recursive: true });
+	await writeFile(destination, `${frontmatter('Samples', 'Practice with small teaching grammars for learning Motif.')}${sections.join('\n\n')}\n`);
+	const dataRoot = path.join(site, 'src', 'data');
+	await mkdir(dataRoot, { recursive: true });
+	await writeFile(path.join(dataRoot, 'samples.json'), `${JSON.stringify(homeSamples, null, 2)}\n`);
+	const performancePath = path.join(dataRoot, 'sample-turkish-performance.json');
+	await rm(performancePath, { force: true });
+	try {
+		const expected = JSON.parse(await readFile(path.join(samplesRoot, 'sample-turkish', 'expected.json'), 'utf8'));
+		const performance = Object.fromEntries(['fixed', 'broken'].map((variant) => [variant, {
+			words: expected[variant]?.words,
+			parsed: expected[variant]?.parsed,
+			textCoverage: expected[variant]?.textCoverage,
+		}]));
+		for (const variant of ['fixed', 'broken']) {
+			const values = performance[variant];
+			if (!Number.isInteger(values?.words) || !Number.isInteger(values?.parsed) || !Number.isFinite(values?.textCoverage)
+				|| values.words < 0 || values.parsed < 0 || values.parsed > values.words
+				|| values.textCoverage < 0 || values.textCoverage > 1) {
+				throw new Error(`Invalid sample performance data: ${path.join(samplesRoot, 'sample-turkish', 'expected.json')}`);
+			}
+		}
+		await writeFile(performancePath, `${JSON.stringify(performance, null, 2)}\n`);
+	} catch (error) {
+		if (error.code !== 'ENOENT') throw error;
+	}
+	return sampleIds.length;
 }
 
 async function listWalkthroughDirectories(root) {
@@ -362,21 +496,9 @@ async function cleanGeneratedPaths(paths) {
 	}
 }
 
-export async function syncSiteContent({ repository, site, helpExportPath, helpRoot, walkthroughRoot, docsRoot, apiXmlPath }) {
+export async function syncSiteContent({ repository, site, helpExportPath, helpRoot, walkthroughRoot, docsRoot, apiXmlPath, samplesRoot, samplesOut }) {
 	const contentRoot = path.join(site, 'src', 'content', 'docs');
 	const publicRoot = path.join(site, 'public');
-	const generatedPaths = [
-		path.join(contentRoot, 'reference', 'commands'),
-		path.join(contentRoot, 'reference', 'terms'),
-		path.join(contentRoot, 'reference', 'controls'),
-		path.join(contentRoot, 'reference', 'api'),
-		path.join(contentRoot, 'guide', 'walkthroughs'),
-		path.join(contentRoot, 'developers'),
-		path.join(site, 'src', 'data', 'walkthroughs'),
-		path.join(publicRoot, 'walkthroughs'),
-	];
-	await cleanGeneratedPaths(generatedPaths);
-
 	const helpExport = JSON.parse(await readFile(helpExportPath, 'utf8'));
 	if (!helpExport.locale || !Array.isArray(helpExport.entries)) throw new Error('Invalid help export.');
 	try {
@@ -385,6 +507,22 @@ export async function syncSiteContent({ repository, site, helpExportPath, helpRo
 	} catch (error) {
 		if (error.code !== 'ENOENT') throw error;
 	}
+	const localeRoot = helpExport.locale === 'en' ? contentRoot : path.join(contentRoot, helpExport.locale);
+	const generatedPaths = [
+		path.join(contentRoot, 'reference', 'commands'),
+		path.join(contentRoot, 'reference', 'terms'),
+		path.join(contentRoot, 'reference', 'controls'),
+		path.join(contentRoot, 'reference', 'api'),
+		path.join(contentRoot, 'guide', 'walkthroughs'),
+		path.join(localeRoot, 'learn'),
+		path.join(localeRoot, 'samples'),
+		path.join(contentRoot, 'developers'),
+		path.join(site, 'src', 'data', 'walkthroughs'),
+		path.join(publicRoot, 'walkthroughs'),
+		path.join(publicRoot, 'downloads', 'samples'),
+	];
+	await cleanGeneratedPaths(generatedPaths);
+
 	for (const entry of helpExport.entries) {
 		if (!entry.kind || !entry.code || !entry.title || !entry.description || entry.slug !== slugify(entry.code)) {
 			throw new Error(`Invalid help entry: ${entry.code ?? '(missing code)'}`);
@@ -397,7 +535,17 @@ export async function syncSiteContent({ repository, site, helpExportPath, helpRo
 		publicRoot,
 	});
 	await writeHelpPages({ helpRoot, outputRoot: contentRoot, locale: helpExport.locale, entries: helpExport.entries, walkthroughs });
-	await writeGuidePages({ helpRoot, contentRoot, locale: helpExport.locale, entries: helpExport.entries, walkthroughs });
+	const learn = await writeGuidePages({ helpRoot, contentRoot, locale: helpExport.locale, entries: helpExport.entries, walkthroughs });
+	const samples = await writeSamplesPage({
+		samplesRoot,
+		samplesOut,
+		contentRoot,
+		publicRoot,
+		site,
+		locale: helpExport.locale,
+		lessonsBySample: learn.lessonsBySample,
+		speedLessons: learn.speedLessons,
+	});
 	await writeDeveloperDocs({ repository, docsRoot, contentRoot });
 
 	const xml = await readFile(apiXmlPath, 'utf8');
@@ -405,5 +553,5 @@ export async function syncSiteContent({ repository, site, helpExportPath, helpRo
 	const apiPage = path.join(contentRoot, 'reference', 'api', 'index.md');
 	await mkdir(path.dirname(apiPage), { recursive: true });
 	await writeFile(apiPage, `${frontmatter('API Reference', 'Public contract types generated from XML documentation comments.')}${apiMarkdown}`);
-	return { entries: helpExport.entries.length, walkthroughs: walkthroughs.size };
+	return { entries: helpExport.entries.length, walkthroughs: walkthroughs.size, learnLessons: learn.learnLessons, samples };
 }
