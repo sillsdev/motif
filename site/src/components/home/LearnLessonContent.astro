@@ -1,0 +1,53 @@
+---
+import DefaultMarkdownContent from '@astrojs/starlight/components/MarkdownContent.astro';
+import samples from '../../data/samples.json';
+
+const route = Astro.locals.starlightRoute;
+const routeId = route.entry.id.replace(/\.mdx?$/i, '');
+const isLearnLesson = routeId.includes('learn/') && !routeId.endsWith('/index');
+
+function flattenSidebar(entries) {
+	return entries.flatMap((entry) => entry.type === 'link' ? [entry] : flattenSidebar(entry.entries ?? []));
+}
+
+const lessons = flattenSidebar(route.sidebar).filter((entry) => entry.href.includes('/learn/') && !/\/learn\/?(?:[#?].*)?$/.test(entry.href));
+const currentIndex = Math.max(0, lessons.findIndex((entry) => entry.isCurrent));
+const sampleSlug = routeId.split('/').at(-1)?.split('-')[0];
+const sample = samples.find((entry) => entry.id === `sample-${sampleSlug}`);
+const localePrefix = route.locale ? `/${route.locale}` : '';
+const sampleHref = sample ? `${localePrefix}/samples/#${sample.id}` : `${localePrefix}/samples/`;
+const brokenDownload = sample?.downloads?.broken;
+---
+
+{isLearnLesson ? (
+	<article class="learn-lesson">
+		<nav class="learn-lesson__breadcrumb" aria-label={Astro.locals.t('home.lessonBreadcrumbLabel')}>
+			<a href={`${localePrefix}/learn/`}>{Astro.locals.t('home.navLearn')}</a>
+			<span aria-hidden="true">›</span>
+			<a href={sampleHref}>{sample?.language.name ?? Astro.locals.t('home.navSamples')}</a>
+			<span aria-hidden="true">›</span>
+			<span>{Astro.locals.t('home.lessonProgress', { current: currentIndex + 1, total: lessons.length, minutes: 10 })}</span>
+		</nav>
+		<header><h1>{route.entry.data.title}</h1></header>
+		<aside class="learn-lesson__download">
+			<span aria-hidden="true">↓</span>
+			<div>
+				<p>{Astro.locals.t('home.lessonOpenProject', { language: sample?.language.name ?? '' })}</p>
+				{brokenDownload
+					? <a href={brokenDownload}>{Astro.locals.t('home.lessonBrokenDownload', { language: sample?.language.name ?? '' })}</a>
+					: <span>{Astro.locals.t('home.availableInRelease')}</span>}
+			</div>
+		</aside>
+		<DefaultMarkdownContent><slot /></DefaultMarkdownContent>
+		<aside class="learn-lesson__outcome">
+			<strong>{Astro.locals.t('home.lessonOutcomeTitle')}</strong>
+			<p>{Astro.locals.t('home.lessonOutcome')}</p>
+		</aside>
+		<nav class="learn-lesson__pagination" aria-label={Astro.locals.t('home.lessonPaginationLabel')}>
+			<a href={sampleHref}>← {Astro.locals.t('home.lessonAboutSample', { language: sample?.language.name ?? '' })}</a>
+			{lessons[currentIndex + 1] && (
+				<a href={lessons[currentIndex + 1].href}>{Astro.locals.t('home.lessonNext', { title: lessons[currentIndex + 1].label })} →</a>
+			)}
+		</nav>
+	</article>
+) : <DefaultMarkdownContent><slot /></DefaultMarkdownContent>}

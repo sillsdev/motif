@@ -99,6 +99,9 @@ public sealed record SlowWordTiming(string Word, int ElapsedMs);
 /// <summary>Counts of grammar warning findings and the largest warning category.</summary>
 public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? LargestKind, int? LargestKindCount)
 {
+    /// <summary>The number of findings whose report level is error.</summary>
+    public int? ErrorCount { get; init; }
+
     /// <summary>The number of findings whose report level is warning.</summary>
     public int? WarningCount { get; init; }
 

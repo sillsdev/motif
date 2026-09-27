@@ -64,6 +64,50 @@ translates like the rest. Every other page's words stay in `help/<lang>/`.
 fixed), and CI renders clips from recorded Assessment evidence captured from real runs, so clips need no parser
 in CI. Recorded here so nothing built now forecloses it.
 
+**D9. The home page puts the AI consultant up front.** The owner's framing: writing a parser is computer
+science that linguists are doing; the person knows the linguistics, an AI consultant knows the parser, the
+rules and FieldWorks' settings, and Motif supplies the evidence both need. That is why the agent-facing
+documentation exists. The hero leads with "Motif can help you teach a dumb computer your language"; a section
+right after it explains the partnership, and a "Who it's for" row names the field linguist, the translator, the
+native speaker and the language technologist. The visual design comes from the design canvas
+(<https://claude.ai/artifact/KnD9nsgWEjptjPBGxjUK1D>). Motif is an SIL Language Technology product site, so it
+follows <https://software.sil.org/>, not SIL corporate: Noto Sans, purple `#800493` for primary actions, green
+`#007a32` for links and Download, white surfaces with `#ddd` borders, the SIL glyph beside Motif's own logo, and
+the FieldWorks product-page pattern (product name and tagline, Download, quick tour, feature sections, help).
+
+**D10. One sample teaches speed.** `sample-turkish` carries a planted bug whose symptom is slowness, not
+failure, and its fixed variant is dramatically faster (aim: ten times or more). `expected.json` records a
+machine-independent work measure per variant, with wall-clock time as information only, and the gated test pins
+the work ratio, never wall-clock time. The home page's "Faster parsing" band quotes that measurement.
+
+**D11. Motif says plainly that it is a beta.** It has no users yet and is one person's pilot within SIL Language
+Technology, not yet an officially supported SIL product. Every surface says so once, in a friendly way, and claims
+nothing it cannot back: a dismissible beta banner and "Download the beta" on the site, "Beta for Windows · Free
+and open source · Not yet an officially supported SIL product" under the hero, a footer naming it "a pilot project
+within SIL Language Technology", a short FAQ ("Is Motif ready for my project?", "Is Motif an official SIL
+product?", "Something went wrong?"), no testimonials or usage numbers, and "Who it's for" cards written as
+situations, not quotes. The app titles itself "Motif (beta)", shows a one-time notice that it writes nothing until
+Apply and to keep a FieldWorks backup, repeats the backup line in Review changes before Apply, and points the crash
+window and `motif help` at <https://github.com/sillsdev/motif/issues>. The developer rule of no migration code before
+1.0 is unchanged.
+
+**D12. The samples are synthetic, and say so everywhere.** They are generated to demonstrate Motif, modelled
+loosely on real languages, and are not real language data. Their ids and names say it: `synthetic-turkic`
+("Synthetic Turkic-style sample"), `synthetic-bantu` (Swahili-style) and `synthetic-philippine` (Tagalog-style),
+replacing `sample-turkish`, `sample-swahili` and `sample-tagalog` wherever this plan uses them. Every surface that
+shows one — the spec, the FieldWorks project's own description, `bugs.json`, the Samples page, the home page cards,
+every lesson — carries a prominent label: "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif.
+It is modelled loosely on <language>, but it is not real <language>, has not been checked by speakers, and must not
+be used as a description of any language."
+
+**D13. Language content escalates by model.** A Luna worker builds each sample's structure and mechanics; a Sol
+worker grounds its language content in published analyses found online, cited in
+`docs/research/synthetic-samples/<language>.md`; Astra is used only if Sol's result is still not good enough.
+
+**D14. PanGloss v0.5.0 is the pinned parser.** It is the release that has `grammar-health --fw-project`, which Motif
+already calls; its grammar-health report is schema version 3 with an `error` level and a non-zero exit on errors,
+which Motif's reader must handle.
+
 ## 3. Interfaces (binding)
 
 ### Sample metadata — the part the site reads
@@ -164,4 +208,4 @@ mechanical.
 not be recorded" are the sandbox, proven by rerunning the CLI project with a worktree-local
 `MOTIF_WORKER_ROOT`); `cd site; npm test; npm run build` for H; for S packages, the gated real-parser test run
 locally with `MOTIF_PANGLOSS_EXE` naming a real `pangloss.exe`
-(on the owner's machine, `C:\Users\johnm\Documents\repos\pangloss-releases\v0.3.0\pangloss.exe`).
+(the release `pangloss-release.json` pins, v0.5.0; older releases lack what `motif assess` needs).

@@ -1,0 +1,14 @@
+{
+  "id": "synthetic-turkic",
+  "title": "Synthetic Turkic-style sample",
+  "language": {
+    "name": "Turkish",
+    "tag": "tr"
+  },
+  "teaches": [
+    "suffix slots in order",
+    "vowel harmony"
+  ],
+  "summary": "Practice measuring a small grammar and tracing why a word did not parse.",
+  "disclaimer": "Generated to demonstrate Motif. Modelled loosely on Turkish; not real Turkish data and not a description of any language."
+}

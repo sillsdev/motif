@@ -93,7 +93,8 @@ public static class HandoffCommand
         ArgumentNullException.ThrowIfNull(assessor);
         ArgumentNullException.ThrowIfNull(invoker);
 
-        if (request.Assess && string.IsNullOrWhiteSpace(request.InvocationId))
+        if (request.Assess && request.Selection.Words.Count == 0 &&
+            string.IsNullOrWhiteSpace(request.InvocationId))
             return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                 "handoff.invocation-required", FailureReason.InvalidArgument,
                 "Run assess first or pass the completed Assessment invocation id."));

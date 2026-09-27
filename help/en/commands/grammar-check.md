@@ -14,7 +14,7 @@ motif grammar check --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
 
 ## What it prints
 
-The response reports whether a Baseline was available and includes grammar findings when a check ran. JSON returns the findings and their diagnostic codes in a structured form.
+The response reports whether a Baseline was available and includes grammar findings when a check ran. Error-level findings appear separately from warnings and information. PanGloss can exit nonzero after writing a report with errors; Motif still reads and stores that report. A nonzero exit without a report is a refusal.
 
 ## Related commands
 

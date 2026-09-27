@@ -46,7 +46,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public WorkspaceShellViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient, TimeProvider? clock = null, IClipboard? clipboard = null,
-        IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null)
+        IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
+        BetaNoticeViewModel? betaNotice = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -59,6 +60,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         _commandClient = commandClient;
         Project = project;
         Baseline = baseline;
+        BetaNotice = betaNotice;
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs)
         {
@@ -103,6 +105,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         DismissRerunCommand = new RelayCommand(() => RerunOffered = false, () => RerunOffered);
         RefreshPages();
     }
+
+    /// <summary>The beta notice shown until the person acknowledges it, or <see langword="null"/> when disabled.</summary>
+    public BetaNoticeViewModel? BetaNotice { get; }
 
     /// <summary>What every page is built from: the project, its evidence, and the pages' navigation actions.</summary>
     public WorkspaceContext Context { get; }

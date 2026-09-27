@@ -6,6 +6,8 @@ namespace SIL.Motif.Contract.Responses;
 [JsonConverter(typeof(JsonStringEnumConverter<GrammarDiagnosticLevel>))]
 public enum GrammarDiagnosticLevel
 {
+    [JsonStringEnumMemberName("error")]
+    Error,
     [JsonStringEnumMemberName("warning")]
     Warning,
     [JsonStringEnumMemberName("info")]
@@ -69,6 +71,7 @@ public static class GrammarDiagnosticLevelExtensions
 {
     public static string ToWireValue(this GrammarDiagnosticLevel level) => level switch
     {
+        GrammarDiagnosticLevel.Error => "error",
         GrammarDiagnosticLevel.Warning => "warning",
         GrammarDiagnosticLevel.Information => "info",
         _ => throw new ArgumentOutOfRangeException(nameof(level), level, null),

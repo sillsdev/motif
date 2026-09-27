@@ -221,7 +221,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 
                 var standardError = await stdErrTask.ConfigureAwait(false);
                 var standardOutput = await stdOutTask.ConfigureAwait(false);
-                if (process.ExitCode != 0)
+                if (process.ExitCode != 0 && !request.AcceptsNonzeroExit)
                 {
                     return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,
                         StandardOutput: standardOutput,
@@ -229,6 +229,10 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                             standardError.Trim());
                 }
                 var outcome = request.Finish(scratch, standardOutput, standardError, clock.Elapsed);
+                if (process.ExitCode != 0 && outcome is not PanGlossOutcome.Completed)
+                    return new PanGlossOutcome.Refused(process.ExitCode, standardError, standardOutput,
+                        $"pangloss {request.Subcommand} exited {process.ExitCode}; {outcome.Message}" +
+                        (string.IsNullOrWhiteSpace(standardError) ? string.Empty : Environment.NewLine + standardError.Trim()));
                 if (!retained || outcome is not PanGlossOutcome.Completed completed)
                     return outcome;
                 var capturedBatch = (PanGlossRequest.Batch)request;
