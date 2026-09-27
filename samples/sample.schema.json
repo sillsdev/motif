@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Motif sample project",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "language",
+    "teaches",
+    "summary",
+    "disclaimer",
+    "description",
+    "phonemes",
+    "partsOfSpeech",
+    "stems",
+    "texts"
+  ],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "title": { "type": "string", "minLength": 1 },
+    "language": { "$ref": "#/$defs/language" },
+    "teaches": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "summary": { "type": "string", "minLength": 1 },
+    "disclaimer": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "phonemes": { "$ref": "#/$defs/nonEmptyStrings" },
+    "naturalClasses": { "type": "array", "items": { "$ref": "#/$defs/naturalClass" } },
+    "environments": { "type": "array", "items": { "$ref": "#/$defs/environment" } },
+    "partsOfSpeech": { "$ref": "#/$defs/nonEmptyPartsOfSpeech" },
+    "stems": { "$ref": "#/$defs/nonEmptyStems" },
+    "affixes": { "type": "array", "items": { "$ref": "#/$defs/affix" } },
+    "affixSlots": { "type": "array", "items": { "$ref": "#/$defs/affixSlot" } },
+    "affixTemplates": { "type": "array", "items": { "$ref": "#/$defs/affixTemplate" } },
+    "phonologicalRules": { "type": "array", "items": { "$ref": "#/$defs/phonologicalRule" } },
+    "texts": { "$ref": "#/$defs/nonEmptyTexts" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "tag"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$" }
+      }
+    },
+    "nonEmptyStrings": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "namedRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "naturalClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "abbreviation", "phonemes"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "abbreviation": { "type": "string", "minLength": 1 },
+        "phonemes": { "$ref": "#/$defs/nonEmptyStrings" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "representation"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "representation": { "type": "string", "pattern": "^/.+_.+$" }
+      }
+    },
+    "partOfSpeech": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "nonEmptyPartsOfSpeech": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/partOfSpeech" }
+    },
+    "stem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "form", "partOfSpeech", "gloss"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "form": { "type": "string", "minLength": 1 },
+        "partOfSpeech": { "$ref": "#/$defs/id" },
+        "gloss": { "type": "string", "minLength": 1 }
+      }
+    },
+    "nonEmptyStems": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/stem" }
+    },
+    "allomorph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "form"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "form": { "type": "string" },
+        "environment": { "$ref": "#/$defs/id" }
+      }
+    },
+    "affix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "partOfSpeech", "slots", "gloss", "allomorphs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "partOfSpeech": { "$ref": "#/$defs/id" },
+        "slots": { "$ref": "#/$defs/nonEmptyStrings" },
+        "gloss": { "type": "string", "minLength": 1 },
+        "allomorphs": { "$ref": "#/$defs/nonEmptyAllomorphs" }
+      }
+    },
+    "nonEmptyAllomorphs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/allomorph" } },
+    "affixSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "partOfSpeech", "optional"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "partOfSpeech": { "$ref": "#/$defs/id" },
+        "optional": { "type": "boolean" }
+      }
+    },
+    "affixTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "partOfSpeech", "final"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "partOfSpeech": { "$ref": "#/$defs/id" },
+        "prefixSlots": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "suffixSlots": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "final": { "type": "boolean" }
+      }
+    },
+    "phonologicalRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "input", "output", "environment"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "input": { "type": "string", "minLength": 1 },
+        "output": { "type": "string", "minLength": 1 },
+        "environment": { "type": "string", "minLength": 1 }
+      }
+    },
+    "text": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "sentences"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 1 },
+        "sentences": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "symptom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "words", "reason"],
+      "properties": {
+        "kind": { "enum": ["failure", "slow"] },
+        "words": { "$ref": "#/$defs/nonEmptyStrings" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "bug": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "symptom", "fix", "patch"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 1 },
+        "symptom": { "$ref": "#/$defs/symptom" },
+        "fix": { "$ref": "#/$defs/nonEmptyStrings" },
+        "patch": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/patchOperation" } }
+      }
+    },
+    "bugList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/bug" }
+    },
+    "patchOperation": {
+      "oneOf": [
+        { "$ref": "#/$defs/setEnvironment" },
+        { "$ref": "#/$defs/removeStem" },
+        { "$ref": "#/$defs/swapSlots" },
+        { "$ref": "#/$defs/setSlotOptional" },
+        { "$ref": "#/$defs/duplicateOptionalSlot" }
+      ]
+    },
+    "setEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "allomorphId", "environmentId"],
+      "properties": {
+        "op": { "const": "setEnvironment" },
+        "allomorphId": { "$ref": "#/$defs/id" },
+        "environmentId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "removeStem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "stemId"],
+      "properties": {
+        "op": { "const": "removeStem" },
+        "stemId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "swapSlots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "templateId", "firstSlotId", "secondSlotId"],
+      "properties": {
+        "op": { "const": "swapSlots" },
+        "templateId": { "$ref": "#/$defs/id" },
+        "firstSlotId": { "$ref": "#/$defs/id" },
+        "secondSlotId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "setSlotOptional": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "slotId", "optional"],
+      "properties": {
+        "op": { "const": "setSlotOptional" },
+        "slotId": { "$ref": "#/$defs/id" },
+        "optional": { "type": "boolean" }
+      }
+    },
+    "duplicateOptionalSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "templateId", "slotId", "count"],
+      "properties": {
+        "op": { "const": "duplicateOptionalSlot" },
+        "templateId": { "$ref": "#/$defs/id" },
+        "slotId": { "$ref": "#/$defs/id" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 32 }
+      }
+    }
+  }
+}
