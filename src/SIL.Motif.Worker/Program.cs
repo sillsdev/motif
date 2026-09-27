@@ -46,6 +46,7 @@ internal static class Program
         CrashDialogs.Suppress();
         try
         {
+            FwDataProjectLoader.Init();
             return await RunAsync(args).ConfigureAwait(false);
         }
         catch (Exception exception)
