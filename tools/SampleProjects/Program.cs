@@ -101,13 +101,15 @@ internal sealed record PatchOperation(
     string Op,
     string? AllomorphId = null,
     string? EnvironmentId = null,
+    string? AffixId = null,
     string? StemId = null,
     string? TemplateId = null,
     string? FirstSlotId = null,
     string? SecondSlotId = null,
     string? SlotId = null,
     bool? Optional = null,
-    int? Count = null);
+    int? Count = null,
+    string[]? Slots = null);
 internal sealed record BuildResult(string ProjectPath, string BackupPath, BuiltText[] Texts, string[] AppliedBugs);
 internal sealed record BuiltText(string Id, string Guid);
 
@@ -179,6 +181,7 @@ internal static class SampleBuilder
                 ? slot with { Optional = patch.Optional ?? throw new InvalidDataException("setSlotOptional needs optional.") }
                 : slot).ToArray(),
         },
+        "setAffixSlots" => SetAffixSlots(spec, patch),
         "duplicateOptionalSlot" => DuplicateOptionalSlot(spec, patch),
         _ => throw new InvalidDataException($"Unknown patch operation '{patch.Op}'."),
     };
@@ -219,6 +222,20 @@ internal static class SampleBuilder
                     ? allomorph with { Environment = environmentId }
                     : allomorph).ToArray(),
             }).ToArray(),
+        };
+    }
+
+    private static SampleSpec SetAffixSlots(SampleSpec spec, PatchOperation patch)
+    {
+        var affixId = Required(patch.AffixId, "affixId");
+        var slots = patch.Slots ?? throw new InvalidDataException("setAffixSlots needs slots.");
+        if (spec.Affixes.Count(affix => affix.Id == affixId) != 1)
+            throw new InvalidDataException($"Affix '{affixId}' does not exist exactly once.");
+        return spec with
+        {
+            Affixes = spec.Affixes.Select(affix => affix.Id == affixId
+                ? affix with { Slots = slots }
+                : affix).ToArray(),
         };
     }
 
