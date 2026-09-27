@@ -84,7 +84,8 @@ a{color:#007a32}
 <div style="font-size: 14px; color: #555555">Save in FieldWorks, then Refresh in Motif — and round again.</div>
 </section>
 <section style="padding: 48px 16px 0; display: flex; flex-direction: column; gap: 16px">
-<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 28px; font-weight: 700">Try a sample language</h2>
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 28px; font-weight: 700">Try a synthetic sample</h2>
+<div style="font-size: 14px; line-height: 1.5; color: #3D2E00; padding: 10px 12px; border-radius: 8px; background: #FFF4D1"><strong>SYNTHETIC EXAMPLES.</strong> Generated to demonstrate Motif; not real language data.</div>
 <sc-for list="{{samples}}" as="s" hint-placeholder-count="3">
 <a href="#" style="display: flex; justify-content: space-between; align-items: center; min-height: 56px; padding: 0 16px; border-radius: 10px; background: #FFFFFF; border: 1px solid #DDDDDD; color: #333333; text-decoration: none">
 <span style="font-weight: 700">{{s.name}}</span><span style="font-size: 14px; color: #555555">{{s.teaches}}</span>
@@ -117,9 +118,9 @@ steps: [
 { who: 'You + an AI consultant', what: 'The AI reads the Handoff; you fix it in FieldWorks, or apply a reviewed change.' }
 ],
 samples: [
-{ name: 'Turkish', teaches: 'suffixes, harmony' },
-{ name: 'Swahili', teaches: 'noun classes' },
-{ name: 'Tagalog', teaches: 'infixes, reduplication' }
+{ name: 'Turkic-style (synthetic)', teaches: 'suffixes, harmony' },
+{ name: 'Bantu-style (synthetic)', teaches: 'noun classes' },
+{ name: 'Philippine-style (synthetic)', teaches: 'infixes, reduplication' }
 ]
 };
 }
