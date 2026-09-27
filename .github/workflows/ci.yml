@@ -3,7 +3,7 @@ name: CI
 # Runs the same two scripts a developer runs, so CI cannot disagree with a local run about what passes.
 on:
   push:
-    branches: ['**', '!mac-debug/**']
+    branches: ['**', '!mac-debug/**', '!linux-debug/**']
   pull_request:
   workflow_dispatch:
 
