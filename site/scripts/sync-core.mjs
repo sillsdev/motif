@@ -73,6 +73,7 @@ const learnSidebarOrder = [
 	'working-with-an-ai-consultant',
 ];
 const learnOrderBySlug = new Map(learnSidebarOrder.map((slug, index) => [slug, index]));
+const sampleIdByLearnPrefix = new Map([['turkish', 'synthetic-turkic']]);
 
 function yamlString(value) {
 	return JSON.stringify(value ?? '');
@@ -287,9 +288,10 @@ async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthr
 	const speedLessons = new Map();
 	for (const [slug] of orderedLearnPages) {
 		const lessonPrefix = slug.split('/')[0];
+		const languagePrefix = lessonPrefix.split('-')[0];
 		const sampleId = lessonPrefix.startsWith('synthetic-')
 			? lessonPrefix.split('-').slice(0, 2).join('-')
-			: `sample-${lessonPrefix.split('-')[0]}`;
+			: sampleIdByLearnPrefix.get(languagePrefix) ?? `sample-${languagePrefix}`;
 		if (!lessonsBySample.has(sampleId)) lessonsBySample.set(sampleId, slug);
 		if (/(^|[-/])speed([-/.]|$)/.test(slug)) speedLessons.set(sampleId, slug);
 	}

@@ -81,6 +81,8 @@ test('the home page renders the approved beta hero, audience situations, FAQ, an
 		assert.ok(sampleCards.includes(title), `the sample cards include ${title}`);
 		assert.ok(sampleCards.includes(`Generated to demonstrate Motif. Modelled loosely on ${language}; not real ${language} data and not a description of any language.`));
 	}
+	const syncedSamples = JSON.parse(await readFile(path.join(siteRoot, 'src', 'data', 'samples.json'), 'utf8'));
+	assert.equal(syncedSamples.find((sample) => sample.id === 'synthetic-turkic').lessonsHref, '/learn/turkish-plural-harmony/');
 });
 
 test('synthetic sample fixtures identify generated data plainly', async () => {
