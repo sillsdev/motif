@@ -1,7 +1,9 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Tests.TestFixtures;
@@ -17,10 +19,26 @@ public sealed class HelpCommandTests
         var result = Run("help");
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Matches(@"^Motif \(beta\) (?:—|-) report problems at https://github\.com/sillsdev/motif/issues", result.Output);
+        Assert.Matches(@"^Motif \(tech demo\) (?:—|-) report problems at https://github\.com/sillsdev/motif/issues", result.Output);
         Assert.Contains("Open a project", result.Output, StringComparison.Ordinal);
         Assert.Contains("Measure a Selection", result.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("Create a Draft", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AppViewsAndCliHelpContainNoUserVisibleBetaCopy()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+        var viewsRoot = Path.Combine(repositoryRoot, "src", "SIL.Motif.App", "Views");
+        var betaViews = Directory.EnumerateFiles(viewsRoot, "*.axaml", SearchOption.AllDirectories)
+            .Where(path => Regex.IsMatch(File.ReadAllText(path), @"\bbeta\b", RegexOptions.IgnoreCase))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+        Assert.Empty(betaViews);
+
+        var result = Run("help");
+        Assert.Equal(0, result.ExitCode);
+        Assert.False(Regex.IsMatch(result.Output, @"\bbeta\b", RegexOptions.IgnoreCase));
     }
 
     [Fact]

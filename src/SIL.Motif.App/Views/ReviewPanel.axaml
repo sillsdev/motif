@@ -96,7 +96,7 @@
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Changes.CountText}" />
           <views:CopyableTextBlock Classes="reviewSmall"
-                                   Text="Beta: make sure you have a FieldWorks backup before applying."
+                                   Text="Tech demo: make sure you have a FieldWorks backup before applying."
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ApplyBlockReason}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding ApplyRefusal}" />

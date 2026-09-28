@@ -2,11 +2,11 @@ using System.Text.Json;
 
 namespace SIL.Motif.App.Services;
 
-internal sealed class FileBetaNoticePreferences(string preferencesPath) : IBetaNoticePreferences
+internal sealed class FileTechDemoNoticePreferences(string preferencesPath) : ITechDemoNoticePreferences
 {
     private readonly string _preferencesPath = preferencesPath;
 
-    public bool HasSeenBetaNotice
+    public bool HasSeenTechDemoNotice
     {
         get
         {
@@ -14,7 +14,7 @@ internal sealed class FileBetaNoticePreferences(string preferencesPath) : IBetaN
             {
                 if (!File.Exists(_preferencesPath)) return false;
                 return JsonSerializer.Deserialize<NoticePreference>(File.ReadAllText(_preferencesPath))
-                    ?.HasSeenBetaNotice == true;
+                    ?.HasSeenTechDemoNotice == true;
             }
             catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
             {
@@ -23,7 +23,7 @@ internal sealed class FileBetaNoticePreferences(string preferencesPath) : IBetaN
         }
     }
 
-    public void MarkBetaNoticeSeen()
+    public void MarkTechDemoNoticeSeen()
     {
         try
         {
@@ -36,12 +36,12 @@ internal sealed class FileBetaNoticePreferences(string preferencesPath) : IBetaN
         }
     }
 
-    public static FileBetaNoticePreferences ForInstallation()
+    public static FileTechDemoNoticePreferences ForInstallation()
     {
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Motif", "beta-notice.json");
-        return new FileBetaNoticePreferences(path);
+            "Motif", "techdemo-notice.json");
+        return new FileTechDemoNoticePreferences(path);
     }
 
-    private sealed record NoticePreference(bool HasSeenBetaNotice);
+    private sealed record NoticePreference(bool HasSeenTechDemoNotice);
 }

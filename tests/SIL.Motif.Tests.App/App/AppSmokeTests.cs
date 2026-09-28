@@ -25,7 +25,7 @@ public sealed class AppSmokeTests
             var window = new MainWindow();
 
             Assert.NotNull(window);
-            Assert.Equal("Motif (beta)", window.Title);
+            Assert.Equal("Motif (tech demo)", window.Title);
         });
     }
 }

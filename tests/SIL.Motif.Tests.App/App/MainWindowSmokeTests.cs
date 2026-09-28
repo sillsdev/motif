@@ -88,7 +88,7 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
 
             Assert.Same(workspace, window.DataContext);
-            Assert.Equal("Motif (beta)", window.Title);
+            Assert.Equal("Motif (tech demo)", window.Title);
             Assert.Same(workspace.PageModel<OverviewPageModel>(),
                 Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>()).DataContext);
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
@@ -114,7 +114,7 @@ public sealed class MainWindowSmokeTests
             var (_, window, _) = NewComposedWindow();
             try
             {
-                Assert.Contains("Beta: make sure you have a FieldWorks backup before applying.",
+                Assert.Contains("Tech demo: make sure you have a FieldWorks backup before applying.",
                     window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
             }
             finally
@@ -125,23 +125,25 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void FirstRunBetaNoticeIsVisibleInTheWindow()
+    public void FirstRunNoticeIsVisibleInTheWindow()
     {
         _avalonia.Invoke(() =>
         {
-            var notice = new BetaNoticeViewModel(new MemoryBetaNoticePreferences(), new RecordingUriLauncher());
+            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences(), new RecordingUriLauncher());
             var (_, window, _) = NewComposedWindow(notice);
             try
             {
                 window.Show();
                 window.UpdateLayout();
 
-                var banner = Assert.IsType<Border>(window.FindControl<Border>("BetaNotice"));
+                var banner = Assert.IsType<Border>(window.FindControl<Border>("TechDemoNotice"));
                 Assert.True(banner.IsVisible);
-                Assert.Contains(BetaNoticeViewModel.NoticeText,
+                Assert.Contains(TechDemoNoticeViewModel.NoticeText,
                     window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
                 Assert.Contains("Got it", window.GetLogicalDescendants().OfType<Button>()
                     .Select(button => button.Content as string));
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Acknowledge the tech demo notice");
             }
             finally
             {
@@ -1315,7 +1317,7 @@ public sealed class MainWindowSmokeTests
     }
 
     private static (WorkspaceShellViewModel Workspace, MainWindow Window, FakeDragSource DragSource)
-        NewComposedWindow(BetaNoticeViewModel? betaNotice = null)
+        NewComposedWindow(TechDemoNoticeViewModel? techDemoNotice = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -1327,7 +1329,7 @@ public sealed class MainWindowSmokeTests
             selection,
             new AssessViewModel(fake, selection),
             new FakeFolderPicker(), dragSource,
-            fake, clipboard: new AvaloniaClipboard(window), betaNotice: betaNotice);
+            fake, clipboard: new AvaloniaClipboard(window), techDemoNotice: techDemoNotice);
 
         window.Compose(workspace);
         return (workspace, window, dragSource);
@@ -1366,11 +1368,11 @@ public sealed class MainWindowSmokeTests
             Task.FromResult<string?>(null);
     }
 
-    private sealed class MemoryBetaNoticePreferences : IBetaNoticePreferences
+    private sealed class MemoryTechDemoNoticePreferences : ITechDemoNoticePreferences
     {
-        public bool HasSeenBetaNotice { get; private set; }
+        public bool HasSeenTechDemoNotice { get; private set; }
 
-        public void MarkBetaNoticeSeen() => HasSeenBetaNotice = true;
+        public void MarkTechDemoNoticeSeen() => HasSeenTechDemoNotice = true;
     }
 
     private sealed class RecordingUriLauncher : IUriLauncher
