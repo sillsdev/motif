@@ -77,6 +77,8 @@ internal sealed record SampleSpec
     public LanguageSpec Language { get; init; } = new("", "");
     public string[] Phonemes { get; init; } = [];
     public NaturalClassSpec[] NaturalClasses { get; init; } = [];
+    public FeatureDefinitionSpec[] FeatureDefinitions { get; init; } = [];
+    public InflectionClassSpec[] InflectionClasses { get; init; } = [];
     public EnvironmentSpec[] Environments { get; init; } = [];
     public PartOfSpeechSpec[] PartsOfSpeech { get; init; } = [];
     public StemSpec[] Stems { get; init; } = [];
@@ -91,11 +93,22 @@ internal sealed record LanguageSpec(string Name, string Tag);
 internal sealed record ResearchSpec(string Document, ResearchSectionSpec[] Sections);
 internal sealed record ResearchSectionSpec(string Part, string Section);
 internal sealed record NaturalClassSpec(string Id, string Name, string Abbreviation, string[] Phonemes);
+internal sealed record FeatureDefinitionSpec(string Id, string Name, string Abbreviation, FeatureValueSpec[] Values);
+internal sealed record FeatureValueSpec(string Id, string Name, string Abbreviation);
+internal sealed record FeatureAssignmentSpec(string FeatureId, string ValueId);
+internal sealed record InflectionClassSpec(string Id, string Name, string PartOfSpeech);
 internal sealed record EnvironmentSpec(string Id, string Name, string Representation);
 internal sealed record PartOfSpeechSpec(string Id, string Name);
-internal sealed record StemSpec(string Id, string Form, string PartOfSpeech, string Gloss);
-internal sealed record AffixSpec(string Id, string PartOfSpeech, string[] Slots, string Gloss, AllomorphSpec[] Allomorphs);
-internal sealed record AllomorphSpec(string Id, string Form, string? Environment);
+internal sealed record StemSpec(
+    string Id, string Form, string PartOfSpeech, string Gloss, string? InflectionClass = null,
+    FeatureAssignmentSpec[]? Features = null);
+internal sealed record AffixSpec(
+    string Id, string PartOfSpeech, string[] Slots, string Gloss, AllomorphSpec[] Allomorphs,
+    FeatureAssignmentSpec[]? Features = null);
+internal sealed record AllomorphSpec(
+    string Id, string Form, string? Environment, string MorphType = "suffix",
+    string? PositionEnvironment = null, string[]? InflectionClasses = null,
+    FeatureAssignmentSpec[]? RequiredFeatures = null);
 internal sealed record AffixSlotSpec(string Id, string Name, string PartOfSpeech, bool Optional);
 internal sealed record AffixTemplateSpec(
     string Id, string Name, string PartOfSpeech, string[] PrefixSlots, string[] SuffixSlots, bool Final);
@@ -117,7 +130,8 @@ internal sealed record PatchOperation(
     string? SlotId = null,
     bool? Optional = null,
     int? Count = null,
-    string[]? Slots = null);
+    string[]? Slots = null,
+    string? Side = null);
 internal sealed record BuildResult(string ProjectPath, string BackupPath, BuiltText[] Texts, string[] AppliedBugs);
 internal sealed record BuiltText(string Id, string Guid);
 
@@ -126,6 +140,9 @@ internal static class SampleBuilder
     private const string BootstrapVernacularTag = "fr";
     private const string ParserParametersXml =
         "<ParserParameters><HC><NoDefaultCompounding>true</NoDefaultCompounding><Strata /></HC></ParserParameters>";
+
+    private sealed record FeatureDefinitionHandle(
+        IFsClosedFeature Feature, IReadOnlyDictionary<string, IFsSymFeatVal> Values);
 
     public static BuildResult Build(
         SampleSpec source, string outputRoot, IReadOnlyList<BugSpec> bugs, IReadOnlyList<string> bugIds)
@@ -202,20 +219,32 @@ internal static class SampleBuilder
         var templateId = Required(patch.TemplateId, "templateId");
         var first = Required(patch.FirstSlotId, "firstSlotId");
         var second = Required(patch.SecondSlotId, "secondSlotId");
+        var side = SlotSide(patch, "swapSlots");
         return spec with
         {
             AffixTemplates = spec.AffixTemplates.Select(template =>
             {
                 if (template.Id != templateId) return template;
-                var firstIndex = Array.IndexOf(template.SuffixSlots, first);
-                var secondIndex = Array.IndexOf(template.SuffixSlots, second);
+                var slots = side == "prefix" ? template.PrefixSlots ?? [] : template.SuffixSlots ?? [];
+                var firstIndex = Array.IndexOf(slots, first);
+                var secondIndex = Array.IndexOf(slots, second);
                 if (firstIndex < 0 || secondIndex < 0)
-                    throw new InvalidDataException($"Template '{templateId}' does not contain both slots.");
-                var suffixSlots = template.SuffixSlots.ToArray();
-                (suffixSlots[firstIndex], suffixSlots[secondIndex]) = (suffixSlots[secondIndex], suffixSlots[firstIndex]);
-                return template with { SuffixSlots = suffixSlots };
+                    throw new InvalidDataException($"Template '{templateId}' does not contain both {side} slots.");
+                var swapped = slots.ToArray();
+                (swapped[firstIndex], swapped[secondIndex]) = (swapped[secondIndex], swapped[firstIndex]);
+                return side == "prefix"
+                    ? template with { PrefixSlots = swapped }
+                    : template with { SuffixSlots = swapped };
             }).ToArray(),
         };
+    }
+
+    private static string SlotSide(PatchOperation patch, string operation)
+    {
+        var side = patch.Side ?? "suffix";
+        if (side is not ("prefix" or "suffix"))
+            throw new InvalidDataException($"{operation} side must be 'prefix' or 'suffix'.");
+        return side;
     }
 
     private static SampleSpec SetEnvironment(SampleSpec spec, PatchOperation patch)
@@ -274,6 +303,7 @@ internal static class SampleBuilder
         var templateId = Required(patch.TemplateId, "templateId");
         var count = patch.Count ?? throw new InvalidDataException("duplicateOptionalSlot needs count.");
         if (count is < 1 or > 64) throw new InvalidDataException("duplicateOptionalSlot count must be from 1 to 64.");
+        var side = SlotSide(patch, "duplicateOptionalSlot");
         var sourceSlot = spec.AffixSlots.SingleOrDefault(slot => slot.Id == slotId)
             ?? throw new InvalidDataException($"Slot '{slotId}' does not exist.");
         var copies = Enumerable.Range(1, count).Select(index => sourceSlot with
@@ -286,7 +316,9 @@ internal static class SampleBuilder
             ? affix with { Slots = [.. affix.Slots, .. copies.Select(copy => copy.Id)] }
             : affix).ToArray();
         var templates = spec.AffixTemplates.Select(template => template.Id == templateId
-            ? template with { SuffixSlots = [.. template.SuffixSlots, .. copies.Select(copy => copy.Id)] }
+            ? side == "prefix"
+                ? template with { PrefixSlots = [.. template.PrefixSlots ?? [], .. copies.Select(copy => copy.Id)] }
+                : template with { SuffixSlots = [.. template.SuffixSlots ?? [], .. copies.Select(copy => copy.Id)] }
             : template).ToArray();
         return spec with
         {
@@ -357,18 +389,42 @@ internal static class SampleBuilder
         UniqueById(spec.Stems, stem => stem.Id, "stem");
         UniqueById(spec.Affixes, affix => affix.Id, "affix");
         UniqueById(spec.NaturalClasses, item => item.Id, "natural class");
+        var featureDefinitions = UniqueById(spec.FeatureDefinitions, feature => feature.Id, "feature definition");
+        foreach (var feature in featureDefinitions.Values)
+            UniqueById(feature.Values, value => value.Id, $"value in feature '{feature.Id}'");
+        var inflectionClasses = UniqueById(spec.InflectionClasses, item => item.Id, "inflection class");
         UniqueById(spec.Phonemes, phoneme => phoneme, "phoneme");
         UniqueById(spec.Texts, text => text.Id, "Text");
         UniqueById(spec.AffixTemplates, template => template.Id, "affix template");
         var slotById = UniqueById(spec.AffixSlots, slot => slot.Id, "affix slot");
         var environmentIds = UniqueById(spec.Environments, environment => environment.Id, "environment")
             .Keys.ToHashSet(StringComparer.Ordinal);
+        foreach (var inflectionClass in inflectionClasses.Values)
+        {
+            if (!partIds.Contains(inflectionClass.PartOfSpeech) ||
+                string.IsNullOrWhiteSpace(inflectionClass.Name))
+                throw new InvalidDataException($"Inflection class '{inflectionClass.Id}' needs a name and known part of speech.");
+        }
+        foreach (var feature in featureDefinitions.Values)
+        {
+            if (string.IsNullOrWhiteSpace(feature.Name) || string.IsNullOrWhiteSpace(feature.Abbreviation) ||
+                feature.Values.Length == 0)
+                throw new InvalidDataException($"Feature '{feature.Id}' needs a name, abbreviation, and value.");
+            foreach (var value in feature.Values)
+                if (string.IsNullOrWhiteSpace(value.Name) || string.IsNullOrWhiteSpace(value.Abbreviation))
+                    throw new InvalidDataException($"Value '{value.Id}' in feature '{feature.Id}' needs a name and abbreviation.");
+        }
         foreach (var stem in spec.Stems)
         {
             if (!partIds.Contains(stem.PartOfSpeech))
                 throw new InvalidDataException($"Stem '{stem.Id}' names an unknown part of speech.");
             if (string.IsNullOrWhiteSpace(stem.Form) || string.IsNullOrWhiteSpace(stem.Gloss))
                 throw new InvalidDataException($"Stem '{stem.Id}' needs a form and gloss.");
+            if (stem.InflectionClass is { } classId &&
+                (!inflectionClasses.TryGetValue(classId, out var inflectionClass) ||
+                 inflectionClass.PartOfSpeech != stem.PartOfSpeech))
+                throw new InvalidDataException($"Stem '{stem.Id}' names an unknown or incompatible inflection class.");
+            ValidateFeatureAssignments(stem.Features ?? [], featureDefinitions, $"Stem '{stem.Id}'");
             ValidateVernacularCharacters(stem.Form, $"Stem '{stem.Id}' form '{stem.Form}'", declaredCharacters);
         }
         foreach (var affix in spec.Affixes)
@@ -385,11 +441,25 @@ internal static class SampleBuilder
             {
                 if (string.IsNullOrWhiteSpace(allomorph.Id))
                     throw new InvalidDataException($"Affix '{affix.Id}' has an allomorph without an id.");
+                if (allomorph.MorphType is not ("suffix" or "prefix" or "infix"))
+                    throw new InvalidDataException($"Allomorph '{allomorph.Id}' morphType must be suffix, prefix, or infix.");
+                if (allomorph.MorphType == "infix" && allomorph.PositionEnvironment is null)
+                    throw new InvalidDataException($"Infix allomorph '{allomorph.Id}' needs a position environment.");
+                if (allomorph.PositionEnvironment is not null && !environmentIds.Contains(allomorph.PositionEnvironment))
+                    throw new InvalidDataException($"Allomorph '{allomorph.Id}' names an unknown position environment.");
+                foreach (var classId in allomorph.InflectionClasses ?? [])
+                    if (!inflectionClasses.TryGetValue(classId, out var inflectionClass) ||
+                        inflectionClass.PartOfSpeech != affix.PartOfSpeech)
+                        throw new InvalidDataException($"Allomorph '{allomorph.Id}' names an unknown or incompatible inflection class.");
+                ValidateFeatureAssignments(allomorph.RequiredFeatures ?? [], featureDefinitions,
+                    $"Allomorph '{allomorph.Id}'");
+                var allomorphCharacters = declaredCharacters.Append("-").ToHashSet(StringComparer.Ordinal);
                 ValidateVernacularCharacters(allomorph.Form,
-                    $"Affix '{affix.Id}' allomorph '{allomorph.Id}' form '{allomorph.Form}'", declaredCharacters);
+                    $"Affix '{affix.Id}' allomorph '{allomorph.Id}' form '{allomorph.Form}'", allomorphCharacters);
                 if (allomorph.Environment is not null && !environmentIds.Contains(allomorph.Environment))
                     throw new InvalidDataException($"Allomorph '{allomorph.Id}' names an unknown environment.");
             }
+            ValidateFeatureAssignments(affix.Features ?? [], featureDefinitions, $"Affix '{affix.Id}'");
         }
         foreach (var template in spec.AffixTemplates)
         {
@@ -419,6 +489,22 @@ internal static class SampleBuilder
         {
             if (string.IsNullOrWhiteSpace(bug.Disclaimer))
                 throw new InvalidDataException($"Bug '{bug.Id}' needs its synthetic-data disclaimer.");
+        }
+    }
+
+    private static void ValidateFeatureAssignments(
+        IEnumerable<FeatureAssignmentSpec> assignments,
+        IReadOnlyDictionary<string, FeatureDefinitionSpec> features,
+        string owner)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var assignment in assignments)
+        {
+            if (!features.TryGetValue(assignment.FeatureId, out var feature) ||
+                !feature.Values.Any(value => value.Id == assignment.ValueId))
+                throw new InvalidDataException($"{owner} names an unknown feature value '{assignment.FeatureId}/{assignment.ValueId}'.");
+            if (!seen.Add(assignment.FeatureId))
+                throw new InvalidDataException($"{owner} assigns feature '{assignment.FeatureId}' more than once.");
         }
     }
 
@@ -460,13 +546,15 @@ internal static class SampleBuilder
                 string.IsNullOrWhiteSpace(spec.Description) ? spec.Disclaimer : spec.Description);
             cache.LangProject.MorphologicalDataOA.ParserParameters = ParserParametersXml;
             var positions = AddPartsOfSpeech(cache, spec);
-            AddStems(cache, spec, positions);
+            var inflectionClasses = AddInflectionClasses(cache, spec, positions);
+            var features = AddFeatureDefinitions(cache, spec);
+            AddStems(cache, spec, positions, inflectionClasses, features);
             var phonemes = AddPhonemes(cache, spec);
             AddNaturalClasses(cache, spec, phonemes);
             var environments = AddEnvironments(cache, spec);
             var slots = AddAffixSlots(cache, spec, positions);
             AddAffixTemplates(cache, spec, positions, slots);
-            AddAffixes(cache, spec, positions, slots, environments);
+            AddAffixes(cache, spec, positions, slots, environments, inflectionClasses, features);
             AddTexts(cache, spec);
         });
     }
@@ -485,11 +573,80 @@ internal static class SampleBuilder
         return positions;
     }
 
-    private static void AddStems(
+    private static Dictionary<string, IMoInflClass> AddInflectionClasses(
         LcmCache cache, SampleSpec spec, IReadOnlyDictionary<string, IPartOfSpeech> positions)
     {
+        var result = new Dictionary<string, IMoInflClass>(StringComparer.Ordinal);
+        foreach (var source in spec.InflectionClasses)
+        {
+            var inflectionClass = cache.ServiceLocator.GetInstance<IMoInflClassFactory>().Create(
+                Ids.Create(spec.Id, "inflection-class/" + source.Id));
+            var partOfSpeech = positions[source.PartOfSpeech];
+            partOfSpeech.InflectionClassesOC.Add(inflectionClass);
+            inflectionClass.Name.set_String(cache.DefaultAnalWs, source.Name);
+            if (partOfSpeech.DefaultInflectionClassRA is null)
+                partOfSpeech.DefaultInflectionClassRA = inflectionClass;
+            result.Add(source.Id, inflectionClass);
+        }
+        return result;
+    }
+
+    private static Dictionary<string, FeatureDefinitionHandle> AddFeatureDefinitions(LcmCache cache, SampleSpec spec)
+    {
+        var result = new Dictionary<string, FeatureDefinitionHandle>(StringComparer.Ordinal);
+        foreach (var source in spec.FeatureDefinitions)
+        {
+            var feature = cache.ServiceLocator.GetInstance<IFsClosedFeatureFactory>().Create(
+                Ids.Create(spec.Id, "feature/" + source.Id));
+            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(feature);
+            feature.Name.set_String(cache.DefaultAnalWs, source.Name);
+            feature.Abbreviation.set_String(cache.DefaultAnalWs, source.Abbreviation);
+            var values = new Dictionary<string, IFsSymFeatVal>(StringComparer.Ordinal);
+            foreach (var valueSource in source.Values)
+            {
+                var value = cache.ServiceLocator.GetInstance<IFsSymFeatValFactory>().Create(
+                    Ids.Create(spec.Id, "feature/" + source.Id + "/value/" + valueSource.Id));
+                feature.ValuesOC.Add(value);
+                value.Name.set_String(cache.DefaultAnalWs, valueSource.Name);
+                value.Abbreviation.set_String(cache.DefaultAnalWs, valueSource.Abbreviation);
+                values.Add(valueSource.Id, value);
+            }
+            result.Add(source.Id, new FeatureDefinitionHandle(feature, values));
+        }
+        return result;
+    }
+
+    private static IFsFeatStruc? CreateFeatureStructure(
+        LcmCache cache,
+        string sampleId,
+        string identity,
+        IReadOnlyList<FeatureAssignmentSpec> assignments,
+        IReadOnlyDictionary<string, FeatureDefinitionHandle> features)
+    {
+        if (assignments.Count == 0) return null;
+        var structure = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create(
+            Ids.Create(sampleId, identity));
+        foreach (var assignment in assignments)
+        {
+            var feature = features[assignment.FeatureId];
+            var specification = cache.ServiceLocator.GetInstance<IFsClosedValueFactory>().Create(
+                Ids.Create(sampleId, identity + "/" + assignment.FeatureId));
+            structure.FeatureSpecsOC.Add(specification);
+            specification.FeatureRA = feature.Feature;
+            specification.ValueRA = feature.Values[assignment.ValueId];
+        }
+        return structure;
+    }
+
+    private static void AddStems(
+        LcmCache cache,
+        SampleSpec spec,
+        IReadOnlyDictionary<string, IPartOfSpeech> positions,
+        IReadOnlyDictionary<string, IMoInflClass> inflectionClasses,
+        IReadOnlyDictionary<string, FeatureDefinitionHandle> features)
+    {
         foreach (var stem in spec.Stems)
-            AddStem(cache, spec.Id, stem, positions[stem.PartOfSpeech]);
+            AddStem(cache, spec.Id, stem, positions[stem.PartOfSpeech], inflectionClasses, features);
     }
 
     private static void SetVernacularWritingSystem(LcmCache cache, string tag)
@@ -508,7 +665,13 @@ internal static class SampleBuilder
         writingSystems.CurrentVernacularWritingSystems.Insert(0, vernacular);
     }
 
-    private static void AddStem(LcmCache cache, string sampleId, StemSpec stem, IPartOfSpeech partOfSpeech)
+    private static void AddStem(
+        LcmCache cache,
+        string sampleId,
+        StemSpec stem,
+        IPartOfSpeech partOfSpeech,
+        IReadOnlyDictionary<string, IMoInflClass> inflectionClasses,
+        IReadOnlyDictionary<string, FeatureDefinitionHandle> features)
     {
         var services = cache.ServiceLocator;
         var entry = services.GetInstance<ILexEntryFactory>().Create(
@@ -523,6 +686,12 @@ internal static class SampleBuilder
             Ids.Create(sampleId, "stem/" + stem.Id + "/msa"));
         entry.MorphoSyntaxAnalysesOC.Add(msa);
         msa.PartOfSpeechRA = partOfSpeech;
+        if (stem.InflectionClass is { } classId)
+            msa.InflectionClassRA = inflectionClasses[classId];
+        var stemFeatures = CreateFeatureStructure(cache, sampleId, "stem/" + stem.Id + "/features",
+            stem.Features ?? [], features);
+        if (stemFeatures is not null)
+            msa.MsFeaturesOA = stemFeatures;
 
         var sense = services.GetInstance<ILexSenseFactory>().Create(
             Ids.Create(sampleId, "stem/" + stem.Id + "/sense"));
@@ -637,7 +806,9 @@ internal static class SampleBuilder
         SampleSpec spec,
         IReadOnlyDictionary<string, IPartOfSpeech> positions,
         IReadOnlyDictionary<string, IMoInflAffixSlot> slots,
-        IReadOnlyDictionary<string, IPhEnvironment> environments)
+        IReadOnlyDictionary<string, IPhEnvironment> environments,
+        IReadOnlyDictionary<string, IMoInflClass> inflectionClasses,
+        IReadOnlyDictionary<string, FeatureDefinitionHandle> features)
     {
         foreach (var affix in spec.Affixes)
         {
@@ -651,14 +822,32 @@ internal static class SampleBuilder
                     Ids.Create(spec.Id, "affix/" + affix.Id + "/allomorph/" + source.Id));
                 if (index == 0) entry.LexemeFormOA = allomorph;
                 else entry.AlternateFormsOS.Add(allomorph);
-                allomorph.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>()
-                    .GetObject(MoMorphTypeTags.kguidMorphSuffix);
+                var morphType = source.MorphType switch
+                {
+                    "prefix" => MoMorphTypeTags.kguidMorphPrefix,
+                    "infix" => MoMorphTypeTags.kguidMorphInfix,
+                    _ => MoMorphTypeTags.kguidMorphSuffix,
+                };
+                allomorph.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>().GetObject(morphType);
                 allomorph.Form.set_String(cache.DefaultVernWs, source.Form);
                 if (source.Environment is not null)
                     allomorph.PhoneEnvRC.Add(environments[source.Environment]);
+                if (source.PositionEnvironment is not null)
+                    allomorph.PositionRS.Add(environments[source.PositionEnvironment]);
+                foreach (var classId in source.InflectionClasses ?? [])
+                    allomorph.InflectionClassesRC.Add(inflectionClasses[classId]);
+                var environmentFeatures = CreateFeatureStructure(cache, spec.Id,
+                    "affix/" + affix.Id + "/allomorph/" + source.Id + "/required-features",
+                    source.RequiredFeatures ?? [], features);
+                if (environmentFeatures is not null)
+                    allomorph.MsEnvFeaturesOA = environmentFeatures;
             }
             var msa = services.GetInstance<IMoInflAffMsaFactory>().Create(
                 entry, SandboxGenericMSA.Create(MsaType.kInfl, positions[affix.PartOfSpeech]));
+            var inflectionFeatures = CreateFeatureStructure(cache, spec.Id,
+                "affix/" + affix.Id + "/inflection-features", affix.Features ?? [], features);
+            if (inflectionFeatures is not null)
+                msa.InflFeatsOA = inflectionFeatures;
             foreach (var slotId in affix.Slots)
                 msa.SlotsRC.Add(slots[slotId]);
             var sense = services.GetInstance<ILexSenseFactory>().Create(
