@@ -16,6 +16,7 @@ public static class RefusalCodes
 {
     public const string ApplyAppliedContentMismatch = "apply.applied-content-mismatch";
     public const string ApplyChangeNoLongerFits = "apply.change-no-longer-fits";
+    public const string ApplyChangeUncertain = "apply.change-uncertain";
     public const string ApplyChangesChanged = "apply.changes-changed";
     public const string ApplyDrift = "apply.drift";
     public const string ApplyDryRunMissing = "apply.dry-run-missing";
@@ -49,6 +50,9 @@ public static class RefusalCodes
     public const string ChangeNoEffect = "change.no-effect";
     public const string ChangeNotFound = "change.not-found";
     public const string ChangeProjectSaving = "change.project-saving";
+    public const string ChangeOccurrenceUnavailable = "change.occurrence-unavailable";
+    public const string ChangeOccurrenceWordformMismatch = "change.occurrence-wordform-mismatch";
+    public const string ChangeReconfirmNotAllowed = "change.reconfirm-not-allowed";
     public const string ChangeReadingMissing = "change.reading-missing";
     public const string ChangeRefreshRequired = "change.refresh-required";
     public const string ChangeRevisionConflict = "change.revision-conflict";

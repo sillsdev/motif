@@ -23,7 +23,10 @@ public sealed record TextWordsProjectedText(
 public sealed record TextWordsProjectedLine(
     int Number,
     string Sentence,
-    IReadOnlyList<TextWordsProjectedToken> Tokens);
+    IReadOnlyList<TextWordsProjectedToken> Tokens,
+    Guid ParagraphId,
+    Guid SegmentId,
+    bool ParseIsCurrent);
 
 /// <summary>
 /// One source token and all ordered wordform alternatives that contribute to Text words. A word token names its
@@ -37,7 +40,9 @@ public sealed record TextWordsProjectedToken(
     string? AnalysisKey,
     string? WordGloss,
     string? Category,
-    FieldWorksLinkTarget? WordLinkTarget);
+    FieldWorksLinkTarget? WordLinkTarget,
+    int OccurrenceIndex,
+    Guid? AnalysisId);
 
 /// <summary>Project-level analysis standing for one wordform in the Baseline.</summary>
 public sealed record TextWordsProjectedWordform(

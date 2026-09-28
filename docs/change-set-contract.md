@@ -214,15 +214,28 @@ analysis, and removing an owned analysis requires separate reference and ownersh
 
 Each collected operation carries a nonsemantic `extensions.changeFit` fingerprint: wordform id,
 optional existing analysis id, wordform form, content digest for an existing analysis or parser
-reading, and the Baseline token against which it was collected. Preflight checks these against the
-live project and reports `still fits` or `no longer fits` per operation. Apply repeats the check
-and refuses any nonfitting change, including under `--force`. Removing nonfitting operations from
+reading, and the Baseline token against which it was collected. An analysis opinion change may also
+carry occurrence evidence: the Text, paragraph, Segment and zero-based index in `Segment.Analyses`,
+the wordform and analysis at that occurrence, whether its paragraph parse was current, and a digest of
+the Segment's ordered word tokens. The digest uses canonical JSON over wordform identity and NFD form;
+punctuation and spacing are omitted. This evidence is nonsemantic and does not contribute to intent.
+
+Preflight checks the fingerprint against the live project and reports `fits`, `uncertain`, or
+`no-longer-fits` per operation. If the analysis decision itself still fits but the anchored occurrence
+is missing or ambiguous, its Segment changed, its parse is stale, or its ordered words differ, the
+result is `uncertain` and includes a reason with before and after word tokens. A semantic fit failure
+takes precedence. Apply repeats the check and refuses both uncertain and nonfitting changes, including
+under `--force`. Removing nonfitting operations from
 the Draft removes their declared dependents as well and leaves unrelated changes intact. Reopening
 and finalizing after a removal produces a new revision and clears its old bound Dry Run; the new
 revision needs its own Dry Run before Apply. Review is an App screen for reading reports. It records
 no Decision and grants no Apply permission; computed Readiness remains the Apply gate.
-Any future rebase may refresh Baseline evidence or unambiguous anchors; it cannot retarget a wordform,
-choose another analysis, change an opinion, or reorder the declared morphs.
+`reconfirm-pending-change` refreshes one uncertain change's occurrence evidence against the current
+Baseline only after the change still fits. Like Rebase, it refreshes Baseline-relative evidence without
+changing the target, verb, value, identity, or operation order, so the Proposal's intent digest stays
+the same. Recheck may renew a Baseline token for an uncertain change, but does not replace its occurrence
+evidence. These verbs cannot retarget a wordform, choose another analysis decision, change an opinion,
+or reorder the declared morphs.
 
 ## IDs and GUID mapping
 

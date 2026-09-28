@@ -1,11 +1,14 @@
 using System.Text.Json;
 using System.Security.Cryptography;
+using System.Threading;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
+using SIL.Motif.Worker.Baselines;
 using SIL.LCModel;
 
 namespace SIL.Motif.Commands;
@@ -14,7 +17,7 @@ namespace SIL.Motif.Commands;
 public sealed record ChangeFitFingerprint(
     string WordformId, string? AnalysisId, string WordformForm, string BaselineToken,
     string? AnalysisContentDigest = null, string? ReadingContentDigest = null, ParseAnalysis? Reading = null,
-    string? HumanOpinion = null, int? SpellingStatus = null);
+    string? HumanOpinion = null, int? SpellingStatus = null, OccurrenceFitEvidence? Occurrence = null);
 
 /// <summary>Checks collected changes against the saved project used by Review and Apply.</summary>
 public static class ChangeFitPreflight
@@ -25,6 +28,7 @@ public static class ChangeFitPreflight
         var result = new List<ChangeFitResult>();
         var objects = cache.ServiceLocator.ObjectRepository;
         var authoredChanges = AuthoredChangeOperationIds(proposal);
+        TextWordsProjection? occurrenceProjection = null;
         foreach (var operation in proposal.Operations)
         {
             if (operation.Extensions is not { } extensions)
@@ -175,8 +179,27 @@ public static class ChangeFitPreflight
                     "The collected change's Baseline is no longer current.", fingerprint.BaselineToken));
                 continue;
             }
+            var changeId = Property(extensions, "changeId");
+            if (fingerprint.Occurrence is { } occurrence)
+            {
+                occurrenceProjection ??= TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
+                if (OccurrenceFitEvidenceResolver.Compare(occurrence, occurrenceProjection) is { } uncertainty)
+                {
+                    result.Add(new ChangeFitResult(operation.OperationId.Value, false,
+                        uncertainty.Reason, fingerprint.BaselineToken)
+                    {
+                        ChangeId = changeId,
+                        Status = "uncertain",
+                        Uncertainty = uncertainty,
+                    });
+                    continue;
+                }
+            }
             result.Add(new ChangeFitResult(operation.OperationId.Value, true,
-                "Still fits the live project.", fingerprint.BaselineToken));
+                "Still fits the live project.", fingerprint.BaselineToken)
+            {
+                ChangeId = changeId,
+            });
         }
         return result;
     }
@@ -198,6 +221,10 @@ public static class ChangeFitPreflight
         }
         return ids;
     }
+
+    private static string? Property(JsonElement value, string name) =>
+        value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) &&
+        property.ValueKind == JsonValueKind.String ? property.GetString() : null;
 
     public static string ContentDigest(IWfiAnalysis analysis) => Digest(analysis.MorphBundlesOS.Select(bundle => new
     {

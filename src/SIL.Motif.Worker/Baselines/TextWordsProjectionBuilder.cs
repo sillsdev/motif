@@ -50,8 +50,9 @@ public static class TextWordsProjectionBuilder
                 lineNumber++;
                 var sentence = segment.BaselineText?.Text ?? string.Empty;
                 var tokens = occurrencesBySegment[segment]
-                    .Select(occurrence => ReadToken(cache, occurrence.Analysis, wordforms, analyses)).ToArray();
-                lines.Add(new TextWordsProjectedLine(lineNumber, sentence, tokens));
+                    .Select(occurrence => ReadToken(cache, occurrence, wordforms, analyses)).ToArray();
+                lines.Add(new TextWordsProjectedLine(lineNumber, sentence, tokens, paragraph.Guid,
+                    segment.Guid, paragraph.ParseIsCurrent));
             }
         }
 
@@ -59,12 +60,14 @@ public static class TextWordsProjectionBuilder
     }
 
     private static TextWordsProjectedToken ReadToken(
-        LcmCache cache, IAnalysis analysis, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
+        LcmCache cache, AnalysisOccurrence occurrence, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
         Dictionary<string, TextWordsProjectedAnalysis> analyses)
     {
+        var analysis = occurrence.Analysis;
         if (analysis is IPunctuationForm punctuation)
             return new TextWordsProjectedToken(
-                punctuation.Form?.Text ?? string.Empty, [], null, null, null, null, null, null);
+                punctuation.Form?.Text ?? string.Empty, [], null, null, null, null, null, null,
+                occurrence.Index, null);
 
         var (wordform, wfiAnalysis) = analysis switch
         {
@@ -96,7 +99,7 @@ public static class TextWordsProjectionBuilder
         // Its own wordform, never a lookup by spelling: another wordform can share the spelling and win the lookup.
         var wordLinkTarget = tokenText.Length == 0 ? null : FieldWorksLinks.TargetFor(cache, wordform);
         return new TextWordsProjectedToken(tokenText, forms, wordform.Guid, status, analysisKey,
-            chosenWordGloss, category, wordLinkTarget);
+            chosenWordGloss, category, wordLinkTarget, occurrence.Index, wfiAnalysis?.Guid);
     }
 
     private static TextWordsProjectedWordform ReadWordform(LcmCache cache, IWfiWordform wordform)

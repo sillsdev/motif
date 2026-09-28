@@ -3,6 +3,9 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Runner.Composers;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -93,6 +96,65 @@ public sealed class AgentChangesArgvTests : IDisposable
         Assert.Single(retried.Changes, change => change.ChangeId == secondId);
     }
 
+    [Fact]
+    public async Task AnEditedSentenceReturnsUncertainEvidenceInJson()
+    {
+        var scenario = await PrepareUncertainOccurrence();
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(scenario.Project))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>()
+                .GetObject(scenario.OtherWordformId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordform.Form.set_String(cache.DefaultVernWs, "changed-cli-second-word"));
+            new FwDataProjectLoader().Save(cache);
+        }
+        File.SetLastWriteTimeUtc(scenario.Project,
+            File.GetLastWriteTimeUtc(scenario.Project).AddMinutes(1));
+        await CaptureBaseline(scenario.Project);
+        var beforeRecheck = await ReadPending(scenario.Project);
+
+        var response = await CliProcess.RunAsync(_workerRoot, null, true,
+            "recheck-pending-changes", "--project", scenario.Project,
+            "--expected-revision", beforeRecheck.Revision, "--json");
+        var rechecked = SuccessfulSnapshot(response);
+        var fit = Assert.Single(rechecked.FitSummary);
+
+        Assert.Equal("uncertain", fit.Status);
+        Assert.Equal("changed-cli-second-word", Assert.Single(fit.Uncertainty!.AfterTokens
+            .Where(token => token.Index == 1)).Form);
+    }
+
+    [Fact]
+    public async Task ReconfirmPendingChangeRunsThroughTheExecutable()
+    {
+        var scenario = await PrepareUncertainOccurrence();
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(scenario.Project))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>()
+                .GetObject(scenario.OtherWordformId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordform.Form.set_String(cache.DefaultVernWs, "changed-cli-second-word"));
+            new FwDataProjectLoader().Save(cache);
+        }
+        File.SetLastWriteTimeUtc(scenario.Project,
+            File.GetLastWriteTimeUtc(scenario.Project).AddMinutes(1));
+        await CaptureBaseline(scenario.Project);
+        var pending = await ReadPending(scenario.Project);
+        var checkedResult = await CliProcess.RunAsync(_workerRoot, null, true,
+            "recheck-pending-changes", "--project", scenario.Project,
+            "--expected-revision", pending.Revision, "--json");
+        var uncertain = SuccessfulSnapshot(checkedResult);
+        var change = Assert.Single(uncertain.Changes);
+
+        var result = await CliProcess.RunAsync(_workerRoot, null, true,
+            "reconfirm-pending-change", "--project", scenario.Project,
+            "--expected-revision", uncertain.Revision, "--change-id", change.ChangeId, "--json");
+        var reconfirmed = SuccessfulSnapshot(result);
+
+        Assert.Equal("fits", Assert.Single(reconfirmed.FitSummary).Status);
+        Assert.NotEqual(uncertain.Revision, reconfirmed.Revision);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }
@@ -105,6 +167,41 @@ public sealed class AgentChangesArgvTests : IDisposable
         var result = await CliProcess.RunAsync(_workerRoot, null, false,
             "baseline", "capture", project, "--json");
         Assert.True(result.ExitCode == 0, result.FailureDetails);
+    }
+
+    private async Task<CliOccurrenceScenario> PrepareUncertainOccurrence()
+    {
+        using var cache = _pristine.NewScratch();
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
+        var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>()
+            .GetObject(text.FirstParagraphId);
+        Guid otherWordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var otherWordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("cli-second-word", cache.DefaultVernWs));
+            otherWordformId = otherWordform.Guid;
+            paragraph.SegmentsOS[0].AnalysesRS.Insert(1, otherWordform);
+            paragraph.ParseIsCurrent = true;
+        });
+        var project = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        await CaptureBaseline(project);
+        var pending = await ReadPending(project);
+        var changeId = "cli-occurrence-" + Guid.NewGuid().ToString("N");
+        var added = await CliProcess.RunAsync(_workerRoot, null, true,
+            "put-pending-change", "--project", project,
+            "--expected-revision", pending.Revision,
+            "--change-id", changeId, "--kind", AnalysisChangeKinds.Reject,
+            "--word", SeededProject.AnalysedWordForm,
+            "--wordform-id", CanonicalId.FromGuid(text.AnalysedWordformId).Value,
+            "--stored-analysis-id", CanonicalId.FromGuid(text.ApprovedAnalysisId).Value,
+            "--occurrence-text-id", text.TextId.ToString("D"),
+            "--occurrence-paragraph-id", text.FirstParagraphId.ToString("D"),
+            "--occurrence-segment-id", text.FirstSegmentId.ToString("D"),
+            "--occurrence-index", "0", "--json");
+        Assert.Equal("fits", Assert.Single(SuccessfulSnapshot(added).FitSummary).Status);
+        return new CliOccurrenceScenario(project, text, otherWordformId);
     }
 
     private async Task<PendingChangesSnapshot> ReadPending(string project)
@@ -136,5 +233,8 @@ public sealed class AgentChangesArgvTests : IDisposable
         new FwDataProjectLoader().Save(cache);
         return SIL.Motif.Contract.Ids.CanonicalId.FromGuid(wordformId).Value;
     }
+
+    private sealed record CliOccurrenceScenario(string Project, SIL.Motif.Tests.TestFixtures.SeededText Text,
+        Guid OtherWordformId);
 
 }

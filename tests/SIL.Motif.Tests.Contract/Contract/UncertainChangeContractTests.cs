@@ -39,6 +39,14 @@ public sealed class UncertainChangeContractTests
         Assert.Contains("\"beforeTokens\"", json, StringComparison.Ordinal);
         Assert.Contains("\"afterTokens\"", json, StringComparison.Ordinal);
         Assert.Contains("\"wordformId\": \"wordform-after\"", json, StringComparison.Ordinal);
-        Assert.Equal(fit, ProjectionJson.Deserialize<ChangeFitResult>(json));
+        var restored = ProjectionJson.Deserialize<ChangeFitResult>(json)!;
+        Assert.Equal(fit.OperationId, restored.OperationId);
+        Assert.Equal(fit.StillFits, restored.StillFits);
+        Assert.Equal(fit.Reason, restored.Reason);
+        Assert.Equal(fit.BaselineToken, restored.BaselineToken);
+        Assert.Equal(fit.Status, restored.Status);
+        Assert.Equal(fit.Uncertainty!.Reason, restored.Uncertainty!.Reason);
+        Assert.Equal(fit.Uncertainty.BeforeTokens, restored.Uncertainty.BeforeTokens);
+        Assert.Equal(fit.Uncertainty.AfterTokens, restored.Uncertainty.AfterTokens);
     }
 }

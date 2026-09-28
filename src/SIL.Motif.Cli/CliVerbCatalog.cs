@@ -44,12 +44,17 @@ public static class CliVerbCatalog
             new[] { "put-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> --kind <kind> --word <word> [--wordform-id <id>] " +
                 "[--assessment <id> --reading-index <zero-based> --reading-json <json>] " +
-                "[--stored-analysis-id <id>] [--json]" }),
+                "[--stored-analysis-id <id>] [--occurrence-text-id <guid> " +
+                "--occurrence-paragraph-id <guid> --occurrence-segment-id <guid> " +
+                "--occurrence-index <zero-based>] [--json]" }),
         new CliVerbDescriptor("Commands", "remove-pending-change", "remove-pending-change",
             new[] { "remove-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> [--json]" }),
         new CliVerbDescriptor("Commands", "recheck-pending-changes", "recheck-pending-changes",
             new[] { "recheck-pending-changes --project <fwdata> --expected-revision <revision> [--json]" }),
+        new CliVerbDescriptor("Commands", "reconfirm-pending-change", "reconfirm-pending-change",
+            new[] { "reconfirm-pending-change --project <fwdata> --expected-revision <revision> " +
+                "--change-id <id> [--json]" }),
         new CliVerbDescriptor("Commands", "review-numbers", "review-numbers",
             new[] { "review-numbers --project <fwdata> [--from <assessmentId>] " +
                 "--to <assessmentId> --touched-words <count> [--json]" }),

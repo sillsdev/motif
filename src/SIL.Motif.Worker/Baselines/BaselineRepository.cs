@@ -302,10 +302,13 @@ public sealed class BaselineRepository
             return false;
         foreach (var line in text.Lines)
         {
-            if (line is null || line.Number < 1 || line.Sentence is null || line.Tokens is null) return false;
+            if (line is null || line.Number < 1 || line.Sentence is null || line.Tokens is null ||
+                line.ParagraphId == Guid.Empty || line.SegmentId == Guid.Empty) return false;
             foreach (var token in line.Tokens)
                 if (token is null || token.Text is null || token.Forms is null || token.Forms.Any(form => form is null) ||
                     (token.WordformId is null) != (token.Status is null) ||
+                    token.OccurrenceIndex < 0 ||
+                    (token.AnalysisId is null) != (token.AnalysisKey is null) ||
                     token.AnalysisKey is not null && !keys.Contains(token.AnalysisKey))
                     return false;
         }
