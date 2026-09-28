@@ -1,7 +1,9 @@
 using System.Text.Json;
 using System.Collections.Concurrent;
+using System.Globalization;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -247,7 +249,8 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(project, argv[1]);
         Assert.EndsWith("words.txt", argv[2], StringComparison.Ordinal);
         Assert.EndsWith("out.tsv", argv[3], StringComparison.Ordinal);
-        Assert.Equal(["--word-timeout-ms", "1500", "--step-cap", "50000000", "--threads", "1", "--stats", "--cache", cache], argv[4..]);
+        Assert.Equal(["--word-timeout-ms", "1500", "--step-cap",
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads", "1", "--stats", "--cache", cache], argv[4..]);
         Assert.True(File.Exists(cache));
     }
 
@@ -260,7 +263,8 @@ public sealed class PanGlossInvokerTests : IDisposable
         await invoker.RunAsync(
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), "test:batch", CancellationToken.None);
 
-        Assert.Equal(["--word-timeout-ms", "1000", "--step-cap", "50000000", "--threads", "1"], Argv(project)[4..]);
+        Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads", "1"], Argv(project)[4..]);
     }
 
     [Fact]
@@ -288,6 +292,21 @@ public sealed class PanGlossInvokerTests : IDisposable
             "test:batch-budget", CancellationToken.None);
 
         Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--threads", "1"], Argv(project)[4..]);
+    }
+
+    [Fact]
+    public async Task TryAWordTraceSendsNeitherPerWordLimit()
+    {
+        var project = Project("trace-unbounded");
+        using var invoker = Invoker();
+
+        await invoker.RunAsync(new PanGlossRequest.Trace(project, "motifa"),
+            "test:trace", CancellationToken.None, Timeout.InfiniteTimeSpan);
+
+        Assert.Equal(["parse", project, "motifa", "--trace", "--trace-format", "json", "--trace-details"],
+            Argv(project));
+        Assert.DoesNotContain("--step-cap", Argv(project));
+        Assert.DoesNotContain("--word-timeout-ms", Argv(project));
     }
 
     [Theory]

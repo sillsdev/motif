@@ -59,6 +59,9 @@ public sealed partial class FakeCommandClient : ICommandClient
             [new AssessmentScopeProjection("default", "all words", "pangloss", [], 1000,
                 SIL.Motif.Contract.Assess.StepCap.Default)]));
 
+    private Func<string, CancellationToken, Task<CommandOutcome<ParserStepRate>>> _readParserStepRate =
+        (_, _) => Completed(StepLimitEstimator.TypicalMachineRate);
+
     public List<BaselineCaptureRequest> CaptureBaselineRequests { get; } = [];
     public List<AssessRequest> AssessRequests { get; } = [];
     public List<StatsRequest> StatsRequests { get; } = [];
@@ -69,6 +72,7 @@ public sealed partial class FakeCommandClient : ICommandClient
     public List<SetDefaultSelectionRequest> SetDefaultSelectionRequests { get; } = [];
     public List<SkipSetupRequest> SkipSetupRequests { get; } = [];
     public List<ShowConfigRequest> ShowConfigRequests { get; } = [];
+    public List<string> ParserStepRateRequests { get; } = [];
     public Func<ReadDefaultSelectionRequest, CancellationToken,
         Task<CommandOutcome<DefaultSelectionResponse>>>? DefaultSelectionHandler { get; set; }
 
@@ -188,6 +192,10 @@ public sealed partial class FakeCommandClient : ICommandClient
             Task<CommandOutcome<ProjectConfigurationProjection>>> behavior) =>
         _showConfig = behavior;
 
+    public void OnReadParserStepRate(
+        Func<string, CancellationToken, Task<CommandOutcome<ParserStepRate>>> behavior) =>
+        _readParserStepRate = behavior;
+
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken)
     {
@@ -239,6 +247,13 @@ public sealed partial class FakeCommandClient : ICommandClient
     {
         ShowConfigRequests.Add(request);
         return _showConfig(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<ParserStepRate>> ReadParserStepRateAsync(
+        string projectPath, CancellationToken cancellationToken)
+    {
+        ParserStepRateRequests.Add(projectPath);
+        return _readParserStepRate(projectPath, cancellationToken);
     }
 
     public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(

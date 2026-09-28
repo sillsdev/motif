@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using SIL.Motif.App.Services;
@@ -38,8 +37,6 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, true);
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, false);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Time limit per word, in seconds",
-                2.7m.ToString(CultureInfo.CurrentCulture));
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit per word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             var grammar = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar;
@@ -82,7 +79,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
             Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
                 text.Text == walkthrough.Workspace.Selection.SummaryText && text.IsVisible);
-            Assert.Equal(2.7m, walkthrough.Workspace.Selection.PerWordTimeLimitSeconds);
+            Assert.Equal(1m, walkthrough.Workspace.Selection.PerWordTimeLimitSeconds);
             Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
             var commands = Assert.IsType<CommandClient>(walkthrough.Workspace.Context.Commands);
@@ -90,7 +87,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 new ReadDefaultSelectionRequest(project.FwDataPath), CancellationToken.None);
             Assert.True(stored.Succeeded, stored.Refusal?.Message);
             Assert.Equal(selectedId, Assert.Single(stored.Value!.Selection!.TextIds));
-            Assert.Equal(2700, stored.Value.Selection.PerWordLimitMs);
+            Assert.Equal(1000, stored.Value.Selection.PerWordLimitMs);
             Assert.Equal(3100, stored.Value.Selection.PerWordStepLimit!.Steps);
 
             SetupWalkthroughActions.OpenConfigure(walkthrough);
@@ -100,7 +97,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.False(walkthrough.Workspace.Context.Setup.Selection.Texts
                 .Single(text => text.Title == TwoTextWalkthroughProject.SecondTextTitle).IsChecked);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            Assert.Equal(2.7m, walkthrough.Find<NumericUpDown>("Time limit per word, in seconds").Value);
+            Assert.Contains("At this limit a word takes up to about", setup.StepLimitEstimateText, StringComparison.Ordinal);
             Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Parser step limit per word").Value);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             walkthrough.Click("Use this Selection");

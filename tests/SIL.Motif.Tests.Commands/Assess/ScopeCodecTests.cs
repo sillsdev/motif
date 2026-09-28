@@ -73,4 +73,18 @@ public sealed class ScopeCodecTests
 
         Assert.Equal(StepCap.Unbounded, stored.PerWordStepLimit);
     }
+
+    [Fact]
+    public void TrialWritesAndReadsNoPerWordTimeLimit()
+    {
+        var json = ScopeCodec.Write(new StoredScope.Trial(
+            "assess", ["motifa"], [AssessmentKind.ParseTime], null, StepCap.Unbounded));
+
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.TryGetProperty("perWordLimitMs", out var limit));
+        Assert.Equal(JsonValueKind.Null, limit.ValueKind);
+        var stored = ScopeCodec.ReadTrial(json, "report");
+        Assert.Null(stored.PerWordLimit);
+        Assert.Equal(StepCap.Unbounded, stored.PerWordStepLimit);
+    }
 }

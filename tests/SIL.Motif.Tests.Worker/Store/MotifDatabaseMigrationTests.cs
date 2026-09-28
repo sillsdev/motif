@@ -257,7 +257,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "IngestedUtc|TEXT|1|0|", "Licence|TEXT|0|0|", "CapabilitiesJson|TEXT|0|0|", "AttributesJson|TEXT|0|0|"],
             ["AssessmentInvocations"] = ["InvocationId|TEXT|0|1|", "EvidenceJson|TEXT|1|0|"],
             ["NamedSelections"] = ["SelectionName|TEXT|0|1|", "TextIdsJson|TEXT|1|0|", "AddedWordsJson|TEXT|1|0|",
-                "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "PerWordLimitMs|INTEGER|1|0|",
+                "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "PerWordLimitMs|INTEGER|0|0|",
                 "PerWordStepLimit|INTEGER|0|0|"],
             ["DefaultSelection"] = ["Id|INTEGER|0|1|", "SelectionName|TEXT|1|0|"],
             ["Assessments"] = ["AssessmentId|TEXT|0|1|", "SelectionName|TEXT|1|0|", "SelectionWordsJson|TEXT|1|0|",

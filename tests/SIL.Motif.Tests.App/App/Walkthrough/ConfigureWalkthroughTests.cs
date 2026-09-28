@@ -201,7 +201,6 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
         walkthrough.Workspace.Selection.Texts[0].IsChecked = true;
         walkthrough.Type("Words to add", AddedWord);
         setup.NextCommand.Execute(null);
-        walkthrough.Workspace.Selection.PerWordTimeLimitSeconds = 2.5m;
         setup.StepLimitSteps = 4321;
         setup.NextCommand.Execute(null);
         walkthrough.Click("Start first run");
@@ -250,7 +249,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
         var selection = walkthrough.Workspace.Context.Setup!.Selection;
         Assert.True(Assert.Single(selection.Texts).IsChecked, $"the saved Text is not checked {when}");
         Assert.Equal(AddedWord, selection.PastedWords);
-        Assert.Equal(2.5m, selection.PerWordTimeLimitSeconds);
+        Assert.Equal(1m, selection.PerWordTimeLimitSeconds);
         Assert.Equal(4321m, walkthrough.Workspace.Context.Setup.StepLimitSteps);
         Assert.Equal("Use this Selection", walkthrough.Workspace.Context.Setup.FinishButtonText);
     }

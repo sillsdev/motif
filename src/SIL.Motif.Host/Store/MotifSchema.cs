@@ -320,7 +320,7 @@ public static class MotifSchema
         "NamedSelections" =>
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
-            C("PerWordLimitMs", "INTEGER", true), C("PerWordStepLimit", "INTEGER")],
+            C("PerWordLimitMs", "INTEGER"), C("PerWordStepLimit", "INTEGER")],
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "GrammarChecks" =>
         [C("BaselineToken", "TEXT", false, 1), C("SelectionSha256", "TEXT", true),
@@ -537,7 +537,7 @@ public static class MotifSchema
             AddedWordsJson TEXT NOT NULL,
             CreatedUtc TEXT NOT NULL,
             UpdatedUtc TEXT NOT NULL,
-            PerWordLimitMs INTEGER NOT NULL CHECK (PerWordLimitMs > 0),
+            PerWordLimitMs INTEGER NULL CHECK (PerWordLimitMs IS NULL OR PerWordLimitMs > 0),
             PerWordStepLimit INTEGER NULL CHECK (PerWordStepLimit IS NULL OR PerWordStepLimit > 0)
         );
 

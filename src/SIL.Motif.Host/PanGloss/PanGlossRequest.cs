@@ -37,7 +37,7 @@ public abstract record PanGlossRequest
     /// on deep-truncation grammars, and the queue already serialises parsers machine-wide.
     /// </summary>
     public sealed record Batch(
-        string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan PerWordLimit, string? StatsCachePath = null,
+        string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan? PerWordLimit, string? StatsCachePath = null,
         StepCap? PerWordStepLimit = null, string? ArtifactDirectory = null)
         : PanGlossRequest
     {
@@ -52,7 +52,7 @@ public abstract record PanGlossRequest
         {
             if (string.IsNullOrWhiteSpace(ProjectFilePath)) throw new ArgumentException("Required.", nameof(ProjectFilePath));
             ArgumentNullException.ThrowIfNull(Words);
-            if (PerWordLimit <= TimeSpan.Zero)
+            if (PerWordLimit is { } timeLimit && timeLimit <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(PerWordLimit), "A per-word limit must be positive.");
             if (!File.Exists(ProjectFilePath))
                 throw new FileNotFoundException("The project file the parser must read does not exist.", ProjectFilePath);
@@ -67,8 +67,11 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(ProjectFilePath);
             startInfo.ArgumentList.Add(Path.Combine(scratch, "words.txt"));
             startInfo.ArgumentList.Add(Path.Combine(scratch, "out.tsv"));
-            startInfo.ArgumentList.Add("--word-timeout-ms");
-            startInfo.ArgumentList.Add(((int)PerWordLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
+            if (PerWordLimit is { } timeLimit)
+            {
+                startInfo.ArgumentList.Add("--word-timeout-ms");
+                startInfo.ArgumentList.Add(((int)timeLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
+            }
             startInfo.ArgumentList.Add("--step-cap");
             startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToArgument());
             startInfo.ArgumentList.Add("--threads");

@@ -80,7 +80,7 @@ internal static class SetupWalkthroughActions
     }
 
     internal static void FinishFirstRun(
-        WalkthroughWindow walkthrough, string selectedText, string timeLimit, string stepLimit,
+        WalkthroughWindow walkthrough, string selectedText, string stepLimit,
         TimeSpan timeout)
     {
         var setup = walkthrough.Workspace.Context.Setup!;
@@ -88,7 +88,6 @@ internal static class SetupWalkthroughActions
         Assert.Equal(1, setup.Step);
         SetSetupTextChecked(walkthrough, selectedText, true);
         ClickSetupButton(walkthrough, "Next: limits");
-        TypeSetupLimit(walkthrough, "Time limit per word, in seconds", timeLimit);
         TypeSetupLimit(walkthrough, "Parser step limit per word", stepLimit);
         ClickSetupButton(walkthrough, "Next: first run");
         Assert.Equal(3, setup.Step);

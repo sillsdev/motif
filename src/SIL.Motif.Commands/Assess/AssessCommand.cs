@@ -136,6 +136,7 @@ public static class AssessCommand
             SelectionRequest selectionRequest;
             string? namedSelection = null;
             int? defaultPerWordLimitMs = null;
+            var usesDefaultSelection = request.Selection is null;
             if (request.Selection is null)
             {
                 var saved = namedSelections.GetDefault();
@@ -181,10 +182,14 @@ public static class AssessCommand
                         "assess.unsupported-kind", FailureReason.Refused,
                         $"The Assessor does not declare required Assessment kind '{unsupported[0]}'.",
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
-                scope = new AssessmentScope(composition.Selection.Words, collected,
-                    request.PerWordLimitMs is { } ms ? TimeSpan.FromMilliseconds(ms)
-                        : defaultPerWordLimitMs is { } savedMs ? TimeSpan.FromMilliseconds(savedMs) : configured.PerWordLimit,
-                    request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ?? configured.PerWordStepLimit);
+                var stepLimit = request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ?? configured.PerWordStepLimit;
+                TimeSpan? timeLimit = request.PerWordLimitMs is { } ms
+                    ? TimeSpan.FromMilliseconds(ms)
+                    : stepLimit.IsUnbounded ? null
+                    : usesDefaultSelection
+                        ? defaultPerWordLimitMs is { } savedMs ? TimeSpan.FromMilliseconds(savedMs) : null
+                        : configured.PerWordLimit;
+                scope = new AssessmentScope(composition.Selection.Words, collected, timeLimit, stepLimit);
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection..."));
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();

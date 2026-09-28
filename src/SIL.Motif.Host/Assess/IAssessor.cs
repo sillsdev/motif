@@ -66,12 +66,12 @@ public static class AssessmentKindNames
 public sealed record AssessmentScope
 {
     public AssessmentScope(
-        IReadOnlyList<string> words, IReadOnlyList<AssessmentKind> collect, TimeSpan perWordLimit,
+        IReadOnlyList<string> words, IReadOnlyList<AssessmentKind> collect, TimeSpan? perWordLimit,
         StepCap? perWordStepLimit = null)
     {
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(collect);
-        if (perWordLimit <= TimeSpan.Zero)
+        if (perWordLimit is { } finiteLimit && finiteLimit <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
 
         Words = words;
@@ -89,8 +89,8 @@ public sealed record AssessmentScope
     /// </summary>
     public IReadOnlyList<AssessmentKind> Collect { get; }
 
-    /// <summary>The per-word time cap; differences annotate comparisons without blocking them.</summary>
-    public TimeSpan PerWordLimit { get; }
+    /// <summary>The per-word time cap, or null for no time cap; the step cap remains independently applicable.</summary>
+    public TimeSpan? PerWordLimit { get; }
 
     /// <summary>The per-word step cap, or an explicit request for no step cap.</summary>
     public StepCap PerWordStepLimit { get; }

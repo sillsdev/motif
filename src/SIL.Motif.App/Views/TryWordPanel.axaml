@@ -20,7 +20,7 @@
                                Text="Type a word to see how the grammar parses it, where it stops, and the rules on its way. Choosing a word on the Texts page brings it here." />
 
       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Trace.IsLoading}">
-        <views:CopyableTextBlock Classes="muted" Text="Tracing... this can take up to two minutes." VerticalAlignment="Center" />
+        <views:CopyableTextBlock Classes="muted" Text="Tracing... this can take a while. You can cancel at any time." VerticalAlignment="Center" />
         <Button Content="Cancel" Command="{Binding Trace.CancelCommand}"
                 AutomationProperties.Name="Cancel the trace" />
       </StackPanel>

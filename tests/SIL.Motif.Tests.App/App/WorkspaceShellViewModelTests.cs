@@ -215,8 +215,7 @@ public sealed class WorkspaceShellViewModelTests
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         workspace.Selection.Texts[0].IsChecked = true;
         workspace.Selection.PastedWords = "added word";
-        workspace.Selection.PerWordTimeLimitSeconds = 0.5m;
-        workspace.Context.Setup!.StepLimitSteps = 2345;
+        workspace.Context.Setup!.StepLimitSteps = SIL.Motif.Contract.Assess.StepCap.DefaultSteps;
         workspace.Context.Setup.Step = 3;
         fake.AssessCompletesWith(NewAssessResponse("first run"));
 
@@ -227,12 +226,13 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal([TextId], saved.TextIds);
         Assert.Equal(["added word"], saved.AddedWords);
         using var savedJson = JsonDocument.Parse(JsonSerializer.Serialize(saved));
-        Assert.Equal(500, savedJson.RootElement.GetProperty("PerWordLimitMs").GetInt32());
-        Assert.Equal(2345, savedJson.RootElement.GetProperty("PerWordStepLimit").GetProperty("steps").GetInt64());
+        Assert.Equal(40_000, savedJson.RootElement.GetProperty("PerWordLimitMs").GetInt32());
+        Assert.Equal(SIL.Motif.Contract.Assess.StepCap.DefaultSteps,
+            savedJson.RootElement.GetProperty("PerWordStepLimit").GetProperty("steps").GetInt64());
         var assess = Assert.Single(fake.AssessRequests);
         Assert.Null(assess.Selection);
-        Assert.Equal(500, assess.PerWordLimitMs);
-        Assert.Equal(new StepCap(2345), assess.PerWordStepLimit);
+        Assert.Equal(40_000, assess.PerWordLimitMs);
+        Assert.Equal(StepCap.Default, assess.PerWordStepLimit);
         Assert.False(workspace.Context.Setup.IsOpen);
     }
 
@@ -325,7 +325,11 @@ public sealed class WorkspaceShellViewModelTests
 
         await workspace.Context.Setup.FinishCommand.ExecuteAsync(null);
 
-        Assert.Equal(StepCap.Unbounded, Assert.Single(fake.AssessRequests).PerWordStepLimit);
+        var request = Assert.Single(fake.AssessRequests);
+        Assert.Equal(StepCap.Unbounded, request.PerWordStepLimit);
+        Assert.Null(request.PerWordLimitMs);
+        Assert.Null(Assert.Single(fake.SetDefaultSelectionRequests).PerWordLimitMs);
+        Assert.Contains("No step limit", workspace.Context.Setup!.StepLimitEstimateText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -419,7 +423,6 @@ public sealed class WorkspaceShellViewModelTests
         var setup = workspace.Context.Setup!;
         workspace.Selection.Texts[0].IsChecked = true;
         workspace.Selection.PastedWords = "added";
-        workspace.Selection.PerWordTimeLimitSeconds = 2.5m;
         setup.StepLimitSteps = 4321;
         setup.Step = 3;
         fake.AssessCompletesWith(NewAssessResponse("first run"));
@@ -430,7 +433,7 @@ public sealed class WorkspaceShellViewModelTests
 
         workspace.ConfigureCommand.Execute(null);
 
-        AssertConfigureShows(workspace, "added", 2.5m, 4321m);
+        AssertConfigureShows(workspace, "added", 1m, 4321m);
     }
 
     [Fact]
@@ -549,7 +552,7 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.Equal([TextId], workspace.Selection.ChosenTextIds);
         Assert.Equal("kept", workspace.Selection.PastedWords);
-        Assert.Equal("1 text, 1 pasted word, step cap 50,000,000", workspace.Selection.SummaryText);
+        Assert.Equal($"1 text, 1 pasted word, step cap {StepCap.DefaultSteps:N0}", workspace.Selection.SummaryText);
     }
 
     [Fact]

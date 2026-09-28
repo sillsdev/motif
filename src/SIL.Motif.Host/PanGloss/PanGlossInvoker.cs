@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Parser;
@@ -56,7 +57,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(label)) throw new ArgumentException("Required.", nameof(label));
         var cap = wallClockCap ?? DefaultWallClockCap;
-        if (cap <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(wallClockCap), "A cap must be positive.");
+        if (cap != Timeout.InfiniteTimeSpan && cap <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(wallClockCap), "A cap must be positive or infinite.");
         request.Validate();
 
         if (_executable is null)
@@ -259,7 +261,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     wordsPath, wordsDigest!,
                     tsvPath, tsvDigest,
                     stderrPath, BatchInvocationEvidence.DigestFile(stderrPath),
-                    (int)capturedBatch.PerWordLimit.TotalMilliseconds,
+                    capturedBatch.PerWordLimit is { } timeLimit
+                        ? (int)timeLimit.TotalMilliseconds : null,
                     capturedBatch.PerWordStepLimit ?? StepCap.Default,
                     1, capturedBatch.StatsCachePath is not null)
                 {
