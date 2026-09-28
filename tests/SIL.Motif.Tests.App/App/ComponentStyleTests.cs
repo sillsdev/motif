@@ -235,6 +235,44 @@ public sealed class ComponentStyleTests
         yield return new("Overview", "a handoff icon", host => Add(host,
                 new PathIcon { Classes = { "overviewHandoffIcon" } }),
             Control.WidthProperty, "Component.Overview.HandoffIconSize");
+
+        yield return new("OpinionMark", "an approved fill", host => Add(host, Box("opinionMark", "approved")),
+            Border.BackgroundProperty, "Intent.Opinion.Approved.Fill");
+        yield return new("OpinionMark", "an unknown mark's shape", host => Add(host, Box("opinionMark", "unknown")),
+            Border.CornerRadiusProperty, "Component.OpinionMark.UnknownRadius");
+        yield return new("PanGlossLine", "a different reading", host => Add(host, Box("panGlossLine", "different")),
+            Border.BackgroundProperty, "Intent.Agreement.Different.Fill");
+        yield return new("PanGlossLine", "an extra reading count", host => Add(host, Box("panGlossExtra")),
+            Border.BorderBrushProperty, "Intent.Change.Edge");
+        yield return new("ActionChip", "the primary action", host => Add(host, Press("actionChip", "primary")),
+            Button.HeightProperty, "Component.ActionChip.Height");
+        yield return new("ActionChip", "the Fix menu action", host => Add(host, Press("actionChip", "fix")),
+            Button.BorderBrushProperty, "Intent.Marking.Border");
+        yield return new("StagedStrip", "the staged change", host => Add(host, Box("stagedStrip")),
+            Border.BackgroundProperty, "Intent.Change.Fill");
+        yield return new("HoverReveal", "a hidden secondary action", RevealControl,
+            Control.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
+        yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
+            TextBlock.FontSizeProperty, "Component.Density.CompactType");
+        yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
+            TextBlock.FontSizeProperty, "Component.Density.NormalType");
+    }
+
+    private static Button RevealControl(Panel host)
+    {
+        var button = Press("revealControl");
+        Add(host, new Border { Classes = { "hoverReveal" }, Child = button });
+        return button;
+    }
+
+    private static TextBlock DensityText(Panel host, bool normal)
+    {
+        var root = new StackPanel { Classes = { "analysisDensity" } };
+        if (normal) root.Classes.Add("normal");
+        var text = Text("densitySample");
+        root.Children.Add(text);
+        host.Children.Add(root);
+        return text;
     }
 
     private static T Add<T>(Panel host, T control) where T : Control
