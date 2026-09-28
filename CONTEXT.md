@@ -120,6 +120,10 @@ alone. It is changed one analysis at a time, in its text. A staged change of Opi
 Apply", never as an Opinion of its own.
 _Avoid_: rejected, grade, verdict, no opinion, status
 
+**Read**:
+A word the linguist has looked at in Motif. Its opposite is **Unread**. It is kept in the Motif store and never sent to FieldWorks. It clears on its own, by the same fingerprint rules as a pending change: a new PanGloss result for the word, a change to its FieldWorks analyses or opinion, or a change to the sentence it was read in. The window colours Unread words and can show only those.
+_Avoid_: reviewed, checked, seen, approved, needs a look
+
 **Parser agreement**:
 Whether the current Assessment still produces what FieldWorks holds for a word, judged by the same-analysis
 rule of [ADR 0027](docs/adr/0027-what-counts-as-the-same-word-analysis.md): agreeing (an approved analysis
