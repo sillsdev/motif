@@ -227,6 +227,8 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
             var expectedPath = Path.Combine(sampleFolder, "expected.json");
             using var spec = JsonDocument.Parse(await File.ReadAllTextAsync(specPath));
             using var bugs = JsonDocument.Parse(await File.ReadAllTextAsync(bugsPath));
+            using var schema = JsonDocument.Parse(await File.ReadAllTextAsync(
+                Path.Combine(RepositoryRoot(), "samples", "sample.schema.json")));
             var definitions = bugs.RootElement.EnumerateArray().ToArray();
             var bugIds = definitions.Select(bug => bug.GetProperty("id").GetString()!).ToArray();
             var textCount = spec.RootElement.GetProperty("texts").EnumerateArray()
@@ -235,6 +237,9 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                     .Distinct(StringComparer.Ordinal).Count());
 
             using var fixedBuild = await BuildVariantAsync(root, specPath, bugsPath, [], "fixed");
+            var fixedGrammar = SampleGrammarHealth.AssertFixedProjectHasNoErrors(
+                fixedBuild.RootElement.GetProperty("projectPath").GetString()!, Path.Combine(root, "grammar-health", "fixed"));
+            AssertFixedWarningsDocumented(spec.RootElement, fixedGrammar);
             var fixedResult = await AssessTextsAsync(root, fixedBuild.RootElement, trace: true);
             Assert.Equal(textCount, fixedResult.Words);
             Assert.True(fixedResult.Words == fixedResult.Parsed,
@@ -284,6 +289,8 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
             }
 
             using var brokenBuild = await BuildVariantAsync(root, specPath, bugsPath, bugIds, "all-bugs");
+            var brokenGrammar = SampleGrammarHealth.Read(
+                brokenBuild.RootElement.GetProperty("projectPath").GetString()!, Path.Combine(root, "grammar-health", "broken"));
             var brokenResult = await AssessTextsAsync(root, brokenBuild.RootElement, trace: true);
             variantResults.Add("all-bugs", brokenResult);
             variantFailures.Add("all-bugs", declaredFailures);
@@ -295,8 +302,12 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                 ToExpected(fixedResult),
                 ToExpected(brokenResult, declaredFailures),
                 variantResults.ToDictionary(pair => pair.Key,
-                    pair => ToExpected(pair.Value, variantFailures[pair.Key]), StringComparer.Ordinal));
+                    pair => ToExpected(pair.Value, variantFailures[pair.Key]), StringComparer.Ordinal),
+                new SampleGrammarHealthPins(fixedGrammar, brokenGrammar));
             var json = JsonSerializer.Serialize(expected, ExpectedJsonOptions);
+            using var actualDocument = JsonDocument.Parse(json);
+            SampleJsonSchemaValidator.AssertValid(actualDocument.RootElement,
+                schema.RootElement.GetProperty("$defs").GetProperty("sampleExpected"), schema.RootElement);
             if (Environment.GetEnvironmentVariable("MOTIF_SAMPLES_UPDATE_EXPECTED") == "1")
                 await File.WriteAllTextAsync(expectedPath, json + Environment.NewLine);
             else
@@ -559,6 +570,23 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         .Order(StringComparer.Ordinal)
         .ToArray();
 
+    private static void AssertFixedWarningsDocumented(JsonElement spec, SampleGrammarHealthSnapshot grammar)
+    {
+        var warnings = grammar.Findings.Where(finding => finding.Level == "warning")
+            .Select(finding => finding.Code).ToHashSet(StringComparer.Ordinal);
+        var documented = spec.TryGetProperty("knownGrammarWarnings", out var entries)
+            ? entries.EnumerateArray().ToArray()
+            : [];
+        Assert.Equal(warnings.Order(StringComparer.Ordinal), documented
+            .Select(entry => entry.GetProperty("code").GetString()!).Order(StringComparer.Ordinal));
+        foreach (var entry in documented)
+        {
+            var reason = entry.GetProperty("reason").GetString()!;
+            Assert.DoesNotContain('\n', reason);
+            Assert.DoesNotContain('\r', reason);
+        }
+    }
+
     private static void RemoveWallClock(JsonNode node)
     {
         if (node is JsonObject obj)
@@ -614,7 +642,9 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         Dictionary<string, long> WordWork, Dictionary<string, string> TraceFailures);
     private sealed record SampleExpected(
         string Disclaimer, SampleVariantExpected Fixed, SampleVariantExpected Broken,
-        Dictionary<string, SampleVariantExpected> Variants);
+        Dictionary<string, SampleVariantExpected> Variants, SampleGrammarHealthPins GrammarHealth);
+    private sealed record SampleGrammarHealthPins(
+        SampleGrammarHealthSnapshot Fixed, SampleGrammarHealthSnapshot Broken);
     private sealed record SampleVariantExpected(
         int Words, int Parsed, double TextCoverage, long Work, long Steps, long WallClockMs,
         string[] SlowestWords,

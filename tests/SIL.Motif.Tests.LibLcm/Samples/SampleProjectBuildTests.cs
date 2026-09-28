@@ -24,6 +24,19 @@ public sealed class SampleProjectBuildTests
     }
 
     [Fact]
+    public async Task SampleExpectedSchemaPinsGrammarHealthFindings()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var samplesRoot = Path.Combine(repositoryRoot, "samples");
+        using var schema = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(samplesRoot, "sample.schema.json")));
+        using var expected = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(samplesRoot, "synthetic-turkic", "expected.json")));
+
+        SampleJsonSchemaValidator.AssertValid(
+            expected.RootElement, schema.RootElement.GetProperty("$defs").GetProperty("sampleExpected"), schema.RootElement);
+    }
+
+    [Fact]
     public async Task EverySampleAndPatchValidatesBuildsAndReopens()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
