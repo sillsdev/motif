@@ -62,6 +62,8 @@ internal static class Program
     {
         if (args is ["--allocate-memory", var requestedBytes])
             return ProbeMemoryLimit(requestedBytes);
+        if (args is ["--allocate-memory", var delayedRequestedBytes, var holdMilliseconds])
+            return ProbeMemoryLimit(delayedRequestedBytes, holdMilliseconds);
         // Dies from an unhandled exception on purpose: the suite proves no crash dialog holds such a process.
         if (args is ["--crash-unhandled"]) throw new InvalidOperationException("The fake parser was told to crash.");
         if (args.Length == 0)
@@ -74,14 +76,20 @@ internal static class Program
         return command is null ? Unrecognised(args[0]) : command.Run(args);
     }
 
-    private static int ProbeMemoryLimit(string requestedBytes)
+    private static int ProbeMemoryLimit(string requestedBytes, string? holdMilliseconds = null)
     {
         if (!int.TryParse(requestedBytes, NumberStyles.None, CultureInfo.InvariantCulture, out var length) || length <= 0)
+            return 64;
+        var delay = 0;
+        if (holdMilliseconds is not null &&
+            (!int.TryParse(holdMilliseconds, NumberStyles.None, CultureInfo.InvariantCulture, out delay) || delay < 0))
             return 64;
         try
         {
             var allocation = new byte[length];
             for (var index = 0; index < allocation.Length; index += 4096) allocation[index] = 1;
+            if (holdMilliseconds is not null)
+                Thread.Sleep(delay);
             GC.KeepAlive(allocation);
             return 0;
         }

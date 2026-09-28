@@ -56,6 +56,11 @@ public sealed class PanGlossChildProcess : IDisposable
 
     internal void KillProcessTree() => _process.KillProcessTree();
 
+    internal Task WaitForContainmentAsync(CancellationToken cancellationToken) =>
+        _process is UnixPanGlossChildProcess unixProcess
+            ? unixProcess.WaitForContainmentAsync(cancellationToken)
+            : Task.CompletedTask;
+
     /// <inheritdoc />
     public void Dispose() => _process.Dispose();
 }

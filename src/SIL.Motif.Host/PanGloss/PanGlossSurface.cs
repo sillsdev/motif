@@ -49,6 +49,7 @@ internal static class PanGlossSurface
             try
             {
                 await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+                await process.WaitForContainmentAsync(deadline.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -57,6 +58,7 @@ internal static class PanGlossSurface
                 try
                 {
                     await process.WaitForExitAsync(stopped.Token).ConfigureAwait(false);
+                    await process.WaitForContainmentAsync(stopped.Token).ConfigureAwait(false);
                     await Task.WhenAll(output, error).WaitAsync(stopped.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) { }

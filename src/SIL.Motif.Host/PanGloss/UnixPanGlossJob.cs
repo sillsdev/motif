@@ -90,7 +90,7 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
                 arguments, environment), "starting the parser");
             _processGroups.Add(processId);
             return new PanGlossChildProcess(new UnixPanGlossChildProcess(processId, stdout, stderr,
-                () => KillProcessGroup(processId)));
+                () => KillProcessGroup(processId), _linux ? null : _memoryLimitBytes));
         }
         catch
         {
@@ -148,11 +148,11 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             script.Append("printf '%s\\n' \"$$\" > ")
                 .Append(ShellQuote(Path.Combine(_cgroup.Path, "cgroup.procs"))).Append(" || exit 125; ");
         }
-        if (_cgroup is null)
+        if (_cgroup is null && _linux)
         {
             var kibibytes = (_memoryLimitBytes + 1023) / 1024;
-            var resource = _linux ? 'v' : 'd';
-            var resourceName = _linux ? "RLIMIT_AS" : "RLIMIT_DATA";
+            const char resource = 'v';
+            const string resourceName = "RLIMIT_AS";
             var limit = kibibytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
             script.Append("resource_hard=$(ulimit -H -").Append(resource).Append(") || exit 125; ")
                 .Append("case \"$resource_hard\" in ")
@@ -221,12 +221,19 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             }
             : new[]
             {
-                "macOS has no cgroup equivalent; CPU rate and aggregate memory are uncapped, and RLIMIT_DATA limits each process's data segment.",
-                "A descendant that deliberately leaves the process group can outlive the job."
+                "Finite RLIMIT_DATA and RLIMIT_AS values are unavailable on macOS; the process-group watchdog samples every 50 ms.",
+                "The sampled footprint can overshoot the ceiling, and a peak released between checks can be missed.",
+                "A descendant that deliberately leaves the process group can escape measurement and termination."
             };
+        if (!linux)
+            return new PanGlossContainmentReport(null, memoryLimitBytes, true,
+                "No hard CPU rate limit is available.",
+                $"macOS process-group physical-footprint watchdog, sampled every 50 ms, with a {memoryLimitBytes} byte ceiling.",
+                "The child starts in its own process group; members are killed on close or when sampled footprint exceeds the ceiling.",
+                limitations);
         return new PanGlossContainmentReport(null, memoryLimitBytes, false,
             linux ? "No hard CPU rate limit; RLIMIT_CPU is a total-time limit and is not substituted." : "No hard CPU rate limit is available.",
-            linux ? "RLIMIT_AS address-space limit per process." : "RLIMIT_DATA data-segment limit per process.",
+            "RLIMIT_AS address-space limit per process.",
             "The child starts in its own process group; members are killed on close, but a detached descendant can escape.",
             limitations);
     }
@@ -263,15 +270,19 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     private readonly FileStream _stderr;
     private readonly Action _kill;
     private readonly Task<int> _exitCode;
+    private readonly MacPanGlossMemoryWatchdog? _memoryWatchdog;
     private bool _disposed;
 
-    internal UnixPanGlossChildProcess(int processId, FileStream stdout, FileStream stderr, Action kill)
+    internal UnixPanGlossChildProcess(int processId, FileStream stdout, FileStream stderr, Action kill,
+        ulong? macMemoryLimitBytes = null)
     {
         Id = processId;
         _stdout = stdout;
         _stderr = stderr;
         _kill = kill;
         _exitCode = Task.Run(() => WaitForExitCode(processId));
+        if (macMemoryLimitBytes is { } memoryLimitBytes && OperatingSystem.IsMacOS())
+            _memoryWatchdog = new MacPanGlossMemoryWatchdog(processId, memoryLimitBytes, kill);
     }
 
     public int Id { get; }
@@ -279,8 +290,19 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     public async Task WaitForExitAsync(CancellationToken cancellationToken) =>
         _ = await _exitCode.WaitAsync(cancellationToken).ConfigureAwait(false);
 
+    public Task WaitForContainmentAsync(CancellationToken cancellationToken) =>
+        _memoryWatchdog?.WaitForCompletionAsync(cancellationToken) ?? Task.CompletedTask;
+
     public Task<string> ReadStandardOutputAsync() => ReadAsync(_stdout);
-    public Task<string> ReadStandardErrorAsync() => ReadAsync(_stderr);
+    public async Task<string> ReadStandardErrorAsync()
+    {
+        var standardError = await ReadAsync(_stderr).ConfigureAwait(false);
+        if (_memoryWatchdog is not null)
+            await _memoryWatchdog.WaitForCompletionAsync(CancellationToken.None).ConfigureAwait(false);
+        return _memoryWatchdog?.FailureReason is { } failure
+            ? string.IsNullOrEmpty(standardError) ? failure : standardError + Environment.NewLine + failure
+            : standardError;
+    }
 
     public void KillProcessTree() => _kill();
 
@@ -288,6 +310,7 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     {
         if (_disposed) return;
         _disposed = true;
+        _memoryWatchdog?.Dispose();
         _stdout.Dispose();
         _stderr.Dispose();
     }
