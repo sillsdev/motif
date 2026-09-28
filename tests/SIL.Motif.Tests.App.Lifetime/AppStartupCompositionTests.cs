@@ -130,6 +130,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             new ChosenFolderPicker(Path.Combine(handoffParent, "handoff")),
             new NoOpDragSource());
 
+        var stage = "project open and Baseline";
         host.Run("open, assess, write a Handoff, and check the pending change", JourneyLimit, async () =>
         {
             var culture = CultureInfo.CurrentCulture;
@@ -146,10 +147,12 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                         workspace.Baseline.ShownRefusal?.Sentence + ")");
                 Assert.NotEqual(true, workspace.Context.Setup?.IsOpen);
 
+                stage = "Assessment";
                 workspace.Selection.PastedWords = word;
                 await workspace.Assess.RunCommand.ExecuteAsync(null);
                 Assert.True(workspace.Assess.State == RunState.Completed, "The Assessment did not complete: " +
                     workspace.Assess.Refusal?.Code + " " + workspace.Assess.Refusal?.Message);
+                stage = "Handoff";
                 await ShowPageAsync(session, WorkspacePage.AiHandoff);
                 var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
                 await handoff.RunCommand.ExecuteAsync(null);
@@ -165,6 +168,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var windowRuns = FakeParser.Invocations(parser).Count(command => command == "batch");
                 Assert.True(windowRuns > 0, "The window's runs did not reach the substituted parser.");
 
+                stage = "Review with Measure/Trial";
                 await ShowPageAsync(session, WorkspacePage.Review);
                 var review = workspace.PageModel<ReviewPageModel>();
                 await Until(() => review.MeasureCommand.CanExecute(null), "the pending change did not reach Review");
@@ -180,7 +184,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             {
                 CultureInfo.CurrentCulture = culture;
             }
-        });
+        }, () => "current stage: " + stage);
     }
 
     private static string SeedPendingChange(WalkthroughProject project, string word)

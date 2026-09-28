@@ -83,7 +83,15 @@ internal sealed class MotifAppHost
     /// </summary>
     public void Run(string step, TimeSpan timeout, Func<Task> work) => Run(step, timeout, work, null);
 
-    private void Run(string step, TimeSpan timeout, Func<Task> work, Func<string>? pending)
+    /// <summary>
+    /// Runs <paramref name="work"/> while pumping the Avalonia dispatcher, and includes the current pending
+    /// state in the timeout message when the work does not finish within <paramref name="timeout"/>.
+    /// </summary>
+    /// <param name="step">The operation named by a timeout failure.</param>
+    /// <param name="timeout">The maximum time to wait for the work.</param>
+    /// <param name="work">The asynchronous work to run on the Avalonia thread.</param>
+    /// <param name="pending">Returns diagnostic text describing the current stage when a timeout occurs.</param>
+    public void Run(string step, TimeSpan timeout, Func<Task> work, Func<string>? pending)
     {
         var completion = new TaskCompletionSource();
         _queue.Add((() =>
