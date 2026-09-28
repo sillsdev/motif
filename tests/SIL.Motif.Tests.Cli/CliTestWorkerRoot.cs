@@ -17,7 +17,7 @@ internal static class CliTestWorkerRoot
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
         {
             try { Directory.Delete(Root, recursive: true); }
-            catch { }
+            catch (IOException) { }
         };
     }
 }
