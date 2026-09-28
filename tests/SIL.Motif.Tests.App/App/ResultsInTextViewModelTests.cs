@@ -32,12 +32,21 @@ public sealed class ResultsInTextViewModelTests
         new([new ParseMorph(form, "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
 
     private static ProjectAnalysis Stored(ParseAnalysis reading, string gloss) =>
-        new(ProjectAnalysisKey.For(reading), [new ParserReadingMorph("form", gloss, "n", null, false, null)]);
+        new(ProjectAnalysisKey.For(reading), [new ParserReadingMorph("form", gloss, "n", null, false, null)
+            { Entry = "form" }])
+        {
+            StoredAnalysisId = "stored-" + reading.Morphs[0].Form,
+            StoredAnalysisOpinion = "approved",
+            Identity = new ApprovedMorphology(reading.Morphs.Select(morph => new ApprovedMorph(
+                morph.Form, morph.Msa, morph.InflType, ["form"])).ToArray()),
+        };
 
     private static TextToken Word(string text, ProjectAnalysis? stored, int index = 0) =>
         new(text, text, null, "approved")
         {
             Analysis = stored,
+            StoredAnalyses = stored is null ? [] : [stored],
+            StoredAnalysisId = stored?.StoredAnalysisId,
             OccurrenceIndex = index,
             WordformId = Guid.Parse(text switch
             {
@@ -48,7 +57,6 @@ public sealed class ResultsInTextViewModelTests
                 _ => throw new ArgumentOutOfRangeException(nameof(text)),
             }),
         };
-
     private static AssessmentWordResult Result(string word, params ParseAnalysis[] readings) =>
         new(word, readings.Length > 0 ? "analysed" : "no-analysis", false, "Complete", 3, null)
         {
@@ -130,6 +138,23 @@ public sealed class ResultsInTextViewModelTests
         Assert.Equal(1, inText.DiffersCount);
         Assert.Equal(1, inText.NewCount);
         Assert.Equal(1, inText.NoParseCount);
+    }
+
+    [Fact]
+    public async Task TheFakeTextViewExposesExactOpinionAndParserSetMarkings()
+    {
+        var (inText, _, _) = await Loaded();
+        var tokens = inText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
+
+        Assert.Equal(AnalysisMarkingClass.Extra, tokens[0].Marking.PanGlossClass);
+        Assert.Equal("approved", Assert.Single(tokens[0].Marking.FieldWorksAnalyses).Opinion);
+        Assert.Equal(AnalysisMarkingActionKind.KeepFieldWorks, tokens[0].Marking.PrimaryAction!.Kind);
+        Assert.Contains(tokens[0].Marking.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Add &&
+            choice.Label == "Add as Unknown" && choice.Subtitle == "Not in FieldWorks → Unknown");
+        Assert.Equal(AnalysisMarkingClass.Different, tokens[1].Marking.PanGlossClass);
+        Assert.Equal(AnalysisMarkingActionKind.Add, tokens[1].Marking.PrimaryAction!.Kind);
+        Assert.Equal(AnalysisMarkingClass.Different, tokens[2].Marking.PanGlossClass);
+        Assert.Equal(AnalysisMarkingClass.None, tokens[3].Marking.PanGlossClass);
     }
 
     [Fact]
@@ -367,6 +392,106 @@ public sealed class ResultsInTextViewModelTests
         "zzz" => Guid.Parse("aaaaaaaa-0000-0000-0000-000000000014"),
         _ => throw new ArgumentOutOfRangeException(nameof(form)),
     }).Value;
+    [Fact]
+    public async Task AStoredAnalysisChoiceStagesItsExactOpinionAtTheSelectedOccurrence()
+    {
+        var (inText, _, fake) = await Loaded();
+        inText.Changes.AssessmentId = "assessment/one";
+        var tokens = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Where(token => token.Form == "kitabu").ToArray();
+        var selected = tokens[0];
+        inText.SelectToken(selected);
+        var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
+            candidate.Kind == AnalysisMarkingActionKind.Disapprove && candidate.StoredAnalysisId is not null));
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
+
+        var request = Assert.Single(fake.PendingPutRequests);
+        Assert.Equal(ChangeKinds.Reject, request.Change.Kind);
+        Assert.Equal(CanonicalId.FromGuid(selected.WordformId!.Value).Value, request.Change.WordformId);
+        Assert.Equal(selected.Marking.FieldWorksAnalyses[0].StoredAnalysisId, request.Change.StoredAnalysisId);
+        Assert.Equal(selected.Occurrence, request.Change.Occurrence);
+        Assert.Null(request.Change.AssessmentId);
+        Assert.True(selected.Marking.StagedTransition is not null);
+        Assert.Null(tokens[1].Marking.StagedTransition);
+    }
+
+    [Fact]
+    public async Task AParserOnlyReadingCanBeDisapprovedAtTheSelectedOccurrence()
+    {
+        var (inText, _, fake) = await Loaded();
+        inText.Changes.AssessmentId = "assessment/one";
+        var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .First(token => token.Form == "kitabu");
+        inText.SelectToken(selected);
+        var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
+            candidate.Kind == AnalysisMarkingActionKind.Disapprove && candidate.ReadingIndex == 1));
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
+
+        var request = Assert.Single(fake.PendingPutRequests);
+        Assert.Equal(ChangeKinds.Reject, request.Change.Kind);
+        Assert.Null(request.Change.StoredAnalysisId);
+        Assert.Equal(1, request.Change.ReadingIndex);
+        Assert.Equal("assessment/one", request.Change.AssessmentId);
+        Assert.Equal(selected.Occurrence, request.Change.Occurrence);
+    }
+
+    [Fact]
+    public async Task KeepFieldWorksIsANamedNoOp()
+    {
+        var (inText, _, fake) = await Loaded();
+        var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .First(token => token.Form == "kitabu");
+        inText.SelectToken(selected);
+
+        await inText.StagePrimaryMarkingActionCommand.ExecuteAsync(null);
+
+        Assert.Empty(fake.PendingPutRequests);
+        Assert.Null(selected.Marking.StagedTransition);
+    }
+
+    [Fact]
+    public async Task AParserOnlyReadingCanBeAddedAsApproved()
+    {
+        var (inText, _, fake) = await Loaded();
+        inText.Changes.AssessmentId = "assessment/one";
+        var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Single(token => token.Form == "mtoto");
+        inText.SelectToken(selected);
+        var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
+            candidate.Kind == AnalysisMarkingActionKind.Approve && candidate.ReadingIndex == 0));
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
+
+        var request = Assert.Single(fake.PendingPutRequests);
+        Assert.Equal(ChangeKinds.Approve, request.Change.Kind);
+        Assert.Equal(CanonicalId.FromGuid(selected.WordformId!.Value).Value, request.Change.WordformId);
+        Assert.Equal("assessment/one", request.Change.AssessmentId);
+        Assert.Equal(0, request.Change.ReadingIndex);
+        Assert.Equal(selected.Occurrence, request.Change.Occurrence);
+    }
+
+    [Fact]
+    public async Task AParserOnlyReadingCanBeAddedAsUnknown()
+    {
+        var (inText, _, fake) = await Loaded();
+        inText.Changes.AssessmentId = "assessment/one";
+        var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Single(token => token.Form == "mtoto");
+        inText.SelectToken(selected);
+        var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
+            candidate.Kind == AnalysisMarkingActionKind.Add && candidate.Label == "Add as Unknown"));
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
+
+        var request = Assert.Single(fake.PendingPutRequests);
+        Assert.Equal(ChangeKinds.AddCandidate, request.Change.Kind);
+        Assert.Equal(CanonicalId.FromGuid(selected.WordformId!.Value).Value, request.Change.WordformId);
+        Assert.Equal("assessment/one", request.Change.AssessmentId);
+        Assert.Equal(0, request.Change.ReadingIndex);
+        Assert.Null(request.Change.Occurrence);
+    }
 
     [Fact]
     public void ProjectStatusChipUsesTheWordStatusVerdict()

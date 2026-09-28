@@ -116,6 +116,8 @@ public sealed class ReviewPageModel : PageModel
         HasUncertainChanges ? UncertainSentence(UncertainChanges.Count)
         : Changes.Items.Any(item => item.IsNoLongerFits)
             ? "No longer fits: remove the changes that no longer fit before applying."
+            : Changes.Items.Any(item => item.IsUncertain)
+                ? "Uncertain: check the source sentence before applying."
             : Context.Evidence.IsStale
                 ? "FieldWorks saved since these numbers were measured. Refresh before applying."
             : Context.Baseline?.FieldWorksHeldProject == true

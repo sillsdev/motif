@@ -41,7 +41,6 @@ public sealed class WalkthroughProject : IDisposable
     public SeededText Text { get; }
 
     public Guid FirstMsaId { get; }
-
     public string ManagedRoot { get; }
 
     public string SourceSha256 { get; }

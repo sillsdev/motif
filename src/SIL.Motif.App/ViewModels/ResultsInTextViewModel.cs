@@ -75,6 +75,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
         TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });
         AddChangeCommand = new AsyncRelayCommand<string>(AddSelectedChangeAsync, CanAddSelectedChange);
+        StagePrimaryMarkingActionCommand = new AsyncRelayCommand(StagePrimaryMarkingActionAsync,
+            CanStagePrimaryMarkingAction);
+        StageMarkingChoiceCommand = new AsyncRelayCommand<AnalysisMarkingChoice>(StageMarkingChoiceAsync,
+            CanStageMarkingChoice);
         _texts.PropertyChanged += OnSourceChanged;
         _assess.PropertyChanged += OnSourceChanged;
         _changes.Items.CollectionChanged += OnChangesChanged;
@@ -95,6 +99,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public IRelayCommand TryWordCommand { get; }
 
     public IAsyncRelayCommand<string> AddChangeCommand { get; }
+
+    public IAsyncRelayCommand StagePrimaryMarkingActionCommand { get; }
+
+    public IAsyncRelayCommand<AnalysisMarkingChoice> StageMarkingChoiceCommand { get; }
 
     public ChangesViewModel Changes => _changes;
 
@@ -192,7 +200,12 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         if (newValue is not null) newValue.PropertyChanged += OnSelectedTokenPropertyChanged;
     }
 
-    partial void OnSelectedTokenChanged(ResultsTokenViewModel? value) => AddChangeCommand.NotifyCanExecuteChanged();
+    partial void OnSelectedTokenChanged(ResultsTokenViewModel? value)
+    {
+        AddChangeCommand.NotifyCanExecuteChanged();
+        StagePrimaryMarkingActionCommand.NotifyCanExecuteChanged();
+        StageMarkingChoiceCommand.NotifyCanExecuteChanged();
+    }
 
     private int Count(OccurrenceVerdict verdict) => _allWords.Count(token => token.Verdict == verdict);
 
@@ -298,6 +311,39 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             AddChangeCommand.NotifyCanExecuteChanged();
     }
 
+    private bool CanStagePrimaryMarkingAction() =>
+        SelectedToken is { IsWord: true, Marking.PrimaryAction: not null };
+
+    private bool CanStageMarkingChoice(AnalysisMarkingChoice? choice) =>
+        SelectedToken is { IsWord: true } token && choice is not null && token.Marking.FixChoices.Contains(choice);
+
+    private async Task StagePrimaryMarkingActionAsync()
+    {
+        if (SelectedToken is not { } token || token.Marking.PrimaryAction is not { } action) return;
+        await StageMarkingActionAsync(token, action).ConfigureAwait(true);
+    }
+
+    private async Task StageMarkingChoiceAsync(AnalysisMarkingChoice? choice)
+    {
+        if (SelectedToken is not { } token || choice is null) return;
+        await StageMarkingActionAsync(token, new AnalysisMarkingAction(choice.Kind, choice.Label,
+            choice.StoredAnalysisId, choice.Reading, choice.ReadingIndex, choice.Now, choice.AfterApply))
+            .ConfigureAwait(true);
+    }
+
+    private async Task StageMarkingActionAsync(ResultsTokenViewModel token, AnalysisMarkingAction action)
+    {
+        if (action.Kind == AnalysisMarkingActionKind.KeepFieldWorks)
+        {
+            KeepFieldWorks(token);
+            return;
+        }
+        await _changes.AddFromMarkingAsync(action, token).ConfigureAwait(true);
+        RefreshPendingMarkers();
+    }
+
+    private static void KeepFieldWorks(ResultsTokenViewModel token) => token.Marking.KeepFieldWorks();
+
     private void RefreshPendingMarkers()
     {
         var pending = _changes.Items.GroupBy(item => item.Word, StringComparer.Ordinal)
@@ -305,8 +351,11 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         foreach (var token in Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord))
         {
             pending.TryGetValue(token.Form, out var changes);
-            token.PendingState = PendingChangeStates.FromChanges(changes);
+            var relevant = changes?.Where(change => change.Occurrence is null ||
+                change.Occurrence == token.Occurrence).ToArray();
+            token.PendingState = PendingChangeStates.FromChanges(relevant);
             token.IsPending = token.PendingState != PendingChangeState.None;
+            token.SetStagedMarkings(relevant ?? []);
             token.IsUncertainChanged = false;
         }
         foreach (var line in Texts.SelectMany(text => text.Lines))
@@ -385,10 +434,15 @@ public sealed class ResultsLineViewModel
 /// </summary>
 public sealed partial class ResultsTokenViewModel : ObservableObject
 {
+    private readonly TextToken _source;
+    private readonly AssessmentWordResult? _assessment;
+
     public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
         TextWordRowViewModel? projectWord = null, string? location = null, OccurrenceAnchor? occurrence = null)
     {
         ArgumentNullException.ThrowIfNull(token);
+        _source = token;
+        _assessment = result;
         Text = token.Text;
         Form = token.Form ?? token.Text;
         IsWord = token.Form is not null;
@@ -446,6 +500,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             _ when result?.Outcome == "skipped" => "The parser skipped this word: it has a character the grammar's character table does not define",
             _ => "This word was not part of the Assessment",
         };
+        Marking = AnalysisMarkingState.Create(token, result);
     }
 
     public string Text { get; }
@@ -454,6 +509,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public string Form { get; }
 
     public bool IsWord { get; }
+
+    public AnalysisMarkingState Marking { get; private set; }
     public string Location { get; }
     public Uri? WordLink { get; }
     public OccurrenceAnchor? Occurrence { get; }
@@ -511,6 +568,15 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool IsDiffers => Verdict == OccurrenceVerdict.Differs;
     public bool IsNew => Verdict == OccurrenceVerdict.New;
     public bool IsNoParse => Verdict is OccurrenceVerdict.NoParse or OccurrenceVerdict.Limit;
+
+    internal void SetStagedMarkings(IReadOnlyList<ChangeViewModel> changes)
+    {
+        Marking = AnalysisMarkingState.Create(_source, _assessment);
+        foreach (var change in changes)
+            Marking = Marking.WithStagedTransition(change.StagedTransition.Now,
+                change.StagedTransition.AfterApply, change.Fit?.Status);
+        OnPropertyChanged(nameof(Marking));
+    }
 
     /// <summary>The shared meaning behind <see cref="Verdict"/>, used for its colour and glyph.</summary>
     public Verdict Meaning => Verdict switch

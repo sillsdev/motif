@@ -531,6 +531,8 @@ public static class PendingChanges
             {
                 OriginPage = Property(entry, "originPage"),
                 Analyses = DisplayAnalysesOf(entry),
+                Occurrence = OccurrenceOf(fingerprint),
+                StoredAnalysisId = Property(entry, "storedAnalysisId"),
             };
         }).ToArray();
         if (changes.Length == 0)
@@ -678,6 +680,20 @@ public static class PendingChanges
         catch (JsonException exception)
         {
             throw new InvalidDataException("Stored change display analyses are malformed.", exception);
+        }
+    }
+
+    private static OccurrenceAnchor? OccurrenceOf(JsonElement fingerprint)
+    {
+        if (fingerprint.ValueKind != JsonValueKind.Object) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<ChangeFitFingerprint>(fingerprint.GetRawText(), JsonOptions)
+                ?.Occurrence?.Anchor;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
