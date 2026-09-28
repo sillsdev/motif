@@ -213,7 +213,7 @@ jobs:
           run_capture cli-open-project 90 env \
             MOTIF_WORKER_ROOT="$worker_root" \
             MOTIF_WRITING_SYSTEM_REPOSITORY_PATH="$writing_systems" \
-            "$product/motif" open "$copied_project/MotifTestProj.fwdata"
+            "$product/motif" open "$copied_project/MotifTestProj/MotifTestProj.fwdata"
           run_capture worker-startup 20 "$product/SIL.Motif.Worker" \
             --root "$worker_root" --no-parser --namespace motif-icu-probe \
             --idle-ms 60000 --lease-ms 300000
