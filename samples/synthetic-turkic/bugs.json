@@ -1,54 +1,79 @@
 [
   {
-    "id": "plural-case-slots-swapped",
-    "title": "Plural and case slots are reversed",
+    "id": "plural-front-class-too-narrow",
+    "title": "The plural front-vowel class is too narrow",
     "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
     "symptom": {
       "kind": "failure",
-      "words": ["balalarımı", "sökelerimi", "pörularımı", "gürülerimi", "kavoumu", "neliimi", "püümü", "zöpaımı", "balaımı", "moruumu"],
-      "reason": "The template orders Case before Possessive and Plural, but these constructed forms require the slots in a different order or omit one."
+      "words": ["günler"],
+      "reason": "Motif shows 'No parse' for günler. The last vowel is ü, but -ler admits only e and i and -lar has the wrong vowel, so plural allomorph selection stops."
     },
     "fix": [
-      "Open the noun affix template in FieldWorks.",
-      "Move the Plural slot before the Possessive and Case slots.",
+      "Open the -ler alternate form for the plural entry in FieldWorks.",
+      "Set its environment to the Front class {e, i, ö, ü}, including the omitted rounded front vowels.",
       "Save the project and refresh the Assessment."
     ],
     "patch": [
-      { "op": "swapSlots", "templateId": "noun", "firstSlotId": "plural", "secondSlotId": "case" }
+      { "op": "setEnvironment", "allomorphId": "plural-ler", "environmentId": "after-i-to-i" }
     ]
   },
   {
-    "id": "missing-stem",
-    "title": "A stem is missing from the lexicon",
+    "id": "possessive-before-plural",
+    "title": "Possessive and plural slots are reversed",
     "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
     "symptom": {
       "kind": "failure",
-      "words": ["böre"],
-      "reason": "No lexical entry supplies the stem for this word, so its Text token cannot be analyzed."
+      "words": ["adamlarında", "okullarında"],
+      "reason": "Motif shows 'No parse' for adamlarında and okullarında. These cited forms require PL → POSS.3SG → LOC; reversing the Plural and Possessive slots leaves no path for that suffix sequence."
     },
     "fix": [
-      "Open Lexicon in FieldWorks and create a noun entry with the form böre.",
-      "Add the gloss book and set its part of speech to Noun.",
+      "Open the Noun affix template in FieldWorks.",
+      "Move the Plural slot before the Possessive slot; keep Case last.",
       "Save the project and refresh the Assessment."
     ],
-    "patch": [{ "op": "removeStem", "stemId": "bore" }]
+    "patch": [
+      { "op": "swapSlots", "templateId": "noun", "firstSlotId": "plural", "secondSlotId": "possessive" }
+    ]
   },
   {
-    "id": "repeated-optional-plural-slot",
-    "title": "Repeated optional plural slots slow parsing",
+    "id": "missing-vowel-final-y-allomorphs",
+    "title": "Vowel-final case forms omit the y linker",
+    "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+    "symptom": {
+      "kind": "failure",
+      "words": ["masaya", "kediye", "kediyi"],
+      "reason": "Motif shows 'No parse' for masaya, kediye, and kediyi. Each has y between a vowel-final noun and the case vowel; without vowel-final y allomorphs, no case form matches."
+    },
+    "fix": [
+      "Open the Dative and Accusative entries in FieldWorks.",
+      "Restore the vowel-final y forms (-ye/-ya and -yi/-yı/-yü/-yu) with environments for their final-vowel classes.",
+      "Save the project and refresh the Assessment."
+    ],
+    "patch": [
+      { "op": "removeAllomorph", "allomorphId": "dat-ye" },
+      { "op": "removeAllomorph", "allomorphId": "dat-ya" },
+      { "op": "removeAllomorph", "allomorphId": "acc-yi" },
+      { "op": "removeAllomorph", "allomorphId": "acc-y-dotless" },
+      { "op": "removeAllomorph", "allomorphId": "acc-y-umlaut" },
+      { "op": "removeAllomorph", "allomorphId": "acc-yu" }
+    ]
+  },
+  {
+    "id": "duplicated-active-noun-templates",
+    "title": "Copied active templates slow noun parsing",
     "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
     "symptom": {
       "kind": "slow",
-      "words": ["balalar", "balalarımı", "balaımı", "sökelerimi"],
-      "reason": "The noun template repeats a copied optional Plural slot many times, so the parser explores redundant placements of the same affix on every word."
+      "words": ["adamlarında", "geldi", "kediyi", "okullarında"],
+      "reason": "Motif still parses these words, but Timing reports much more parser work. Sixteen equivalent active Noun templates give each noun sixteen routes through the same grammar."
     },
     "fix": [
-      "Open the noun affix template in FieldWorks.",
-      "Remove the copied Plural slots and keep one Plural slot in its ordered position.",
-      "Check that the plural affix uses only that slot, then save and refresh the Assessment."
+      "Open the Noun category's affix templates in FieldWorks.",
+      "Remove the duplicate active templates and keep one template with Plural, Possessive, and Case in order.",
+      "Save the project and refresh the Assessment."
     ],
     "patch": [
-      { "op": "duplicateOptionalSlot", "templateId": "noun", "slotId": "plural", "count": 48 }
+      { "op": "duplicateTemplate", "templateId": "noun", "count": 15 }
     ]
   }
 ]

@@ -4,42 +4,37 @@
     "words": 16,
     "parsed": 16,
     "textCoverage": 1,
-    "work": 5276,
-    "steps": 86,
-    "wallClockMs": 13097,
+    "work": 9116,
+    "steps": 191,
+    "wallClockMs": 8796,
     "slowestWords": [
-      "balalar\u0131m\u0131",
-      "bala\u0131m\u0131",
-      "g\u00FCr\u00FClerimi",
-      "s\u00F6kelerimi"
+      "adamlar\u0131nda",
+      "geldi",
+      "okullar\u0131nda",
+      "telefonlar"
     ],
     "failing": {}
   },
   "broken": {
     "words": 16,
-    "parsed": 4,
-    "textCoverage": 0.25,
-    "work": 4071,
-    "steps": 302,
-    "wallClockMs": 11422,
+    "parsed": 10,
+    "textCoverage": 0.625,
+    "work": 104147,
+    "steps": 2418,
+    "wallClockMs": 8657,
     "slowestWords": [
-      "balalar",
-      "dori",
-      "lumu",
-      "pave"
+      "adamlar\u0131nda",
+      "geldi",
+      "okullar\u0131nda",
+      "telefonlar"
     ],
     "failing": {
-      "balalar\u0131m\u0131": "plural-case-slots-swapped",
-      "bala\u0131m\u0131": "plural-case-slots-swapped",
-      "g\u00FCr\u00FClerimi": "plural-case-slots-swapped",
-      "kavoumu": "plural-case-slots-swapped",
-      "moruumu": "plural-case-slots-swapped",
-      "neliimi": "plural-case-slots-swapped",
-      "p\u00F6rular\u0131m\u0131": "plural-case-slots-swapped",
-      "p\u00FC\u00FCm\u00FC": "plural-case-slots-swapped",
-      "s\u00F6kelerimi": "plural-case-slots-swapped",
-      "z\u00F6pa\u0131m\u0131": "plural-case-slots-swapped",
-      "b\u00F6re": "missing-stem"
+      "g\u00FCnler": "plural-front-class-too-narrow",
+      "adamlar\u0131nda": "possessive-before-plural",
+      "okullar\u0131nda": "possessive-before-plural",
+      "kediye": "missing-vowel-final-y-allomorphs",
+      "kediyi": "missing-vowel-final-y-allomorphs",
+      "masaya": "missing-vowel-final-y-allomorphs"
     }
   },
   "variants": {
@@ -47,100 +42,106 @@
       "words": 16,
       "parsed": 16,
       "textCoverage": 1,
-      "work": 5276,
-      "steps": 86,
-      "wallClockMs": 13097,
+      "work": 9116,
+      "steps": 191,
+      "wallClockMs": 8796,
       "slowestWords": [
-        "balalar\u0131m\u0131",
-        "bala\u0131m\u0131",
-        "g\u00FCr\u00FClerimi",
-        "s\u00F6kelerimi"
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
       ],
       "failing": {}
     },
-    "plural-case-slots-swapped": {
-      "words": 16,
-      "parsed": 5,
-      "textCoverage": 0.3125,
-      "work": 385,
-      "steps": 17,
-      "wallClockMs": 12446,
-      "slowestWords": [
-        "balalar",
-        "b\u00F6re",
-        "dori",
-        "lumu"
-      ],
-      "failing": {
-        "balalar\u0131m\u0131": "plural-case-slots-swapped",
-        "bala\u0131m\u0131": "plural-case-slots-swapped",
-        "g\u00FCr\u00FClerimi": "plural-case-slots-swapped",
-        "kavoumu": "plural-case-slots-swapped",
-        "moruumu": "plural-case-slots-swapped",
-        "neliimi": "plural-case-slots-swapped",
-        "p\u00F6rular\u0131m\u0131": "plural-case-slots-swapped",
-        "p\u00FC\u00FCm\u00FC": "plural-case-slots-swapped",
-        "s\u00F6kelerimi": "plural-case-slots-swapped",
-        "z\u00F6pa\u0131m\u0131": "plural-case-slots-swapped"
-      }
-    },
-    "missing-stem": {
+    "plural-front-class-too-narrow": {
       "words": 16,
       "parsed": 15,
       "textCoverage": 0.9375,
-      "work": 5218,
-      "steps": 83,
-      "wallClockMs": 12644,
+      "work": 9108,
+      "steps": 191,
+      "wallClockMs": 8744,
       "slowestWords": [
-        "balalar\u0131m\u0131",
-        "bala\u0131m\u0131",
-        "g\u00FCr\u00FClerimi",
-        "s\u00F6kelerimi"
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
       ],
       "failing": {
-        "b\u00F6re": "missing-stem"
+        "g\u00FCnler": "plural-front-class-too-narrow"
       }
     },
-    "repeated-optional-plural-slot": {
+    "possessive-before-plural": {
+      "words": 16,
+      "parsed": 14,
+      "textCoverage": 0.875,
+      "work": 9154,
+      "steps": 194,
+      "wallClockMs": 8791,
+      "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
+      ],
+      "failing": {
+        "adamlar\u0131nda": "possessive-before-plural",
+        "okullar\u0131nda": "possessive-before-plural"
+      }
+    },
+    "missing-vowel-final-y-allomorphs": {
+      "words": 16,
+      "parsed": 13,
+      "textCoverage": 0.8125,
+      "work": 8102,
+      "steps": 180,
+      "wallClockMs": 8874,
+      "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
+      ],
+      "failing": {
+        "kediye": "missing-vowel-final-y-allomorphs",
+        "kediyi": "missing-vowel-final-y-allomorphs",
+        "masaya": "missing-vowel-final-y-allomorphs"
+      }
+    },
+    "duplicated-active-noun-templates": {
       "words": 16,
       "parsed": 16,
       "textCoverage": 1,
-      "work": 19964,
-      "steps": 950,
-      "wallClockMs": 11775,
+      "work": 120176,
+      "steps": 2546,
+      "wallClockMs": 8608,
       "slowestWords": [
-        "balalar",
-        "balalar\u0131m\u0131",
-        "bala\u0131m\u0131",
-        "s\u00F6kelerimi"
+        "adamlar\u0131nda",
+        "geldi",
+        "kediyi",
+        "okullar\u0131nda"
       ],
       "failing": {}
     },
     "all-bugs": {
       "words": 16,
-      "parsed": 4,
-      "textCoverage": 0.25,
-      "work": 4071,
-      "steps": 302,
-      "wallClockMs": 11422,
+      "parsed": 10,
+      "textCoverage": 0.625,
+      "work": 104147,
+      "steps": 2418,
+      "wallClockMs": 8657,
       "slowestWords": [
-        "balalar",
-        "dori",
-        "lumu",
-        "pave"
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
       ],
       "failing": {
-        "balalar\u0131m\u0131": "plural-case-slots-swapped",
-        "bala\u0131m\u0131": "plural-case-slots-swapped",
-        "g\u00FCr\u00FClerimi": "plural-case-slots-swapped",
-        "kavoumu": "plural-case-slots-swapped",
-        "moruumu": "plural-case-slots-swapped",
-        "neliimi": "plural-case-slots-swapped",
-        "p\u00F6rular\u0131m\u0131": "plural-case-slots-swapped",
-        "p\u00FC\u00FCm\u00FC": "plural-case-slots-swapped",
-        "s\u00F6kelerimi": "plural-case-slots-swapped",
-        "z\u00F6pa\u0131m\u0131": "plural-case-slots-swapped",
-        "b\u00F6re": "missing-stem"
+        "g\u00FCnler": "plural-front-class-too-narrow",
+        "adamlar\u0131nda": "possessive-before-plural",
+        "okullar\u0131nda": "possessive-before-plural",
+        "kediye": "missing-vowel-final-y-allomorphs",
+        "kediyi": "missing-vowel-final-y-allomorphs",
+        "masaya": "missing-vowel-final-y-allomorphs"
       }
     }
   }
