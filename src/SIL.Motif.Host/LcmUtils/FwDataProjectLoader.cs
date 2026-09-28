@@ -26,7 +26,8 @@ public class FwDataProjectLoader
     /// <see cref="LcmCache"/> is created; this is the classic headless-load blocker if skipped or
     /// ordered wrong. If <c>MOTIF_WRITING_SYSTEM_REPOSITORY_PATH</c> is set before the first call,
     /// its directory becomes this process's global writing-system repository. When unset, this
-    /// method leaves the current repository slot untouched.
+    /// method leaves the current repository slot untouched. If <see cref="SldrOfflineVariable"/> is set,
+    /// the SLDR answers from its local cache and never from the network.
     /// </summary>
     public static void Init()
     {
@@ -42,11 +43,29 @@ public class FwDataProjectLoader
                 Debug.Assert(Icu.Wrapper.IcuVersion == "72.1.0.3");
             }
 
-            Sldr.Initialize();
+            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
             InstallConfiguredGlobalWritingSystemRepository();
             _init = true;
         }
     }
+
+    /// <summary>
+    /// Keeps a process's writing-system lookups off the network, for it and every process it starts.
+    /// <b>Test-only.</b>
+    /// </summary>
+    /// <remarks>
+    /// An online SLDR lookup is an HTTPS request made while holding the SLDR cache's machine-wide lock
+    /// (SIL.WritingSystems <c>Sldr.GetLdmlFile</c> and <c>Sldr.DownloadLanguageTags</c>), and the first
+    /// cache opened in a process makes several of them. Concurrent processes therefore open their first
+    /// cache one network round trip at a time, and a runner a test starts waits behind every other test
+    /// process on the machine. A test process sets this at load so its lookups, and those of the runner and
+    /// command-line processes it starts, read only the local SLDR cache, as LibLCM's own tests do. Pinned by
+    /// `InitKeepsSldrLookupsOffTheNetworkWhenTheEnvironmentAsks`.
+    /// </remarks>
+    internal const string SldrOfflineVariable = "MOTIF_TEST_SLDR_OFFLINE";
+
+    private static bool SldrOfflineRequested() =>
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SldrOfflineVariable));
 
     private const string WritingSystemRepositoryPathEnvironmentVariable = "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH";
 
