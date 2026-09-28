@@ -237,7 +237,7 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
-    public async Task FirstRunClosesSetupWhileTheAssessmentIsStillRunning()
+    public async Task FirstRunClosesSetupOnTheFirstProgressEvent()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
@@ -249,7 +249,7 @@ public sealed class WorkspaceShellViewModelTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         fake.OnAssess((_, progress, _) =>
         {
-            progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing the Selection..."));
+            progress.Report(new AssessmentProgress(AssessmentStage.Capturing, 0, null, "Starting the Assessment..."));
             return outcome.Task;
         });
 
@@ -310,6 +310,61 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.Equal(RunState.Refused, workspace.Assess.State);
         Assert.False(setup.IsOpen);
+        Assert.Null(setup.ShownRefusal);
+    }
+
+    [Fact]
+    public async Task ConfigureStaysOpenWhenAnotherAssessmentReportsProgress()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+
+        var allowParsing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var parsingReported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var outcome = new TaskCompletionSource<CommandOutcome<AssessCommandResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnAssess(async (_, progress, _) =>
+        {
+            progress.Report(new AssessmentProgress(AssessmentStage.Capturing, 0, null, "Starting..."));
+            await allowParsing.Task;
+            progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing..."));
+            parsingReported.SetResult();
+            return await outcome.Task;
+        });
+
+        var running = workspace.Assess.RunCommand.ExecuteAsync(null);
+        Assert.True(workspace.Assess.IsActive);
+        Assert.True(workspace.ConfigureCommand.CanExecute(null));
+        workspace.ConfigureCommand.Execute(null);
+        Assert.True(workspace.Context.Setup!.IsOpen);
+
+        allowParsing.SetResult();
+        await parsingReported.Task;
+
+        Assert.True(workspace.Context.Setup.IsOpen);
+        outcome.SetResult(CommandOutcome<AssessCommandResponse>.Success(NewAssessResponse("run")));
+        await running;
+    }
+
+    [Fact]
+    public async Task AStepLimitWhoseTimeEstimateDoesNotFitTheStoredLimitCanFinishWithoutATimeLimit()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+        var setup = workspace.Context.Setup!;
+        setup.Step = 3;
+        setup.StepLimitSteps = 1_000_000_000_000m;
+        fake.AssessCompletesWith(NewAssessResponse("first run"));
+
+        Assert.True(setup.FinishCommand.CanExecute(null));
+        await setup.FinishCommand.ExecuteAsync(null);
+
+        Assert.Null(Assert.Single(fake.SetDefaultSelectionRequests).PerWordLimitMs);
+        Assert.Null(Assert.Single(fake.AssessRequests).PerWordLimitMs);
     }
 
     [Fact]

@@ -173,7 +173,7 @@ internal static class Program
         }
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "batch");
         if (behaviour.HeartbeatPath is { } heartbeat)
         {
             using var wordsHandle = File.Open(wordsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -243,7 +243,7 @@ internal static class Program
         var grammarJsonPath = args[2];
         var directory = Path.GetDirectoryName(Path.GetFullPath(fwDataPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "import");
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
 
@@ -279,7 +279,7 @@ internal static class Program
         var forwarded = args[4..];
         var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "stats");
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
 
@@ -315,7 +315,7 @@ internal static class Program
         var word = args[2];
         var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "parse");
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
 
@@ -363,7 +363,11 @@ internal static class Program
         var outPath = args.Length > 2 ? args[2] : null;
         var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "grammar-health");
+
+        if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
+        if (behaviour.HoldUntilPath is { } holdUntilPath)
+            while (!File.Exists(holdUntilPath)) Thread.Sleep(10);
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
         if (behaviour.DelayMilliseconds > 0) Thread.Sleep(behaviour.DelayMilliseconds);
@@ -558,6 +562,8 @@ internal static class Program
         public int DelayMilliseconds { get; init; }
         public bool StreamProgress { get; init; }
         public string? HeartbeatPath { get; init; }
+        public string? StartedPath { get; init; }
+        public string? HoldUntilPath { get; init; }
         public string? ProcessIdPath { get; init; }
         public string? StandardError { get; init; }
         public string SemanticDigest { get; init; } = "sha256:" + new string('b', 64);
@@ -569,7 +575,7 @@ internal static class Program
         public bool TraceCapped { get; init; }
         public string? GrammarHealthReportJson { get; init; }
 
-        internal static Behaviour Read(string? directory)
+        internal static Behaviour Read(string? directory, string? subcommand = null)
         {
             if (directory is null) return new Behaviour();
             var besideGrammar = Path.Combine(directory, BehaviourFileName);
@@ -577,7 +583,22 @@ internal static class Program
             var path = Environment.GetEnvironmentVariable("FAKE_PANGLOSS_BEHAVIOUR_PATH")
                 ?? (File.Exists(besideGrammar) ? besideGrammar : Path.Combine(AppContext.BaseDirectory, BehaviourFileName));
             if (!File.Exists(path)) return new Behaviour();
-            return JsonSerializer.Deserialize<Behaviour>(File.ReadAllText(path),
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var root = document.RootElement;
+            if (subcommand is not null && root.TryGetProperty("subcommands", out var bySubcommand) &&
+                bySubcommand.ValueKind == JsonValueKind.Object &&
+                bySubcommand.EnumerateObject().FirstOrDefault(property =>
+                    string.Equals(property.Name, subcommand, StringComparison.OrdinalIgnoreCase)) is { Value.ValueKind: JsonValueKind.Object } selected)
+            {
+                var values = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+                foreach (var property in root.EnumerateObject())
+                    if (!string.Equals(property.Name, "subcommands", StringComparison.OrdinalIgnoreCase))
+                        values[property.Name] = property.Value;
+                foreach (var property in selected.Value.EnumerateObject()) values[property.Name] = property.Value;
+                return JsonSerializer.Deserialize<Behaviour>(JsonSerializer.Serialize(values),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();
+            }
+            return JsonSerializer.Deserialize<Behaviour>(root.GetRawText(),
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();
         }
     }

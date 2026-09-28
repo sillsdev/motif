@@ -81,20 +81,53 @@ internal static class SetupWalkthroughActions
 
     internal static void FinishFirstRun(
         WalkthroughWindow walkthrough, string selectedText, string stepLimit,
-        TimeSpan timeout)
+        TimeSpan timeout, string? addedWords = null)
     {
         var setup = walkthrough.Workspace.Context.Setup!;
         ClickSetupButton(walkthrough, "Next: texts");
         Assert.Equal(1, setup.Step);
         SetSetupTextChecked(walkthrough, selectedText, true);
+        if (addedWords is not null) walkthrough.Type("Words to add", addedWords);
         ClickSetupButton(walkthrough, "Next: limits");
         TypeSetupLimit(walkthrough, "Parser step limit per word", stepLimit);
         ClickSetupButton(walkthrough, "Next: first run");
         Assert.Equal(3, setup.Step);
+        var heartbeat = Path.Combine(walkthrough.ManagedRoot, "first-run-held-heartbeat");
+        walkthrough.SetFakeParserBehavior(new
+        {
+            subcommands = new Dictionary<string, object>
+            {
+                ["batch"] = new { heartbeatPath = heartbeat },
+            },
+        });
+        SIL.Motif.Contract.Responses.AssessmentStage? stageWhenSetupClosed = null;
+        setup.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SetupViewModel.IsOpen) && !setup.IsOpen)
+                stageWhenSetupClosed = walkthrough.Workspace.Assess.Progress?.Stage;
+        };
         walkthrough.Click("Start first run");
         walkthrough.WaitUntil(
-            () => !setup.IsOpen && walkthrough.Workspace.Assess.State == RunState.Completed &&
+            () => File.Exists(heartbeat) || walkthrough.Workspace.Assess.State is
+                RunState.Completed or RunState.Cancelled or RunState.Refused,
+            timeout, "Finish did not reach the held parser");
+        Assert.True(File.Exists(heartbeat), "Finish completed without holding the batch parser.");
+        Assert.False(setup.IsOpen);
+        Assert.Equal(SIL.Motif.Contract.Responses.AssessmentStage.Capturing, stageWhenSetupClosed);
+        walkthrough.Click("Cancel the running Assessment");
+        walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State == RunState.Cancelled,
+            timeout, "the held first run did not cancel");
+        walkthrough.SetFakeParserBehavior(new
+        {
+            subcommands = new Dictionary<string, object>
+            {
+                ["batch"] = new { words = new[] { new { word = selectedText, outcome = "complete" } } },
+            },
+        });
+        walkthrough.Click("Run the Assessment");
+        walkthrough.WaitUntil(
+            () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                 walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
-            timeout, "Finish did not save the Selection and complete the first run");
+            timeout, "the first run did not complete after the held parser was released");
     }
 }
