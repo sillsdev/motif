@@ -26,11 +26,13 @@ owner's ruling. The one external dependency that remains is the `pangloss` execu
 build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails — when
 it is not built, since "the parser is not built here" is an ordinary state of a developer's machine.
 
-**`./test.ps1` runs one process per test project, concurrently.** It discovers test projects listed in
-`Motif.sln` under `tests/`, so adding a project includes it automatically. Opening two LibLCM caches at
-once inside one process races, so every class that opens one shares the serialized
-`LcmCacheTestCollection` in its test assembly. Separate test processes cannot race, so project-level
-parallelism lets that serialized work use more than one core. Each project writes its console log to
+**`./test.ps1` runs one process per test project, with concurrency capped at half the available processor
+count (rounded down, minimum one).** It discovers test projects listed in `Motif.sln` under `tests/`, so
+adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
+worker, and parser child processes. Opening two LibLCM caches at once inside one process races, so every
+class that opens one shares the serialized `LcmCacheTestCollection` in its test assembly. Separate test
+processes cannot race, and the cap allows project-level parallelism when the runner has spare cores.
+Each project writes its console log to
 `bin/<Configuration>/test-results/<project>.log` and its TRX to
 `bin/<Configuration>/test-results/<project>/<project>.trx`. When a run fails, open that project's log
 first. Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). The operating

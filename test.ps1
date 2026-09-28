@@ -18,10 +18,11 @@
   that remains is the `pangloss` executable, a separate Rust build gated by `RealParserFactAttribute`
   -- those tests skip, rather than fail, when it is not built.
 
-  Each test project runs in a separate concurrent process. Classes that open a LibLCM cache share a
-  serialized xUnit collection within their assembly; separate processes have separate LibLCM statics,
-  so running projects concurrently lets the suite use more than one core. Projects are discovered
-  from Motif.sln and their IsTestProject declarations, so a new test project is included automatically.
+  Each test project runs in a separate process, with concurrent projects capped at half the available
+  processor count. Test processes can start CLI and worker child processes, so the cap leaves CPU
+  capacity for their work and allows project parallelism on larger runners. Classes that open a
+  LibLCM cache share a serialized xUnit collection within their assembly. Projects are discovered
+  from Motif.sln and their IsTestProject declarations. New test projects are included automatically.
 
   No process the run starts can show a Windows crash dialog. The script sets the error mode that suppresses
   it before anything else starts, and Windows hands that mode to every child: dotnet, the test hosts, and
@@ -123,6 +124,9 @@ foreach ($projectFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.csproj
 if ($testProjects.Count -eq 0) { throw 'No test projects were found under tests/ and listed in Motif.sln.' }
 $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1)
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
+$availableProcessors = [Environment]::ProcessorCount
+$projectConcurrency = [Math]::Max(1, [int][Math]::Floor($availableProcessors / 2))
+$projectConcurrency = [Math]::Min($testProjects.Count, $projectConcurrency)
 
 $binRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'bin')) + [IO.Path]::DirectorySeparatorChar
 $resultsRoot = [IO.Path]::GetFullPath((Join-Path (Join-Path $repoRoot 'bin') (Join-Path $Configuration 'test-results')))
@@ -132,13 +136,13 @@ if (-not $resultsRoot.StartsWith($binRoot, [StringComparison]::OrdinalIgnoreCase
 if (Test-Path $resultsRoot) { Remove-Item $resultsRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
-Write-Step "dotnet test (full suite, $($testProjects.Count) concurrent projects)"
+Write-Step "dotnet test (full suite, $($testProjects.Count) projects, up to $projectConcurrency at a time; $availableProcessors processors)"
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $jobs = foreach ($project in $testProjects) {
     $projectResults = Join-Path $resultsRoot $project.Name
     $projectLog = Join-Path $resultsRoot "$($project.Name).log"
     $projectErrorLog = Join-Path $resultsRoot "$($project.Name).stderr.log"
-    Start-ThreadJob -Name $project.Name -ThrottleLimit $testProjects.Count `
+    Start-ThreadJob -Name $project.Name -ThrottleLimit $projectConcurrency `
         -ArgumentList $project.Name, $project.Path, $Configuration, $projectResults, $projectLog, $projectErrorLog -ScriptBlock {
         param($name, $projectPath, $configuration, $projectResults, $log, $errorLog)
         $projectClock = [Diagnostics.Stopwatch]::StartNew()
