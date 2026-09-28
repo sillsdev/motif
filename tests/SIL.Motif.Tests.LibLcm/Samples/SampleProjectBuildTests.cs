@@ -44,6 +44,7 @@ public sealed class SampleProjectBuildTests
             using var spec = JsonDocument.Parse(await File.ReadAllTextAsync(specPath));
             SampleJsonSchemaValidator.AssertValid(spec.RootElement, schemaRoot);
             Assert.Equal(sampleId, spec.RootElement.GetProperty("id").GetString());
+            var languageTag = spec.RootElement.GetProperty("language").GetProperty("tag").GetString()!;
 
             using var bugs = JsonDocument.Parse(await File.ReadAllTextAsync(bugsPath));
             SampleJsonSchemaValidator.AssertValid(bugs.RootElement, schemaRoot.GetProperty("$defs").GetProperty("bugList"), schemaRoot);
@@ -57,14 +58,14 @@ public sealed class SampleProjectBuildTests
             {
                 using var fixedResult = await BuildAsync(root, specPath, bugsPath, [], "fixed");
                 Reopen(fixedResult.RootElement.GetProperty("projectPath").GetString()!, disclaimer);
-                AssertBackup(fixedResult.RootElement.GetProperty("backupPath").GetString()!);
+                AssertBackup(fixedResult.RootElement.GetProperty("backupPath").GetString()!, languageTag);
 
                 foreach (var bug in bugs.RootElement.EnumerateArray())
                 {
                     var bugId = bug.GetProperty("id").GetString()!;
                     using var brokenResult = await BuildAsync(root, specPath, bugsPath, [bugId], bugId);
                     Reopen(brokenResult.RootElement.GetProperty("projectPath").GetString()!, disclaimer);
-                    AssertBackup(brokenResult.RootElement.GetProperty("backupPath").GetString()!);
+                    AssertBackup(brokenResult.RootElement.GetProperty("backupPath").GetString()!, languageTag);
                 }
             }
             finally
@@ -109,11 +110,11 @@ public sealed class SampleProjectBuildTests
         Assert.StartsWith(disclaimer, description, StringComparison.Ordinal);
     }
 
-    private static void AssertBackup(string backupPath)
+    private static void AssertBackup(string backupPath, string languageTag)
     {
         using var archive = ZipFile.OpenRead(backupPath);
         Assert.Contains(archive.Entries, entry => entry.FullName.EndsWith(".fwdata", StringComparison.Ordinal));
         Assert.Contains(archive.Entries, entry => entry.FullName.Equals(
-            "WritingSystemStore/tr.ldml", StringComparison.OrdinalIgnoreCase));
+            $"WritingSystemStore/{languageTag}.ldml", StringComparison.OrdinalIgnoreCase));
     }
 }
