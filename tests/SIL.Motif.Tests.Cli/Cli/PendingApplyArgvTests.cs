@@ -202,7 +202,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var process = Process.Start(apply)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        using var worker = await StartQueuedWorkerAsync(path, runner.Options);
+        using var worker = await StartQueuedWorkerAsync(path, runner.Options, process);
         try
         {
             await WaitForPendingProposalAnchorAsync(path);
@@ -225,10 +225,11 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         }
     }
 
-    private static async Task<Process> StartQueuedWorkerAsync(string projectPath, JobRunnerLaunchOptions options)
+    // Bounded by the CLI's own progress: a cold CLI start can take longer than any fixed wait on a slow runner.
+    private static async Task<Process> StartQueuedWorkerAsync(string projectPath, JobRunnerLaunchOptions options,
+        Process cli)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(15);
-        while (DateTime.UtcNow < deadline)
+        while (!cli.HasExited)
         {
             using var database = ProjectMotifDatabase.Open(projectPath);
             if (new JobRepository(database).ListActive().Any(job => job.Kind == JobCommands.DryRunKind))
@@ -240,7 +241,8 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             }
             await Task.Delay(20);
         }
-        throw new TimeoutException("The CLI did not queue a Dry Run for pending changes.");
+        throw new InvalidOperationException(
+            $"The CLI exited with {cli.ExitCode} before queueing a Dry Run for pending changes.");
     }
 
     private static async Task WaitForPendingProposalAnchorAsync(string projectPath)
