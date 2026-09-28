@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -88,7 +88,7 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 	}));
 	await writeFile(path.join(sampleBuild, 'synthetic-turkic-fixed.fwbackup'), 'fixed-project');
 	await writeFile(path.join(docs, 'adr', '0001-example.md'), '---\nlayout: old\n---\n\n# Example decision\n\n<!-- remove this -->\n\n[Design](../design.md#rules)\n');
-	await writeFile(path.join(docs, 'design.md'), '# Design\n\n## Rules\n');
+	await writeFile(path.join(docs, 'design.md'), '# Design\n\n## Rules\n\nSee [the decision](adr/0001-example.md).\n');
 	await writeFile(path.join(docs, 'issues.md'), '# Issues\n\nIssue records belong to the Developer section.\n');
 	await writeFile(path.join(walks, 'open-project', 'steps', '01-overview.png'), 'image');
 	await writeFile(path.join(walks, 'open-project', 'steps', '01-overview-annotated.png'), 'annotated');
@@ -128,8 +128,7 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 	const guideIndex = await readFile(path.join(site, 'src', 'content', 'docs', 'guide', 'index.md'), 'utf8');
 	const guideStart = await readFile(path.join(site, 'src', 'content', 'docs', 'guide', 'agents', 'start-here.md'), 'utf8');
 	const guideWhat = await readFile(path.join(site, 'src', 'content', 'docs', 'guide', 'what-is-motif.md'), 'utf8');
-	const developer = await readFile(path.join(site, 'src', 'content', 'docs', 'developers', 'adr', '0001-example.md'), 'utf8');
-	const developerIndex = await readFile(path.join(site, 'src', 'content', 'docs', 'developers', 'adr', 'index.md'), 'utf8');
+	const design = await readFile(path.join(site, 'src', 'content', 'docs', 'developers', 'design.md'), 'utf8');
 	const issueDoc = await readFile(path.join(site, 'src', 'content', 'docs', 'developers', 'issues.md'), 'utf8');
 	const api = await readFile(path.join(site, 'src', 'content', 'docs', 'reference', 'api', 'index.md'), 'utf8');
 	const walkthroughPage = await readFile(path.join(site, 'src', 'content', 'docs', 'guide', 'walkthroughs', 'open-project.mdx'), 'utf8');
@@ -147,9 +146,8 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 	assert.doesNotMatch(guideStart, /^# Using Motif from an agent$/m);
 	assert.match(guideWhat, /Picture coming later/);
 	assert.doesNotMatch(guideWhat, /shot:not-built/);
-	assert.doesNotMatch(developer, /layout: old|remove this/);
-	assert.match(developer, /\/developers\/design\/#rules/);
-	assert.match(developerIndex, /Example decision/);
+	await assert.rejects(access(path.join(site, 'src', 'content', 'docs', 'developers', 'adr')));
+	assert.match(design, /https:\/\/github\.com\/sillsdev\/motif\/blob\/main\/docs\/adr\/0001-example\.md/);
 	assert.match(issueDoc, /Issue records belong to the Developer section\./);
 	assert.match(api, /## `SIL\.Motif\.Contract\.MotifJson`/);
 	assert.match(api, /### `CreateOptions`/);
