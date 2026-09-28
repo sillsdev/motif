@@ -181,6 +181,7 @@ public static class CliVerbCatalog
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
                 "[--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] " +
                 "[--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]",
+                "The default per-word step cap is 1,000,000 steps.",
             }),
 
         new CliVerbDescriptor(

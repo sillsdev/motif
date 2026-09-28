@@ -9,7 +9,7 @@ public sealed record NamedSelectionProjection(
     IReadOnlyList<string> AddedWords,
     string CreatedUtc,
     string UpdatedUtc,
-    int PerWordLimitMs = 1000,
+    int? PerWordLimitMs = 1000,
     StepCap? PerWordStepLimit = null);
 
 /// <summary>The saved default Selection, if present, and whether first-time setup was skipped.</summary>

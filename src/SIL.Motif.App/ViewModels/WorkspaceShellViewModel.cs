@@ -81,7 +81,11 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(recent =>
             recent is null ? Task.CompletedTask : OpenProjectSafelyAsync(recent.FullFwDataPath));
-        ConfigureCommand = new RelayCommand(() => OpenConfiguration?.Invoke(), () => CanConfigure);
+        ConfigureCommand = new AsyncRelayCommand(async () =>
+        {
+            OpenConfiguration?.Invoke();
+            if (Context.Setup?.ConfigurationLoadTask is { } load) await load.ConfigureAwait(true);
+        }, () => CanConfigure);
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         CancelRefreshCommand = new RelayCommand(CancelRefresh, () => _isRefreshing);

@@ -43,6 +43,7 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.ReadStoredGrammarCheckAsync),
         nameof(ICommandClient.ListTextWordsAsync),
         nameof(ICommandClient.TraceWordAsync),
+        nameof(ICommandClient.ReadParserStepRateAsync),
     };
 
     [Fact]

@@ -132,6 +132,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.Null(usageLine);
         }
         Assert.Contains("Configuration (the declared", result.Error, StringComparison.Ordinal);
+        Assert.Contains("The default per-word step cap is 1,000,000 steps.", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]

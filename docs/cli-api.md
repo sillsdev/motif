@@ -396,7 +396,10 @@ When no explicit source is named, `assess` resolves the saved default Selection.
 `selection.default-missing`. Naming explicit sources that together contribute no words is refused as
 `selection.empty`; naming a `--texts` GUID absent from the project is refused as `selection.text-not-found`.
 `--time-limit-ms` overrides the configured per-word wall-clock limit. `--step-cap` overrides the configured
-per-word search cap, whose default is 50,000,000 steps; `unbounded` asks PanGloss not to apply a step cap.
+per-word search cap, whose default is 1,000,000 steps; `unbounded` asks PanGloss not to apply a step cap.
+The setup wizard estimates a word's duration from the newest stored parser statistics. Before those exist, it
+uses a documented typical-machine rate of 250,000 steps per second. It saves a per-word time cap at ten times
+that estimate, rounded up to whole seconds; an unbounded step cap has no estimated or saved time cap.
 A search that hits either limit is stored as incomplete and appears as Unknown in Compare and Overview.
 
 **Cancellation records nothing.** A cancelled run refuses as `assessment.cancelled`; no partial Assessment
