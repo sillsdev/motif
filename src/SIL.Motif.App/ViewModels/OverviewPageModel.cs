@@ -210,6 +210,8 @@ public sealed partial class OverviewPageModel : PageModel
     private static string FormatWarningDetails(OverviewWarningsSummary warnings)
     {
         var parts = new List<string>();
+        if (warnings.ErrorCount is { } errorCount && errorCount > 0)
+            parts.Add($"{errorCount:N0} errors");
         if (warnings.InformationCount is { } informationCount)
             parts.Add($"{informationCount:N0} worth a look");
         if (warnings.LargestKind is { } kind)

@@ -33,6 +33,9 @@ public static class WarningsCommand
             .ToArray();
         return new WarningsResponse(check?.HasBaseline ?? true, check is not null, findings, byKind,
             findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning),
-            findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information));
+            findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information))
+        {
+            ErrorCount = findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error),
+        };
     }
 }

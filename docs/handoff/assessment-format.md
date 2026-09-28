@@ -99,7 +99,7 @@ For every traced word, `assessment.json` carries two things together, keyed by t
 - **The tree, verbatim.** Exactly what `pangloss parse <grammar> <word> --trace
   --trace-format=json` produced for that word. This document does not restate what the tree's
   fields mean or what its node types are — see PanGloss's own
-  [`docs/formats/trace-format.md`](https://github.com/sillsdev/PanGloss/blob/v0.3.2/docs/formats/trace-format.md)
+  [`docs/formats/trace-format.md`](https://github.com/sillsdev/PanGloss/blob/v0.5.1/docs/formats/trace-format.md)
   for that. The tree travels unedited because deciding which branch of a derivation mattered is
   the judgement being handed to whoever — person or model — reads the Handoff; Motif does not
   prune it first.

@@ -7,6 +7,30 @@ namespace SIL.Motif.Tests.App;
 public sealed class GrammarFindingGroupsTests
 {
     [Fact]
+    public void ErrorDiagnosticsRemainSeparateFromWarningsAndInformation()
+    {
+        var error = new GrammarWarning(
+            Enum.Parse<GrammarDiagnosticLevel>("Error"), "Error", [], [],
+            "error: fwdata.no-usable-allomorphs: entry has no usable allomorph.")
+        {
+            Group = "No usable entry allomorphs",
+            Code = "fwdata.no-usable-allomorphs",
+        };
+        var warnings = new GrammarWarningsViewModel();
+
+        warnings.Load([error]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(warnings.Rows));
+        Assert.Equal("error", row.Severity);
+        Assert.Equal(1, warnings.ErrorCount);
+        Assert.Equal("No usable entry allomorphs", Assert.Single(warnings.ErrorGroups).Name);
+        Assert.False(warnings.HasWarningGroups);
+        Assert.Empty(warnings.WarningGroups);
+        Assert.Empty(warnings.InformationGroups);
+        Assert.Contains("1 error", warnings.BreakdownText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void DiagnosticLevelControlsItsBucketRegardlessOfDescription()
     {
         var warning = new GrammarWarning(

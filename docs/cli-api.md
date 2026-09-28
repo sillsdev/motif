@@ -436,7 +436,7 @@ Selection fingerprints, Text Coverage, Accuracy, and parse-time median, p95, slo
 count. A rule is each distinct affix allomorph on a lexeme or alternate form, plus each compound and
 phonological rule; morphemes are not counted. Text Coverage and Accuracy use the same Compare placement rules as the App. A time- or step-limited
 word is Unknown, not a verdict. `Warnings` is a typed field in `OverviewResponse`; it is `null` until the
-current Baseline has a stored grammar check. It counts warning and information findings and groups them by
+current Baseline has a stored grammar check. It counts error, warning, and information findings and groups them by
 diagnostic code using the same data as `warnings`. With no matching Assessment the response still has the project and Selection facts, while
 Assessment metrics are empty. `--json` emits `OverviewResponse`.
 
@@ -478,8 +478,8 @@ level is `warning`; the two filters can be combined. Counts by level and kind de
 `hasCheck: false` with empty findings.
 `--json` emits `WarningsResponse`, including each finding's description, origin, guidance, subjects, and links.
 
-PanGloss v2 writes an object with `schema_version: 2`, `fieldworks_project`, `summary`, and `diagnostics`.
-The summary groups by `code` and includes `group_name`, `level` (`warning` or `info`), and `count`. Each
+PanGloss v3 writes an object with `schema_version: 3`, `fieldworks_project`, `summary`, and `diagnostics`.
+The summary groups by `code` and includes `group_name`, `level` (`error`, `warning`, or `info`), and `count`. Each
 diagnostic includes `level`, `code`, `group_name`, `origin` (`check` or `import`), `description`, nullable
 `guidance`, and `subjects`.
 
@@ -490,7 +490,9 @@ Import diagnostics appear as **From import**, while grammar-check diagnostics ap
 Motif does not publish an audience property; support can be added when PanGloss includes audience in the report.
 Standard-error warning lines are not read as grammar findings.
 
-Motif reads schema version 2 only. A bare array or an earlier findings envelope is refused as
+Motif reads schema version 3 only. A nonzero parser exit is accepted when the report contains an error-level
+diagnostic; those findings are stored and shown normally. Other nonzero exits remain parser refusals. A bare
+array or an earlier findings envelope is refused as
 `grammarcheck.malformed-findings`. A different integer version is refused as
 `grammarcheck.unsupported-schema`, with the received and expected versions; update PanGloss and Motif together.
 

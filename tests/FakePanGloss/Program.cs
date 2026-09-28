@@ -55,7 +55,7 @@ internal static class Program
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
         new("parse", ["grammar", "word"],
             [new("--trace", true), new("--trace-format", true), new("--trace-details", false)], RunParse),
-        new("grammar-health", ["grammar", "out.json"], [new("--fw-project", true)], RunGrammarHealth),
+        new("grammar-health", ["grammar", "out.json?"], [new("--fw-project", true)], RunGrammarHealth),
     ];
 
     private static int Main(string[] args)
@@ -352,7 +352,7 @@ internal static class Program
             return 64;
         }
         var grammarPath = args[1];
-        var outPath = args.Length > 2 ? args[2] : null;
+        var outPath = args.Length > 2 && !args[2].StartsWith("--", StringComparison.Ordinal) ? args[2] : null;
         var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
         RecordArgv(directory, args);
         var behaviour = Behaviour.Read(directory);
@@ -387,7 +387,7 @@ internal static class Program
             };
         var json = behaviour.GrammarHealthReportJson ?? JsonSerializer.Serialize(new
         {
-            schema_version = 2,
+            schema_version = 3,
             fieldworks_project = new { name = projectName, source = projectSource },
             summary = new[]
             {

@@ -131,7 +131,12 @@ internal static class PanGlossSurface
                 if (++index >= startInfo.ArgumentList.Count || startInfo.ArgumentList[index].StartsWith("--"))
                     return $"the description does not accept a value for '{request.Subcommand} {argument}'.";
             }
-            if (positionals.GetArrayLength() != positionalCount)
+            var declaredPositionals = positionals.EnumerateArray()
+                .Select(positional => positional.GetString()!)
+                .ToArray();
+            var requiredPositionals = declaredPositionals.Count(positional =>
+                !positional.EndsWith("?", StringComparison.Ordinal));
+            if (positionalCount < requiredPositionals || positionalCount > declaredPositionals.Length)
                 return $"the description declares the wrong positional shape for '{request.Subcommand}'.";
         }
         return null;

@@ -318,7 +318,8 @@ public static class CommandTextRenderer
                 Environment.NewLine;
         var text = new StringBuilder();
         text.AppendLine($"Grammar findings: {response.TotalCount:N0} " +
-            $"({response.WarningCount:N0} warnings, {response.InformationCount:N0} information)");
+            $"({response.ErrorCount:N0} errors, {response.WarningCount:N0} warnings, " +
+            $"{response.InformationCount:N0} information)");
         foreach (var kind in response.ByKind)
             text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}");
         foreach (var finding in response.Findings)
@@ -333,10 +334,13 @@ public static class CommandTextRenderer
 
         var warningCount = response.Findings.Count(finding =>
             finding.Severity == GrammarDiagnosticLevel.Warning);
-        var informationCount = response.Findings.Count - warningCount;
+        var errorCount = response.Findings.Count(finding =>
+            finding.Severity == GrammarDiagnosticLevel.Error);
+        var informationCount = response.Findings.Count(finding =>
+            finding.Severity == GrammarDiagnosticLevel.Information);
         var text = new StringBuilder();
         text.AppendLine($"Grammar findings: {response.Findings.Count:N0} " +
-            $"({warningCount:N0} warnings, {informationCount:N0} information)");
+            $"({errorCount:N0} errors, {warningCount:N0} warnings, {informationCount:N0} information)");
         foreach (var summary in response.Summary)
             text.AppendLine($"  {summary.Code}: {summary.Count:N0} {summary.Level.ToWireValue()}");
         foreach (var finding in response.Findings)

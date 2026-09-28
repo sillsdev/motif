@@ -167,11 +167,9 @@ public abstract record PanGlossRequest
     }
 
     /// <summary>
-    /// <c>pangloss grammar-health &lt;grammar&gt; &lt;out.json&gt;</c>: the grammar-health report, written to a
-    /// scratch file rather than read from standard output — writing to a named
-    /// file keeps this request's positional shape identical to the binary's own <c>--describe</c> declaration
-    /// (<c>grammar</c> plus an optional <c>out.json</c>), where reading standard output instead would supply
-    /// only the first of the two and fail that conformance check on every invocation, not only this one's own.
+    /// <c>pangloss grammar-health &lt;grammar&gt; --fw-project &lt;project&gt;</c>: a JSON grammar-health report on
+    /// standard output. Omitting its optional output path keeps the report available when PanGloss exits
+    /// nonzero to signal error-level diagnostics.
     /// </summary>
     public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName) : PanGlossRequest
     {
@@ -190,18 +188,16 @@ public abstract record PanGlossRequest
         {
             startInfo.ArgumentList.Add("grammar-health");
             startInfo.ArgumentList.Add(GrammarPath);
-            startInfo.ArgumentList.Add(Path.Combine(scratch, "health.json"));
             startInfo.ArgumentList.Add("--fw-project");
             startInfo.ArgumentList.Add(FieldWorksProjectName);
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed)
         {
-            var path = Path.Combine(scratch, "health.json");
-            return File.Exists(path)
-                ? new PanGlossOutcome.Completed(File.ReadAllText(path), standardError, elapsed)
-                : new PanGlossOutcome.Incomplete(
-                    $"pangloss grammar-health exited 0 but wrote no findings to '{path}'.", standardError);
+            return string.IsNullOrWhiteSpace(standardOutput)
+                ? new PanGlossOutcome.Incomplete(
+                    "pangloss grammar-health exited 0 but wrote no findings to standard output.", standardError)
+                : new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
         }
     }
 
