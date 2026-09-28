@@ -34,6 +34,98 @@ jobs:
         shell: pwsh
         run: ./build.ps1 -Configuration Release
 
+      - name: Probe native macOS resource limits
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/motif-resource-limit-probe.c" <<'EOF'
+          #include <errno.h>
+          #include <inttypes.h>
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <string.h>
+          #include <sys/resource.h>
+          #include <sys/wait.h>
+          #include <unistd.h>
+
+          static const char *format_limit(rlim_t limit, char *buffer, size_t size) {
+              if (limit == RLIM_INFINITY) return "infinity";
+              snprintf(buffer, size, "%ju", (uintmax_t)limit);
+              return buffer;
+          }
+
+          static void probe(const char *name, int resource, rlim_t requested, size_t allocation) {
+              struct rlimit inherited;
+              if (getrlimit(resource, &inherited) != 0) {
+                  printf("%s getrlimit errno=%d (%s)\n", name, errno, strerror(errno));
+                  return;
+              }
+              rlim_t effective = requested;
+              if (inherited.rlim_max != RLIM_INFINITY && inherited.rlim_max < effective)
+                  effective = inherited.rlim_max;
+              char soft[32], hard[32], request[32], ceiling[32];
+              printf("%s inherited soft=%s hard=%s requested=%s effective=%s\n", name,
+                  format_limit(inherited.rlim_cur, soft, sizeof(soft)),
+                  format_limit(inherited.rlim_max, hard, sizeof(hard)),
+                  format_limit(requested, request, sizeof(request)),
+                  format_limit(effective, ceiling, sizeof(ceiling)));
+              fflush(stdout);
+
+              pid_t child = fork();
+              if (child == 0) {
+                  struct rlimit desired = inherited;
+                  desired.rlim_cur = effective;
+                  errno = 0;
+                  int result = setrlimit(resource, &desired);
+                  int error = errno;
+                  dprintf(STDOUT_FILENO, "%s setrlimit result=%d errno=%d (%s)\n",
+                      name, result, error, strerror(error));
+                  if (result == 0 && allocation != 0) {
+                      errno = 0;
+                      void *memory = malloc(allocation);
+                      error = errno;
+                      if (memory == NULL) {
+                          dprintf(STDOUT_FILENO, "%s allocation refused errno=%d (%s)\n",
+                              name, error, strerror(error));
+                      } else {
+                          memset(memory, 1, allocation);
+                          dprintf(STDOUT_FILENO, "%s allocation succeeded\n", name);
+                          free(memory);
+                      }
+                  }
+                  _exit(0);
+              }
+              if (child < 0) {
+                  printf("%s fork errno=%d (%s)\n", name, errno, strerror(errno));
+                  return;
+              }
+              int status;
+              if (waitpid(child, &status, 0) < 0) {
+                  printf("%s waitpid errno=%d (%s)\n", name, errno, strerror(errno));
+                  return;
+              }
+              if (WIFSIGNALED(status))
+                  printf("%s child signal=%d\n", name, WTERMSIG(status));
+              else
+                  printf("%s child exit=%d\n", name, WEXITSTATUS(status));
+          }
+
+          int main(void) {
+              probe("RLIMIT_DATA 10GiB", RLIMIT_DATA, 10ULL * 1024 * 1024 * 1024, 0);
+              probe("RLIMIT_DATA 256MiB", RLIMIT_DATA, 256ULL * 1024 * 1024,
+                  320ULL * 1024 * 1024);
+          #ifdef RLIMIT_AS
+              probe("RLIMIT_AS 256MiB", RLIMIT_AS, 256ULL * 1024 * 1024,
+                  320ULL * 1024 * 1024);
+          #endif
+              return 0;
+          }
+          EOF
+          clang -Wall -Wextra "$RUNNER_TEMP/motif-resource-limit-probe.c" \
+            -o "$RUNNER_TEMP/motif-resource-limit-probe"
+          mkdir -p bin/Release/mac-debug
+          "$RUNNER_TEMP/motif-resource-limit-probe" | tee bin/Release/mac-debug/rlimit-probe.log
+
       - name: Run the selected tests
         shell: pwsh
         run: |
