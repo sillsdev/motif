@@ -390,6 +390,13 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private void OnAssessmentChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(AssessViewModel.IsActive)) FinishCommand.NotifyCanExecuteChanged();
+        if (e.PropertyName == nameof(AssessViewModel.Progress) &&
+            _context.Assess.Progress?.Stage == AssessmentStage.Parsing)
+        {
+            IsEditingExistingSelection = true;
+            IsOpen = false;
+            ShownRefusal = null;
+        }
     }
 
     private void OnWordsChanged(object? sender, PropertyChangedEventArgs e)

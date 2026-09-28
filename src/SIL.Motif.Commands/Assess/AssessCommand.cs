@@ -169,15 +169,13 @@ public static class AssessCommand
 
             AssessmentScope scope;
             var exportedCandidate = Path.GetDirectoryName(baseline.FwDataPath)!;
-
-            onProgress?.Invoke(new AssessmentProgress(
-                AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection..."));
             IReadOnlyList<ProducedAssessment> produced;
             try
             {
-                var collected = assessor.SupportedKinds.Contains(AssessmentKind.Correctness)
+                var supportedKinds = assessor.SupportedKinds;
+                var collected = supportedKinds.Contains(AssessmentKind.Correctness)
                     ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
-                var unsupported = collected.Where(kind => !assessor.SupportedKinds.Contains(kind)).ToArray();
+                var unsupported = collected.Where(kind => !supportedKinds.Contains(kind)).ToArray();
                 if (unsupported.Length > 0)
                     return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                         "assess.unsupported-kind", FailureReason.Refused,
@@ -187,6 +185,8 @@ public static class AssessCommand
                     request.PerWordLimitMs is { } ms ? TimeSpan.FromMilliseconds(ms)
                         : defaultPerWordLimitMs is { } savedMs ? TimeSpan.FromMilliseconds(savedMs) : configured.PerWordLimit,
                     request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ?? configured.PerWordStepLimit);
+                onProgress?.Invoke(new AssessmentProgress(
+                    AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection..."));
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)

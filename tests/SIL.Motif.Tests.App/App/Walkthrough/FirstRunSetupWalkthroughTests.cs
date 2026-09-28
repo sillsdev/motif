@@ -18,11 +18,12 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
     {
         using var project = new TwoTextWalkthroughProject(pristine);
         var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var parser = FakeParser.Copy(project.ManagedRoot);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
-                project.ManagedRoot, project.FwDataPath, parserPath: FakeParser.ExecutablePath);
+                project.ManagedRoot, project.FwDataPath, parserPath: parser);
             SetupWalkthroughActions.SelectProject(walkthrough, project.FwDataPath);
             SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
                 walkthrough, 2, WalkthroughSteps.Remaining(deadline));
@@ -41,7 +42,35 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 2.7m.ToString(CultureInfo.CurrentCulture));
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit per word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
+            var grammar = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar;
+            walkthrough.WaitUntil(() => !grammar.IsLoading, TimeSpan.FromSeconds(30),
+                "the startup grammar check did not finish before the first run");
+            var heartbeat = Path.Combine(project.ManagedRoot, "first-run-heartbeat");
+            FakeParser.BehaveBesideExecutable(parser, new { heartbeatPath = heartbeat });
             walkthrough.Click("Start first run");
+            walkthrough.WaitUntil(() => File.Exists(heartbeat) ||
+                walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
+                TimeSpan.FromSeconds(30), "the first run neither reached nor completed the fake parser");
+            var parserInvocations = Directory.GetFiles(project.ManagedRoot, "_pangloss-argv.json", SearchOption.AllDirectories)
+                .Select(path => $"{Path.GetDirectoryName(path)}: {File.ReadAllText(path)}");
+            Assert.True(File.Exists(heartbeat),
+                $"the first run did not reach the held fake parser; behavior='{Path.GetDirectoryName(parser)}', " +
+                $"state='{walkthrough.Workspace.Assess.State}', refusal='{walkthrough.Workspace.Assess.ShownRefusal?.Sentence}', " +
+                $"invocations='{string.Join(" | ", parserInvocations)}'");
+            Assert.False(setup.IsOpen);
+            Assert.False(walkthrough.SetupDialogIsShown);
+            Assert.Equal(RunState.Running, walkthrough.Workspace.Assess.State);
+            Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.Context.CurrentPage);
+            Assert.True(walkthrough.Find<ProgressBar>("Assessment progress").IsEffectivelyVisible);
+            walkthrough.Click("Cancel the running Assessment");
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Cancelled,
+                TimeSpan.FromSeconds(30), "the held first run did not cancel");
+            Assert.False(setup.IsOpen);
+
+            FakeParser.BehaveBesideExecutable(parser,
+                new { words = new[] { new { word = "motifa", outcome = "complete" } } });
+            walkthrough.Click("Run the Assessment");
             walkthrough.WaitUntil(
                 () => !setup.IsOpen && walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
@@ -81,4 +110,5 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             return;
         }, WalkthroughSteps.Remaining(deadline));
     }
+
 }

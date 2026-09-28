@@ -237,6 +237,82 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
+    public async Task FirstRunClosesSetupWhileTheAssessmentIsStillRunning()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+        var setup = workspace.Context.Setup!;
+        setup.Step = 3;
+        var outcome = new TaskCompletionSource<CommandOutcome<AssessCommandResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnAssess((_, progress, _) =>
+        {
+            progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing the Selection..."));
+            return outcome.Task;
+        });
+
+        var finishing = setup.FinishCommand.ExecuteAsync(null);
+
+        Assert.True(workspace.Assess.IsActive);
+        Assert.False(setup.IsOpen);
+
+        outcome.SetResult(CommandOutcome<AssessCommandResponse>.Success(NewAssessResponse("first run")));
+        await finishing;
+        await workspace.Assess.RunCommand.ExecutionTask!;
+        Assert.Equal(RunState.Completed, workspace.Assess.State);
+    }
+
+    [Fact]
+    public async Task FirstRunKeepsSetupOpenWhenAssessmentIsRefusedBeforeStarting()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+        var setup = workspace.Context.Setup!;
+        setup.Step = 3;
+        var refusal = new Refusal("assess.parser-unavailable", FailureReason.Refused, "The parser is unavailable.");
+        fake.AssessRefusesWith(refusal);
+
+        await setup.FinishCommand.ExecuteAsync(null);
+
+        Assert.True(setup.IsOpen);
+        Assert.Equal(refusal.Code, setup.ShownRefusal?.Code);
+    }
+
+    [Fact]
+    public async Task FirstRunDoesNotReopenSetupWhenAnAssessmentFailsAfterItStarts()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        workspace.Selection.Texts[0].IsChecked = true;
+        var setup = workspace.Context.Setup!;
+        setup.Step = 3;
+        var outcome = new TaskCompletionSource<CommandOutcome<AssessCommandResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnAssess((_, progress, _) =>
+        {
+            progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing the Selection..."));
+            return outcome.Task;
+        });
+
+        var finishing = setup.FinishCommand.ExecuteAsync(null);
+
+        Assert.True(workspace.Assess.IsActive);
+        Assert.False(setup.IsOpen);
+        outcome.SetResult(CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+            "assess.parser-refused", FailureReason.Refused, "The parser failed during the Assessment.")));
+        await finishing;
+        await workspace.Assess.RunCommand.ExecutionTask!;
+
+        Assert.Equal(RunState.Refused, workspace.Assess.State);
+        Assert.False(setup.IsOpen);
+    }
+
+    [Fact]
     public async Task FirstRunCanUseNoStepLimit()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();

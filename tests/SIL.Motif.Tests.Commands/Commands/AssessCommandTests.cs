@@ -959,13 +959,15 @@ public sealed class AssessCommandTests : IDisposable
         using var seeded = NewSeededScratch();
         var assessor = new LazyPanGlossAssessor(() =>
             throw new SIL.Motif.Host.Parser.ParserUnavailableException("parser absent"));
+        var stages = new List<AssessmentStage>();
 
         var outcome = AssessCommand.Run(
             new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, NewInvoker(),
-            onProgress: null, CancellationToken.None);
+            progress => stages.Add(progress.Stage), CancellationToken.None);
 
         Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
         Assert.Contains("parser absent", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(AssessmentStage.Parsing, stages);
         Assert.Empty(OpenRepository(seeded.FwDataPath).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
     }
 
