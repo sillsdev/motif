@@ -108,6 +108,14 @@ worker grounds its language content in published analyses found online, cited in
 already calls; its grammar-health report is schema version 3 with an `error` level and a non-zero exit on errors,
 which Motif's reader must handle.
 
+**D15. Motif is a tech demo, not a beta (2026-09-28; supersedes D11's wording).** Motif shows some new
+technology and some ideas about what it makes possible; it is not a product release. Every surface says
+"tech demo" where D11 said "beta", and names what it brings: PanGloss, parsing about ten times faster;
+grammar health you can see (warnings, timings and statistics, practical because the parser is fast); and
+the AI handoff. The parts that work will likely be integrated back into FieldWorks. D11's safety lines
+stay: Motif writes nothing until Apply, and a FieldWorks backup comes first. The website is an internal
+developer build until it is reviewed and approved; nothing builds or publishes it in CI yet.
+
 ## 3. Interfaces (binding)
 
 ### Sample metadata — the part the site reads
