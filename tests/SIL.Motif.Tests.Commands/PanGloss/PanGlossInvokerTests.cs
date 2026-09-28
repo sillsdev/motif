@@ -103,6 +103,31 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task ChildEnvironmentKeepsDotnetRootSoAnApphostParserFindsItsRuntime()
+    {
+        var grammar = Project("dotnet-root-environment");
+        var previous = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        // The running runtime's own root, so the fake apphost still starts with the variable set.
+        var runtimeRoot = Path.GetFullPath(Path.Combine(
+            System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(), "..", "..", ".."));
+        Environment.SetEnvironmentVariable("DOTNET_ROOT", previous ?? runtimeRoot);
+        try
+        {
+            using var invoker = Invoker();
+            var outcome = await invoker.RunAsync(
+                new PanGlossRequest.Stats(grammar, Path.Combine(_root, "cache"), []),
+                "test:dotnet-root-environment", CancellationToken.None);
+
+            Assert.IsType<PanGlossOutcome.Completed>(outcome);
+            Assert.Contains("DOTNET_ROOT", EnvironmentNames(grammar));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DOTNET_ROOT", previous);
+        }
+    }
+
+    [Fact]
     public async Task ChildEnvironmentDoesNotReceiveAnUnrelatedParentVariable()
     {
         var grammar = Project("minimal-environment");

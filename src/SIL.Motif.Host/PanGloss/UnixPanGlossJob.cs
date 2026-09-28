@@ -90,7 +90,7 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
                 arguments, environment), "starting the parser");
             _processGroups.Add(processId);
             return new PanGlossChildProcess(new UnixPanGlossChildProcess(processId, stdout, stderr,
-                () => KillProcessGroup(processId)));
+                () => KillProcessGroup(processId), _linux ? null : _memoryLimitBytes));
         }
         catch
         {
@@ -148,14 +148,24 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             script.Append("printf '%s\\n' \"$$\" > ")
                 .Append(ShellQuote(Path.Combine(_cgroup.Path, "cgroup.procs"))).Append(" || exit 125; ");
         }
-        if (_cgroup is null)
+        if (_cgroup is null && _linux)
         {
             var kibibytes = (_memoryLimitBytes + 1023) / 1024;
-            var resource = _linux ? 'v' : 'd';
+            const char resource = 'v';
+            const string resourceName = "RLIMIT_AS";
             var limit = kibibytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            script.Append("ulimit -H -").Append(resource).Append(' ').Append(limit)
-                .Append(" 2>/dev/null && ulimit -S -").Append(resource).Append(' ').Append(limit)
-                .Append(" 2>/dev/null || exit 125; ");
+            script.Append("resource_hard=$(ulimit -H -").Append(resource).Append(") || exit 125; ")
+                .Append("case \"$resource_hard\" in ")
+                .Append("unlimited) resource_effective=").Append(limit).Append(" ;; ")
+                .Append("''|*[!0-9]*) exit 125 ;; ")
+                .Append("*) if [ \"$resource_hard\" -gt ").Append(limit)
+                .Append(" ]; then resource_effective=").Append(limit)
+                .Append("; else resource_effective=$resource_hard; fi ;; ")
+                .Append("esac; ")
+                .Append("ulimit -S -").Append(resource).Append(" \"$resource_effective\" 2>/dev/null || { printf '%s\\n' 'Could not set soft ")
+                .Append(resourceName).Append(".' >&2; exit 125; }; ")
+                .Append("ulimit -H -").Append(resource).Append(" \"$resource_effective\" 2>/dev/null || { printf '%s\\n' 'Could not set hard ")
+                .Append(resourceName).Append(".' >&2; exit 125; }; ");
         }
         script.Append("exec \"$0\" \"$@\"");
         return script.ToString();
@@ -163,16 +173,11 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
 
     private static List<string> BuildEnvironment(ProcessStartInfo startInfo)
     {
-        var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
-            values[(string)entry.Key] = (string)entry.Value!;
-        foreach (var pair in startInfo.Environment)
-        {
-            if (pair.Value is null) values.Remove(pair.Key);
-            else values[pair.Key] = pair.Value;
-        }
-        return values.OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .Select(pair => pair.Key + "=" + pair.Value).ToList();
+        return startInfo.Environment
+            .Where(pair => pair.Value is not null)
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => pair.Key + "=" + pair.Value)
+            .ToList();
     }
 
     private static FileStream CreateCaptureStream() => new(Path.Combine(Path.GetTempPath(),
@@ -211,12 +216,19 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             }
             : new[]
             {
-                "macOS has no cgroup equivalent; CPU rate and aggregate memory are uncapped, and RLIMIT_DATA covers only each process's data segment.",
-                "A descendant that deliberately leaves the process group can outlive the job."
+                "Finite RLIMIT_DATA and RLIMIT_AS values are unavailable on macOS; the process-group watchdog samples every 50 ms.",
+                "The 50 ms sampling interval can allow footprint overshoot, and a peak released between samples can be missed.",
+                "A descendant that deliberately leaves the process group can escape measurement and termination."
             };
+        if (!linux)
+            return new PanGlossContainmentReport(null, memoryLimitBytes, true,
+                "No hard CPU rate limit is available.",
+                $"macOS process-group physical-footprint watchdog, sampled every 50 ms, with a {memoryLimitBytes} byte ceiling.",
+                "The child starts in its own process group; members are killed on close or when sampled footprint exceeds the ceiling.",
+                limitations);
         return new PanGlossContainmentReport(null, memoryLimitBytes, false,
             linux ? "No hard CPU rate limit; RLIMIT_CPU is a total-time limit and is not substituted." : "No hard CPU rate limit is available.",
-            linux ? "RLIMIT_AS address-space limit per process." : "RLIMIT_DATA data-segment limit per process.",
+            "RLIMIT_AS address-space limit per process.",
             "The child starts in its own process group; members are killed on close, but a detached descendant can escape.",
             limitations);
     }
@@ -253,15 +265,19 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     private readonly FileStream _stderr;
     private readonly Action _kill;
     private readonly Task<int> _exitCode;
+    private readonly MacPanGlossMemoryWatchdog? _memoryWatchdog;
     private bool _disposed;
 
-    internal UnixPanGlossChildProcess(int processId, FileStream stdout, FileStream stderr, Action kill)
+    internal UnixPanGlossChildProcess(int processId, FileStream stdout, FileStream stderr, Action kill,
+        ulong? macMemoryLimitBytes = null)
     {
         Id = processId;
         _stdout = stdout;
         _stderr = stderr;
         _kill = kill;
         _exitCode = Task.Run(() => WaitForExitCode(processId));
+        if (macMemoryLimitBytes is { } memoryLimitBytes && OperatingSystem.IsMacOS())
+            _memoryWatchdog = new MacPanGlossMemoryWatchdog(processId, memoryLimitBytes, kill);
     }
 
     public int Id { get; }
@@ -269,8 +285,19 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     public async Task WaitForExitAsync(CancellationToken cancellationToken) =>
         _ = await _exitCode.WaitAsync(cancellationToken).ConfigureAwait(false);
 
+    public Task WaitForContainmentAsync(CancellationToken cancellationToken) =>
+        _memoryWatchdog?.WaitForCompletionAsync(cancellationToken) ?? Task.CompletedTask;
+
     public Task<string> ReadStandardOutputAsync() => ReadAsync(_stdout);
-    public Task<string> ReadStandardErrorAsync() => ReadAsync(_stderr);
+    public async Task<string> ReadStandardErrorAsync()
+    {
+        var standardError = await ReadAsync(_stderr).ConfigureAwait(false);
+        if (_memoryWatchdog is not null)
+            await _memoryWatchdog.WaitForCompletionAsync(CancellationToken.None).ConfigureAwait(false);
+        return _memoryWatchdog?.FailureReason is { } failure
+            ? string.IsNullOrEmpty(standardError) ? failure : standardError + Environment.NewLine + failure
+            : standardError;
+    }
 
     public void KillProcessTree() => _kill();
 
@@ -278,6 +305,7 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     {
         if (_disposed) return;
         _disposed = true;
+        _memoryWatchdog?.Dispose();
         _stdout.Dispose();
         _stderr.Dispose();
     }
@@ -293,8 +321,9 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
         return (status & 0x7f) == 0 ? (status >> 8) & 0xff : 128 + (status & 0x7f);
     }
 
-    private static async Task<string> ReadAsync(FileStream stream)
+    private async Task<string> ReadAsync(FileStream stream)
     {
+        await _exitCode.ConfigureAwait(false);
         await stream.FlushAsync().ConfigureAwait(false);
         stream.Position = 0;
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true,

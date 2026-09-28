@@ -12,7 +12,8 @@
             AutomationProperties.Name="Delete Motif's file for this project and reopen it"
             HorizontalAlignment="Left"
             IsVisible="False" />
-    <Expander Classes="refusalDetails" Header="Details" IsExpanded="False" IsVisible="{Binding HasDetails}">
+    <Expander Classes="refusalDetails" Header="Details" AutomationProperties.Name="Refusal details"
+              IsExpanded="False" IsVisible="{Binding HasDetails}">
       <views:CopyableTextBlock Classes="refusalDetails" Text="{Binding Details}" TextWrapping="Wrap" />
     </Expander>
   </StackPanel>

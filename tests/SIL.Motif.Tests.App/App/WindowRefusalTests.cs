@@ -164,6 +164,14 @@ public sealed class WindowRefusalTests
     }
 
     [Fact]
+    public void ReconfirmUnneededHasItsOwnSentence()
+    {
+        var shown = WindowRefusal.From(Refusal(RefusalCodes.ChangeReconfirmUnneeded));
+
+        Assert.Equal("This change does not need another check.", shown.Sentence);
+    }
+
+    [Fact]
     public void EveryCatalogueCodeIsOneACommandOrTheWindowDeclares()
     {
         var root = RepoPaths.FindRepoRoot();

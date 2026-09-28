@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -58,10 +59,10 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
             "Correct the spelling status of the selected word.")).Succeeded);
         var pending = LoadPending(path);
 
-        var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, null, null,
-            ["review-word"]), new Progress<MeasureProgress>(), CancellationToken.None, runnerLauncher: runner);
+        var measured = await MeasureStepAsync("the first Trial", new MeasurePendingRequest(path, null, null,
+            ["review-word"]), runner);
 
-        Assert.True(measured.Succeeded, measured.Refusal?.Message + " " + LastJob(path));
+        Assert.True(measured.Succeeded, "the first Trial: " + measured.Refusal?.Message + " " + LastJob(path));
         Assert.True(measured.Value!.EvidenceComplete);
         Assert.Equal(pending.Revision, measured.Value.Revision);
         Assert.Equal(JobStatus.Completed, JobCommands.Show(new ShowJobRequest(path,
@@ -75,12 +76,17 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
             Assert.Equal(JobStatus.Completed, completed.Value!.Status);
         }
         Assert.Equal(pending.Revision, LoadPending(path).Revision);
-        var applied = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, pending.DraftId!,
-            pending.Revision, "test-user"), runnerLauncher: runner);
+        var applied = await ApplyStepAsync("the first Apply", new ApplyPendingRequest(path, pending.DraftId!,
+            pending.Revision, "test-user"), runner);
 
-        Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        Assert.True(applied.Succeeded, "the first Apply: " + applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
         Assert.Equal(pending.DraftId, applied.Value.Receipt!.ProposalId);
+        using (var response = JsonDocument.Parse(ProjectionJson.Serialize(applied.Value)))
+        {
+            var summary = response.RootElement.GetProperty("summary").GetString();
+            Assert.Equal("Marked 1 word as incorrectly spelled.", summary);
+        }
         Assert.Empty(LoadPending(path).Changes);
         using var database = ProjectMotifDatabase.Open(path);
         var proposal = new ProposalRepository(database).Get(CanonicalId.Parse(pending.DraftId!));
@@ -90,34 +96,34 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
 
         var empty = LoadPending(path);
         var second = PutChange(path, empty.Revision, secondWordformId, "review-second");
-        var stale = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, second.DraftId!,
-            "stale-revision", "test-user"), runnerLauncher: runner);
+        var stale = await ApplyStepAsync("the stale Apply", new ApplyPendingRequest(path, second.DraftId!,
+            "stale-revision", "test-user"), runner);
         Assert.Equal("apply.changes-changed", stale.Refusal?.Code);
-        var withoutTrial = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, second.DraftId!,
-            second.Revision, "test-user"), runnerLauncher: runner);
+        var withoutTrial = await ApplyStepAsync("the Apply without a Trial", new ApplyPendingRequest(path,
+            second.DraftId!, second.Revision, "test-user"), runner);
         Assert.Equal("apply.not-ready", withoutTrial.Refusal?.Code);
         var reopened = LoadPending(path);
         Assert.Equal(second.DraftId, reopened.DraftId);
         Assert.Single(reopened.Changes);
 
         var currentAssessmentId = new AssessmentRepository(database).GetCurrent()!.AssessmentId;
-        var secondTrial = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, reopened.DraftId!,
-            reopened.Revision, ["review-second"], currentAssessmentId),
-            new Progress<MeasureProgress>(), CancellationToken.None, runnerLauncher: runner);
-        Assert.True(secondTrial.Succeeded, secondTrial.Refusal?.Message + " " + LastJob(path));
+        var secondTrial = await MeasureStepAsync("the second Trial", new MeasurePendingRequest(path,
+            reopened.DraftId!, reopened.Revision, ["review-second"], currentAssessmentId), runner);
+        Assert.True(secondTrial.Succeeded,
+            "the second Trial: " + secondTrial.Refusal?.Message + " " + LastJob(path));
         Assert.True(secondTrial.Value!.EvidenceComplete);
         Assert.Equal(JobStatus.Completed, JobCommands.Show(new ShowJobRequest(path,
             secondTrial.Value.JobId, ProductVersion)).Value!.Status);
-        var secondApply = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, reopened.DraftId!,
-            reopened.Revision, "test-user"), runnerLauncher: runner);
-        Assert.True(secondApply.Succeeded, secondApply.Refusal?.Message);
+        var secondApply = await ApplyStepAsync("the second Apply", new ApplyPendingRequest(path,
+            reopened.DraftId!, reopened.Revision, "test-user"), runner);
+        Assert.True(secondApply.Succeeded, "the second Apply: " + secondApply.Refusal?.Message);
         var secondProposal = new ProposalRepository(database).Get(CanonicalId.Parse(reopened.DraftId!));
         Assert.Equal("Changes to word analyses", secondProposal.Label);
         Assert.Equal("Changes to word analyses and spelling.", secondProposal.Comment);
     }
 
     [Fact]
-    public void ARefusalAfterFinalizeReopensTheDraft()
+    public async Task ARefusalAfterFinalizeReopensTheDraft()
     {
         using var scratch = pristine.NewScratch();
         var path = scratch.ProjectId.Path;
@@ -131,8 +137,8 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
         var pending = PutChange(path, LoadPending(path).Revision, wordformId, "unmeasured-word");
 
-        var outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, pending.DraftId!,
-            pending.Revision, "test-user"), runnerLauncher: runner);
+        var outcome = await ApplyStepAsync("the Apply without a Trial", new ApplyPendingRequest(path,
+            pending.DraftId!, pending.Revision, "test-user"), runner);
 
         Assert.Equal("apply.not-ready", outcome.Refusal?.Code);
         var reopened = LoadPending(path);
@@ -445,6 +451,33 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
     }
 
     private static string ProductVersion => MotifProductVersion.CurrentText;
+
+    // A step that drives a real runner fails naming itself rather than hanging the whole run.
+    private static readonly TimeSpan StepBound = TimeSpan.FromMinutes(5);
+
+    private static Task<CommandOutcome<MeasurePendingResult>> MeasureStepAsync(string step,
+        MeasurePendingRequest request, IJobRunnerLauncher runner) =>
+        WithinStepBoundAsync(step, request.ProjectPath, PendingChangesWorkflow.Measure(request,
+            new Progress<MeasureProgress>(), CancellationToken.None, StepBound, runner));
+
+    private static Task<CommandOutcome<ApplyPendingResult>> ApplyStepAsync(string step,
+        ApplyPendingRequest request, IJobRunnerLauncher runner) =>
+        WithinStepBoundAsync(step, request.ProjectPath, Task.Run(() => PendingChangesWorkflow.Apply(request,
+            dryRunTimeout: StepBound, runnerLauncher: runner)));
+
+    // The workflow's own wait gives up at the bound; this margin catches a hang anywhere else in the step.
+    private static async Task<T> WithinStepBoundAsync<T>(string step, string path, Task<T> running)
+    {
+        try
+        {
+            return await running.WaitAsync(StepBound + TimeSpan.FromSeconds(30));
+        }
+        catch (TimeoutException)
+        {
+            throw new TimeoutException(
+                step + " did not finish within " + StepBound + "; last job: " + LastJob(path));
+        }
+    }
 
     private static string NewManagedRoot(string projectPath)
     {

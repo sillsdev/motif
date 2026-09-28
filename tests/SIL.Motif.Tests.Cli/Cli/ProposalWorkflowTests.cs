@@ -4,18 +4,21 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Cli;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Model.AppliedLog;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 using SIL.LCModel;
@@ -196,7 +199,7 @@ public sealed class ProposalWorkflowTests
     /// <see cref="NeedsReconciliationException"/> and <see cref="ReconciliationBoundary.ReceiptRecording"/>.
     /// </remarks>
     [Fact]
-    public void Apply_ManifestWriteFails_AfterAGenuineCommitAndSave_ReportsReconciliation_NotRollback()
+    public async Task ApplyReconciliationNeeded_ReportsStoreInconsistentExitCode()
     {
         var senseGuid = _seed.FirstSenseId;
         var wsTag = NewLangProjFixture.AnalysisTag;
@@ -221,13 +224,33 @@ public sealed class ProposalWorkflowTests
         File.SetAttributes(dbPath, FileAttributes.ReadOnly);
         try
         {
-            var applyResult = ProposalCommands.Apply(
-                new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
+            var start = new ProcessStartInfo(BuildOutput.Cli)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            foreach (var argument in new[]
+                     { "apply", proposalId, "--project", _fwDataPath, "--user", applier, "--force", "--json" })
+                start.ArgumentList.Add(argument);
+            var runner = IsolatedRunner.Options(Path.Combine(Path.GetTempPath(),
+                "motif-reconciliation-worker-" + Guid.NewGuid().ToString("N")));
+            start.Environment[RunnerOptions.RootVariable] = runner.Root;
+            start.Environment[ProcessRunnerLauncher.ExecutableVariable] = runner.WorkerExecutable;
+            start.Environment[RunnerOptions.NamespaceVariable] = runner.OwnerNamespace;
+            start.Environment[RunnerOptions.IdleVariable] = "1";
+            start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
+            using var process = Process.Start(start)!;
+            var output = process.StandardOutput.ReadToEndAsync();
+            var error = process.StandardError.ReadToEndAsync();
+            Assert.True(process.WaitForExit(60000));
 
-            Assert.False(applyResult.Succeeded);
-            Assert.Equal("apply.reconciliation-needed", applyResult.Refusal!.Code);
-            Assert.Contains("proposal store failed", applyResult.Refusal.Message, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("rolled back", applyResult.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(4, process.ExitCode);
+            Assert.Empty(await output);
+            var errorText = await error;
+            using var failure = JsonDocument.Parse(errorText);
+            Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());
+            Assert.Equal("StoreInconsistent", failure.RootElement.GetProperty("reason").GetString());
 
             // The load-bearing proof: the mutation genuinely committed and saved despite the report above.
             AssertGlossOnDisk(senseGuid, wsTag, newGloss);

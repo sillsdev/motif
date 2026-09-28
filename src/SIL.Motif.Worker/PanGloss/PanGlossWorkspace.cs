@@ -163,5 +163,5 @@ public sealed class PanGlossWorkspace : IDisposable
     }
 
     private static bool IsSafeSegment(string value) => !string.IsNullOrWhiteSpace(value) && value is not ("." or "..") &&
-        value.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, ':']) < 0;
+        value.IndexOfAny(['/', '\\', ':']) < 0;
 }

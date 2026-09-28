@@ -8,12 +8,17 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Cli;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -39,9 +44,13 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
                 CanonicalId.FromGuid(wordformId).Value, "pending-trial-word", OriginPage: "Texts")));
         Assert.True(pending.Succeeded, pending.Refusal?.Message);
 
-        var result = await RunAsync(root, "trial", "--pending", "--project", path,
-            "--words", "pending-trial-word", "--wait", "--wait-timeout-ms", "30000", "--json");
+        // The CLI's own wait outlasts the progress bound, so a slow Trial fails only if it stops progressing.
+        var result = await RunAsync(root, "trial", "--pending", "--project", path, "--words", "pending-trial-word",
+            "--wait", "--wait-timeout-ms", ((int)(JobProgress.Cap + TimeSpan.FromMinutes(1)).TotalMilliseconds)
+                .ToString(System.Globalization.CultureInfo.InvariantCulture), "--json");
 
+        if (result.ExitCode != 0)
+            Assert.Fail(PendingTrialFailure(path, result));
         Assert.Equal(0, result.ExitCode);
         using var response = JsonDocument.Parse(result.Output);
         Assert.True(response.RootElement.GetProperty("evidenceComplete").GetBoolean());
@@ -79,12 +88,82 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
         using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
+        var finished = Task.WhenAll(outputTask, errorTask, process.WaitForExitAsync());
+        var project = ProjectArgument(arguments);
+        if (root is null || project is null)
+        {
+            await finished.WaitAsync(TimeSpan.FromSeconds(60));
+        }
+        else
+        {
+            var stalled = await WatchTrialAsync(project, finished);
+            if (stalled is not null)
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) { }
+                Assert.Fail("'motif " + string.Join(' ', arguments) + "': " + stalled);
+            }
+        }
         return new CliRun(process.ExitCode, await outputTask, await errorTask);
+    }
+
+    // Why the Trial the CLI queued stopped progressing before the CLI finished, or null once it finishes.
+    private static async Task<string?> WatchTrialAsync(string project, Task finished)
+    {
+        var progress = new JobProgress();
+        var enqueueDeadline = DateTime.UtcNow + JobProgress.ClaimBound;
+        while (!finished.IsCompleted)
+        {
+            var jobId = JobProgress.LatestJobId(project, JobCommands.TrialKind);
+            if (jobId is null && DateTime.UtcNow > enqueueDeadline)
+                return "no Trial was queued within " + JobProgress.ClaimBound;
+            if (jobId is not null && JobProgress.Read(project, jobId) is var job &&
+                progress.Stalled(job) is { } stalled)
+                return stalled + " (" + JobProgress.Describe(job) + ")";
+            await Task.WhenAny(finished, Task.Delay(TimeSpan.FromMilliseconds(100)));
+        }
+        await finished;
+        return null;
+    }
+
+    private static string? ProjectArgument(string[] arguments)
+    {
+        var index = Array.IndexOf(arguments, "--project");
+        return index >= 0 && index + 1 < arguments.Length && File.Exists(arguments[index + 1])
+            ? arguments[index + 1]
+            : null;
     }
 
     private static FailureEnvelope Envelope(string text) =>
         ProjectionJson.Deserialize<FailureEnvelope>(text)!;
+
+    private static string PendingTrialFailure(string path, CliRun result)
+    {
+        var stderr = string.IsNullOrWhiteSpace(result.Error) ? "(empty)" : result.Error.Trim();
+        try
+        {
+            var project = new ProjectLocator(Path.GetFullPath(path), Path.GetFileNameWithoutExtension(path));
+            using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current)
+                .OpenOwned(project);
+            var job = new JobRepository(database)
+                .ListByProjectAndKind(ProjectWorkspaceKey.Compute(project), JobCommands.TrialKind)
+                .OrderByDescending(record => record.CreatedUtc, StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (job is null)
+                return $"Pending Trial CLI exited {result.ExitCode}; no Trial job was found; CLI stderr: {stderr}";
+
+            var runnerClaimed = job.OwnerId is not null || job.ClaimToken is not null;
+            return $"Pending Trial CLI exited {result.ExitCode}; job {job.JobId} state {job.Status}, " +
+                $"attempt {job.Attempt}, runner claimed {runnerClaimed}, owner {job.OwnerId ?? "<none>"}, " +
+                $"claim token present {job.ClaimToken is not null}, claim/last heartbeat UTC " +
+                $"{job.HeartbeatUtc ?? "<none>"}; CLI stderr: {stderr}";
+        }
+        catch (Exception exception)
+        {
+            return $"Pending Trial CLI exited {result.ExitCode}; job state, attempt, and runner claim " +
+                $"were unavailable ({exception.GetType().Name}: {exception.Message}); CLI stderr: {stderr}";
+        }
+    }
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
 }

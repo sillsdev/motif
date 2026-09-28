@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Runner.Composers;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
@@ -40,8 +41,11 @@ public static class PendingChangesWorkflow
             request.Revision is { } expectedRevision && expectedRevision != snapshot.Revision)
             return RefuseApply("apply.changes-changed",
                 "The changes changed. Reload and check them before applying.");
-        if (snapshot.FitSummary.Count != snapshot.Changes.Count ||
-            snapshot.FitSummary.Any(fit => !fit.StillFits))
+        var uncertain = snapshot.FitSummary.Where(fit => fit.Status == ChangeFitStatus.Uncertain)
+            .Select(fit => fit.ChangeId).ToArray();
+        if (uncertain.Length > 0)
+            return CommandOutcome<ApplyPendingResult>.Refused(PendingChangeRefusals.Uncertain(uncertain));
+        if (snapshot.FitSummary.Count != snapshot.Changes.Count || snapshot.FitSummary.Any(fit => !fit.StillFits))
             return RefuseApply("apply.change-no-longer-fits",
                 "One or more changes no longer fit the project. Remove those changes first.");
         var resolvedRequest = request with { DraftId = draftId, Revision = snapshot.Revision };
@@ -59,7 +63,12 @@ public static class PendingChangesWorkflow
 
         var fit = ProposalCommands.Preflight(new PreflightRequest(request.ProjectPath, version, proposalId));
         if (!fit.Succeeded) return ReopenAfterRefusal(resolvedRequest, fit.Refusal!);
-        if (fit.Value!.Changes.Any(operation => !operation.StillFits))
+        var uncertainOperations = fit.Value!.Changes
+            .Where(operation => operation.Status == ChangeFitStatus.Uncertain)
+            .Select(operation => operation.ChangeId ?? operation.OperationId).ToArray();
+        if (uncertainOperations.Length > 0)
+            return ReopenAfterRefusal(resolvedRequest, PendingChangeRefusals.Uncertain(uncertainOperations));
+        if (fit.Value.Changes.Any(operation => !operation.StillFits))
             return ReopenAfterRefusal(resolvedRequest, new Refusal("apply.change-no-longer-fits",
                 FailureReason.Refused, "One or more changes no longer fit the project. Remove those changes first."));
 
@@ -74,7 +83,8 @@ public static class PendingChangesWorkflow
         var applied = ProposalCommands.Apply(new ApplyRequest(
             request.ProjectPath, version, proposalId, request.User));
         if (applied.Succeeded)
-            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied.Value!));
+            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(
+                applied.Value!, SummaryOf(snapshot.Changes)));
         if (applied.Refusal?.Code == "apply.reconciliation-needed")
             return CommandOutcome<ApplyPendingResult>.Refused(applied.Refusal!);
         return ReopenAfterRefusal(resolvedRequest, applied.Refusal!);
@@ -177,6 +187,31 @@ public static class PendingChangesWorkflow
 
     private static CommandOutcome<ApplyPendingResult> RefuseApply(string code, string message) =>
         CommandOutcome<ApplyPendingResult>.Refused(new Refusal(code, FailureReason.Refused, message));
+
+    private static string SummaryOf(IReadOnlyList<PendingChange> changes)
+    {
+        var parts = new List<string>();
+        Add(AnalysisChangeKinds.Approve, "Approved", "analysis", "analyses");
+        Add(AnalysisChangeKinds.Reject, "Rejected", "analysis", "analyses");
+        var returned = Count(AnalysisChangeKinds.Candidate);
+        if (returned > 0)
+            parts.Add($"Returned {Counted(returned, "analysis", "analyses")} to candidate status");
+        Add(AnalysisChangeKinds.AddCandidate, "Added", "candidate analysis", "candidate analyses");
+        Add(AnalysisChangeKinds.IncorrectSpelling, "Marked", "word as incorrectly spelled",
+            "words as incorrectly spelled");
+        return parts.Count == 0 ? "Applied pending changes." : string.Join(", ", parts) + ".";
+
+        void Add(string kind, string verb, string singular, string plural)
+        {
+            var count = Count(kind);
+            if (count > 0) parts.Add($"{verb} {Counted(count, singular, plural)}");
+        }
+
+        int Count(string kind) => changes.Count(change => change.Kind == kind);
+    }
+
+    private static string Counted(int count, string singular, string plural) =>
+        $"{count} {(count == 1 ? singular : plural)}";
 
     private static CommandOutcome<MeasurePendingResult> RefuseMeasure(string code, string message) =>
         CommandOutcome<MeasurePendingResult>.Refused(new Refusal(

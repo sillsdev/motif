@@ -30,8 +30,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
             using var restartedWalkthrough = new WalkthroughWindow(
                 firstProject.ManagedRoot, firstProject.FwDataPath);
             restartedWalkthrough.Show();
-            restartedWalkthrough.LoadKnownProjects();
-            restartedWalkthrough.SelectKnownProject(firstProject.FwDataPath);
+            restartedWalkthrough.OpenRecentProjectByClick(firstProject.FwDataPath);
             restartedWalkthrough.WaitUntil(
                 () => restartedWalkthrough.Workspace.Baseline.HasBaseline &&
                     restartedWalkthrough.Workspace.Selection.Texts.Count == 1,
@@ -105,7 +104,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
         if (walkthrough.Workspace.RecentProjects.Any(known =>
                 string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase)))
         {
-            walkthrough.SelectKnownProject(projectPath);
+            walkthrough.OpenRecentProjectByClick(projectPath);
             return;
         }
 

@@ -1,6 +1,9 @@
 using System.Buffers.Binary;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text.Json;
 using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Worker.Baselines;
@@ -42,6 +45,8 @@ internal sealed class BaselineBundleReceiver
     private const int EndOfCentralDirectoryLength = 22;
     private const int CentralDirectoryFileHeaderLength = 46;
     private const int MaximumZipCommentLength = ushort.MaxValue;
+    private const int MaximumFwDataLockMarkerBytes = 4096;
+    private const string LibLcmLockMarkerType = "FileLockContent:#Palaso.IO.FileLock";
     private const uint EndOfCentralDirectorySignature = 0x06054b50;
     private const uint CentralDirectoryFileHeaderSignature = 0x02014b50;
     private const uint Zip64EndOfCentralDirectoryLocatorSignature = 0x07064b50;
@@ -93,7 +98,7 @@ internal sealed class BaselineBundleReceiver
             var destination = Path.Combine(root, declaredToken.BundleDigest.Substring("sha256:".Length));
             if (Directory.Exists(destination))
                 return new BaselinePublicationOutcome(
-                    ExistingPublication(destination, declaredToken), false);
+                    ExistingPublication(destination, declaredToken, allowLiveFwDataLockMarker: true), false);
 
             temporaryDirectory = Path.Combine(root, ".incoming-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(temporaryDirectory);
@@ -113,7 +118,7 @@ internal sealed class BaselineBundleReceiver
                 DeleteIncoming(temporaryDirectory);
                 temporaryDirectory = string.Empty;
                 return new BaselinePublicationOutcome(
-                    ExistingPublication(destination, declaredToken), false);
+                    ExistingPublication(destination, declaredToken, allowLiveFwDataLockMarker: true), false);
             }
         }
         finally
@@ -478,35 +483,141 @@ internal sealed class BaselineBundleReceiver
         return path;
     }
 
-    private static BaselinePublication ExistingPublication(string root, BaselineToken token)
+    private static BaselinePublication ExistingPublication(
+        string root, BaselineToken token, bool allowLiveFwDataLockMarker = false)
     {
         if ((File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0)
-            throw new InvalidDataException("A reparse-point Baseline publication is refused.");
+            throw InvalidPublicationLayout("publication root must not be a reparse point", Path.GetFileName(root));
         var entries = Directory.GetFileSystemEntries(root, "*", SearchOption.TopDirectoryOnly);
         var fwData = entries.Where(File.Exists)
             .Where(path => path.EndsWith(".fwdata", StringComparison.OrdinalIgnoreCase)).ToArray();
         var writingSystemRoot = Path.Combine(root, "WritingSystemStore");
         var sharedSettingsRoot = Path.Combine(root, "SharedSettings");
-        if (fwData.Length != 1 ||
-            (File.GetAttributes(fwData[0]) & FileAttributes.ReparsePoint) != 0 ||
-            !Directory.Exists(writingSystemRoot) ||
-            (File.GetAttributes(writingSystemRoot) & FileAttributes.ReparsePoint) != 0 ||
-            Directory.GetFiles(writingSystemRoot, "*.ldml", SearchOption.TopDirectoryOnly).Length == 0 ||
-            Directory.GetFileSystemEntries(writingSystemRoot, "*", SearchOption.TopDirectoryOnly).Any(path =>
-                !File.Exists(path) || (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0 ||
-                !path.EndsWith(".ldml", StringComparison.OrdinalIgnoreCase)) ||
-            // Optional: pre-created by our own publish, but older or rival layouts may not have it.
-            (Directory.Exists(sharedSettingsRoot) &&
-                ((File.GetAttributes(sharedSettingsRoot) & FileAttributes.ReparsePoint) != 0 ||
-                    // No extension is trusted here, so every entry must at least be a real, non-reparse file.
-                    Directory.GetFileSystemEntries(sharedSettingsRoot, "*", SearchOption.TopDirectoryOnly).Any(
-                        path => !File.Exists(path) || (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0))) ||
-            entries.Any(path => !StringComparer.OrdinalIgnoreCase.Equals(path, fwData[0]) &&
-                !StringComparer.OrdinalIgnoreCase.Equals(path, writingSystemRoot) &&
-                !StringComparer.OrdinalIgnoreCase.Equals(path, sharedSettingsRoot)))
-            throw new InvalidDataException("The existing Baseline publication has an invalid layout.");
+        if (fwData.Length != 1)
+        {
+            var names = fwData.Length == 0 ? "none" : string.Join(", ", fwData.Select(Path.GetFileName));
+            throw InvalidPublicationLayout("exactly one top-level .fwdata file is required", names);
+        }
+        if ((File.GetAttributes(fwData[0]) & FileAttributes.ReparsePoint) != 0)
+            throw InvalidPublicationLayout("the .fwdata file must not be a reparse point", Path.GetFileName(fwData[0]));
+        if (!Directory.Exists(writingSystemRoot))
+            throw InvalidPublicationLayout("WritingSystemStore is required", "WritingSystemStore");
+        if ((File.GetAttributes(writingSystemRoot) & FileAttributes.ReparsePoint) != 0)
+            throw InvalidPublicationLayout("WritingSystemStore must not be a reparse point", "WritingSystemStore");
+        if (Directory.GetFiles(writingSystemRoot, "*.ldml", SearchOption.TopDirectoryOnly).Length == 0)
+            throw InvalidPublicationLayout("WritingSystemStore must contain at least one .ldml file", "WritingSystemStore");
+
+        foreach (var path in Directory.GetFileSystemEntries(writingSystemRoot, "*", SearchOption.TopDirectoryOnly))
+        {
+            if (!File.Exists(path))
+                throw InvalidPublicationLayout("WritingSystemStore entries must be flat files", Path.GetFileName(path));
+            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                throw InvalidPublicationLayout("WritingSystemStore files must not be reparse points", Path.GetFileName(path));
+            if (!path.EndsWith(".ldml", StringComparison.OrdinalIgnoreCase))
+                throw InvalidPublicationLayout("WritingSystemStore files must have the .ldml extension", Path.GetFileName(path));
+        }
+
+        // Optional: pre-created by our own publish, but older or rival layouts may not have it.
+        if (Directory.Exists(sharedSettingsRoot))
+        {
+            if ((File.GetAttributes(sharedSettingsRoot) & FileAttributes.ReparsePoint) != 0)
+                throw InvalidPublicationLayout("SharedSettings must not be a reparse point", "SharedSettings");
+            // No extension is trusted here, so every entry must at least be a real, non-reparse file.
+            foreach (var path in Directory.GetFileSystemEntries(sharedSettingsRoot, "*", SearchOption.TopDirectoryOnly))
+            {
+                if (!File.Exists(path))
+                    throw InvalidPublicationLayout("SharedSettings entries must be flat files", Path.GetFileName(path));
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                    throw InvalidPublicationLayout("SharedSettings files must not be reparse points", Path.GetFileName(path));
+            }
+        }
+
+        var allowedEntries = new List<string> { fwData[0], writingSystemRoot, sharedSettingsRoot };
+        var fwDataLockPath = fwData[0] + ".lock";
+        var lockEntry = entries.FirstOrDefault(path =>
+            StringComparer.OrdinalIgnoreCase.Equals(path, fwDataLockPath));
+        if (lockEntry is not null)
+        {
+            if (!allowLiveFwDataLockMarker || !File.Exists(lockEntry) ||
+                (File.GetAttributes(lockEntry) & FileAttributes.ReparsePoint) != 0 ||
+                !IsLiveLibLcmLockMarker(lockEntry))
+                throw InvalidPublicationLayout(
+                    "the associated .fwdata.lock must identify its live LibLCM owner", Path.GetFileName(lockEntry));
+            allowedEntries.Add(lockEntry);
+        }
+        var unexpected = entries.FirstOrDefault(path =>
+            !allowedEntries.Any(allowed => StringComparer.OrdinalIgnoreCase.Equals(path, allowed)));
+        if (unexpected is not null)
+            throw InvalidPublicationLayout("the publication root allowlist permits only the .fwdata file, WritingSystemStore, and SharedSettings",
+                Path.GetFileName(unexpected));
         return new BaselinePublication(root, fwData[0], token);
     }
+
+    private static bool IsLiveLibLcmLockMarker(string path)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            var bytes = new byte[MaximumFwDataLockMarkerBytes + 1];
+            var length = 0;
+            while (length < bytes.Length)
+            {
+                var read = stream.Read(bytes, length, bytes.Length - length);
+                if (read == 0)
+                    break;
+                length += read;
+            }
+            if (length == 0 || length > MaximumFwDataLockMarkerBytes)
+                return false;
+
+            using var document = JsonDocument.Parse(bytes.AsMemory(0, length));
+            var marker = document.RootElement;
+            if (marker.ValueKind != JsonValueKind.Object ||
+                !marker.TryGetProperty("__type", out var type) || type.GetString() != LibLcmLockMarkerType ||
+                !marker.TryGetProperty("PID", out var pid) || !pid.TryGetInt32(out var processId) || processId <= 0 ||
+                !marker.TryGetProperty("ProcessName", out var processName) ||
+                processName.ValueKind != JsonValueKind.String ||
+                !marker.TryGetProperty("Timestamp", out var timestamp) || !timestamp.TryGetInt64(out var ticks))
+                return false;
+
+            using var process = Process.GetProcessById(processId);
+            return StringComparer.OrdinalIgnoreCase.Equals(processName.GetString(), process.ProcessName) &&
+                ticks >= process.StartTime.Ticks && ticks <= DateTime.Now.AddMinutes(1).Ticks &&
+                !process.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (Win32Exception)
+        {
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private static InvalidDataException InvalidPublicationLayout(string rule, string entryName) =>
+        new($"The existing Baseline publication violates the rule that {rule}. Entry: {entryName}.");
 
     private static void DeleteIncoming(string path)
     {

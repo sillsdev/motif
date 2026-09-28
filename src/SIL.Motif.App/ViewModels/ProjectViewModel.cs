@@ -40,6 +40,8 @@ public sealed partial class ProjectViewModel : ObservableObject
     public async Task LoadKnownProjectsAsync(CancellationToken cancellationToken = default)
     {
         var projects = await _commandClient.ListKnownProjectsAsync(cancellationToken);
+        if (KnownProjects.Select(project => project.FullFwDataPath).SequenceEqual(
+                projects.Select(project => project.FullFwDataPath), StringComparer.OrdinalIgnoreCase)) return;
         KnownProjects.Clear();
         foreach (var project in projects) KnownProjects.Add(project);
     }

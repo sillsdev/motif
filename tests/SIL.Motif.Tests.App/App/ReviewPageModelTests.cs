@@ -300,7 +300,8 @@ public sealed class ReviewPageModelTests
         fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
-            new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")));
+            new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
+            "Applied pending changes.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);

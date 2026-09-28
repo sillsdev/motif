@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using Avalonia.Input;
 using SIL.Motif.App.Services;
@@ -15,6 +16,7 @@ using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -307,6 +309,7 @@ public sealed class WorkspaceContextTests
     [Fact]
     public async Task TimingPageShowsTheCommandsKindAndRuleAggregatesUnchanged()
     {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         var kindRows = new[] { new TimingAggregateRow("morph_rule", 12, 1, 30, 2) };
