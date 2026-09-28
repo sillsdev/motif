@@ -59,6 +59,7 @@ internal sealed class MotifAppHost
     private ClassicDesktopStyleApplicationLifetime? _lifetime;
     private MotifAppOptions? _options;
     private MotifDesktopSession? _session;
+    private static volatile bool _dispatcherShutDown;
 
     private MotifAppHost()
     {
@@ -139,6 +140,7 @@ internal sealed class MotifAppHost
                 .UseSkia()
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                 .SetupWithLifetime(_lifetime);
+            Dispatcher.UIThread.ShutdownFinished += (_, _) => _dispatcherShutDown = true;
             AvaloniaSynchronizationContext.InstallIfNeeded();
             _session = CurrentApp.Session;
         }
@@ -223,16 +225,33 @@ internal sealed class MotifAppHost
     private static void Pump(string step, TimeSpan timeout, Task task, Func<string>? pending = null)
     {
         var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
-        while (!task.IsCompleted && Stopwatch.GetTimestamp() < deadline)
-        {
-            Dispatcher.UIThread.RunJobs();
-            Thread.Yield();
-        }
+        while (!task.IsCompleted && !_dispatcherShutDown && Remaining(deadline) is { } remaining)
+            RunDispatcherUntil(task, remaining);
+        // A shut-down dispatcher runs no frame, so only the thread pool can still finish the work.
+        if (!task.IsCompleted && _dispatcherShutDown && Remaining(deadline) is { } afterShutdown)
+            ((IAsyncResult)task).AsyncWaitHandle.WaitOne(afterShutdown);
         Dispatcher.UIThread.RunJobs();
         if (!task.IsCompleted)
             throw new TimeoutException($"'{step}' did not finish within {timeout}" +
                 (pending is null ? "." : "; " + pending() + "."));
         task.GetAwaiter().GetResult();
+    }
+
+    // Blocks in a dispatcher frame rather than spinning, so a two-core runner keeps a core for the awaited work.
+    private static void RunDispatcherUntil(Task task, TimeSpan limit)
+    {
+        var frame = new DispatcherFrame();
+        using var expiry = new CancellationTokenSource(limit);
+        using var expired = expiry.Token.Register(() => frame.Continue = false);
+        task.ContinueWith(static (_, state) => ((DispatcherFrame)state!).Continue = false, frame,
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        Dispatcher.UIThread.PushFrame(frame);
+    }
+
+    private static TimeSpan? Remaining(long deadline)
+    {
+        var ticks = deadline - Stopwatch.GetTimestamp();
+        return ticks > 0 ? TimeSpan.FromSeconds((double)ticks / Stopwatch.Frequency) : null;
     }
 
     private void Run()

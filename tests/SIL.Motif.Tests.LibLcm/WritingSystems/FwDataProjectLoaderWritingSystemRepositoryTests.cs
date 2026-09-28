@@ -1,6 +1,7 @@
 using SIL.LCModel.Core.WritingSystems;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.WritingSystems;
 using Xunit;
 
 namespace SIL.Motif.Tests.WritingSystems;
@@ -24,5 +25,25 @@ public sealed class FwDataProjectLoaderWritingSystemRepositoryTests
         Assert.Equal(
             CoreGlobalWritingSystemRepository.CurrentVersionPath(ProcessWritingSystemRepository.BasePath),
             repository.PathToWritingSystems);
+    }
+
+    [Fact]
+    public void InitKeepsSldrLookupsOffTheNetworkWhenTheEnvironmentAsks()
+    {
+        Assert.False(string.IsNullOrWhiteSpace(
+            Environment.GetEnvironmentVariable(FwDataProjectLoader.SldrOfflineVariable)));
+        FwDataProjectLoader.Init();
+
+        var destination = Path.Combine(Path.GetTempPath(), "motif-sldr-offline-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(destination);
+        try
+        {
+            // Only a lookup that reached the SLDR service reports FromSldr; offline ones read the cache or miss.
+            Assert.NotEqual(SldrStatus.FromSldr, Sldr.GetLdmlFile(destination, "en", [], out _));
+        }
+        finally
+        {
+            Directory.Delete(destination, recursive: true);
+        }
     }
 }

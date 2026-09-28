@@ -17,6 +17,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Shared\LcmCacheTestCollection.cs" Link="LcmCacheTestCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessPanGlossQueueInitializer.cs" Link="ProcessPanGlossQueueInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessSldrOfflineInitializer.cs" Link="ProcessSldrOfflineInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\NoCrashDialogs.cs" Link="NoCrashDialogs.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\CultureScope.cs" Link="CultureScope.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
@@ -28,6 +29,15 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)FakePanGloss\FakePanGloss.csproj"
                       ReferenceOutputAssembly="false"
                       Private="false" />
+  </ItemGroup>
+
+  <!--
+    Support's fixtures can open a process's first cache before any code in the test assembly has run, and
+    with it the test assembly's own initializers, so Support carries the two that must precede that open.
+  -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Support'">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessSldrOfflineInitializer.cs" Link="ProcessSldrOfflineInitializer.cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Commands' or '$(MSBuildProjectName)' == 'SIL.Motif.Tests.Cli' or '$(MSBuildProjectName)' == 'SIL.Motif.Tests.Worker'">
