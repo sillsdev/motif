@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>One authored change and all operations lowered from it.</summary>
@@ -16,10 +18,28 @@ public sealed record PendingChange(
 public sealed record ReviewAnalysis(ParserReading Reading, string Opinion, bool Touched, bool Stored);
 
 /// <summary>The fit of one authored change, including missing mapping or fingerprint evidence.</summary>
-public sealed record ChangeFit(string ChangeId, bool StillFits, IReadOnlyList<string> Reasons)
+public sealed record ChangeFit
 {
+    [JsonConstructor]
+    public ChangeFit(string changeId, string status, IReadOnlyList<string> reasons)
+    {
+        ChangeId = changeId;
+        Status = status;
+        Reasons = reasons;
+    }
+
+    public ChangeFit(string changeId, bool stillFits, IReadOnlyList<string> reasons)
+        : this(changeId, stillFits ? ChangeFitStatus.Fits : ChangeFitStatus.NoLongerFits, reasons) { }
+
+    public string ChangeId { get; init; }
+
+    /// <summary>Whether the result is in the <see cref="ChangeFitStatus.Fits"/> state.</summary>
+    public bool StillFits => Status == ChangeFitStatus.Fits;
+
+    public IReadOnlyList<string> Reasons { get; init; }
+
     /// <summary>The machine-readable fit state: fits, uncertain, or no-longer-fits.</summary>
-    public string Status { get; init; } = StillFits ? "fits" : "no-longer-fits";
+    public string Status { get; init; }
 
     /// <summary>The sentence-token context to inspect when this change is uncertain.</summary>
     public ChangeUncertainty? Uncertainty { get; init; }

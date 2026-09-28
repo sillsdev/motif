@@ -142,11 +142,17 @@ public static class PendingChanges
                 return RefusePut("change.occurrence-unavailable",
                     "The selected Text is not in the current Baseline.",
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+            if (textWords.Baseline.Token != baseline.Token)
+                return RefusePut("change.refresh-required", "Refresh the project before collecting changes.",
+                    ("changeId", change.ChangeId), ("wordformId", change.WordformId));
             if (!OccurrenceFitEvidenceResolver.TryCapture(textWords.Projection, anchor,
                     out occurrenceEvidence, out var reason))
                 return RefusePut("change.occurrence-unavailable", reason,
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
-            if (occurrenceEvidence!.WordformId != change.WordformId)
+            if (!occurrenceEvidence!.ParseIsCurrent)
+                return RefusePut("change.occurrence-unavailable", "The paragraph parse is not current.",
+                    ("changeId", change.ChangeId), ("wordformId", change.WordformId));
+            if (occurrenceEvidence.WordformId != change.WordformId)
                 return RefusePut("change.occurrence-wordform-mismatch",
                     "The selected occurrence belongs to a different wordform.",
                     ("changeId", change.ChangeId), ("wordformId", change.WordformId));
@@ -343,20 +349,9 @@ public static class PendingChanges
         });
 
     public static CommandOutcome<PendingChangesSnapshot> Recheck(RecheckPendingChangesRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-        {
-            var repository = new ProposalRepository(database);
-            var current = Current(repository);
-            if (Revision(current?.ProposalJson) != request.ExpectedRevision)
-                return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
-            if (current is null) return Refuse("change.not-found", "There are no pending changes to check.");
-            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
-            var liveLastWriteTicks = File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
-            if (baseline is null || liveLastWriteTicks > baseline.SourceLastWriteUtc.UtcDateTime.Ticks)
-                return Refuse("change.refresh-required", "Refresh the project before checking changes again.");
-            var draft = ParseDraft(current.ProposalJson!);
-            var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
-            return WithFitCache(project, baseline, liveLastWriteTicks, (cache, cacheLastWriteTicks) =>
+        RunCheckedDraft(request.FwDataPath, request.ProductVersion, request.ExpectedRevision, null,
+            (database, project, repository, current, baseline, liveLastWriteTicks, draft, proposal) =>
+            WithFitCache(project, baseline, liveLastWriteTicks, (cache, cacheLastWriteTicks) =>
             {
                 var fits = ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false)
                     .ToDictionary(fit => fit.OperationId, StringComparer.Ordinal);
@@ -365,16 +360,10 @@ public static class PendingChanges
                 foreach (var operation in draft.Operations)
                 {
                     if (!fits.TryGetValue(operation.OperationId, out var fit) ||
-                        fit.Status == "no-longer-fits" ||
-                        operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions ||
-                        !extensions.TryGetProperty("changeFit", out var stored)) continue;
-                    var fingerprint = JsonSerializer.Deserialize<ChangeFitFingerprint>(stored.GetRawText(), JsonOptions);
+                        fit.Status == ChangeFitStatus.NoLongerFits) continue;
+                    var fingerprint = ReadFingerprint(operation);
                     if (fingerprint is null || fingerprint.BaselineToken == token) continue;
-                    var properties = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
-                        extensions.GetRawText(), JsonOptions)!;
-                    properties["changeFit"] = JsonSerializer.SerializeToElement(
-                        fingerprint with { BaselineToken = token }, JsonOptions);
-                    operation.Extensions = JsonSerializer.SerializeToElement(properties, JsonOptions);
+                    ReplaceChangeFit(operation, fingerprint with { BaselineToken = token });
                     changed = true;
                 }
                 if (changed && !repository.TrySaveDraft(DraftName, current.ProposalJson!,
@@ -382,45 +371,29 @@ public static class PendingChanges
                     return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
                 return CommandOutcome<PendingChangesSnapshot>.Success(
                     Snapshot(database, project, repository, cache, cacheLastWriteTicks, baseline));
-            });
-        });
+            }));
 
     public static CommandOutcome<PendingChangesSnapshot> Reconfirm(ReconfirmPendingChangeRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-        {
-            var repository = new ProposalRepository(database);
-            var current = Current(repository);
-            if (Revision(current?.ProposalJson) != request.ExpectedRevision)
-                return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
-                    ("changeId", request.ChangeId), ("expectedRevision", request.ExpectedRevision));
-            if (current is null)
-                return Refuse("change.not-found", "The change is not in the pending Draft.",
-                    ("changeId", request.ChangeId));
-            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
-            var liveLastWriteTicks = File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
-            if (baseline is null || liveLastWriteTicks > baseline.SourceLastWriteUtc.UtcDateTime.Ticks)
-                return Refuse("change.refresh-required", "Refresh the project before checking changes again.",
-                    ("changeId", request.ChangeId));
-
-            var draft = ParseDraft(current.ProposalJson!);
+        RunCheckedDraft(request.FwDataPath, request.ProductVersion, request.ExpectedRevision, request.ChangeId,
+            (database, project, repository, current, baseline, liveLastWriteTicks, draft, proposal) =>
+            {
             var operations = draft.Operations.Where(operation => ChangeIdOf(operation) == request.ChangeId).ToArray();
             if (operations.Length == 0)
                 return Refuse("change.not-found", "The change is not in the pending Draft.",
                     ("changeId", request.ChangeId));
-            var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
             return WithFitCache(project, baseline, liveLastWriteTicks, (cache, cacheLastWriteTicks) =>
             {
                 var fits = ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false)
                     .ToDictionary(fit => fit.OperationId, StringComparer.Ordinal);
                 var targetFits = operations.Select(operation => fits.GetValueOrDefault(operation.OperationId))
                     .ToArray();
-                if (targetFits.Any(fit => fit is null || fit.Status == "no-longer-fits"))
+                if (targetFits.Any(fit => fit is null || fit.Status == ChangeFitStatus.NoLongerFits))
                     return Refuse("change.reconfirm-not-allowed",
                         "This change no longer fits the project and cannot be reconfirmed.",
                         ("changeId", request.ChangeId));
-                if (!targetFits.Any(fit => fit!.Status == "uncertain"))
-                    return Refuse("change.reconfirm-not-allowed",
-                        "This change is not uncertain and does not need reconfirmation.",
+                if (!targetFits.Any(fit => fit!.Status == ChangeFitStatus.Uncertain))
+                    return Refuse("change.reconfirm-unneeded",
+                        "This change is not uncertain and does not need another check.",
                         ("changeId", request.ChangeId));
 
                 var textWords = new BaselineRepository(database).GetCurrentTextWords(
@@ -432,6 +405,9 @@ public static class PendingChanges
                 if (textWords is null)
                     return Refuse("change.occurrence-unavailable",
                         "The occurrence is not available in the current Baseline.",
+                        ("changeId", request.ChangeId));
+                if (textWords.Baseline.Token != baseline.Token)
+                    return Refuse("change.refresh-required", "Refresh the project before checking changes again.",
                         ("changeId", request.ChangeId));
 
                 var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
@@ -451,11 +427,12 @@ public static class PendingChanges
                         return Refuse("change.occurrence-wordform-mismatch",
                             "The selected occurrence belongs to a different wordform.",
                             ("changeId", request.ChangeId));
-                    var properties = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
-                        operation.Extensions!.Value.GetRawText(), JsonOptions)!;
-                    properties["changeFit"] = JsonSerializer.SerializeToElement(
-                        fingerprint with { BaselineToken = token, Occurrence = currentEvidence }, JsonOptions);
-                    operation.Extensions = JsonSerializer.SerializeToElement(properties, JsonOptions);
+                    if (OccurrenceFitEvidenceResolver.Compare(currentEvidence, textWords.Projection) is not null)
+                        return Refuse("change.occurrence-unavailable",
+                            "The occurrence evidence is still uncertain. Refresh the project parse before reconfirming.",
+                            ("changeId", request.ChangeId));
+                    ReplaceChangeFit(operation,
+                        fingerprint with { BaselineToken = token, Occurrence = currentEvidence });
                 }
                 if (!repository.TrySaveDraft(DraftName, current.ProposalJson!,
                     JsonSerializer.Serialize(draft, JsonOptions)))
@@ -474,6 +451,41 @@ public static class PendingChanges
         try { return JsonSerializer.Deserialize<ChangeFitFingerprint>(fit.GetRawText(), JsonOptions); }
         catch (JsonException) { return null; }
     }
+
+    private static void ReplaceChangeFit(DraftOperation operation, ChangeFitFingerprint fingerprint)
+    {
+        if (operation.Extensions is not { ValueKind: JsonValueKind.Object } extensions)
+            throw new InvalidDataException("The pending change has no extensions object.");
+        var properties = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+            extensions.GetRawText(), JsonOptions)!;
+        properties["changeFit"] = JsonSerializer.SerializeToElement(fingerprint, JsonOptions);
+        operation.Extensions = JsonSerializer.SerializeToElement(properties, JsonOptions);
+    }
+
+    private static CommandOutcome<PendingChangesSnapshot> RunCheckedDraft(string fwDataPath,
+        string productVersion, string expectedRevision, string? changeId,
+        Func<MotifDatabase, ProjectLocator, ProposalRepository, ProposalRecord, BaselineRecord, long,
+            DraftDocument, Proposal, CommandOutcome<PendingChangesSnapshot>> action) =>
+        ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        {
+            var repository = new ProposalRepository(database);
+            var current = Current(repository);
+            if (Revision(current?.ProposalJson) != expectedRevision)
+                return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
+                    ("changeId", changeId), ("expectedRevision", expectedRevision));
+            if (current is null)
+                return Refuse("change.not-found", changeId is null
+                    ? "There are no pending changes to check."
+                    : "The change is not in the pending Draft.", ("changeId", changeId));
+            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            var liveLastWriteTicks = File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
+            if (baseline is null || liveLastWriteTicks > baseline.SourceLastWriteUtc.UtcDateTime.Ticks)
+                return Refuse("change.refresh-required", "Refresh the project before checking changes again.",
+                    ("changeId", changeId));
+            var draft = ParseDraft(current.ProposalJson!);
+            var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
+            return action(database, project, repository, current, baseline, liveLastWriteTicks, draft, proposal);
+        });
 
     private static ProposalRecord? Current(ProposalRepository repository) =>
         repository.DraftNameExists(DraftName) ? repository.GetDraft(DraftName) : null;
@@ -574,21 +586,18 @@ public static class PendingChanges
                 if (!fit.StillFits) reasons.Add(fit.Reason);
             }
             if (!provenance.ContainsKey(change.ChangeId) || change.OperationIds.Count == 0)
-            {
-                mappingMissing = true;
-                reasons.Add("Change mapping or fingerprint is missing.");
-            }
+                reasons = ["Change mapping or fingerprint is missing."];
+            mappingMissing |= !provenance.ContainsKey(change.ChangeId) || change.OperationIds.Count == 0;
             var distinctReasons = reasons.Distinct(StringComparer.Ordinal).ToArray();
-            var status = distinctReasons.Length == 0 ? "fits" :
-                !mappingMissing && operationResults.Any(result => result.Status == "uncertain") &&
-                !operationResults.Any(result => result.Status == "no-longer-fits")
-                    ? "uncertain" : "no-longer-fits";
-            var uncertainty = status == "uncertain"
-                ? operationResults.FirstOrDefault(result => result.Status == "uncertain")?.Uncertainty
+            var status = distinctReasons.Length == 0 ? ChangeFitStatus.Fits :
+                !mappingMissing && operationResults.Any(result => result.Status == ChangeFitStatus.Uncertain) &&
+                !operationResults.Any(result => result.Status == ChangeFitStatus.NoLongerFits)
+                    ? ChangeFitStatus.Uncertain : ChangeFitStatus.NoLongerFits;
+            var uncertainty = status == ChangeFitStatus.Uncertain
+                ? operationResults.FirstOrDefault(result => result.Status == ChangeFitStatus.Uncertain)?.Uncertainty
                 : null;
-            return new ChangeFit(change.ChangeId, status == "fits", distinctReasons)
+            return new ChangeFit(change.ChangeId, status, distinctReasons)
             {
-                Status = status,
                 Uncertainty = uncertainty,
             };
         }).ToArray();
@@ -736,7 +745,7 @@ public static class PendingChanges
         entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty("changeId", out var id)
             ? id.GetString() : null;
 
-    private static string? Property(JsonElement entry, string name) =>
+    internal static string? Property(JsonElement entry, string name) =>
         entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty(name, out var value) &&
             value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 

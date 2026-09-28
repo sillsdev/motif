@@ -100,14 +100,8 @@ public sealed class AgentChangesArgvTests : IDisposable
     public async Task AnEditedSentenceReturnsUncertainEvidenceInJson()
     {
         var scenario = await PrepareUncertainOccurrence();
-        using (var cache = new FwDataProjectLoader().LoadScratchCache(scenario.Project))
-        {
-            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>()
-                .GetObject(scenario.OtherWordformId);
-            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-                wordform.Form.set_String(cache.DefaultVernWs, "changed-cli-second-word"));
-            new FwDataProjectLoader().Save(cache);
-        }
+        EditSentenceWord(scenario.Project, scenario.Text.FirstParagraphId, scenario.Text.FirstSegmentId,
+            "changedcliword", "motifanalysed changedcliword.");
         File.SetLastWriteTimeUtc(scenario.Project,
             File.GetLastWriteTimeUtc(scenario.Project).AddMinutes(1));
         await CaptureBaseline(scenario.Project);
@@ -120,7 +114,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         var fit = Assert.Single(rechecked.FitSummary);
 
         Assert.Equal("uncertain", fit.Status);
-        Assert.Equal("changed-cli-second-word", Assert.Single(fit.Uncertainty!.AfterTokens
+        Assert.Equal("changedcliword", Assert.Single(fit.Uncertainty!.AfterTokens
             .Where(token => token.Index == 1)).Form);
     }
 
@@ -128,14 +122,8 @@ public sealed class AgentChangesArgvTests : IDisposable
     public async Task ReconfirmPendingChangeRunsThroughTheExecutable()
     {
         var scenario = await PrepareUncertainOccurrence();
-        using (var cache = new FwDataProjectLoader().LoadScratchCache(scenario.Project))
-        {
-            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>()
-                .GetObject(scenario.OtherWordformId);
-            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-                wordform.Form.set_String(cache.DefaultVernWs, "changed-cli-second-word"));
-            new FwDataProjectLoader().Save(cache);
-        }
+        EditSentenceWord(scenario.Project, scenario.Text.FirstParagraphId, scenario.Text.FirstSegmentId,
+            "changedcliword", "motifanalysed changedcliword.");
         File.SetLastWriteTimeUtc(scenario.Project,
             File.GetLastWriteTimeUtc(scenario.Project).AddMinutes(1));
         await CaptureBaseline(scenario.Project);
@@ -182,6 +170,9 @@ public sealed class AgentChangesArgvTests : IDisposable
                 .Create(TsStringUtils.MakeString("cli-second-word", cache.DefaultVernWs));
             otherWordformId = otherWordform.Guid;
             paragraph.SegmentsOS[0].AnalysesRS.Insert(1, otherWordform);
+            paragraph.Contents = TsStringUtils.MakeString(
+                $"{SeededProject.AnalysedWordForm} cli-second-word{SeededProject.PunctuationForm}",
+                cache.DefaultVernWs);
             paragraph.ParseIsCurrent = true;
         });
         var project = cache.ProjectId.Path;
@@ -202,6 +193,24 @@ public sealed class AgentChangesArgvTests : IDisposable
             "--occurrence-index", "0", "--json");
         Assert.Equal("fits", Assert.Single(SuccessfulSnapshot(added).FitSummary).Status);
         return new CliOccurrenceScenario(project, text, otherWordformId);
+    }
+
+    private static void EditSentenceWord(string project, Guid paragraphId, Guid segmentId,
+        string replacementForm, string contents)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(project);
+        var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().GetObject(paragraphId);
+        var segment = cache.ServiceLocator.GetInstance<ISegmentRepository>().GetObject(segmentId);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var replacement = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(replacementForm, cache.DefaultVernWs));
+            segment.AnalysesRS.RemoveAt(1);
+            segment.AnalysesRS.Insert(1, replacement);
+            paragraph.Contents = TsStringUtils.MakeString(contents, cache.DefaultVernWs);
+            paragraph.ParseIsCurrent = true;
+        });
+        new FwDataProjectLoader().Save(cache);
     }
 
     private async Task<PendingChangesSnapshot> ReadPending(string project)

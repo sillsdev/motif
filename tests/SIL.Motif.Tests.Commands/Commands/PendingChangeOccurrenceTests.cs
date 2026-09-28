@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
@@ -39,7 +40,8 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         var intentDigest = PendingIntentDigest(project.Path);
         var originalFingerprint = ReadFingerprint(project.Path);
 
-        ChangeWordform(project.Path, project.OtherWordformId, "changed-second-word");
+        EditSentenceWord(project.Path, project.Text.FirstParagraphId, project.Text.FirstSegmentId,
+            1, "changedword", "motifanalysed changedword.");
         Capture(project);
         var checkedChanges = PendingChanges.Recheck(new RecheckPendingChangesRequest(
             project.Path, ProductVersion, pending.Revision));
@@ -57,7 +59,7 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         Assert.Equal(originalFingerprint.Occurrence.WordDigest, checkedFingerprint.Occurrence.WordDigest);
         Assert.Equal(originalFingerprint.Occurrence.Tokens, checkedFingerprint.Occurrence.Tokens);
         Assert.NotEqual(originalFingerprint.BaselineToken, checkedFingerprint.BaselineToken);
-        Assert.Equal("changed-second-word", Assert.Single(uncertain.Uncertainty!.AfterTokens,
+        Assert.Equal("changedword", Assert.Single(uncertain.Uncertainty!.AfterTokens,
             token => token.Index == 1).Form);
         Assert.Equal("motifanalysed", Assert.Single(uncertain.Uncertainty.BeforeTokens,
             token => token.Index == 0).Form);
@@ -96,7 +98,8 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         var project = CreateProject();
         var pending = Collect(project);
 
-        ChangeWordform(project.Path, project.Text.UnanalysedWordformId, "changed-other-paragraph");
+        EditSentenceWord(project.Path, project.Text.SecondParagraphId, project.Text.SecondSegmentId,
+            0, "changed-other-paragraph", "changed-other-paragraph");
         Capture(project);
         var checkedChanges = PendingChanges.Recheck(new RecheckPendingChangesRequest(
             project.Path, ProductVersion, pending.Revision));
@@ -180,11 +183,128 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
     }
 
     [Fact]
+    public void PutRefusesAnOccurrenceWhenItsParagraphParseIsStale()
+    {
+        var project = CreateProject();
+        SetParseCurrent(project.Path, project.Text.FirstParagraphId, false);
+        Capture(project);
+        var initial = PendingChanges.Load(new PendingChangesRequest(project.Path, ProductVersion));
+        Assert.True(initial.Succeeded, initial.Refusal?.Message);
+        var intent = new ChangeIntent("stale-parse-change", AnalysisChangeKinds.Reject,
+            CanonicalId.FromGuid(project.Text.AnalysedWordformId).Value, SeededProject.AnalysedWordForm,
+            StoredAnalysisId: CanonicalId.FromGuid(project.Text.ApprovedAnalysisId).Value,
+            Occurrence: new OccurrenceAnchor(project.Text.TextId, project.Text.FirstParagraphId,
+                project.Text.FirstSegmentId, 0));
+
+        var put = PendingChanges.Put(new PutPendingChangeRequest(
+            project.Path, ProductVersion, initial.Value!.Revision, intent));
+
+        Assert.Equal("change.occurrence-unavailable", put.Refusal?.Code);
+    }
+
+    [Fact]
+    public void ReconfirmRefusesWhenTheNewOccurrenceEvidenceIsStillUncertain()
+    {
+        var project = CreateProject();
+        var pending = Collect(project);
+        SetParseCurrent(project.Path, project.Text.FirstParagraphId, false);
+        Capture(project);
+        var checkedChanges = PendingChanges.Recheck(new RecheckPendingChangesRequest(
+            project.Path, ProductVersion, pending.Revision));
+        Assert.True(checkedChanges.Succeeded, checkedChanges.Refusal?.Message);
+        Assert.Equal("uncertain", Assert.Single(checkedChanges.Value!.FitSummary).Status);
+
+        var reconfirmed = PendingChanges.Reconfirm(new ReconfirmPendingChangeRequest(
+            project.Path, ProductVersion, checkedChanges.Value.Revision,
+            Assert.Single(checkedChanges.Value.Changes).ChangeId));
+
+        Assert.Equal("change.occurrence-unavailable", reconfirmed.Refusal?.Code);
+    }
+
+    [Fact]
+    public void ReconfirmRefusesAChangeThatDoesNotNeedAnotherCheckWithItsOwnCode()
+    {
+        var project = CreateProject();
+        var pending = Collect(project);
+        var change = Assert.Single(pending.Changes);
+
+        var reconfirmed = PendingChanges.Reconfirm(new ReconfirmPendingChangeRequest(
+            project.Path, ProductVersion, pending.Revision, change.ChangeId));
+
+        Assert.Equal("change.reconfirm-unneeded", reconfirmed.Refusal?.Code);
+    }
+
+    [Fact]
+    public void SplittingTheAnchoredSegmentMakesTheChangeUncertain()
+    {
+        var project = CreateProject();
+        var pending = Collect(project);
+        SplitFirstSegment(project.Path, project.Text.FirstParagraphId);
+        Capture(project);
+
+        var checkedChanges = PendingChanges.Recheck(new RecheckPendingChangesRequest(
+            project.Path, ProductVersion, pending.Revision));
+
+        Assert.True(checkedChanges.Succeeded, checkedChanges.Refusal?.Message);
+        var fit = Assert.Single(checkedChanges.Value!.FitSummary);
+        Assert.Equal("uncertain", fit.Status);
+        Assert.Contains("Segment", fit.Uncertainty!.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RepeatedWordformsWithAnInsertedMatchRemainUncertain()
+    {
+        var project = CreateRepeatedWordProject();
+        var pending = Collect(project, occurrenceIndex: 1);
+        InsertRepeatedWordBeforeAnchor(project.Path, project.Text.FirstParagraphId,
+            project.Text.FirstSegmentId);
+        Capture(project);
+
+        var checkedChanges = PendingChanges.Recheck(new RecheckPendingChangesRequest(
+            project.Path, ProductVersion, pending.Revision));
+
+        Assert.True(checkedChanges.Succeeded, checkedChanges.Refusal?.Message);
+        Assert.Equal("uncertain", Assert.Single(checkedChanges.Value!.FitSummary).Status);
+    }
+
+    [Fact]
+    public void InsertingPunctuationBeforeRepeatedWordsKeepsTheWordOrdinal()
+    {
+        var project = CreateRepeatedWordProject();
+        var pending = Collect(project, occurrenceIndex: 1);
+        Assert.Equal(1, ReadOccurrenceWordPosition(project.Path));
+        InsertPunctuationBeforeWords(project.Path, project.Text.FirstParagraphId, project.Text.FirstSegmentId);
+        Capture(project);
+
+        var checkedChanges = PendingChanges.Recheck(new RecheckPendingChangesRequest(
+            project.Path, ProductVersion, pending.Revision));
+
+        Assert.True(checkedChanges.Succeeded, checkedChanges.Refusal?.Message);
+        Assert.Equal("fits", Assert.Single(checkedChanges.Value!.FitSummary).Status);
+    }
+
+    [Fact]
+    public void MissingChangeMappingReplacesOtherReasonsAsBeforeOccurrenceEvidence()
+    {
+        var project = CreateProject();
+        var pending = Collect(project, includeOccurrence: false);
+        ChangeTargetAnalysis(project.Path, project.Text.ApprovedAnalysisId, pristine.Seed.SecondEntryId);
+        Capture(project);
+        RemoveComposerProvenance(project.Path);
+
+        var loaded = PendingChanges.Load(new PendingChangesRequest(project.Path, ProductVersion));
+
+        Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
+        Assert.Equal(["Change mapping or fingerprint is missing."], Assert.Single(loaded.Value!.FitSummary).Reasons);
+    }
+
+    [Fact]
     public void AChangedTargetAnalysisTakesPrecedenceOverSentenceUncertainty()
     {
         var project = CreateProject();
         var pending = Collect(project);
-        ChangeWordform(project.Path, project.OtherWordformId, "changed-second-word");
+        EditSentenceWord(project.Path, project.Text.FirstParagraphId, project.Text.FirstSegmentId,
+            1, "changedword", "motifanalysed changedword.");
         ChangeTargetAnalysis(project.Path, project.Text.ApprovedAnalysisId, pristine.Seed.SecondEntryId);
         Capture(project);
 
@@ -202,7 +322,8 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
     {
         var project = CreateProject();
         var pending = Collect(project);
-        ChangeWordform(project.Path, project.OtherWordformId, "changed-second-word");
+        EditSentenceWord(project.Path, project.Text.FirstParagraphId, project.Text.FirstSegmentId,
+            1, "changedword", "motifanalysed changedword.");
         Capture(project);
         var checkedChanges = PendingChanges.Recheck(new RecheckPendingChangesRequest(
             project.Path, ProductVersion, pending.Revision));
@@ -250,6 +371,9 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
                 .Create(TsStringUtils.MakeString("second-word", cache.DefaultVernWs));
             otherWordformId = otherWordform.Guid;
             paragraph.SegmentsOS[0].AnalysesRS.Insert(1, otherWordform);
+            paragraph.Contents = TsStringUtils.MakeString(
+                $"{SeededProject.AnalysedWordForm} second-word{SeededProject.PunctuationForm}",
+                cache.DefaultVernWs);
             paragraph.ParseIsCurrent = true;
         });
         new FwDataProjectLoader().Save(cache);
@@ -259,16 +383,21 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         return scenario;
     }
 
-    private PendingChangesSnapshot Collect(Scenario project)
+    private PendingChangesSnapshot Collect(Scenario project, int occurrenceIndex = 0,
+        bool includeOccurrence = true)
     {
         var initial = PendingChanges.Load(new PendingChangesRequest(project.Path, ProductVersion));
         Assert.True(initial.Succeeded, initial.Refusal?.Message);
         var anchor = new OccurrenceAnchor(project.Text.TextId, project.Text.FirstParagraphId,
-            project.Text.FirstSegmentId, 0);
+            project.Text.FirstSegmentId, occurrenceIndex);
         var intent = new ChangeIntent("occurrence-change", AnalysisChangeKinds.Reject,
-            CanonicalId.FromGuid(project.Text.AnalysedWordformId).Value, SeededProject.AnalysedWordForm,
-            StoredAnalysisId: CanonicalId.FromGuid(project.Text.ApprovedAnalysisId).Value,
-            OriginPage: "Texts", Occurrence: anchor);
+            CanonicalId.FromGuid(occurrenceIndex == 0 ? project.Text.AnalysedWordformId : project.OtherWordformId)
+                .Value,
+            occurrenceIndex == 0 ? SeededProject.AnalysedWordForm : "second-word",
+            StoredAnalysisId: occurrenceIndex == 0
+                ? CanonicalId.FromGuid(project.Text.ApprovedAnalysisId).Value
+                : CanonicalId.FromGuid(project.OtherAnalysisId).Value,
+            OriginPage: "Texts", Occurrence: includeOccurrence ? anchor : null);
         var put = PendingChanges.Put(new PutPendingChangeRequest(
             project.Path, ProductVersion, initial.Value!.Revision, intent));
         Assert.True(put.Succeeded, put.Refusal?.Message);
@@ -276,12 +405,127 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         return put.Value;
     }
 
-    private static void ChangeWordform(string path, Guid wordformId, string form)
+    private static void EditSentenceWord(string path, Guid paragraphId, Guid segmentId,
+        int analysisIndex, string replacementForm, string contents)
     {
         using var cache = new FwDataProjectLoader().LoadScratchCache(path);
-        var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformId);
+        var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().GetObject(paragraphId);
+        var segment = cache.ServiceLocator.GetInstance<ISegmentRepository>().GetObject(segmentId);
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-            wordform.Form.set_String(cache.DefaultVernWs, form));
+        {
+            var replacement = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(replacementForm, cache.DefaultVernWs));
+            segment.AnalysesRS.RemoveAt(analysisIndex);
+            segment.AnalysesRS.Insert(analysisIndex, replacement);
+            paragraph.Contents = TsStringUtils.MakeString(contents, cache.DefaultVernWs);
+            paragraph.ParseIsCurrent = true;
+        });
+        new FwDataProjectLoader().Save(cache);
+        Touch(path);
+    }
+
+    private void SetParseCurrent(string path, Guid paragraphId, bool current)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+        var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().GetObject(paragraphId);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => paragraph.ParseIsCurrent = current);
+        new FwDataProjectLoader().Save(cache);
+        Touch(path);
+    }
+
+    private void SplitFirstSegment(string path, Guid paragraphId)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+        var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().GetObject(paragraphId);
+        var original = paragraph.SegmentsOS[0];
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var first = cache.ServiceLocator.GetInstance<ISegmentFactory>().Create();
+            var second = cache.ServiceLocator.GetInstance<ISegmentFactory>().Create();
+            paragraph.SegmentsOS.Add(first);
+            paragraph.SegmentsOS.Add(second);
+            first.AnalysesRS.Add(original.AnalysesRS[0]);
+            second.AnalysesRS.Add(original.AnalysesRS[1]);
+            second.AnalysesRS.Add(original.AnalysesRS[2]);
+            original.Delete();
+            paragraph.Contents = TsStringUtils.MakeString("analysed-word. second-word.", cache.DefaultVernWs);
+            paragraph.ParseIsCurrent = true;
+        });
+        new FwDataProjectLoader().Save(cache);
+        Touch(path);
+    }
+
+    private Scenario CreateRepeatedWordProject()
+    {
+        using var cache = pristine.NewScratch();
+        var text = SeededProject.SeedText(cache, pristine.Seed);
+        var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>()
+            .GetObject(text.FirstParagraphId);
+        Guid otherWordformId = Guid.Empty;
+        Guid otherAnalysisId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var otherWordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("second-word", cache.DefaultVernWs));
+            otherWordformId = otherWordform.Guid;
+            var sourceAnalysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>()
+                .GetObject(text.ApprovedAnalysisId);
+            var otherAnalysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+            otherWordform.AnalysesOC.Add(otherAnalysis);
+            otherAnalysis.CategoryRA = sourceAnalysis.CategoryRA;
+            foreach (var sourceBundle in sourceAnalysis.MorphBundlesOS)
+            {
+                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                otherAnalysis.MorphBundlesOS.Add(bundle);
+                bundle.MorphRA = sourceBundle.MorphRA;
+                bundle.MsaRA = sourceBundle.MsaRA;
+                if (sourceBundle.SenseRA is { } sense) bundle.SenseRA = sense;
+            }
+            otherAnalysisId = otherAnalysis.Guid;
+            while (paragraph.SegmentsOS[0].AnalysesRS.Count > 0)
+                paragraph.SegmentsOS[0].AnalysesRS.RemoveAt(0);
+            paragraph.SegmentsOS[0].AnalysesRS.Add(otherAnalysis);
+            paragraph.SegmentsOS[0].AnalysesRS.Add(otherAnalysis);
+            paragraph.Contents = TsStringUtils.MakeString("second-word second-word", cache.DefaultVernWs);
+            paragraph.ParseIsCurrent = true;
+        });
+        new FwDataProjectLoader().Save(cache);
+        Directory.CreateDirectory(_root);
+        var scenario = new Scenario(cache.ProjectId.Path, _root, text, otherWordformId, otherAnalysisId);
+        Capture(scenario);
+        return scenario;
+    }
+
+    private static void InsertRepeatedWordBeforeAnchor(string path, Guid paragraphId, Guid segmentId)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+        var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().GetObject(paragraphId);
+        var segment = cache.ServiceLocator.GetInstance<ISegmentRepository>().GetObject(segmentId);
+        var same = segment.AnalysesRS[0];
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            segment.AnalysesRS.Insert(0, same);
+            paragraph.Contents = TsStringUtils.MakeString("second-word second-word second-word",
+                cache.DefaultVernWs);
+            paragraph.ParseIsCurrent = true;
+        });
+        new FwDataProjectLoader().Save(cache);
+        Touch(path);
+    }
+
+    private static void InsertPunctuationBeforeWords(string path, Guid paragraphId, Guid segmentId)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+        var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().GetObject(paragraphId);
+        var segment = cache.ServiceLocator.GetInstance<ISegmentRepository>().GetObject(segmentId);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var punctuation = cache.ServiceLocator.GetInstance<IPunctuationFormFactory>().Create();
+            punctuation.Form = TsStringUtils.MakeString(",", cache.DefaultVernWs);
+            segment.AnalysesRS.Insert(0, punctuation);
+            paragraph.Contents = TsStringUtils.MakeString(", second-word second-word", cache.DefaultVernWs);
+            paragraph.ParseIsCurrent = true;
+        });
         new FwDataProjectLoader().Save(cache);
         Touch(path);
     }
@@ -312,16 +556,29 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         var draftRecord = new ProposalRepository(database).GetDraft(PendingChanges.DraftName);
         var draft = JsonSerializer.Deserialize<DraftDocument>(draftRecord.ProposalJson!,
             new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
-        var operations = draft.Operations.Select(operation => new OperationEnvelope(
-            CanonicalId.Parse(operation.OperationId), operation.Kind,
-            operation.EntityId is null ? null : CanonicalId.Parse(operation.EntityId),
-            operation.Target is null ? null : CanonicalId.Parse(operation.Target),
-            JsonSerializer.SerializeToElement(operation.After), dependsOn: operation.DependsOn
-                .Select(id => new OperationDependency(CanonicalId.Parse(id))).ToArray(),
-            extensions: operation.Extensions)).ToArray();
-        var proposal = new Proposal(draft.ContractVersions, CanonicalId.Parse(draft.ProposalId),
-            draft.Requires.Select(CanonicalId.Parse).ToArray(), operations);
+        var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
         return IntentDigest.Compute(proposal);
+    }
+
+    private static void RemoveComposerProvenance(string path)
+    {
+        using var database = ProjectMotifDatabase.Open(path);
+        var repository = new ProposalRepository(database);
+        var current = repository.GetDraft(PendingChanges.DraftName);
+        var draft = JsonSerializer.Deserialize<DraftDocument>(current.ProposalJson!,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        draft.ComposerProvenance.Clear();
+        var replacement = JsonSerializer.Serialize(draft, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.True(repository.TrySaveDraft(PendingChanges.DraftName, current.ProposalJson!, replacement));
+    }
+
+    private static int ReadOccurrenceWordPosition(string path)
+    {
+        using var database = ProjectMotifDatabase.Open(path);
+        var draftRecord = new ProposalRepository(database).GetDraft(PendingChanges.DraftName);
+        using var document = JsonDocument.Parse(draftRecord.ProposalJson!);
+        return document.RootElement.GetProperty("operations")[0].GetProperty("extensions")
+            .GetProperty("changeFit").GetProperty("occurrence").GetProperty("wordPosition").GetInt32();
     }
 
     private static ChangeFitFingerprint ReadFingerprint(string path)
@@ -335,5 +592,6 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
     }
 
-    private sealed record Scenario(string Path, string Root, SeededText Text, Guid OtherWordformId);
+    private sealed record Scenario(string Path, string Root, SeededText Text, Guid OtherWordformId,
+        Guid OtherAnalysisId = default);
 }

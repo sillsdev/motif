@@ -17,7 +17,8 @@ public sealed record OccurrenceFitEvidence(
     string Token,
     bool ParseIsCurrent,
     string WordDigest,
-    IReadOnlyList<OccurrenceWordToken> Tokens);
+    IReadOnlyList<OccurrenceWordToken> Tokens,
+    int? WordPosition = null);
 
 internal static class OccurrenceFitEvidenceResolver
 {
@@ -51,9 +52,10 @@ internal static class OccurrenceFitEvidenceResolver
         }
 
         var wordTokens = WordTokens(lines[0]);
+        var wordPosition = Array.FindIndex(wordTokens, token => token.Index == anchor.Index);
         evidence = new OccurrenceFitEvidence(anchor, CanonicalId.FromGuid(wordformId).Value,
             tokens[0].AnalysisId is { } analysisId ? CanonicalId.FromGuid(analysisId).Value : null,
-            tokens[0].Text, lines[0].ParseIsCurrent, WordDigest(wordTokens), wordTokens);
+            tokens[0].Text, lines[0].ParseIsCurrent, WordDigest(wordTokens), wordTokens, wordPosition);
         reason = string.Empty;
         return true;
     }
@@ -70,7 +72,10 @@ internal static class OccurrenceFitEvidenceResolver
 
         var line = lines[0];
         var currentTokens = WordTokens(line);
-        var anchorTokens = line.Tokens.Where(token => token.OccurrenceIndex == expected.Anchor.Index).Take(2).ToArray();
+        if (expected.WordPosition is not { } wordPosition || wordPosition < 0 || wordPosition >= currentTokens.Length)
+            return Uncertain("The source occurrence no longer resolves uniquely.", expected.Tokens, currentTokens);
+        var selectedWord = currentTokens[wordPosition];
+        var anchorTokens = line.Tokens.Where(token => token.OccurrenceIndex == selectedWord.Index).Take(2).ToArray();
         if (anchorTokens.Length != 1 || anchorTokens[0].WordformId is not { } currentWordformId)
             return Uncertain("The source occurrence no longer resolves uniquely.", expected.Tokens, currentTokens);
         if (!line.ParseIsCurrent)

@@ -49,4 +49,15 @@ public sealed class UncertainChangeContractTests
         Assert.Equal(fit.Uncertainty.BeforeTokens, restored.Uncertainty.BeforeTokens);
         Assert.Equal(fit.Uncertainty.AfterTokens, restored.Uncertainty.AfterTokens);
     }
+
+    [Fact]
+    public void StillFitsIsDerivedFromTheMachineReadableStatus()
+    {
+        var fitting = new ChangeFitResult("operation", false, "Still fits.", "baseline")
+        {
+            Status = ChangeFitStatus.Fits,
+        };
+
+        Assert.True(fitting.StillFits);
+    }
 }

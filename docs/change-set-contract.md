@@ -230,8 +230,8 @@ the Draft removes their declared dependents as well and leaves unrelated changes
 and finalizing after a removal produces a new revision and clears its old bound Dry Run; the new
 revision needs its own Dry Run before Apply. Review is an App screen for reading reports. It records
 no Decision and grants no Apply permission; computed Readiness remains the Apply gate.
-`reconfirm-pending-change` refreshes one uncertain change's occurrence evidence against the current
-Baseline only after the change still fits. Like Rebase, it refreshes Baseline-relative evidence without
+`reconfirm-pending-change` refreshes one uncertain change's occurrence evidence and BaselineToken against
+the current Baseline only after the change still fits. Like Rebase, it refreshes Baseline-relative evidence without
 changing the target, verb, value, identity, or operation order, so the Proposal's intent digest stays
 the same. Recheck may renew a Baseline token for an uncertain change, but does not replace its occurrence
 evidence. These verbs cannot retarget a wordform, choose another analysis decision, change an opinion,
