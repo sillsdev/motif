@@ -1,4 +1,4 @@
-# Temporary diagnostics workflow; remove it after the macOS crash is fixed.
+# Temporary hang diagnostics; remove this workflow after the macOS hang is fixed.
 name: macOS crash diagnostics
 
 on:
@@ -20,16 +20,12 @@ jobs:
           - os: macos-15-intel
             icu_rid: osx-x64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 25
     env:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
       AVALONIA_TELEMETRY_OPTOUT: '1'
       ICU_RID: ${{ matrix.icu_rid }}
-      DOTNET_DbgEnableMiniDump: '1'
-      DOTNET_DbgMiniDumpType: '1'
-      DOTNET_EnableCrashReport: '1'
-      DOTNET_CreateDumpDiagnostics: '1'
 
     steps:
       - uses: actions/checkout@v4
@@ -38,12 +34,17 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Install hang diagnostic tools
+        shell: bash
+        run: |
+          dotnet tool install -g dotnet-stack
+          dotnet tool install -g dotnet-dump
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
       - name: Create diagnostic output directories
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/mac-crash-dumps" bin/Release/mac-crash
-          echo "DOTNET_DbgMiniDumpName=$RUNNER_TEMP/mac-crash-dumps/coredump.%p" >> "$GITHUB_ENV"
-          echo "DOTNET_CreateDumpLogToFile=$RUNNER_TEMP/mac-crash-dumps/createdump.log" >> "$GITHUB_ENV"
+          mkdir -p bin/Release/mac-crash
 
       - name: Read pinned SIL ICU source revision
         id: sil-icu-source
@@ -125,63 +126,123 @@ jobs:
             [[ -e "$tests/$library" ]] || { echo "Missing staged ICU library: $tests/$library" >&2; exit 1; }
           done < <(jq -r --arg rid "$ICU_RID" '.rids[$rid].libraries[]' "$payload")
 
-      - name: Run selected crash reproductions
+      - name: Run selected hang reproductions and capture stacks
         shell: bash
         run: |
-          result=0
-          selections=(
-            'SIL.Motif.Tests.Cli|FullyQualifiedName~PendingApplyArgvTests'
-            'SIL.Motif.Tests.Commands|FullyQualifiedName~PendingChangesWorkflowTests'
-          )
-          for selection in "${selections[@]}"; do
-            project=${selection%%|*}
-            filter=${selection#*|}
-            project_path="tests/$project/$project.csproj"
-            project_results="bin/Release/mac-crash/$project"
-            mkdir -p "$project_results"
-            log="bin/Release/mac-crash/$project.log"
-            echo "Running $project with filter: $filter"
-            if dotnet test "$project_path" \
-              --configuration Release \
-              --nologo \
-              --no-build \
-              --results-directory "$project_results" \
-              --logger "trx;LogFileName=$project.trx" \
-              --filter "$filter" > "$log" 2>&1; then
-              status=0
-            else
-              status=$?
-            fi
-            cat "$log"
-            if [[ $status -ne 0 ]]; then
-              echo "$project exited with $status"
-              result=1
-            fi
-          done
-          exit "$result"
+          diagnostics="$GITHUB_WORKSPACE/bin/Release/mac-crash"
+          cli_results="$diagnostics/SIL.Motif.Tests.Cli"
+          commands_results="$diagnostics/SIL.Motif.Tests.Commands"
+          mkdir -p "$cli_results" "$commands_results"
 
-      - name: Collect crash reports and dumps
+          dotnet test tests/SIL.Motif.Tests.Cli/SIL.Motif.Tests.Cli.csproj \
+            --configuration Release --nologo --no-build \
+            --results-directory "$cli_results" \
+            --logger 'trx;LogFileName=SIL.Motif.Tests.Cli.trx' \
+            --filter 'FullyQualifiedName~PendingApplyArgvTests' \
+            > "$diagnostics/SIL.Motif.Tests.Cli.log" 2>&1 &
+          cli_pid=$!
+
+          dotnet test tests/SIL.Motif.Tests.Commands/SIL.Motif.Tests.Commands.csproj \
+            --configuration Release --nologo --no-build \
+            --results-directory "$commands_results" \
+            --logger 'trx;LogFileName=SIL.Motif.Tests.Commands.trx' \
+            --filter 'FullyQualifiedName~PendingChangesWorkflowTests' \
+            > "$diagnostics/SIL.Motif.Tests.Commands.log" 2>&1 &
+          commands_pid=$!
+
+          deadline=$((SECONDS + 240))
+          timed_out=0
+          while kill -0 "$cli_pid" 2>/dev/null || kill -0 "$commands_pid" 2>/dev/null; do
+            if ((SECONDS >= deadline)); then
+              timed_out=1
+              break
+            fi
+            sleep 5
+          done
+
+          if ((timed_out)); then
+            echo "A selected test process remained active after four minutes; capturing stacks."
+            ps -axo pid,ppid,stat,etime,command > "$diagnostics/processes.txt"
+            matching_pids=$(awk '
+              index($0, "testhost") || index($0, "SIL.Motif") || $0 ~ /\/motif([[:space:]]|$)/ { print $1 }
+            ' "$diagnostics/processes.txt")
+            capture_pids=$(printf '%s\n%s\n%s\n' "$cli_pid" "$commands_pid" "$matching_pids" | awk 'NF && !seen[$1]++ { print $1 }')
+
+            while IFS= read -r pid; do
+              [[ -n "$pid" ]] || continue
+              sample "$pid" 10 -file "$diagnostics/sample-$pid.txt" \
+                > "$diagnostics/sample-command-$pid.txt" 2>&1 || true
+              dotnet-stack report -p "$pid" \
+                > "$diagnostics/managed-$pid.txt" 2>&1 || true
+              if dotnet-dump collect -p "$pid" -o "$diagnostics/dump-$pid" \
+                > "$diagnostics/dump-collect-$pid.txt" 2>&1; then
+                dotnet-dump analyze "$diagnostics/dump-$pid" \
+                  -c "clrthreads" -c "clrstack -all" -c "exit" \
+                  > "$diagnostics/clrstack-$pid.txt" 2>&1 || true
+              fi
+            done <<< "$capture_pids"
+
+            ps -axo pid=,ppid= > "$diagnostics/process-tree.txt"
+            tree_pids=$(awk -v roots="$cli_pid $commands_pid $capture_pids" '
+              BEGIN {
+                count = split(roots, root, /[[:space:]]+/)
+                for (i = 1; i <= count; i++) if (root[i] != "") wanted[root[i]] = 1
+              }
+              { pids[++n] = $1; parent[$1] = $2 }
+              END {
+                do {
+                  changed = 0
+                  for (i = 1; i <= n; i++) {
+                    pid = pids[i]
+                    if (wanted[parent[pid]] && !wanted[pid]) {
+                      wanted[pid] = 1
+                      changed = 1
+                    }
+                  }
+                } while (changed)
+                for (i = n; i >= 1; i--) if (wanted[pids[i]]) print pids[i]
+              }
+            ' "$diagnostics/process-tree.txt")
+            while IFS= read -r pid; do
+              [[ -n "$pid" ]] && kill -TERM "$pid" 2>/dev/null || true
+            done <<< "$tree_pids"
+            sleep 5
+            while IFS= read -r pid; do
+              [[ -n "$pid" ]] && kill -KILL "$pid" 2>/dev/null || true
+            done <<< "$tree_pids"
+
+            wait "$cli_pid" 2>/dev/null || true
+            wait "$commands_pid" 2>/dev/null || true
+            cat "$diagnostics/SIL.Motif.Tests.Cli.log" "$diagnostics/SIL.Motif.Tests.Commands.log"
+            echo "Hang diagnostics captured; terminated the selected test process trees."
+            exit 124
+          fi
+
+          cli_status=0
+          commands_status=0
+          wait "$cli_pid" || cli_status=$?
+          wait "$commands_pid" || commands_status=$?
+          cat "$diagnostics/SIL.Motif.Tests.Cli.log" "$diagnostics/SIL.Motif.Tests.Commands.log"
+          if ((cli_status != 0 || commands_status != 0)); then
+            exit 1
+          fi
+
+      - name: Prepare hang diagnostics
         if: always()
         shell: bash
         run: |
           output="$GITHUB_WORKSPACE/bin/Release/mac-crash"
           mkdir -p "$output"
-          dumps="$RUNNER_TEMP/mac-crash-dumps"
-          if [[ -d "$dumps" ]]; then
-            cp -a "$dumps/." "$output/"
-          fi
-          reports="$HOME/Library/Logs/DiagnosticReports"
-          shopt -s nullglob
-          crash_reports=("$reports"/*.ips "$reports"/*.crash)
-          for attempt in {1..15}; do
-            ((${#crash_reports[@]})) && break
-            sleep 1
-            crash_reports=("$reports"/*.ips "$reports"/*.crash)
+          dump_bytes=0
+          for dump in "$output"/dump-[0-9]*; do
+            [[ -f "$dump" ]] || continue
+            dump_bytes=$((dump_bytes + $(stat -f '%z' "$dump")))
           done
-          if ((${#crash_reports[@]})); then
-            cp -a "${crash_reports[@]}" "$output/"
-          else
-            echo "No macOS DiagnosticReports .ips or .crash files were found." > "$output/native-crash-report-status.txt"
+          if ((dump_bytes > 524288000)); then
+            echo "Raw dumps total $dump_bytes bytes; removing them from the artifact."
+            for dump in "$output"/dump-[0-9]*; do
+              [[ -f "$dump" ]] && rm -f "$dump"
+            done
           fi
           find "$output" -maxdepth 2 -type f -print
 
