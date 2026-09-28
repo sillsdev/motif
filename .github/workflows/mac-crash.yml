@@ -126,6 +126,98 @@ jobs:
             [[ -e "$tests/$library" ]] || { echo "Missing staged ICU library: $tests/$library" >&2; exit 1; }
           done < <(jq -r --arg rid "$ICU_RID" '.rids[$rid].libraries[]' "$payload")
 
+      - name: Probe staged SIL ICU apphosts
+        continue-on-error: true
+        shell: bash
+        run: |
+          diagnostics="$GITHUB_WORKSPACE/bin/Release/mac-crash"
+          product="$GITHUB_WORKSPACE/bin/Release"
+          test_temp="$diagnostics/test-temp"
+          copied_project="$diagnostics/copied-project"
+          worker_root="$diagnostics/worker-root"
+          writing_systems="$diagnostics/writing-systems"
+          mkdir -p "$diagnostics" "$test_temp" "$copied_project" "$worker_root" "$writing_systems"
+
+          run_capture() {
+            label=$1
+            limit=$2
+            shift 2
+            stdout="$diagnostics/$label.stdout.txt"
+            stderr="$diagnostics/$label.stderr.txt"
+            printf 'Running %s:' "$label"
+            printf ' %q' "$@"
+            printf '\n'
+            "$@" > "$stdout" 2> "$stderr" &
+            pid=$!
+            elapsed=0
+            timed_out=0
+            while kill -0 "$pid" 2>/dev/null && ((elapsed < limit)); do
+              sleep 1
+              elapsed=$((elapsed + 1))
+            done
+            if kill -0 "$pid" 2>/dev/null; then
+              timed_out=1
+              kill -TERM "$pid" 2>/dev/null || true
+              sleep 2
+              kill -KILL "$pid" 2>/dev/null || true
+            fi
+            if wait "$pid"; then status=0; else status=$?; fi
+            printf '%s exit code: %s%s\n' "$label" "$status" \
+              "$([[ "$timed_out" == 1 ]] && printf ' (killed after %s seconds)' "$limit")"
+            printf '%s stdout:\n' "$label"
+            cat "$stdout"
+            printf '%s stderr:\n' "$label"
+            cat "$stderr"
+            printf '\n'
+          }
+
+          TMPDIR="$test_temp/" \
+          MOTIF_WRITING_SYSTEM_REPOSITORY_PATH="$writing_systems" \
+            dotnet test tests/SIL.Motif.Tests.Commands/SIL.Motif.Tests.Commands.csproj \
+              --configuration Release --nologo --no-build \
+              --filter 'FullyQualifiedName~PendingChangesWorkflowTests.ApplyingWhenNoChangesArePendingReturnsTheNoWorkOutcome' \
+              > "$diagnostics/fixture-test.stdout.txt" \
+              2> "$diagnostics/fixture-test.stderr.txt" &
+          fixture_pid=$!
+          fixture_source=
+          for ((attempt = 0; attempt < 90; attempt++)); do
+            for candidate in "$test_temp"/SIL.Motif.Tests.Pristine/*/MotifTestProj/MotifTestProj.fwdata; do
+              if [[ -f "$candidate" ]]; then
+                fixture_source=$(dirname "$candidate")
+                break 2
+              fi
+            done
+            if ! kill -0 "$fixture_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ -n "$fixture_source" ]]; then
+            cp -a "$fixture_source" "$copied_project/MotifTestProj"
+            echo "Copied LibLCM test project to $copied_project/MotifTestProj"
+          else
+            echo "The LibLCM test fixture did not produce a project directory."
+          fi
+          if kill -0 "$fixture_pid" 2>/dev/null; then
+            kill -TERM "$fixture_pid" 2>/dev/null || true
+            sleep 2
+            kill -KILL "$fixture_pid" 2>/dev/null || true
+          fi
+          if wait "$fixture_pid"; then fixture_status=0; else fixture_status=$?; fi
+          echo "fixture test exit code: $fixture_status"
+          echo "fixture test stdout:"
+          cat "$diagnostics/fixture-test.stdout.txt"
+          echo "fixture test stderr:"
+          cat "$diagnostics/fixture-test.stderr.txt"
+
+          run_capture cli-version 30 "$product/motif" --version
+          run_capture cli-version-dyld 30 env DYLD_PRINT_LIBRARIES=1 "$product/motif" --version
+          run_capture cli-open-project 90 env \
+            MOTIF_WORKER_ROOT="$worker_root" \
+            MOTIF_WRITING_SYSTEM_REPOSITORY_PATH="$writing_systems" \
+            "$product/motif" open "$copied_project/MotifTestProj.fwdata"
+          run_capture worker-startup 20 "$product/SIL.Motif.Worker" \
+            --root "$worker_root" --no-parser --namespace motif-icu-probe \
+            --idle-ms 60000 --lease-ms 300000
+
       - name: Run selected hang reproductions and capture stacks
         shell: bash
         run: |
