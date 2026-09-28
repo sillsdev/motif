@@ -406,6 +406,48 @@ try
                     readingIndex, Occurrence: occurrence))));
             break;
 
+        case "remove-analysis":
+            var hasSingleAnalysis = flags.TryGetValue("analysis-id", out var removeAnalysisId);
+            var hasAnalysisSelection = flags.TryGetValue("analysis-ids", out var removeAnalysisIdsText);
+            var hasAnalysisText = flags.TryGetValue("text-id", out var removeAnalysisTextId);
+            var removeAnalysisIds = hasAnalysisSelection
+                ? removeAnalysisIdsText!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : null;
+            if (!flags.TryGetValue("project", out var removeAnalysisProject) ||
+                !flags.TryGetValue("expected-revision", out var removeAnalysisRevision) ||
+                (hasSingleAnalysis ? 1 : 0) + (hasAnalysisSelection ? 1 : 0) + (hasAnalysisText ? 1 : 0) != 1 ||
+                hasSingleAnalysis && (!flags.ContainsKey("change-id") || !flags.ContainsKey("wordform-id") ||
+                    !flags.ContainsKey("word")) ||
+                hasAnalysisSelection && removeAnalysisIds!.Length == 0 ||
+                hasAnalysisText && !Guid.TryParse(removeAnalysisTextId, out _))
+                return Usage("Usage: motif remove-analysis --project <fwdata> " +
+                    "--expected-revision <revision> (--analysis-id <id> --change-id <id> " +
+                    "--wordform-id <id> --word <word> | --analysis-ids <id,id,...> | --text-id <guid>) [--json]",
+                    asJson);
+            result = RenderProposal(PendingChanges.RemoveAnalysis(new RemoveAnalysisRequest(
+                removeAnalysisProject, CliProductVersion(), removeAnalysisRevision,
+                flags.GetValueOrDefault("change-id"), flags.GetValueOrDefault("wordform-id"),
+                flags.GetValueOrDefault("word"), removeAnalysisId, removeAnalysisIds,
+                hasAnalysisText ? Guid.Parse(removeAnalysisTextId!) : null)));
+            break;
+
+        case "accept-new-set":
+            var hasWordformScope = flags.TryGetValue("wordform-id", out var acceptWordformId);
+            var hasTextScope = flags.TryGetValue("text-id", out var acceptTextId);
+            var hasSelectionScope = flags.ContainsKey("selection");
+            if (!flags.TryGetValue("project", out var acceptProject) ||
+                !flags.TryGetValue("expected-revision", out var acceptRevision) ||
+                !flags.TryGetValue("assessment", out var acceptAssessment) ||
+                (hasWordformScope ? 1 : 0) + (hasTextScope ? 1 : 0) + (hasSelectionScope ? 1 : 0) != 1 ||
+                hasTextScope && !Guid.TryParse(acceptTextId, out _))
+                return Usage("Usage: motif accept-new-set --project <fwdata> " +
+                    "--expected-revision <revision> --assessment <id> " +
+                    "(--wordform-id <id> | --text-id <guid> | --selection) [--json]", asJson);
+            result = RenderProposal(PendingChanges.AcceptNewSet(new AcceptNewSetRequest(
+                acceptProject, CliProductVersion(), acceptRevision, acceptAssessment,
+                acceptWordformId, hasTextScope ? Guid.Parse(acceptTextId!) : null, hasSelectionScope)));
+            break;
+
         case "remove-pending-change":
             if (!flags.TryGetValue("project", out var removePendingProject) ||
                 !flags.TryGetValue("expected-revision", out var removePendingRevision) ||

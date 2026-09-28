@@ -23,6 +23,20 @@ public sealed record OccurrenceAnchor(Guid TextId, Guid ParagraphId, Guid Segmen
 public sealed record PutPendingChangeRequest(
     string FwDataPath, string ProductVersion, string ExpectedRevision, ChangeIntent Change);
 
+/// <summary>Accepts the missing parser readings for one word, one Assessment Selection, or one Text.</summary>
+/// <param name="WordformId">The one wordform to accept, or <see langword="null"/> for another scope.</param>
+/// <param name="TextId">The Text to accept, or <see langword="null"/> for another scope.</param>
+/// <param name="Selection">Whether to use every word in the named Assessment's Selection.</param>
+public sealed record AcceptNewSetRequest(
+    string FwDataPath, string ProductVersion, string ExpectedRevision, string AssessmentId,
+    string? WordformId = null, Guid? TextId = null, bool Selection = false);
+
+/// <summary>Stages removal of one stored analysis from its wordform.</summary>
+public sealed record RemoveAnalysisRequest(
+    string FwDataPath, string ProductVersion, string ExpectedRevision,
+    string? ChangeId = null, string? WordformId = null, string? Word = null, string? AnalysisId = null,
+    IReadOnlyList<string>? AnalysisIds = null, Guid? TextId = null);
+
 /// <summary>Removes one change only if the Draft still has the revision the caller read.</summary>
 public sealed record RemovePendingChangeRequest(
     string FwDataPath, string ProductVersion, string ExpectedRevision, string ChangeId);

@@ -32,6 +32,8 @@ that dispatches them.
 | `new` | Developer | `new --project <fwdata> --draft <name> [--label <text>]` |
 | `pending-changes` | Developer | `pending-changes --project <fwdata> [--json]` |
 | `put-pending-change` | Developer | `put-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> --kind <kind> --word <word> [--wordform-id <id>] [--assessment <id> --reading-index <zero-based> --reading-json <json>] [--stored-analysis-id <id>] [--occurrence-text-id <guid> --occurrence-paragraph-id <guid> --occurrence-segment-id <guid> --occurrence-index <zero-based>] [--json]` |
+| `remove-analysis` | Developer | `remove-analysis --project <fwdata> --expected-revision <revision> (--analysis-id <id> --change-id <id> --wordform-id <id> --word <word> \| --analysis-ids <id,id,...> \| --text-id <guid>) [--json]` |
+| `accept-new-set` | Developer | `accept-new-set --project <fwdata> --expected-revision <revision> --assessment <id> (--wordform-id <id> \| --text-id <guid> \| --selection) [--json]` |
 | `remove-pending-change` | Developer | `remove-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
 | `recheck-pending-changes` | Developer | `recheck-pending-changes --project <fwdata> --expected-revision <revision> [--json]` |
 | `review-numbers` | Developer | `review-numbers --project <fwdata> [--from <assessmentId>] --to <assessmentId> --touched-words <count> [--json]` |
@@ -127,8 +129,9 @@ The Released surface contains `open`, `analyses`, `config show`, `report`, `repo
 `add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
 `jobs list`, `jobs cancel`, `jobs requeue`, `jobs move`, and `apply --all-pending`.
 
-The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
-`remove-pending-change`, `recheck-pending-changes`, `reconfirm-pending-change`, `review-numbers`, `store delete-refused`, `add-set-gloss`, `add-delete-lexeme-form`,
+The Developer surface contains `new`, `pending-changes`, `put-pending-change`, `remove-analysis`,
+`accept-new-set`, `remove-pending-change`, `recheck-pending-changes`, `reconfirm-pending-change`,
+`review-numbers`, `store delete-refused`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
 `supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`,
@@ -185,6 +188,14 @@ fit, but leaves uncertain occurrence evidence untouched. `reconfirm-pending-chan
 and replaces its occurrence evidence and BaselineToken after the analysis decision still fits; it refuses changes
 that no longer fit. This evidence refresh does not alter Proposal intent. The Draft stays in
 `Project.motif.db` when the App closes.
+
+`remove-analysis` stages deletion for one stored analysis, a comma-separated selection of analysis ids, or
+every distinct analysis used by a Text. Its preview lists every Text occurrence that references each analysis;
+LibLCM removes those references and leaves them without a wordform fallback. `remove-pending-change` is Undo
+for a staged removal. `accept-new-set` stages every parser reading
+from a complete parse Assessment that the selected wordform, Text, or Assessment Selection does not already
+have. It adds candidates with no human opinion and never removes an existing analysis. If any selected word
+was capped, timed out, skipped, malformed, or otherwise incomplete, the command refuses the entire action.
 
 `trial --pending` resolves the current pending Draft when `--draft` and `--revision` are omitted, reading only
 the paired project database, so it never opens the FieldWorks project to check them. A `--draft` or `--revision`
