@@ -1,0 +1,2 @@
+SIL.Motif.Tests.Cli | FullyQualifiedName~PendingApplyArgvTests
+SIL.Motif.Tests.Commands | FullyQualifiedName~PendingChangesWorkflowTests

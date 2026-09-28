@@ -1,0 +1,192 @@
+name: macOS crash diagnostics
+
+on:
+  push:
+    branches: [mac-debug]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crash-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            icu_rid: osx-arm64
+          - os: macos-15-intel
+            icu_rid: osx-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+      ICU_RID: ${{ matrix.icu_rid }}
+      DOTNET_DbgEnableMiniDump: '1'
+      DOTNET_DbgMiniDumpType: '1'
+      DOTNET_DbgMiniDumpName: ${{ runner.temp }}/mac-debug-dumps/coredump.%p
+      DOTNET_EnableCrashReport: '1'
+      DOTNET_CreateDumpDiagnostics: '1'
+      DOTNET_CreateDumpLogToFile: ${{ runner.temp }}/mac-debug-dumps/createdump.log
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Create diagnostic output directories
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/mac-debug-dumps" bin/Release/mac-debug
+
+      - name: Read pinned SIL ICU source revision
+        id: sil-icu-source
+        shell: bash
+        run: |
+          commit=$(jq -r --arg rid "$ICU_RID" '.rids[$rid].source.commit' tools/icu-payload.json)
+          printf 'commit=%s\n' "$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Cache SIL ICU source build
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/sil-icu/${{ matrix.icu_rid }}/install
+          key: sil-icu-${{ matrix.icu_rid }}-${{ steps.sil-icu-source.outputs.commit }}-${{ hashFiles('tools/patches/sil-icu-macos-malloc-header.patch') }}
+
+      - name: Build SIL ICU from source
+        shell: bash
+        run: |
+          payload=tools/icu-payload.json
+          runtime=$(jq -r --arg rid "$ICU_RID" '.rids[$rid]' "$payload")
+          commit=$(jq -r '.source.commit' <<< "$runtime")
+          repository=$(jq -r '.source.repository' <<< "$runtime")
+          source_directory=$(jq -r '.source.sourceDirectory' <<< "$runtime")
+          root="$RUNNER_TEMP/sil-icu/$ICU_RID"
+          source_root="$root/source"
+          prefix="$root/install"
+          case "$ICU_RID:$(uname -m)" in
+            osx-arm64:arm64|osx-x64:x86_64) ;;
+            *) echo "Runner architecture $(uname -m) does not match $ICU_RID" >&2; exit 1 ;;
+          esac
+          if [[ ! -f "$prefix/lib/libicuuc.70.dylib" ]]; then
+            mkdir -p "$root"
+            if [[ ! -d "$source_root/.git" ]]; then
+              git init "$source_root"
+              git -C "$source_root" remote add origin "$repository"
+            fi
+            git -C "$source_root" fetch --depth=1 origin "$commit"
+            git -C "$source_root" checkout --detach FETCH_HEAD
+            patch=$(jq -r '.buildPatches[] | select(.id == "silmods-macos-malloc-header") | .path' "$GITHUB_WORKSPACE/$payload")
+            git -C "$source_root" apply --check "$GITHUB_WORKSPACE/$patch"
+            git -C "$source_root" apply "$GITHUB_WORKSPACE/$patch"
+            cd "$source_root/$source_directory"
+            ./runConfigureICU MacOSX --prefix="$prefix" --enable-shared --enable-static=no --with-data-packaging=library
+            make -j"$(sysctl -n hw.ncpu)"
+            make install
+            for library in "$prefix"/lib/libicu*.70.dylib; do
+              [[ -f "$library" ]] || continue
+              while IFS= read -r dependency; do
+                case "$dependency" in
+                  "$prefix"/lib/*)
+                    install_name_tool -change "$dependency" "@loader_path/$(basename "$dependency")" "$library"
+                    ;;
+                esac
+              done < <(otool -L "$library" | awk 'NR > 1 { print $1 }' | grep '\.dylib$' || true)
+              install_name_tool -add_rpath '@loader_path' "$library" 2>/dev/null || true
+              codesign --force --sign - "$library"
+            done
+          fi
+          printf 'MOTIF_SIL_ICU_STAGE=%s\n' "$prefix/lib" >> "$GITHUB_ENV"
+
+      - name: Build Motif
+        shell: pwsh
+        run: ./build.ps1 -Configuration Release
+
+      - name: Stage SIL ICU beside Motif and test hosts
+        shell: bash
+        run: |
+          payload=tools/icu-payload.json
+          destination=$(jq -r --arg rid "$ICU_RID" '.rids[$rid].nativeOutputDirectory' "$payload")
+          product="bin/Release/$destination"
+          tests="bin/Release/tests/$destination"
+          mkdir -p "$product" "$tests"
+          for library in "$MOTIF_SIL_ICU_STAGE"/libicu*.dylib; do
+            [[ -e "$library" || -L "$library" ]] || continue
+            cp -a "$library" "$product/"
+            cp -a "$library" "$tests/"
+          done
+          while IFS= read -r library; do
+            [[ -e "$product/$library" ]] || { echo "Missing staged ICU library: $product/$library" >&2; exit 1; }
+            [[ -e "$tests/$library" ]] || { echo "Missing staged ICU library: $tests/$library" >&2; exit 1; }
+          done < <(jq -r --arg rid "$ICU_RID" '.rids[$rid].libraries[]' "$payload")
+
+      - name: Run selected crash reproductions
+        shell: bash
+        run: |
+          result=0
+          while IFS= read -r selection || [[ -n "$selection" ]]; do
+            selection=${selection//$'\r'/}
+            [[ -z "${selection//[[:space:]]/}" || "$selection" =~ ^[[:space:]]*# ]] && continue
+            project=$(xargs <<< "${selection%%|*}")
+            filter=$(xargs <<< "${selection#*|}")
+            project_path="tests/$project/$project.csproj"
+            project_results="bin/Release/mac-debug/$project"
+            mkdir -p "$project_results"
+            log="bin/Release/mac-debug/$project.log"
+            echo "Running $project with filter: $filter"
+            if dotnet test "$project_path" \
+              --configuration Release \
+              --nologo \
+              --no-build \
+              --results-directory "$project_results" \
+              --logger "trx;LogFileName=$project.trx" \
+              --filter "$filter" > "$log" 2>&1; then
+              status=0
+            else
+              status=$?
+            fi
+            cat "$log"
+            if [[ $status -ne 0 ]]; then
+              echo "$project exited with $status"
+              result=1
+            fi
+          done < .github/mac-debug.txt
+          exit "$result"
+
+      - name: Collect crash reports and dumps
+        if: always()
+        shell: bash
+        run: |
+          output="$GITHUB_WORKSPACE/bin/Release/mac-debug"
+          mkdir -p "$output"
+          dumps="$RUNNER_TEMP/mac-debug-dumps"
+          if [[ -d "$dumps" ]]; then
+            cp -a "$dumps/." "$output/"
+          fi
+          reports="$HOME/Library/Logs/DiagnosticReports"
+          shopt -s nullglob
+          crash_reports=("$reports"/*.ips "$reports"/*.crash)
+          for attempt in {1..15}; do
+            ((${#crash_reports[@]})) && break
+            sleep 1
+            crash_reports=("$reports"/*.ips "$reports"/*.crash)
+          done
+          if ((${#crash_reports[@]})); then
+            cp -a "${crash_reports[@]}" "$output/"
+          else
+            echo "No macOS DiagnosticReports .ips or .crash files were found." > "$output/native-crash-report-status.txt"
+          fi
+          find "$output" -maxdepth 2 -type f -print
+
+      - name: Upload macOS crash diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-debug-${{ matrix.os }}
+          path: bin/Release/mac-debug/
+          if-no-files-found: error
+          retention-days: 14
