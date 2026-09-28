@@ -58,39 +58,29 @@ public class FwDataProjectLoader
                     "bundled FieldWorks normalization data is missing: " + string.Join(", ", missingDataFiles));
             }
 
-            var previousIcuDataDirectory = Environment.GetEnvironmentVariable("ICU_DATA");
-            Environment.SetEnvironmentVariable("ICU_DATA", dataDirectory, EnvironmentVariableTarget.Process);
+            string[] loadedLibraries;
             try
             {
-                string[] loadedLibraries;
-                try
-                {
-                    loadedLibraries = LoadBundledIcuLibraries();
-                    Icu.Wrapper.DataDirectory = dataDirectory;
-                    RegisterCustomIcuResolver(loadedLibraries);
-                    CustomIcu.InitIcuDataDir();
-                }
-                catch (Exception exception)
-                {
-                    throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
-                        exception.GetType().Name + ": " + exception.Message, exception);
-                }
-
-                if (!CustomIcu.HaveCustomIcuLibrary)
-                {
-                    throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
-                        "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
-                }
-
-                Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
-                InstallConfiguredGlobalWritingSystemRepository();
-                _init = true;
+                loadedLibraries = LoadBundledIcuLibraries();
+                Icu.Wrapper.DataDirectory = dataDirectory;
+                RegisterCustomIcuResolver(loadedLibraries);
+                CustomIcu.InitIcuDataDir();
             }
-            finally
+            catch (Exception exception)
             {
-                Environment.SetEnvironmentVariable(
-                    "ICU_DATA", previousIcuDataDirectory, EnvironmentVariableTarget.Process);
+                throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
+                    exception.GetType().Name + ": " + exception.Message, exception);
             }
+
+            if (!CustomIcu.HaveCustomIcuLibrary)
+            {
+                throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
+                    "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
+            }
+
+            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
+            InstallConfiguredGlobalWritingSystemRepository();
+            _init = true;
         }
     }
 
@@ -107,7 +97,7 @@ public class FwDataProjectLoader
         }
         else if (OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.X64)
         {
-            libraryDirectory = baseDirectory;
+            libraryDirectory = Path.Combine(baseDirectory, "lib", "sil-icu");
             libraryNames =
             [
                 "libicudata.so.70", "libicuuc.so.70", "libicui18n.so.70", "libicuio.so.70", "libicutu.so.70",
@@ -115,7 +105,7 @@ public class FwDataProjectLoader
         }
         else if (OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture is Architecture.Arm64 or Architecture.X64)
         {
-            libraryDirectory = baseDirectory;
+            libraryDirectory = Path.Combine(baseDirectory, "lib", "sil-icu");
             libraryNames =
             [
                 "libicudata.70.dylib", "libicuuc.70.dylib", "libicui18n.70.dylib", "libicuio.70.dylib",

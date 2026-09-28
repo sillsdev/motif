@@ -1,6 +1,6 @@
 # ADR 0050: SIL custom ICU with Motif on every platform
 
-Motif will use the same FieldWorks text-normalization engine wherever it runs, so text identity stays consistent across Windows, Linux, and macOS. Each Motif process points `ICU_DATA` at its bundled normalization data only during initialization, then restores the inherited value so child processes can start with their own runtime data.
+Motif will use the same FieldWorks text-normalization engine wherever it runs, so text identity stays consistent across Windows, Linux, and macOS. LibLCM loads its bundled ICU libraries and normalization data only when a Motif process opens a project, leaving unrelated .NET child processes on their platform ICU.
 
 **Status: Accepted**
 
@@ -12,7 +12,7 @@ Motif previously supplied Microsoft's stock ICU on Windows, installed SIL ICU th
 
 ## Decision
 
-Motif ships SIL ICU 70 for `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64`. It does not use system ICU or Microsoft's stock ICU. Each Motif process uses its bundled directory during initialization and restores the prior process environment before it can launch children.
+Motif ships SIL ICU 70 for `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64`. It does not use system ICU or Microsoft's stock ICU for LibLCM normalization. Each Motif process loads its bundled native libraries and data explicitly during initialization without changing the environment inherited by child processes.
 
 `tools/icu-payload.json` is the one runtime payload definition. Schema version 1 has `icuMajor`, a shared `normalizationData` source/output directory/file list, and a `rids` object keyed by runtime identifier. Each RID entry names the destination relative to an application output directory, the canonical native library filenames, and the source package or pinned source build. Package release staging can read those fields without duplicating the per-platform file list.
 
@@ -20,13 +20,13 @@ The three normalization files come from `SIL.LCModel.Core` 11.0.0-beta0182: `nfc
 
 Windows uses `Icu4c.Win.Fw.Bin` and `Icu4c.Win.Fw.Lib` 70.1.182. The five runtime DLLs land in `lib/win-x64`; the project content items copy them to both build output and publish output.
 
-Linux uses the Jammy SIL experimental repository's `libicu70-fw` package for the five ICU shared libraries. The payload records the direct `.deb` URL, SHA-256, and size; the companion `icu70-bin-fw` package is recorded as a non-shipped build tool. CI extracts the runtime package instead of installing ICU system-wide and sets `$ORIGIN` on its copied libraries. The payload records the Ubuntu 22.04 baseline requirement of glibc 2.34 and libstdc++ 12.
+Linux uses the Jammy SIL experimental repository's `libicu70-fw` package for the five ICU shared libraries. The payload records the direct `.deb` URL, SHA-256, and size; the companion `icu70-bin-fw` package is recorded as a non-shipped build tool. CI extracts the runtime package instead of installing ICU system-wide and sets `$ORIGIN` on its copied libraries under `lib/sil-icu`. The payload records the Ubuntu 22.04 baseline requirement of glibc 2.34 and libstdc++ 12.
 
-macOS builds the five shared libraries from `sillsdev/icu` for each runner architecture and caches the install by RID, source commit, and build patch. The Windows NuGet 70.1.182 nuspec identifies the repository but has no source commit; the `fw` branch head is not identified as its build source either. Motif therefore uses commit `107d90bbc550dacfad51f673b14ca3e834ed87c0`, recorded by the Linux SIL package, to align macOS with a known ICU source revision rather than guessing which revision produced the Windows package.
+macOS builds the five shared libraries from `sillsdev/icu` for each runner architecture and caches the install by RID, source commit, and build patch. CI stages them under `lib/sil-icu` for explicit loading. The Windows NuGet 70.1.182 nuspec identifies the repository but has no source commit; the `fw` branch head is not identified as its build source either. Motif therefore uses commit `107d90bbc550dacfad51f673b14ca3e834ed87c0`, recorded by the Linux SIL package, to align macOS with a known ICU source revision rather than guessing which revision produced the Windows package.
 
 The pinned `silmods.cpp` includes `<malloc.h>` but only calls `malloc` and `free`; it already includes `<stdlib.h>`, which declares both. macOS CI applies `tools/patches/sil-icu-macos-malloc-header.patch` to remove that redundant, unavailable header before building. The payload records this patch and its upstream follow-up: send the portable include fix to `sillsdev/icu`.
 
-At the first project/cache open, `FwDataProjectLoader` temporarily sets process-local `ICU_DATA` and `Icu.Wrapper.DataDirectory` to `AppContext.BaseDirectory/IcuData/icudt70l`, loads the native libraries from the runtime's bundled output directory, maps LibLCM's `icuuc70.dll` import to the matching bundled library, and calls `CustomIcu.InitIcuDataDir()`. It restores the prior `ICU_DATA` value after ICU and SLDR initialization so a child .NET process does not mistake Motif's normalization directory for its own runtime data. The CLI and worker leave ICU unloaded until that point. They refuse to continue opening a project if a required data file or library is missing, if native loading fails, or if `CustomIcu.HaveCustomIcuLibrary` is false. The refusal reports the native paths loaded and the configured data directory.
+At the first project/cache open, `FwDataProjectLoader` sets `Icu.Wrapper.DataDirectory` to `AppContext.BaseDirectory/IcuData/icudt70l`, loads the native libraries from the private runtime subdirectory, maps LibLCM's `icuuc70.dll` import to the matching bundled library, and calls `CustomIcu.InitIcuDataDir()`. It does not set `ICU_DATA`, so child .NET processes keep their platform runtime configuration and load no SIL ICU unless they explicitly initialize LibLCM. The CLI and worker leave SIL ICU unloaded until that point. They refuse to continue opening a project if a required data file or library is missing, if native loading fails, or if `CustomIcu.HaveCustomIcuLibrary` is false. The refusal reports the native paths loaded and the configured data directory.
 
 Motif pins `icu.net` 3.0.2 over LibLCM's 3.0.1 request. Version 3.0.2 avoids a macOS native crash by skipping ICU cleanup and library release paths that can run ICU's dylib destructor against already-cleaned state.
 
@@ -35,7 +35,8 @@ One cross-platform test verifies that `SilIcuInit` succeeded and that `nfc_fw` r
 ## Consequences
 
 - Build and publish output carry the same FieldWorks normalization data and the runtime-specific SIL native libraries.
-- Linux and macOS CI must stage native files beside both product apphosts and test hosts before the suite runs.
+- Linux and macOS CI stage native files in a private subdirectory under both product and test outputs.
 - Process startup does not load SIL ICU; the first project/cache open initializes it and still fails loudly if the payload is incomplete.
 - A missing or mismatched ICU payload becomes a project-open error instead of a silent change to text identity.
-- The caller's `ICU_DATA` value is restored after initialization; FieldWorks' global ICU configuration is untouched.
+- Only Motif processes that open a project explicitly load SIL ICU; unrelated .NET children use platform ICU.
+- Motif does not alter `ICU_DATA` or FieldWorks' global ICU configuration.

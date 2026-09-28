@@ -51,7 +51,7 @@
       ]
     },
     "linux-x64": {
-      "nativeOutputDirectory": ".",
+      "nativeOutputDirectory": "lib/sil-icu",
       "metapackage": "icu-fw",
       "libraries": [
         "libicudata.so.70",
@@ -89,7 +89,7 @@
       "sourceCommit": "107d90bbc550dacfad51f673b14ca3e834ed87c0"
     },
     "osx-arm64": {
-      "nativeOutputDirectory": ".",
+      "nativeOutputDirectory": "lib/sil-icu",
       "libraries": [
         "libicudata.70.dylib",
         "libicui18n.70.dylib",
@@ -107,7 +107,7 @@
       }
     },
     "osx-x64": {
-      "nativeOutputDirectory": ".",
+      "nativeOutputDirectory": "lib/sil-icu",
       "libraries": [
         "libicudata.70.dylib",
         "libicui18n.70.dylib",
