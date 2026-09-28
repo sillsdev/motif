@@ -112,18 +112,12 @@ public static class AnalysisChangeComposer
         ? null : JsonSerializer.SerializeToElement(new { changeId });
 
     public static bool Matches(IWfiAnalysis analysis, ParseAnalysis reading) =>
-        analysis.MorphBundlesOS.Count == reading.Morphs.Count &&
-        analysis.MorphBundlesOS.Zip(reading.Morphs).All(pair =>
-            MatchesGuid(pair.First.MorphRA?.Guid, pair.Second.Form) &&
-            MatchesGuid(pair.First.MsaRA?.Guid, pair.Second.Msa) &&
-            MatchesGuid(pair.First.InflTypeRA?.Guid, pair.Second.InflType) &&
-            (pair.Second.GuessedString is null ||
-             pair.First.Form.AvailableWritingSystemIds.Any(ws =>
-                 string.Equals(pair.First.Form.get_String(ws)?.Text?.Normalize(System.Text.NormalizationForm.FormD),
-                     pair.Second.GuessedString.Normalize(System.Text.NormalizationForm.FormD), StringComparison.Ordinal))));
-
-    private static bool MatchesGuid(Guid? existing, string? candidate) =>
-        existing is null ? candidate is null : Guid.TryParse(candidate, out var parsed) && existing == parsed;
+        AnalysisMorphologyMatcher.Matches(reading, new ApprovedMorphology(analysis.MorphBundlesOS
+            .Select(bundle => new ApprovedMorph(bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"),
+                bundle.InflTypeRA?.Guid.ToString("D"), bundle.Form.AvailableWritingSystemIds
+                    .Select(ws => bundle.Form.get_String(ws)?.Text)
+                    .Where(text => text is not null).Cast<string>().ToArray()))
+            .ToArray()));
 
     private static CanonicalId FromGuid(string value) => CanonicalId.FromGuid(Guid.Parse(value));
 

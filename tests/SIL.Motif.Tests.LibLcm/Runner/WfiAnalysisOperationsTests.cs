@@ -12,6 +12,7 @@ using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Snapshotting;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
@@ -341,6 +342,31 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
             new AnalysisChangeIntent("add-candidate", CanonicalId.FromGuid(_wordform.Guid), reading));
 
         Assert.Equal("analysis/wfiWordform/createAnalyses", Assert.Single(operations).Kind);
+    }
+
+    [Fact]
+    public void GuessedFormsUseNfdMatchingInBothComparisonCallers()
+    {
+        var source = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+        var form = source.LexemeFormOA!;
+        var msa = source.MorphoSyntaxAnalysesOC.First();
+        const string decomposed = "cafe\u0301";
+        const string composed = "café";
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var bundle = _cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+            _analysis.MorphBundlesOS.Add(bundle);
+            bundle.MorphRA = form;
+            bundle.MsaRA = msa;
+            bundle.Form.set_String(_cache.DefaultVernWs, TsStringUtils.MakeString(decomposed, _cache.DefaultVernWs));
+        });
+        var reading = new ParseAnalysis([new ParseMorph(
+            form.Guid.ToString("D"), msa.Guid.ToString("D"), null, composed)]);
+        var expected = new ApprovedMorphology([
+            new ApprovedMorph(form.Guid.ToString("D"), msa.Guid.ToString("D"), null, [decomposed])]);
+
+        Assert.True(AnalysisChangeComposer.Matches(_analysis, reading));
+        Assert.True(MorphologyCorrectness.Matches(reading, expected));
     }
 
     [Fact]
