@@ -5,6 +5,8 @@ namespace SIL.Motif.Tests.Parser;
 
 public sealed class PanGlossExecutableTests : IDisposable
 {
+    private static readonly string ParserFileName = OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss";
+
     private readonly string _root = Path.Combine(
         Path.GetTempPath(), "motif-parser-discovery-" + Guid.NewGuid().ToString("N"));
 
@@ -20,13 +22,13 @@ public sealed class PanGlossExecutableTests : IDisposable
     {
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
         var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;
-        Touch(Path.Combine(applicationDirectory, "pangloss.exe"));
+        Touch(Path.Combine(applicationDirectory, ParserFileName));
         var beside = Touch(DevelopmentParserPath(repositoryRoot));
 
         var result = PanGlossExecutable.TryLocate(
             configuredPath: null,
             applicationDirectory: applicationDirectory,
-            fileName: "pangloss.exe",
+            fileName: ParserFileName,
             repositoryRoot: repositoryRoot);
 
         // Local work runs the parser being built beside Motif, never a pinned copy left in the output folder.
@@ -47,7 +49,7 @@ public sealed class PanGlossExecutableTests : IDisposable
         var result = PanGlossExecutable.TryLocate(
             configuredPath: null,
             applicationDirectory: applicationDirectory,
-            fileName: "pangloss.exe",
+            fileName: ParserFileName,
             repositoryRoot: repositoryRoot);
 
         // PanGloss's managed release build copies its binary to dist/v<version>; the last one built is the one wanted.
@@ -59,12 +61,12 @@ public sealed class PanGlossExecutableTests : IDisposable
     {
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
         var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;
-        var bundled = Touch(Path.Combine(applicationDirectory, "pangloss.exe"));
+        var bundled = Touch(Path.Combine(applicationDirectory, ParserFileName));
 
         var result = PanGlossExecutable.TryLocate(
             configuredPath: null,
             applicationDirectory: applicationDirectory,
-            fileName: "pangloss.exe",
+            fileName: ParserFileName,
             repositoryRoot: repositoryRoot);
 
         Assert.Equal(Path.GetFullPath(bundled), result);
@@ -75,13 +77,13 @@ public sealed class PanGlossExecutableTests : IDisposable
     {
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
         var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;
-        Touch(Path.Combine(applicationDirectory, "pangloss.exe"));
-        var overridePath = Touch(Path.Combine(_root, "developer", "pangloss.exe"));
+        Touch(Path.Combine(applicationDirectory, ParserFileName));
+        var overridePath = Touch(Path.Combine(_root, "developer", ParserFileName));
 
         var result = PanGlossExecutable.TryLocate(
             configuredPath: overridePath,
             applicationDirectory: applicationDirectory,
-            fileName: "pangloss.exe",
+            fileName: ParserFileName,
             repositoryRoot: repositoryRoot);
 
         Assert.Equal(Path.GetFullPath(overridePath), result);
@@ -92,14 +94,14 @@ public sealed class PanGlossExecutableTests : IDisposable
     {
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
         var repositoryRoot = Directory.CreateDirectory(Path.Combine(_root, "repo")).FullName;
-        Touch(Path.Combine(applicationDirectory, "pangloss.exe"));
+        Touch(Path.Combine(applicationDirectory, ParserFileName));
         Touch(DevelopmentParserPath(repositoryRoot));
-        var missingOverride = Path.Combine(_root, "missing", "pangloss.exe");
+        var missingOverride = Path.Combine(_root, "missing", ParserFileName);
 
         var result = PanGlossExecutable.TryLocate(
             configuredPath: missingOverride,
             applicationDirectory: applicationDirectory,
-            fileName: "pangloss.exe",
+            fileName: ParserFileName,
             repositoryRoot: repositoryRoot);
 
         Assert.Null(result);
@@ -115,7 +117,7 @@ public sealed class PanGlossExecutableTests : IDisposable
         var result = PanGlossExecutable.TryLocate(
             configuredPath: null,
             applicationDirectory: applicationDirectory,
-            fileName: "pangloss.exe",
+            fileName: ParserFileName,
             repositoryRoot: repositoryRoot);
 
         Assert.Equal(Path.GetFullPath(fallback), result);
@@ -125,12 +127,12 @@ public sealed class PanGlossExecutableTests : IDisposable
     public void AppRelativeParserIsUsedWithoutRepositoryRoot()
     {
         var applicationDirectory = Directory.CreateDirectory(Path.Combine(_root, "app")).FullName;
-        var bundled = Touch(Path.Combine(applicationDirectory, "pangloss.exe"));
+        var bundled = Touch(Path.Combine(applicationDirectory, ParserFileName));
 
         var result = PanGlossExecutable.TryLocate(
             configuredPath: null,
             applicationDirectory: applicationDirectory,
-            fileName: "pangloss.exe",
+            fileName: ParserFileName,
             repositoryRoot: null);
 
         Assert.Equal(Path.GetFullPath(bundled), result);
@@ -144,17 +146,17 @@ public sealed class PanGlossExecutableTests : IDisposable
         var result = PanGlossExecutable.TryLocate(
             configuredPath: null,
             applicationDirectory: applicationDirectory,
-            fileName: "pangloss.exe",
+            fileName: ParserFileName,
             repositoryRoot: null);
 
         Assert.Null(result);
     }
 
     private static string DevelopmentParserPath(string repositoryRoot) => Path.GetFullPath(Path.Combine(
-        repositoryRoot, "..", "PanGloss", "rust", "target", "release", "pangloss.exe"));
+        repositoryRoot, "..", "PanGloss", "rust", "target", "release", ParserFileName));
 
     private static string ReleaseCopyPath(string repositoryRoot, string version) => Path.GetFullPath(Path.Combine(
-        repositoryRoot, "..", "PanGloss", "dist", version, "pangloss.exe"));
+        repositoryRoot, "..", "PanGloss", "dist", version, ParserFileName));
 
     private static string Touch(string path)
     {

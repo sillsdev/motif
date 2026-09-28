@@ -6,15 +6,21 @@ namespace SIL.Motif.Host.PanGloss;
 
 public sealed class WorkerMutexOwner : IDisposable
 {
-    private readonly Mutex _mutex;
+    private readonly Mutex? _mutex;
+    private readonly UnixFileLock? _unixLock;
     private readonly BlockingCollection<Command> _commands = new BlockingCollection<Command>();
     private readonly Thread _thread;
     private bool _disposed;
     private bool _ownsMutex;
 
-    public WorkerMutexOwner(string name)
+    public WorkerMutexOwner(string name) : this(name, machineWide: false)
     {
-        _mutex = new Mutex(false, name);
+    }
+
+    internal WorkerMutexOwner(string name, bool machineWide)
+    {
+        if (OperatingSystem.IsWindows()) _mutex = new Mutex(false, name);
+        else _unixLock = new UnixFileLock(name, machineWide);
         _thread = new Thread(Run) { IsBackground = true, Name = "Motif worker mutex owner" };
         _thread.Start();
     }
@@ -25,9 +31,14 @@ public sealed class WorkerMutexOwner : IDisposable
         {
             if (_ownsMutex)
                 return true;
+            if (_unixLock is not null)
+            {
+                _ownsMutex = _unixLock.TryAcquire();
+                return _ownsMutex;
+            }
             try
             {
-                _ownsMutex = _mutex.WaitOne(TimeSpan.Zero);
+                _ownsMutex = _mutex!.WaitOne(TimeSpan.Zero);
             }
             catch (AbandonedMutexException)
             {
@@ -43,7 +54,8 @@ public sealed class WorkerMutexOwner : IDisposable
         {
             if (!_ownsMutex)
                 return true;
-            _mutex.ReleaseMutex();
+            if (_unixLock is not null) _unixLock.Release();
+            else _mutex!.ReleaseMutex();
             _ownsMutex = false;
             return true;
         });
@@ -65,7 +77,8 @@ public sealed class WorkerMutexOwner : IDisposable
         _disposed = true;
         _commands.CompleteAdding();
         _thread.Join();
-        _mutex.Dispose();
+        _mutex?.Dispose();
+        _unixLock?.Dispose();
         if (failure is not null)
             throw new InvalidOperationException("The worker owner mutex could not be released.", failure);
     }

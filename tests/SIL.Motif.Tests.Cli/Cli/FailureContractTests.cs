@@ -6,7 +6,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-/// <summary>Covers what a machine consumer reads from the real <c>motif.exe</c> on a failure.</summary>
+/// <summary>Covers what a machine consumer reads from the real <c>motif</c> apphost on a failure.</summary>
 public sealed class FailureContractTests : IDisposable
 {
     private readonly string _root =

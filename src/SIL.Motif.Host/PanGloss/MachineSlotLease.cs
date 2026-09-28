@@ -36,7 +36,7 @@ internal sealed class MachineSlotLease : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _owner.Release();
+        _owner.Dispose();
         _onDisposed?.Invoke(SlotIndex);
     }
 }

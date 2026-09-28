@@ -22,6 +22,8 @@ public sealed class WindowRefusalDetailsTests
         "Proposal proposal/1 has no bound DryRun recorded. Run 'dry-run proposal/1 --project <fwdata>' first, then 'apply'.";
 
     private static readonly string[] CliTerms = ["proposal", "draft", "preflight", "dry run", "dryrun", "dry-run"];
+    private static readonly string ParserPath = Path.Combine(Path.GetTempPath(), "Motif",
+        OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss");
 
     private readonly AvaloniaHeadlessFixture _avalonia;
 
@@ -46,14 +48,14 @@ public sealed class WindowRefusalDetailsTests
                 ["proposalId"] = "proposal/1",
                 ["draftId"] = "d-1",
                 ["jobId"] = "draft/7",
-                ["projectPath"] = @"C:\projects\one.fwdata",
+                ["projectPath"] = Path.Combine(Path.GetTempPath(), "projects", "one.fwdata"),
             });
 
         var details = WindowRefusal.From(refusal).Details ?? string.Empty;
 
         AssertWindowWords(details);
         Assert.Contains("The project file is read-only.", details);
-        Assert.Contains(@"C:\projects\one.fwdata", details);
+        Assert.Contains(Path.Combine(Path.GetTempPath(), "projects", "one.fwdata"), details);
     }
 
     [Fact]
@@ -96,7 +98,7 @@ public sealed class WindowRefusalDetailsTests
         var missing = WindowRefusal.From(new Refusal(code, FailureReason.Refused, "Could not find it.",
             new Dictionary<string, string> { [RefusalFactNames.ParserNotFound] = "true" }));
         var unusable = WindowRefusal.From(new Refusal(code, FailureReason.Refused,
-            @"Could not start 'C:\Motif\pangloss.exe': access is denied."));
+            $"Could not start '{ParserPath}': access is denied."));
 
         Assert.Equal(
             "Motif could not find PanGloss, so it cannot measure words. Install PanGloss beside Motif, then try again.",
@@ -128,7 +130,8 @@ public sealed class WindowRefusalDetailsTests
             new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
             new NoFolderPicker(), new NoDragSource(), fake);
 
-        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(@"C:\projects\one.fwdata"));
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(
+            Path.Combine(Path.GetTempPath(), "projects", "one.fwdata")));
 
         var refusal = Assert.IsType<WindowRefusal>(workspace.OpenRefusal);
         Assert.True(workspace.HasOpenRefusal);

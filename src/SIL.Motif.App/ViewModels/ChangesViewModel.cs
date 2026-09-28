@@ -318,7 +318,7 @@ public sealed class ChangeViewModel(string kind, string word, string reading,
     public bool IsNoLongerFits => Fit is { StillFits: false };
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
-    public string ReviewLabel => kind == ChangeKinds.Approve && analyses is { Count: > 1 }
+    public string ReviewLabel => Kind == ChangeKinds.Approve && analyses is { Count: > 1 }
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
 
@@ -326,13 +326,16 @@ public sealed class ChangeViewModel(string kind, string word, string reading,
     public string Reading { get; } = reading;
 
     /// <summary>The morphs and glosses of each reading, with the chosen reading marked.</summary>
-    public IReadOnlyList<ReviewAnalysisViewModel> Analyses { get; } = analyses?
-        .Select(analysis => new ReviewAnalysisViewModel(analysis, kind)).ToArray() ?? [];
+    public IReadOnlyList<ReviewAnalysisViewModel> Analyses { get; } = BuildAnalyses(analyses, kind);
 
     public bool HasAnalyses => Analyses.Count > 0;
 
 
     public string Summary => $"{Word}: {Label}";
+
+    private static IReadOnlyList<ReviewAnalysisViewModel> BuildAnalyses(
+        IReadOnlyList<ReviewAnalysis>? analyses, string kind) =>
+        analyses?.Select(analysis => new ReviewAnalysisViewModel(analysis, kind)).ToArray() ?? [];
 }
 
 /// <summary>A reading as the Review page displays its morphs, prior opinion and proposed opinion.</summary>

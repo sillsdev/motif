@@ -4,6 +4,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -79,20 +80,21 @@ public sealed class ProjectStoreResetTests : IDisposable
         var project = Project("held");
         var storePath = StorePathOf(project);
         Open(project);
-        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
-        using var holder = Connection(storePath);
-        using (var read = holder.CreateCommand())
-        {
-            read.CommandText = "PRAGMA user_version;";
-            read.ExecuteScalar();
-        }
+        using var holder = MotifDatabase.OpenOwned(storePath, Locator(project), MotifSchema.CurrentSchema,
+            new Version(1, 0));
+        using var concurrentHolder = MotifDatabase.OpenOwned(storePath, Locator(project), MotifSchema.CurrentSchema,
+            new Version(1, 0));
+        Assert.Equal(storePath, concurrentHolder.FullPath);
+        using var connection = holder.OpenConnection();
+        Execute(connection, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
 
         var outcome = ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(project), "1.0");
 
         Assert.False(outcome.Succeeded);
-        Assert.Equal(RefusalCodes.ProjectStoreIo, outcome.Refusal!.Code);
+        Assert.Equal(RefusalCodes.ProjectBusy, outcome.Refusal!.Code);
         Assert.Equal(storePath, outcome.Refusal.Facts[RefusalFactNames.StorePath]);
         Assert.True(File.Exists(storePath));
+        Assert.Equal((long)(MotifSchema.CurrentSchema - 1), Scalar(storePath, "PRAGMA user_version;"));
     }
 
     [Fact]
@@ -226,7 +228,8 @@ public sealed class ProjectStoreResetTests : IDisposable
 
     // The lock a store's first opener takes while it creates the store; holding it stands in for that opener.
     private static FileStream HoldCreationLock(string storePath) => new(storePath + ".owner.lock",
-        FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+        FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1,
+        OperatingSystem.IsWindows() ? FileOptions.DeleteOnClose : FileOptions.None);
 
     private static SqliteConnection Connection(string databasePath)
     {

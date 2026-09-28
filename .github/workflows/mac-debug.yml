@@ -1,0 +1,63 @@
+name: mac debug
+
+# A fast macOS loop: a push to mac-debug/** runs only the tests named in .github/mac-debug.txt on a
+# macOS runner, so a platform fix is checked in minutes instead of a full three-OS suite.
+# .github/mac-debug.txt holds one "<test project name> | <dotnet test --filter expression>" per line;
+# an empty filter runs that whole project.
+on:
+  push:
+    branches: ['mac-debug/**']
+
+jobs:
+  mac-debug:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+      MOTIF_DEVELOPER_COMMANDS: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install LibLCM ICU (macOS)
+        shell: bash
+        run: |
+          brew install icu4c
+          echo "DYLD_LIBRARY_PATH=$(brew --prefix icu4c)/lib:${DYLD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+      - name: Build
+        shell: pwsh
+        run: ./build.ps1 -Configuration Release
+
+      - name: Run the selected tests
+        shell: pwsh
+        run: |
+          $out = 'bin/Release/mac-debug'
+          New-Item -ItemType Directory -Force $out | Out-Null
+          $failed = $false
+          foreach ($line in Get-Content .github/mac-debug.txt) {
+            if ([string]::IsNullOrWhiteSpace($line) -or $line.TrimStart().StartsWith('#')) { continue }
+            $project, $filter = $line.Split('|', 2) | ForEach-Object { $_.Trim() }
+            $csproj = "tests/$project/$project.csproj"
+            $testArgs = @('test', $csproj, '-c', 'Release', '--no-build', '--logger', 'console;verbosity=normal',
+              '--logger', "trx;LogFileName=$project.trx", '--results-directory', "$out/$project",
+              '--blame-hang-timeout', '5m', '--blame-hang-dump-type', 'none')
+            if ($filter) { $testArgs += @('--filter', $filter) }
+            Write-Host "==> $project $filter"
+            dotnet @testArgs 2>&1 | Tee-Object -FilePath "$out/$project.log"
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-debug-results
+          path: bin/Release/mac-debug/
+          retention-days: 7

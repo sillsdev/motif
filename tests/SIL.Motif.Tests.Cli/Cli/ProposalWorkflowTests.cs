@@ -199,7 +199,7 @@ public sealed class ProposalWorkflowTests
     /// <see cref="NeedsReconciliationException"/> and <see cref="ReconciliationBoundary.ReceiptRecording"/>.
     /// </remarks>
     [Fact]
-    public void ApplyReconciliationNeeded_ReportsStoreInconsistentExitCode()
+    public async Task ApplyReconciliationNeeded_ReportsStoreInconsistentExitCode()
     {
         var senseGuid = _seed.FirstSenseId;
         var wsTag = NewLangProjFixture.AnalysisTag;
@@ -246,8 +246,8 @@ public sealed class ProposalWorkflowTests
             Assert.True(process.WaitForExit(60000));
 
             Assert.Equal(4, process.ExitCode);
-            Assert.Empty(output.GetAwaiter().GetResult());
-            var errorText = error.GetAwaiter().GetResult();
+            Assert.Empty(await output);
+            var errorText = await error;
             using var failure = JsonDocument.Parse(errorText);
             Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());
             Assert.Equal("StoreInconsistent", failure.RootElement.GetProperty("reason").GetString());
@@ -513,7 +513,7 @@ public sealed class ProposalWorkflowTests
     }
 
     [Fact]
-    public void ApplyRefusesAnIdLoggedWithDifferentContentWithoutClaimingRollback()
+    public async Task ApplyRefusesAnIdLoggedWithDifferentContentWithoutClaimingRollback()
     {
         var proposalId = FinalizeSetGloss("logged-elsewhere",
             CanonicalId.FromGuid(_seed.FirstSenseId).Value, "new gloss");
@@ -556,8 +556,8 @@ public sealed class ProposalWorkflowTests
         var error = process.StandardError.ReadToEndAsync();
         Assert.True(process.WaitForExit(60000));
         Assert.Equal(2, process.ExitCode);
-        Assert.Empty(output.GetAwaiter().GetResult());
-        var failure = JsonNode.Parse(error.GetAwaiter().GetResult())!;
+        Assert.Empty(await output);
+        var failure = JsonNode.Parse(await error)!;
         Assert.Equal("apply.applied-content-mismatch", failure["code"]?.GetValue<string>());
         Assert.DoesNotContain("rollback", failure["message"]?.GetValue<string>() ?? "",
             StringComparison.OrdinalIgnoreCase);

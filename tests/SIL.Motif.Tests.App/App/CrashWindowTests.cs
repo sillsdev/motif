@@ -3,6 +3,7 @@ using Avalonia.Headless;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using SIL.Motif.App.Composition;
@@ -276,7 +277,8 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
                         Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                     }
                     using var frame = window.CaptureRenderedFrame()!;
-                    frame.Save(Path.Combine(folder, $"error-window-{(expanded ? "details" : "summary")}-{theme}.png"));
+                    frame.Save(Path.Combine(folder, $"error-window-{(expanded ? "details" : "summary")}-{theme}.png"),
+                        PngBitmapEncoderOptions.Default);
                 }
                 finally
                 {

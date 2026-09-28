@@ -44,7 +44,8 @@ public sealed class CompatibilityTargetTests
             .Where(line => line.StartsWith("Project(", StringComparison.Ordinal))
             .Select(line => line.Split('"'))
             .Where(parts => parts.Length > 5 && parts[5].EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-            .Select(parts => Path.GetFullPath(Path.Combine(root, parts[5])))
+            .Select(parts => Path.GetFullPath(Path.Combine(root,
+                parts[5].Replace('\\', Path.DirectorySeparatorChar))))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var testProjects = Directory.EnumerateFiles(
                 Path.Combine(root, "tests"), "*.csproj", SearchOption.AllDirectories)

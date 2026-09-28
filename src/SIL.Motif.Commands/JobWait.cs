@@ -110,16 +110,19 @@ public static class JobWait
         string jobId, string productVersion, JobStatusResponse status, TimeSpan timeout, bool cancelOnTimeout,
         IProgress<JobStatusResponse>? progress)
     {
+        var statusText = status.Status is { } currentStatus
+            ? JobStatusJson.ToWire(currentStatus)
+            : "unknown";
         var facts = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["jobId"] = jobId,
-            ["status"] = JobStatusJson.ToWire(status.Status.Value),
+            ["status"] = statusText,
         };
         var message = "Timed out after " + timeout + " waiting for job '" + jobId + "' to finish; ";
         var checkAgain = "Check again with 'jobs show " + jobId + " --project <fwdata>'.";
         if (!cancelOnTimeout)
         {
-            message += "it was " + JobStatusJson.ToWire(status.Status.Value) + ". " + checkAgain;
+            message += "it was " + statusText + ". " + checkAgain;
         }
         else
         {

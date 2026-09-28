@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Headless;
+using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -382,7 +383,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         }
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
-        frame.Save(path);
+        frame.Save(path, PngBitmapEncoderOptions.Default);
     }
 
     private static void CopyDirectory(string from, string to)

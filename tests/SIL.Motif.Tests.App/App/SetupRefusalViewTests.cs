@@ -64,6 +64,7 @@ public sealed class SetupRefusalViewTests
         _avalonia.Invoke(() =>
         {
             var setup = workspace!.Context.Setup;
+            Assert.NotNull(setup);
             Assert.NotNull(setup.ShownRefusal);
             setup.IsOpen = true;
             var dialog = new SetupDialog { DataContext = setup };

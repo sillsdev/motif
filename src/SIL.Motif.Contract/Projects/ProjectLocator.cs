@@ -23,7 +23,7 @@ public sealed record ProjectLocator
     public string FullFwDataPath
     {
         get => _fullFwDataPath;
-        init => _fullFwDataPath = RequireFullWindowsPath(value);
+        init => _fullFwDataPath = RequireFullPath(value);
     }
 
     /// <summary>Gets the stable FieldWorks identity paired with the data-file path.</summary>
@@ -35,13 +35,17 @@ public sealed record ProjectLocator
             nameof(FieldWorksProjectIdentity));
     }
 
-    private static string RequireFullWindowsPath(string? value)
+    private static string RequireFullPath(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new ArgumentException("A fully qualified Windows path is required.",
+            throw new ArgumentException("A fully qualified path is required.",
                 nameof(value));
 
-        var path = value!.Replace('/', '\\');
+        if (value!.StartsWith("/", StringComparison.Ordinal) &&
+            !value.StartsWith("//", StringComparison.Ordinal))
+            return RequireFullPosixPath(value);
+
+        var path = value.Replace('/', '\\');
         if (path.EndsWith("\\", StringComparison.Ordinal))
             throw new ArgumentException("A project data-file path cannot have a trailing separator.",
                 nameof(value));
@@ -68,21 +72,39 @@ public sealed record ProjectLocator
         }
         else
         {
-            throw new ArgumentException("A fully qualified Windows path is required.",
+            throw new ArgumentException("A fully qualified path is required.",
                 nameof(value));
         }
 
-        if (segments.Count == 0 || IsDotSegment(segments[segments.Count - 1]) ||
-            !segments[segments.Count - 1].EndsWith(".fwdata", StringComparison.OrdinalIgnoreCase) ||
-            segments[segments.Count - 1].Length == ".fwdata".Length)
-            throw new ArgumentException("A project data-file path must name a .fwdata file.",
-                nameof(value));
+        ValidateDataFileSegment(segments, nameof(value));
 
         var canonical = new StringBuilder(root);
         foreach (var segment in segments)
         {
             if (canonical.Length > 0 && canonical[canonical.Length - 1] != '\\')
                 canonical.Append('\\');
+            canonical.Append(segment);
+        }
+        return canonical.ToString();
+    }
+
+    private static string RequireFullPosixPath(string value)
+    {
+        if (value.EndsWith("/", StringComparison.Ordinal))
+            throw new ArgumentException("A project data-file path cannot have a trailing separator.",
+                nameof(value));
+
+        var pathSegments = SplitNonEmpty(value.Substring(1), '/');
+        RejectFinalDirectorySegment(pathSegments, nameof(value));
+        var segments = new List<string>();
+        AddCanonicalSegments(pathSegments, 0, segments, nameof(value));
+        ValidateDataFileSegment(segments, nameof(value));
+
+        var canonical = new StringBuilder("/");
+        foreach (var segment in segments)
+        {
+            if (canonical.Length > 1)
+                canonical.Append('/');
             canonical.Append(segment);
         }
         return canonical.ToString();
@@ -120,8 +142,20 @@ public sealed record ProjectLocator
             throw new ArgumentException("A project data-file path must name a file.", parameterName);
     }
 
+    private static void ValidateDataFileSegment(IReadOnlyList<string> segments, string parameterName)
+    {
+        if (segments.Count == 0 || IsDotSegment(segments[segments.Count - 1]) ||
+            !segments[segments.Count - 1].EndsWith(".fwdata", StringComparison.OrdinalIgnoreCase) ||
+            segments[segments.Count - 1].Length == ".fwdata".Length)
+            throw new ArgumentException("A project data-file path must name a .fwdata file.",
+                parameterName);
+    }
+
     private static List<string> SplitNonEmpty(string path) => new(path.Split(
         new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries));
+
+    private static List<string> SplitNonEmpty(string path, char separator) => new(path.Split(
+        new[] { separator }, StringSplitOptions.RemoveEmptyEntries));
 
     private static bool IsDotSegment(string segment) => segment == "." || segment == "..";
 

@@ -4,7 +4,7 @@ namespace SIL.Motif.Generator.Tsv;
 
 /// <summary>
 /// The one TSV dialect every checked-in manifest artifact in this repo uses: tab-separated, every value
-/// double-quoted with <c>""</c> escaping, CRLF line endings, UTF-8 with no BOM
+/// double-quoted with <c>""</c> escaping, CRLF when written, UTF-8 with no BOM
 /// (the manifest README, "Companion files").
 /// </summary>
 /// <remarks>
@@ -56,7 +56,7 @@ public static class QuotedTsv
     /// <summary>Exposed for tests, which supply the content inline rather than on disk.</summary>
     public static IReadOnlyList<string[]> ReadText(string path, string text, IReadOnlyList<string> header)
     {
-        var lines = text.Split("\r\n");
+        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
         var expectedHeader = Render(header);
 
         if (lines.Length == 0 || lines[0] != expectedHeader)

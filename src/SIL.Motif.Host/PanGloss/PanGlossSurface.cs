@@ -13,9 +13,10 @@ internal static class PanGlossSurface
     internal const int DefaultDescriptionCapSeconds = 15;
 
     internal static async Task<PanGlossSurfaceCheck> CheckAsync(
-        string executable, Action<Process> contain, CancellationToken cancellationToken,
+        string executable, PanGlossContainmentJob containment, CancellationToken cancellationToken,
         TimeSpan? descriptionCap = null)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var cap = descriptionCap ?? TimeSpan.FromSeconds(DefaultDescriptionCapSeconds);
         var startInfo = new ProcessStartInfo(executable)
         {
@@ -27,10 +28,10 @@ internal static class PanGlossSurface
         PanGlossProcessEnvironment.Configure(startInfo);
         startInfo.ArgumentList.Add("--describe");
 
-        Process? process;
+        PanGlossChildProcess? process;
         try
         {
-            process = Process.Start(startInfo);
+            process = containment.Start(startInfo);
         }
         catch (Exception exception) when (
             exception is Win32Exception or InvalidOperationException or ArgumentException or UnauthorizedAccessException)
@@ -41,21 +42,28 @@ internal static class PanGlossSurface
 
         using (process)
         {
-            contain(process);
-            var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
-            var error = process.StandardError.ReadToEndAsync(CancellationToken.None);
+            var output = process.ReadStandardOutputAsync();
+            var error = process.ReadStandardErrorAsync();
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(cap);
             try
             {
                 await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+                await process.WaitForContainmentAsync(deadline.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
-                try { process.Kill(entireProcessTree: true); }
-                catch (InvalidOperationException) { }
-                catch (Win32Exception) { }
-                if (cancellationToken.IsCancellationRequested) throw;
+                containment.Terminate(process);
+                using var stopped = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                try
+                {
+                    await process.WaitForExitAsync(stopped.Token).ConfigureAwait(false);
+                    await process.WaitForContainmentAsync(stopped.Token).ConfigureAwait(false);
+                    await Task.WhenAll(output, error).WaitAsync(stopped.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { }
+                if (cancellationToken.IsCancellationRequested)
+                    throw new OperationCanceledException(cancellationToken);
                 var seconds = cap.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
                 var unit = cap == TimeSpan.FromSeconds(1) ? "second" : "seconds";
                 return Invalid(executable, $"--describe did not finish within {seconds} {unit}.");

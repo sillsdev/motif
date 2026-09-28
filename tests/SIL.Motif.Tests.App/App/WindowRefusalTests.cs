@@ -14,7 +14,10 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class WindowRefusalTests
 {
-    private const string StorePath = @"C:\Users\someone\AppData\Local\SIL\Motif\projects\one\Project.motif.db";
+    private static readonly string StorePath = Path.Combine(
+        Path.GetTempPath(), "SIL", "Motif", "projects", "one", "Project.motif.db");
+    private static readonly string ParserPath = Path.Combine(Path.GetTempPath(), "Motif",
+        OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss");
 
     private static readonly string[] BannedOnScreen = ["Proposal", "Draft", "Preflight", "motif "];
 
@@ -55,16 +58,20 @@ public sealed class WindowRefusalTests
     [Fact]
     public void AnUnknownCodeKeepsItsMessageAndFactsInDetails()
     {
+        var projectPath = Path.Combine(Path.GetTempPath(), "projects", "one.fwdata");
         var refusal = new Refusal("future.never-mapped", FailureReason.Refused,
             "Something new went wrong in the command.",
-            new Dictionary<string, string> { ["projectPath"] = @"C:\projects\one.fwdata" });
+            new Dictionary<string, string>
+            {
+                ["projectPath"] = projectPath,
+            });
 
         var shown = WindowRefusal.From(refusal);
 
         Assert.Equal(WindowRefusal.GenericSentence, shown.Sentence);
         Assert.True(shown.HasDetails);
         Assert.Contains("Something new went wrong in the command.", shown.Details);
-        Assert.Contains(@"C:\projects\one.fwdata", shown.Details);
+        Assert.Contains(projectPath, shown.Details);
     }
 
     [Fact]
@@ -110,7 +117,7 @@ public sealed class WindowRefusalTests
     public void AMissingParserSaysSoAndTheDetailsNameThePlacesMotifLooked(string code)
     {
         var refusal = new Refusal(code, FailureReason.Refused,
-            @"Could not find the pangloss executable. Looked for it at: C:\Motif\pangloss.exe. " +
+            $"Could not find the pangloss executable. Looked for it at: {ParserPath}. " +
             "Build it with `cargo build --release -p pg-cli` in the PanGloss checkout, or set " +
             "MOTIF_PANGLOSS_EXE to its path.",
             new Dictionary<string, string> { [RefusalFactNames.ParserNotFound] = "true" });
@@ -120,7 +127,7 @@ public sealed class WindowRefusalTests
         Assert.Equal(
             "Motif could not find PanGloss, so it cannot measure words. Install PanGloss beside Motif, then try again.",
             shown.Sentence);
-        Assert.Contains(@"C:\Motif\pangloss.exe", shown.Details);
+        Assert.Contains(ParserPath, shown.Details);
         Assert.DoesNotContain("cargo", shown.Details, StringComparison.Ordinal);
         Assert.DoesNotContain(RefusalFactNames.ParserNotFound, shown.Details, StringComparison.Ordinal);
     }
@@ -176,7 +183,7 @@ public sealed class WindowRefusalTests
         foreach (Match match in codePattern.Matches(File.ReadAllText(file)))
             declared.Add(match.Groups[1].Value);
 
-        Assert.Empty(AllCatalogueCodes().Where(code => !declared.Contains(code)));
+        Assert.DoesNotContain(AllCatalogueCodes(), code => !declared.Contains(code));
     }
 
     private static Refusal Refusal(string code) => new(code, FailureReason.Refused, "The command's own sentence.",

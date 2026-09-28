@@ -50,6 +50,31 @@ public class FieldWorksHelpDescriptionTsvTests
     }
 
     [Fact]
+    public void QuotedTsv_ReadsLfRows()
+    {
+        var text =
+            "\"Class\"\t\"Field\"\t\"Description\"\n" +
+            "\"LexSense\"\t\"Gloss\"\t\"text\"\n";
+
+        var parsed = Assert.Single(QuotedTsv.ReadText("test.tsv", text, ["Class", "Field", "Description"]));
+
+        Assert.Equal(["LexSense", "Gloss", "text"], parsed);
+    }
+
+    [Fact]
+    public void KindDescriptionParser_ReadsLfRows()
+    {
+        const string text =
+            "\"Class\"\t\"Field\"\t\"Label\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\n" +
+            "\"LexSense\"\t\"Gloss\"\t\"Gloss\"\t\"Short meaning.\"\t\"unsourced\"\t\"\"\t\"\"\t\"\"\n";
+
+        var parsed = Assert.Single(KindDescriptionTsvParser.ParseText("test.tsv", text));
+
+        Assert.Equal("LexSense", parsed.Class);
+        Assert.Equal("Gloss", parsed.Field);
+    }
+
+    [Fact]
     public void TheShippedHarvest_CoversExactlyTheMappedFields()
     {
         var harvested = FieldWorksHelpDescriptionTsv.Read(RepoPaths.DefaultHelpDescriptionsPath());

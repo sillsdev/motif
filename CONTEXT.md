@@ -423,16 +423,40 @@ hashes. **Not the same thing as a Construct** — that word means a staging unit
 _Avoid_: construct, name map, mapping table, alias list
 
 **Description**:
-The required, never-hashed sentence explaining what an operation does, seeded from the labels FieldWorks
-already shows linguists. Free to improve at any time, because no digest depends on it. It exists for the
-human reviewing a Proposal, not for the agent authoring one.
-_Avoid_: comment, doc, label
+The required, never-hashed one-to-three sentences explaining a documented thing — an operation, a command,
+a window control, a glossary term. For an operation it is seeded from the labels FieldWorks already shows
+linguists. Free to improve at any time, because no digest depends on it. It must not restate its Title and
+must record its source ([ADR 0047](docs/adr/0047-generated-help-walkthroughs-and-docs-site.md)).
+_Avoid_: comment, doc, label, summary
 
 **Ordered grammar**:
 The grammar whose meaning depends on sequence — phonological rule order encoding feeding and
 bleeding, and alpha variables using position as identity. The part that cannot ride on a
 last-writer-wins order value.
 _Avoid_: sequences, lists, sorted fields
+
+## Help and documentation
+
+**Help text**:
+What Motif says about a documented thing, in four lengths written once and shown by the window, the CLI
+and the website alike: its code, its Title, its Description and its Help page.
+_Avoid_: docs strings, tooltips, localization strings
+
+**Title**:
+The short name of a documented thing, at most 30 characters — what a button, a menu or a CLI help list
+shows. Translated; the code it belongs to never is. Unrelated to a Proposal's `label` field.
+_Avoid_: label, caption, display name, summary
+
+**Help page**:
+The full explanation of a documented thing, a paragraph to half a page of plain Markdown, one file per
+language. Shipped inside Motif so the CLI and the window show it offline; the website shows it with its
+screenshots and clips.
+_Avoid_: article, manual page, docs page
+
+**Walkthrough**:
+A declarative script of steps against the real window on fixed data. One Walkthrough is at once a test,
+the screenshots of its marked steps, and a short silent clip with a caption per step.
+_Avoid_: demo, tour, scenario, recording, tutorial
 
 ## The FieldWorks skills
 

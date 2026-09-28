@@ -20,11 +20,29 @@ public sealed class ProjectLocatorTests
     }
 
     [Theory]
+    [InlineData("/Projects/Lang.fwdata", "/Projects/Lang.fwdata")]
+    [InlineData("/Projects/./Lang.fwdata", "/Projects/Lang.fwdata")]
+    [InlineData("/Projects/one/../Lang.fwdata", "/Projects/Lang.fwdata")]
+    [InlineData("/Projects//Sub/Lang.fwdata", "/Projects/Sub/Lang.fwdata")]
+    public void PosixPathsCreateEqualCanonicalLocators(string firstPath, string secondPath)
+    {
+        var first = new ProjectLocator(firstPath, "fw-id");
+        var second = new ProjectLocator(secondPath, "fw-id");
+
+        Assert.Equal(first, second);
+        Assert.Equal(secondPath, first.FullFwDataPath);
+    }
+
+    [Theory]
     [InlineData(@".\Lang.fwdata")]
     [InlineData(@"C:relative\Lang.fwdata")]
     [InlineData(@"C:\Projects\Lang.fwdata\")]
     [InlineData(@"C:\Projects\Lang.txt")]
     [InlineData(@"\\server\Lang.fwdata")]
+    [InlineData("projects/Lang.fwdata")]
+    [InlineData("/Projects/Lang.fwdata/")]
+    [InlineData("/../Lang.fwdata")]
+    [InlineData("/Projects/Lang.txt")]
     public void InvalidDirectoryLikePathsAreRejected(string path)
     {
         Assert.Throws<ArgumentException>(() => new ProjectLocator(path, "fw-id"));

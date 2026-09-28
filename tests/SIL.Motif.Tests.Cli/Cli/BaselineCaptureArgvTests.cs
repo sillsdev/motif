@@ -8,7 +8,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// Drives the real <c>motif.exe</c> for <c>baseline capture</c>: a successful capture's exit code, its
+/// Drives the real <c>motif</c> apphost for <c>baseline capture</c>: a successful capture's exit code, its
 /// human and JSON renderings, and the usage/refusal shape of a malformed or absent invocation.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]

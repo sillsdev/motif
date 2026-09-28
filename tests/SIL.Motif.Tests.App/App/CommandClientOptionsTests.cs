@@ -12,7 +12,8 @@ public sealed class CommandClientOptionsTests
     public void ALauncherForAnotherRootOrParserIsRefused()
     {
         var elsewhere = new NoRunnerLauncher(new JobRunnerLaunchOptions(Root + "-elsewhere", null));
-        var otherParser = new NoRunnerLauncher(new JobRunnerLaunchOptions(Root, "other-pangloss.exe"));
+        var otherParser = new NoRunnerLauncher(new JobRunnerLaunchOptions(Root,
+            OperatingSystem.IsWindows() ? "other-pangloss.exe" : "other-pangloss"));
 
         Assert.Throws<ArgumentException>(() => new CommandClient(new CommandClientOptions(Root, null, elsewhere)));
         Assert.Throws<ArgumentException>(() => new CommandClient(new CommandClientOptions(Root, null, otherParser)));

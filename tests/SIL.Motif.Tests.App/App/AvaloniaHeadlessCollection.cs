@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Threading;
@@ -33,9 +32,11 @@ public sealed class AvaloniaHeadlessCollection : ICollectionFixture<AvaloniaHead
 /// So the platform gets a thread of its own here, and <see cref="Invoke"/> is the only way onto it. This
 /// remains a plain work queue rather than a dispatcher loop for the smoke tests; asynchronous callers use
 /// <see cref="RunUntilComplete"/> when they need dispatcher jobs pumped between awaits.
-/// <see cref="RunUntilComplete"/> uses <see cref="Dispatcher.UIThread.RunJobs"/>; the permanent continuation
-/// check <see cref="Walkthrough.AvaloniaHeadlessPlatformTests.TaskRunContinuationResumesOnAvaloniaThreadWhenPumped"/>
-/// pins that pump as sufficient, so no dispatcher main loop is needed.
+/// <see cref="RunUntilComplete"/> runs a dispatcher frame that the work's completion or its deadline ends,
+/// so the thread sleeps between jobs instead of spinning a core the awaited work needs. The permanent
+/// continuation check
+/// <see cref="Walkthrough.AvaloniaHeadlessPlatformTests.TaskRunContinuationResumesOnAvaloniaThreadWhenPumped"/>
+/// pins that frame as sufficient for an awaited continuation to resume on the Avalonia thread.
 /// </para>
 /// </remarks>
 public sealed class AvaloniaHeadlessFixture : IDisposable
@@ -72,7 +73,8 @@ internal static class AvaloniaHeadlessPlatform
         {
             var ready = new TaskCompletionSource();
             _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = "Avalonia headless" };
-            _thread.SetApartmentState(ApartmentState.STA);
+            if (OperatingSystem.IsWindows())
+                _thread.SetApartmentState(ApartmentState.STA);
             _thread.Start();
             ready.Task.GetAwaiter().GetResult();
         }
@@ -93,12 +95,15 @@ internal static class AvaloniaHeadlessPlatform
             Invoke(() =>
             {
                 var task = work();
-                var deadline = Stopwatch.GetTimestamp() +
-                    (long)(timeout.TotalSeconds * Stopwatch.Frequency);
-                while (!task.IsCompleted && Stopwatch.GetTimestamp() < deadline)
+                if (!task.IsCompleted)
                 {
-                    Dispatcher.UIThread.RunJobs();
-                    Thread.Yield();
+                    // Blocks in a dispatcher frame rather than spinning, so a two-core runner keeps a core free.
+                    var frame = new DispatcherFrame();
+                    using var expiry = new CancellationTokenSource(timeout);
+                    using var expired = expiry.Token.Register(() => frame.Continue = false);
+                    task.ContinueWith(static (_, state) => ((DispatcherFrame)state!).Continue = false, frame,
+                        CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                    Dispatcher.UIThread.PushFrame(frame);
                 }
 
                 Dispatcher.UIThread.RunJobs();

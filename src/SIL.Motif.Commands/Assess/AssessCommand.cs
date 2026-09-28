@@ -253,17 +253,18 @@ public static class AssessCommand
                 }
 
                 var invocations = pendingRecords.Select(record => record.Invocation).Distinct().ToArray();
+                var invocationCandidates = invocations.OfType<BatchInvocationEvidence>().Distinct().ToArray();
+                var invocation = invocationCandidates.Length == 1 ? invocationCandidates[0] : null;
                 if (invocations.Any(item => item is null) ||
-                    invocations.OfType<BatchInvocationEvidence>().Distinct().Count() != 1 ||
-                    pendingRecords.Any(record => record.GrammarSourceSha256 !=
-                        invocations.OfType<BatchInvocationEvidence>().Single().SourceBytesSha256))
+                    invocationCandidates.Length != 1 ||
+                    invocation is null ||
+                    pendingRecords.Any(record => record.GrammarSourceSha256 != invocation.SourceBytesSha256))
                 {
                     return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                         "assess.invocation-inconsistent", FailureReason.Refused,
                         "The collected Assessments do not share one non-null invocation evidence record " +
                         "and its source-byte digest."));
                 }
-                var invocation = invocations.OfType<BatchInvocationEvidence>().Single();
 
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
@@ -369,7 +370,7 @@ public static class AssessCommand
                     : Array.Empty<AssessmentWordResult>();
                 var completionSummary = AssessmentWordRows.CompletionSummary(words);
                 summaryMarkdown = RenderSummaryMarkdown(completionSummary, summaryMarkdown);
-                var grammarWarnings = invocation?.GrammarWarningLines is { Count: > 0 } warningLines
+                var grammarWarnings = invocation.GrammarWarningLines is { Count: > 0 } warningLines
                     ? warningLines : null;
                 if (words.Length > 0)
                 {
@@ -430,7 +431,9 @@ public static class AssessCommand
                               "Search completion is reported separately for each word."
                             : "Correctness unavailable: this Assessment did not collect approved morphology comparisons.",
                         Measurements = pendingRecords.Select(record => new ProducedAssessmentReference(
-                            record.AssessmentId, record.Kind, record.Invocation!.InvocationId)).ToArray(),
+                            record.AssessmentId, record.Kind,
+                            record.Invocation?.InvocationId ?? throw new InvalidDataException(
+                                "An Assessment is missing its invocation evidence."))).ToArray(),
                         InvocationId = invocation.InvocationId,
                         SelectionDescriptor = composition.Descriptor,
                     });

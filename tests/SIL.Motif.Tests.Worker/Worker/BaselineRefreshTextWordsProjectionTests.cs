@@ -74,14 +74,14 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
 
         var projected = TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
 
-        var line = Assert.Single(Assert.Single(projected.Texts.Where(item => item.TextId == text.TextId))
-            .Lines.Where(item => item.SegmentId == text.FirstSegmentId));
+        var line = Assert.Single(Assert.Single(projected.Texts, item => item.TextId == text.TextId)
+            .Lines, item => item.SegmentId == text.FirstSegmentId);
         Assert.Equal(text.FirstParagraphId, line.ParagraphId);
         Assert.False(line.ParseIsCurrent);
-        var word = Assert.Single(line.Tokens.Where(token => token.WordformId == text.AnalysedWordformId));
+        var word = Assert.Single(line.Tokens, token => token.WordformId == text.AnalysedWordformId);
         Assert.Equal(0, word.OccurrenceIndex);
         Assert.Equal(text.ApprovedAnalysisId, word.AnalysisId);
-        var punctuation = Assert.Single(line.Tokens.Where(token => token.WordformId is null));
+        var punctuation = Assert.Single(line.Tokens, token => token.WordformId is null);
         Assert.Equal(1, punctuation.OccurrenceIndex);
         Assert.Null(punctuation.AnalysisId);
     }

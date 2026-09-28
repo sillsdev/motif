@@ -946,7 +946,10 @@ public sealed class MainWindowSmokeTests
                 workspace.Context.OpenTexts(TextsTab.Matrix);
                 workspace.Assess.Refusal = new Refusal(
                     "assess.parser-unavailable", FailureReason.Refused, "PanGloss is not built.",
-                    new Dictionary<string, string> { ["parserPath"] = "pangloss.exe" });
+                    new Dictionary<string, string>
+                    {
+                        ["parserPath"] = OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss",
+                    });
                 window.Show();
                 window.UpdateLayout();
 
@@ -955,7 +958,9 @@ public sealed class MainWindowSmokeTests
                 Assert.True(refusal.IsEffectivelyVisible);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(),
                     expander => Equals(expander.Header, "Details") && expander.IsEffectivelyVisible);
-                Assert.Contains("parserPath: pangloss.exe", workspace.Assess.ShownRefusal!.Details);
+                Assert.Contains("parserPath: " +
+                    (OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss"),
+                    workspace.Assess.ShownRefusal!.Details);
             }
             finally
             {

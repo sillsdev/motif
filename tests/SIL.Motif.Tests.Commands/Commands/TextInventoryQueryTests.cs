@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.LcmUtils;
@@ -46,8 +47,11 @@ public sealed class TextInventoryQueryTests : IDisposable
     {
         var fwDataPath = _pristine.CopyProjectFile();
         var seededText = WriteTextOnto(fwDataPath);
-        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());
+        var managedRoot = NewManagedRoot();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
         Assert.True(captured.Succeeded);
+        var baselineDirectory = Path.GetDirectoryName(captured.Value!.FwDataPath)!;
+        var before = ManifestOf(baselineDirectory);
 
         var outcome = TextInventoryQuery.Query(new TextInventoryRequest(fwDataPath));
 
@@ -58,6 +62,7 @@ public sealed class TextInventoryQueryTests : IDisposable
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(choice));
         Assert.True(json.RootElement.TryGetProperty("InterlinearizationPercent", out var share));
         Assert.Equal(50d, share.GetDouble());
+        Assert.Equal(before, ManifestOf(baselineDirectory));
     }
 
     [Fact]
@@ -89,5 +94,15 @@ public sealed class TextInventoryQueryTests : IDisposable
         var root = Path.Combine(_managedRootsParent, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         return root;
+    }
+
+    private static string[] ManifestOf(string root)
+    {
+        var directories = Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'));
+        var files = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/') + ":" +
+                Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))));
+        return directories.Concat(files).OrderBy(line => line, StringComparer.Ordinal).ToArray();
     }
 }

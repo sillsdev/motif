@@ -16,20 +16,20 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Worker;
 
 /// <summary>
-/// The composition root of the per-user job runner: one owner mutex, one runtime registry, and the
+/// The composition root of the per-user job runner: one owner lock, one runtime registry, and the
 /// per-project lanes its work is scheduled through.
 /// </summary>
 /// <remarks>
 /// <para>
 /// It answers no requests. Coordination with a <c>motif</c> invocation is the paired database and the
 /// database's own owner lock, not a message, so this type has no endpoint, no connections, and no
-/// protocol. What it owns is singularity — exactly one runner per Windows user, enforced by a named
-/// mutex — and the lifetime of everything scheduled work needs.
+/// protocol. What it owns is singularity — one runner per platform user, enforced by an owner lock —
+/// and the lifetime of everything scheduled work needs.
 /// </para>
 /// <para>
 /// The registry is composed once, before the runner starts, and is closed to further composition
 /// afterwards. That ordering is what lets disposal be deterministic: lanes before runtimes, runtimes
-/// before the mutex that admitted them.
+/// before the lock that admitted them.
 /// </para>
 /// </remarks>
 public sealed class JobRunnerHost : IDisposable
@@ -50,23 +50,22 @@ public sealed class JobRunnerHost : IDisposable
     private bool _started;
     private bool _disposed;
 
-    /// <summary>Creates a runner host for the current Windows user.</summary>
+    /// <summary>Creates a runner host for the current user.</summary>
     public JobRunnerHost()
-        : this(CurrentSid())
+        : this(WorkerIdentity.GetCurrentUserNamespace())
     {
     }
 
     internal JobRunnerHost(string userNamespace)
     {
-        var sid = WindowsIdentity.GetCurrent().User?.Value ?? "unknown-user";
         OwnerName = GetOwnerMutexNameForNamespace(
-            string.IsNullOrWhiteSpace(userNamespace) ? sid : userNamespace);
+            string.IsNullOrWhiteSpace(userNamespace) ? "unknown-user" : userNamespace);
         _ownerMutex = new WorkerMutexOwner(OwnerName);
         _hostRegistry = new ProjectHostRegistry();
         _hostReleases = new ProjectHostReleaseCoordinator();
     }
 
-    /// <summary>Creates a runner whose owner mutex is isolated to the given namespace.</summary>
+    /// <summary>Creates a runner whose owner lock is isolated to the given namespace.</summary>
     /// <remarks>
     /// Only a test has a reason to call this. Two real installations are separated by where they work,
     /// not by who may run, so an operator relocating a runner changes its root rather than its namespace.
@@ -98,10 +97,10 @@ public sealed class JobRunnerHost : IDisposable
         return host;
     }
 
-    /// <summary>The named mutex which serializes runner ownership for one Windows user.</summary>
+    /// <summary>The platform lock name which serializes runner ownership for one user.</summary>
     public string OwnerName { get; }
 
-    /// <summary>Whether this process currently owns the user-scoped runner mutex.</summary>
+    /// <summary>Whether this process currently owns the user-scoped runner lock.</summary>
     public bool IsOwner { get; private set; }
 
     internal ProjectLaneRegistry ProjectLanes => _projectLanes ??
@@ -111,7 +110,7 @@ public sealed class JobRunnerHost : IDisposable
 
     internal ProjectHostRegistry HostRegistry => _hostRegistry;
 
-    /// <summary>Takes the user-scoped mutex, making this process the one runner.</summary>
+    /// <summary>Takes the user-scoped lock, making this process the one runner.</summary>
     public bool TryAcquireOwnership()
     {
         lock (_gate)
@@ -184,14 +183,12 @@ public sealed class JobRunnerHost : IDisposable
         }
     }
 
-    /// <summary>Derives the runner owner mutex name for the current Windows user.</summary>
-    public static string GetOwnerMutexName() => GetOwnerMutexNameForNamespace(CurrentSid());
+    /// <summary>Derives the runner owner lock name for the current user.</summary>
+    public static string GetOwnerMutexName() => GetOwnerMutexNameForNamespace(WorkerIdentity.GetCurrentUserNamespace());
 
-    internal static string GetOwnerMutexNameForNamespace(string userNamespace) =>
-        @"Local\SIL.Motif.Worker.Owner." + userNamespace;
-
-    private static string CurrentSid() =>
-        WindowsIdentity.GetCurrent().User?.Value ?? "unknown-user";
+    internal static string GetOwnerMutexNameForNamespace(string userNamespace) => OperatingSystem.IsWindows()
+        ? @"Local\SIL.Motif.Worker.Owner." + userNamespace
+        : "SIL.Motif.Worker.Owner." + userNamespace;
 
     private void ThrowIfDisposed()
     {
@@ -208,7 +205,7 @@ public sealed class JobRunnerHost : IDisposable
             _disposed = true;
             _shutdown.Cancel();
         }
-        // Lanes before runtimes, runtimes before the mutex that admitted them.
+        // Lanes before runtimes, runtimes before the lock that admitted them.
         if (_projectLanes is not null)
         {
             try { _projectLanes.Dispose(); }

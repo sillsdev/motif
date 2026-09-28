@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.Worker;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -619,7 +620,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
 
         Assert.NotSame(first, second);
         // The lock guards creation only, so nothing holds it once the schema already exists.
-        Assert.False(File.Exists(path + ".owner.lock"));
+        Assert.Equal(OperatingSystem.IsWindows(), !File.Exists(path + ".owner.lock"));
     }
 
     [Fact]
@@ -628,9 +629,19 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         var path = DatabasePath("cross-thread.fwdata");
         var first = MotifDatabase.OpenOwned(path, Locator("cross-thread.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
         await Task.Run(first.Dispose);
-        Assert.False(File.Exists(path + ".owner.lock"));
+        Assert.Equal(OperatingSystem.IsWindows(), !File.Exists(path + ".owner.lock"));
 
         using var reopened = MotifDatabase.OpenOwned(path, Locator("cross-thread.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
+    }
+
+    [RequiresUnixFact]
+    public void OwnershipFileShareNoneExcludesAnotherStream()
+    {
+        var path = DatabasePath("exclusive-file-share.fwdata");
+        using var owner = MotifSqliteStore.AcquireOwnershipForTesting(path, TimeSpan.FromSeconds(1));
+
+        Assert.Throws<IOException>(() => new FileStream(path + ".owner.lock", FileMode.Open,
+            FileAccess.ReadWrite, FileShare.None));
     }
 
     private MotifDatabase Open(string fileName, int supportedSchema) => MotifDatabase.OpenOwned(

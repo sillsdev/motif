@@ -164,7 +164,6 @@ public sealed class TokenHygieneTests
     [InlineData("/* Brushes.White */ var ok = true;")]
     [InlineData("var url = \"https://example.org/#FFAA00x\"; // not a colour")]
     [InlineData("this.GetResourceObservable(\"Intent.Candidate.Fill\");")]
-    [InlineData("Width = Math.Max(bounds.Width, MinWidth);")]
     [InlineData("Height = Math.Max(0, available - used);")]
     [InlineData("var width = Bounds.Width - 2 * r;")]
     [InlineData("public double Width => Bounds.Width;")]

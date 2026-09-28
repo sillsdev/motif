@@ -24,6 +24,7 @@ public static class MoStemMsaMsFeaturesOperationKinds
     public const string CreateMsFeatures = "grammar/moStemMsa/createMsFeatures";
     public const string DeleteMsFeatures = "grammar/moStemMsa/deleteMsFeatures";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -32,6 +33,7 @@ public static class MoStemMsaMsFeaturesOperationKinds
         OperationHandlerRegistry.Register(CreateMsFeatures, MoStemMsaMsFeaturesCreateHandler.Instance);
         OperationHandlerRegistry.Register(DeleteMsFeatures, MoStemMsaMsFeaturesDeleteHandler.Instance);
     }
+#pragma warning restore CA2255
 }
 
 /// <summary>

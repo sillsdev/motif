@@ -103,6 +103,31 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task ChildEnvironmentKeepsDotnetRootSoAnApphostParserFindsItsRuntime()
+    {
+        var grammar = Project("dotnet-root-environment");
+        var previous = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        // The running runtime's own root, so the fake apphost still starts with the variable set.
+        var runtimeRoot = Path.GetFullPath(Path.Combine(
+            System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(), "..", "..", ".."));
+        Environment.SetEnvironmentVariable("DOTNET_ROOT", previous ?? runtimeRoot);
+        try
+        {
+            using var invoker = Invoker();
+            var outcome = await invoker.RunAsync(
+                new PanGlossRequest.Stats(grammar, Path.Combine(_root, "cache"), []),
+                "test:dotnet-root-environment", CancellationToken.None);
+
+            Assert.IsType<PanGlossOutcome.Completed>(outcome);
+            Assert.Contains("DOTNET_ROOT", EnvironmentNames(grammar));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DOTNET_ROOT", previous);
+        }
+    }
+
+    [Fact]
     public async Task ChildEnvironmentDoesNotReceiveAnUnrelatedParentVariable()
     {
         var grammar = Project("minimal-environment");
@@ -298,7 +323,7 @@ public sealed class PanGlossInvokerTests : IDisposable
     public async Task AnExecutableThatWillNotStartIsUnavailable_NotAnException()
     {
         using var queue = NewQueue();
-        using var invoker = new PanGlossInvoker(Path.Combine(_root, "no-such-pangloss.exe"), queue);
+        using var invoker = new PanGlossInvoker(Path.Combine(_root, "no-such-" + FakeParser.ExecutableFileName), queue);
 
         var outcome = await invoker.RunAsync(
             new PanGlossRequest.Import(Project("nostart"), Path.Combine(_root, "g.json")), "test", CancellationToken.None);
@@ -372,7 +397,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         var heartbeat = Path.Combine(_root, "heartbeat.txt");
         FakeParser.Behave(_root, new { heartbeatPath = heartbeat });
         using var queue = NewQueue();
-        WindowsCpuJob? admitted = null;
+        PanGlossContainmentJob? admitted = null;
         queue.JobAdmitted = job => admitted = job;
         using var invoker = new PanGlossInvoker(FakeParser.ExecutablePath, queue);
         using var cts = new CancellationTokenSource();
@@ -380,12 +405,17 @@ public sealed class PanGlossInvokerTests : IDisposable
         var run = invoker.RunAsync(
             new PanGlossRequest.Import(project, Path.Combine(_root, "g.json")), "test:contained", cts.Token);
         var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (DateTime.UtcNow < deadline && (admitted is null || admitted.QueryTotalProcessCount() == 0))
+        while (DateTime.UtcNow < deadline && (admitted is null || !File.Exists(heartbeat)))
             await Task.Delay(20);
 
         Assert.NotNull(admitted);
-        // The parser's console host joins the job beside it, so the count is at least one, never exactly one.
-        Assert.True(admitted!.QueryTotalProcessCount() >= 1, "No process was assigned to the admitted job.");
+        Assert.True(File.Exists(heartbeat), "The parser did not start under its admitted containment job.");
+        Assert.NotNull(admitted!.Report);
+        if (OperatingSystem.IsWindows())
+            Assert.True(Assert.IsType<WindowsCpuJob>(admitted).QueryTotalProcessCount() >= 1,
+                "No process was assigned to the admitted job.");
+        else
+            Assert.Contains("process group", admitted.Report.ProcessTree, StringComparison.OrdinalIgnoreCase);
         cts.Cancel();
         Assert.IsType<PanGlossOutcome.Cancelled>(await run);
     }
@@ -399,10 +429,12 @@ public sealed class PanGlossInvokerTests : IDisposable
     {
         var source = Project("changed");
         var artifacts = Path.Combine(_root, Guid.NewGuid().ToString("N"));
+        using var containment = PanGlossContainment.CreateJob();
         var outcome = await PanGlossInvoker.LaunchAsync(FakeParser.ExecutablePath,
             new PanGlossRequest.Batch(source, ["motifa"], TimeSpan.FromSeconds(1), ArtifactDirectory: artifacts),
-            _ => File.WriteAllText(Path.Combine(artifacts, changedFile), "changed while parsing"),
-            TimeSpan.FromSeconds(10), CancellationToken.None);
+            containment,
+            TimeSpan.FromSeconds(10), CancellationToken.None,
+            _ => File.WriteAllText(Path.Combine(artifacts, changedFile), "changed while parsing"));
 
         var refused = Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
         Assert.Contains("changed during", refused.Detail, StringComparison.Ordinal);

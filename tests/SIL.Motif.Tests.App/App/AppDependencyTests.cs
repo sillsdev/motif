@@ -56,6 +56,7 @@ public sealed class AppDependencyTests
         var document = XDocument.Load(ProjectFile(projectName));
         return document.Descendants()
             .Where(element => element.Name.LocalName == "ProjectReference")
-            .Select(element => Path.GetFileNameWithoutExtension(element.Attribute("Include")!.Value));
+            .Select(element => Path.GetFileNameWithoutExtension(
+                element.Attribute("Include")!.Value.Replace('\\', Path.DirectorySeparatorChar)));
     }
 }

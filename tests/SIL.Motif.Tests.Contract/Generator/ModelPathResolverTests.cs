@@ -82,7 +82,7 @@ public class ModelPathResolverTests
     [Fact]
     public void ReadPinnedPackageVersion_MatchesTheCsprojProperty()
     {
-        // Must match SIL.Motif.Generator.csproj's SilLCModelPackageVersion, the string AssemblyMetadata carries in.
-        Assert.Equal("11.0.0-beta0150", ModelPathResolver.ReadPinnedPackageVersion());
+        // Must match SilVersions.props, the shared version AssemblyMetadata carries in.
+        Assert.Equal("11.0.0-beta0182", ModelPathResolver.ReadPinnedPackageVersion());
     }
 }
