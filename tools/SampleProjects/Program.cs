@@ -105,6 +105,9 @@ internal sealed record StemSpec(
 internal sealed record AffixSpec(
     string Id, string PartOfSpeech, string[] Slots, string Gloss, AllomorphSpec[] Allomorphs,
     FeatureAssignmentSpec[]? Features = null);
+internal sealed record AffixPatchSpec(
+    string Id, string PartOfSpeech, string[] Slots, string Gloss,
+    FeatureAssignmentSpec[]? Features = null);
 internal sealed record AllomorphSpec(
     string Id, string Form, string? Environment, string MorphType = "suffix",
     string? PositionEnvironment = null, string[]? InflectionClasses = null,
@@ -131,7 +134,9 @@ internal sealed record PatchOperation(
     bool? Optional = null,
     int? Count = null,
     string[]? Slots = null,
-    string? Side = null);
+    string? Side = null,
+    AffixPatchSpec? Affix = null,
+    AllomorphSpec? Allomorph = null);
 internal sealed record BuildResult(string ProjectPath, string BackupPath, BuiltText[] Texts, string[] AppliedBugs);
 internal sealed record BuiltText(string Id, string Guid);
 
@@ -210,6 +215,8 @@ internal static class SampleBuilder
         "setAffixSlots" => SetAffixSlots(spec, patch),
         "duplicateOptionalSlot" => DuplicateOptionalSlot(spec, patch),
         "removeAllomorph" => RemoveAllomorph(spec, patch),
+        "addAffix" => AddAffix(spec, patch),
+        "addAllomorph" => AddAllomorph(spec, patch),
         "duplicateTemplate" => DuplicateTemplate(spec, patch),
         _ => throw new InvalidDataException($"Unknown patch operation '{patch.Op}'."),
     };
@@ -346,6 +353,32 @@ internal static class SampleBuilder
                     throw new InvalidDataException($"Removing '{allomorphId}' would leave affix '{affix.Id}' without an allomorph.");
                 return affix with { Allomorphs = allomorphs };
             }).ToArray(),
+        };
+    }
+
+    private static SampleSpec AddAffix(SampleSpec spec, PatchOperation patch)
+    {
+        var source = patch.Affix ?? throw new InvalidDataException("addAffix needs an affix.");
+        if (spec.Affixes.Any(affix => affix.Id == source.Id))
+            throw new InvalidDataException($"Affix '{source.Id}' already exists.");
+        var affix = new AffixSpec(source.Id, source.PartOfSpeech, source.Slots, source.Gloss, [], source.Features);
+        return spec with { Affixes = [.. spec.Affixes, affix] };
+    }
+
+    private static SampleSpec AddAllomorph(SampleSpec spec, PatchOperation patch)
+    {
+        var affixId = Required(patch.AffixId, "affixId");
+        var allomorph = patch.Allomorph ?? throw new InvalidDataException("addAllomorph needs an allomorph.");
+        if (spec.Affixes.SelectMany(affix => affix.Allomorphs)
+                .Any(existing => existing.Id == allomorph.Id))
+            throw new InvalidDataException($"Allomorph '{allomorph.Id}' already exists.");
+        if (spec.Affixes.Count(affix => affix.Id == affixId) != 1)
+            throw new InvalidDataException($"Affix '{affixId}' does not exist exactly once.");
+        return spec with
+        {
+            Affixes = spec.Affixes.Select(affix => affix.Id == affixId
+                ? affix with { Allomorphs = [.. affix.Allomorphs, allomorph] }
+                : affix).ToArray(),
         };
     }
 

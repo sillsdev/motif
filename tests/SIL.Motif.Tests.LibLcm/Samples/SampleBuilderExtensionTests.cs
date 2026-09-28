@@ -98,6 +98,92 @@ public sealed class SampleBuilderExtensionTests
         }
     }
 
+    [Fact]
+    public async Task AddAffixAndAddAllomorphPatchesBuildZeroFormAffixes()
+    {
+        var root = NewRoot();
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var (samplePath, bugsPath) = await WriteFixtureAsync(root, includeClassFeatures: false);
+            var sample = JsonNode.Parse(await File.ReadAllTextAsync(samplePath))!.AsObject();
+            sample["affixSlots"]!.AsArray().Add(JsonNode.Parse("""
+                { "id": "object", "name": "Object", "partOfSpeech": "verb", "optional": true }
+                """));
+            var verbTemplate = sample["affixTemplates"]!.AsArray().Single(template =>
+                template!["id"]!.GetValue<string>() == "verb")!;
+            verbTemplate["prefixSlots"] = JsonNode.Parse("""["object"]""");
+            await File.WriteAllTextAsync(samplePath, sample.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            await File.WriteAllTextAsync(bugsPath, """
+                [{
+                  "id": "zero-object",
+                  "title": "Zero object affix",
+                  "disclaimer": "Synthetic builder test.",
+                  "symptom": { "kind": "slow", "words": ["yapti"], "reason": "The parser explores zero-form object markers." },
+                  "fix": ["Remove the zero-form object allomorphs from the Object slot."],
+                  "patch": [
+                    {
+                      "op": "addAffix",
+                      "affix": {
+                        "id": "zero-object-affix",
+                        "partOfSpeech": "verb",
+                        "slots": ["object"],
+                        "gloss": "object marker"
+                      }
+                    },
+                    {
+                      "op": "addAllomorph",
+                      "affixId": "zero-object-affix",
+                      "allomorph": {
+                        "id": "zero-object-conditioned",
+                        "form": "",
+                        "environment": "after-vowel",
+                        "morphType": "prefix"
+                      }
+                    },
+                    {
+                      "op": "addAllomorph",
+                      "affixId": "zero-object-affix",
+                      "allomorph": {
+                        "id": "zero-object-unconditioned",
+                        "form": "",
+                        "morphType": "prefix"
+                      }
+                    }
+                  ]
+                }]
+                """);
+            using var schema = JsonDocument.Parse(await File.ReadAllTextAsync(
+                Path.Combine(RepositoryRoot(), "samples", "sample.schema.json")));
+            using var bugs = JsonDocument.Parse(await File.ReadAllTextAsync(bugsPath));
+            SampleJsonSchemaValidator.AssertValid(bugs.RootElement,
+                schema.RootElement.GetProperty("$defs").GetProperty("bugList"), schema.RootElement);
+
+            using var output = await BuildAsync(root, samplePath, bugsPath, ["zero-object"]);
+            using var cache = new FwDataProjectLoader().LoadScratchCache(
+                output.RootElement.GetProperty("projectPath").GetString()!);
+
+            var entry = cache.LangProject.LexDbOA.Entries.Single(candidate =>
+                candidate.MorphoSyntaxAnalysesOC.OfType<IMoInflAffMsa>().Any(msa =>
+                    msa.SlotsRC.Any(slot => slot.Name.get_String(cache.DefaultAnalWs).Text == "Object")));
+            var primary = Assert.IsAssignableFrom<IMoAffixAllomorph>(entry.LexemeFormOA);
+            Assert.True(string.IsNullOrEmpty(primary.Form.get_String(cache.DefaultVernWs).Text));
+            Assert.Equal(MoMorphTypeTags.kguidMorphPrefix, primary.MorphTypeRA!.Guid);
+            Assert.Single(primary.PhoneEnvRC);
+            Assert.Equal("/[V]_", primary.PhoneEnvRC.Single().StringRepresentation.Text);
+            var alternate = Assert.IsAssignableFrom<IMoAffixAllomorph>(Assert.Single(entry.AlternateFormsOS));
+            Assert.True(string.IsNullOrEmpty(alternate.Form.get_String(cache.DefaultVernWs).Text));
+            Assert.Empty(alternate.PhoneEnvRC);
+            var msa = Assert.IsAssignableFrom<IMoInflAffMsa>(entry.MorphoSyntaxAnalysesOC.Single());
+            Assert.Equal("Object", msa.SlotsRC.Single().Name.get_String(cache.DefaultAnalWs).Text);
+        }
+        finally
+        {
+            DeleteDirectory(root);
+        }
+    }
+
     [RealParserFact]
     public async Task PrefixAffixBuiltBySampleBuilderParsesThroughMotifAssess()
     {
