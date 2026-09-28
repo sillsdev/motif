@@ -156,7 +156,7 @@ public abstract record PanGlossRequest
 
         internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
         {
-            // PanGloss parse has no --step-cap flag; it uses its own finite default.
+            // PanGloss's built-in 50,000,000-step runaway guard is kept for Try a Word by owner choice.
             startInfo.ArgumentList.Add("parse");
             startInfo.ArgumentList.Add(GrammarPath);
             startInfo.ArgumentList.Add(Word);
