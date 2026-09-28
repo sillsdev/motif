@@ -244,7 +244,7 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         var operation = new OperationEnvelope(CanonicalId.Mint(), "analysis/wfiWordform/setSpellingStatus",
             target: CanonicalId.FromGuid(_wordform.Guid),
             after: JsonSerializer.SerializeToElement(new { value = 2 }),
-            extensions: JsonSerializer.SerializeToElement(new { changeFit = fingerprint }));
+            extensions: JsonSerializer.SerializeToElement(new { changeId = "earlier-baseline-change", changeFit = fingerprint }));
         var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" },
             CanonicalId.Mint(), null, [operation]);
 
@@ -252,6 +252,7 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         var fit = Assert.Single(ChangeFitPreflight.Check(_cache, proposal, current));
         Assert.False(fit.StillFits);
         Assert.Contains("Baseline", fit.Reason, StringComparison.Ordinal);
+        Assert.Equal("earlier-baseline-change", fit.ChangeId);
     }
 
     [Fact]

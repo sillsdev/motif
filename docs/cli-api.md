@@ -31,8 +31,10 @@ that dispatches them.
 | `analyses` | Released | `analyses --project <fwdata> [--json]`<br>`analyses --project <fwdata> --assessment <assessmentId> --current-selection-sha256 <sha256> --current-grammar-sha256 <sha256> [--json]` |
 | `new` | Developer | `new --project <fwdata> --draft <name> [--label <text>]` |
 | `pending-changes` | Developer | `pending-changes --project <fwdata> [--json]` |
-| `put-pending-change` | Developer | `put-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> --kind <kind> --word <word> [--wordform-id <id>] [--assessment <id> --reading-index <zero-based> --reading-json <json>] [--stored-analysis-id <id>] [--json]` |
+| `put-pending-change` | Developer | `put-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> --kind <kind> --word <word> [--wordform-id <id>] [--assessment <id> --reading-index <zero-based> --reading-json <json>] [--stored-analysis-id <id>] [--occurrence-text-id <guid> --occurrence-paragraph-id <guid> --occurrence-segment-id <guid> --occurrence-index <zero-based>] [--json]` |
 | `remove-pending-change` | Developer | `remove-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
+| `recheck-pending-changes` | Developer | `recheck-pending-changes --project <fwdata> --expected-revision <revision> [--json]` |
+| `reconfirm-pending-change` | Developer | `reconfirm-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
 | `add-set-gloss` | Developer | `add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> --text <text> [--depends-on <opId>[,<opId>...]]` |
 | `add-delete-lexeme-form` | Developer | `add-delete-lexeme-form --project <fwdata> --draft <name> --target <canonicalId>` |
 | `compose-author-lexeme-form` | Developer | `compose-author-lexeme-form --draft <name> --project <fwdata> --intent '{"entry":...,"morphType":...,"ws":...,"text":...}'` |
@@ -107,7 +109,7 @@ The Released surface contains `open`, `analyses`, `config show`, `report`, `repo
 `jobs list`, `jobs cancel`, `jobs requeue`, `jobs move`, and `apply --all-pending`.
 
 The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
-`remove-pending-change`, `add-set-gloss`, `add-delete-lexeme-form`,
+`remove-pending-change`, `recheck-pending-changes`, `reconfirm-pending-change`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
 `supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`,
@@ -128,6 +130,8 @@ if the command later applies multiple Proposals. "Nothing pending" means the pen
 the same test `trial --pending` uses. Every nonzero exit code is a refusal or an error, with its failure on
 stderr (a failure envelope under `--json`), so FieldWorks can treat exit `0` alone as "continue". A project
 another program still holds is `Busy`, exit `3`: release it and retry.
+An uncertain pending change exits `2` with `code: "apply.change-uncertain"`; FieldWorks keeps it pending
+for review and does not reload the project.
 
 #### FieldWorks executable lookup
 
@@ -136,21 +140,32 @@ FieldWorks first checks the `MOTIF_DIR` environment variable. When set, it names
 `HKLM\SOFTWARE\SIL\Motif`; that value names the same directory. FieldWorks does not search `PATH` for Motif.
 The release installer will write the registry value and verify it in a clean-machine install.
 
-`preflight` reads the live project and reports each collected change as `still fits` or
-`no longer fits`, with an operation id and reason. `--json` returns the same entries as structured
-`changes`. A deleted wordform, changed wordform form, missing or moved analysis, changed analysis
-reading, a missing morph reference, an older Baseline, or a parser reading that has since been stored
-is `no longer fits`. `pending-changes` checks the persistent Draft before finalization, and
+`preflight` reads the live project and reports each collected operation's `status` (`fits`,
+`uncertain`, or `no-longer-fits`), its existing `stillFits` boolean, operation id, and reason.
+`--json` returns the same entries as structured `changes`. A deleted wordform, changed wordform form,
+missing or moved analysis, changed analysis reading, a missing morph reference, an older Baseline, or a
+parser reading that has since been stored is `no-longer-fits`. For a decision with an occurrence anchor,
+a changed sentence, stale parse, missing Segment, or occurrence that no longer resolves uniquely is
+`uncertain` while the analysis decision itself still fits. The result includes `uncertainty.reason`,
+`beforeTokens`, and `afterTokens`; each token has its Segment index, canonical wordform id, and form.
+`pending-changes` checks the persistent Draft before finalization, and
 `remove-pending-change` removes a change by id and expected revision. Apply checks fit again
-and refuses a nonfitting change even with `--force`; `--force` only bypasses Readiness reasons.
+and refuses an uncertain change as well as one that no longer fits, including under `--force`. An
+uncertain refusal names the change and says to check again; `--force` only bypasses Readiness reasons.
 An Apply that succeeds records a durable Receipt in the paired project database.
 
-The App and the pending-change CLI verbs use `PendingChanges` in Commands to load, put, and remove
-changes in one persistent Draft. Each change has its own id, so distinct slots can address one word.
-Put and remove require the revision returned by the last load; a stale revision is refused. A parser
-change carries the exact reading chosen from an Assessment, or identifies a stored analysis. Display
-text is never an identity. A current Baseline is required, and the snapshot reports fit for every
-change. The Draft stays in `Project.motif.db` when the App closes.
+The App and the pending-change CLI verbs use `PendingChanges` in Commands to load, put, remove, check,
+and reconfirm changes in one persistent Draft. Each change has its own id, so distinct slots can address
+one word. These verbs require the revision returned by the last load; a stale revision is refused. A
+parser change carries the exact reading chosen from an Assessment, or identifies a stored analysis.
+Display text is never an identity. A current Baseline is required, and the snapshot reports fit for every
+change. `put-pending-change` may carry all four occurrence options together: Text GUID, paragraph GUID,
+Segment GUID, and a zero-based index in that Segment's analysis sequence. Motif accepts these options
+for analysis opinion changes. `recheck-pending-changes` renews Baseline tokens for changes that still
+fit, but leaves uncertain occurrence evidence untouched. `reconfirm-pending-change` takes one change id
+and replaces its occurrence evidence and BaselineToken after the analysis decision still fits; it refuses changes
+that no longer fit. This evidence refresh does not alter Proposal intent. The Draft stays in
+`Project.motif.db` when the App closes.
 
 `trial --pending` resolves the current pending Draft when `--draft` and `--revision` are omitted, reading only
 the paired project database, so it never opens the FieldWorks project to check them. A `--draft` or `--revision`

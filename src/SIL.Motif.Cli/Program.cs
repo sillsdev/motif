@@ -357,7 +357,9 @@ try
                 return Usage("Usage: motif put-pending-change --project <fwdata> " +
                     "--expected-revision <revision> --change-id <id> --kind <kind> --word <word> " +
                     "[--wordform-id <id>] [--assessment <id> --reading-index <zero-based> " +
-                    "--reading-json <json>] [--stored-analysis-id <id>] [--json]", asJson);
+                    "--reading-json <json>] [--stored-analysis-id <id>] " +
+                    "[--occurrence-text-id <guid> --occurrence-paragraph-id <guid> " +
+                    "--occurrence-segment-id <guid> --occurrence-index <zero-based>] [--json]", asJson);
             ParseAnalysis? chosenReading = null;
             if (flags.TryGetValue("reading-json", out var readingJson))
             {
@@ -374,12 +376,30 @@ try
                     return Usage("--reading-index must be a zero-based nonnegative integer.", asJson);
                 readingIndex = parsedIndex;
             }
+            var occurrenceFlags = new[]
+            {
+                "occurrence-text-id", "occurrence-paragraph-id", "occurrence-segment-id", "occurrence-index",
+            };
+            var hasOccurrence = occurrenceFlags.Any(flags.ContainsKey);
+            OccurrenceAnchor? occurrence = null;
+            if (hasOccurrence)
+            {
+                if (occurrenceFlags.Any(name => !flags.ContainsKey(name)) ||
+                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-text-id"), out var textId) ||
+                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-paragraph-id"), out var paragraphId) ||
+                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-segment-id"), out var segmentId) ||
+                    !int.TryParse(flags.GetValueOrDefault("occurrence-index"), out var occurrenceIndex) ||
+                    occurrenceIndex < 0)
+                    return Usage("Occurrence requires --occurrence-text-id, --occurrence-paragraph-id, " +
+                        "--occurrence-segment-id, and a nonnegative --occurrence-index.", asJson);
+                occurrence = new OccurrenceAnchor(textId, paragraphId, segmentId, occurrenceIndex);
+            }
             result = RenderProposal(PendingChanges.Put(new PutPendingChangeRequest(
                 putProject, CliProductVersion(), putRevision,
                 new ChangeIntent(putId, putKind, flags.GetValueOrDefault("wordform-id") ?? "",
                     putWord, flags.GetValueOrDefault("assessment"), chosenReading,
                     flags.GetValueOrDefault("stored-analysis-id"), flags.GetValueOrDefault("display-reading"),
-                    readingIndex))));
+                    readingIndex, Occurrence: occurrence))));
             break;
 
         case "remove-pending-change":
@@ -399,6 +419,16 @@ try
                     "--expected-revision <revision> [--json]", asJson);
             result = RenderProposal(PendingChanges.Recheck(new RecheckPendingChangesRequest(
                 recheckProject, CliProductVersion(), recheckRevision)));
+            break;
+
+        case "reconfirm-pending-change":
+            if (!flags.TryGetValue("project", out var reconfirmProject) ||
+                !flags.TryGetValue("expected-revision", out var reconfirmRevision) ||
+                !flags.TryGetValue("change-id", out var reconfirmId))
+                return Usage("Usage: motif reconfirm-pending-change --project <fwdata> " +
+                    "--expected-revision <revision> --change-id <id> [--json]", asJson);
+            result = RenderProposal(PendingChanges.Reconfirm(new ReconfirmPendingChangeRequest(
+                reconfirmProject, CliProductVersion(), reconfirmRevision, reconfirmId)));
             break;
 
         case "review-numbers":
