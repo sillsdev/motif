@@ -207,7 +207,8 @@ internal sealed class MotifAppHost
                 await session.KnownProjectsLoaded;
                 _session = null;
                 _lifetime.Shutdown();
-                await session.Closed;
+                // The dispatcher is shut down by now and aborts posts, so the continuation must not need it.
+                await session.Closed.ConfigureAwait(false);
             }, () => exiting is null ? "the session never started" : Awaiting(exiting));
         }
         finally
