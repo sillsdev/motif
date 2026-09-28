@@ -41,7 +41,6 @@ public class FwDataProjectLoader
 
             var dataDirectory = Path.GetFullPath(Path.Combine(
                 AppContext.BaseDirectory, "IcuData", "icudt70l"));
-            Environment.SetEnvironmentVariable("ICU_DATA", dataDirectory, EnvironmentVariableTarget.Process);
 
             var overrideDataPath = Path.GetFullPath(Path.Combine(
                 dataDirectory, "..", "data", "UnicodeDataOverrides.txt"));
@@ -58,29 +57,39 @@ public class FwDataProjectLoader
                     "bundled FieldWorks normalization data is missing: " + string.Join(", ", missingDataFiles));
             }
 
-            string[] loadedLibraries;
+            var previousIcuDataDirectory = Environment.GetEnvironmentVariable("ICU_DATA");
+            Environment.SetEnvironmentVariable("ICU_DATA", dataDirectory, EnvironmentVariableTarget.Process);
             try
             {
-                loadedLibraries = LoadBundledIcuLibraries();
-                Icu.Wrapper.DataDirectory = dataDirectory;
-                RegisterCustomIcuResolver(loadedLibraries);
-                CustomIcu.InitIcuDataDir();
-            }
-            catch (Exception exception)
-            {
-                throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
-                    exception.GetType().Name + ": " + exception.Message, exception);
-            }
+                string[] loadedLibraries;
+                try
+                {
+                    loadedLibraries = LoadBundledIcuLibraries();
+                    Icu.Wrapper.DataDirectory = dataDirectory;
+                    RegisterCustomIcuResolver(loadedLibraries);
+                    CustomIcu.InitIcuDataDir();
+                }
+                catch (Exception exception)
+                {
+                    throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
+                        exception.GetType().Name + ": " + exception.Message, exception);
+                }
 
-            if (!CustomIcu.HaveCustomIcuLibrary)
-            {
-                throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
-                    "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
-            }
+                if (!CustomIcu.HaveCustomIcuLibrary)
+                {
+                    throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
+                        "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
+                }
 
-            Sldr.Initialize();
-            InstallConfiguredGlobalWritingSystemRepository();
-            _init = true;
+                Sldr.Initialize();
+                InstallConfiguredGlobalWritingSystemRepository();
+                _init = true;
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(
+                    "ICU_DATA", previousIcuDataDirectory, EnvironmentVariableTarget.Process);
+            }
         }
     }
 
@@ -163,7 +172,7 @@ public class FwDataProjectLoader
             : "Bundled ICU native libraries loaded from: " + string.Join(", ", loadedLibraries) + ".";
         return new InvalidOperationException(
             "Motif refuses to open a FieldWorks project without SIL ICU 70. " + cause + ". " + loaded + " " +
-            $"ICU_DATA is set for this Motif process to '{dataDirectory}'. Expected nfc_fw.nrm, nfkc_fw.nrm, " +
+            $"Motif's bundled ICU data directory is '{dataDirectory}'. Expected nfc_fw.nrm, nfkc_fw.nrm, " +
             $"and UnicodeDataOverrides.txt beside that directory or its parent data directory.",
             innerException);
     }

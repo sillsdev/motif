@@ -11,9 +11,12 @@ public sealed class CustomIcuStartupTests
     [Fact]
     public void StartupLoadsFieldWorksNormalizationData()
     {
+        var customDataDirectory = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "IcuData", "icudt70l"));
         FwDataProjectLoader.Init();
 
         Assert.True(CustomIcu.HaveCustomIcuLibrary);
+        Assert.NotEqual(customDataDirectory, Environment.GetEnvironmentVariable("ICU_DATA"));
 
         var fieldWorks = CustomIcu.GetIcuNormalizer(FwNormalizationMode.knmNFC);
         var stock = Normalizer2.GetInstance(null, "nfc", Normalizer2.Mode.COMPOSE);
