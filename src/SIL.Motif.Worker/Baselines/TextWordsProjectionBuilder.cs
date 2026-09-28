@@ -17,10 +17,11 @@ namespace SIL.Motif.Worker.Baselines;
 public static class TextWordsProjectionBuilder
 {
     /// <summary>
-    /// Reads Text lines, occurrences, analyses and stable FieldWorks link targets from a saved cache, checking
-    /// <paramref name="cancellationToken"/> before each Text.
+    /// Reads selected Text lines, occurrences, analyses and FieldWorks link targets from a saved cache, checking
+    /// <paramref name="cancellationToken"/> before each selected Text. A null id set selects all Texts.
     /// </summary>
-    public static TextWordsProjection Build(LcmCache cache, CancellationToken cancellationToken)
+    public static TextWordsProjection Build(LcmCache cache, CancellationToken cancellationToken,
+        IReadOnlySet<Guid>? textIds = null)
     {
         ArgumentNullException.ThrowIfNull(cache);
         var wordforms = new Dictionary<Guid, TextWordsProjectedWordform>();
@@ -29,6 +30,7 @@ public static class TextWordsProjectionBuilder
         foreach (var text in cache.ServiceLocator.GetInstance<ITextRepository>().AllInstances()
                      .OrderBy(text => text.Guid.ToString("D"), StringComparer.Ordinal))
         {
+            if (textIds is not null && !textIds.Contains(text.Guid)) continue;
             cancellationToken.ThrowIfCancellationRequested();
             texts.Add(ReadText(cache, text, wordforms));
         }
