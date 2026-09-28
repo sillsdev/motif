@@ -19,6 +19,9 @@
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
+  <Style Selector="Button.actionChip:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Intent.Marking.Hover}" />
+  </Style>
   <Style Selector="Button.actionChip.primary">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Approved.Accent}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />

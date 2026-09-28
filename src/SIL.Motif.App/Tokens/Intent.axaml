@@ -13,7 +13,7 @@
     A size or gap only one component uses belongs in that component's file, not here.
     Views not yet converted still name Semi keys and literals; they are converted page by page.
 
-  Colours (brushes, per theme):
+  Theme brushes and shadows:
     Intent.Surface                the window's own background (Semi's Background0)
     Intent.Surface.Subtle         a panel set just apart from the window, such as the sidebar
     Intent.Surface.Hover          what a row shows under the pointer (Semi's Fill0)
@@ -49,12 +49,10 @@
     Intent.Candidate.Text         a candidate analysis's text
     Intent.Candidate.Accent       a candidate analysis's bar, underline or edge
     Intent.Marking.Text           text on compact analysis marks and lines
-    Intent.Marking.Muted          secondary text on compact analysis marks and lines
-    Intent.Marking.Faint          faint text and marks on compact analysis lines
     Intent.Marking.Border         edges of compact analysis marks and controls
     Intent.Marking.Surface        the surface of compact analysis controls
-    Intent.Marking.SurfaceSubtle  a subtle surface for compact analysis details
     Intent.Marking.Divider        dividers in compact analysis details
+    Intent.Marking.Hover          the hovered surface of a compact analysis control
     Intent.Opinion.Approved.Text  readable text for a FieldWorks-approved analysis
     Intent.Opinion.Approved.Fill  the background of a FieldWorks-approved analysis mark
     Intent.Opinion.Approved.Accent the edge of a FieldWorks-approved analysis mark
@@ -64,17 +62,19 @@
     Intent.Opinion.Unknown.Text   readable text for an unknown analysis
     Intent.Opinion.Unknown.Fill   the background of an unknown analysis mark
     Intent.Opinion.Unknown.Accent the edge of an unknown analysis mark
-    Intent.Opinion.None.Text      the dashed outline for an analysis FieldWorks does not hold
+    Intent.Opinion.None.Outline   the dashed outline for an analysis FieldWorks does not hold
+    Intent.Opinion.None.Text      text for an analysis FieldWorks does not hold
     Intent.Change.Action          the action colour for staged analysis work
     Intent.Change.Text            readable text for staged analysis work
     Intent.Change.Fill            the background of staged analysis work
-    Intent.Change.SoftFill        a softer background for staged analysis work
     Intent.Change.Edge            the edge of a staged analysis control
-    Intent.Agreement.Same         a parser reading that matches FieldWorks
-    Intent.Agreement.Different    text for a parser reading that differs
-    Intent.Agreement.Different.Fill the background of a differing parser reading
-    Intent.Agreement.None         a completed search with no parser reading
-    Intent.Agreement.Capped       a search that stopped at its step limit
+    Intent.Agreement.Agreeing     a parser reading that agrees with FieldWorks
+    Intent.Agreement.Conflict     text for a parser reading that conflicts with FieldWorks
+    Intent.Agreement.Conflict.Fill the background of a conflicting parser reading
+    Intent.Agreement.Conflict.Shadow the inset edge of a conflicting parser reading
+    Intent.Agreement.Suggestion   a parser reading FieldWorks does not hold
+    Intent.Parser.NoReading       a completed search with no parser reading
+    Intent.Parser.SearchCapped    a search that stopped at its step limit
 
   Spacing (double, for Spacing, and for Width and Height of gaps):
     Intent.Space.None             0
@@ -216,12 +216,10 @@
       <SolidColorBrush x:Key="Intent.Candidate.Text" Color="{StaticResource Primitive.Color.Tan800}" />
       <SolidColorBrush x:Key="Intent.Candidate.Accent" Color="{StaticResource Primitive.Color.Tan500}" />
       <SolidColorBrush x:Key="Intent.Marking.Text" Color="{StaticResource Primitive.Color.Slate950}" />
-      <SolidColorBrush x:Key="Intent.Marking.Muted" Color="{StaticResource Primitive.Color.Slate700}" />
-      <SolidColorBrush x:Key="Intent.Marking.Faint" Color="{StaticResource Primitive.Color.Slate600}" />
-      <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Slate200}" />
+      <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Slate400}" />
       <SolidColorBrush x:Key="Intent.Marking.Surface" Color="{StaticResource Primitive.Color.Grey0}" />
-      <SolidColorBrush x:Key="Intent.Marking.SurfaceSubtle" Color="{StaticResource Primitive.Color.Slate25}" />
-      <SolidColorBrush x:Key="Intent.Marking.Divider" Color="{StaticResource Primitive.Color.Slate100}" />
+      <SolidColorBrush x:Key="Intent.Marking.Divider" Color="{StaticResource Primitive.Color.Slate200}" />
+      <SolidColorBrush x:Key="Intent.Marking.Hover" Color="{StaticResource Primitive.Color.Slate50}" />
       <SolidColorBrush x:Key="Intent.Opinion.Approved.Text" Color="{StaticResource Primitive.Color.Teal950}" />
       <SolidColorBrush x:Key="Intent.Opinion.Approved.Fill" Color="{StaticResource Primitive.Color.Teal25}" />
       <SolidColorBrush x:Key="Intent.Opinion.Approved.Accent" Color="{StaticResource Primitive.Color.Teal950}" />
@@ -231,17 +229,19 @@
       <SolidColorBrush x:Key="Intent.Opinion.Unknown.Text" Color="{StaticResource Primitive.Color.Amber950}" />
       <SolidColorBrush x:Key="Intent.Opinion.Unknown.Fill" Color="{StaticResource Primitive.Color.Amber25}" />
       <SolidColorBrush x:Key="Intent.Opinion.Unknown.Accent" Color="{StaticResource Primitive.Color.Amber950}" />
+      <SolidColorBrush x:Key="Intent.Opinion.None.Outline" Color="{StaticResource Primitive.Color.Slate200}" />
       <SolidColorBrush x:Key="Intent.Opinion.None.Text" Color="{StaticResource Primitive.Color.Slate600}" />
       <SolidColorBrush x:Key="Intent.Change.Action" Color="{StaticResource Primitive.Color.Blue650}" />
       <SolidColorBrush x:Key="Intent.Change.Text" Color="{StaticResource Primitive.Color.Blue750}" />
       <SolidColorBrush x:Key="Intent.Change.Fill" Color="{StaticResource Primitive.Color.Blue10}" />
-      <SolidColorBrush x:Key="Intent.Change.SoftFill" Color="{StaticResource Primitive.Color.Blue25}" />
       <SolidColorBrush x:Key="Intent.Change.Edge" Color="{StaticResource Primitive.Color.Blue650}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Same" Color="{StaticResource Primitive.Color.Slate600}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Different" Color="{StaticResource Primitive.Color.Blue750}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Different.Fill" Color="{StaticResource Primitive.Color.Blue25}" />
-      <SolidColorBrush x:Key="Intent.Agreement.None" Color="{StaticResource Primitive.Color.Rose950}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Capped" Color="{StaticResource Primitive.Color.Amber950}" />
+      <SolidColorBrush x:Key="Intent.Agreement.Agreeing" Color="{StaticResource Primitive.Color.Slate600}" />
+      <SolidColorBrush x:Key="Intent.Agreement.Conflict" Color="{StaticResource Primitive.Color.Blue750}" />
+      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Fill" Color="{StaticResource Primitive.Color.Blue25}" />
+      <StaticResource x:Key="Intent.Agreement.Conflict.Shadow" ResourceKey="Primitive.Shadow.Inset2.Blue650" />
+      <SolidColorBrush x:Key="Intent.Agreement.Suggestion" Color="{StaticResource Primitive.Color.Blue750}" />
+      <SolidColorBrush x:Key="Intent.Parser.NoReading" Color="{StaticResource Primitive.Color.Rose950}" />
+      <SolidColorBrush x:Key="Intent.Parser.SearchCapped" Color="{StaticResource Primitive.Color.Amber950}" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
@@ -279,12 +279,10 @@
       <SolidColorBrush x:Key="Intent.Candidate.Text" Color="{StaticResource Primitive.Color.Tan200}" />
       <SolidColorBrush x:Key="Intent.Candidate.Accent" Color="{StaticResource Primitive.Color.Tan500}" />
       <SolidColorBrush x:Key="Intent.Marking.Text" Color="{StaticResource Primitive.Color.Slate50}" />
-      <SolidColorBrush x:Key="Intent.Marking.Muted" Color="{StaticResource Primitive.Color.Grey300}" />
-      <SolidColorBrush x:Key="Intent.Marking.Faint" Color="{StaticResource Primitive.Color.Slate400}" />
-      <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Grey700}" />
+      <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Slate700}" />
       <SolidColorBrush x:Key="Intent.Marking.Surface" Color="{StaticResource Primitive.Color.Slate975}" />
-      <SolidColorBrush x:Key="Intent.Marking.SurfaceSubtle" Color="{StaticResource Primitive.Color.Slate950}" />
-      <SolidColorBrush x:Key="Intent.Marking.Divider" Color="{StaticResource Primitive.Color.Grey800}" />
+      <SolidColorBrush x:Key="Intent.Marking.Divider" Color="{StaticResource Primitive.Color.Slate700}" />
+      <SolidColorBrush x:Key="Intent.Marking.Hover" Color="{StaticResource Primitive.Color.Grey800}" />
       <SolidColorBrush x:Key="Intent.Opinion.Approved.Text" Color="{StaticResource Primitive.Color.Cyan200}" />
       <SolidColorBrush x:Key="Intent.Opinion.Approved.Fill" Color="{StaticResource Primitive.Color.Cyan900}" />
       <SolidColorBrush x:Key="Intent.Opinion.Approved.Accent" Color="{StaticResource Primitive.Color.Cyan400}" />
@@ -294,17 +292,19 @@
       <SolidColorBrush x:Key="Intent.Opinion.Unknown.Text" Color="{StaticResource Primitive.Color.Amber200}" />
       <SolidColorBrush x:Key="Intent.Opinion.Unknown.Fill" Color="{StaticResource Primitive.Color.Amber975}" />
       <SolidColorBrush x:Key="Intent.Opinion.Unknown.Accent" Color="{StaticResource Primitive.Color.Amber200}" />
+      <SolidColorBrush x:Key="Intent.Opinion.None.Outline" Color="{StaticResource Primitive.Color.Slate700}" />
       <SolidColorBrush x:Key="Intent.Opinion.None.Text" Color="{StaticResource Primitive.Color.Slate300}" />
       <SolidColorBrush x:Key="Intent.Change.Action" Color="{StaticResource Primitive.Color.Blue350}" />
       <SolidColorBrush x:Key="Intent.Change.Text" Color="{StaticResource Primitive.Color.Blue250}" />
       <SolidColorBrush x:Key="Intent.Change.Fill" Color="{StaticResource Primitive.Color.Blue950}" />
-      <SolidColorBrush x:Key="Intent.Change.SoftFill" Color="{StaticResource Primitive.Color.Blue950}" />
       <SolidColorBrush x:Key="Intent.Change.Edge" Color="{StaticResource Primitive.Color.Blue350}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Same" Color="{StaticResource Primitive.Color.Slate400}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Different" Color="{StaticResource Primitive.Color.Blue250}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Different.Fill" Color="{StaticResource Primitive.Color.Blue950}" />
-      <SolidColorBrush x:Key="Intent.Agreement.None" Color="{StaticResource Primitive.Color.Rose200}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Capped" Color="{StaticResource Primitive.Color.Amber200}" />
+      <SolidColorBrush x:Key="Intent.Agreement.Agreeing" Color="{StaticResource Primitive.Color.Slate400}" />
+      <SolidColorBrush x:Key="Intent.Agreement.Conflict" Color="{StaticResource Primitive.Color.Blue250}" />
+      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Fill" Color="{StaticResource Primitive.Color.Blue950}" />
+      <StaticResource x:Key="Intent.Agreement.Conflict.Shadow" ResourceKey="Primitive.Shadow.Inset2.Blue350" />
+      <SolidColorBrush x:Key="Intent.Agreement.Suggestion" Color="{StaticResource Primitive.Color.Blue250}" />
+      <SolidColorBrush x:Key="Intent.Parser.NoReading" Color="{StaticResource Primitive.Color.Rose200}" />
+      <SolidColorBrush x:Key="Intent.Parser.SearchCapped" Color="{StaticResource Primitive.Color.Amber200}" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

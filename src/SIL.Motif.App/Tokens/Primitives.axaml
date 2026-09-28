@@ -84,6 +84,9 @@
   <Color x:Key="Primitive.Color.Slate950">#202833</Color>
   <Color x:Key="Primitive.Color.Slate975">#151B23</Color>
 
+  <BoxShadows x:Key="Primitive.Shadow.Inset2.Blue650">inset 2 0 0 #215CC7</BoxShadows>
+  <BoxShadows x:Key="Primitive.Shadow.Inset2.Blue350">inset 2 0 0 #83ADFF</BoxShadows>
+
   <StaticResource x:Key="Primitive.Space.0" ResourceKey="SemiSpacingNone" />
   <StaticResource x:Key="Primitive.Space.2" ResourceKey="SemiSpacingSuperTight" />
   <StaticResource x:Key="Primitive.Space.4" ResourceKey="SemiSpacingExtraTight" />
@@ -96,12 +99,10 @@
   <x:Double x:Key="Primitive.Space.1">1</x:Double>
   <x:Double x:Key="Primitive.Space.10">10</x:Double>
   <x:Double x:Key="Primitive.Space.28">28</x:Double>
-  <x:Double x:Key="Primitive.Space.3">3</x:Double>
-  <x:Double x:Key="Primitive.Space.5">5</x:Double>
-  <x:Double x:Key="Primitive.Space.7">7</x:Double>
 
   <Thickness x:Key="Primitive.Inset.0_0_0_0">0</Thickness>
   <Thickness x:Key="Primitive.Inset.1_1_1_1">1</Thickness>
+  <Thickness x:Key="Primitive.Inset.1p2_1p2_1p2_1p2">1.2</Thickness>
   <Thickness x:Key="Primitive.Inset.16_16_16_16">16</Thickness>
   <Thickness x:Key="Primitive.Inset.14_10_14_10">14,10</Thickness>
   <Thickness x:Key="Primitive.Inset.7_1_7_1">7,1</Thickness>
@@ -156,7 +157,6 @@
   <Thickness x:Key="Primitive.Inset.20_8_20_8">20,8</Thickness>
   <Thickness x:Key="Primitive.Inset.24_16_24_20">24,16,24,20</Thickness>
   <Thickness x:Key="Primitive.Inset.3_0_3_0">3,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.3_1_3_1">3,1</Thickness>
   <Thickness x:Key="Primitive.Inset.3_0_0_0">3,0,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.5_0_5_0">5,0</Thickness>
 
@@ -189,6 +189,7 @@
   <x:Double x:Key="Primitive.Type.10">10</x:Double>
 
   <x:Double x:Key="Primitive.Size.0">0</x:Double>
+  <x:Double x:Key="Primitive.Size.1">1</x:Double>
   <x:Double x:Key="Primitive.Size.8">8</x:Double>
   <x:Double x:Key="Primitive.Size.18">18</x:Double>
   <x:Double x:Key="Primitive.Size.22">22</x:Double>
@@ -236,10 +237,15 @@
   <x:Double x:Key="Primitive.Size.27">27</x:Double>
 
   <x:Double x:Key="Primitive.Stroke.1p2">1.2</x:Double>
+  <x:Double x:Key="Primitive.Stroke.1">1</x:Double>
   <x:Double x:Key="Primitive.Stroke.1p8">1.8</x:Double>
 
   <collections:AvaloniaList x:Key="Primitive.Dash.3_2" x:TypeArguments="x:Double">
     <x:Double>3</x:Double>
+    <x:Double>2</x:Double>
+  </collections:AvaloniaList>
+  <collections:AvaloniaList x:Key="Primitive.Dash.1_2" x:TypeArguments="x:Double">
+    <x:Double>1</x:Double>
     <x:Double>2</x:Double>
   </collections:AvaloniaList>
 
