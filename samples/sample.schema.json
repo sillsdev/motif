@@ -285,6 +285,8 @@
         { "$ref": "#/$defs/setSlotOptional" },
         { "$ref": "#/$defs/setAffixSlots" },
         { "$ref": "#/$defs/duplicateOptionalSlot" },
+        { "$ref": "#/$defs/addAffix" },
+        { "$ref": "#/$defs/addAllomorph" },
         { "$ref": "#/$defs/duplicateTemplate" }
       ]
     },
@@ -368,6 +370,37 @@
         "slotId": { "$ref": "#/$defs/id" },
         "count": { "type": "integer", "minimum": 1, "maximum": 64 },
         "side": { "enum": ["prefix", "suffix"] }
+      }
+    },
+    "addAffix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "affix"],
+      "properties": {
+        "op": { "const": "addAffix" },
+        "affix": { "$ref": "#/$defs/affixPatch" }
+      }
+    },
+    "affixPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "partOfSpeech", "slots", "gloss"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "partOfSpeech": { "$ref": "#/$defs/id" },
+        "slots": { "$ref": "#/$defs/nonEmptyStrings" },
+        "gloss": { "type": "string", "minLength": 1 },
+        "features": { "type": "array", "items": { "$ref": "#/$defs/featureAssignment" } }
+      }
+    },
+    "addAllomorph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "affixId", "allomorph"],
+      "properties": {
+        "op": { "const": "addAllomorph" },
+        "affixId": { "$ref": "#/$defs/id" },
+        "allomorph": { "$ref": "#/$defs/allomorph" }
       }
     },
     "duplicateTemplate": {

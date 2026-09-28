@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.Parser;
 using SIL.LCModel;
 using Xunit;
 
@@ -38,7 +39,7 @@ public sealed class SampleBuilderExtensionTests
 
             var prefix = cache.LangProject.LexDbOA.Entries.Single(entry =>
                 entry.LexemeFormOA is IMoAffixAllomorph form &&
-                form.Form.get_String(cache.DefaultVernWs).Text == "ki-");
+                form.Form.get_String(cache.DefaultVernWs).Text == "ki");
             var prefixForm = Assert.IsAssignableFrom<IMoAffixAllomorph>(prefix.LexemeFormOA);
             Assert.Equal(MoMorphTypeTags.kguidMorphPrefix, prefixForm.MorphTypeRA!.Guid);
             Assert.Contains(stemMsa.InflectionClassRA, prefixForm.InflectionClassesRC);
@@ -86,10 +87,159 @@ public sealed class SampleBuilderExtensionTests
 
             var prefix = cache.LangProject.LexDbOA.Entries.Single(entry =>
                 entry.LexemeFormOA is IMoAffixAllomorph form &&
-                form.Form.get_String(cache.DefaultVernWs).Text == "ki-");
+                form.Form.get_String(cache.DefaultVernWs).Text == "ki");
             Assert.Empty(prefix.AlternateFormsOS);
             var msa = Assert.IsAssignableFrom<IMoInflAffMsa>(prefix.MorphoSyntaxAnalysesOC.Single());
             Assert.Equal(2, msa.SlotsRC.Count);
+        }
+        finally
+        {
+            DeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public async Task AddAffixAndAddAllomorphPatchesBuildZeroFormAffixes()
+    {
+        var root = NewRoot();
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var (samplePath, bugsPath) = await WriteFixtureAsync(root, includeClassFeatures: false);
+            var sample = JsonNode.Parse(await File.ReadAllTextAsync(samplePath))!.AsObject();
+            sample["affixSlots"]!.AsArray().Add(JsonNode.Parse("""
+                { "id": "object", "name": "Object", "partOfSpeech": "verb", "optional": true }
+                """));
+            var verbTemplate = sample["affixTemplates"]!.AsArray().Single(template =>
+                template!["id"]!.GetValue<string>() == "verb")!;
+            verbTemplate["prefixSlots"] = JsonNode.Parse("""["object"]""");
+            await File.WriteAllTextAsync(samplePath, sample.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            await File.WriteAllTextAsync(bugsPath, """
+                [{
+                  "id": "zero-object",
+                  "title": "Zero object affix",
+                  "disclaimer": "Synthetic builder test.",
+                  "symptom": { "kind": "slow", "words": ["yapti"], "reason": "The parser explores zero-form object markers." },
+                  "fix": ["Remove the zero-form object allomorphs from the Object slot."],
+                  "patch": [
+                    {
+                      "op": "addAffix",
+                      "affix": {
+                        "id": "zero-object-affix",
+                        "partOfSpeech": "verb",
+                        "slots": ["object"],
+                        "gloss": "object marker"
+                      }
+                    },
+                    {
+                      "op": "addAllomorph",
+                      "affixId": "zero-object-affix",
+                      "allomorph": {
+                        "id": "zero-object-conditioned",
+                        "form": "",
+                        "environment": "after-vowel",
+                        "morphType": "prefix"
+                      }
+                    },
+                    {
+                      "op": "addAllomorph",
+                      "affixId": "zero-object-affix",
+                      "allomorph": {
+                        "id": "zero-object-unconditioned",
+                        "form": "",
+                        "morphType": "prefix"
+                      }
+                    }
+                  ]
+                }]
+                """);
+            using var schema = JsonDocument.Parse(await File.ReadAllTextAsync(
+                Path.Combine(RepositoryRoot(), "samples", "sample.schema.json")));
+            using var bugs = JsonDocument.Parse(await File.ReadAllTextAsync(bugsPath));
+            SampleJsonSchemaValidator.AssertValid(bugs.RootElement,
+                schema.RootElement.GetProperty("$defs").GetProperty("bugList"), schema.RootElement);
+
+            using var output = await BuildAsync(root, samplePath, bugsPath, ["zero-object"]);
+            using var cache = new FwDataProjectLoader().LoadScratchCache(
+                output.RootElement.GetProperty("projectPath").GetString()!);
+
+            var entry = cache.LangProject.LexDbOA.Entries.Single(candidate =>
+                candidate.MorphoSyntaxAnalysesOC.OfType<IMoInflAffMsa>().Any(msa =>
+                    msa.SlotsRC.Any(slot => slot.Name.get_String(cache.DefaultAnalWs).Text == "Object")));
+            var primary = Assert.IsAssignableFrom<IMoAffixAllomorph>(entry.LexemeFormOA);
+            Assert.True(string.IsNullOrEmpty(primary.Form.get_String(cache.DefaultVernWs).Text));
+            Assert.Equal(MoMorphTypeTags.kguidMorphPrefix, primary.MorphTypeRA!.Guid);
+            Assert.Single(primary.PhoneEnvRC);
+            Assert.Equal("/[V]_", primary.PhoneEnvRC.Single().StringRepresentation.Text);
+            var alternate = Assert.IsAssignableFrom<IMoAffixAllomorph>(Assert.Single(entry.AlternateFormsOS));
+            Assert.True(string.IsNullOrEmpty(alternate.Form.get_String(cache.DefaultVernWs).Text));
+            Assert.Empty(alternate.PhoneEnvRC);
+            var msa = Assert.IsAssignableFrom<IMoInflAffMsa>(entry.MorphoSyntaxAnalysesOC.Single());
+            Assert.Equal("Object", msa.SlotsRC.Single().Name.get_String(cache.DefaultAnalWs).Text);
+        }
+        finally
+        {
+            DeleteDirectory(root);
+        }
+    }
+
+    [RealParserFact]
+    public async Task PrefixAffixBuiltBySampleBuilderParsesThroughMotifAssess()
+    {
+        var root = NewRoot();
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var (samplePath, bugsPath) = await WriteFixtureAsync(root, includeClassFeatures: false);
+            var sample = JsonNode.Parse(await File.ReadAllTextAsync(samplePath))!.AsObject();
+            while (sample["stems"]!.AsArray().Count > 1)
+                sample["stems"]!.AsArray().RemoveAt(sample["stems"]!.AsArray().Count - 1);
+            sample["affixes"]!.AsArray().Clear();
+            sample["affixSlots"]!.AsArray().Clear();
+            sample["affixSlots"]!.AsArray().Add(JsonNode.Parse(
+                """{ "id": "prefix-one", "name": "Prefix one", "partOfSpeech": "noun", "optional": false }"""));
+            sample["affixTemplates"]!.AsArray().Clear();
+            sample["affixTemplates"]!.AsArray().Add(JsonNode.Parse(
+                """{ "id": "noun-prefix", "name": "Noun prefix", "partOfSpeech": "noun", "prefixSlots": ["prefix-one"], "final": true }"""));
+            sample["phonologicalRules"]!.AsArray().Clear();
+            sample["affixes"]!.AsArray().Add(JsonNode.Parse("""
+                {
+                  "id": "test-prefix",
+                  "partOfSpeech": "noun",
+                  "slots": ["prefix-one"],
+                  "gloss": "test prefix",
+                  "allomorphs": [{ "id": "test-prefix-form", "form": "ki", "morphType": "prefix" }]
+                }
+                """));
+            sample["texts"]!.AsArray().Clear();
+            sample["texts"]!.AsArray().Add(JsonNode.Parse(
+                """{ "id": "prefix-smoke", "title": "Prefix test", "sentences": ["kiadam"] }"""));
+            await File.WriteAllTextAsync(samplePath, sample.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            using var output = await BuildAsync(root, samplePath, bugsPath, []);
+            var projectPath = output.RootElement.GetProperty("projectPath").GetString()!;
+            var text = Assert.Single(output.RootElement.GetProperty("texts").EnumerateArray(), item =>
+                item.GetProperty("id").GetString() == "prefix-smoke");
+            var assess = new ProcessStartInfo(BuildOutput.Cli)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            assess.Environment["MOTIF_WORKER_ROOT"] = Path.Combine(root, "worker-root");
+            assess.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+            assess.ArgumentList.Add("assess");
+            assess.ArgumentList.Add(projectPath);
+            assess.ArgumentList.Add("--texts");
+            assess.ArgumentList.Add(text.GetProperty("guid").GetString()!);
+            assess.ArgumentList.Add("--json");
+            var result = await RunAsync(assess);
+
+            Assert.Equal(0, result.ExitCode);
+            using var assessment = JsonDocument.Parse(result.StandardOutput);
+            var word = Assert.Single(assessment.RootElement.GetProperty("words").EnumerateArray());
+            Assert.Equal("kiadam", word.GetProperty("word").GetString());
+            Assert.Equal("analysed", word.GetProperty("outcome").GetString());
         }
         finally
         {
@@ -142,7 +292,7 @@ public sealed class SampleBuilderExtensionTests
                   "features": [{ "featureId": "noun-class", "valueId": "class-one" }],
                   "allomorphs": [{
                     "id": "class-prefix-form",
-                    "form": "ki-",
+                    "form": "ki",
                     "morphType": "prefix",
                     "inflectionClasses": ["class-one"],
                     "requiredFeatures": [{ "featureId": "noun-class", "valueId": "class-one" }]
@@ -163,8 +313,8 @@ public sealed class SampleBuilderExtensionTests
                   "slots": ["prefix-one"],
                   "gloss": "test prefix",
                   "allomorphs": [
-                    { "id": "test-prefix-one", "form": "ki-", "morphType": "prefix" },
-                    { "id": "test-prefix-two", "form": "ko-", "morphType": "prefix" }
+                    { "id": "test-prefix-one", "form": "ki", "morphType": "prefix" },
+                    { "id": "test-prefix-two", "form": "ko", "morphType": "prefix" }
                   ]
                 }
                 """));
@@ -218,6 +368,17 @@ public sealed class SampleBuilderExtensionTests
     private static string NewRoot() => Path.Combine(BuildOutput.ProductDirectory,
         "SampleBuilderExtensions", Guid.NewGuid().ToString("N"));
 
+    private static async Task<ProcessResult> RunAsync(ProcessStartInfo start)
+    {
+        start.UseShellExecute = false;
+        start.CreateNoWindow = true;
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        return new ProcessResult(process.ExitCode, await output, await error);
+    }
+
     private static string RepositoryRoot() => Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
 
     private static void DeleteDirectory(string root)
@@ -226,4 +387,6 @@ public sealed class SampleBuilderExtensionTests
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
+
+    private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
 }
