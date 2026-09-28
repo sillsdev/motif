@@ -128,11 +128,31 @@ This document supersedes the reading marks in the app-shell screens (`2026-09-24
 
 A staged decision (an approve, disapprove or make Unknown) becomes **Uncertain — check again** when a Refresh captures a new Baseline and the words in its source sentence line differ.
 
-**What counts as a change:**
-- Motif compares the ordered words by Text, paragraph, sentence and occurrence, then by wordform and NFD form.
-- Inserting, deleting or reordering a word counts, and so does changing one.
-- Punctuation and spacing alone don't count.
-- If the sentence can't be matched without ambiguity, the decision is Uncertain.
+**Where it lives: Motif's fingerprinting, extended to the sentence.** Every pending change already carries a fit fingerprint (`extensions.changeFit`). It records the wordform and its form, the analysis and a digest of its content, the opinion and spelling status, and the Baseline token. Preflight compares all of these with the saved project, and a change that fails is "no longer fits". The fingerprint doesn't cover the change's sentence. Nothing else in Motif does either: the Baseline's semantic digest leaves out Text contents, so a sentence-only edit leaves every fingerprint green.
+
+Uncertain adds **occurrence evidence** to the same fingerprint. The evidence is nonsemantic and relative to the Baseline, so refreshing it never changes the change's intent or its digest. That is exactly what the contract lets a rebase refresh.
+
+**Recorded when the linguist decides, in Analyze texts:**
+- the Text, paragraph and Segment GUIDs (LibLCM's `Segment` is a GUID-bearing object);
+- the word's index in `Segment.Analyses`;
+- the chosen wordform and analysis;
+- whether the paragraph's parse was current;
+- a digest of the sentence's ordered words, by wordform identity and NFD form.
+
+**Compared at Refresh and at Preflight:** the anchor is resolved against the new Baseline's Text projection.
+- The anchor still resolves, to the same word, with the same word digest: the change is unchanged.
+- **Uncertain** in any of these cases:
+  - a word was inserted, deleted, reordered or changed;
+  - the parse is stale;
+  - the Segment is gone or split;
+  - the word can't be matched without ambiguity.
+
+  Motif never attaches the old evidence to the next word that happens to be spelled the same.
+- The wordform, the analysis or the prior opinion changed: that is **no longer fits**, as it is today, and it takes precedence.
+
+Punctuation and spacing are left out of the digest, because the owner's ruling is about words. LibLCM keeps a Segment's identity when an edit doesn't touch its text, so an edit elsewhere in the paragraph doesn't make the change Uncertain.
+
+The anchor records where the decision was considered. The opinion itself still applies to the analysis everywhere in the project. When one analysis was decided in several sentences, each keeps its own evidence.
 
 **While it is Uncertain:**
 - Uncertain is an overlay on the original transition. It doesn't replace it: the item still reads Unknown → Approved.
@@ -173,10 +193,13 @@ Items within a group are sorted by Text, sentence and word.
 ## 8. What has to be built
 
 - **Remove analysis:** a new delete operation, with its own family meeting the definition of done, and a preview of the analysis's uses in texts.
-- **Uncertain:**
-  - every staged opinion change records where it came from: its Text, paragraph, sentence and word;
-  - Refresh compares the old and new sentence words before it replaces the stored Text projection, and keeps the explanation until the change is reconfirmed or undone;
-  - the stored projection keeps stable paragraph and sentence identities.
+- **Uncertain,** built on the existing fit fingerprint rather than beside it:
+  - the Text projection keeps paragraph and Segment GUIDs, the occurrence index, and whether the paragraph's parse was current, not just the line number and sentence;
+  - Analyze texts passes the chosen occurrence through `ChangeIntent`;
+  - `changeFit` stores the occurrence anchor and the sentence's word digest;
+  - Recheck, at Refresh, and Preflight resolve the anchor against the current Baseline and classify it as unchanged, Uncertain, or "no longer fits";
+  - there is a visible Uncertain state with an explicit Reconfirm, which refreshes only the evidence;
+  - tests cover an unchanged sentence, an edited word, a stale parse, a missing or split Segment, an ambiguous match, and a change that still fits while its sentence changed.
 - **Parser agreement:** a single matcher. The change composer and the Assessment's parse evidence each apply ADR 0027's rule separately today, and their NFD handling of guessed forms can differ.
 - **The linguist's guide:** "How to read Motif's marks", drafted on the canvas, becomes user documentation beside the window's help.
 
