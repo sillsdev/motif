@@ -30,6 +30,7 @@ public static class AnalysisChangeKinds
     public const string AddCandidate = "add-candidate";
     /// <summary>Mark the wordform spelling as incorrect.</summary>
     public const string IncorrectSpelling = "incorrect-spelling";
+    public const string RemoveAnalysis = "remove-analysis";
 }
 
 /// <summary>Composes a collected word change into closed analysis operations against a live project.</summary>
@@ -46,6 +47,17 @@ public static class AnalysisChangeComposer
             return [new OperationEnvelope(CanonicalId.Mint(), WfiWordformSpellingStatusOperationKinds.SetSpellingStatus,
                 target: intent.WordformId, after: JsonSerializer.SerializeToElement(new { value = 2 }),
                 extensions: ChangeExtension(intent.ChangeId))];
+
+        if (intent.Kind == AnalysisChangeKinds.RemoveAnalysis)
+        {
+            if (intent.StoredAnalysisId is not { } storedAnalysisId ||
+                !wordform.AnalysesOC.Any(analysis => analysis.Guid == storedAnalysisId.ToGuid()))
+                throw new InvalidOperationException("Choose one stored analysis under this wordform to remove.");
+            return [new OperationEnvelope(CanonicalId.Mint(), WfiAnalysisOperationKinds.DeleteAnalysis,
+                target: storedAnalysisId,
+                after: JsonSerializer.SerializeToElement(new { }),
+                extensions: ChangeExtension(intent.ChangeId))];
+        }
 
         var reading = intent.Reading ?? throw new InvalidOperationException(
             $"'{intent.Kind}' requires an Assessment with a parser reading for this word.");

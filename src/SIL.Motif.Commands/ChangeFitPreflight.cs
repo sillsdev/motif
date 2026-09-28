@@ -129,7 +129,8 @@ public static class ChangeFitPreflight
                     continue;
                 }
                 if (operation.Kind is WfiAnalysisOperationKinds.AddRefEvaluations or
-                    WfiAnalysisOperationKinds.RemoveRefEvaluations &&
+                    WfiAnalysisOperationKinds.RemoveRefEvaluations or
+                    WfiAnalysisOperationKinds.DeleteAnalysis &&
                     !string.Equals(analysis.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString(),
                         fingerprint.HumanOpinion, StringComparison.Ordinal))
                 {

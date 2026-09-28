@@ -18,12 +18,26 @@ public static class AnalysisOpinionSlotValidator
     public static (OperationEnvelope Existing, OperationEnvelope Duplicate)? FindConflict(
         IEnumerable<OperationEnvelope> operations)
     {
+        var materialized = operations.ToArray();
         var seen = new Dictionary<(CanonicalId Target, string Field, string? Discriminator), OperationEnvelope>();
-        foreach (var operation in operations)
+        foreach (var operation in materialized)
         {
             if (SlotOf(operation) is not { } slot) continue;
             if (seen.TryGetValue(slot, out var existing)) return (existing, operation);
             seen.Add(slot, operation);
+        }
+
+        for (var index = 0; index < materialized.Length; index++)
+        {
+            var deletion = materialized[index];
+            if (deletion.Kind != WfiAnalysisOperationKinds.DeleteAnalysis || deletion.Target is not { } analysisId)
+                continue;
+            for (var otherIndex = index + 1; otherIndex < materialized.Length; otherIndex++)
+            {
+                var other = materialized[otherIndex];
+                if (other.Target == analysisId || other.EntityId == analysisId)
+                    return (deletion, other);
+            }
         }
         return null;
     }
@@ -41,7 +55,8 @@ public static class AnalysisOpinionSlotValidator
                 WfiWordformSpellingStatusOperationKinds.ClearSpellingStatus when operation.Target is { } target =>
                 (target, "spellingStatus", null),
             WfiAnalysisOperationKinds.AddRefEvaluations or
-                WfiAnalysisOperationKinds.RemoveRefEvaluations when operation.Target is { } target =>
+                WfiAnalysisOperationKinds.RemoveRefEvaluations or
+                WfiAnalysisOperationKinds.DeleteAnalysis when operation.Target is { } target =>
                 (target, "defaultUserOpinion", null),
             WfiAnalysisOperationKinds.CreateAnalysis when operation.Target is { } target &&
                 operation.EntityId is { } member => (target, "analyses", member.Value),
