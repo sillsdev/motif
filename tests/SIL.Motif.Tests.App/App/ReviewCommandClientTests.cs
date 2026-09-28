@@ -26,6 +26,90 @@ namespace SIL.Motif.Tests.App;
 public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public async Task RefreshAndReconfirmCarryAnAnchoredChangeThroughTheRealCommandClient()
+    {
+        using var project = new WalkthroughProject(pristine);
+        AddSecondWord(project);
+        var productVersion = SIL.Motif.Host.MotifProductVersion.CurrentText;
+        var baseline = BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+        var words = TextWordsQuery.Query(new TextWordsRequest(project.FwDataPath, [project.Text.TextId]));
+        Assert.True(words.Succeeded, words.Refusal?.Message);
+        var firstWord = words.Value!.Texts.Single().Lines
+            .Single(line => line.ParagraphId == project.Text.FirstParagraphId).Tokens
+            .Single(token => token.Form == SeededProject.AnalysedWordForm);
+        var anchor = new OccurrenceAnchor(project.Text.TextId, project.Text.FirstParagraphId,
+            project.Text.FirstSegmentId, firstWord.OccurrenceIndex);
+        var client = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath);
+        var loaded = await client.LoadPendingChangesAsync(
+            new PendingChangesRequest(project.FwDataPath, productVersion), CancellationToken.None);
+        Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
+        var intent = new ChangeIntent(CanonicalId.Mint().Value, "reject",
+            CanonicalId.FromGuid(project.Text.AnalysedWordformId).Value, SeededProject.AnalysedWordForm,
+            StoredAnalysisId: CanonicalId.FromGuid(project.Text.ApprovedAnalysisId).Value,
+            OriginPage: "Texts", Occurrence: anchor);
+        var put = await client.PutPendingChangeAsync(new PutPendingChangeRequest(
+            project.FwDataPath, productVersion, loaded.Value!.Revision, intent), CancellationToken.None);
+        Assert.True(put.Succeeded, put.Refusal?.Message);
+
+        EditSecondWord(project, "changedword");
+        var refreshed = BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
+        Assert.True(refreshed.Succeeded, refreshed.Refusal?.Message);
+        var checkedChanges = await client.RecheckPendingChangesAsync(new RecheckPendingChangesRequest(
+            project.FwDataPath, productVersion, put.Value!.Revision), CancellationToken.None);
+
+        Assert.True(checkedChanges.Succeeded, checkedChanges.Refusal?.Message);
+        var uncertain = Assert.Single(checkedChanges.Value!.FitSummary);
+        Assert.Equal(ChangeFitStatus.Uncertain, uncertain.Status);
+        Assert.Contains(uncertain.Uncertainty!.AfterTokens, token => token.Form == "changedword");
+        var reconfirmed = await client.ReconfirmPendingChangeAsync(new ReconfirmPendingChangeRequest(
+            project.FwDataPath, productVersion, checkedChanges.Value.Revision, uncertain.ChangeId),
+            CancellationToken.None);
+
+        Assert.True(reconfirmed.Succeeded, reconfirmed.Refusal?.Message);
+        Assert.Equal(ChangeFitStatus.Fits, Assert.Single(reconfirmed.Value!.FitSummary).Status);
+    }
+
+    private static void AddSecondWord(WalkthroughProject project) =>
+        new FieldWorksSimulator(project.FwDataPath).SaveEdit(cache =>
+        {
+            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>()
+                .GetObject(project.Text.FirstParagraphId);
+            var segment = cache.ServiceLocator.GetInstance<ISegmentRepository>()
+                .GetObject(project.Text.FirstSegmentId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var secondWord = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("secondword", cache.DefaultVernWs));
+                segment.AnalysesRS.Insert(1, secondWord);
+                paragraph.Contents = TsStringUtils.MakeString(
+                    $"{SeededProject.AnalysedWordForm} secondword.", cache.DefaultVernWs);
+                paragraph.ParseIsCurrent = true;
+            });
+        });
+
+    private static void EditSecondWord(WalkthroughProject project, string replacementForm) =>
+        new FieldWorksSimulator(project.FwDataPath).SaveEdit(cache =>
+        {
+            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>()
+                .GetObject(project.Text.FirstParagraphId);
+            var segment = cache.ServiceLocator.GetInstance<ISegmentRepository>()
+                .GetObject(project.Text.FirstSegmentId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var replacement = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString(replacementForm, cache.DefaultVernWs));
+                segment.AnalysesRS.RemoveAt(1);
+                segment.AnalysesRS.Insert(1, replacement);
+                paragraph.Contents = TsStringUtils.MakeString(
+                    $"{SeededProject.AnalysedWordForm} {replacementForm}.", cache.DefaultVernWs);
+                paragraph.ParseIsCurrent = true;
+            });
+        });
+
+    [Fact]
     public async Task ReviewMeasuresAndAppliesInProcessWithoutWorkerEnvironmentOverrides()
     {
         using var project = new WalkthroughProject(pristine);

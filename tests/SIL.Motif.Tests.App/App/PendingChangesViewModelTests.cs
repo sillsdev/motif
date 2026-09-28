@@ -95,6 +95,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Null(change.AssessmentId);
         Assert.Null(change.Reading);
         Assert.Null(change.ReadingIndex);
+        Assert.Null(change.Occurrence);
         Assert.Equal(WorkspacePage.TryAWord.ToString(), change.OriginPage);
     }
 

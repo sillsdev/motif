@@ -4,6 +4,8 @@ using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -305,6 +307,24 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             pending.TryGetValue(token.Form, out var changes);
             token.PendingState = PendingChangeStates.FromChanges(changes);
             token.IsPending = token.PendingState != PendingChangeState.None;
+            token.IsUncertainChanged = false;
+        }
+        foreach (var line in Texts.SelectMany(text => text.Lines))
+        {
+            var words = line.Tokens.Where(token => token.IsWord).ToArray();
+            foreach (var change in _changes.Items.Where(item => item.IsUncertain && item.AfterWords.Count > 0))
+            {
+                if (words.Length != change.AfterWords.Count) continue;
+                var matches = words.Select((token, index) => (token, expected: change.AfterWords[index]))
+                    .All(pair => pair.token.OccurrenceIndex == pair.expected.Index &&
+                        pair.token.WordformId is { } wordformId &&
+                        CanonicalId.FromGuid(wordformId).Value == pair.expected.WordformId &&
+                        pair.token.Form.Normalize(System.Text.NormalizationForm.FormD) ==
+                        pair.expected.Form.Normalize(System.Text.NormalizationForm.FormD));
+                if (!matches) continue;
+                foreach (var (token, expected) in words.Zip(change.AfterWords))
+                    if (expected.IsChanged) token.IsUncertainChanged = true;
+            }
         }
         OnPropertyChanged(nameof(Changes));
     }
@@ -319,7 +339,8 @@ public sealed class ResultsTextViewModel
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(results);
         Title = text.Title;
-        Lines = text.Lines.Select(line => new ResultsLineViewModel(text.Title, line, results, projectWords)).ToArray();
+        Lines = text.Lines.Select(line => new ResultsLineViewModel(
+            text.Title, line, results, projectWords, text.TextId)).ToArray();
     }
 
     public string Title { get; }
@@ -330,17 +351,25 @@ public sealed class ResultsTextViewModel
 public sealed class ResultsLineViewModel
 {
     public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results,
-        IReadOnlyDictionary<string, TextWordRowViewModel>? projectWords = null)
+        IReadOnlyDictionary<string, TextWordRowViewModel>? projectWords = null, Guid textId = default)
     {
         ArgumentNullException.ThrowIfNull(line);
         Number = line.Number;
+        ParagraphId = line.ParagraphId;
+        SegmentId = line.SegmentId;
         Tokens = line.Tokens.Select(token => new ResultsTokenViewModel(title, line.Number, token,
             token.Form is { } form && results.TryGetValue(form, out var result) ? result : null,
             token.Form is { } projectForm && projectWords is not null && projectWords.TryGetValue(projectForm, out var projectWord)
-                ? projectWord : null)).ToArray();
+                ? projectWord : null,
+            occurrence: token.Form is not null && textId != Guid.Empty && line.ParagraphId != Guid.Empty &&
+                line.SegmentId != Guid.Empty && token.OccurrenceIndex >= 0
+                    ? new OccurrenceAnchor(textId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex)
+                    : null)).ToArray();
     }
 
     public int Number { get; }
+    public Guid ParagraphId { get; }
+    public Guid SegmentId { get; }
     public IReadOnlyList<ResultsTokenViewModel> Tokens { get; }
 }
 
@@ -351,13 +380,16 @@ public sealed class ResultsLineViewModel
 public sealed partial class ResultsTokenViewModel : ObservableObject
 {
     public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
-        TextWordRowViewModel? projectWord = null, string? location = null)
+        TextWordRowViewModel? projectWord = null, string? location = null, OccurrenceAnchor? occurrence = null)
     {
         ArgumentNullException.ThrowIfNull(token);
         Text = token.Text;
         Form = token.Form ?? token.Text;
         IsWord = token.Form is not null;
         Location = location ?? $"{title}, line {line}";
+        Occurrence = occurrence;
+        WordformId = token.WordformId;
+        OccurrenceIndex = token.OccurrenceIndex;
         WordLink = token.WordLink is { } link ? new Uri(link) : null;
         Stored = token.Analysis?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
         ProjectSummary = projectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
@@ -418,6 +450,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool IsWord { get; }
     public string Location { get; }
     public Uri? WordLink { get; }
+    public OccurrenceAnchor? Occurrence { get; }
+    public Guid? WordformId { get; }
+    public int OccurrenceIndex { get; }
     public bool HasWordLink => WordLink is not null;
     public bool HasNoWordLink => IsWord && WordLink is null;
     public string WordLinkName => $"Open {Text} in FieldWorks";
@@ -446,6 +481,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isPending;
+
+    [ObservableProperty]
+    private bool _isUncertainChanged;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PendingChangeStatus))]
