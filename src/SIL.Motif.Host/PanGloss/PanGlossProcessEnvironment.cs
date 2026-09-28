@@ -5,7 +5,7 @@ namespace SIL.Motif.Host.PanGloss;
 
 internal static class PanGlossProcessEnvironment
 {
-    private static readonly string[] AllowedNames = ["SystemRoot", "PATH", "TEMP", "TMP"];
+    private static readonly string[] AllowedNames = ["SystemRoot", "PATH", "TEMP", "TMP", "TMPDIR"];
 
     /// <summary>
     /// PanGloss writes UTF-8 to its standard streams regardless of the console code page, so a redirected

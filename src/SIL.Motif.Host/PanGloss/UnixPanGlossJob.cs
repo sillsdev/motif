@@ -173,16 +173,11 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
 
     private static List<string> BuildEnvironment(ProcessStartInfo startInfo)
     {
-        var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
-            values[(string)entry.Key] = (string)entry.Value!;
-        foreach (var pair in startInfo.Environment)
-        {
-            if (pair.Value is null) values.Remove(pair.Key);
-            else values[pair.Key] = pair.Value;
-        }
-        return values.OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .Select(pair => pair.Key + "=" + pair.Value).ToList();
+        return startInfo.Environment
+            .Where(pair => pair.Value is not null)
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => pair.Key + "=" + pair.Value)
+            .ToList();
     }
 
     private static FileStream CreateCaptureStream() => new(Path.Combine(Path.GetTempPath(),
@@ -222,7 +217,7 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             : new[]
             {
                 "Finite RLIMIT_DATA and RLIMIT_AS values are unavailable on macOS; the process-group watchdog samples every 50 ms.",
-                "The sampled footprint can overshoot the ceiling, and a peak released between checks can be missed.",
+                "The 50 ms sampling interval can allow footprint overshoot, and a peak released between samples can be missed.",
                 "A descendant that deliberately leaves the process group can escape measurement and termination."
             };
         if (!linux)
