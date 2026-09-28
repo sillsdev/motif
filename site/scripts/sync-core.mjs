@@ -68,6 +68,7 @@ const learnSidebarOrder = [
 	'affixes-slots-and-templates',
 	'allomorphs-and-environments',
 	'phonological-rules',
+	'modelling-a-grammar-the-parser-can-use',
 	'reading-why-a-word-fails',
 	'why-a-grammar-is-slow',
 	'working-with-an-ai-consultant',
