@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
 
@@ -315,12 +316,29 @@ public sealed class BaselineRepository
         return true;
     }
 
-    private static bool IsValid(TextWordsProjectedWordform? wordform) =>
-        wordform is { Approved: not null, Disapproved: not null, CandidateCount: >= 0 } &&
-        wordform.Approved.Concat(wordform.Disapproved).All(analysis => analysis is not null && IsValid(analysis));
+    private static bool IsValid(TextWordsProjectedWordform? wordform)
+    {
+        if (wordform is not { Approved: not null, Disapproved: not null, Analyses: not null, CandidateCount: >= 0 })
+            return false;
+        if (wordform.Analyses.Any(analysis => analysis is null || !IsValid(analysis)) ||
+            wordform.Analyses.Select(analysis => analysis.AnalysisId).Distinct().Count() != wordform.Analyses.Count)
+            return false;
+        var byId = wordform.Analyses.ToDictionary(analysis => analysis.AnalysisId);
+        return wordform.Approved.All(analysis => IsValid(analysis) &&
+                   byId.TryGetValue(analysis.AnalysisId, out var stored) && stored.Opinion == "approved") &&
+               wordform.Disapproved.All(analysis => IsValid(analysis) &&
+                   byId.TryGetValue(analysis.AnalysisId, out var stored) && stored.Opinion == "disapproved") &&
+               wordform.CandidateCount == wordform.Analyses.Count(analysis => analysis.Opinion == "unknown") &&
+               wordform.Approved.Count == wordform.Analyses.Count(analysis => analysis.Opinion == "approved") &&
+               wordform.Disapproved.Count == wordform.Analyses.Count(analysis => analysis.Opinion == "disapproved");
+    }
 
     private static bool IsValid(TextWordsProjectedAnalysis analysis) =>
-        !string.IsNullOrWhiteSpace(analysis.Key) && analysis.Morphs is not null &&
+        !string.IsNullOrWhiteSpace(analysis.Key) && analysis.AnalysisId != Guid.Empty &&
+        analysis.Opinion is "approved" or "disapproved" or "unknown" && analysis.Identity is { Morphs: not null } &&
+        analysis.Identity.SourceAnalysisId == CanonicalId.FromGuid(analysis.AnalysisId).Value &&
+        analysis.Identity.Morphs.All(morph => morph is not null && morph.Forms is not null &&
+            morph.Forms.All(form => form is not null)) && analysis.Morphs is not null &&
         analysis.Morphs.All(morph => morph is not null && morph.Form is not null && morph.Gloss is not null &&
             morph.Category is not null && (morph.LinkTarget is null || !string.IsNullOrWhiteSpace(morph.LinkTarget.Tool)));
 
