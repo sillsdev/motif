@@ -111,6 +111,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
         {
             RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
         };
+        start.Environment.Remove("ICU_DATA");
         foreach (var arg in args) start.ArgumentList.Add(arg);
         using var process = Process.Start(start)!;
         var err = process.StandardError.ReadToEndAsync();

@@ -58,29 +58,39 @@ public class FwDataProjectLoader
                     "bundled FieldWorks normalization data is missing: " + string.Join(", ", missingDataFiles));
             }
 
-            string[] loadedLibraries;
+            var previousIcuDataDirectory = Environment.GetEnvironmentVariable("ICU_DATA");
+            Environment.SetEnvironmentVariable("ICU_DATA", dataDirectory, EnvironmentVariableTarget.Process);
             try
             {
-                loadedLibraries = LoadBundledIcuLibraries();
-                Icu.Wrapper.DataDirectory = dataDirectory;
-                RegisterCustomIcuResolver(loadedLibraries);
-                CustomIcu.InitIcuDataDir();
-            }
-            catch (Exception exception)
-            {
-                throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
-                    exception.GetType().Name + ": " + exception.Message, exception);
-            }
+                string[] loadedLibraries;
+                try
+                {
+                    loadedLibraries = LoadBundledIcuLibraries();
+                    Icu.Wrapper.DataDirectory = dataDirectory;
+                    RegisterCustomIcuResolver(loadedLibraries);
+                    CustomIcu.InitIcuDataDir();
+                }
+                catch (Exception exception)
+                {
+                    throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
+                        exception.GetType().Name + ": " + exception.Message, exception);
+                }
 
-            if (!CustomIcu.HaveCustomIcuLibrary)
-            {
-                throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
-                    "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
-            }
+                if (!CustomIcu.HaveCustomIcuLibrary)
+                {
+                    throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
+                        "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
+                }
 
-            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
-            InstallConfiguredGlobalWritingSystemRepository();
-            _init = true;
+                Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
+                InstallConfiguredGlobalWritingSystemRepository();
+                _init = true;
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(
+                    "ICU_DATA", previousIcuDataDirectory, EnvironmentVariableTarget.Process);
+            }
         }
     }
 

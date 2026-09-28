@@ -32,6 +32,7 @@ public sealed class CrashDialogsTests
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        start.Environment.Remove("ICU_DATA");
         using var child = Process.Start(start)!;
         var standardErrorTask = child.StandardError.ReadToEndAsync();
 

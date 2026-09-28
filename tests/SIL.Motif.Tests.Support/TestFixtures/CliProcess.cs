@@ -19,6 +19,7 @@ public static class CliProcess
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
+        start.Environment.Remove("ICU_DATA");
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
         start.Environment[RunnerOptions.RootVariable] = workerRoot;
         start.Environment[PanGlossExecutable.PathVariable] = parserPath ?? FakeParser.ExecutablePath;

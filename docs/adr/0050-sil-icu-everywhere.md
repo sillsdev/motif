@@ -1,6 +1,6 @@
 # ADR 0050: SIL custom ICU with Motif on every platform
 
-Motif will use the same FieldWorks text-normalization engine wherever it runs, so text identity stays consistent across Windows, Linux, and macOS. LibLCM loads its bundled ICU libraries and normalization data only when a Motif process opens a project, leaving unrelated .NET child processes on their platform ICU.
+Motif will use the same FieldWorks text-normalization engine wherever it runs, so text identity stays consistent across Windows, Linux, and macOS. Initialization gives LibLCM its bundled data, while child launchers keep unrelated .NET processes on their platform ICU.
 
 **Status: Accepted**
 
@@ -12,7 +12,7 @@ Motif previously supplied Microsoft's stock ICU on Windows, installed SIL ICU th
 
 ## Decision
 
-Motif ships SIL ICU 70 for `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64`. It does not use system ICU or Microsoft's stock ICU for LibLCM normalization. Each Motif process loads its bundled native libraries and data explicitly during initialization without changing the environment inherited by child processes.
+Motif ships SIL ICU 70 for `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64`. It does not use system ICU or Microsoft's stock ICU for LibLCM normalization. Each Motif process temporarily sets `ICU_DATA` while initializing LibLCM and restores its prior value before returning; its child launchers remove `ICU_DATA` when starting processes that do not need SIL normalization.
 
 `tools/icu-payload.json` is the one runtime payload definition. Schema version 1 has `icuMajor`, a shared `normalizationData` source/output directory/file list, and a `rids` object keyed by runtime identifier. Each RID entry names the destination relative to an application output directory, the canonical native library filenames, and the source package or pinned source build. Package release staging can read those fields without duplicating the per-platform file list.
 
@@ -26,7 +26,7 @@ macOS builds the five shared libraries from `sillsdev/icu` for each runner archi
 
 The pinned `silmods.cpp` includes `<malloc.h>` but only calls `malloc` and `free`; it already includes `<stdlib.h>`, which declares both. macOS CI applies `tools/patches/sil-icu-macos-malloc-header.patch` to remove that redundant, unavailable header before building. The payload records this patch and its upstream follow-up: send the portable include fix to `sillsdev/icu`.
 
-At the first project/cache open, `FwDataProjectLoader` sets `Icu.Wrapper.DataDirectory` to `AppContext.BaseDirectory/IcuData/icudt70l`, loads the native libraries from the private runtime subdirectory, maps LibLCM's `icuuc70.dll` import to the matching bundled library, and calls `CustomIcu.InitIcuDataDir()`. It does not set `ICU_DATA`, so child .NET processes keep their platform runtime configuration and load no SIL ICU unless they explicitly initialize LibLCM. The CLI and worker leave SIL ICU unloaded until that point. They refuse to continue opening a project if a required data file or library is missing, if native loading fails, or if `CustomIcu.HaveCustomIcuLibrary` is false. The refusal reports the native paths loaded and the configured data directory.
+At the first project/cache open, `FwDataProjectLoader` temporarily sets `ICU_DATA` and `Icu.Wrapper.DataDirectory` to `AppContext.BaseDirectory/IcuData/icudt70l`, loads the native libraries from the private runtime subdirectory, maps LibLCM's `icuuc70.dll` import to the matching bundled library, and calls `CustomIcu.InitIcuDataDir()`. It restores the prior `ICU_DATA` value after ICU and SLDR initialization. PanGloss child processes use an environment allowlist, and the runner launcher removes `ICU_DATA` before starting a worker, so unrelated children do not inherit Motif's temporary normalization path. The CLI and worker leave SIL ICU unloaded until the first project open. They refuse to continue opening a project if a required data file or library is missing, if native loading fails, or if `CustomIcu.HaveCustomIcuLibrary` is false. The refusal reports the native paths loaded and the configured data directory.
 
 Motif pins `icu.net` 3.0.2 over LibLCM's 3.0.1 request. Version 3.0.2 avoids a macOS native crash by skipping ICU cleanup and library release paths that can run ICU's dylib destructor against already-cleaned state.
 
@@ -39,4 +39,4 @@ One cross-platform test verifies that `SilIcuInit` succeeded and that `nfc_fw` r
 - Process startup does not load SIL ICU; the first project/cache open initializes it and still fails loudly if the payload is incomplete.
 - A missing or mismatched ICU payload becomes a project-open error instead of a silent change to text identity.
 - Only Motif processes that open a project explicitly load SIL ICU; unrelated .NET children use platform ICU.
-- Motif does not alter `ICU_DATA` or FieldWorks' global ICU configuration.
+- Motif restores the caller's `ICU_DATA` value after initialization and filters it at child launch boundaries.

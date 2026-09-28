@@ -38,6 +38,7 @@ public sealed class InterruptibleCli : IDisposable
     public static InterruptibleCli Start(ProcessStartInfo start)
     {
         ArgumentNullException.ThrowIfNull(start);
+        start.Environment.Remove("ICU_DATA");
         var temporaryRoot = Path.Combine(Path.GetTempPath(), "motif-interruptible-cli-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(temporaryRoot);
         var outputPath = Path.Combine(temporaryRoot, "cli.stdout.txt");
