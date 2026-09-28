@@ -17,6 +17,10 @@ The design canvas, which is private to the owner: https://claude.ai/artifact/Eoy
   - `R2-Matrix`: compact Matrix cells;
   - `R2-Review`: interactive, grouped by transition;
   - `R2-HowItWorks`: the linguist's guide.
+- **Round 3** was drawn elsewhere on the canvas: `R3-InText`, `R3-Popups` and `R3-Review`. **Round 3b** answers the owner's notes on it:
+  - `R3-WordPopup`: interactive, with the word's analyses stacked vertically;
+  - `R3-HoverStates`: each state at rest and on hover or focus;
+  - `R3-WordExploded`: the annotated word for the documentation.
 
 This document supersedes the reading marks in the app-shell screens (`2026-09-24-app-shell-screens/04`, `05` and `09`) where they differ. Those screens stay as they are, as the record of that round.
 
@@ -42,6 +46,12 @@ This document supersedes the reading marks in the app-shell screens (`2026-09-24
 | Approved or Present | no matching analysis | none prescribed; show the conflict |
 | Spelling Incorrect, or Disapproved | an analysis | none prescribed; show the conflict |
 | Spelling Incorrect, or Disapproved | none | none; a positive "this looks good" |
+
+**The owner's Round 3 notes:**
+- **A word's popup stacks its text,** as FieldWorks does: word, morphemes, lexical entries, glosses and category, one line under another.
+- **The word's analyses stack vertically,** one block under another, never side by side. That includes FieldWorks' analysis and PanGloss's.
+- **Secondary controls are hidden until hover or keyboard focus.** Examples are the **FW ↗** link, which opens that object in FieldWorks through a `silfw://` link, Undo on a staged change, and Show context. A hover card never has buttons, because moving the pointer must never change anything.
+- **The exploded word** is the most information-dense view of one word, with every mark and notation labelled. It is the centrepiece of the linguist's documentation.
 
 ## 2. The marks
 
