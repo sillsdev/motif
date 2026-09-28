@@ -201,10 +201,12 @@ public sealed class RunnerSpineTests : IDisposable
             var jobId = Cli($"baseline-refresh --project \"{project}\"").Output.Trim();
             // Killing before it claims would prove nothing, so wait until the row is genuinely held.
             var runner = StartRunner(leaseSeconds: 1);
-            Assert.True(WaitUntilRunning(project, jobId),
+            var seen = WaitUntilClaimed(project, jobId);
+            Assert.True(seen != "queued",
                 "The runner never claimed the job. Runner said: " + string.Join(" | ", _log));
             Kill(runner);
-            if (StatusOf(project, jobId) == "running") return jobId;
+            // Each status check is a CLI launch, so a sub-second refresh can finish between two of them.
+            if (seen == "running" && StatusOf(project, jobId) == "running") return jobId;
         }
         throw new Xunit.Sdk.XunitException(
             $"The runner finished the refresh before the kill landed, {rounds} rounds in a row.");
@@ -245,15 +247,18 @@ public sealed class RunnerSpineTests : IDisposable
         return process;
     }
 
-    private bool WaitUntilRunning(string project, string jobId)
+    // The first status past queued, or queued when the deadline passes with the job still unclaimed.
+    private string WaitUntilClaimed(string project, string jobId)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (DateTime.UtcNow < deadline)
+        string status;
+        do
         {
-            if (Show(project, jobId).Status == "running") return true;
+            status = StatusOf(project, jobId);
+            if (status != "queued") return status;
             Thread.Sleep(20);
-        }
-        return false;
+        } while (DateTime.UtcNow < deadline);
+        return status;
     }
 
     private string StatusOf(string project, string jobId) => Show(project, jobId).Status;
