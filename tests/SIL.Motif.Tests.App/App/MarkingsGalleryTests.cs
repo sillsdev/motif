@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -31,6 +32,7 @@ public sealed class MarkingsGalleryTests
             Assert.Contains("none", gallery.EmptyMark.Classes);
             Assert.Contains("same", gallery.SameLine.Classes);
             Assert.Contains("different", gallery.DifferentLine.Classes);
+            Assert.Contains("f", ((TextBlock)((Grid)gallery.DifferentLine.Child!).Children[1]!).Classes);
             Assert.Contains("none", gallery.NoneLine.Classes);
             Assert.Contains("capped", gallery.CappedLine.Classes);
             Assert.Equal("+2", ((TextBlock)gallery.ExtraCount.Child!).Text);
@@ -64,6 +66,21 @@ public sealed class MarkingsGalleryTests
                     Assert.True(Contrast(text, fill) >= 4.5,
                         $"{variant} {opinion} contrast was {Contrast(text, fill):F2}:1.");
                 }
+
+                foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+                {
+                    AssertReadable("Intent.Opinion.None.Text", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Agreement.Agreeing", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Agreement.Conflict", "Intent.Agreement.Conflict.Fill", variant);
+                    AssertReadable("Intent.Agreement.Suggestion", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Parser.NoReading", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Parser.SearchCapped", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Change.Text", "Intent.Change.Fill", variant);
+                    AssertReadable("Intent.Marking.Text", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Opinion.Approved.Text", "Intent.Marking.Surface", variant);
+                    Assert.Equal(Color.Parse(variant == ThemeVariant.Light ? "#d5dce4" : "#4d5865"),
+                        ColorResource("Intent.Opinion.None.Outline", variant));
+                }
             }
             finally
             {
@@ -83,8 +100,14 @@ public sealed class MarkingsGalleryTests
             {
                 Assert.Equal(0d, gallery.StagedUndo.Opacity);
                 Assert.Equal(0d, gallery.FieldWorksLink.Opacity);
+                Assert.True(gallery.StagedUndo.IsVisible);
+                Assert.True(gallery.FieldWorksLink.IsVisible);
                 Assert.True(gallery.StagedUndo.IsTabStop);
                 Assert.True(gallery.FieldWorksLink.IsTabStop);
+                Assert.False(gallery.StagedUndo.IsHitTestVisible);
+                Assert.False(gallery.FieldWorksLink.IsHitTestVisible);
+                Assert.Equal("Undo staged approval", ControlAutomationPeer.CreatePeerForElement(gallery.StagedUndo).GetName());
+                Assert.Equal("Open in FieldWorks", ControlAutomationPeer.CreatePeerForElement(gallery.FieldWorksLink).GetName());
 
                 var stagedCenter = CentreOf(gallery.StagedStrip, window);
                 window.MouseMove(stagedCenter);
@@ -95,9 +118,22 @@ public sealed class MarkingsGalleryTests
                 Dispatcher.UIThread.RunJobs();
                 Assert.Equal(0d, gallery.StagedUndo.Opacity);
 
-                Assert.True(gallery.FieldWorksLink.Focus());
+                for (var tab = 0; tab < 8 && !gallery.StagedUndo.IsFocused; tab++)
+                    window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.None, null);
+                Assert.True(gallery.StagedUndo.IsFocused);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal(1d, gallery.StagedUndo.Opacity);
+                Assert.True(gallery.StagedUndo.IsVisible);
+                Assert.True(gallery.FieldWorksLink.IsVisible);
+                Assert.True(gallery.StagedUndo.IsHitTestVisible);
+                Assert.Equal(0d, gallery.FieldWorksLink.Opacity);
+
+                for (var tab = 0; tab < 8 && !gallery.FieldWorksLink.IsFocused; tab++)
+                    window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.None, null);
+                Assert.True(gallery.FieldWorksLink.IsFocused);
                 Dispatcher.UIThread.RunJobs();
                 Assert.Equal(1d, gallery.FieldWorksLink.Opacity);
+                Assert.True(gallery.FieldWorksLink.IsHitTestVisible);
             }
             finally
             {
@@ -115,9 +151,31 @@ public sealed class MarkingsGalleryTests
             var window = Show(gallery, ThemeVariant.Light);
             try
             {
-                Assert.Equal(12d, gallery.CompactText.FontSize);
-                Assert.Equal(13d, gallery.NormalText.FontSize);
+                Assert.Equal(13d, gallery.CompactText.FontSize);
+                Assert.Equal(15d, gallery.NormalText.FontSize);
                 Assert.True(gallery.NormalText.FontSize > gallery.CompactText.FontSize);
+
+                var compactMark = new Border { Classes = { "opinionMark", "approved" } };
+                var normalMark = new Border { Classes = { "opinionMark", "approved" } };
+                var compactChip = new Button { Content = "Fix", Classes = { "actionChip" } };
+                var normalChip = new Button { Content = "Fix", Classes = { "actionChip" } };
+                var compactWord = DensityWord();
+                var normalWord = DensityWord();
+                gallery.CompactRoot.Children.Add(compactMark);
+                gallery.NormalRoot.Children.Add(normalMark);
+                gallery.CompactRoot.Children.Add(compactChip);
+                gallery.NormalRoot.Children.Add(normalChip);
+                gallery.CompactRoot.Children.Add(compactWord);
+                gallery.NormalRoot.Children.Add(normalWord);
+                window.UpdateLayout();
+                Assert.Equal(13d, compactMark.Width);
+                Assert.Equal(15d, normalMark.Width);
+                Assert.Equal(17d, compactChip.Height);
+                Assert.Equal(19d, normalChip.Height);
+                Assert.Equal(19d, compactWord.Height);
+                Assert.Equal(27d, normalWord.Height);
+                Assert.Equal(13d, ((TextBlock)compactWord.Child!).FontSize);
+                Assert.Equal(15d, ((TextBlock)normalWord.Child!).FontSize);
             }
             finally
             {
@@ -173,10 +231,24 @@ public sealed class MarkingsGalleryTests
         control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)
         ?? throw new InvalidOperationException("The control is not positioned in the window.");
 
+    private static Border DensityWord() => new()
+    {
+        Classes = { "wordVerdict" },
+        Child = new TextBlock { Text = "word" },
+    };
+
     private static Color ColorResource(string key, ThemeVariant variant)
     {
         Assert.True(Application.Current!.TryGetResource(key, variant, out var value), $"Missing resource {key} for {variant}.");
         return Assert.IsType<SolidColorBrush>(value).Color;
+    }
+
+    private static void AssertReadable(string foregroundKey, string backgroundKey, ThemeVariant variant)
+    {
+        var foreground = ColorResource(foregroundKey, variant);
+        var background = ColorResource(backgroundKey, variant);
+        Assert.True(Contrast(foreground, background) >= 4.5,
+            $"{variant} {foregroundKey} on {backgroundKey} contrast was {Contrast(foreground, background):F2}:1.");
     }
 
     private static double Contrast(Color first, Color second)

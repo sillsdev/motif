@@ -17,7 +17,7 @@ internal sealed class MarkingsGallery : StackPanel
 
         Children.Add(Heading("PanGloss readings"));
         SameLine = Line("same", "Same");
-        DifferentLine = Line("different", "Different reading");
+        DifferentLine = Line("different", "Different");
         ExtraCount = new Border { Classes = { "panGlossExtra" }, Child = Label("+2") };
         NoneLine = Line("none", "No reading");
         CappedLine = Line("capped", "Search capped");
@@ -38,7 +38,7 @@ internal sealed class MarkingsGallery : StackPanel
         StagedUndo = new Button
         {
             Content = "Undo",
-            Classes = { "revealControl", "stagedUndo" },
+            Classes = { "revealControl", "revealButton", "stagedUndo" },
         };
         AutomationProperties.SetName(StagedUndo, "Undo staged approval");
         StagedStrip = new Border
@@ -60,7 +60,7 @@ internal sealed class MarkingsGallery : StackPanel
         FieldWorksLink = new Button
         {
             Content = "FW ↗",
-            Classes = { "revealControl" },
+            Classes = { "revealControl", "revealLink" },
         };
         AutomationProperties.SetName(FieldWorksLink, "Open in FieldWorks");
         HoverRegion = new Border
@@ -108,11 +108,24 @@ internal sealed class MarkingsGallery : StackPanel
         return mark;
     }
 
-    private static Border Line(string state, string content) => new()
+    private static Border Line(string state, string content)
     {
-        Classes = { "panGlossLine", state },
-        Child = Label(content),
-    };
+        var grid = new Grid();
+        grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        var divider = new Avalonia.Controls.Shapes.Rectangle { Classes = { "panGlossDivider" } };
+        Grid.SetRow(divider, 0);
+        grid.Children.Add(divider);
+        var label = Label(content);
+        if (state == "different") label.Classes.Add("f");
+        Grid.SetRow(label, 1);
+        grid.Children.Add(label);
+        return new Border
+        {
+            Classes = { "panGlossLine", state },
+            Child = grid,
+        };
+    }
 
     private static StackPanel Row(params Control[] children)
     {
