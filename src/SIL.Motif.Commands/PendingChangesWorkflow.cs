@@ -41,11 +41,10 @@ public static class PendingChangesWorkflow
             request.Revision is { } expectedRevision && expectedRevision != snapshot.Revision)
             return RefuseApply("apply.changes-changed",
                 "The changes changed. Reload and check them before applying.");
-        var uncertain = snapshot.FitSummary.Where(fit => fit.Status == "uncertain")
+        var uncertain = snapshot.FitSummary.Where(fit => fit.Status == ChangeFitStatus.Uncertain)
             .Select(fit => fit.ChangeId).ToArray();
         if (uncertain.Length > 0)
-            return RefuseApply("apply.change-uncertain",
-                $"Change {string.Join(", ", uncertain)} is uncertain. Check again before applying.");
+            return CommandOutcome<ApplyPendingResult>.Refused(PendingChangeRefusals.Uncertain(uncertain));
         if (snapshot.FitSummary.Count != snapshot.Changes.Count || snapshot.FitSummary.Any(fit => !fit.StillFits))
             return RefuseApply("apply.change-no-longer-fits",
                 "One or more changes no longer fit the project. Remove those changes first.");
@@ -64,12 +63,11 @@ public static class PendingChangesWorkflow
 
         var fit = ProposalCommands.Preflight(new PreflightRequest(request.ProjectPath, version, proposalId));
         if (!fit.Succeeded) return ReopenAfterRefusal(resolvedRequest, fit.Refusal!);
-        var uncertainOperations = fit.Value!.Changes.Where(operation => operation.Status == "uncertain")
+        var uncertainOperations = fit.Value!.Changes
+            .Where(operation => operation.Status == ChangeFitStatus.Uncertain)
             .Select(operation => operation.ChangeId ?? operation.OperationId).ToArray();
         if (uncertainOperations.Length > 0)
-            return ReopenAfterRefusal(resolvedRequest, new Refusal("apply.change-uncertain",
-                FailureReason.Refused,
-                $"Change {string.Join(", ", uncertainOperations)} is uncertain. Check again before applying."));
+            return ReopenAfterRefusal(resolvedRequest, PendingChangeRefusals.Uncertain(uncertainOperations));
         if (fit.Value.Changes.Any(operation => !operation.StillFits))
             return ReopenAfterRefusal(resolvedRequest, new Refusal("apply.change-no-longer-fits",
                 FailureReason.Refused, "One or more changes no longer fit the project. Remove those changes first."));

@@ -13,6 +13,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Runner.Composers;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
@@ -104,6 +105,75 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM Receipts;";
         Assert.Equal(0L, (long)command.ExecuteScalar()!);
+    }
+
+    [Fact]
+    public async Task ApplyAllPendingReturnsRefusedExitAndCodeForAnUncertainOccurrence()
+    {
+        string path;
+        SeededText text;
+        using (var cache = pristine.NewScratch())
+        {
+            text = SeededProject.SeedText(cache, pristine.Seed);
+            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>()
+                .GetObject(text.FirstParagraphId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var contextWordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("context-word", cache.DefaultVernWs));
+                paragraph.SegmentsOS[0].AnalysesRS.Insert(1, contextWordform);
+                paragraph.Contents = TsStringUtils.MakeString(
+                    $"{SeededProject.AnalysedWordForm} context-word{SeededProject.PunctuationForm}",
+                    cache.DefaultVernWs);
+                paragraph.ParseIsCurrent = true;
+            });
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "uncertain-pending-apply-worker");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
+        Assert.True(initial.Succeeded, initial.Refusal?.Message);
+        var added = PendingChanges.Put(new PutPendingChangeRequest(path, "1.0", initial.Value!.Revision,
+            new ChangeIntent("uncertain-apply-change", AnalysisChangeKinds.Reject,
+                CanonicalId.FromGuid(text.AnalysedWordformId).Value, SeededProject.AnalysedWordForm,
+                StoredAnalysisId: CanonicalId.FromGuid(text.ApprovedAnalysisId).Value,
+                Occurrence: new OccurrenceAnchor(text.TextId, text.FirstParagraphId, text.FirstSegmentId, 0))));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+
+        using (var editCache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var editParagraph = editCache.ServiceLocator.GetInstance<IStTxtParaRepository>()
+                .GetObject(text.FirstParagraphId);
+            var segment = editCache.ServiceLocator.GetInstance<ISegmentRepository>().GetObject(text.FirstSegmentId);
+            NonUndoableUnitOfWorkHelper.Do(editCache.ActionHandlerAccessor, () =>
+            {
+                var replacement = editCache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("changed-context-word", editCache.DefaultVernWs));
+                segment.AnalysesRS.RemoveAt(1);
+                segment.AnalysesRS.Insert(1, replacement);
+                editParagraph.Contents = TsStringUtils.MakeString(
+                    $"{SeededProject.AnalysedWordForm} changed-context-word{SeededProject.PunctuationForm}",
+                    editCache.DefaultVernWs);
+                editParagraph.ParseIsCurrent = true;
+            });
+            new FwDataProjectLoader().Save(editCache);
+        }
+        File.SetLastWriteTimeUtc(path, File.GetLastWriteTimeUtc(path).AddMinutes(1));
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var rechecked = PendingChanges.Recheck(new RecheckPendingChangesRequest(path, "1.0", added.Value!.Revision));
+        Assert.True(rechecked.Succeeded, rechecked.Refusal?.Message);
+        Assert.Equal("uncertain", Assert.Single(rechecked.Value!.FitSummary).Status);
+
+        var start = CliStart(IsolatedRunner.Options(root), "apply", "--all-pending", "--project", path, "--json");
+        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        var (exitCode, output, error) = await RunAsync(start);
+
+        Assert.Equal(2, exitCode);
+        Assert.Empty(output);
+        using var failure = JsonDocument.Parse(error);
+        Assert.Equal("apply.change-uncertain", failure.RootElement.GetProperty("code").GetString());
+        Assert.Equal("Refused", failure.RootElement.GetProperty("reason").GetString());
     }
 
     [Fact]

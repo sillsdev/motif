@@ -53,6 +53,7 @@ public static class RefusalCodes
     public const string ChangeOccurrenceUnavailable = "change.occurrence-unavailable";
     public const string ChangeOccurrenceWordformMismatch = "change.occurrence-wordform-mismatch";
     public const string ChangeReconfirmNotAllowed = "change.reconfirm-not-allowed";
+    public const string ChangeReconfirmUnneeded = "change.reconfirm-unneeded";
     public const string ChangeReadingMissing = "change.reading-missing";
     public const string ChangeRefreshRequired = "change.refresh-required";
     public const string ChangeRevisionConflict = "change.revision-conflict";

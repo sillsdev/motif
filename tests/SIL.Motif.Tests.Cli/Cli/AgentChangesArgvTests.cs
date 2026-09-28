@@ -114,8 +114,8 @@ public sealed class AgentChangesArgvTests : IDisposable
         var fit = Assert.Single(rechecked.FitSummary);
 
         Assert.Equal("uncertain", fit.Status);
-        Assert.Equal("changedcliword", Assert.Single(fit.Uncertainty!.AfterTokens
-            .Where(token => token.Index == 1)).Form);
+        Assert.Equal("changedcliword", Assert.Single(fit.Uncertainty!.AfterTokens,
+            token => token.Index == 1).Form);
     }
 
     [Fact]

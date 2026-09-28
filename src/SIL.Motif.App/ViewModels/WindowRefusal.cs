@@ -102,6 +102,7 @@ public sealed partial record WindowRefusal
         [C.ChangeProjectSaving] = "FieldWorks is saving the project. Try again in a moment.",
         [C.ChangeReadingMissing] = "That parser reading is no longer available. Run the Assessment again.",
         [C.ChangeReconfirmNotAllowed] = "This decision no longer fits the project and cannot be checked again.",
+        [C.ChangeReconfirmUnneeded] = "This change does not need another check.",
         [C.ChangeRefreshRequired] = "Refresh the project before checking the changes again.",
         [C.ChangeRevisionConflict] = "The changes changed elsewhere. Refresh them and try again.",
         [C.ChangeSlotOccupied] = "Another pending change already addresses this word and analysis.",

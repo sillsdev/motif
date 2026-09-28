@@ -1488,14 +1488,13 @@ public static partial class ProposalCommands
                         .Where(change => !change.StillFits).ToArray();
                     if (nonFitting.Length > 0)
                     {
-                        var uncertain = nonFitting.Where(change => change.Status == "uncertain").ToArray();
+                        var uncertain = nonFitting
+                            .Where(change => change.Status == ChangeFitStatus.Uncertain).ToArray();
                         if (uncertain.Length > 0)
                         {
                             var changeIds = uncertain.Select(change => change.ChangeId ?? change.OperationId).ToArray();
-                            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
-                                "apply.change-uncertain", FailureReason.Refused,
-                                $"Cannot apply Proposal {id}: change {string.Join(", ", changeIds)} is uncertain. " +
-                                "Check again before applying.", Fact(("proposalId", id))));
+                            return CommandOutcome<ApplyProjection>.Refused(
+                                PendingChangeRefusals.Uncertain(changeIds, id));
                         }
                         return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                             "apply.change-no-longer-fits", FailureReason.Refused,

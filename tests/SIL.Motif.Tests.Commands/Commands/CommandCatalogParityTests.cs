@@ -90,7 +90,7 @@ public sealed class CommandCatalogParityTests
         "change.assessment-stale",
         "change.baseline-missing", "change.cannot-compose", "change.invalid-identity", "change.no-effect",
         "change.not-found", "change.occurrence-unavailable", "change.occurrence-wordform-mismatch",
-        "change.project-saving", "change.reading-missing", "change.reconfirm-not-allowed", "change.refresh-required", "change.revision-conflict", "change.slot-occupied",
+        "change.project-saving", "change.reading-missing", "change.reconfirm-not-allowed", "change.reconfirm-unneeded", "change.refresh-required", "change.revision-conflict", "change.slot-occupied",
         "change.stored-analysis-missing", "change.wordform-ambiguous", "change.wordform-changed",
         "change.wordform-missing",
         "review.assessment-not-found", "review.numbers-unavailable",

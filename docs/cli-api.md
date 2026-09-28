@@ -130,6 +130,8 @@ if the command later applies multiple Proposals. "Nothing pending" means the pen
 the same test `trial --pending` uses. Every nonzero exit code is a refusal or an error, with its failure on
 stderr (a failure envelope under `--json`), so FieldWorks can treat exit `0` alone as "continue". A project
 another program still holds is `Busy`, exit `3`: release it and retry.
+An uncertain pending change exits `2` with `code: "apply.change-uncertain"`; FieldWorks keeps it pending
+for review and does not reload the project.
 
 #### FieldWorks executable lookup
 
@@ -161,7 +163,7 @@ change. `put-pending-change` may carry all four occurrence options together: Tex
 Segment GUID, and a zero-based index in that Segment's analysis sequence. Motif accepts these options
 for analysis opinion changes. `recheck-pending-changes` renews Baseline tokens for changes that still
 fit, but leaves uncertain occurrence evidence untouched. `reconfirm-pending-change` takes one change id
-and replaces only its occurrence evidence after the analysis decision still fits; it refuses changes
+and replaces its occurrence evidence and BaselineToken after the analysis decision still fits; it refuses changes
 that no longer fit. This evidence refresh does not alter Proposal intent. The Draft stays in
 `Project.motif.db` when the App closes.
 
