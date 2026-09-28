@@ -172,3 +172,9 @@ Each item is a **departure from real Swahili**, not a generalization about it.
 - **DH:** Deen, Kamil Ud, and Nina Hyams. n.d. “The Form and Interpretation of Finite and non-Finite Verbs in Swahili.” UCLA research paper. [Author-hosted PDF](https://www2.hawaii.edu/~kamil/Deen%26Hyams.pdf). **Authority:** linguistics research by the authors; §2.1 explicitly compares indicative `-a`, subjunctive `-e`, and negative `-i` and gives morpheme-segmented verbs. Publication year was not identifiable in the copy checked.
 - **FW26:** SIL Global. 2026. “Modeling Bantu Features in FLEx for Parsing.” FieldWorks documentation. [Official FieldWorks page](https://software.sil.org/fieldworks/download/bantu_features/). **Authority:** first-party instructions for the exact FieldWorks constructs: noun stems, Bantu singular/plural features, affix slots, and allomorph restrictions.
 - **FW-Model:** SIL Global. 2026. *FLEx Conceptual Model*, §§4.1.4 and 5. [Official documentation PDF](https://downloads.languagetechnology.org/fieldworks/Documentation/FLEx%209.1%20Conceptual%20Model.pdf). **Authority:** first-party model of phonological environments, natural classes, affix templates, and inflection features; it supports the modelling recommendations, not a claim about measured PanGloss performance.
+
+## Correction (2026-09-28)
+
+**SYNTHETIC EXAMPLE.** This language data was generated to demonstrate Motif. It is modelled loosely on Swahili, but it is not real Swahili, has not been checked by speakers, and must not be used as a description of any language.
+
+Empty object-affix allomorphs add no measurable PanGloss work: runs with and without 160 empty forms both produced 1,723 work units and 158 steps. The synthetic sample uses duplicated optional slots with the cited m- and wa- object-marker affixes instead; that variant measured 19.50 times the fixed grammar's parser work.
