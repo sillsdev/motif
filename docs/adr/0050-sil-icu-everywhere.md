@@ -28,6 +28,8 @@ The pinned `silmods.cpp` includes `<malloc.h>` but only calls `malloc` and `free
 
 At the first project/cache open, `FwDataProjectLoader` temporarily sets process-local `ICU_DATA` and `Icu.Wrapper.DataDirectory` to `AppContext.BaseDirectory/IcuData/icudt70l`, loads the native libraries from the runtime's bundled output directory, maps LibLCM's `icuuc70.dll` import to the matching bundled library, and calls `CustomIcu.InitIcuDataDir()`. It restores the prior `ICU_DATA` value after ICU and SLDR initialization so a child .NET process does not mistake Motif's normalization directory for its own runtime data. The CLI and worker leave ICU unloaded until that point. They refuse to continue opening a project if a required data file or library is missing, if native loading fails, or if `CustomIcu.HaveCustomIcuLibrary` is false. The refusal reports the native paths loaded and the configured data directory.
 
+Motif pins `icu.net` 3.0.2 over LibLCM's 3.0.1 request. Version 3.0.2 avoids a macOS native crash by skipping ICU cleanup and library release paths that can run ICU's dylib destructor against already-cleaned state.
+
 One cross-platform test verifies that `SilIcuInit` succeeded and that `nfc_fw` reorders U+F170 before U+0327 according to SIL's custom combining-class data, while stock `nfc` keeps the original order. CI runs this test on Windows, Ubuntu 22.04, macOS arm64, and macOS x64.
 
 ## Consequences

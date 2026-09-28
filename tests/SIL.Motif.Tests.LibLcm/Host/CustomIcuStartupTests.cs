@@ -16,6 +16,7 @@ public sealed class CustomIcuStartupTests
         FwDataProjectLoader.Init();
 
         Assert.True(CustomIcu.HaveCustomIcuLibrary);
+        Assert.StartsWith("70.", Icu.Wrapper.IcuVersion);
         Assert.NotEqual(customDataDirectory, Environment.GetEnvironmentVariable("ICU_DATA"));
 
         var fieldWorks = CustomIcu.GetIcuNormalizer(FwNormalizationMode.knmNFC);

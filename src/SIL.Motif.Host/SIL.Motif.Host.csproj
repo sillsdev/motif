@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="SIL.LCModel" Version="$(SilLCModelPackageVersion)" />
+    <PackageReference Include="icu.net" Version="$(IcuDotNetPackageVersion)" />
     <PackageReference Include="Icu4c.Win.Fw.Bin" Version="70.1.182" ExcludeAssets="runtime" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <PackageReference Include="Icu4c.Win.Fw.Lib" Version="70.1.182" ExcludeAssets="runtime" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
