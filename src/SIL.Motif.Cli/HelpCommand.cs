@@ -50,7 +50,7 @@ public static class HelpCommand
         {
             if (json || full)
                 return Usage(error);
-            output.WriteLine("Motif (beta) — report problems at https://github.com/sillsdev/motif/issues");
+            output.WriteLine("Motif (tech demo) — report problems at https://github.com/sillsdev/motif/issues");
             output.WriteLine();
             foreach (var commandEntry in catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command))
                 output.WriteLine($"{commandEntry.Title,-30}  {commandEntry.Code}");

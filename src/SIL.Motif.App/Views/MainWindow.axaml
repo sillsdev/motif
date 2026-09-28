@@ -4,7 +4,7 @@
         xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         x:Class="SIL.Motif.App.Views.MainWindow"
         x:DataType="vm:WorkspaceShellViewModel"
-        Title="Motif (beta)"
+        Title="Motif (tech demo)"
         Icon="avares://SIL.Motif.App/Assets/motif.ico"
         Width="{DynamicResource Component.Shell.Width}"
         Height="{DynamicResource Component.Shell.Height}"
@@ -100,16 +100,16 @@
     </Border>
 
     <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto">
-      <Border x:Name="BetaNotice" Grid.Row="0" IsVisible="{Binding BetaNotice.IsVisible}" Classes="notice">
+      <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding TechDemoNotice.IsVisible}" Classes="notice">
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
             <HyperlinkButton Classes="reviewLink" Content="Report a problem"
-                             Command="{Binding BetaNotice.ReportProblemCommand}"
+                             Command="{Binding TechDemoNotice.ReportProblemCommand}"
                              AutomationProperties.Name="Report a problem" />
-            <Button Content="Got it" Command="{Binding BetaNotice.GotItCommand}"
-                    AutomationProperties.Name="Acknowledge the beta notice" />
+            <Button Content="Got it" Command="{Binding TechDemoNotice.GotItCommand}"
+                    AutomationProperties.Name="Acknowledge the tech demo notice" />
           </StackPanel>
-          <views:CopyableTextBlock Text="{x:Static vm:BetaNoticeViewModel.NoticeText}"
+          <views:CopyableTextBlock Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
                                    VerticalAlignment="Center" TextWrapping="Wrap" />
         </DockPanel>
       </Border>

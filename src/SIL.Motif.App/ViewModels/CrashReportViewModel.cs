@@ -20,8 +20,8 @@ public sealed partial class CrashReportViewModel : ObservableObject
         "Motif will close when you close this window. To help get the problem fixed, save a report and email it " +
         "to the maintainer.";
 
-    /// <summary>Thanks the person for reporting a beta problem.</summary>
-    public const string ThankYou = "Thank you for helping improve Motif.";
+    /// <summary>Thanks the person for a report that can improve the demo.</summary>
+    public const string ThankYou = "Thank you for helping improve the demo.";
 
     private readonly IClipboard _clipboard;
     private readonly IReportFilePicker _files;

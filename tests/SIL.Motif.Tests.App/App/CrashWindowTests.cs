@@ -62,7 +62,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
         RunWithWindow(Report(), async window =>
         {
             Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text),
-                text => text?.Contains("Thank you for helping improve Motif.", StringComparison.Ordinal) == true);
+                text => text?.Contains("Thank you for helping improve the demo.", StringComparison.Ordinal) == true);
 
             window.GetLogicalDescendants().OfType<HyperlinkButton>()
                 .Single(button => Equals(button.Content, "Report a problem"))
