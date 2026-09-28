@@ -1,8 +1,9 @@
+# Temporary diagnostics workflow; remove it after the macOS crash is fixed.
 name: macOS crash diagnostics
 
 on:
   push:
-    branches: [mac-debug]
+    branches: ['mac-crash/**']
   workflow_dispatch:
 
 permissions:
@@ -27,10 +28,8 @@ jobs:
       ICU_RID: ${{ matrix.icu_rid }}
       DOTNET_DbgEnableMiniDump: '1'
       DOTNET_DbgMiniDumpType: '1'
-      DOTNET_DbgMiniDumpName: ${{ runner.temp }}/mac-debug-dumps/coredump.%p
       DOTNET_EnableCrashReport: '1'
       DOTNET_CreateDumpDiagnostics: '1'
-      DOTNET_CreateDumpLogToFile: ${{ runner.temp }}/mac-debug-dumps/createdump.log
 
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +41,9 @@ jobs:
       - name: Create diagnostic output directories
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/mac-debug-dumps" bin/Release/mac-debug
+          mkdir -p "$RUNNER_TEMP/mac-crash-dumps" bin/Release/mac-crash
+          echo "DOTNET_DbgMiniDumpName=$RUNNER_TEMP/mac-crash-dumps/coredump.%p" >> "$GITHUB_ENV"
+          echo "DOTNET_CreateDumpLogToFile=$RUNNER_TEMP/mac-crash-dumps/createdump.log" >> "$GITHUB_ENV"
 
       - name: Read pinned SIL ICU source revision
         id: sil-icu-source
@@ -128,15 +129,17 @@ jobs:
         shell: bash
         run: |
           result=0
-          while IFS= read -r selection || [[ -n "$selection" ]]; do
-            selection=${selection//$'\r'/}
-            [[ -z "${selection//[[:space:]]/}" || "$selection" =~ ^[[:space:]]*# ]] && continue
-            project=$(xargs <<< "${selection%%|*}")
-            filter=$(xargs <<< "${selection#*|}")
+          selections=(
+            'SIL.Motif.Tests.Cli|FullyQualifiedName~PendingApplyArgvTests'
+            'SIL.Motif.Tests.Commands|FullyQualifiedName~PendingChangesWorkflowTests'
+          )
+          for selection in "${selections[@]}"; do
+            project=${selection%%|*}
+            filter=${selection#*|}
             project_path="tests/$project/$project.csproj"
-            project_results="bin/Release/mac-debug/$project"
+            project_results="bin/Release/mac-crash/$project"
             mkdir -p "$project_results"
-            log="bin/Release/mac-debug/$project.log"
+            log="bin/Release/mac-crash/$project.log"
             echo "Running $project with filter: $filter"
             if dotnet test "$project_path" \
               --configuration Release \
@@ -154,16 +157,16 @@ jobs:
               echo "$project exited with $status"
               result=1
             fi
-          done < .github/mac-debug.txt
+          done
           exit "$result"
 
       - name: Collect crash reports and dumps
         if: always()
         shell: bash
         run: |
-          output="$GITHUB_WORKSPACE/bin/Release/mac-debug"
+          output="$GITHUB_WORKSPACE/bin/Release/mac-crash"
           mkdir -p "$output"
-          dumps="$RUNNER_TEMP/mac-debug-dumps"
+          dumps="$RUNNER_TEMP/mac-crash-dumps"
           if [[ -d "$dumps" ]]; then
             cp -a "$dumps/." "$output/"
           fi
@@ -186,7 +189,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mac-debug-${{ matrix.os }}
-          path: bin/Release/mac-debug/
+          name: mac-crash-${{ matrix.os }}
+          path: bin/Release/mac-crash/
           if-no-files-found: error
           retention-days: 14
