@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -740,6 +741,7 @@ public sealed class CommandsRefusalsTests
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        start.Environment[RunnerOptions.RootVariable] = Path.GetDirectoryName(_fwDataPath)!;
 
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.

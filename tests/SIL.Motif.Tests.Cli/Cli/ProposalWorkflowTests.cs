@@ -551,6 +551,8 @@ public sealed class ProposalWorkflowTests
                      "--user", "tester", "--force", "--json" })
             start.ArgumentList.Add(argument);
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        start.Environment[RunnerOptions.RootVariable] = Path.GetDirectoryName(_fwDataPath)!;
+        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
         using var process = Process.Start(start)!;
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();

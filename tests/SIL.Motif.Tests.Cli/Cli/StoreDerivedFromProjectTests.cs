@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -138,7 +139,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
         return output.Substring(start, end - start);
     }
 
-    private static (int ExitCode, string Output, string Error) RunCli(string workingDirectory, string arguments)
+    private (int ExitCode, string Output, string Error) RunCli(string workingDirectory, string arguments)
     {
         var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
@@ -150,6 +151,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        start.Environment[RunnerOptions.RootVariable] = _projectDir;
 
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
