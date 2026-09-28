@@ -72,16 +72,14 @@ test('the home page renders the approved beta hero, audience situations, FAQ, an
 	assert.match(html, />License</);
 
 	const sampleCards = html.slice(html.indexOf('class="home-sample-grid"'), html.indexOf('Browse all sample languages'));
-	for (const [title, language] of [
-		['Synthetic Turkic-style sample', 'Turkish'],
-		['Synthetic Bantu-style sample', 'Swahili'],
-		['Synthetic Philippine-style sample', 'Tagalog'],
-	]) {
-		assert.match(sampleCards, /SYNTHETIC EXAMPLE/);
-		assert.ok(sampleCards.includes(title), `the sample cards include ${title}`);
-		assert.ok(sampleCards.includes(`Generated to demonstrate Motif. Modelled loosely on ${language}; not real ${language} data and not a description of any language.`));
-	}
 	const syncedSamples = JSON.parse(await readFile(path.join(siteRoot, 'src', 'data', 'samples.json'), 'utf8'));
+	assert.ok(syncedSamples.length > 0, 'the build synchronizes at least one sample');
+	for (const sample of syncedSamples) {
+		assert.match(sampleCards, /SYNTHETIC EXAMPLE/);
+		assert.ok(sampleCards.includes(sample.title), `the sample cards include ${sample.title}`);
+		assert.ok(sampleCards.includes(sample.disclaimer), `the ${sample.id} card shows its own disclaimer`);
+	}
+	assert.doesNotMatch(sampleCards, /not real Synthetic/);
 	assert.equal(syncedSamples.find((sample) => sample.id === 'synthetic-turkic').lessonsHref, '/learn/turkish-plural-harmony/');
 });
 

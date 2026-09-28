@@ -15,7 +15,6 @@ const sampleTitleKeys = {
 	{samples.map((sample) => {
 		const titleKey = sampleTitleKeys[sample.id];
 		const title = titleKey ? Astro.locals.t(titleKey) : sample.title;
-		const disclaimer = Astro.locals.t('home.syntheticDisclaimer', { language: sample.language.name });
 		return (
 		<article class="home-sample-card">
 			<p class="home-sample-card__synthetic-label">{Astro.locals.t('home.syntheticExample')}</p>
@@ -31,7 +30,7 @@ const sampleTitleKeys = {
 					: <span>{fixedLabel} <small>{availableInReleaseLabel}</small></span>}
 				{sample.lessonsHref && <a href={sample.lessonsHref}>{lessonsLabel}</a>}
 			</nav>
-			<p class="home-sample-card__disclaimer">{disclaimer}</p>
+			<p class="home-sample-card__disclaimer">{sample.disclaimer}</p>
 		</article>
 		);
 	})}
