@@ -4,11 +4,18 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.SampleProjects;
 
@@ -26,7 +33,7 @@ internal static class Program
     {
         if (args.Length < 3 || args[0] != "build")
         {
-            Console.Error.WriteLine("Usage: SIL.Motif.SampleProjects build <sample.json> <output-root> [--bugs <bugs.json> --bug <id> ...]");
+            Console.Error.WriteLine("Usage: SIL.Motif.SampleProjects build <sample.json> <output-root> [--bugs <bugs.json> --bug <id> ...] [--check]");
             return 2;
         }
 
@@ -34,16 +41,24 @@ internal static class Program
         {
             string? bugsPath = null;
             var bugIds = new List<string>();
+            var check = false;
             for (var index = 3; index < args.Length; index++)
             {
                 if (args[index] == "--bugs" && index + 1 < args.Length)
                     bugsPath = args[++index];
                 else if (args[index] == "--bug" && index + 1 < args.Length)
                     bugIds.Add(args[++index]);
+                else if (args[index] == "--check")
+                    check = true;
                 else
                     throw new InvalidDataException($"Unknown or incomplete builder option '{args[index]}'.");
             }
 
+            if (check && bugsPath is null)
+            {
+                var siblingBugsPath = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(args[1]))!, "bugs.json");
+                if (File.Exists(siblingBugsPath)) bugsPath = siblingBugsPath;
+            }
             if (bugIds.Count > 0 && bugsPath is null)
                 throw new InvalidDataException("A bug list is required when applying bug patches.");
 
@@ -53,7 +68,10 @@ internal static class Program
                 ? []
                 : JsonSerializer.Deserialize<BugSpec[]>(File.ReadAllText(bugsPath), JsonOptions)
                   ?? throw new InvalidDataException("The bug list is empty.");
-            var result = SampleBuilder.Build(spec, Path.GetFullPath(args[2]), bugs, bugIds);
+            var outputRoot = Path.GetFullPath(args[2]);
+            var result = check
+                ? CheckVariants(spec, outputRoot, bugs)
+                : SampleBuilder.Build(spec, outputRoot, bugs, bugIds);
             Console.WriteLine(JsonSerializer.Serialize(result, JsonOptions));
             return 0;
         }
@@ -62,6 +80,67 @@ internal static class Program
             Console.Error.WriteLine(exception.Message);
             return 1;
         }
+    }
+
+    private static BuildResult CheckVariants(SampleSpec spec, string outputRoot, IReadOnlyList<BugSpec> bugs)
+    {
+        var checkRoot = Path.Combine(outputRoot, "check");
+        var fixedBuild = CheckVariant(spec, checkRoot, "fixed", bugs, []);
+        foreach (var bug in bugs)
+            CheckVariant(spec, checkRoot, bug.Id, bugs, [bug.Id]);
+        return fixedBuild;
+    }
+
+    private static BuildResult CheckVariant(
+        SampleSpec spec, string checkRoot, string variant, IReadOnlyList<BugSpec> bugs, IReadOnlyList<string> bugIds)
+    {
+        var variantRoot = Path.Combine(checkRoot, variant);
+        var build = SampleBuilder.Build(spec, variantRoot, bugs, bugIds);
+        var capture = BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(build.ProjectPath), Path.Combine(variantRoot, "motif-root"));
+        if (!capture.Succeeded)
+            throw new InvalidOperationException($"[{variant}] Baseline capture failed: {capture.Refusal?.Message}");
+
+        using var grammarTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var grammarTask = Task.Run(() => GrammarCheckQuery.Query(
+            new GrammarCheckRequest(build.ProjectPath), grammarTimeout.Token));
+        var words = spec.Texts.SelectMany(text => text.Sentences)
+            .SelectMany(sentence => sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var wordsTask = Task.Run(() =>
+        {
+            using var invoker = new PanGlossInvoker();
+            return invoker.RunAsync(
+                    new PanGlossRequest.Batch(build.ProjectPath, words, TimeSpan.FromSeconds(3)),
+                    "sample-check:" + variant, CancellationToken.None, TimeSpan.FromSeconds(20))
+                .GetAwaiter().GetResult();
+        });
+        Task.WaitAll(grammarTask, wordsTask);
+        var grammarCheck = grammarTask.Result;
+        if (!grammarCheck.Succeeded)
+            throw new InvalidOperationException($"[{variant}] Grammar check failed: {grammarCheck.Refusal?.Message}");
+
+        var findings = grammarCheck.Value!.Findings;
+        var errors = findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error);
+        var warnings = findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning);
+        var information = findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information);
+        Console.Error.WriteLine(
+            $"[{variant}] grammar-health errors={errors} warnings={warnings} info={information}");
+        foreach (var finding in findings)
+            Console.Error.WriteLine(
+                $"[{variant}] finding code={finding.Code} level={finding.Severity.ToWireValue()} description={finding.Description}");
+
+        var outcome = wordsTask.Result;
+        if (outcome is not PanGlossOutcome.Completed completed)
+            throw new InvalidOperationException($"[{variant}] Word parsing failed: {outcome.Message}");
+        var results = BatchTsvParser.Parse(completed.Output);
+        if (results.Count != words.Length)
+            throw new InvalidDataException(
+                $"[{variant}] PanGloss returned {results.Count} word outcomes for {words.Length} sample words.");
+        foreach (var result in results)
+            Console.Error.WriteLine($"[{variant}] word {result.Word} outcome={result.Outcome.ToStoredOutcome()}");
+        return build;
     }
 }
 
@@ -74,6 +153,7 @@ internal sealed record SampleSpec
     public string Disclaimer { get; init; } = "";
     public string Description { get; init; } = "";
     public ResearchSpec? Research { get; init; }
+    public KnownGrammarWarningSpec[] KnownGrammarWarnings { get; init; } = [];
     public LanguageSpec Language { get; init; } = new("", "");
     public string[] Phonemes { get; init; } = [];
     public NaturalClassSpec[] NaturalClasses { get; init; } = [];
@@ -92,6 +172,7 @@ internal sealed record SampleSpec
 internal sealed record LanguageSpec(string Name, string Tag);
 internal sealed record ResearchSpec(string Document, ResearchSectionSpec[] Sections);
 internal sealed record ResearchSectionSpec(string Part, string Section);
+internal sealed record KnownGrammarWarningSpec(string Code, string Reason);
 internal sealed record NaturalClassSpec(string Id, string Name, string Abbreviation, string[] Phonemes);
 internal sealed record FeatureDefinitionSpec(string Id, string Name, string Abbreviation, FeatureValueSpec[] Values);
 internal sealed record FeatureValueSpec(string Id, string Name, string Abbreviation);

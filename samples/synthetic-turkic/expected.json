@@ -6,7 +6,7 @@
     "textCoverage": 1,
     "work": 9116,
     "steps": 191,
-    "wallClockMs": 8796,
+    "wallClockMs": 19247,
     "slowestWords": [
       "adamlar\u0131nda",
       "geldi",
@@ -21,7 +21,7 @@
     "textCoverage": 0.625,
     "work": 104147,
     "steps": 2418,
-    "wallClockMs": 8657,
+    "wallClockMs": 11861,
     "slowestWords": [
       "adamlar\u0131nda",
       "geldi",
@@ -44,7 +44,7 @@
       "textCoverage": 1,
       "work": 9116,
       "steps": 191,
-      "wallClockMs": 8796,
+      "wallClockMs": 19247,
       "slowestWords": [
         "adamlar\u0131nda",
         "geldi",
@@ -59,7 +59,7 @@
       "textCoverage": 0.9375,
       "work": 9108,
       "steps": 191,
-      "wallClockMs": 8744,
+      "wallClockMs": 12405,
       "slowestWords": [
         "adamlar\u0131nda",
         "geldi",
@@ -76,7 +76,7 @@
       "textCoverage": 0.875,
       "work": 9154,
       "steps": 194,
-      "wallClockMs": 8791,
+      "wallClockMs": 15947,
       "slowestWords": [
         "adamlar\u0131nda",
         "geldi",
@@ -94,7 +94,7 @@
       "textCoverage": 0.8125,
       "work": 8102,
       "steps": 180,
-      "wallClockMs": 8874,
+      "wallClockMs": 11738,
       "slowestWords": [
         "adamlar\u0131nda",
         "geldi",
@@ -113,7 +113,7 @@
       "textCoverage": 1,
       "work": 120176,
       "steps": 2546,
-      "wallClockMs": 8608,
+      "wallClockMs": 12384,
       "slowestWords": [
         "adamlar\u0131nda",
         "geldi",
@@ -128,7 +128,7 @@
       "textCoverage": 0.625,
       "work": 104147,
       "steps": 2418,
-      "wallClockMs": 8657,
+      "wallClockMs": 11861,
       "slowestWords": [
         "adamlar\u0131nda",
         "geldi",
@@ -143,6 +143,20 @@
         "kediyi": "missing-vowel-final-y-allomorphs",
         "masaya": "missing-vowel-final-y-allomorphs"
       }
+    }
+  },
+  "grammarHealth": {
+    "fixed": {
+      "errors": 0,
+      "warnings": 0,
+      "info": 0,
+      "findings": []
+    },
+    "broken": {
+      "errors": 0,
+      "warnings": 0,
+      "info": 0,
+      "findings": []
     }
   }
 }
