@@ -1,0 +1,53 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.PanGlossLine.DifferentInset" ResourceKey="Primitive.Inset.2_0_0_0" />
+    <StaticResource x:Key="Component.PanGlossLine.DifferentPadding" ResourceKey="Primitive.Inset.3_0_0_0" />
+    <StaticResource x:Key="Component.PanGlossLine.Type" ResourceKey="Primitive.Type.10" />
+    <StaticResource x:Key="Component.PanGlossLine.ExtraPadding" ResourceKey="Primitive.Inset.3_0_3_0" />
+    <StaticResource x:Key="Component.PanGlossLine.ExtraType" ResourceKey="Primitive.Type.9" />
+    <StaticResource x:Key="Component.PanGlossLine.ExtraRadius" ResourceKey="Primitive.Radius.2" />
+    <StaticResource x:Key="Component.PanGlossLine.ExtraStroke" ResourceKey="Primitive.Inset.1_1_1_1" />
+  </Styles.Resources>
+  <Style Selector="Border.panGlossLine">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector="Border.panGlossLine :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Component.PanGlossLine.Type}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Marking.Text}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.same :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Same}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.different">
+    <Setter Property="Background" Value="{DynamicResource Intent.Agreement.Different.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Action}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.PanGlossLine.DifferentInset}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.DifferentPadding}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.different :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Different}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.panGlossLine.none :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.None}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector="Border.panGlossLine.capped :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Capped}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector="Border.panGlossExtra">
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.PanGlossLine.ExtraStroke}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.PanGlossLine.ExtraRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.ExtraPadding}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Edge}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="Border.panGlossExtra :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Component.PanGlossLine.ExtraType}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Change.Text}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+</Styles>

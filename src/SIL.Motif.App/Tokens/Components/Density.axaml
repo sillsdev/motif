@@ -1,0 +1,13 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Density.CompactType" ResourceKey="Primitive.Type.12" />
+    <StaticResource x:Key="Component.Density.NormalType" ResourceKey="Primitive.Type.13" />
+  </Styles.Resources>
+  <Style Selector="StackPanel.analysisDensity > TextBlock.densitySample">
+    <Setter Property="FontSize" Value="{DynamicResource Component.Density.CompactType}" />
+  </Style>
+  <Style Selector="StackPanel.analysisDensity.normal > TextBlock.densitySample">
+    <Setter Property="FontSize" Value="{DynamicResource Component.Density.NormalType}" />
+  </Style>
+</Styles>
