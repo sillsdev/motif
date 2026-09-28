@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.Parser;
 using SIL.LCModel;
 using Xunit;
 
@@ -38,7 +39,7 @@ public sealed class SampleBuilderExtensionTests
 
             var prefix = cache.LangProject.LexDbOA.Entries.Single(entry =>
                 entry.LexemeFormOA is IMoAffixAllomorph form &&
-                form.Form.get_String(cache.DefaultVernWs).Text == "ki-");
+                form.Form.get_String(cache.DefaultVernWs).Text == "ki");
             var prefixForm = Assert.IsAssignableFrom<IMoAffixAllomorph>(prefix.LexemeFormOA);
             Assert.Equal(MoMorphTypeTags.kguidMorphPrefix, prefixForm.MorphTypeRA!.Guid);
             Assert.Contains(stemMsa.InflectionClassRA, prefixForm.InflectionClassesRC);
@@ -86,10 +87,73 @@ public sealed class SampleBuilderExtensionTests
 
             var prefix = cache.LangProject.LexDbOA.Entries.Single(entry =>
                 entry.LexemeFormOA is IMoAffixAllomorph form &&
-                form.Form.get_String(cache.DefaultVernWs).Text == "ki-");
+                form.Form.get_String(cache.DefaultVernWs).Text == "ki");
             Assert.Empty(prefix.AlternateFormsOS);
             var msa = Assert.IsAssignableFrom<IMoInflAffMsa>(prefix.MorphoSyntaxAnalysesOC.Single());
             Assert.Equal(2, msa.SlotsRC.Count);
+        }
+        finally
+        {
+            DeleteDirectory(root);
+        }
+    }
+
+    [RealParserFact]
+    public async Task PrefixAffixBuiltBySampleBuilderParsesThroughMotifAssess()
+    {
+        var root = NewRoot();
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var (samplePath, bugsPath) = await WriteFixtureAsync(root, includeClassFeatures: false);
+            var sample = JsonNode.Parse(await File.ReadAllTextAsync(samplePath))!.AsObject();
+            while (sample["stems"]!.AsArray().Count > 1)
+                sample["stems"]!.AsArray().RemoveAt(sample["stems"]!.AsArray().Count - 1);
+            sample["affixes"]!.AsArray().Clear();
+            sample["affixSlots"]!.AsArray().Clear();
+            sample["affixSlots"]!.AsArray().Add(JsonNode.Parse(
+                """{ "id": "prefix-one", "name": "Prefix one", "partOfSpeech": "noun", "optional": false }"""));
+            sample["affixTemplates"]!.AsArray().Clear();
+            sample["affixTemplates"]!.AsArray().Add(JsonNode.Parse(
+                """{ "id": "noun-prefix", "name": "Noun prefix", "partOfSpeech": "noun", "prefixSlots": ["prefix-one"], "final": true }"""));
+            sample["phonologicalRules"]!.AsArray().Clear();
+            sample["affixes"]!.AsArray().Add(JsonNode.Parse("""
+                {
+                  "id": "test-prefix",
+                  "partOfSpeech": "noun",
+                  "slots": ["prefix-one"],
+                  "gloss": "test prefix",
+                  "allomorphs": [{ "id": "test-prefix-form", "form": "ki", "morphType": "prefix" }]
+                }
+                """));
+            sample["texts"]!.AsArray().Clear();
+            sample["texts"]!.AsArray().Add(JsonNode.Parse(
+                """{ "id": "prefix-smoke", "title": "Prefix test", "sentences": ["kiadam"] }"""));
+            await File.WriteAllTextAsync(samplePath, sample.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            using var output = await BuildAsync(root, samplePath, bugsPath, []);
+            var projectPath = output.RootElement.GetProperty("projectPath").GetString()!;
+            var text = Assert.Single(output.RootElement.GetProperty("texts").EnumerateArray(), item =>
+                item.GetProperty("id").GetString() == "prefix-smoke");
+            var assess = new ProcessStartInfo(BuildOutput.Cli)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            assess.Environment["MOTIF_WORKER_ROOT"] = Path.Combine(root, "worker-root");
+            assess.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+            assess.ArgumentList.Add("assess");
+            assess.ArgumentList.Add(projectPath);
+            assess.ArgumentList.Add("--texts");
+            assess.ArgumentList.Add(text.GetProperty("guid").GetString()!);
+            assess.ArgumentList.Add("--json");
+            var result = await RunAsync(assess);
+
+            Assert.Equal(0, result.ExitCode);
+            using var assessment = JsonDocument.Parse(result.StandardOutput);
+            var word = Assert.Single(assessment.RootElement.GetProperty("words").EnumerateArray());
+            Assert.Equal("kiadam", word.GetProperty("word").GetString());
+            Assert.Equal("analysed", word.GetProperty("outcome").GetString());
         }
         finally
         {
@@ -142,7 +206,7 @@ public sealed class SampleBuilderExtensionTests
                   "features": [{ "featureId": "noun-class", "valueId": "class-one" }],
                   "allomorphs": [{
                     "id": "class-prefix-form",
-                    "form": "ki-",
+                    "form": "ki",
                     "morphType": "prefix",
                     "inflectionClasses": ["class-one"],
                     "requiredFeatures": [{ "featureId": "noun-class", "valueId": "class-one" }]
@@ -163,8 +227,8 @@ public sealed class SampleBuilderExtensionTests
                   "slots": ["prefix-one"],
                   "gloss": "test prefix",
                   "allomorphs": [
-                    { "id": "test-prefix-one", "form": "ki-", "morphType": "prefix" },
-                    { "id": "test-prefix-two", "form": "ko-", "morphType": "prefix" }
+                    { "id": "test-prefix-one", "form": "ki", "morphType": "prefix" },
+                    { "id": "test-prefix-two", "form": "ko", "morphType": "prefix" }
                   ]
                 }
                 """));
@@ -218,6 +282,17 @@ public sealed class SampleBuilderExtensionTests
     private static string NewRoot() => Path.Combine(BuildOutput.ProductDirectory,
         "SampleBuilderExtensions", Guid.NewGuid().ToString("N"));
 
+    private static async Task<ProcessResult> RunAsync(ProcessStartInfo start)
+    {
+        start.UseShellExecute = false;
+        start.CreateNoWindow = true;
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        return new ProcessResult(process.ExitCode, await output, await error);
+    }
+
     private static string RepositoryRoot() => Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
 
     private static void DeleteDirectory(string root)
@@ -226,4 +301,6 @@ public sealed class SampleBuilderExtensionTests
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
+
+    private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
 }
