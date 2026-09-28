@@ -11,7 +11,12 @@ Decided in [ADR 0047](../../adr/0047-fieldworks-opinions-and-now-after-apply.md)
 
 The design canvas, which is private to the owner: https://claude.ai/artifact/EoyG5QPQxU5B4BkhoDTMnt.
 - **Options A, B and C** are the first round. C was chosen.
-- **Round 2** is C extended with parser agreement, Remove analysis, Uncertain, grouped Review, and Compact density. It is in progress.
+- **Round 2** is C extended with parser agreement, Remove analysis, Uncertain, grouped Review, and Compact density. It has five boards:
+  - `R2-StateMatrix`: every reachable combination;
+  - `R2-AnalyzeTexts`: interactive, with a density toggle;
+  - `R2-Matrix`: compact Matrix cells;
+  - `R2-Review`: interactive, grouped by transition;
+  - `R2-HowItWorks`: the linguist's guide.
 
 This document supersedes the reading marks in the app-shell screens (`2026-09-24-app-shell-screens/04`, `05` and `09`) where they differ. Those screens stay as they are, as the record of that round.
 
