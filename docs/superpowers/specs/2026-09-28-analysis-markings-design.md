@@ -7,7 +7,7 @@
 
 Each analysis reads left to right: the opinion now, in FieldWorks' own words and colours, then an arrow to the result of Apply, then a small agreement mark. Every analysis offers the one action that fits its state.
 
-Decided in [ADR 0047](../../adr/0047-fieldworks-opinions-and-now-after-apply.md). It marks up the pages of [ADR 0046](../../adr/0046-pages-not-stages.md), and its matching follows [ADR 0027](../../adr/0027-what-counts-as-the-same-word-analysis.md).
+Decided in [ADR 0049](../../adr/0049-fieldworks-opinions-and-now-after-apply.md). It marks up the pages of [ADR 0046](../../adr/0046-pages-not-stages.md), and its matching follows [ADR 0027](../../adr/0027-what-counts-as-the-same-word-analysis.md).
 
 The design canvas, which is private to the owner: https://claude.ai/artifact/EoyG5QPQxU5B4BkhoDTMnt.
 - **Options A, B and C** are the first round. C was chosen.

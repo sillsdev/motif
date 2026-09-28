@@ -107,7 +107,7 @@ An analysis a FieldWorks project holds for a word form that no person has approv
 produced it: FieldWorks' parser, its guesser, or nobody. FieldWorks' own name for these is "Analysis
 Candidates", and it offers them in texts as guesses, coloured tan. The window shows a candidate as
 **Unknown**, the Opinion FieldWorks' User Opinion menu gives it
-([ADR 0047](docs/adr/0047-fieldworks-opinions-and-now-after-apply.md)). One of the five things a project
+([ADR 0049](docs/adr/0049-fieldworks-opinions-and-now-after-apply.md)). One of the five things a project
 can hold for a word that Motif compares an Assessment against: not present, candidate, approved,
 disapproved, or an incorrect spelling. FieldWorks' parser re-judges candidates whenever it runs, and deletes
 one it no longer produces unless a text uses it.

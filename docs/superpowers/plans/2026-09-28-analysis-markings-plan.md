@@ -8,7 +8,7 @@
 
 Clicking a word opens a stacked card, and Review changes lists every staged change as "now" above "after Apply". A labelled picture of the word strip, made from a real screenshot of the app, goes into the documentation website.
 
-**Design:** `docs/superpowers/specs/2026-09-28-analysis-markings-design.md`, and the canvas's Round 4 row (`R4-InText`, `R4-Popups`, `R4-Review`, `R4-WordCard-Explained`). Round 3 is the base; Round 4 is the owner's refinement of it. **Decision:** [ADR 0047](../../adr/0047-fieldworks-opinions-and-now-after-apply.md).
+**Design:** `docs/superpowers/specs/2026-09-28-analysis-markings-design.md`, and the canvas's Round 4 row (`R4-InText`, `R4-Popups`, `R4-Review`, `R4-WordCard-Explained`). Round 3 is the base; Round 4 is the owner's refinement of it. **Decision:** [ADR 0049](../../adr/0049-fieldworks-opinions-and-now-after-apply.md).
 
 ## Lanes
 

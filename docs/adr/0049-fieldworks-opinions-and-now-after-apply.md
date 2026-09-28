@@ -1,4 +1,4 @@
-# ADR 0047: FieldWorks' opinion words, and "now → after Apply"
+# ADR 0049: FieldWorks' opinion words, and "now → after Apply"
 
 **Status:** accepted, 2026-09-28. This ADR:
 - renames what the window calls a person's judgement on an analysis;
