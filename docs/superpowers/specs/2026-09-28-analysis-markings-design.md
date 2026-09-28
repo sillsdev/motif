@@ -56,6 +56,8 @@ This document supersedes the reading marks in the app-shell screens (`2026-09-24
 
 ## 2. The marks
 
+**Amended 2026-09-28** (ADR 0049's amendment). A mark is its letter and its shape, with no glyph: A and D square, U round, none a dashed box. Blue marks what is new or different, and links use a darker link colour. The table below is the Option C record.
+
 | Mark | Meaning | Drawn as |
 |---|---|---|
 | **A** | Approved | a check and "A", in FieldWorks cyan |

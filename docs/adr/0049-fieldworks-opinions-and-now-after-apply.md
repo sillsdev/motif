@@ -46,3 +46,9 @@ The owner chose C, with the letters U, A and D, each with its own glyph as well 
 - **Remove analysis needs a delete operation,** which Motif's operation catalog doesn't have yet. It must meet the definition of done for an operation family, including showing where the analysis is used in texts before Apply.
 - **Parser agreement needs one matcher.** The change composer and the Assessment evidence each apply ADR 0027's rule separately today, and they must agree exactly.
 - **Earlier screens and documents** that say Rejected or Candidate are historical records. They are not counter-examples.
+
+## Amendment, 2026-09-28: Round 3's marks and blue
+
+The owner chose Round 3's compact design over Option C, and ruled on two points of this ADR.
+- **Decision 2 is amended.** An opinion mark is its **letter and its shape**, with no glyph: A and D in a square box, U round, and an analysis FieldWorks lacks shown as a dashed box. Each also has its colour and an accessible name. Losing the colour still leaves the letter, which carries the meaning.
+- **Decision 3 is amended.** Blue marks what is **new or different**: staged work, a PanGloss reading that differs from FieldWorks, and an extra reading's +N. Links, such as FW ↗, use a separate, darker link colour.
