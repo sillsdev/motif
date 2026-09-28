@@ -480,12 +480,12 @@ async function writeWalkthroughPages({ walkthroughRoot, contentRoot, dataRoot, p
 }
 
 async function writeDeveloperDocs({ repository, docsRoot, contentRoot }) {
+	// ADRs stay on GitHub: they record how decisions were reached, which is not what a site reader came for.
 	const rootEntries = await readdir(docsRoot, { withFileTypes: true });
-	const adrEntries = await readdir(path.join(docsRoot, 'adr'), { withFileTypes: true });
-	const allFiles = [
-		...rootEntries.filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => path.join(docsRoot, entry.name)),
-		...adrEntries.filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => path.join(docsRoot, 'adr', entry.name)),
-	].sort();
+	const allFiles = rootEntries
+		.filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+		.map((entry) => path.join(docsRoot, entry.name))
+		.sort();
 	const includedDocs = new Set(allFiles.map((file) => path.resolve(file)));
 	for (const file of allFiles) {
 		const relative = path.relative(docsRoot, file);
@@ -496,20 +496,9 @@ async function writeDeveloperDocs({ repository, docsRoot, contentRoot }) {
 		const stripped = stripFrontmatterAndComments(original);
 		const body = stripDuplicateTitle(rewriteDeveloperLinks(stripped, file, docsRoot, includedDocs, repository), title);
 		await mkdir(path.dirname(destination), { recursive: true });
-		await writeFile(destination, `${frontmatter(title, description)}${body}\n`);
+		await writeFile(destination, `${frontmatter(title, description)}${body}
+`);
 	}
-
-	const decisions = [];
-	for (const entry of adrEntries.filter((candidate) => candidate.isFile() && candidate.name.endsWith('.md')).sort((a, b) => a.name.localeCompare(b.name))) {
-		const source = path.join(docsRoot, 'adr', entry.name);
-		const original = await readFile(source, 'utf8');
-		const title = markdownTitle(original, path.basename(entry.name, '.md'));
-		const slug = path.basename(entry.name, '.md');
-		decisions.push(`- [${title}](/developers/adr/${slug}/)`);
-	}
-	const indexPath = path.join(contentRoot, 'developers', 'adr', 'index.md');
-	await mkdir(path.dirname(indexPath), { recursive: true });
-	await writeFile(indexPath, `${frontmatter('Accepted decisions', 'Architectural decisions recorded for Motif.', 0)}${decisions.join('\n')}\n`);
 }
 
 async function cleanGeneratedPaths(paths) {
