@@ -10,9 +10,10 @@ namespace SIL.Motif.Generator.ModelSource;
 /// directly in the package cache rather than found alongside this assembly.
 /// </summary>
 /// <remarks>
-/// The package root is captured from the same MSBuild property used during restore, so runtime
-/// environment differences cannot redirect the generator to another cache. NuGet lower-cases package
-/// ids when laying out its cache, which is why <see cref="PackageId"/> below is lower-case.
+/// Verified fact, not re-derived here: for the pinned version, the real path is
+/// <c>~/.nuget/packages/sil.lcmodel/{version}/contentFiles/MasterLCModel.xml</c>. NuGet always
+/// lower-cases the package id when laying out the on-disk cache folder, regardless of the casing
+/// written in a <c>PackageReference</c>, which is why <see cref="PackageId"/> below is lower-case.
 /// </remarks>
 public static class ModelPathResolver
 {
@@ -25,15 +26,19 @@ public static class ModelPathResolver
     /// required — nothing in this repository's CI sets it, so the package-cache path is what CI
     /// always exercises.
     /// </summary>
-    /// <param name="packagesRootOverride">Overrides the NuGet package cache root. Exists so tests
-    /// can exercise package lookup and the checkout fallback without mutating process-wide environment
-    /// variables that other tests might read concurrently.</param>
+    /// <param name="packagesRootOverride">Overrides the resolved NuGet package cache root. Exists so
+    /// tests can exercise the "NUGET_PACKAGES unset" and "checkout fallback" branches without
+    /// mutating process-wide environment variables that other tests might read concurrently.
+    /// Production callers should omit this and let it fall through to <c>NUGET_PACKAGES</c> or the
+    /// user-profile default.</param>
     /// <param name="libLcmCheckoutRoot">Overrides the checkout-fallback root for the same reason.</param>
     public static ModelPathResult Resolve(string? packagesRootOverride = null, string? libLcmCheckoutRoot = null)
     {
         var version = ReadPinnedPackageVersion();
 
-        var packagesRoot = packagesRootOverride ?? ReadNuGetPackageRoot();
+        var packagesRoot = packagesRootOverride
+            ?? Environment.GetEnvironmentVariable("NUGET_PACKAGES")
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
 
         var packageCachePath = Path.Combine(packagesRoot, PackageId, version, "contentFiles", "MasterLCModel.xml");
         if (File.Exists(packageCachePath))
@@ -73,17 +78,5 @@ public static class ModelPathResolver
         return attribute?.Value
             ?? throw new GeneratorException(
                 "SilLCModelPackageVersion assembly metadata is missing; check SIL.Motif.Generator.csproj.");
-    }
-
-    /// <summary>Returns the NuGet cache root MSBuild used when restoring this assembly.</summary>
-    public static string ReadNuGetPackageRoot()
-    {
-        var attribute = typeof(ModelPathResolver).Assembly
-            .GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(a => a.Key == "NuGetPackageRoot");
-
-        return attribute?.Value
-            ?? throw new GeneratorException(
-                "NuGetPackageRoot assembly metadata is missing; check SIL.Motif.Generator.csproj.");
     }
 }

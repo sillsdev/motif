@@ -19,15 +19,14 @@
     <!--
       This project never calls into SIL.LCModel — it only reads the MasterLCModel.xml the package
       ships under contentFiles/ (see ModelSource/ModelPathResolver.cs). The PackageReference exists
-      solely so the pinned version is the one MSBuild actually restores. AssemblyMetadata records
-      that version and the resolved package root for model lookup at runtime.
+      solely so the pinned version is the one MSBuild actually restores, keeping the AssemblyMetadata
+      value below honest rather than a second guess.
     -->
     <PackageReference Include="SIL.LCModel" Version="$(SilLCModelPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>
     <AssemblyMetadata Include="SilLCModelPackageVersion" Value="$(SilLCModelPackageVersion)" />
-    <AssemblyMetadata Include="NuGetPackageRoot" Value="$(NuGetPackageRoot)" />
   </ItemGroup>
 
   <!-- Pins LibPalaso above SIL.LCModel's 17.x requests; only Core and WritingSystems use the local override. -->

@@ -143,17 +143,17 @@ jobs:
           tests="bin/Release/tests/$destination"
           mkdir -p "$product" "$tests"
           if [[ "$RUNNER_OS" == Linux ]]; then
-            for library in "$MOTIF_SIL_ICU_STAGE"/libicu*.so*; do
-              [[ -e "$library" || -L "$library" ]] || continue
-              cp -a "$library" "$product/"
-              cp -a "$library" "$tests/"
-            done
+            find "$MOTIF_SIL_ICU_STAGE" -maxdepth 1 \( -type f -o -type l \) -name 'libicu*.so*' -print0 |
+              while IFS= read -r -d '' library; do
+                cp --archive "$library" "$product/"
+                cp --archive "$library" "$tests/"
+              done
           else
-            for library in "$MOTIF_SIL_ICU_STAGE"/libicu*.dylib; do
-              [[ -e "$library" || -L "$library" ]] || continue
-              cp -a "$library" "$product/"
-              cp -a "$library" "$tests/"
-            done
+            find "$MOTIF_SIL_ICU_STAGE" -maxdepth 1 \( -type f -o -type l \) -name 'libicu*.dylib' -print0 |
+              while IFS= read -r -d '' library; do
+                cp --archive "$library" "$product/"
+                cp --archive "$library" "$tests/"
+              done
           fi
           while IFS= read -r library; do
             [[ -e "$product/$library" ]] || { echo "Missing staged ICU library: $product/$library" >&2; exit 1; }

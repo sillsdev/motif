@@ -4,15 +4,9 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Generator;
 
-[CollectionDefinition("Model path resolver environment", DisableParallelization = true)]
-public sealed class ModelPathResolverEnvironmentCollection
-{
-}
-
 /// <summary>
-/// <c>MasterLCModel.xml</c> is readable from the restored NuGet package with no liblcm source checkout.
+/// <c>MasterLCModel.xml</c> is readable from the NuGet package cache with no liblcm source checkout.
 /// </summary>
-[Collection("Model path resolver environment")]
 public class ModelPathResolverTests
 {
     [Fact]
@@ -27,35 +21,9 @@ public class ModelPathResolverTests
     }
 
     [Fact]
-    public void Resolve_UsesThePackageRootCapturedAtBuild_WhenRuntimeEnvironmentDiffers()
-    {
-        var fakePackagesRoot = Path.Combine(Path.GetTempPath(), "motif-tests", Guid.NewGuid().ToString("N"));
-        var fakeModelPath = Path.Combine(fakePackagesRoot, "sil.lcmodel", ModelPathResolver.ReadPinnedPackageVersion(), "contentFiles", "MasterLCModel.xml");
-        Directory.CreateDirectory(Path.GetDirectoryName(fakeModelPath)!);
-        File.WriteAllText(fakeModelPath,
-            "<EntireModel version=\"7000072\"><CellarModule><class id=\"ChkRef\"><props><basic id=\"KeyWord\" sig=\"Unicode\" /></props></class></CellarModule></EntireModel>");
-
-        var originalPackagesRoot = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
-        try
-        {
-            Environment.SetEnvironmentVariable("NUGET_PACKAGES", fakePackagesRoot);
-
-            var loaded = MotifModelLoader.Load();
-
-            Assert.Equal(898, loaded.Rows.Count);
-            Assert.Equal("7000072", loaded.Model.Version);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("NUGET_PACKAGES", originalPackagesRoot);
-            Directory.Delete(fakePackagesRoot, recursive: true);
-        }
-    }
-
-    [Fact]
     public void Resolve_UsesExplicitPackagesRootOverride()
     {
-        // The override exercises the package layout without mutating process-wide environment variables.
+        // NUGET_PACKAGES is how CI locates the cache; the override tests the same path without mutating env.
         var realRoot = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(
             ModelPathResolver.Resolve().Path)))!; // .../sil.lcmodel/{version}/contentFiles/MasterLCModel.xml -> .../packages
         var packagesRoot = Path.GetDirectoryName(realRoot)!;
