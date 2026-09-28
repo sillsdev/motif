@@ -28,6 +28,9 @@ public sealed class ReviewPageModel : PageModel
             () => Changes.Items.Any(item => item.IsNoLongerFits));
         CheckAgainCommand = new AsyncRelayCommand(() => Changes.RecheckAsync(),
             () => HasNonFittingChanges && !Context.Evidence.IsStale);
+        ReconfirmChangeCommand = new AsyncRelayCommand<ChangeViewModel>(ReconfirmChangeAsync,
+            change => change is { IsUncertain: true });
+        ToggleContextCommand = new RelayCommand<ChangeViewModel>(change => change?.ToggleContext());
         MeasureCommand = new AsyncRelayCommand(MeasureAsync,
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
         CancelMeasureCommand = new RelayCommand(() => _measurementCancellation?.Cancel(), () => IsMeasuring);
@@ -46,6 +49,10 @@ public sealed class ReviewPageModel : PageModel
 
     /// <summary>Checks unchanged identities against the refreshed Baseline and renews their evidence.</summary>
     public IAsyncRelayCommand CheckAgainCommand { get; }
+
+    public IAsyncRelayCommand<ChangeViewModel> ReconfirmChangeCommand { get; }
+
+    public IRelayCommand<ChangeViewModel> ToggleContextCommand { get; }
 
     /// <summary>Starts a Trial of the touched words only when the person asks for one.</summary>
     public IAsyncRelayCommand MeasureCommand { get; }
@@ -75,6 +82,12 @@ public sealed class ReviewPageModel : PageModel
 
     public bool HasNonFittingChanges => Changes.Items.Any(item => item.IsNoLongerFits);
 
+    public IReadOnlyList<ChangeViewModel> ReviewableChanges => Changes.Items.Where(item => !item.IsUncertain).ToArray();
+
+    public IReadOnlyList<ChangeViewModel> UncertainChanges => Changes.Items.Where(item => item.IsUncertain).ToArray();
+
+    public bool HasUncertainChanges => UncertainChanges.Count > 0;
+
     /// <summary>The Apply result in words without internal command vocabulary.</summary>
     public string ReceiptText => Receipt is null ? string.Empty :
         $"Changes applied to {ProjectName}. Receipt recorded at {Receipt.AppliedLogEntry.TimestampUtc}.";
@@ -92,7 +105,7 @@ public sealed class ReviewPageModel : PageModel
     public WindowRefusal? MeasurementRefusal { get; private set; }
 
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
-    public bool CanApply => Changes.HasItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
+    public bool CanApply => Changes.HasItems && !HasUncertainChanges && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
         Context.Baseline?.FieldWorksHeldProject != true &&
         !Context.Evidence.IsStale &&
         EvidenceComplete && WordsLosingApprovedAnalysis.Count == 0 && !IsMeasuring && !IsApplying;
@@ -100,7 +113,8 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>What prevents Apply, in words shown beside the action.</summary>
     public string ApplyBlockReason => IsApplying ? "Applying changes to FieldWorks..." :
         !Changes.HasItems ? "Choose a change in Texts to begin." :
-        Changes.Items.Any(item => item.IsNoLongerFits)
+        HasUncertainChanges ? UncertainSentence(UncertainChanges.Count)
+        : Changes.Items.Any(item => item.IsNoLongerFits)
             ? "No longer fits: remove the changes that no longer fit before applying."
             : Context.Evidence.IsStale
                 ? "FieldWorks saved since these numbers were measured. Refresh before applying."
@@ -108,6 +122,17 @@ public sealed class ReviewPageModel : PageModel
                 ? "FieldWorks has this project open. Close it before applying changes."
             : WordsLosingApprovedAnalysis.Count > 0 ? LostAnalysisSentence(WordsLosingApprovedAnalysis)
                 : !EvidenceComplete ? "See what applying does to the numbers before applying." : string.Empty;
+
+    private static string UncertainSentence(int count) =>
+        $"{count} {(count == 1 ? "change needs" : "changes need")} another look because " +
+        $"{(count == 1 ? "its sentence changed" : "their sentence changed")}. " +
+        $"Check {(count == 1 ? "it again or undo it." : "them again or undo them.")}";
+
+    private async Task ReconfirmChangeAsync(ChangeViewModel? change)
+    {
+        if (change is null) return;
+        await Changes.ReconfirmAsync(change).ConfigureAwait(true);
+    }
 
     private bool EvidenceComplete { get; set; }
 
@@ -265,6 +290,10 @@ public sealed class ReviewPageModel : PageModel
             OnPropertyChanged(nameof(CanApply));
             OnPropertyChanged(nameof(ApplyBlockReason));
             OnPropertyChanged(nameof(HasNonFittingChanges));
+            OnPropertyChanged(nameof(ReviewableChanges));
+            OnPropertyChanged(nameof(UncertainChanges));
+            OnPropertyChanged(nameof(HasUncertainChanges));
+            ReconfirmChangeCommand.NotifyCanExecuteChanged();
             RemoveNonFittingCommand.NotifyCanExecuteChanged();
             CheckAgainCommand.NotifyCanExecuteChanged();
             MeasureCommand.NotifyCanExecuteChanged();

@@ -291,6 +291,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
     {
         await Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
+        if (!Changes.HasError && Changes.HasItems)
+            await Changes.RecheckAsync(cancellationToken).ConfigureAwait(true);
         if (ProjectPath is { } projectPath)
             await LoadStoredEvidenceAsync(projectPath, cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
