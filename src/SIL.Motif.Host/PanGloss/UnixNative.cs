@@ -123,7 +123,7 @@ internal sealed class UnixFileLock : IDisposable
         try
         {
             var flags = 2 | Create | CloseOnExec | NoFollow;
-            _fileDescriptor = UnixNative.Open(path, flags | CreateExclusive, machineWide ? 0x1b6U : 0x180U);
+            _fileDescriptor = OpenRetryingInterrupts(path, flags | CreateExclusive, machineWide ? 0x1b6U : 0x180U);
             if (_fileDescriptor >= 0)
             {
                 if (UnixNative.Fchmod(_fileDescriptor, machineWide ? 0x1b6U : 0x180U) != 0)
@@ -135,11 +135,14 @@ internal sealed class UnixFileLock : IDisposable
             }
             else if (UnixNative.LastError == 17)
             {
-                _fileDescriptor = UnixNative.Open(path, flags, 0);
+                _fileDescriptor = OpenRetryingInterrupts(path, flags, 0);
             }
 
             if (_fileDescriptor < 0)
-                throw new IOException("Could not open the worker lock file.", UnixNative.LastError);
+            {
+                var error = UnixNative.LastError;
+                throw new IOException($"Could not open the worker lock file (errno {error}).", error);
+            }
         }
         finally
         {
@@ -175,6 +178,15 @@ internal sealed class UnixFileLock : IDisposable
         Release();
         _disposed = true;
         _ = UnixNative.Close(_fileDescriptor);
+    }
+
+    private static int OpenRetryingInterrupts(IntPtr path, int flags, uint mode)
+    {
+        const int interrupted = 4;
+        int descriptor;
+        do descriptor = UnixNative.Open(path, flags, mode);
+        while (descriptor < 0 && UnixNative.LastError == interrupted);
+        return descriptor;
     }
 
     private static int Create => OperatingSystem.IsLinux() ? 0x40 : 0x200;
