@@ -82,12 +82,18 @@ public sealed class AssessCommandTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var cachePath = Path.Combine(_managedRootsParent, "estimate.sqlite");
-        WriteStatsCache(cachePath, ("motifa", 10, 1, 10, 2_000_000L));
+        // PanGloss derives word attempts from StepBudget ticks (pg-cli/src/stats_cmd.rs:330).
+        WriteStatsCache(cachePath, ("motifa", 10, 1, 90, 2_000_000L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
-                [new(0, "motifa", 2000, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")],
+                [new(0, "motifa", 2000, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")
+                {
+                    Morphology = new ParseWordEvidence(
+                        SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0, "motifa", 2000,
+                        false, false, false, [], []),
+                }],
                 1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
             AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
             _ => new AssessmentRaw.WordMeasurements([]),
@@ -105,6 +111,10 @@ public sealed class AssessCommandTests : IDisposable
         Assert.True(rate.Succeeded, rate.Refusal?.Message);
         Assert.False(rate.Value!.IsTypicalMachine);
         Assert.Equal(200m, rate.Value.MillisecondsPerStep);
+        var parseRecord = measured.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
+            .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
+        Assert.Equal(10, Assert.Single(OpenRepository(seeded.FwDataPath).Get(parseRecord.AssessmentId)
+            .Words!).Morphology!.Attempts);
 
         var estimate = StepLimitEstimator.Calculate(new StepCap(4), rate.Value);
         Assert.NotNull(estimate);
@@ -530,11 +540,11 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Theory]
-    [InlineData(null, null, null, 500000)]
-    [InlineData(4000, 150000, null, 150000)]
-    [InlineData(4000, 150000, 750000, 750000)]
+    [InlineData(null, null, null, 500000, 20_000)]
+    [InlineData(4000, 150000, null, 150000, 4000)]
+    [InlineData(4000, 150000, 750000, 750000, 4000)]
     public void TheRunUsesRequestLimitsBeforeProjectConfiguredLimits(
-        int? requestedMs, int? selectionStepLimit, int? requestStepLimit, int expectedStepLimit)
+        int? requestedMs, int? selectionStepLimit, int? requestStepLimit, int expectedStepLimit, int expectedMs)
     {
         using var seeded = NewSeededScratch();
         var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
@@ -567,7 +577,7 @@ public sealed class AssessCommandTests : IDisposable
             assessor, NewInvoker(), null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        Assert.Equal(TimeSpan.FromMilliseconds(requestedMs ?? 2500), seen!.PerWordLimit);
+        Assert.Equal(TimeSpan.FromMilliseconds(expectedMs), seen!.PerWordLimit);
         Assert.Equal(expectedStepLimit, seen.PerWordStepLimit);
     }
 
@@ -1055,6 +1065,20 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Contains("parser absent", outcome.Refusal.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(AssessmentStage.Parsing, stages);
         Assert.Empty(OpenRepository(seeded.FwDataPath).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+    }
+
+    [Fact]
+    public void AnAssessmentWithNoParserRefusesBeforeReportingCaptureProgress()
+    {
+        using var seeded = NewSeededScratch();
+        var stages = new List<AssessmentStage>();
+
+        var outcome = AssessCommand.Assess(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(),
+            parserPath: null, progress => stages.Add(progress.Stage), CancellationToken.None);
+
+        Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
+        Assert.Empty(stages);
     }
 
     private static readonly IReadOnlyList<AssessmentKind> CollectedKinds =

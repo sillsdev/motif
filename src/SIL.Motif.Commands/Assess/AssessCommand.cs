@@ -11,6 +11,7 @@ using SIL.LCModel;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
@@ -103,9 +104,15 @@ public static class AssessCommand
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
+            if (cancellationToken.IsCancellationRequested)
+                return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
             if (request.PerWordLimitMs is <= 0)
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                     "assess.invalid-limit", FailureReason.InvalidArgument, "A per-word time limit must be positive."));
+            if (invoker.ExecutableMissing)
+                return CommandOutcome<AssessCommandResponse>.Refused(cancellationToken.IsCancellationRequested
+                    ? Cancelled(request.ProjectPath)
+                    : ParserUnavailable(request.ProjectPath, PanGlossExecutable.NotFoundMessage, executableMissing: true));
             AssessmentScopeConfiguration configured;
             try
             {
@@ -188,7 +195,7 @@ public static class AssessCommand
                     : stepLimit.IsUnbounded ? null
                     : usesDefaultSelection
                         ? defaultPerWordLimitMs is { } savedMs ? TimeSpan.FromMilliseconds(savedMs) : null
-                        : configured.PerWordLimit;
+                        : EstimatePerWordTimeLimit(assessments, stepLimit);
                 scope = new AssessmentScope(composition.Selection.Words, collected, timeLimit, stepLimit);
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection..."));
@@ -337,6 +344,11 @@ public static class AssessCommand
                 {
                     Words = record.Words.Select(word => word with
                     {
+                        Morphology = word.Morphology is { } morphology &&
+                            wordStats is not null && wordStats.TryGetValue(word.Word, out var attempts) &&
+                            attempts.Attempts is { } count
+                                ? morphology with { Attempts = count }
+                                : word.Morphology,
                         ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
                         OccurrenceCount = wordContext.HasTextSelection
                             ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
@@ -467,6 +479,17 @@ public static class AssessCommand
         "assess.parser-unavailable", FailureReason.Refused, message,
         ParserNotFoundFact.Mark(
             new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath }, executableMissing));
+
+    private static TimeSpan? EstimatePerWordTimeLimit(AssessmentRepository assessments, StepCap stepLimit)
+    {
+        var latest = assessments.ListByKind(AssessmentKind.ParseTime.ToStoredKind()).LastOrDefault();
+        var rate = StepLimitEstimator.FromAssessment(
+            latest is null ? null : assessments.Get(latest.AssessmentId));
+        var estimate = StepLimitEstimator.Calculate(stepLimit, rate);
+        return estimate?.PerWordTimeLimitMs is { } milliseconds && milliseconds <= int.MaxValue
+            ? TimeSpan.FromMilliseconds(milliseconds)
+            : null;
+    }
 
     private static Refusal Cancelled(string projectPath) => new(
         "assessment.cancelled", FailureReason.Cancelled,

@@ -27,19 +27,14 @@ public static class StepLimitEstimator
     /// <summary>Uses a stored Assessment's per-word elapsed times and parser step counts when available.</summary>
     public static ParserStepRate FromAssessment(AssessmentRecord? assessment)
     {
-        if (assessment is null || assessment.Words is null || assessment.ObjectTimings.Count == 0)
+        if (assessment?.Words is null)
             return TypicalMachineRate;
 
-        var attemptsByWord = assessment.ObjectTimings
-            .Where(row => row.Attempts is > 0)
-            .GroupBy(row => row.Word, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.Sum(row => (long)row.Attempts!.Value),
-                StringComparer.Ordinal);
         decimal totalSteps = 0;
         decimal totalMilliseconds = 0;
         foreach (var word in assessment.Words)
         {
-            if (word.ElapsedMs is not > 0 || !attemptsByWord.TryGetValue(word.Word, out var attempts) || attempts <= 0)
+            if (word.ElapsedMs is not > 0 || word.Morphology?.Attempts is not { } attempts || attempts <= 0)
                 continue;
             totalSteps += attempts;
             totalMilliseconds += word.ElapsedMs.Value;

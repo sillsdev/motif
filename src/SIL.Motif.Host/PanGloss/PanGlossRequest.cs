@@ -156,6 +156,7 @@ public abstract record PanGlossRequest
 
         internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
         {
+            // PanGloss parse has no --step-cap flag; it uses its own finite default.
             startInfo.ArgumentList.Add("parse");
             startInfo.ArgumentList.Add(GrammarPath);
             startInfo.ArgumentList.Add(Word);

@@ -410,6 +410,31 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task ABatchWithoutAWordTimeLimitHasNoWallClockDeadlineAndStillCancels()
+    {
+        var project = Project("batch-without-time-limit");
+        var heartbeat = Path.Combine(_root, "unlimited-batch-heartbeat.txt");
+        FakeParser.Behave(_root, new { heartbeatPath = heartbeat });
+        var request = new PanGlossRequest.Batch(project, ["motifa"], PerWordLimit: null);
+        using var invoker = Invoker();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+        Assert.Equal(Timeout.InfiniteTimeSpan, PanGlossInvoker.ResolveWallClockCap(request, null));
+        Assert.Equal(PanGlossInvoker.DefaultWallClockCap,
+            PanGlossInvoker.ResolveWallClockCap(new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), null));
+        var run = invoker.RunAsync(request, "test:unlimited-batch", cancellation.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!File.Exists(heartbeat) && !run.IsCompleted && DateTime.UtcNow < deadline)
+            await Task.Delay(20);
+        Assert.True(File.Exists(heartbeat));
+
+        await cancellation.CancelAsync();
+
+        Assert.IsType<PanGlossOutcome.Cancelled>(await run);
+        await AssertStoppedTicking(heartbeat);
+    }
+
+    [Fact]
     public async Task EveryLaunchRunsInsideTheAdmittedJobObject()
     {
         var project = Project("contained");
