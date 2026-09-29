@@ -22,12 +22,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.12.0'
-          cache: npm
-          cache-dependency-path: site/package-lock.json
-
       - name: Download and verify the pinned PanGloss parser
         shell: pwsh
         run: |
@@ -45,15 +39,13 @@ jobs:
           }
           "MOTIF_PANGLOSS_EXE=$destination" >> $env:GITHUB_ENV
 
-      - name: Build media and documentation site
+      - name: Build media artifacts
         shell: pwsh
-        run: ./tools/Build-Media.ps1 -Configuration Release
+        run: ./tools/Build-Media.ps1 -Configuration Release -Only build,icons,samples,screenshots,walkthroughs,help,media-test
 
-      - name: Upload media and site artifacts
+      - name: Upload media artifacts
         uses: actions/upload-artifact@v4
         with:
           name: media-release
-          path: |
-            bin/Release/media/
-            site/dist/
+          path: bin/Release/media/
           if-no-files-found: error

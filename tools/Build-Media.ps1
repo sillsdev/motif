@@ -155,13 +155,22 @@ function Invoke-MediaStep {
         }
         'walkthroughs' {
             Remove-GeneratedDirectory $walkthroughOutput
-            $captureScript = Join-Path $repositoryRoot 'tools/Build-Walkthroughs.ps1'
-            if (Test-Path -LiteralPath $captureScript -PathType Leaf) {
-                & $captureScript -Configuration $Configuration -OutputDirectory $walkthroughOutput
-                if (-not $?) { throw 'Build-Walkthroughs.ps1 failed.' }
+            $previousWalkthroughOutput = $env:MOTIF_WALKTHROUGH_OUTPUT
+            $previousWalkthroughClips = $env:MOTIF_WALKTHROUGH_CLIPS
+            try {
+                $env:MOTIF_WALKTHROUGH_OUTPUT = $walkthroughOutput
+                $env:MOTIF_WALKTHROUGH_CLIPS = '1'
+                Invoke-Native 'dotnet' @(
+                    'test',
+                    (Join-Path $repositoryRoot 'tests/SIL.Motif.Tests.App/SIL.Motif.Tests.App.csproj'),
+                    '--configuration', $Configuration,
+                    '--no-build', '--no-restore', '--nologo',
+                    '--filter', 'FullyQualifiedName~WalkthroughReplayTests'
+                )
             }
-            else {
-                Write-Host 'Walkthrough capture: not built yet.' -ForegroundColor Yellow
+            finally {
+                $env:MOTIF_WALKTHROUGH_OUTPUT = $previousWalkthroughOutput
+                $env:MOTIF_WALKTHROUGH_CLIPS = $previousWalkthroughClips
             }
         }
         'help' {
@@ -187,23 +196,22 @@ function Invoke-MediaStep {
         }
         'site' {
             Invoke-Native 'npm' @('ci', '--prefix', $siteRoot)
-            $walkthroughManifests = @(Get-WalkthroughManifests $walkthroughOutput)
-            $walkthroughRoot = if ($walkthroughManifests.Count -gt 0) {
-                $walkthroughOutput
-            }
-            else {
-                Join-Path $siteRoot 'fixtures/walkthroughs'
-            }
             $syncArgs = @(
                 'run', 'sync', '--prefix', $siteRoot, '--',
                 '--help-export', $helpExport,
                 '--help-root', (Join-Path $repositoryRoot 'help'),
-                '--walkthrough-output', $walkthroughRoot,
                 '--samples-root', (Join-Path $repositoryRoot 'samples'),
                 '--samples-out', (Join-Path $configurationRoot 'samples'),
                 '--api-xml', (Join-Path $configurationRoot 'SIL.Motif.Contract.xml')
             )
-            Invoke-Native 'npm' $syncArgs
+            $previousWalkthroughOutput = $env:MOTIF_WALKTHROUGH_OUTPUT
+            try {
+                $env:MOTIF_WALKTHROUGH_OUTPUT = $walkthroughOutput
+                Invoke-Native 'npm' $syncArgs
+            }
+            finally {
+                $env:MOTIF_WALKTHROUGH_OUTPUT = $previousWalkthroughOutput
+            }
             Invoke-Native 'npm' @('test', '--prefix', $siteRoot)
             Invoke-Native 'npm' @('run', 'build', '--prefix', $siteRoot, '--ignore-scripts')
         }
@@ -234,14 +242,7 @@ finally {
         if (Test-Path -LiteralPath $output) { Write-Host "  $output" }
     }
 
-    $walkthroughManifests = @(Get-WalkthroughManifests $walkthroughOutput)
-    $walkthroughRoot = if ($walkthroughManifests.Count -gt 0) {
-        $walkthroughOutput
-    }
-    else {
-        Join-Path $siteRoot 'fixtures/walkthroughs'
-    }
-    $unresolved = @(Get-UnresolvedGuideShots $walkthroughRoot)
+    $unresolved = @(Get-UnresolvedGuideShots $walkthroughOutput)
     if ($unresolved.Count -eq 0) {
         Write-Host 'Unresolved Guide shot IDs: none.' -ForegroundColor Green
     }

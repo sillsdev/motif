@@ -236,7 +236,9 @@ sync script. It is not yet part of `./build.ps1` or CI.
 
 Run ./tools/Build-Media.ps1 to rebuild media outputs and the documentation site. Every committed image,
 video, and diagram belongs in media.json as generated, source, or record; regenerate generated assets
-from their source with the named Build-Media step.
+from their source with the named Build-Media step. The walkthroughs step replays the App walkthrough tests
+into bin/<Configuration>/media/walkthroughs, which the site sync consumes. The media workflow skips the
+site step and uploads bin/Release/media.
 
 ## Non-negotiable design rules
 

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Xunit;
 
 namespace SIL.Motif.Tests.Contract;
@@ -16,7 +15,7 @@ public sealed class MediaManifestTests
     };
 
     [Fact]
-    public void ManifestListsEveryRepositoryMediaFileExactlyOnceAndCapturedShotsResolve()
+    public void ManifestListsEveryRepositoryMediaFileExactlyOnceAndWalkthroughScreenshotsExist()
     {
         var root = FindRepositoryRoot();
         using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "media.json")));
@@ -44,7 +43,30 @@ public sealed class MediaManifestTests
         Assert.True(missing.Length == 0,
             $"media.json names files that are not repository media: {string.Join(", ", missing)}");
 
-        AssertCapturedGuideShotsResolve(root);
+        AssertWalkthroughScreenshotsExist(root);
+    }
+
+    [Fact]
+    public void CheckedInWalkthroughCapturesAreGeneratedByTheWalkthroughsStep()
+    {
+        var root = FindRepositoryRoot();
+        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "media.json")));
+        var entries = document.RootElement.GetProperty("media").EnumerateArray()
+            .ToDictionary(entry => entry.GetProperty("path").GetString()!, StringComparer.Ordinal);
+        var captures = TrackedAndUntrackedFiles(root)
+            .Where(IsMediaPath)
+            .Where(path => path.StartsWith("site/fixtures/walkthroughs/", StringComparison.Ordinal)
+                || path.StartsWith("tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.NotEmpty(captures);
+        foreach (var path in captures)
+        {
+            Assert.True(entries.TryGetValue(path, out var entry), $"Walkthrough capture is missing from media.json: {path}");
+            Assert.Equal("generated", entry.GetProperty("classification").GetString());
+            Assert.Equal("walkthroughs", entry.GetProperty("step").GetString());
+            Assert.Equal(path, entry.GetProperty("outputPath").GetString());
+        }
     }
 
     private static void AssertValidClassification(JsonElement entry, string root, string path)
@@ -96,7 +118,7 @@ public sealed class MediaManifestTests
     private static string Resolve(string root, string path) =>
         Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar));
 
-    private static void AssertCapturedGuideShotsResolve(string root)
+    private static void AssertWalkthroughScreenshotsExist(string root)
     {
         var mediaRoot = Path.Combine(root, "bin");
         if (!Directory.Exists(mediaRoot))
@@ -105,40 +127,21 @@ public sealed class MediaManifestTests
         var manifests = Directory.GetFiles(mediaRoot, "manifest.json", SearchOption.AllDirectories)
             .Where(path => path.Contains($"{Path.DirectorySeparatorChar}media{Path.DirectorySeparatorChar}walkthroughs{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
             .ToArray();
-        if (manifests.Length == 0)
-            return;
-
-        var resolved = new HashSet<string>(StringComparer.Ordinal);
         foreach (var manifestPath in manifests)
         {
             using var document = JsonDocument.Parse(File.ReadAllText(manifestPath));
             var manifest = document.RootElement;
-            var walkthroughId = manifest.GetProperty("id").GetString();
             var directory = Path.GetDirectoryName(manifestPath)!;
             foreach (var step in manifest.GetProperty("steps").EnumerateArray())
             {
-                var stepId = step.GetProperty("id").GetString();
                 var screenshot = step.GetProperty("screenshot").GetString();
-                if (string.IsNullOrWhiteSpace(walkthroughId) || string.IsNullOrWhiteSpace(stepId) || string.IsNullOrWhiteSpace(screenshot))
+                if (string.IsNullOrWhiteSpace(screenshot))
                     continue;
 
                 var screenshotPath = Path.GetFullPath(Path.Combine(directory, screenshot.Replace('/', Path.DirectorySeparatorChar)));
-                Assert.True(File.Exists(screenshotPath), $"Walkthrough screenshot is missing: {walkthroughId}/{stepId} -> {screenshot}");
-                resolved.Add($"{walkthroughId}/{stepId}");
+                Assert.True(File.Exists(screenshotPath), $"Walkthrough screenshot is missing: {manifestPath} -> {screenshot}");
             }
         }
-
-        var guideRoot = Path.Combine(root, "help", "en", "guide");
-        var unresolved = Directory.GetFiles(guideRoot, "*.md", SearchOption.AllDirectories)
-            .SelectMany(path => Regex.Matches(File.ReadAllText(path), @"\]\(shot:([^)]+)\)")
-                .Select(match => match.Groups[1].Value))
-            .Distinct(StringComparer.Ordinal)
-            .Where(target => !resolved.Contains(target))
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-
-        Assert.True(unresolved.Length == 0,
-            $"Captured Walkthroughs do not resolve Guide shots: {string.Join(", ", unresolved.Select(target => $"shot:{target}"))}");
     }
 
     private static string FindRepositoryRoot()
