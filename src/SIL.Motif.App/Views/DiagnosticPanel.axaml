@@ -265,6 +265,7 @@
               <TreeView.Styles>
                 <Style Selector="TreeViewItem" x:DataType="vm:TraceStepViewModel">
                   <Setter Property="IsExpanded" Value="{Binding ExpandForFilter}" />
+                  <Setter Property="AutomationProperties.Name" Value="{Binding Label}" />
                 </Style>
               </TreeView.Styles>
               <TreeView.ItemTemplate>

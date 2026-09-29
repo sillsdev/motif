@@ -1,6 +1,8 @@
+using Avalonia.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.RealClient;
@@ -19,61 +21,83 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             new { word = SeededProject.SecondForm, outcome = "no-analysis" },
             new { word = "motifextra", outcome = "capped" },
         } });
-        var selection = new SelectionViewModel(project.Client)
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            PastedWords = string.Join(Environment.NewLine,
-                SeededProject.AnalysedWordForm, SeededProject.FirstForm, SeededProject.SecondForm, "motifextra"),
-        };
-        var assess = new AssessViewModel(project.Client, selection) { ProjectPath = project.FwDataPath };
-        await assess.RunCommand.ExecuteAsync(null);
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: project.ParserPath);
+            var workspace = walkthrough.Workspace;
+            var page = workspace.PageModel<TextsPageModel>();
+            workspace.Selection.PastedWords = string.Join(Environment.NewLine,
+                SeededProject.AnalysedWordForm, SeededProject.FirstForm, SeededProject.SecondForm, "motifextra");
+            workspace.Assess.ProjectPath = project.FwDataPath;
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(RunState.Completed, assess.State);
-        Assert.Equal(4, assess.Result!.Words.Count);
-        var compare = assess.Compare;
-        compare.ClearSelectionCommand.Execute(null);
-        var allRows = compare.Words.ToArray();
-        Assert.Equal(4, allRows.Length);
-        var lists = new TextsListsViewModel(compare);
-        Assert.Equal(7, lists.Lists.Count);
-        Assert.True(lists.Lists.Count(list => list.HasWords) >= 3);
+            Assert.Equal(RunState.Completed, workspace.Assess.State);
+            Assert.Equal(4, workspace.Assess.Result!.Words.Count);
+            var compare = page.Assess.Compare;
+            compare.ClearSelectionCommand.Execute(null);
+            Assert.Equal(4, compare.Words.Count);
 
-        foreach (var list in lists.Lists)
-        {
-            var declaredCells = list.Cells.ToHashSet();
-            var expected = allRows.Where(row => declaredCells.Contains(new TextsListCell(row.Row, row.Column)))
-                .Select(row => row.Word).Order(StringComparer.Ordinal).ToArray();
-            lists.SelectListCommand.Execute(list);
-            var actual = compare.Words.Select(row => row.Word).Order(StringComparer.Ordinal).ToArray();
-            Assert.Equal(expected, actual);
-            Assert.Equal(expected.Length, list.WordCount);
-        }
+            var expectedWords = new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["Approved, not parsed"] = [SeededProject.AnalysedWordForm],
+                ["Approved, parsed differently"] = [],
+                ["Candidate the parser confirms"] = [],
+                ["Parsed, not in the project"] = [SeededProject.FirstForm],
+                ["Nobody can analyze"] = [SeededProject.SecondForm],
+                ["Rejected but rebuilt"] = [],
+                ["Timed out"] = ["motifextra"],
+            };
+            var lists = page.TextsLists;
+            Assert.Equal(7, lists.Lists.Count);
+            Assert.Equal(4, lists.Lists.Count(list => list.HasWords));
+
+            foreach (var list in lists.Lists)
+            {
+                var expected = expectedWords[list.Name].Order(StringComparer.Ordinal).ToArray();
+                lists.SelectListCommand.Execute(list);
+                var actual = compare.Words.Select(row => row.Word).Order(StringComparer.Ordinal).ToArray();
+                Assert.Equal(expected, actual);
+                Assert.Equal(expected.Length, list.WordCount);
+            }
+
+        }, TimeSpan.FromMinutes(1));
     }
 
     [Fact]
     public async Task WhatChangedComparesTheRunWithTheOneBeforeIt()
     {
         using var project = await GrammarClientProject.OpenAsync(pristine);
-        var selection = new SelectionViewModel(project.Client) { PastedWords = SeededProject.FirstForm };
-        var assess = new AssessViewModel(project.Client, selection) { ProjectPath = project.FwDataPath };
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: project.ParserPath);
+            var workspace = walkthrough.Workspace;
+            var page = workspace.PageModel<TextsPageModel>();
+            workspace.Selection.PastedWords = SeededProject.FirstForm;
+            workspace.Assess.ProjectPath = project.FwDataPath;
 
-        project.Behave(new { words = new[] { new { word = SeededProject.FirstForm, outcome = "no-analysis" } } });
-        await assess.RunCommand.ExecuteAsync(null);
-        Assert.Equal(RunState.Completed, assess.State);
-        Assert.Equal("no-analysis", Assert.Single(assess.Result!.Words).Outcome);
+            project.Behave(new { words = new[] { new { word = SeededProject.FirstForm, outcome = "no-analysis" } } });
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
+            Assert.Equal(RunState.Completed, workspace.Assess.State);
+            Assert.Equal("no-analysis", Assert.Single(workspace.Assess.Result!.Words).Outcome);
 
-        project.Behave(new { words = new[] { new { word = SeededProject.FirstForm, outcome = "complete" } } });
-        await assess.RunCommand.ExecuteAsync(null);
-        Assert.Equal(RunState.Completed, assess.State);
-        Assert.Equal("analysed", Assert.Single(assess.Result!.Words).Outcome);
+            project.Behave(new { words = new[] { new { word = SeededProject.FirstForm, outcome = "complete" } } });
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
+            Assert.Equal(RunState.Completed, workspace.Assess.State);
+            Assert.Equal("analysed", Assert.Single(workspace.Assess.Result!.Words).Outcome);
 
-        project.Behave(new { words = new[] { new { word = SeededProject.FirstForm, outcome = "capped" } } });
-        await assess.RunCommand.ExecuteAsync(null);
-        Assert.Equal(RunState.Completed, assess.State);
-        Assert.True(Assert.Single(assess.Result!.Words).IsIncomplete);
-        Assert.Equal(1, assess.Difference.ComparedCount);
-        var moved = Assert.Single(assess.Difference.Moves, move => move.Kind != MoveKind.Unchanged);
-        Assert.Equal(CompareColumnKind.NoMatch, moved.From.Item2);
-        Assert.Equal(CompareColumnKind.Timeout, moved.To.Item2);
-        Assert.Equal(3, project.Invocations().Count(invocation => invocation == "batch"));
+            project.Behave(new { words = new[] { new { word = SeededProject.FirstForm, outcome = "capped" } } });
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
+            Assert.Equal(RunState.Completed, workspace.Assess.State);
+            Assert.True(Assert.Single(workspace.Assess.Result!.Words).IsIncomplete);
+            Assert.Equal(1, workspace.Assess.Difference.ComparedCount);
+            var moved = Assert.Single(workspace.Assess.Difference.Moves, move => move.Kind != MoveKind.Unchanged);
+            Assert.Equal(CompareColumnKind.NoMatch, moved.From.Item2);
+            Assert.Equal(CompareColumnKind.Timeout, moved.To.Item2);
+            Assert.Equal(3, project.Invocations().Count(invocation => invocation == "batch"));
+
+            Assert.Same(workspace.Assess.Compare, page.Assess.Compare);
+        }, TimeSpan.FromMinutes(1));
     }
 }

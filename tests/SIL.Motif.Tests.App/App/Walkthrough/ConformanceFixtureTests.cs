@@ -10,7 +10,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App.Walkthrough;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class ConformanceGrammarWalkthroughTests
+public sealed class ConformanceFixtureTests
 {
     [Fact]
     public void CopiedConformanceProjectLoadsWithThirteenLexicalEntries()

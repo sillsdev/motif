@@ -19,6 +19,8 @@ internal sealed class GrammarClientProject : IDisposable
 
     public string FwDataPath => _project.FwDataPath;
 
+    public string ManagedRoot => _project.ManagedRoot;
+
     public string ParserPath { get; }
 
     public CommandClient Client { get; }
