@@ -11,7 +11,7 @@ namespace SIL.Motif.Generator.Descriptions;
 public static class KindDescriptionTsvWriter
 {
     public static readonly string[] Header =
-        ["Class", "Field", "Label", "Description", "Reviewed", "Source", "SourceDetail", "SourceHash"];
+        ["Class", "Field", "Title", "Description", "Reviewed", "Source", "SourceDetail", "SourceHash"];
 
     public static void Write(string path, IEnumerable<KindDescription> rows)
     {
@@ -20,7 +20,7 @@ public static class KindDescriptionTsvWriter
 
         foreach (var row in rows)
             AppendRow(sb, [
-                row.Class, row.Field, row.Label, row.Description, row.Reviewed, row.Source, row.SourceDetail,
+                row.Class, row.Field, row.Title, row.Description, row.Reviewed, row.Source, row.SourceDetail,
                 row.SourceHash,
             ]);
 

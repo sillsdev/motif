@@ -9,9 +9,9 @@ public sealed record WarningsResponse(
     int WarningCount,
     int InformationCount)
 {
+    /// <summary>The number of error-level findings after the requested filters.</summary>
+    public int ErrorCount { get; init; }
+
     /// <summary>The number of findings after the requested filters.</summary>
     public int TotalCount => Findings.Count;
-
-    /// <summary>The number of findings whose report level is error.</summary>
-    public int ErrorCount { get; init; }
 }

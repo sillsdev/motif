@@ -26,6 +26,6 @@ public static class EffectProjectionBuilder
             changes.Add(new EffectChange(ws, before, after));
         }
 
-        return new EffectView(effect.CanonicalId.Value, effect.Field, changes);
+        return new EffectView(effect.CanonicalId.Value, effect.Field, changes, effect.Preview);
     }
 }

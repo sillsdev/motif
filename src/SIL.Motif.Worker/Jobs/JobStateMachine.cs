@@ -109,7 +109,7 @@ public sealed class JobStateMachine
     {
         var previous = ParseUtc(current);
         var now = _clock.UtcNow.ToUniversalTime();
-        return (now < previous ? previous : now).ToString("O", CultureInfo.InvariantCulture);
+        return JobTimestamp.FormatUtc(now < previous ? previous : now);
     }
 
     private static DateTimeOffset ParseUtc(string value)

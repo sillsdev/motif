@@ -1,0 +1,162 @@
+{
+  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
+  "fixed": {
+    "words": 16,
+    "parsed": 16,
+    "textCoverage": 1,
+    "work": 9116,
+    "steps": 191,
+    "wallClockMs": 19247,
+    "slowestWords": [
+      "adamlar\u0131nda",
+      "geldi",
+      "okullar\u0131nda",
+      "telefonlar"
+    ],
+    "failing": {}
+  },
+  "broken": {
+    "words": 16,
+    "parsed": 10,
+    "textCoverage": 0.625,
+    "work": 104147,
+    "steps": 2418,
+    "wallClockMs": 11861,
+    "slowestWords": [
+      "adamlar\u0131nda",
+      "geldi",
+      "okullar\u0131nda",
+      "telefonlar"
+    ],
+    "failing": {
+      "g\u00FCnler": "plural-front-class-too-narrow",
+      "adamlar\u0131nda": "possessive-before-plural",
+      "okullar\u0131nda": "possessive-before-plural",
+      "kediye": "missing-vowel-final-y-allomorphs",
+      "kediyi": "missing-vowel-final-y-allomorphs",
+      "masaya": "missing-vowel-final-y-allomorphs"
+    }
+  },
+  "variants": {
+    "fixed": {
+      "words": 16,
+      "parsed": 16,
+      "textCoverage": 1,
+      "work": 9116,
+      "steps": 191,
+      "wallClockMs": 19247,
+      "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
+      ],
+      "failing": {}
+    },
+    "plural-front-class-too-narrow": {
+      "words": 16,
+      "parsed": 15,
+      "textCoverage": 0.9375,
+      "work": 9108,
+      "steps": 191,
+      "wallClockMs": 12405,
+      "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
+      ],
+      "failing": {
+        "g\u00FCnler": "plural-front-class-too-narrow"
+      }
+    },
+    "possessive-before-plural": {
+      "words": 16,
+      "parsed": 14,
+      "textCoverage": 0.875,
+      "work": 9154,
+      "steps": 194,
+      "wallClockMs": 15947,
+      "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
+      ],
+      "failing": {
+        "adamlar\u0131nda": "possessive-before-plural",
+        "okullar\u0131nda": "possessive-before-plural"
+      }
+    },
+    "missing-vowel-final-y-allomorphs": {
+      "words": 16,
+      "parsed": 13,
+      "textCoverage": 0.8125,
+      "work": 8102,
+      "steps": 180,
+      "wallClockMs": 11738,
+      "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
+      ],
+      "failing": {
+        "kediye": "missing-vowel-final-y-allomorphs",
+        "kediyi": "missing-vowel-final-y-allomorphs",
+        "masaya": "missing-vowel-final-y-allomorphs"
+      }
+    },
+    "duplicated-active-noun-templates": {
+      "words": 16,
+      "parsed": 16,
+      "textCoverage": 1,
+      "work": 120176,
+      "steps": 2546,
+      "wallClockMs": 12384,
+      "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "kediyi",
+        "okullar\u0131nda"
+      ],
+      "failing": {}
+    },
+    "all-bugs": {
+      "words": 16,
+      "parsed": 10,
+      "textCoverage": 0.625,
+      "work": 104147,
+      "steps": 2418,
+      "wallClockMs": 11861,
+      "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "okullar\u0131nda",
+        "telefonlar"
+      ],
+      "failing": {
+        "g\u00FCnler": "plural-front-class-too-narrow",
+        "adamlar\u0131nda": "possessive-before-plural",
+        "okullar\u0131nda": "possessive-before-plural",
+        "kediye": "missing-vowel-final-y-allomorphs",
+        "kediyi": "missing-vowel-final-y-allomorphs",
+        "masaya": "missing-vowel-final-y-allomorphs"
+      }
+    }
+  },
+  "grammarHealth": {
+    "fixed": {
+      "errors": 0,
+      "warnings": 0,
+      "info": 0,
+      "findings": []
+    },
+    "broken": {
+      "errors": 0,
+      "warnings": 0,
+      "info": 0,
+      "findings": []
+    }
+  }
+}

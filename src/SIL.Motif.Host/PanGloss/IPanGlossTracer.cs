@@ -11,7 +11,7 @@ public interface IPanGlossTracer
     /// <summary>
     /// Runs <c>pangloss parse &lt;grammarPath&gt; &lt;word&gt; --trace --trace-format json --trace-details</c> and returns
     /// what came of it. Never throws for anything the parser did. <paramref name="timeout"/> overrides
-    /// <see cref="PanGlossTracer.DefaultTimeout"/>; the batch's own per-word or wall-clock limits are a
+    /// <see cref="PanGlossTracer.DefaultTimeout"/> (no wall-clock cap); the batch's per-word limit is a
     /// separate concern this method does not read.
     /// </summary>
     Task<PanGlossTraceOutcome> TraceAsync(

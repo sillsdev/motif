@@ -1,0 +1,20 @@
+---
+const t = Astro.locals.t;
+---
+
+<aside class="beta-banner" data-beta-banner role="note">
+	<p class="beta-banner__message">
+		<span class="beta-banner__badge">{t('home.betaBannerBadge')}</span>
+		{t('home.betaBannerIntro')}
+		<a href="https://github.com/sillsdev/motif/issues">{t('home.betaBannerReport')}</a>.
+	</p>
+	<button class="beta-banner__dismiss" type="button" data-beta-dismiss aria-label={t('home.betaBannerDismiss')}>
+		<span aria-hidden="true">×</span>
+	</button>
+</aside>
+
+<script>
+	import { initializeBetaBanners } from '../../scripts/beta-banner.mjs';
+
+	initializeBetaBanners(document);
+</script>

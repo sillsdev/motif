@@ -90,6 +90,55 @@ public sealed class SetupRefusalViewTests
         });
     }
 
+    [Fact]
+    public void TheLimitsStepShowsAnEstimateAndNoTimeLimitInput()
+    {
+        WorkspaceShellViewModel? workspace = null;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var projectPicker = new FakeProjectPicker();
+            var selection = new SelectionViewModel(fake);
+            workspace = new WorkspaceShellViewModel(
+                new ProjectViewModel(fake, projectPicker), new BaselineViewModel(fake), selection,
+                new AssessViewModel(fake, selection), new FakeFolderPicker(), new FakeDragSource(), fake);
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false)
+            {
+                ProjectLastWriteUtc = Saved,
+            });
+            fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+            projectPicker.PathToReturn = ProjectPath;
+            await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        }, TimeSpan.FromSeconds(10));
+
+        _avalonia.Invoke(() =>
+        {
+            var setup = workspace!.Context.Setup!;
+            setup.Step = 2;
+            var dialog = new SetupDialog { DataContext = setup };
+            var window = new Window { Content = dialog, Width = 1000, Height = 800 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var texts = dialog.GetLogicalDescendants().OfType<TextBlock>()
+                    .Select(block => block.Text ?? string.Empty).ToArray();
+                var numbers = dialog.GetLogicalDescendants().OfType<NumericUpDown>().ToArray();
+                Assert.Contains(setup.StepLimitEstimateText, texts);
+                Assert.Contains(texts, text => text.Contains("1,000,000 steps is the default", StringComparison.Ordinal));
+                Assert.DoesNotContain(numbers, number =>
+                    Avalonia.Automation.AutomationProperties.GetName(number) == "Time limit per word, in seconds");
+                Assert.Single(numbers);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private sealed class FakeProjectPicker : IProjectPicker
     {
         public string? PathToReturn { get; set; }

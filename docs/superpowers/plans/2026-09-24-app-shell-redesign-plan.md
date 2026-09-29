@@ -348,3 +348,12 @@ plainer words than the CLI. [ADR 0046](../../adr/0046-pages-not-stages.md) recor
 - **Ruling 4's open question is answered:** "Corpus" keeps its name and meaning.
 - **Warnings are built on PanGloss's new grammar report** (the `feat/grammar-health-v2` branch), which lands
   before this work finishes; workstream 7's storage and `warnings` command wait for it.
+
+## 2026-09-28: how analyses are marked, from the owner
+
+**In plain terms:** the window now uses FieldWorks' own words and colours for a linguist's judgement: Approved, Disapproved, Unknown. Each analysis reads "now → after Apply", with a small mark showing whether the parser still agrees. [ADR 0049](../../adr/0049-fieldworks-opinions-and-now-after-apply.md) records the decision. The design is `docs/superpowers/specs/2026-09-28-analysis-markings-design.md`.
+
+- **Words.** "Rejected" and "Candidate" leave the window, replaced by Disapproved and Unknown. "Remove" now means deleting an analysis, and cancelling a staged change is "Undo".
+- **Review changes** is grouped by transition, with Undo and Undo all, Go to text, and Show context.
+- **Compact density** is the default: VS Code or FieldWorks density, with a Normal size.
+- The reading marks in screens `04`, `05` and `09` are superseded where they differ. The screens stay as they are.

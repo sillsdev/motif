@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 24;
+    public const int CurrentSchema = 27;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -24,7 +24,9 @@ public static class MotifSchema
         : throw new NotSupportedException($"Motif schema {schema} is not known to this worker.");
 
     /// <summary>Builds every table, index and the identity row for a brand-new database, in one step.</summary>
-    internal static void Create(SqliteConnection connection, SqliteTransaction? transaction, ProjectLocator project)
+    internal static void Create(
+        SqliteConnection connection, SqliteTransaction? transaction, ProjectLocator project,
+        TimeProvider? timeProvider = null)
     {
         using (var command = connection.CreateCommand())
         {
@@ -44,7 +46,8 @@ public static class MotifSchema
         insert.Parameters.AddWithValue("$path", project.FullFwDataPath);
         insert.Parameters.AddWithValue("$identity", project.FieldWorksProjectIdentity);
         insert.Parameters.AddWithValue("$version", MinimumWorkerVersion(CurrentSchema).ToString());
-        insert.Parameters.AddWithValue("$created", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        insert.Parameters.AddWithValue("$created",
+            (timeProvider?.GetUtcNow() ?? DateTimeOffset.UtcNow).ToString("O", CultureInfo.InvariantCulture));
         insert.ExecuteNonQuery();
     }
 
@@ -320,7 +323,7 @@ public static class MotifSchema
         "NamedSelections" =>
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
-            C("PerWordLimitMs", "INTEGER", true), C("PerWordStepLimit", "INTEGER")],
+            C("PerWordLimitMs", "INTEGER"), C("PerWordStepLimit", "INTEGER")],
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "GrammarChecks" =>
         [C("BaselineToken", "TEXT", false, 1), C("SelectionSha256", "TEXT", true),
@@ -537,7 +540,7 @@ public static class MotifSchema
             AddedWordsJson TEXT NOT NULL,
             CreatedUtc TEXT NOT NULL,
             UpdatedUtc TEXT NOT NULL,
-            PerWordLimitMs INTEGER NOT NULL CHECK (PerWordLimitMs > 0),
+            PerWordLimitMs INTEGER NULL CHECK (PerWordLimitMs IS NULL OR PerWordLimitMs > 0),
             PerWordStepLimit INTEGER NULL CHECK (PerWordStepLimit IS NULL OR PerWordStepLimit > 0)
         );
 

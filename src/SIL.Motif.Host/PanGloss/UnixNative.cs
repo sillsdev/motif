@@ -109,21 +109,28 @@ internal static partial class UnixNative
 
 internal sealed class UnixFileLock : IDisposable
 {
+    private const int AccessDenied = 13;
     private readonly int _fileDescriptor;
     private bool _held;
     private bool _disposed;
 
-    internal UnixFileLock(string name, bool machineWide)
+    internal static string GetLockPath(string name, bool machineWide)
     {
         var identity = machineWide ? "machine:" + name :
             "user:" + UnixNative.GetEffectiveUserId() + ":" + name;
         var digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(identity)))
             .ToLowerInvariant();
-        var path = UnixNative.Utf8(Path.Combine("/tmp", "motif-lock-" + digest));
+        return Path.Combine("/tmp", "motif-lock-" + digest);
+    }
+
+    internal UnixFileLock(string name, bool machineWide)
+    {
+        var lockPath = GetLockPath(name, machineWide);
+        var path = UnixNative.Utf8(lockPath);
         try
         {
             var flags = 2 | Create | CloseOnExec | NoFollow;
-            _fileDescriptor = UnixNative.Open(path, flags | CreateExclusive, machineWide ? 0x1b6U : 0x180U);
+            _fileDescriptor = OpenRetryingInterrupts(path, flags | CreateExclusive, machineWide ? 0x1b6U : 0x180U);
             if (_fileDescriptor >= 0)
             {
                 if (UnixNative.Fchmod(_fileDescriptor, machineWide ? 0x1b6U : 0x180U) != 0)
@@ -135,11 +142,19 @@ internal sealed class UnixFileLock : IDisposable
             }
             else if (UnixNative.LastError == 17)
             {
-                _fileDescriptor = UnixNative.Open(path, flags, 0);
+                _fileDescriptor = OpenRetryingInterrupts(path, flags, 0);
             }
 
             if (_fileDescriptor < 0)
-                throw new IOException("Could not open the worker lock file.", UnixNative.LastError);
+            {
+                var error = UnixNative.LastError;
+                var errorName = error == AccessDenied ? " (EACCES)" : string.Empty;
+                var recovery = error == AccessDenied
+                    ? " Check the file's owner and read/write permissions; remove it only if it is stale."
+                    : string.Empty;
+                throw new IOException(
+                    $"Could not open worker lock file '{lockPath}' (errno {error}{errorName}).{recovery}", error);
+            }
         }
         finally
         {
@@ -175,6 +190,15 @@ internal sealed class UnixFileLock : IDisposable
         Release();
         _disposed = true;
         _ = UnixNative.Close(_fileDescriptor);
+    }
+
+    private static int OpenRetryingInterrupts(IntPtr path, int flags, uint mode)
+    {
+        const int interrupted = 4;
+        int descriptor;
+        do descriptor = UnixNative.Open(path, flags, mode);
+        while (descriptor < 0 && UnixNative.LastError == interrupted);
+        return descriptor;
     }
 
     private static int Create => OperatingSystem.IsLinux() ? 0x40 : 0x200;

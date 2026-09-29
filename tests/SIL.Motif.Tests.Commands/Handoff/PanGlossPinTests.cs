@@ -30,6 +30,7 @@ public sealed class PanGlossPinTests
             ["osx-x64"] = ("pangloss-osx-x64", "078652f5d09465eaae2b40a84c8a203c80bed6aa912bd7c41ec3e8747d6c449c"),
         };
 
+        Assert.Equal("0.5.1", pin.Version);
         Assert.Matches(@"^\d+\.\d+\.\d+$", pin.Version);
         Assert.Equal($"v{pin.Version}", pin.Tag);
         Assert.Equal(new[] { "linux-x64", "osx-arm64", "osx-x64", "win-x64" },

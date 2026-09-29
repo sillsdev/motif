@@ -1,0 +1,21 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.StagedStrip.Padding" ResourceKey="Primitive.Inset.4_0_4_0" />
+    <StaticResource x:Key="Component.StagedStrip.Rule" ResourceKey="Primitive.Inset.2_0_0_0" />
+    <StaticResource x:Key="Component.StagedStrip.Type" ResourceKey="Primitive.Type.9" />
+  </Styles.Resources>
+  <Style Selector="Border.stagedStrip">
+    <Setter Property="Padding" Value="{DynamicResource Component.StagedStrip.Padding}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.StagedStrip.Rule}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Action}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Change.Fill}" />
+  </Style>
+  <Style Selector="Border.stagedStrip TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Component.StagedStrip.Type}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Change.Text}" />
+  </Style>
+  <Style Selector="Border.stagedStrip TextBlock.stagedLabel">
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+</Styles>

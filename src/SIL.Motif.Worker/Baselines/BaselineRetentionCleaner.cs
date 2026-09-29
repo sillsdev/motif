@@ -152,11 +152,11 @@ public sealed class BaselineRetentionCleaner
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException) { return false; }
         var relative = Path.GetRelativePath(expected, full);
         return relative != "." && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar) &&
-            !Path.IsPathRooted(relative) && relative.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]) < 0;
+            !Path.IsPathRooted(relative) && relative.IndexOfAny(['/', '\\']) < 0;
     }
 
     private static bool IsSafeSegment(string value) => !string.IsNullOrWhiteSpace(value) && value is not ("." or "..") &&
-        value.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, ':']) < 0;
+        value.IndexOfAny(['/', '\\', ':']) < 0;
 
     private sealed class LocalFileSystem : IWorkspaceFileSystem
     {

@@ -1,13 +1,25 @@
 using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Input.Platform;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class AvaloniaHeadlessPlatformTests
 {
+    [Fact]
+    public void DedicatedThreadOwnsAvaloniaDispatcher()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            Assert.True(Dispatcher.UIThread.CheckAccess());
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(5));
+    }
+
     [Fact]
     public void TaskRunContinuationResumesOnAvaloniaThreadWhenPumped()
     {

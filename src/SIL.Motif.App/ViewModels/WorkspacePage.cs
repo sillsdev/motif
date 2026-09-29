@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using SIL.Motif.App;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -80,6 +81,9 @@ public sealed partial class PageViewModel : ObservableObject
 
     /// <summary>The accessible name of the sidebar entry that opens this page.</summary>
     public string AutomationName => $"{Title} page";
+
+    /// <summary>The stable ID used to open this page from the sidebar.</summary>
+    public string AutomationId => AutomationIds.ForPage(Page);
 
     /// <summary>The count <see cref="Model"/> keeps beside the label, or empty when it has none.</summary>
     [ObservableProperty]

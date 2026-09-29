@@ -24,7 +24,7 @@ public abstract record StoredScope
         string Query,
         IReadOnlyList<string> Words,
         IReadOnlyList<AssessmentKind> Collect,
-        TimeSpan PerWordLimit,
+        TimeSpan? PerWordLimit,
         StepCap PerWordStepLimit) : StoredScope;
 
     /// <summary>
@@ -59,7 +59,8 @@ public static class ScopeCodec
         StoredScope.Trial trial => JsonSerializer.Serialize(new TrialWire(
             trial.Query, trial.Words,
             trial.Collect.Select(kind => kind.ToString()).ToArray(),
-            (long)trial.PerWordLimit.TotalMilliseconds, trial.PerWordStepLimit), WireOptions),
+            trial.PerWordLimit is { } timeLimit ? (long)timeLimit.TotalMilliseconds : null,
+            trial.PerWordStepLimit), WireOptions),
         StoredScope.Difference difference => JsonSerializer.Serialize(new DifferenceWire(
             difference.FromAssessmentId, difference.ToAssessmentId, difference.FromWordCount,
             difference.ToWordCount, difference.SharedWordCount, difference.FromGrammarSourceSha256,
@@ -109,13 +110,14 @@ public static class ScopeCodec
                 ("query" or "words" or "collect" or "perWordLimitMs" or "perWordStepLimit")))
             throw Unreadable(reportKind);
         var wire = root.Deserialize<TrialWire>(WireOptions);
-        if (wire is null || wire.PerWordLimitMs <= 0
+        if (wire is null || wire.PerWordLimitMs is <= 0
             || wire.PerWordLimitMs > TimeSpan.MaxValue.Ticks / TimeSpan.TicksPerMillisecond)
             throw Unreadable(reportKind);
         if (wire.PerWordStepLimit is null) throw Unreadable(reportKind);
         return new StoredScope.Trial(
             wire.Query ?? string.Empty, wire.Words ?? Array.Empty<string>(),
-            ParseCollect(wire.Collect, reportKind), TimeSpan.FromTicks(wire.PerWordLimitMs * TimeSpan.TicksPerMillisecond),
+            ParseCollect(wire.Collect, reportKind), wire.PerWordLimitMs is { } timeLimitMs
+                ? TimeSpan.FromTicks(timeLimitMs * TimeSpan.TicksPerMillisecond) : null,
             wire.PerWordStepLimit);
     }
 
@@ -149,7 +151,7 @@ public static class ScopeCodec
         [property: JsonPropertyName("query")] string? Query,
         [property: JsonPropertyName("words")] IReadOnlyList<string>? Words,
         [property: JsonPropertyName("collect")] IReadOnlyList<string>? Collect,
-        [property: JsonPropertyName("perWordLimitMs")] long PerWordLimitMs,
+        [property: JsonPropertyName("perWordLimitMs")] long? PerWordLimitMs,
         [property: JsonPropertyName("perWordStepLimit")] StepCap? PerWordStepLimit);
 
     private sealed record DifferenceWire(

@@ -69,7 +69,8 @@ public sealed partial class CommandClient : ICommandClient
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => BaselineCaptureCommand.Capture(request, _managedRoot), cancellationToken);
+        OneAtATime(() => BaselineCaptureCommand.Capture(
+            request, _managedRoot, _options.TimeProvider ?? TimeProvider.System), cancellationToken);
 
     public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
         Task.Run(() => KnownProjectsQuery.List(_managedRoot));

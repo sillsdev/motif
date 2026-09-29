@@ -110,6 +110,19 @@ embedded in intent. Any actual Change Set amendment, including an authored-ancho
 produces a new intent digest while preserving the frozen `changeSetId`
 (see [identity](change-set-contract.md#change-set-identity-vs-content-digest)).
 
+### Removing a stored analysis
+
+Deleting an analysis changes the owning wordform's analysis set and replaces every Segment occurrence
+that refers to the analysis or one of its glosses with the wordform at the same index. Apply's footprint
+includes those Text, paragraph, Segment, index, and reference facts. If editing a Text adds, removes, or
+moves one of those uses after Dry Run, Apply refuses because the occurrence footprint changed.
+
+Rebase may refresh this baseline-relative use evidence after confirming that the same analysis identity
+still belongs to the same wordform and its deletion still fits. The refreshed preview may show a different
+set of Text uses or Segment positions; it does not change the operation target, delete verb, identity,
+operation order, or delete intent. If the analysis itself changed so its stored-reading fingerprint no
+longer fits, the change needs to be collected again rather than rebased.
+
 ## Three-way conflict principles
 
 Given common ancestor O and descendants A and B:

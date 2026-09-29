@@ -13,11 +13,15 @@
     <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">
       <TextBlock Classes="muted" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap"
                  AutomationProperties.Name="Crash status" />
+      <TextBlock Classes="muted" Text="{x:Static vm:CrashReportViewModel.ThankYou}" TextWrapping="Wrap" />
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{DynamicResource Intent.Space.Related}">
-        <Button Content="Copy details" Click="OnCopyDetailsClick" />
-        <Button Content="Save report" Click="OnSaveReportClick" />
-        <Button Content="Email maintainer" Click="OnEmailMaintainerClick" />
-        <Button Content="Close" Click="OnCloseClick" IsDefault="True" IsCancel="True" />
+        <HyperlinkButton Content="Report a problem" Command="{Binding ReportProblemCommand}"
+                         AutomationProperties.Name="Report a problem" />
+        <Button Content="Copy details" Click="OnCopyDetailsClick" AutomationProperties.Name="Copy details" />
+        <Button Content="Save report" Click="OnSaveReportClick" AutomationProperties.Name="Save report" />
+        <Button Content="Email maintainer" Click="OnEmailMaintainerClick" AutomationProperties.Name="Email maintainer" />
+        <Button Content="Close" Click="OnCloseClick" IsDefault="True" IsCancel="True"
+                AutomationProperties.Name="Close" />
       </StackPanel>
     </StackPanel>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">

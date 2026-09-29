@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -96,11 +97,12 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
     {
         using var project = new WalkthroughProject(pristine);
         var deadline = Stopwatch.GetTimestamp() + 240 * Stopwatch.Frequency;
+        var parser = FakeParser.Copy(project.ManagedRoot);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             using (var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                       parserPath: FakeParser.ExecutablePath))
+                       parserPath: parser))
             {
                 ChooseProjectAndFinishSetup(walkthrough, deadline);
 
@@ -113,15 +115,74 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             }
 
             using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                parserPath: FakeParser.ExecutablePath);
+                parserPath: parser);
             restarted.Show();
-            restarted.LoadKnownProjects();
-            restarted.SelectKnownProject(project.FwDataPath);
+            restarted.OpenRecentProjectByClick(project.FwDataPath);
             restarted.WaitUntil(
                 () => restarted.Workspace.Baseline.HasBaseline && restarted.Workspace.Selection.Texts.Count == 1,
                 WalkthroughSteps.Remaining(deadline), "reopening from Open recent did not reload the Baseline");
             Assert.False(restarted.SetupDialogIsShown, "a project with a saved Selection reopened setup by itself");
             ConfigureAndExpectSavedSelection(restarted, "after reopening from Open recent");
+            return Task.CompletedTask;
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    [Fact]
+    public void ConfigureCommandOpensDuringAnAssessmentAndStaysOpenWhenItReportsProgress()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+        var heartbeat = Path.Combine(project.ManagedRoot, "configure-during-run-heartbeat");
+        var startGate = new HoldingStartGate(holdAssess: true);
+        var parser = FakeParser.Copy(project.ManagedRoot);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
+                startGate: startGate, parserPath: parser);
+            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
+            walkthrough.Check(SeededProject.TextTitle);
+            var heldBehavior = new
+            {
+                subcommands = new Dictionary<string, object>
+                {
+                    ["batch"] = new { heartbeatPath = heartbeat },
+                },
+            };
+            walkthrough.SetFakeParserBehavior(heldBehavior);
+
+            walkthrough.Click("Run the Assessment");
+            var setup = walkthrough.Workspace.Context.Setup!;
+            try
+            {
+                walkthrough.WaitUntil(() => startGate.Waiting > 0 && walkthrough.Workspace.Assess.IsActive,
+                    WalkthroughSteps.Remaining(deadline), "the Assessment did not wait at its start gate");
+                Assert.Null(walkthrough.Workspace.Assess.Progress);
+
+                walkthrough.Workspace.ConfigureCommand.Execute(null);
+                walkthrough.WaitUntil(() => setup.IsOpen && setup.ConfigurationLoadTask?.IsCompleted != false,
+                    WalkthroughSteps.Remaining(deadline), "Configure did not open during the Assessment");
+                Assert.True(walkthrough.SetupDialogIsShown);
+                startGate.ReleaseAssess();
+                walkthrough.WaitUntil(() => File.Exists(heartbeat) || walkthrough.Workspace.Assess.State is
+                        RunState.Completed or RunState.Cancelled or RunState.Refused,
+                    WalkthroughSteps.Remaining(deadline), "the Assessment did not reach the held parser");
+                Assert.True(File.Exists(heartbeat), "the Assessment completed without holding the batch parser");
+                Assert.Equal(AssessmentStage.Parsing, walkthrough.Workspace.Assess.Progress?.Stage);
+                Assert.True(setup.IsOpen, "Configure closed when the running Assessment reported progress");
+                walkthrough.Workspace.Assess.CancelCommand.Execute(null);
+                walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State == RunState.Cancelled,
+                    WalkthroughSteps.Remaining(deadline), "the held Assessment did not cancel");
+                Assert.True(setup.IsOpen, "cancelling the Assessment closed Configure");
+                walkthrough.SkipSetup();
+            }
+            finally
+            {
+                startGate.ReleaseAssess();
+                if (walkthrough.Workspace.Assess.CancelCommand.CanExecute(null))
+                    walkthrough.Workspace.Assess.CancelCommand.Execute(null);
+            }
+
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
@@ -177,8 +238,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
                 parserPath: FakeParser.ExecutablePath);
             restarted.Show();
-            restarted.LoadKnownProjects();
-            restarted.SelectKnownProject(project.FwDataPath);
+        restarted.OpenRecentProjectByClick(project.FwDataPath);
             Assert.Equal(project.FwDataPath, restarted.Workspace.Context.ProjectPath);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
@@ -198,19 +258,8 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             () => setup.IsOpen && walkthrough.Workspace.Selection.Texts.Count == 1 &&
                 !walkthrough.Workspace.RefreshCommand.IsRunning,
             WalkthroughSteps.Remaining(deadline), "the first Refresh did not open setup");
-
-        setup.NextCommand.Execute(null);
-        walkthrough.Workspace.Selection.Texts[0].IsChecked = true;
-        walkthrough.Type("Words to add", AddedWord);
-        setup.NextCommand.Execute(null);
-        walkthrough.Workspace.Selection.PerWordTimeLimitSeconds = 2.5m;
-        setup.StepLimitSteps = 4321;
-        setup.NextCommand.Execute(null);
-        walkthrough.Click("Start first run");
-        walkthrough.WaitUntil(
-            () => !setup.IsOpen && walkthrough.Workspace.Assess.State == RunState.Completed &&
-                walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
-            WalkthroughSteps.Remaining(deadline), "Finish did not save the Selection and complete the first run");
+        SetupWalkthroughActions.FinishFirstRun(walkthrough, SeededProject.TextTitle, "4321",
+            WalkthroughSteps.Remaining(deadline), AddedWord);
     }
 
     // A save gives the Refresh a new Baseline folder, clear of the files the fake parser left in the old one.
@@ -252,7 +301,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
         var selection = walkthrough.Workspace.Context.Setup!.Selection;
         Assert.True(Assert.Single(selection.Texts).IsChecked, $"the saved Text is not checked {when}");
         Assert.Equal(AddedWord, selection.PastedWords);
-        Assert.Equal(2.5m, selection.PerWordTimeLimitSeconds);
+        Assert.Equal(1m, selection.PerWordTimeLimitSeconds);
         Assert.Equal(4321m, walkthrough.Workspace.Context.Setup.StepLimitSteps);
         Assert.Equal("Use this Selection", walkthrough.Workspace.Context.Setup.FinishButtonText);
     }

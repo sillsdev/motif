@@ -43,3 +43,19 @@ docs/*.md.orig
 # Python bytecode from running the Handoff reader in tests
 __pycache__/
 *.pyc
+
+## Generated documentation site content and build output
+/site/node_modules/
+/site/dist/
+/site/.astro/
+/site/src/content/docs/developers/
+/site/src/content/docs/reference/commands/
+/site/src/content/docs/reference/terms/
+/site/src/content/docs/reference/controls/
+/site/src/content/docs/reference/api/
+/site/src/content/docs/guide/
+/site/src/content/docs/learn/
+/site/src/content/docs/samples/
+/site/src/data/
+/site/public/walkthroughs/
+/site/public/downloads/samples/

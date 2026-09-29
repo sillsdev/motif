@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -18,6 +19,8 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
 {
     private readonly string _projectDir =
         Path.Combine(Path.GetTempPath(), "motif-store-location-" + Guid.NewGuid().ToString("N"));
+    private readonly string _workerRoot =
+        Path.Combine(Path.GetTempPath(), "motif-store-worker-" + Guid.NewGuid().ToString("N"));
     private readonly string _fwDataPath;
     private readonly string _cwdA;
     private readonly string _cwdB;
@@ -25,6 +28,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
     public StoreDerivedFromProjectTests()
     {
         Directory.CreateDirectory(_projectDir);
+        Directory.CreateDirectory(_workerRoot);
         _fwDataPath = Path.Combine(_projectDir, "Project.fwdata");
         File.WriteAllText(_fwDataPath, string.Empty);
 
@@ -37,6 +41,8 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
     public void Dispose()
     {
         try { Directory.Delete(_projectDir, recursive: true); }
+        catch { /* best-effort cleanup */ }
+        try { Directory.Delete(_workerRoot, recursive: true); }
         catch { /* best-effort cleanup */ }
     }
 
@@ -96,7 +102,9 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
 
         // The Proposal lives beside the project, not in either working directory a command ran from.
         var databasePath = ProjectDatabaseCatalog.DatabasePathFor(new ProjectLocator(_fwDataPath, "Project"));
+        Assert.NotEqual(Path.GetFullPath(_projectDir), Path.GetFullPath(_workerRoot));
         Assert.True(File.Exists(databasePath));
+        Assert.False(File.Exists(Path.Combine(_workerRoot, "Project.motif.db")));
     }
 
     /// <summary>
@@ -138,7 +146,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
         return output.Substring(start, end - start);
     }
 
-    private static (int ExitCode, string Output, string Error) RunCli(string workingDirectory, string arguments)
+    private (int ExitCode, string Output, string Error) RunCli(string workingDirectory, string arguments)
     {
         var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
@@ -150,6 +158,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        start.Environment[RunnerOptions.RootVariable] = _workerRoot;
 
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.

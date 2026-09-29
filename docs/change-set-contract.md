@@ -184,8 +184,8 @@ resolves through the same tri-state rule.
 
 ### Word analysis operations
 
-The analysis composer accepts the five collected actions `approve`, `reject`, `candidate`,
-`incorrect-spelling`, and `add-candidate`. It resolves the selected wordform and the first parser
+The analysis composer accepts the six collected actions `approve`, `reject`, `candidate`,
+`incorrect-spelling`, `add-candidate`, and `remove-analysis`. It resolves the selected wordform and the first parser
 reading in a named Assessment against a scratch project. The display reading is explanatory text;
 the Assessment's morph references determine identity. It refuses ambiguous wordform text, absent
 evidence, unresolvable references, and a duplicate candidate. It may emit a create operation before
@@ -198,6 +198,16 @@ retracts the opposite opinion. Removing one reference returns that analysis to c
 when it was the current opinion. The effect and semantic snapshot field is
 `analysis/wfiAnalysis/evaluations`, an identity keyed map of the full evaluation membership.
 
+`analysis/wfiAnalysis/delete` targets one stored `WfiAnalysis` and has the closed empty `after` object
+`{}`. Its effect and snapshot field is the owning wordform's
+`analysis/wfiWordform/analyses` map, with the deleted row removed. The preview adds every Text, paragraph,
+Segment, and sequence index that references the analysis or a gloss it owns. Before deleting the analysis,
+Motif calls `MoveConcAnnotationsToWordform()`, which replaces each such reference with the owning wordform
+at the same index. Neighboring words keep their positions, so the Segment remains aligned with its text.
+The owning wordform row is the semantic effect; occurrence details are separate preview and footprint
+evidence. Apply reads both back, so a changed analysis identity, reading, opinion, or Text use makes the
+collected change fail its fit check. Cancelling the pending change is Undo.
+
 `analysis/wfiWordform/createAnalyses` targets a `WfiWordform`, supplies a fresh `entityId`, and has
 the closed `after` shape `{ "morphs": [{ "form": "<id>", "msa": "<id>",
 "inflType": "<id>", "guessedString": "..." }] }`. `morphs` is nonempty and ordered. The form,
@@ -208,21 +218,34 @@ and the default parser agent's approval. Its effect and snapshot field is
 form, and evaluation membership in each value. This mirrors FieldWorks' `ProcessAnalysis` in
 `Src/LexText/ParserCore/ParseFiler.cs`; the fixture
 `ParserCandidate_FilesReferencesGuessAndOnlyTheParserOpinion` checks all four bundle fields and
-both agents' opinions. The inventory's `delete` verb describes a LibLCM capability, but this
-operation family does not expose `deleteAnalyses`: none of the five collected actions deletes an
-analysis, and removing an owned analysis requires separate reference and ownership semantics.
+both agents' opinions. The inventory's `delete` verb for `WfiWordform.Analyses` maps to
+`analysis/wfiAnalysis/delete`; the operation targets the analysis identity and records the owning
+wordform effect, including all Text occurrences affected by LibLCM's reference cleanup.
 
 Each collected operation carries a nonsemantic `extensions.changeFit` fingerprint: wordform id,
 optional existing analysis id, wordform form, content digest for an existing analysis or parser
-reading, and the Baseline token against which it was collected. Preflight checks these against the
-live project and reports `still fits` or `no longer fits` per operation. Apply repeats the check
-and refuses any nonfitting change, including under `--force`. Removing nonfitting operations from
+reading, and the Baseline token against which it was collected. An analysis opinion change may also
+carry occurrence evidence: the Text, paragraph, Segment and zero-based index in `Segment.Analyses`,
+the wordform and analysis at that occurrence, whether its paragraph parse was current, and a digest of
+the Segment's ordered word tokens. The digest uses canonical JSON over wordform identity and NFD form;
+punctuation and spacing are omitted. This evidence is nonsemantic and does not contribute to intent.
+
+Preflight checks the fingerprint against the live project and reports `fits`, `uncertain`, or
+`no-longer-fits` per operation. If the analysis decision itself still fits but the anchored occurrence
+is missing or ambiguous, its Segment changed, its parse is stale, or its ordered words differ, the
+result is `uncertain` and includes a reason with before and after word tokens. A semantic fit failure
+takes precedence. Apply repeats the check and refuses both uncertain and nonfitting changes, including
+under `--force`. Removing nonfitting operations from
 the Draft removes their declared dependents as well and leaves unrelated changes intact. Reopening
 and finalizing after a removal produces a new revision and clears its old bound Dry Run; the new
 revision needs its own Dry Run before Apply. Review is an App screen for reading reports. It records
 no Decision and grants no Apply permission; computed Readiness remains the Apply gate.
-Any future rebase may refresh Baseline evidence or unambiguous anchors; it cannot retarget a wordform,
-choose another analysis, change an opinion, or reorder the declared morphs.
+`reconfirm-pending-change` refreshes one uncertain change's occurrence evidence and BaselineToken against
+the current Baseline only after the change still fits. Like Rebase, it refreshes Baseline-relative evidence without
+changing the target, verb, value, identity, or operation order, so the Proposal's intent digest stays
+the same. Recheck may renew a Baseline token for an uncertain change, but does not replace its occurrence
+evidence. These verbs cannot retarget a wordform, choose another analysis decision, change an opinion,
+or reorder the declared morphs.
 
 ## IDs and GUID mapping
 

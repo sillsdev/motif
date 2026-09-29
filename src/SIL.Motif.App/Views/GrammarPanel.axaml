@@ -76,7 +76,7 @@
                          Text="{Binding Grammar.Warnings.ErrorCount, StringFormat='ERRORS · {0}'}"
                          IsVisible="{Binding Grammar.Warnings.HasErrorGroups}" />
               <ItemsControl ItemsSource="{Binding Grammar.Warnings.ErrorGroups}" IsVisible="{Binding Grammar.Warnings.HasErrorGroups}"
-                            AutomationProperties.Name="Kinds of error">
+                            AutomationProperties.Name="Kinds of errors">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
                     <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
@@ -173,8 +173,8 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
                   <TextBlock Classes="warningSeverity warningCell" Classes.error="{Binding IsError}"
-                             Classes.warning="{Binding IsWarning}"
-                             Classes.info="{Binding IsInfo}" Text="{Binding Severity}" />
+                             Classes.warning="{Binding IsWarning}" Classes.info="{Binding IsInfo}"
+                             Text="{Binding Severity}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>

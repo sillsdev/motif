@@ -129,7 +129,7 @@ internal sealed class DryRunJobHandler
 
     private static PublishedDryRun BuildPublishedDryRun(DryRunModel dryRun)
     {
-        using var document = JsonDocument.Parse(ExpectedEffectSetJsonWriter.WriteJson(dryRun.ExpectedEffects));
+        using var document = JsonDocument.Parse(ExpectedEffectSetJsonWriter.WritePublishedJson(dryRun.ExpectedEffects));
         return new PublishedDryRun(dryRun.IntentDigest, dryRun.BaselineNote, document.RootElement.Clone(),
             dryRun.EffectDigest, dryRun.Anchor);
     }

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Cli;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using Xunit;
 
@@ -134,8 +135,8 @@ public sealed class JobVerbArgvTests : IDisposable
         var defaultRun = Run($"trial --project \"{Project}\" {proposalId}");
         var allRun = Run($"trial --project \"{Project}\" {proposalId} --all-words");
 
-        Assert.Equal(0, defaultRun.ExitCode);
-        Assert.Equal(0, allRun.ExitCode);
+        Assert.True(defaultRun.ExitCode == 0, $"Expected exit code 0; got {defaultRun.ExitCode}.{Environment.NewLine}{defaultRun.Error}");
+        Assert.True(allRun.ExitCode == 0, $"Expected exit code 0; got {allRun.ExitCode}.{Environment.NewLine}{allRun.Error}");
         using var database = ProjectMotifDatabase.Open(Project);
         var jobs = new JobRepository(database);
         using var defaultInput = JsonDocument.Parse(jobs.Get(defaultRun.Output.Trim())!.InputJson);
@@ -249,7 +250,7 @@ public sealed class JobVerbArgvTests : IDisposable
     private static FailureEnvelope Envelope(string stderr) =>
         ProjectionJson.Deserialize<FailureEnvelope>(stderr)!;
 
-    private static CliRun Run(string arguments)
+    private CliRun Run(string arguments)
     {
         var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
@@ -261,6 +262,7 @@ public sealed class JobVerbArgvTests : IDisposable
             CreateNoWindow = true,
         };
         // This suite asserts on the queue with nothing claiming it; a real kicked runner would race it.
+        start.Environment[RunnerOptions.RootVariable] = _root;
         start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         using var process = Process.Start(start)!;

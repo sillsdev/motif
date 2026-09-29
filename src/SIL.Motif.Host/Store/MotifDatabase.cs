@@ -7,8 +7,9 @@ namespace SIL.Motif.Host.Store;
 /// <remarks>
 /// A thin wrapper over <see cref="MotifSqliteStore"/>: this type owns only what is specific to a project
 /// database — validating <see cref="ProjectLocator"/> and worker-version arguments, and the
-/// <see cref="MotifSchema"/> descriptor those arguments feed. The open-and-create ceremony, connection
-/// lifecycle, and failure translation it delegates to are shared with <see cref="MachineDatabase"/>.
+/// <see cref="MotifSchema"/> descriptor those arguments feed. The open-and-create ceremony, shared active-use
+/// lease, connection lifecycle, and failure translation it delegates to are shared with
+/// <see cref="MachineDatabase"/>.
 /// </remarks>
 public sealed class MotifDatabase : IDisposable
 {
@@ -17,14 +18,15 @@ public sealed class MotifDatabase : IDisposable
     private MotifDatabase(MotifSqliteStore store) => _store = store;
 
     /// <summary>
-    /// Opens a project database, creating it if absent. An existing database at any other schema is
-    /// refused rather than migrated: pre-1.0 Motif has no upgrade path.
+    /// Opens a project database with a shared active-use lease, creating it if absent. An existing database at
+    /// any other schema is refused rather than migrated: pre-1.0 Motif has no upgrade path.
     /// </summary>
     /// <param name="path">The sibling Motif database path.</param>
     /// <param name="project">The project locator that must match persisted metadata.</param>
     /// <param name="supportedSchema">The schema generation this worker requires; usually <see cref="MotifSchema.CurrentSchema"/>.</param>
     /// <param name="workerVersion">The worker version used for compatibility checks.</param>
-    /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
+    /// <param name="ownershipPatience">Maximum wait for store locks; defaults to 30 seconds.</param>
+    /// <param name="timeProvider">The clock used when creating the database, or <see langword="null"/> for system time.</param>
     /// <returns>An owned database boundary whose connections are configured for worker use.</returns>
     /// <exception cref="InvalidDataException">The file identity, metadata, or project binding is invalid.</exception>
     /// <exception cref="NotSupportedException">The schema or worker compatibility is unsupported.</exception>
@@ -33,9 +35,10 @@ public sealed class MotifDatabase : IDisposable
         ProjectLocator project,
         int supportedSchema,
         Version workerVersion,
-        TimeSpan? ownershipPatience = null)
+        TimeSpan? ownershipPatience = null,
+        TimeProvider? timeProvider = null)
     {
-        var descriptor = Describe(path, project, supportedSchema, workerVersion);
+        var descriptor = Describe(path, project, supportedSchema, workerVersion, timeProvider);
         return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience));
     }
 
@@ -55,10 +58,10 @@ public sealed class MotifDatabase : IDisposable
     /// creates a fresh database, pinned by `ADeleteThatWinsTheLockIsFollowedByACleanRecreate`.
     /// </para>
     /// <para>
-    /// This is not a lock against every writer. Opening an existing database, and writing to it, never take the
-    /// creation lock, and nothing here can coordinate with a writer from another version of Motif. Such a writer
-    /// holds the file open, which makes the delete fail rather than succeed underneath it, pinned by
-    /// `AStoreSomethingElseHoldsOpenIsRefusedAndKept`.
+    /// Each open holds a shared lease on the sibling <c>.use.lock</c> file for this store's lifetime. Other Motif
+    /// processes may hold the same lease, but deletion needs an exclusive lease and refuses while any opener is
+    /// active, pinned by `AStoreSomethingElseHoldsOpenIsRefusedAndKept`. The lease file stays at a stable path on
+    /// Unix so all processes lock the same file identity.
     /// </para>
     /// </remarks>
     /// <param name="path">The sibling Motif database path.</param>
@@ -71,7 +74,7 @@ public sealed class MotifDatabase : IDisposable
     /// can order other work against the wait. Not called when the lock is free.
     /// </param>
     /// <returns><c>true</c> when the file was deleted; <c>false</c> when it is absent, not yet created, or usable.</returns>
-    /// <exception cref="MotifStoreLockException">The creation lock was not free within the patience.</exception>
+    /// <exception cref="MotifStoreLockException">The creation lock or active-use lease is held by another process.</exception>
     /// <exception cref="IOException">The file could not be read or deleted, for instance while it is open.</exception>
     /// <exception cref="InvalidDataException">The file identity, metadata, or project binding is invalid.</exception>
     public static bool DeleteIfOtherVersion(
@@ -85,7 +88,8 @@ public sealed class MotifDatabase : IDisposable
             ownershipPatience, onWaitingForOwnership);
 
     private static MotifSqliteStoreDescriptor Describe(
-        string path, ProjectLocator project, int supportedSchema, Version workerVersion)
+        string path, ProjectLocator project, int supportedSchema, Version workerVersion,
+        TimeProvider? timeProvider = null)
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("A database path is required.", nameof(path));
         ArgumentNullException.ThrowIfNull(project);
@@ -108,7 +112,7 @@ public sealed class MotifDatabase : IDisposable
             ApplicationId = MotifSchema.ApplicationId,
             CurrentSchema = supportedSchema,
             ValidateSchema = MotifSchema.ValidateSchema,
-            Create = (connection, transaction) => MotifSchema.Create(connection, transaction, project),
+            Create = (connection, transaction) => MotifSchema.Create(connection, transaction, project, timeProvider),
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);

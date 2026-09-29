@@ -31,8 +31,13 @@ that dispatches them.
 | `analyses` | Released | `analyses --project <fwdata> [--json]`<br>`analyses --project <fwdata> --assessment <assessmentId> --current-selection-sha256 <sha256> --current-grammar-sha256 <sha256> [--json]` |
 | `new` | Developer | `new --project <fwdata> --draft <name> [--label <text>]` |
 | `pending-changes` | Developer | `pending-changes --project <fwdata> [--json]` |
-| `put-pending-change` | Developer | `put-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> --kind <kind> --word <word> [--wordform-id <id>] [--assessment <id> --reading-index <zero-based> --reading-json <json>] [--stored-analysis-id <id>] [--json]` |
+| `put-pending-change` | Developer | `put-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> --kind <kind> --word <word> [--wordform-id <id>] [--assessment <id> --reading-index <zero-based> --reading-json <json>] [--stored-analysis-id <id>] [--occurrence-text-id <guid> --occurrence-paragraph-id <guid> --occurrence-segment-id <guid> --occurrence-index <zero-based>] [--json]` |
+| `remove-analysis` | Developer | `remove-analysis --project <fwdata> --expected-revision <revision> (--analysis-id <id> --change-id <id> --wordform-id <id> --word <word> \| --analysis-ids <id,id,...> \| --text-id <guid>) [--json]` |
+| `accept-new-set` | Developer | `accept-new-set --project <fwdata> --expected-revision <revision> --assessment <id> (--wordform-id <id> \| --text-id <guid> \| --selection) [--json]` |
 | `remove-pending-change` | Developer | `remove-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
+| `recheck-pending-changes` | Developer | `recheck-pending-changes --project <fwdata> --expected-revision <revision> [--json]` |
+| `review-numbers` | Developer | `review-numbers --project <fwdata> [--from <assessmentId>] --to <assessmentId> --touched-words <count> [--json]` |
+| `reconfirm-pending-change` | Developer | `reconfirm-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
 | `add-set-gloss` | Developer | `add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> --text <text> [--depends-on <opId>[,<opId>...]]` |
 | `add-delete-lexeme-form` | Developer | `add-delete-lexeme-form --project <fwdata> --draft <name> --target <canonicalId>` |
 | `compose-author-lexeme-form` | Developer | `compose-author-lexeme-form --draft <name> --project <fwdata> --intent '{"entry":...,"morphType":...,"ws":...,"text":...}'` |
@@ -53,7 +58,7 @@ that dispatches them.
 | `show` | Developer | `show --project <fwdata> <proposalId> [--json]` |
 | `preflight` | Developer | `preflight --project <fwdata> <proposalId> [--json]` |
 | `apply` | Developer | `apply <proposalId> --project <fwdata> --user <name> [--force] [--json]` |
-| `apply --all-pending` | Developer | `apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]` |
+| `apply --all-pending` | Released | `apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]` |
 | `log` | Developer | `log --project <fwdata> [--json]` |
 | `config show` | Released | `Usage: motif config show --project <fwdata> [--json]` |
 | `report` | Released | `Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]` |
@@ -64,12 +69,14 @@ that dispatches them.
 | `stats` | Released | `stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]` |
 | `selection show` | Released | `selection show --project <fwdata> [--json]` |
 | `selection set-default` | Released | `selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] [--add-words <word,word>] [--json]` |
+| `texts list` | Released | `texts list --project <fwdata> [--json]` |
+| `setup skip` | Released | `setup skip --project <fwdata> [--json]` |
 | `store delete-refused` | Developer | `store delete-refused --project <fwdata> [--json]` |
 | `overview` | Released | `overview --project <fwdata> [--json]` |
 | `warnings` | Released | `warnings --project <fwdata> [--kind <code>] [--left-out] [--json]` |
 | `grammar check` | Released | `grammar check --project <fwdata> [--json]` |
 | `timing` | Released | `timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind\|rule] [--rule <name>] [--top N] [--json]` |
-| `handoff` | Released | `handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]` |
+| `handoff` | Released | `handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]` |
 | `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |
 | `add-document` | Released | `add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> [--title <text>] [--licence <text>] [--may-derive true\|false] [--licence-basis <text>]` |
 | `add-corpus-bundle` | Released | `add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)` |
@@ -77,9 +84,9 @@ that dispatches them.
 | `show-corpus` | Released | `show-corpus --project <fwdata> <corpusId> [--json]` |
 | `baseline-refresh` | Released | `baseline-refresh --project <fwdata>` |
 | `dry-run` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
-| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
+| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--json]` |
 | `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
-| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
+| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] --wait [--wait-timeout-ms <ms>] [--json]` |
 | `trial --pending` | Developer | `trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> --wait [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]` |
 | `jobs show` | Released | `jobs show <jobId> --project <fwdata> [--json]` |
 | `jobs assessments` | Released | `jobs assessments <jobId> --project <fwdata> [--json]` |
@@ -98,49 +105,98 @@ wordform changes has an empty word Selection by default. `--all-words` measures 
 project instead, regardless of the scope's word query; `--scope` still chooses the Assessor, kinds,
 and limits.
 
+## Help
+
+`help` is the one verb outside the command catalog; it reads the Help text ADR 0047 describes, embedded in the
+binary, and never opens a project.
+
+```
+motif help                          # every Released command, with its Title
+motif help <command> [--full]       # Title, Description, usage lines and online address; --full adds the Help page
+motif help <command> --json         # the same entry as JSON
+motif help --all --json             # every Released command and glossary term, for an agent to read in one call
+```
+
+A name that is neither a Released command nor a glossary term is refused with exit `2`. Each entry of
+`--all --json` carries `kind` (`command`, `ui` or `term`), `code`, `slug`, `title`, `description`, `helpPage`
+and `url`; commands add `usage` and `surface`. Developer commands have no Help text and are not listed.
+
 ## Released and developer surfaces
 
 The Released surface contains `open`, `analyses`, `config show`, `report`, `report --list-kinds`,
 `compare`, `baseline capture`, `assess`, `stats`, `selection show`, `selection set-default`,
-`overview`, `warnings`, `grammar check`, `timing`, `handoff`, `add-corpus`, `add-document`,
+`texts list`, `setup skip`, `overview`, `warnings`, `grammar check`, `timing`, `handoff`, `add-corpus`, `add-document`,
 `add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
-`jobs list`, `jobs cancel`, `jobs requeue`, and `jobs move`.
+`jobs list`, `jobs cancel`, `jobs requeue`, `jobs move`, and `apply --all-pending`.
 
-The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
-`remove-pending-change`, `add-set-gloss`, `add-delete-lexeme-form`,
+The Developer surface contains `new`, `pending-changes`, `put-pending-change`, `remove-analysis`,
+`accept-new-set`, `remove-pending-change`, `recheck-pending-changes`, `reconfirm-pending-change`,
+`review-numbers`, `store delete-refused`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
-`supersede`, `list`, `show`, `preflight`, `apply`, `apply --all-pending`, `log`, `dry-run`,
+`supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`,
 `dry-run --wait`, `trial`, `trial --wait`, and `trial --pending`.
 
-`apply --all-pending` is the save-boundary entry point specified for FieldWorks, and Developer-only for now
-(see the 2026-09-26 amendment): FieldWorks releases
-the project, calls the verb, then reloads the project. It accepts an optional `--revision` to require the exact
-revision FieldWorks previously checked and an optional `--user` for the Receipt; without `--user`, Motif uses
-the current account. Nothing pending is a success, not a refusal: the verb exits `0`, writes nothing to
-stderr and records no Receipt, and prints `Nothing to apply.` or, with `--json`, `{"ok":true,"applied":false}`
-on stdout. An Apply that ran exits `0` and prints its Receipt; with `--json` that is
-`{"ok":true,"applied":true,"receipt":{…}}`, the Receipt object nested under `receipt`. Both JSON documents are
-the Contract's `ApplyPendingResult`. "Nothing pending" means the pending Draft holds no operations, the same
-test `trial --pending` uses. Every nonzero exit code is a refusal or an error, with its failure on stderr (a
-failure envelope under `--json`), so FieldWorks can treat exit `0` alone as "continue". A project another
-program still holds is `Busy`, exit `3`: release it and retry.
+`apply --all-pending` is the one Released pending-change verb and the save-boundary entry point for
+FieldWorks. FieldWorks releases the project before calling it. On exit `0`, FieldWorks reloads only when
+`applied` is true; on exit `4` with `code: "apply.reconciliation-needed"`, it reloads and checks the project
+because a change may have happened. A no-op does not require a reload. The command accepts an optional
+`--revision` to require the exact revision FieldWorks previously checked and an optional `--user` for the
+Receipt; without `--user`, Motif uses the current account. Nothing pending is a success, not a refusal: the
+verb exits `0`, writes nothing to stderr and records no Receipt. With `--json`, its response has
+`ok: true`, `applied: false`, and `summary: "Nothing to apply.". An Apply that ran returns the top-level
+`receipt`, `applied: true`, and a short `summary` describing the authored pending changes rather than low-level
+effects. The summary text is English. These shapes are Contract's `ApplyPendingResult`; FieldWorks reads
+`ok`, `applied`, `summary`, and failure `code`, and ignores unknown fields. A per-Proposal list can be added
+if the command later applies multiple Proposals. "Nothing pending" means the pending Draft holds no operations,
+the same test `trial --pending` uses. Every nonzero exit code is a refusal or an error, with its failure on
+stderr (a failure envelope under `--json`), so FieldWorks can treat exit `0` alone as "continue". A project
+another program still holds is `Busy`, exit `3`: release it and retry.
+An uncertain pending change exits `2` with `code: "apply.change-uncertain"`; FieldWorks keeps it pending
+for review and does not reload the project.
 
-`preflight` reads the live project and reports each collected change as `still fits` or
-`no longer fits`, with an operation id and reason. `--json` returns the same entries as structured
-`changes`. A deleted wordform, changed wordform form, missing or moved analysis, changed analysis
-reading, a missing morph reference, an older Baseline, or a parser reading that has since been stored
-is `no longer fits`. `pending-changes` checks the persistent Draft before finalization, and
+#### FieldWorks executable lookup
+
+FieldWorks first checks the `MOTIF_DIR` environment variable. When set, it names the directory containing
+`motif.exe`. If it is unset, FieldWorks reads the `InstallationDir` value under
+`HKLM\SOFTWARE\SIL\Motif`; that value names the same directory. FieldWorks does not search `PATH` for Motif.
+The release installer will write the registry value and verify it in a clean-machine install.
+
+`preflight` reads the live project and reports each collected operation's `status` (`fits`,
+`uncertain`, or `no-longer-fits`), its existing `stillFits` boolean, operation id, and reason.
+`--json` returns the same entries as structured `changes`. A deleted wordform, changed wordform form,
+missing or moved analysis, changed analysis reading, a missing morph reference, an older Baseline, or a
+parser reading that has since been stored is `no-longer-fits`. For a decision with an occurrence anchor,
+a changed sentence, stale parse, missing Segment, or occurrence that no longer resolves uniquely is
+`uncertain` while the analysis decision itself still fits. The result includes `uncertainty.reason`,
+`beforeTokens`, and `afterTokens`; each token has its Segment index, canonical wordform id, and form.
+`pending-changes` checks the persistent Draft before finalization, and
 `remove-pending-change` removes a change by id and expected revision. Apply checks fit again
-and refuses a nonfitting change even with `--force`; `--force` only bypasses Readiness reasons.
+and refuses an uncertain change as well as one that no longer fits, including under `--force`. An
+uncertain refusal names the change and says to check again; `--force` only bypasses Readiness reasons.
 An Apply that succeeds records a durable Receipt in the paired project database.
 
-The App and the pending-change CLI verbs use `PendingChanges` in Commands to load, put, and remove
-changes in one persistent Draft. Each change has its own id, so distinct slots can address one word.
-Put and remove require the revision returned by the last load; a stale revision is refused. A parser
-change carries the exact reading chosen from an Assessment, or identifies a stored analysis. Display
-text is never an identity. A current Baseline is required, and the snapshot reports fit for every
-change. The Draft stays in `Project.motif.db` when the App closes.
+The App and the pending-change CLI verbs use `PendingChanges` in Commands to load, put, remove, check,
+and reconfirm changes in one persistent Draft. Each change has its own id, so distinct slots can address
+one word. These verbs require the revision returned by the last load; a stale revision is refused. A
+parser change carries the exact reading chosen from an Assessment, or identifies a stored analysis.
+Display text is never an identity. A current Baseline is required, and the snapshot reports fit for every
+change. `put-pending-change` may carry all four occurrence options together: Text GUID, paragraph GUID,
+Segment GUID, and a zero-based index in that Segment's analysis sequence. Motif accepts these options
+for analysis opinion changes. `recheck-pending-changes` renews Baseline tokens for changes that still
+fit, but leaves uncertain occurrence evidence untouched. `reconfirm-pending-change` takes one change id
+and replaces its occurrence evidence and BaselineToken after the analysis decision still fits; it refuses changes
+that no longer fit. This evidence refresh does not alter Proposal intent. The Draft stays in
+`Project.motif.db` when the App closes.
+
+`remove-analysis` stages deletion for one stored analysis, a comma-separated selection of analysis ids, or
+every distinct analysis used by a Text. Its preview lists every Text occurrence that references the analysis
+or one of its glosses. Before deletion, Motif asks LibLCM to replace each such reference with the wordform at
+the same Segment index, preserving alignment for the other words. `remove-pending-change` is Undo for a staged
+removal. `accept-new-set` stages every parser reading from an Assessment that parses every word in the selected
+wordform, Text, or Selection and does not already have. It adds candidates with no human opinion and never
+removes an existing analysis. One Undo removes the whole Accept action. If any selected word was capped, timed
+out, skipped, malformed, or otherwise incomplete, the command refuses the entire action.
 
 `trial --pending` resolves the current pending Draft when `--draft` and `--revision` are omitted, reading only
 the paired project database, so it never opens the FieldWorks project to check them. A `--draft` or `--revision`
@@ -195,14 +251,15 @@ Under `--json`, a failure emits a single JSON object on stderr and nothing on st
 ```json
 {
   "ok": false,
-  "reason": "ProjectLocked",
+  "code": "project.busy",
+  "reason": "Busy",
   "message": "FieldWorks cannot open the project because another program is using it.",
   "detail": { "project": "…\\Sena 3.fwdata" }
 }
 ```
 
-`message` is the existing human wording, unchanged — the 59 sites keep their text. `reason` is a closed
-set of machine-stable codes; `detail` is optional and reason-specific. Without `--json` the current
+`code` is the stable machine key. `reason` is a closed set of broad failure categories; `detail` is optional
+and reason-specific. `message` is the existing human wording. Without `--json` the current
 `error: <message>` rendering stays exactly as it is, because that is the human interface and it works.
 
 Successful `--json` output stays as it is today: the projection itself, unwrapped. A consumer distinguishes
@@ -217,12 +274,13 @@ promise and a large set is a large promise:
 | --- | --- |
 | `0` | The verb did what it was asked. |
 | `1` | The invocation was wrong — unknown verb, missing or malformed flag. Retrying unchanged cannot help. |
-| `2` | The request was well-formed and Motif refused it. A Drift refusal, a failed precondition, a policy denial. The state is unchanged and the caller may act on `reason`. |
+| `2` | The request was well-formed and Motif refused it. A Drift refusal, a failed precondition, a policy denial. The state is unchanged and the caller may act on `code`. |
 | `3` | The request was well-formed and could not be attempted now — the project is locked, the store is busy, a lease is held. Retrying later may succeed. |
-| `4` | Motif failed unexpectedly. A bug, not a decision. |
+| `4` | The store may be inconsistent, or Motif failed unexpectedly; inspect `code` before continuing. |
 
-The `2` and `3` split is the one that earns its keep: an agent must not retry a refusal, and must be
-allowed to retry a lock.
+`apply.reconciliation-needed` uses exit `4`: a change may have happened; do not retry; the project must be
+checked. Other unexpected failures also use the fallback exit `4`. The `2` and `3` split lets a caller tell
+a refusal from a temporary lock.
 
 ### Versioning
 
@@ -369,7 +427,10 @@ When no explicit source is named, `assess` resolves the saved default Selection.
 `selection.default-missing`. Naming explicit sources that together contribute no words is refused as
 `selection.empty`; naming a `--texts` GUID absent from the project is refused as `selection.text-not-found`.
 `--time-limit-ms` overrides the configured per-word wall-clock limit. `--step-cap` overrides the configured
-per-word search cap, whose default is 50,000,000 steps; `unbounded` asks PanGloss not to apply a step cap.
+per-word search cap, whose default is 1,000,000 steps; `unbounded` asks PanGloss not to apply a step cap.
+The setup wizard estimates a word's duration from the newest stored parser statistics. Before those exist, it
+uses a documented typical-machine rate of 250,000 steps per second. It saves a per-word time cap at ten times
+that estimate, rounded up to whole seconds; an unbounded step cap has no estimated or saved time cap.
 A search that hits either limit is stored as incomplete and appears as Unknown in Compare and Overview.
 
 **Cancellation records nothing.** A cancelled run refuses as `assessment.cancelled`; no partial Assessment
@@ -410,6 +471,13 @@ invocation exposed a project-mutating command that ruling defers. It now answers
 without `MOTIF_DEVELOPER_COMMANDS=1`, pinned by `ApplyingAllPendingChangesIsAbsentFromTheReleasedSurface`.
 Its behaviour with the opt-in set is unchanged, and so is the FieldWorks save-boundary contract described
 above; that surface is not yet built, and making the verb Released again is part of building it.
+
+### 2026-09-26 — Supersede the Developer-only Apply ruling
+
+This amendment supersedes the preceding Developer-only ruling. FieldWorks may call `apply --all-pending`
+without `MOTIF_DEVELOPER_COMMANDS` at its save boundary after releasing the project; every other pending-change
+and Proposal lifecycle verb remains Developer-only. Exit `0` reports whether a change was applied, and exit `4`
+with code `apply.reconciliation-needed` means FieldWorks must check the project before continuing.
 
 ## Selection, Overview, and Timing
 
@@ -462,9 +530,10 @@ the Assessment, so partial statistics cannot look complete. Opening Overview or 
 
 The Warnings page reads PanGloss's grammar-health report last stored for the current Baseline. Opening the page
 or running `warnings` never invokes PanGloss. The App's **Reload grammar** action and the CLI check run PanGloss
-`grammar-health` on the current Baseline. A successful run replaces that Baseline's one stored result. The store
-also records the resolved default Selection digest at check time when one exists, but grammar findings remain
-valid after the Selection changes.
+`grammar-health` on the current Baseline. A written report replaces that Baseline's one stored result. PanGloss
+v0.5.1 may exit nonzero after writing a report that contains error-level findings; Motif still reads and stores
+that report. A nonzero exit without a report is a refusal. The store also records the resolved default Selection
+digest at check time when one exists, but grammar findings remain valid after the Selection changes.
 
 **`grammar check --project <fwdata> [--json]`** performs a new check. With no Baseline it succeeds with
 `hasBaseline: false` and no findings. `--json` emits `GrammarCheckResponse`. Its refusal codes are
@@ -473,12 +542,14 @@ valid after the Selection changes.
 
 **`warnings --project <fwdata> [--kind <code>] [--left-out] [--json]`** reads those stored findings.
 `--kind` matches one stable diagnostic code exactly, ignoring case. `--left-out` keeps only findings whose
-level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result.
+level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result,
+including separate counts for `error`, `warning`, and `info` findings.
 `warnings` reads the stored result. Without a check, text says the grammar has not been checked and JSON has
 `hasCheck: false` with empty findings.
-`--json` emits `WarningsResponse`, including each finding's description, origin, guidance, subjects, and links.
+`--json` emits `WarningsResponse`, including `ErrorCount`, `WarningCount`, and `InformationCount`, plus each
+finding's description, origin, guidance, subjects, and links.
 
-PanGloss v3 writes an object with `schema_version: 3`, `fieldworks_project`, `summary`, and `diagnostics`.
+PanGloss v0.5.1 writes an object with `schema_version: 3`, `fieldworks_project`, `summary`, and `diagnostics`.
 The summary groups by `code` and includes `group_name`, `level` (`error`, `warning`, or `info`), and `count`. Each
 diagnostic includes `level`, `code`, `group_name`, `origin` (`check` or `import`), `description`, nullable
 `guidance`, and `subjects`.
@@ -490,11 +561,11 @@ Import diagnostics appear as **From import**, while grammar-check diagnostics ap
 Motif does not publish an audience property; support can be added when PanGloss includes audience in the report.
 Standard-error warning lines are not read as grammar findings.
 
-Motif reads schema version 3 only. A nonzero parser exit is accepted when the report contains an error-level
-diagnostic; those findings are stored and shown normally. Other nonzero exits remain parser refusals. A bare
-array or an earlier findings envelope is refused as
+Schema version 3 adds the `error` level. Motif reads schema versions 2 and 3. A nonzero parser exit is accepted
+when the report contains an error-level diagnostic; those findings are stored and shown normally. Other nonzero
+exits remain parser refusals. A bare array or an earlier findings envelope is refused as
 `grammarcheck.malformed-findings`. A different integer version is refused as
-`grammarcheck.unsupported-schema`, with the received and expected versions; update PanGloss and Motif together.
+`grammarcheck.unsupported-schema`, with the received version and the accepted versions; update PanGloss and Motif together.
 
 **`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
 straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —
@@ -530,12 +601,11 @@ recorded without a statistics cache), `stats.parser-unavailable` (the executable
 `stats.cancelled`. Every statistics invocation takes machine-queue admission and runs inside the
 Windows job object, with a default ten-minute wall-clock cap.
 
-**`handoff <project> --out <folder> --invocation <id> [--flextext] [--no-assess] [--json]`** writes a
-self-explaining folder that an AI agent with no network and no package installer can read on its own: the
-grammar, the chosen Texts, the exact selection that was parsed, and — unless `--no-assess` — PanGloss's own
-statistics, alongside a reader script and reference documents the repository maintains and copies in
-unchanged. It composes `baseline capture`, `assess`, and the six `stats` groups rather than reimplementing
-any of them, and shares the same project/store refusals every verb behind `ProjectStoreCommand` does.
+**`handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]`** writes the AI Handoff of
+[ADR 0045](adr/0045-the-handoff-is-five-files-and-a-pasted-header.md): exactly five flat files a person drags
+into a chat model — the grammar PanGloss parsed with, the chosen Texts, the retained Assessment, a reader script,
+and a `handoff.md` that explains the rest. It shares the same project/store refusals every verb behind
+`ProjectStoreCommand` does. With `--no-assess` it also accepts `--texts <guid,guid>`.
 Both `<project>` and `--out <folder>` are required positional/flag values; omitting either is a usage
 failure. `--invocation <id>` selects one completed retained Assessment. It is required unless `--no-assess`
 is given, and `--texts` cannot be combined with it: the retained Selection decides which Texts and words
@@ -547,12 +617,12 @@ different evidence.
 With `--no-assess`, the command keeps the Baseline-only path: no Assessment is selected, every Text is
 exported when `--texts` is absent, and a chosen GUID list restricts the Text files. A named id that does not
 resolve to a Text is skipped on this legacy Baseline-only path; retained-result exports refuse a missing
-Text id instead. A duplicate Text title is disambiguated by its own GUID in the file name, so two Texts
-sharing a title still produce two distinct files — pinned by `DuplicateTextTitlesProduceTwoDistinctFiles`.
+Text id instead. Every Text is one record in `texts.json`, keyed by its sanitized title and GUID, so two Texts sharing a title
+stay distinct.
 
 **Destination atomicity.** The folder is built in a sibling `.incoming-<guid>` directory next to the
 requested `--out` path, its exact listing is validated as complete, and only then is it moved into place
-with one `Directory.Move` — pinned by `AnEndToEndHandoffWritesTheExactListingAndEveryFileValidates`. A
+with one `Directory.Move` — pinned by `AnEndToEndHandoffWritesExactlyFiveFilesAndEveryJsonFileValidates`. A
 refusal returned during populate, or an exception thrown out of it — a cancellation, a PanGloss grammar-import
 failure — deletes the incoming directory and leaves no destination directory at all, pinned by
 `CancellationDuringGrammarImportLeavesNoDestinationDirectory` and
@@ -561,32 +631,17 @@ directory that is not empty, is refused as `handoff.destination-exists` without 
 it — pinned by `AnExistingNonEmptyDestinationRefusesWithoutTouchingIt` — so a mistyped `--out` that happens
 to name a real folder can never erase it.
 
-**`--no-assess`** omits `statistics.md` and the whole `statistics/` directory, but still writes the grammar,
-the Texts, and `selection.txt` — pinned by `NoAssessOmitsStatisticsButStillWritesGrammarTextsAndSelection`.
-The response's `assessmentIds` is empty in this case, and human text prints `(none; --no-assess)` where the
-Assessment ids would otherwise go.
+**The five files.** `grammar.json` (the grammar PanGloss actually parsed with), `texts.json` (every selected
+Text, one compact record per line), `assessment.json` (whether PanGloss accepted each Selection word, and how
+long it took), `parse_grammar_texts_assessment.py` (a reader for the three data files; see its own `--help`)
+and `handoff.md` (what the folder is, with links to each format's documentation at a pinned PanGloss release).
+The helper script is embedded in the `motif` binary, so the folder needs no network or package installer to be
+read.
 
-**`--flextext`** additionally writes a `.flextext.xml` beside each Text's `.flextext.json` mirror, pinned by
-`FlexTextAddsMatchingXmlBesideJson`; without it only the JSON form is written.
-
-The complete listing, with `--no-assess` not given: `instructions.md`, `grammar.json`, `selection.txt`,
-`statistics.md`, `recipes.md`, `read_handoff.py`, `reference/grammar-format.md`,
-`reference/flextext-json-format.md`, `reference/hc-mechanics.md`, one
-`texts/<title>-<guid>.flextext.json` per exported Text (plus a matching `.flextext.xml` under
-`--flextext`), and **six** `statistics/<group>.jsonl` files — one per group `pangloss stats --group`
-accepts: `word`, `object`, `allomorph`, `morpheme`, `group`, and `never-fires`, the only hyphenated one.
-`--no-assess` removes `statistics.md` and the entire `statistics/` directory from that listing and changes
-nothing else.
-
-`instructions.md`, `recipes.md`, `read_handoff.py`, and the three `reference/` documents are static assets
-this repository maintains and embeds in the `motif` binary; every Handoff carries its own unchanged copy,
-which is why the folder needs neither network access nor a package installer to be read. `instructions.md`
-explains what the folder is for, states plainly that it carries real linguistic data (uploading it to a
-chat model sends that data to whoever runs the model), and names the "as of FieldWorks' last save" wording
-that governs everything inside. The three `reference/` documents are maintained in the repository at
-`docs/handoff/grammar-format.md`, `docs/handoff/flextext-json-format.md`, and `docs/handoff/hc-mechanics.md`
-— `instructions.md` points a reader at their raw GitHub URLs for a newer copy, in case a question turns on
-a detail fixed after this particular Handoff was written.
+**`--no-assess`** omits `assessment.json`, leaving four files, and still writes the grammar and the Texts —
+pinned by `NoAssessOmitsAssessmentJsonButStillWritesGrammarAndTexts`. `handoff.md` then says no Assessment was
+run. The response's `assessmentIds` is empty in this case, and human text prints `(none; --no-assess)` where
+the Assessment ids would otherwise go.
 
 Human text prints the output directory, the Baseline's last-save timestamp with the same "(as of
 FieldWorks' last save)" wording `baseline capture` and `assess` use, the Selection's word count, the total

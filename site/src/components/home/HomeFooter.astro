@@ -1,0 +1,30 @@
+---
+import DefaultFooter from '@astrojs/starlight/components/Footer.astro';
+import silGlyph from '../../assets/brand/sil-glyph.png';
+
+const routeId = Astro.locals.starlightRoute.entry.id.replace(/\.mdx?$/i, '');
+const isLearnLesson = routeId.includes('learn/') && !routeId.endsWith('/index');
+const isHome = routeId === 'index';
+---
+
+<div class="motif-site-footer">
+	<div class="motif-site-footer__main">
+		<div class="motif-site-footer__identity">
+			<img src={silGlyph.src} width="139" height="75" alt="" />
+			<p>
+				{Astro.locals.t('home.betaFooterIntro')}
+				<a href="https://software.sil.org/">SIL Language Technology</a>
+				<span aria-hidden="true"> · </span>
+				<a href="https://github.com/sillsdev/motif/issues">{Astro.locals.t('home.reportProblem')}</a>
+				<span aria-hidden="true"> · </span>
+				<a href="https://github.com/sillsdev/motif/blob/main/LICENSE">{Astro.locals.t('home.license')}</a>
+			</p>
+		</div>
+		<nav aria-label={Astro.locals.t('home.footerNav')}>
+			<a href="https://github.com/sillsdev/motif">{Astro.locals.t('home.navGithub')}</a>
+			<a href="https://software.sil.org/fieldworks/">{Astro.locals.t('home.fieldworks')}</a>
+			<a href="https://software.sil.org/flextrans/">{Astro.locals.t('home.flextrans')}</a>
+		</nav>
+	</div>
+	{!isLearnLesson && !isHome && <DefaultFooter />}
+</div>

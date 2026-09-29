@@ -1,0 +1,12 @@
+---
+const localePrefix = Astro.locals.starlightRoute.locale ? `/${Astro.locals.starlightRoute.locale}` : '';
+---
+
+<nav class="home-primary-nav" aria-label={Astro.locals.t('home.navLabel')}>
+	<a href={`${localePrefix}/guide/`}>{Astro.locals.t('home.navGuide')}</a>
+	<a href={`${localePrefix}/learn/`}>{Astro.locals.t('home.navLearn')}</a>
+	<a href={`${localePrefix}/samples/`}>{Astro.locals.t('home.navSamples')}</a>
+	<a href={`${localePrefix}/#work-with-ai`}>{Astro.locals.t('home.navWorkWithAi')}</a>
+	<a href={`${localePrefix}/reference/`}>{Astro.locals.t('home.navReference')}</a>
+	<a href="https://github.com/sillsdev/motif">{Astro.locals.t('home.navGithub')}</a>
+</nav>

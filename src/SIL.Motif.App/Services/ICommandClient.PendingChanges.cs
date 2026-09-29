@@ -21,4 +21,7 @@ public partial interface ICommandClient
 
     Task<CommandOutcome<PendingChangesSnapshot>> RecheckPendingChangesAsync(
         RecheckPendingChangesRequest request, CancellationToken cancellationToken);
+
+    Task<CommandOutcome<PendingChangesSnapshot>> ReconfirmPendingChangeAsync(
+        ReconfirmPendingChangeRequest request, CancellationToken cancellationToken);
 }

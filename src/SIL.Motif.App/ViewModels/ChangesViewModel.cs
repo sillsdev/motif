@@ -75,6 +75,20 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 
     public IAsyncRelayCommand<ChangeViewModel> RemoveCommand { get; }
 
+    public async Task ReconfirmAsync(ChangeViewModel change, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        if (ProjectPath is not { } path) return;
+        var generation = _projectGeneration;
+        var outcome = await _client.ReconfirmPendingChangeAsync(new ReconfirmPendingChangeRequest(
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId), cancellationToken)
+            .ConfigureAwait(true);
+        if (!IsCurrentProject(path, generation)) return;
+        Accept(outcome, path, generation);
+        if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
+            await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
     public PendingChangesSnapshot Snapshot { get; private set; } = new(null, "none", [], []);
 
     public Refusal? LastRefusal { get; private set; }
@@ -165,9 +179,29 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public async Task AddFromTextAsync(string kind, ResultsTokenViewModel token, ResultsReadingViewModel? reading = null)
     {
         ArgumentNullException.ThrowIfNull(token);
-        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", token.Form,
+        var occurrence = kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
+            ? token.Occurrence : null;
+        var wordformId = token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty;
+        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, wordformId, token.Form,
             AssessmentId, reading?.Analysis, DisplayReading: reading?.Text,
-            ReadingIndex: reading?.Index)).ConfigureAwait(true);
+            ReadingIndex: reading?.Index, OriginPage: WorkspacePage.Texts.ToString(),
+            Occurrence: occurrence)).ConfigureAwait(true);
+    }
+
+    public async Task AddFromMarkingAsync(AnalysisMarkingAction action, ResultsTokenViewModel token)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(token);
+        var kind = action.ChangeKind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate or
+            ChangeKinds.AddCandidate
+            ? action.ChangeKind
+            : throw new InvalidOperationException("This marking action does not stage a project change.");
+        var hasParserReading = action.Reading is not null;
+        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : "", token.Form,
+            hasParserReading ? AssessmentId : null, action.Reading, action.StoredAnalysisId,
+            ReadingIndex: action.ReadingIndex, OriginPage: WorkspacePage.Texts.ToString(),
+            Occurrence: kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
+                ? token.Occurrence : null)).ConfigureAwait(true);
     }
 
     /// <summary>Adds an Approve change for one stored analysis without a parser reading.</summary>
@@ -202,7 +236,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         if (ProjectPath is not { } path) return;
         var generation = _projectGeneration;
         var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
-            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId),
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.GroupId ?? change.ChangeId),
             CancellationToken.None).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
@@ -277,7 +311,9 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         {
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
             Items.Add(new ChangeViewModel(change.Kind, change.Word,
-                change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage));
+                change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage,
+                fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId, change.ReadingIndex,
+                change.GroupId));
         }
         Raise();
     }
@@ -305,22 +341,59 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 }
 
 /// <summary>One collected change: what should happen to one word, and what it held when the change was chosen.</summary>
-public sealed class ChangeViewModel(string kind, string word, string reading,
+public sealed partial class ChangeViewModel(string kind, string word, string reading,
     string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null,
-    string? originPage = null)
+    string? originPage = null, OccurrenceAnchor? occurrence = null, string? storedAnalysisId = null,
+    int? readingIndex = null, string? groupId = null) : ObservableObject
 {
     public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
         page != WorkspacePage.Review ? page : WorkspacePage.Texts;
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
+    public string? GroupId { get; } = groupId;
     public ChangeFit? Fit { get; } = fit;
-    public string FitStatus => Fit is null ? string.Empty : Fit.StillFits
-        ? "Still fits the project." : "No longer fits the current project. Remove this change before review.";
-    public bool IsNoLongerFits => Fit is { StillFits: false };
+    public OccurrenceAnchor? Occurrence { get; } = occurrence;
+    public string? StoredAnalysisId { get; } = storedAnalysisId;
+    public int? ReadingIndex { get; } = readingIndex;
+    public string FitStatus => Fit?.Status switch
+    {
+        null => string.Empty,
+        ChangeFitStatus.Fits => "Still fits the project.",
+        ChangeFitStatus.Uncertain => "Uncertain — check again",
+        _ => "No longer fits the current project. Remove this change before review.",
+    };
+    public bool IsUncertain => Fit?.Status == ChangeFitStatus.Uncertain;
+    public bool IsNoLongerFits => Fit?.Status == ChangeFitStatus.NoLongerFits;
+    public bool HasUncertainty => Fit?.Uncertainty is not null;
+    public string UncertaintyReason => Fit?.Uncertainty?.Reason switch
+    {
+        null => string.Empty,
+        "The source Segment is gone or no longer resolves uniquely." =>
+            "The sentence this decision refers to is no longer available.",
+        "The source occurrence no longer resolves uniquely." =>
+            "The word this decision refers to is no longer in the sentence.",
+        "The paragraph parse is not current." => "FieldWorks has not reparsed this paragraph after the edit.",
+        "The paragraph parse was not current when the decision was collected." =>
+            "FieldWorks had not parsed this paragraph when you made this decision.",
+        "The words in the source sentence have changed." =>
+            "The words in the sentence have changed since you made this decision.",
+        _ => "This sentence needs another check.",
+    };
+    public IReadOnlyList<UncertaintyTokenViewModel> BeforeWords { get; } =
+        UncertaintyTokenViewModel.Create(fit?.Uncertainty?.BeforeTokens, fit?.Uncertainty?.AfterTokens, beforeSide: true);
+    public IReadOnlyList<UncertaintyTokenViewModel> AfterWords { get; } =
+        UncertaintyTokenViewModel.Create(fit?.Uncertainty?.BeforeTokens, fit?.Uncertainty?.AfterTokens, beforeSide: false);
+
+    [ObservableProperty]
+    private bool _isContextExpanded;
+
+    public void ToggleContext() => IsContextExpanded = !IsContextExpanded;
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
     public string ReviewLabel => Kind == ChangeKinds.Approve && analyses is { Count: > 1 }
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
+    public string CheckAgainAutomationName => $"Check again: {Word}";
+    public string UndoAutomationName => $"Undo: {Word}";
 
     /// <summary>The parser's reading, for a change that sends it to FieldWorks or judges it.</summary>
     public string Reading { get; } = reading;
@@ -330,12 +403,85 @@ public sealed class ChangeViewModel(string kind, string word, string reading,
 
     public bool HasAnalyses => Analyses.Count > 0;
 
+    public StagedMarkingTransition StagedTransition { get; } =
+        TransitionFor(kind, storedAnalysisId, analyses) with
+        {
+            StoredAnalysisId = storedAnalysisId,
+            ReadingIndex = readingIndex,
+            FitStatus = fit?.Status,
+        };
 
     public string Summary => $"{Word}: {Label}";
 
     private static IReadOnlyList<ReviewAnalysisViewModel> BuildAnalyses(
         IReadOnlyList<ReviewAnalysis>? analyses, string kind) =>
         analyses?.Select(analysis => new ReviewAnalysisViewModel(analysis, kind)).ToArray() ?? [];
+
+    private static StagedMarkingTransition TransitionFor(string kind, string? storedAnalysisId,
+        IReadOnlyList<ReviewAnalysis>? analyses)
+    {
+        var touched = analyses?.FirstOrDefault(analysis => analysis.Touched);
+        var before = touched is { Stored: true } ? OpinionLabel(touched.Opinion)
+            : touched is not null || storedAnalysisId is null ? "Not in FieldWorks"
+            : kind == ChangeKinds.Approve ? "Unknown" : "Current opinion";
+        var after = kind switch
+        {
+            ChangeKinds.Approve => "Approved",
+            ChangeKinds.Reject => "Disapproved",
+            ChangeKinds.Candidate or ChangeKinds.AddCandidate => "Unknown",
+            ChangeKinds.IncorrectSpelling => "Incorrect",
+            _ => "Changed",
+        };
+        if (kind == ChangeKinds.IncorrectSpelling) before = "Current spelling";
+        return new StagedMarkingTransition(before, after);
+    }
+
+    private static string OpinionLabel(string opinion) => opinion switch
+    {
+        ReadingGrade.Approved => "Approved",
+        ReadingGrade.Disapproved => "Disapproved",
+        _ => "Unknown",
+    };
+}
+/// <summary>One word in the before or after sentence shown for an uncertain change.</summary>
+public sealed record UncertaintyTokenViewModel(int Index, string WordformId, string Form, bool IsChanged)
+{
+    public static IReadOnlyList<UncertaintyTokenViewModel> Create(
+        IReadOnlyList<OccurrenceWordToken>? before, IReadOnlyList<OccurrenceWordToken>? after, bool beforeSide)
+    {
+        if (before is null || after is null) return [];
+        var left = before.Select(Key).ToArray();
+        var right = after.Select(Key).ToArray();
+        var matches = LongestCommonSubsequence(left, right);
+        var changed = beforeSide
+            ? Enumerable.Range(0, left.Length).Where(index => !matches.Contains((index, true))).ToHashSet()
+            : Enumerable.Range(0, right.Length).Where(index => !matches.Contains((index, false))).ToHashSet();
+        var words = beforeSide ? before : after;
+        return words.Select((token, index) => new UncertaintyTokenViewModel(
+            token.Index, token.WordformId, token.Form, changed.Contains(index))).ToArray();
+    }
+
+    private static (int, bool)[] LongestCommonSubsequence(string[] left, string[] right)
+    {
+        var lengths = new int[left.Length + 1, right.Length + 1];
+        for (var i = left.Length - 1; i >= 0; i--)
+            for (var j = right.Length - 1; j >= 0; j--)
+                lengths[i, j] = left[i] == right[j] ? lengths[i + 1, j + 1] + 1 :
+                    Math.Max(lengths[i + 1, j], lengths[i, j + 1]);
+        var result = new List<(int, bool)>();
+        var x = 0;
+        var y = 0;
+        while (x < left.Length && y < right.Length)
+        {
+            if (left[x] == right[y]) { result.Add((x++, true)); result.Add((y++, false)); }
+            else if (lengths[x + 1, y] >= lengths[x, y + 1]) x++;
+            else y++;
+        }
+        return result.ToArray();
+    }
+
+    private static string Key(OccurrenceWordToken token) =>
+        token.WordformId + "\0" + token.Form.Normalize(System.Text.NormalizationForm.FormD);
 }
 
 /// <summary>A reading as the Review page displays its morphs, prior opinion and proposed opinion.</summary>

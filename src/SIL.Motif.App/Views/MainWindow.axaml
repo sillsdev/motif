@@ -1,10 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SIL.Motif.App"
         xmlns:views="clr-namespace:SIL.Motif.App.Views"
         xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         x:Class="SIL.Motif.App.Views.MainWindow"
         x:DataType="vm:WorkspaceShellViewModel"
-        Title="Motif"
+        Title="Motif (tech demo)"
         Icon="avares://SIL.Motif.App/Assets/motif.ico"
         Width="{DynamicResource Component.Shell.Width}"
         Height="{DynamicResource Component.Shell.Height}"
@@ -24,7 +25,8 @@
         <Button x:Name="ProjectMenuButton" DockPanel.Dock="Left" VerticalAlignment="Center"
                 Theme="{DynamicResource OutlineButton}" Classes="Tertiary projectMenu"
                 IsEnabled="{Binding ProjectSwitchEnabled}"
-                AutomationProperties.Name="Project menu">
+                AutomationProperties.Name="Project menu"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectMenu}">
           <StackPanel Classes="topBarGroup" Orientation="Horizontal">
             <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />
             <TextBlock Classes="disclosure" Text="&#x25BE;" VerticalAlignment="Center" />
@@ -33,7 +35,8 @@
             <Flyout Placement="BottomEdgeAlignedLeft">
               <StackPanel Classes="menu">
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
-                        Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="Select a new project">
+                        Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="Select a new project"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.SelectNewProject}">
                   <StackPanel>
                     <TextBlock Classes="menuTitle" Text="Select new&#x2026;" />
                     <TextBlock Classes="menuDetail" Text="Choose another .fwdata file" />
@@ -64,6 +67,14 @@
         </Button>
 
         <StackPanel Classes="topBarGroup" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="HelpButton" Content="Help" Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
+                  AutomationProperties.Name="Help for the current page">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight" Opened="OnHelpFlyoutOpened">
+                <views:HelpPopupView x:Name="HelpPopupView" />
+              </Flyout>
+            </Button.Flyout>
+          </Button>
           <Button Content="See what changed" Command="{Binding SeeWhatChangedCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsSeeWhatChanged}" AutomationProperties.Name="See what the refresh changed" />
@@ -73,6 +84,7 @@
           <Button Content="Refresh" Command="{Binding RefreshCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding !FreshnessIsBusy}" AutomationProperties.Name="Refresh the project"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.RefreshProject}"
                   ToolTip.Tip="Capture a new Baseline from FieldWorks' last save, then assess the Selection against it." />
         </StackPanel>
 
@@ -91,8 +103,21 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto">
-      <Border IsVisible="{Binding RerunOffered}" Classes="card banner">
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto">
+      <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding TechDemoNotice.IsVisible}" Classes="notice">
+        <DockPanel LastChildFill="True">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+            <HyperlinkButton Classes="reviewLink" Content="Report a problem"
+                             Command="{Binding TechDemoNotice.ReportProblemCommand}"
+                             AutomationProperties.Name="Report a problem" />
+            <Button Content="Got it" Command="{Binding TechDemoNotice.GotItCommand}"
+                    AutomationProperties.Name="Acknowledge the tech demo notice" />
+          </StackPanel>
+          <views:CopyableTextBlock Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
+                                   VerticalAlignment="Center" TextWrapping="Wrap" />
+        </DockPanel>
+      </Border>
+      <Border Grid.Row="1" IsVisible="{Binding RerunOffered}" Classes="card banner">
         <DockPanel LastChildFill="True">
           <Button Content="Run again"
                   Command="{Binding AcceptRerunCommand}"
@@ -108,7 +133,7 @@
                      TextWrapping="Wrap" />
         </DockPanel>
       </Border>
-      <Border Grid.Row="1" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
+      <Border Grid.Row="2" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
         <StackPanel>
           <views:RefusalBlock DataContext="{Binding Baseline.ShownRefusal}"
                               StoreDeletionCommand="{Binding $parent[Border].((vm:WorkspaceShellViewModel)DataContext).DeleteRefusedStoreCommand}"
@@ -127,7 +152,7 @@
           <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
-      <Border Grid.Row="2" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
+      <Border Grid.Row="3" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
         <StackPanel>
           <views:RefusalBlock DataContext="{Binding OpenRefusal}" />
         </StackPanel>
@@ -147,10 +172,12 @@
                    ItemsSource="{Binding Pages}"
                    SelectedItem="{Binding SelectedPage}"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                   AutomationProperties.Name="Pages">
+                   AutomationProperties.Name="Pages"
+                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.Pages}">
             <ListBox.Styles>
               <Style Selector="ListBoxItem" x:DataType="vm:PageViewModel">
                 <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                <Setter Property="AutomationProperties.AutomationId" Value="{Binding AutomationId}" />
               </Style>
               <Style Selector="ListBox.collapsed ListBoxItem" x:DataType="vm:PageViewModel">
                 <Setter Property="ToolTip.Tip" Value="{Binding Title}" />

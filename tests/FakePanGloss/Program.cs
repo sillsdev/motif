@@ -62,6 +62,8 @@ internal static class Program
     {
         if (args is ["--allocate-memory", var requestedBytes])
             return ProbeMemoryLimit(requestedBytes);
+        if (args is ["--allocate-memory", var delayedRequestedBytes, var holdMilliseconds])
+            return ProbeMemoryLimit(delayedRequestedBytes, holdMilliseconds);
         // Dies from an unhandled exception on purpose: the suite proves no crash dialog holds such a process.
         if (args is ["--crash-unhandled"]) throw new InvalidOperationException("The fake parser was told to crash.");
         if (args.Length == 0)
@@ -74,14 +76,20 @@ internal static class Program
         return command is null ? Unrecognised(args[0]) : command.Run(args);
     }
 
-    private static int ProbeMemoryLimit(string requestedBytes)
+    private static int ProbeMemoryLimit(string requestedBytes, string? holdMilliseconds = null)
     {
         if (!int.TryParse(requestedBytes, NumberStyles.None, CultureInfo.InvariantCulture, out var length) || length <= 0)
+            return 64;
+        var delay = 0;
+        if (holdMilliseconds is not null &&
+            (!int.TryParse(holdMilliseconds, NumberStyles.None, CultureInfo.InvariantCulture, out delay) || delay < 0))
             return 64;
         try
         {
             var allocation = new byte[length];
             for (var index = 0; index < allocation.Length; index += 4096) allocation[index] = 1;
+            if (holdMilliseconds is not null)
+                Thread.Sleep(delay);
             GC.KeepAlive(allocation);
             return 0;
         }
@@ -165,11 +173,17 @@ internal static class Program
         }
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "batch");
+        if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
+        if (behaviour.HoldUntilPath is { } holdUntilPath)
+        {
+            var holdExit = WaitForHoldRelease(holdUntilPath, behaviour.HoldTimeoutMs);
+            if (holdExit != 0) return holdExit;
+        }
         if (behaviour.HeartbeatPath is { } heartbeat)
         {
             using var wordsHandle = File.Open(wordsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Tick(heartbeat);
+            return Tick(heartbeat, behaviour.ProcessIdPath);
         }
         if (behaviour.DelayMilliseconds > 0)
             Thread.Sleep(behaviour.DelayMilliseconds);
@@ -234,10 +248,11 @@ internal static class Program
         var fwDataPath = args[1];
         var grammarJsonPath = args[2];
         var directory = Path.GetDirectoryName(Path.GetFullPath(fwDataPath));
-        RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        // A published Baseline's layout allows no extra files, so importing from one records nothing beside it.
+        RecordArgv(IsBaselinePublication(directory) ? null : directory, args);
+        var behaviour = Behaviour.Read(directory, "import");
 
-        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
 
         if (behaviour.DelayMilliseconds > 0)
             Thread.Sleep(behaviour.DelayMilliseconds);
@@ -271,9 +286,9 @@ internal static class Program
         var forwarded = args[4..];
         var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "stats");
 
-        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
 
         if (behaviour.DelayMilliseconds > 0)
             Thread.Sleep(behaviour.DelayMilliseconds);
@@ -307,9 +322,9 @@ internal static class Program
         var word = args[2];
         var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "parse");
 
-        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
 
         if (behaviour.DelayMilliseconds > 0)
             Thread.Sleep(behaviour.DelayMilliseconds);
@@ -322,7 +337,8 @@ internal static class Program
 
         var signature = behaviour.TraceSignature ?? word + "-sig";
         // Raw UTF-8 bytes, as serde_json writes them: Console.Out would encode through the console code page.
-        var envelope = TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped);
+        var envelope = TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped,
+            behaviour.TraceTimedOut);
         using (var stdout = Console.OpenStandardOutput())
             stdout.Write(new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(envelope));
         return behaviour.ExitCode;
@@ -331,11 +347,22 @@ internal static class Program
     private static readonly JsonSerializerOptions Unescaped =
         new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
+    private static int WaitForHoldRelease(string releasePath, int timeoutMs)
+    {
+        var deadline = Environment.TickCount64 + Math.Max(1, timeoutMs);
+        while (!File.Exists(releasePath) && Environment.TickCount64 < deadline) Thread.Sleep(10);
+        if (File.Exists(releasePath)) return 0;
+        Console.Error.WriteLine("fake parser hold timed out waiting for release");
+        return 86;
+    }
+
     // The pangloss.trace-details.v1 document, with the tree embedded verbatim so a malformed tree stays malformed.
-    private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped) =>
+    private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped, bool timedOut) =>
         "{\"schemaVersion\":\"pangloss.trace-details.v1\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
-        ",\"search\":{\"completed\":" + (capped ? "false" : "true") + ",\"capped\":" + (capped ? "true" : "false") +
-        ",\"timedOut\":false,\"invalidShape\":false,\"steps\":42,\"elapsedNs\":1500000}" +
+        ",\"search\":{\"completed\":" + (capped || timedOut ? "false" : "true") +
+        ",\"capped\":" + (capped ? "true" : "false") +
+        ",\"timedOut\":" + (timedOut ? "true" : "false") +
+        ",\"invalidShape\":false,\"steps\":42,\"elapsedNs\":1500000}" +
         ",\"result\":{\"signature\":" + JsonSerializer.Serialize(signature) + ",\"guessed\":false,\"analyses\":[]}" +
         ",\"categories\":{\"morphRule\":{\"attempts\":3,\"work\":12,\"outputs\":2,\"notApplied\":1,\"noRoot\":0," +
         "\"surfaceMismatch\":0,\"uses\":1,\"timingAvailable\":true,\"selfElapsedNs\":48700}," +
@@ -355,9 +382,16 @@ internal static class Program
         var outPath = args.Length > 2 && !args[2].StartsWith("--", StringComparison.Ordinal) ? args[2] : null;
         var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));
         RecordArgv(directory, args);
-        var behaviour = Behaviour.Read(directory);
+        var behaviour = Behaviour.Read(directory, "grammar-health");
 
-        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat);
+        if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
+        if (behaviour.HoldUntilPath is { } holdUntilPath)
+        {
+            var holdExit = WaitForHoldRelease(holdUntilPath, behaviour.HoldTimeoutMs);
+            if (holdExit != 0) return holdExit;
+        }
+
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
         if (behaviour.DelayMilliseconds > 0) Thread.Sleep(behaviour.DelayMilliseconds);
 
         if (behaviour.Mode == "fail")
@@ -458,6 +492,10 @@ internal static class Program
         return behaviour.ExitCode;
     }
 
+    // Publications are folders named by their bundle's 64-hex-digit SHA-256 digest.
+    private static bool IsBaselinePublication(string? directory) =>
+        directory is not null && Path.GetFileName(directory) is { Length: 64 } name && name.All(char.IsAsciiHexDigit);
+
     private static void RecordArgv(string? directory, string[] args)
     {
         // Only a copy carrying the sentinel logs, so the shared fake never accumulates a record.
@@ -514,8 +552,10 @@ internal static class Program
     }
 
     /// Ticks forever so a caller can prove that cancelling it actually stops the process.
-    private static int Tick(string heartbeatPath)
+    private static int Tick(string heartbeatPath, string? processIdPath)
     {
+        if (processIdPath is not null)
+            File.WriteAllText(processIdPath, Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
         for (var counter = 1; ; counter++)
         {
             File.WriteAllText(heartbeatPath, counter.ToString(CultureInfo.InvariantCulture));
@@ -548,6 +588,9 @@ internal static class Program
         public int DelayMilliseconds { get; init; }
         public bool StreamProgress { get; init; }
         public string? HeartbeatPath { get; init; }
+        public string? StartedPath { get; init; }
+        public string? HoldUntilPath { get; init; }
+        public string? ProcessIdPath { get; init; }
         public string? StandardError { get; init; }
         public string SemanticDigest { get; init; } = "sha256:" + new string('b', 64);
         public string SourceSha256 { get; init; } = "sha256:" + new string('c', 64);
@@ -556,9 +599,11 @@ internal static class Program
         public string? TraceSignature { get; init; }
         public string? TraceJson { get; init; }
         public bool TraceCapped { get; init; }
+        public bool TraceTimedOut { get; init; }
+        public int HoldTimeoutMs { get; init; } = 60_000;
         public string? GrammarHealthReportJson { get; init; }
 
-        internal static Behaviour Read(string? directory)
+        internal static Behaviour Read(string? directory, string? subcommand = null)
         {
             if (directory is null) return new Behaviour();
             var besideGrammar = Path.Combine(directory, BehaviourFileName);
@@ -566,7 +611,22 @@ internal static class Program
             var path = Environment.GetEnvironmentVariable("FAKE_PANGLOSS_BEHAVIOUR_PATH")
                 ?? (File.Exists(besideGrammar) ? besideGrammar : Path.Combine(AppContext.BaseDirectory, BehaviourFileName));
             if (!File.Exists(path)) return new Behaviour();
-            return JsonSerializer.Deserialize<Behaviour>(File.ReadAllText(path),
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var root = document.RootElement;
+            if (subcommand is not null && root.TryGetProperty("subcommands", out var bySubcommand) &&
+                bySubcommand.ValueKind == JsonValueKind.Object &&
+                bySubcommand.EnumerateObject().FirstOrDefault(property =>
+                    string.Equals(property.Name, subcommand, StringComparison.OrdinalIgnoreCase)) is { Value.ValueKind: JsonValueKind.Object } selected)
+            {
+                var values = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+                foreach (var property in root.EnumerateObject())
+                    if (!string.Equals(property.Name, "subcommands", StringComparison.OrdinalIgnoreCase))
+                        values[property.Name] = property.Value;
+                foreach (var property in selected.Value.EnumerateObject()) values[property.Name] = property.Value;
+                return JsonSerializer.Deserialize<Behaviour>(JsonSerializer.Serialize(values),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();
+            }
+            return JsonSerializer.Deserialize<Behaviour>(root.GetRawText(),
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();
         }
     }

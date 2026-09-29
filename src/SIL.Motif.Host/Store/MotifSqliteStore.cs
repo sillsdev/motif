@@ -48,12 +48,10 @@ internal sealed class MotifSqliteStoreDescriptor
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Opening does not claim the database.</b> The ownership lock is taken only while a fresh database is
-/// being created, not for the object's whole lifetime, because creation is the one operation two processes
-/// must never interleave — everything else is ordinary concurrent SQLite that WAL and row versions already
-/// make safe. A lock held for the whole lifetime would mean whichever process opened first excluded every
-/// other one entirely, which is exactly what lets a <c>motif</c> invocation and the job runner (or two
-/// invocations of either) stay open at once.
+/// Each open holds a shared use lease for the object's lifetime. Other Motif processes can take the same
+/// lease, while reset needs an exclusive lease before it deletes an incompatible database. The separate
+/// ownership lock is taken only while a fresh database is being created, because creation is the one
+/// operation two processes must never interleave.
 /// </para>
 /// <para>
 /// Creation itself runs inside <c>BEGIN IMMEDIATE</c>/<c>COMMIT</c>, with an explicit <c>ROLLBACK</c> on
@@ -67,20 +65,22 @@ internal sealed class MotifSqliteStore : IDisposable
     private static readonly TimeSpan DefaultOwnershipPatience = TimeSpan.FromSeconds(30);
     private readonly string _path;
     private readonly string _name;
+    private readonly FileStream _useLease;
     private readonly object _stateGate = new();
     private readonly HashSet<SqliteConnection> _connections = [];
     private bool _disposed;
 
-    private MotifSqliteStore(string path, string name)
+    private MotifSqliteStore(string path, string name, FileStream useLease)
     {
         _path = path;
         _name = name;
+        _useLease = useLease;
     }
 
-    /// <summary>Opens a store, creating its schema if absent and waiting for its creation lock.</summary>
+    /// <summary>Opens a store with a shared use lease, creating its schema if absent.</summary>
     /// <param name="path">The database file path.</param>
     /// <param name="descriptor">The schema and identity rules for the database.</param>
-    /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
+    /// <param name="ownershipPatience">Maximum wait for store locks; defaults to 30 seconds.</param>
     public static MotifSqliteStore Open(string path, MotifSqliteStoreDescriptor descriptor,
         TimeSpan? ownershipPatience = null)
     {
@@ -89,10 +89,12 @@ internal sealed class MotifSqliteStore : IDisposable
         var directory = Path.GetDirectoryName(fullPath);
         if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
 
+        FileStream? useLease = null;
         FileStream? ownership = null;
         try
         {
-            // Taken only when there is a fresh database to create, so readers never contend.
+            useLease = AcquireUseLease(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
+            // This orders first creation without excluding other readers.
             if (NeedsCreation(fullPath))
                 ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
             using var connection = OpenInspectionConnection(fullPath);
@@ -124,21 +126,26 @@ internal sealed class MotifSqliteStore : IDisposable
             SqliteConnections.EnableWal(connection);
             ownership?.Dispose();
             ownership = null;
-            return new MotifSqliteStore(fullPath, descriptor.Name);
+            var store = new MotifSqliteStore(fullPath, descriptor.Name, useLease);
+            useLease = null;
+            return store;
         }
         catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
         {
             ownership?.Dispose();
+            useLease?.Dispose();
             throw new InvalidDataException($"The {descriptor.Name} is corrupt or is not a database.", exception);
         }
         catch (SqliteException exception)
         {
             ownership?.Dispose();
+            useLease?.Dispose();
             throw new IOException($"The {descriptor.Name} is unavailable.", exception);
         }
         catch
         {
             ownership?.Dispose();
+            useLease?.Dispose();
             throw;
         }
     }
@@ -174,6 +181,7 @@ internal sealed class MotifSqliteStore : IDisposable
             throw new IOException($"The {descriptor.Name} is unavailable.", exception);
         }
 
+        using var useLease = AcquireExclusiveUseLease(fullPath);
         File.Delete(fullPath);
         return true;
     }
@@ -222,12 +230,19 @@ internal sealed class MotifSqliteStore : IDisposable
             _connections.Clear();
         }
 
-        foreach (var connection in connections)
+        try
         {
-            if (connection is OwnedSqliteConnection owned)
-                owned.DisposeFromOwner();
-            else
-                connection.Dispose();
+            foreach (var connection in connections)
+            {
+                if (connection is OwnedSqliteConnection owned)
+                    owned.DisposeFromOwner();
+                else
+                    connection.Dispose();
+            }
+        }
+        finally
+        {
+            _useLease.Dispose();
         }
     }
 
@@ -376,6 +391,39 @@ internal sealed class MotifSqliteStore : IDisposable
     /// <summary>Acquires a database's ownership file for a platform-specific lock test.</summary>
     internal static FileStream AcquireOwnershipForTesting(string path, TimeSpan patience) =>
         AcquireOwnership(path, patience);
+
+    private static FileStream AcquireUseLease(string path, TimeSpan patience)
+    {
+        var deadline = DateTime.UtcNow.Add(patience);
+        while (true)
+        {
+            try
+            {
+                // Shared access modes let every opener coexist and become shared Unix file locks.
+                return new FileStream(path + ".use.lock", FileMode.OpenOrCreate, FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.None);
+            }
+            catch (IOException exception) when (IsOwnershipLockContention(exception))
+            {
+                if (DateTime.UtcNow >= deadline)
+                    throw new MotifStoreLockException("Another Motif process is resetting this database.", exception);
+                Thread.Sleep(25);
+            }
+        }
+    }
+
+    private static FileStream AcquireExclusiveUseLease(string path)
+    {
+        try
+        {
+            return new FileStream(path + ".use.lock", FileMode.OpenOrCreate, FileAccess.Read,
+                FileShare.None, 1, FileOptions.None);
+        }
+        catch (IOException exception) when (IsOwnershipLockContention(exception))
+        {
+            throw new MotifStoreLockException("Another Motif process has this database open.", exception);
+        }
+    }
 
     private static FileStream AcquireOwnershipCore(string path)
     {

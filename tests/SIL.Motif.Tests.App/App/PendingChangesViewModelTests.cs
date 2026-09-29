@@ -95,7 +95,32 @@ public sealed class PendingChangesViewModelTests
         Assert.Null(change.AssessmentId);
         Assert.Null(change.Reading);
         Assert.Null(change.ReadingIndex);
+        Assert.Null(change.Occurrence);
         Assert.Equal(WorkspacePage.TryAWord.ToString(), change.OriginPage);
+    }
+
+    [Fact]
+    public async Task WordAndCompareChangesDoNotCarryAnOccurrenceAnchor()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        var analysis = new ParseAnalysis([new ParseMorph(null, null, null, "reading")]);
+        var assessmentWord = new AssessmentWordResult("word", "analysed", false, "Done", 1, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, "word", 1, false, false, false, [analysis], []),
+        };
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(assessmentWord),
+            (WordProjectStatus.NotPresent, CompareColumnKind.NoMatch))
+        {
+            SelectedReading = new CompareReadingChoice(0, analysis, "reading"),
+        };
+
+        await changes.AddAsync(ChangeKinds.Approve, word, WorkspacePage.Texts);
+        await changes.AddAsync(ChangeKinds.Approve, word, WorkspacePage.Texts);
+
+        Assert.Equal(2, fake.PendingPutRequests.Count);
+        Assert.All(fake.PendingPutRequests, request => Assert.Null(request.Change.Occurrence));
     }
 
     [Fact]
@@ -139,6 +164,26 @@ public sealed class PendingChangesViewModelTests
 
         Assert.Equal("change/one", Assert.Single(changes.Items).ChangeId);
         Assert.Equal("revision/one", changes.Snapshot.Revision);
+    }
+
+    [Fact]
+    public async Task UndoingAcceptedTextUsesGroupIdToRemoveEveryReading()
+    {
+        const string groupId = "accept/group";
+        var first = new PendingChange("change/one", "wordform/one", "one", "add-candidate", "assessment/one",
+            "first", ["operation/one"]) { GroupId = groupId };
+        var second = new PendingChange("change/two", "wordform/two", "two", "add-candidate", "assessment/one",
+            "second", ["operation/two"]) { GroupId = groupId };
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [first, second],
+            [new ChangeFit(first.ChangeId, true, []), new ChangeFit(second.ChangeId, true, [])]));
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+
+        await changes.RemoveCommand.ExecuteAsync(changes.Items[0]);
+
+        Assert.Equal(groupId, Assert.Single(fake.PendingRemoveRequests).ChangeId);
+        Assert.Empty(changes.Items);
     }
 
     [Fact]

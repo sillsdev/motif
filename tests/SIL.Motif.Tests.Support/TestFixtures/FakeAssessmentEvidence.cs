@@ -20,7 +20,8 @@ internal static class FakeAssessmentEvidence
         return new BatchInvocationEvidence(id, source, BatchInvocationEvidence.DigestFile(source),
             BatchInvocationEvidence.DigestFile(FakeParser.ExecutablePath),
             words, BatchInvocationEvidence.DigestFile(words), tsv, BatchInvocationEvidence.DigestFile(tsv),
-            stderr, BatchInvocationEvidence.DigestFile(stderr), (int)scope.PerWordLimit.TotalMilliseconds,
+            stderr, BatchInvocationEvidence.DigestFile(stderr), scope.PerWordLimit is { } timeLimit
+                ? (int)timeLimit.TotalMilliseconds : null,
             scope.PerWordStepLimit, 1, true);
     }
 }

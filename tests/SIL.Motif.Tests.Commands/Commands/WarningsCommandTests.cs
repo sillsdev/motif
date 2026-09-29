@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
@@ -29,10 +30,13 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
         var leftOut = WarningsCommand.Warnings(new WarningsRequest(project, LeftOut: true));
 
         Assert.True(all.Succeeded, all.Refusal?.Message);
-        Assert.Equal(3, all.Value!.TotalCount);
+        Assert.Equal(4, all.Value!.TotalCount);
+        Assert.Equal(2, all.Value.ErrorCount);
         Assert.Equal(1, all.Value.WarningCount);
         Assert.Equal(1, all.Value.InformationCount);
-        Assert.Equal(1, all.Value.ErrorCount);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(all.Value));
+        Assert.Equal(2, json.RootElement.GetProperty("ErrorCount").GetInt32());
+        Assert.Equal("error", json.RootElement.GetProperty("Findings")[0].GetProperty("Severity").GetString());
         Assert.Equal("hc-unused-rule", Assert.Single(kind.Value!.Findings).Code);
         Assert.All(leftOut.Value!.Findings, finding => Assert.Equal("warning", finding.Severity.ToWireValue()));
         Assert.Single(leftOut.Value.Findings);
@@ -79,11 +83,14 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
           "schema_version": 3,
           "fieldworks_project": { "name": null, "source": null },
           "summary": [
+            { "code": "hc-invalid-feature-system", "group_name": "Invalid feature system", "level": "error", "count": 1 },
             { "code": "hc-unused-rule", "group_name": "Unused rule", "level": "warning", "count": 1 },
             { "code": "hc-undeclared-segment", "group_name": "Undeclared segment", "level": "info", "count": 1 },
             { "code": "fwdata.no-usable-allomorphs", "group_name": "No usable entry allomorphs", "level": "error", "count": 1 }
           ],
           "diagnostics": [
+            { "level": "error", "code": "hc-invalid-feature-system", "group_name": "Invalid feature system",
+              "origin": "check", "description": "A feature system could not be loaded.", "guidance": null, "subjects": [] },
             { "level": "warning", "code": "hc-unused-rule", "group_name": "Unused rule",
               "origin": "check", "description": "Rule x is unused.", "guidance": null, "subjects": [] },
             { "level": "info", "code": "hc-undeclared-segment", "group_name": "Undeclared segment",

@@ -1,0 +1,96 @@
+[
+  {
+    "id": "class-8-prefix-entered-as-ki",
+    "title": "Class 8 prefix entered as ki-",
+    "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Swahili, but it is not real Swahili, has not been checked by speakers, and must not be used as a description of any language.",
+    "symptom": {
+      "reason": "The class 8 noun entry has a class 7 prefix form.",
+      "words": [
+        "vitabu"
+      ],
+      "kind": "failure"
+    },
+    "patch": [
+      {
+        "form": "ki",
+        "allomorphId": "noun-class-8-vi",
+        "op": "setAllomorphForm"
+      }
+    ],
+    "fix": [
+      "Restore vi- as the class 8 prefix form."
+    ]
+  },
+  {
+    "id": "object-before-tense",
+    "title": "Object slot before tense",
+    "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Swahili, but it is not real Swahili, has not been checked by speakers, and must not be used as a description of any language.",
+    "symptom": {
+      "reason": "The template asks for an object marker before the cited tense/aspect marker.",
+      "words": [
+        "ninampiga",
+        "ninawapiga"
+      ],
+      "kind": "failure"
+    },
+    "patch": [
+      {
+        "templateId": "verb",
+        "side": "prefix",
+        "secondSlotId": "object",
+        "firstSlotId": "tense-aspect-slot",
+        "op": "swapSlots"
+      }
+    ],
+    "fix": [
+      "Place the optional object slot after the tense/aspect slot."
+    ]
+  },
+  {
+    "id": "past-marker-entered-as-lu",
+    "title": "Past marker entered as lu",
+    "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Swahili, but it is not real Swahili, has not been checked by speakers, and must not be used as a description of any language.",
+    "symptom": {
+      "reason": "The past slot no longer has the cited li form.",
+      "words": [
+        "nililala"
+      ],
+      "kind": "failure"
+    },
+    "patch": [
+      {
+        "form": "lu",
+        "allomorphId": "tense-past-li",
+        "op": "setAllomorphForm"
+      }
+    ],
+    "fix": [
+      "Restore li- as the past marker."
+    ]
+  },
+  {
+    "id": "duplicated-object-marker-slots",
+    "title": "Duplicated optional object-marker slots",
+    "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Swahili, but it is not real Swahili, has not been checked by speakers, and must not be used as a description of any language.",
+    "symptom": {
+      "reason": "The sample words still parse, but duplicate optional slots containing real m- and wa- object markers multiply valid parse paths.",
+      "words": [
+        "ninampiga",
+        "ninawapiga"
+      ],
+      "kind": "slow"
+    },
+    "patch": [
+      {
+        "op": "duplicateOptionalSlot",
+        "templateId": "verb",
+        "side": "prefix",
+        "slotId": "object",
+        "count": 64
+      }
+    ],
+    "fix": [
+      "Keep one optional object slot with the cited m- and wa- markers; remove the duplicated copies."
+    ]
+  }
+]

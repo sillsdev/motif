@@ -67,6 +67,38 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
     }
 
     [Fact]
+    public void ProjectionCarriesParagraphSegmentParseAndOccurrenceIdentity()
+    {
+        using var cache = _pristine.NewScratch();
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
+
+        var projected = TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
+
+        var line = Assert.Single(Assert.Single(projected.Texts, item => item.TextId == text.TextId)
+            .Lines, item => item.SegmentId == text.FirstSegmentId);
+        Assert.Equal(text.FirstParagraphId, line.ParagraphId);
+        Assert.False(line.ParseIsCurrent);
+        var word = Assert.Single(line.Tokens, token => token.WordformId == text.AnalysedWordformId);
+        Assert.Equal(0, word.OccurrenceIndex);
+        Assert.Equal(text.ApprovedAnalysisId, word.AnalysisId);
+        var punctuation = Assert.Single(line.Tokens, token => token.WordformId is null);
+        Assert.Equal(1, punctuation.OccurrenceIndex);
+        Assert.Null(punctuation.AnalysisId);
+
+        var wordform = Assert.Single(projected.Wordforms, item => item.WordformId == text.AnalysedWordformId);
+        var analysis = Assert.Single(wordform.Analyses);
+        Assert.Equal(text.ApprovedAnalysisId, analysis.AnalysisId);
+        Assert.Equal("approved", analysis.Opinion);
+        var identity = analysis.Identity ?? throw new InvalidOperationException(
+            "The projected analysis has no approved morphology identity.");
+        Assert.Equal(2, identity.Morphs.Count);
+        Assert.Equal(_pristine.Seed.FirstLexemeFormId.ToString("D"), identity.Morphs[0].Form);
+        Assert.False(string.IsNullOrWhiteSpace(analysis.Morphs[0].Entry));
+        Assert.Equal(SeededProject.FirstGloss, analysis.Morphs[0].Gloss);
+        Assert.False(string.IsNullOrWhiteSpace(analysis.Morphs[0].Category));
+    }
+
+    [Fact]
     public async Task AReadReturnsOnlyTheRequestedTextsAndTheWordformsTheyUse()
     {
         var (projectKey, repository, database, first, second) = await RefreshTwoTexts();
@@ -89,6 +121,8 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
     [InlineData("UPDATE BaselineTextWords SET TextJson = '{}' WHERE ProjectKey = $project;")]
     [InlineData("UPDATE BaselineTextWords SET TextJson = 'not json' WHERE ProjectKey = $project;")]
     [InlineData("UPDATE BaselineTextWordforms SET WordformJson = '{}' WHERE ProjectKey = $project;")]
+    [InlineData("UPDATE BaselineTextWordforms SET WordformJson = json_set(WordformJson, " +
+        "'$.Analyses[0].Identity.SourceAnalysisId', 'wrong') WHERE ProjectKey = $project;")]
     [InlineData("DELETE FROM BaselineTextWordforms WHERE ProjectKey = $project;")]
     [InlineData("UPDATE BaselineTextWords SET TextJson = json_set(TextJson, '$.Analyses', json('[]')) " +
         "WHERE ProjectKey = $project;")]

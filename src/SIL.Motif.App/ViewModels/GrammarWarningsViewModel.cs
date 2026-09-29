@@ -37,12 +37,12 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     public ObservableCollection<GrammarFindingGroupViewModel> ErrorGroups { get; } = [];
     public ObservableCollection<GrammarFindingGroupViewModel> InformationGroups { get; } = [];
 
-    public bool HasErrorGroups => ErrorGroups.Count > 0 && Bucket != GrammarFindingBucket.Information &&
-        Bucket != GrammarFindingBucket.Warnings;
-    public bool HasWarningGroups => WarningGroups.Count > 0 && Bucket != GrammarFindingBucket.Information &&
-        Bucket != GrammarFindingBucket.Errors;
-    public bool HasInformationGroups => InformationGroups.Count > 0 && Bucket != GrammarFindingBucket.Errors &&
-        Bucket != GrammarFindingBucket.Warnings;
+    public bool HasWarningGroups => WarningGroups.Count > 0 &&
+        Bucket is not (GrammarFindingBucket.Errors or GrammarFindingBucket.Information);
+    public bool HasInformationGroups => InformationGroups.Count > 0 &&
+        Bucket is not (GrammarFindingBucket.Errors or GrammarFindingBucket.Warnings);
+    public bool HasErrorGroups => ErrorGroups.Count > 0 &&
+        Bucket is not (GrammarFindingBucket.Information or GrammarFindingBucket.Warnings);
 
     public int ErrorCount => VisibleFindings()
         .Where(row => row.Level == GrammarDiagnosticLevel.Error).Sum(row => row.RepeatCount);
@@ -52,7 +52,9 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         .Where(row => row.Level == GrammarDiagnosticLevel.Information).Sum(row => row.RepeatCount);
 
     /// <summary>The report's error, warning, and information totals for the page summary.</summary>
-    public string BreakdownText => $"{ErrorCount} errors, {WarningCount} warnings, {InformationCount} information findings.";
+    public string BreakdownText => $"{ErrorCount} {CountWord(ErrorCount, "error", "errors")}, " +
+        $"{WarningCount} {CountWord(WarningCount, "warning", "warnings")}, " +
+        $"{InformationCount} {CountWord(InformationCount, "information finding", "information findings")}.";
 
     public IRelayCommand<GrammarFindingBucket> SetBucketCommand { get; }
     public IRelayCommand<GrammarFindingGroupViewModel?> SelectGroupCommand { get; }
@@ -117,12 +119,15 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
                          rows.Select(row => row.Guidance).FirstOrDefault(text => text.Length > 0)))
                      .OrderByDescending(group => group.Count)
                      .ThenBy(group => group.Name, StringComparer.CurrentCulture))
-            (group.Level switch
+        {
+            var groups = group.Level switch
             {
                 GrammarDiagnosticLevel.Error => ErrorGroups,
                 GrammarDiagnosticLevel.Warning => WarningGroups,
                 _ => InformationGroups,
-            }).Add(group);
+            };
+            groups.Add(group);
+        }
         SelectedGroup = null;
         OnPropertyChanged(nameof(HasErrorGroups));
         OnPropertyChanged(nameof(HasWarningGroups));
@@ -133,7 +138,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         OnPropertyChanged(nameof(BreakdownText));
     }
 
-    /// <summary>The diagnostics in the grid's view, preserving its sort when filters change.</summary>
     /// <summary>The diagnostics in the grid's view, preserving its sort when filters change.</summary>
     public DataGridCollectionView Rows { get; }
 
@@ -199,6 +203,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private static bool Contains(string text, string filter) =>
         string.IsNullOrWhiteSpace(filter) || text.Contains(filter.Trim(), StringComparison.CurrentCultureIgnoreCase);
 
+    private static string CountWord(int count, string singular, string plural) => count == 1 ? singular : plural;
+
 }
 
 /// <summary>One report code grouped by name and level in the Warnings page.</summary>
@@ -221,9 +227,9 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
     /// <summary>The structured error, warning, or information level used to choose its bucket.</summary>
     public GrammarDiagnosticLevel Level { get; }
     public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
+    public bool IsError => Level == GrammarDiagnosticLevel.Error;
     /// <summary>The number of diagnostics with this code, name, and level.</summary>
     public int Count { get; }
-    /// <summary>What this kind means, represented as a favorable or cautionary chip.</summary>
     /// <summary>What the selected diagnostic code means, when PanGloss supplied a description.</summary>
     public string? Description { get; }
     /// <summary>What usually helps with this diagnostic code, when PanGloss supplied guidance.</summary>
@@ -231,8 +237,8 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
     public bool HasDescription => Description is not null;
     public bool HasGuidance => Guidance is not null;
     public bool HasDetails => HasDescription || HasGuidance;
-    public Verdict Meaning => Level is GrammarDiagnosticLevel.Error or GrammarDiagnosticLevel.Warning
-        ? Verdict.Differs : Verdict.Limit;
+    /// <summary>Whether a finding signals a difference or an informational limit.</summary>
+    public Verdict Meaning => IsWarning || IsError ? Verdict.Differs : Verdict.Limit;
 
     [ObservableProperty]
     private bool _isSelected;

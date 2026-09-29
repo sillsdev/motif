@@ -193,8 +193,63 @@ public sealed class BaselineBundleReceiverTests : IDisposable
         var retry = CreateTransfer(("project.fwdata", "model"),
             ("WritingSystemStore/en.ldml", "<ldml/>"));
 
-        await Assert.ThrowsAsync<InvalidDataException>(() => receiver.PublishVerifiedAsync(
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => receiver.PublishVerifiedAsync(
             retry, token, Target(), CancellationToken.None));
+
+        Assert.Contains("WritingSystemStore", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("nested", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(publication.RootDirectory, exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PublishVerifiedAsync_ReportsAnUnexpectedExistingRootEntryByNameOnly()
+    {
+        var first = CreateTransfer(("project.fwdata", "model"),
+            ("WritingSystemStore/en.ldml", "<ldml/>"));
+        var receiver = new BaselineBundleReceiver();
+        var token = Token(first.Sha256);
+        var publication = await receiver.PublishVerifiedAsync(first, token, Target(), CancellationToken.None);
+        const string extraEntry = "unrelated.txt";
+        File.WriteAllText(Path.Combine(publication.RootDirectory, extraEntry), "held");
+        var retry = CreateTransfer(("project.fwdata", "model"),
+            ("WritingSystemStore/en.ldml", "<ldml/>"));
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => receiver.PublishVerifiedAsync(
+            retry, token, Target(), CancellationToken.None));
+
+        Assert.Contains("root allowlist", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(extraEntry, exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(publication.RootDirectory, exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PublishVerifiedAsync_RejectsAStaleFwDataLockMarker()
+    {
+        var first = CreateTransfer(("project.fwdata", "model"),
+            ("WritingSystemStore/en.ldml", "<ldml/>"));
+        var receiver = new BaselineBundleReceiver();
+        var token = Token(first.Sha256);
+        var publication = await receiver.PublishVerifiedAsync(first, token, Target(), CancellationToken.None);
+        const string lockName = "project.fwdata.lock";
+        var process = System.Diagnostics.Process.GetCurrentProcess();
+        var staleMarker = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            __type = "FileLockContent:#Palaso.IO.FileLock",
+            PID = process.Id,
+            ProcessName = process.ProcessName,
+            Timestamp = process.StartTime.Ticks - 1
+        });
+        File.WriteAllText(Path.Combine(publication.RootDirectory, lockName), staleMarker);
+        var retry = CreateTransfer(("project.fwdata", "model"),
+            ("WritingSystemStore/en.ldml", "<ldml/>"));
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => receiver.PublishVerifiedAsync(
+            retry, token, Target(), CancellationToken.None));
+
+        Assert.Contains(".fwdata.lock", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("live LibLCM owner", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(lockName, exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(publication.RootDirectory, exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [RequiresSymbolicLinkFact]

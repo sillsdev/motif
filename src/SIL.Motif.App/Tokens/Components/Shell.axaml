@@ -19,5 +19,7 @@
     <StaticResource x:Key="Component.Shell.CrashMinHeight" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.Shell.CrashDetailsMaxHeight" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.Shell.CrashInset" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Shell.HelpWidth" ResourceKey="Primitive.Size.760" />
+    <StaticResource x:Key="Component.Shell.HelpHeight" ResourceKey="Primitive.Size.600" />
   </Styles.Resources>
 </Styles>

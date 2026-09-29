@@ -43,7 +43,7 @@ public sealed record GrammarWarningSummary(string Code, string? GroupName, Gramm
 /// <param name="Text">The human-readable title and subtitle shown for the subject.</param>
 /// <param name="Role">Whether the part is prose, a value, or a named FieldWorks subject.</param>
 /// <param name="ObjectId">The subject GUID or internal identity.</param>
-/// <param name="Kind">The FieldWorks class name reported by PanGloss.</param>
+/// <param name="FieldWorksKind">The FieldWorks class name reported by PanGloss.</param>
 /// <param name="FieldWorksLink">The report's FieldWorks URL when one is available.</param>
 public sealed record GrammarWarningPart(
     string Text,

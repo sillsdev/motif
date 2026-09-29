@@ -10,6 +10,13 @@ Three packages run in parallel from branch `feat/generated-help`; a fourth follo
 The interfaces below are fixed so that no package waits on another. A package that finds one of them
 unworkable stops and reports rather than changing it alone.
 
+## Where this stands
+
+Packages A, C and E are built and merged together: `motif help`, the Help text for every Released command and
+the glossary terms, the Guide, and the Starlight site building from them. Package B is parked with its first
+AutomationIds on branch `gh/walk`, and Package D waits for it; the Walkthroughs to build are chosen in
+`2026-09-26-docs-content-plan.md` once the App tests in flight have landed.
+
 ## Shared interfaces (binding on every package)
 
 ### Help content layout — repository root `help/`
@@ -34,7 +41,9 @@ help/
   `source` is free text naming where the prose came from (`hand-written`, a FieldWorks string, a doc path).
 - Help pages are plain CommonMark: no MDX, no HTML components, no front matter. Cross-links use
   `[text](cmd:<code>)`, `[text](term:<code>)`, `[text](ui:<AutomationId>)`; images use
-  `![alt](shot:<walkthroughId>/<stepId>)`. Readers resolve these into their own kind of link.
+  `![alt](shot:<walkthroughId>/<stepId>)`. CommonMark forbids spaces in a link target, so a multi-word code is
+  percent-encoded: `[text](cmd:baseline%20capture)`. Links name Released commands only. Readers decode the code
+  and resolve it into their own kind of link.
 - A new language is a sibling folder (`help/es/...`) with the same shape; English is the fallback per key.
 
 ### Help URL

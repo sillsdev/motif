@@ -78,13 +78,17 @@ public static class ParserReadingReader
                 .BestAnalysisAlternative.Text ?? string.Empty
             : Missing(morph.Msa);
         var category = msa is null ? string.Empty : msa.InterlinearAbbr ?? string.Empty;
+        var entry = (ILexEntry?)form?.Owner ?? msa?.Owner as ILexEntry;
         return new ParserReadingMorph(
             formText,
             gloss == "***" ? string.Empty : gloss,
             category,
             inflectionType?.Abbreviation.BestAnalysisAlternative.Text,
             morph.GuessedString is not null,
-            FieldWorksLinks.ForTarget(projectName, EntryTargetFor(cache, objects, morph)));
+            FieldWorksLinks.ForTarget(projectName, EntryTargetFor(cache, objects, morph)))
+        {
+            Entry = entry?.LexemeFormOA is { } lexemeForm ? Marked(lexemeForm) : null,
+        };
     }
 
     private static T? Find<T>(ICmObjectRepository objects, string? id) where T : class, ICmObject =>

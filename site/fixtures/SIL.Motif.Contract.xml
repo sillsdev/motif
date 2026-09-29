@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<doc>
+  <assembly>
+    <name>SIL.Motif.Contract</name>
+  </assembly>
+  <members>
+    <member name="T:SIL.Motif.Contract.MotifJson">
+      <summary>Defines canonical JSON handling for Motif contract values.</summary>
+    </member>
+    <member name="M:SIL.Motif.Contract.MotifJson.CreateOptions">
+      <summary>Creates JSON options using the contract's naming and serialization rules.</summary>
+      <returns>Fresh options for serializing or reading contract values.</returns>
+    </member>
+  </members>
+</doc>

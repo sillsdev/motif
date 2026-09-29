@@ -11,6 +11,7 @@ public sealed partial class FakeCommandClient
     public List<ApplyPendingRequest> ApplyPendingRequests { get; } = [];
     private MeasurePendingResult? _measurement;
     private ApplyProjection? _apply;
+    private string? _applySummary;
     public Refusal? ApplyPendingRefusal { get; set; }
     public Refusal? MeasurePendingRefusal { get; set; }
     public Func<ApplyPendingRequest, CancellationToken, Task<CommandOutcome<ApplyPendingResult>>>? ApplyPendingHandler
@@ -20,7 +21,11 @@ public sealed partial class FakeCommandClient
 
     public static ReviewNumbersResponse CompleteNumbers { get; } =
         new(ReviewComparability.Compared, 1, 0, 1, 1, 1, EvidenceComplete: true);
-    public void ApplyPendingCompletesWith(ApplyProjection result) => _apply = result;
+    public void ApplyPendingCompletesWith(ApplyProjection result, string summary)
+    {
+        _apply = result;
+        _applySummary = summary;
+    }
 
     public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken)
@@ -29,9 +34,10 @@ public sealed partial class FakeCommandClient
         if (ApplyPendingHandler is { } handler) return handler(request, cancellationToken);
         if (ApplyPendingRefusal is { } refusal)
             return Task.FromResult(CommandOutcome<ApplyPendingResult>.Refused(refusal));
-        if (_apply is not { } result) throw NotConfigured(nameof(ApplyPendingAsync));
+        if (_apply is not { } result || _applySummary is not { } summary)
+            throw NotConfigured(nameof(ApplyPendingAsync));
         _pending = new PendingChangesSnapshot(null, "none", [], []);
-        return Completed(ApplyPendingResult.AppliedWith(result));
+        return Completed(ApplyPendingResult.AppliedWith(result, summary));
     }
 
     public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
@@ -44,6 +50,7 @@ public sealed partial class FakeCommandClient
     }
     private PendingChangesSnapshot _pending = new(null, "none", [], []);
     public List<PendingChangesRequest> PendingLoadRequests { get; } = [];
+    public List<RemovePendingChangeRequest> PendingRemoveRequests { get; } = [];
 
     public Refusal? PendingPutRefusal { get; set; }
     public int? PendingPutRefusalOnCall { get; set; }
@@ -55,9 +62,21 @@ public sealed partial class FakeCommandClient
 
     public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
     public List<RecheckPendingChangesRequest> PendingRecheckRequests { get; } = [];
+    public List<ReconfirmPendingChangeRequest> PendingReconfirmRequests { get; } = [];
     private PendingChangesSnapshot? _recheckResponse;
+    private PendingChangesSnapshot? _reconfirmResponse;
 
     public void RecheckCompletesWith(PendingChangesSnapshot response) => _recheckResponse = response;
+
+    public void ReconfirmCompletesWith(PendingChangesSnapshot response) => _reconfirmResponse = response;
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> ReconfirmPendingChangeAsync(
+        ReconfirmPendingChangeRequest request, CancellationToken cancellationToken)
+    {
+        PendingReconfirmRequests.Add(request);
+        _pending = _reconfirmResponse ?? _pending;
+        return Completed(_pending);
+    }
 
     public Task<CommandOutcome<PendingChangesSnapshot>> RecheckPendingChangesAsync(
         RecheckPendingChangesRequest request, CancellationToken cancellationToken)
@@ -97,6 +116,8 @@ public sealed partial class FakeCommandClient
             change.AssessmentId, change.DisplayReading, [change.ChangeId])
         {
             OriginPage = change.OriginPage,
+            Occurrence = change.Occurrence,
+            StoredAnalysisId = change.StoredAnalysisId,
         });
         _pending = _pending with { DraftId = _pending.DraftId ?? "draft/test", Revision = Guid.NewGuid().ToString("N"),
             Changes = changes, FitSummary = changes.Select(item => new ChangeFit(item.ChangeId, true, [])).ToArray() };
@@ -106,9 +127,13 @@ public sealed partial class FakeCommandClient
     public Task<CommandOutcome<PendingChangesSnapshot>> RemovePendingChangeAsync(
         RemovePendingChangeRequest request, CancellationToken cancellationToken)
     {
+        PendingRemoveRequests.Add(request);
+        var changes = _pending.Changes.Where(item => item.ChangeId != request.ChangeId &&
+            item.GroupId != request.ChangeId).ToArray();
+        var changeIds = changes.Select(item => item.ChangeId).ToHashSet(StringComparer.Ordinal);
         _pending = _pending with { Revision = Guid.NewGuid().ToString("N"),
-            Changes = _pending.Changes.Where(item => item.ChangeId != request.ChangeId).ToArray(),
-            FitSummary = _pending.FitSummary.Where(item => item.ChangeId != request.ChangeId).ToArray() };
+            Changes = changes,
+            FitSummary = _pending.FitSummary.Where(item => changeIds.Contains(item.ChangeId)).ToArray() };
         return Completed(_pending);
     }
 }

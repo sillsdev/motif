@@ -2,7 +2,7 @@ namespace SIL.Motif.Generator.Descriptions;
 
 /// <summary>
 /// Parses <c>manifest/kind-descriptions.tsv</c>: eight columns, tab-separated, every value double-quoted,
-/// CRLF line endings — the same dialect as <c>liblcm-inventory.tsv</c> so one set of habits reads both
+/// platform-independent line endings — the same dialect as <c>liblcm-inventory.tsv</c> so one set of habits reads both
 /// (the manifest README, "Companion files").
 /// </summary>
 /// <remarks>
@@ -25,6 +25,8 @@ namespace SIL.Motif.Generator.Descriptions;
 public static class KindDescriptionTsvParser
 {
     private const int ColumnCount = 8;
+    private static readonly string ExpectedHeader =
+        string.Join("\t", KindDescriptionTsvWriter.Header.Select(static column => $"\"{column}\""));
 
     public static IReadOnlyList<KindDescription> Parse(string path)
     {
@@ -44,11 +46,10 @@ public static class KindDescriptionTsvParser
     /// <summary>Exposed for tests, which supply the file's content inline rather than on disk.</summary>
     public static IReadOnlyList<KindDescription> ParseText(string path, string text)
     {
-        // CRLF-only split (matches ManifestTsvParser): a line-ending drift must surface, not be tolerated.
-        var lines = text.Split("\r\n");
+        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
 
-        if (lines.Length == 0 || !lines[0].StartsWith("\"Class\"", StringComparison.Ordinal))
-            throw new GeneratorException($"'{path}' does not start with the expected header row.");
+        if (lines.Length == 0 || !string.Equals(lines[0], ExpectedHeader, StringComparison.Ordinal))
+            throw new GeneratorException($"'{path}' does not start with the expected Title header row.");
 
         var rows = new List<KindDescription>();
         var seen = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -62,7 +63,7 @@ public static class KindDescriptionTsvParser
             var row = new KindDescription(
                 Class: columns[0],
                 Field: columns[1],
-                Label: columns[2],
+                Title: columns[2],
                 Description: columns[3],
                 Reviewed: columns[4],
                 Source: columns[5],

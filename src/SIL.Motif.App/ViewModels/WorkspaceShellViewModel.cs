@@ -41,12 +41,14 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private bool _isRefreshing;
     private bool _refreshCancelled;
     private bool _refreshed;
+    private Task? _knownProjectsRefreshTask;
     private int _refreshGeneration;
 
     public WorkspaceShellViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient, TimeProvider? clock = null, IClipboard? clipboard = null,
-        IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null)
+        IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
+        TechDemoNoticeViewModel? techDemoNotice = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -59,6 +61,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         _commandClient = commandClient;
         Project = project;
         Baseline = baseline;
+        TechDemoNotice = techDemoNotice;
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs)
         {
@@ -80,7 +83,11 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(recent =>
             recent is null ? Task.CompletedTask : OpenProjectSafelyAsync(recent.FullFwDataPath));
-        ConfigureCommand = new RelayCommand(() => OpenConfiguration?.Invoke(), () => CanConfigure);
+        ConfigureCommand = new AsyncRelayCommand(async () =>
+        {
+            OpenConfiguration?.Invoke();
+            if (Context.Setup?.ConfigurationLoadTask is { } load) await load.ConfigureAwait(true);
+        }, () => CanConfigure);
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         CancelRefreshCommand = new RelayCommand(CancelRefresh, () => _isRefreshing);
@@ -103,6 +110,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         DismissRerunCommand = new RelayCommand(() => RerunOffered = false, () => RerunOffered);
         RefreshPages();
     }
+
+    /// <summary>The tech demo notice shown until the person acknowledges it, or <see langword="null"/> when disabled.</summary>
+    public TechDemoNoticeViewModel? TechDemoNotice { get; }
 
     /// <summary>What every page is built from: the project, its evidence, and the pages' navigation actions.</summary>
     public WorkspaceContext Context { get; }
@@ -147,6 +157,25 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>Collapses or expands the sidebar for a window <paramref name="width"/> pixels wide.</summary>
     public void UpdateWindowWidth(double width) => IsSidebarCollapsed = width < SidebarCollapseWidth;
+
+    /// <summary>Re-reads the Known projects, keeping the last list if the read fails.</summary>
+    public Task RefreshKnownProjectsAsync()
+    {
+        if (_knownProjectsRefreshTask is { IsCompleted: false } inProgress) return inProgress;
+        return _knownProjectsRefreshTask = RefreshKnownProjectsCoreAsync();
+    }
+
+    private async Task RefreshKnownProjectsCoreAsync()
+    {
+        try
+        {
+            await Project.LoadKnownProjectsAsync().ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // A failed Known projects read should preserve the last usable list.
+        }
+    }
 
     /// <summary>The chosen project's file name for the top bar, or a prompt before one is chosen.</summary>
     public string ProjectName => Context.ProjectName;
@@ -294,6 +323,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         if (!HasProject || _isRefreshing) return;
         await Baseline.CheckAsync(cancellationToken).ConfigureAwait(true);
         await Context.Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
+        if (Context.ProjectPath is { } projectPath && ProjectReconciliationMarker.Exists(projectPath))
+            PageModel<ReviewPageModel>().ShowReconciliationNeeded();
         // A run under way publishes its own result, which a stored read must not replace.
         if (!Assess.IsActive) await Context.ReadStoredEvidenceAsync(cancellationToken).ConfigureAwait(true);
         RaiseFreshness();
@@ -469,7 +500,11 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             if (Baseline.ShownRefusal is not null) return;
             await _reloadAfterRefresh.ConfigureAwait(true);
             if (!IsCurrentRefresh(generation, projectPath) || _refreshCancelled ||
-                !Assess.RunCommand.CanExecute(null)) return;
+                projectPath is null) return;
+
+            if (!ProjectReconciliationMarker.Exists(projectPath) || ProjectReconciliationMarker.Clear(projectPath))
+                PageModel<ReviewPageModel>().ClearReconciliationNeeded();
+            if (!Assess.RunCommand.CanExecute(null)) return;
 
             // The run this Refresh starts is the rerun a fresh Baseline would otherwise offer.
             RerunOffered = false;

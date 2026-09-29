@@ -37,6 +37,7 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
     where TResponse : class
 {
     private readonly int _ownerThreadId;
+    private readonly SynchronizationContext? _ownerContext;
     private CancellationTokenSource? _cts;
     private bool _runInFlight;
     private int _runGeneration;
@@ -44,6 +45,7 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
     protected CommandRunViewModel()
     {
         _ownerThreadId = Environment.CurrentManagedThreadId;
+        _ownerContext = SynchronizationContext.Current;
         RunCommand = new AsyncRelayCommand(RunAsync, CanRun);
         CancelCommand = new RelayCommand(Cancel, CanCancel);
     }
@@ -132,7 +134,13 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
             return;
         }
 
-        Dispatcher.UIThread.Post(() => Progress = value);
+        // The owner's context, not Dispatcher.UIThread: touching that binds Avalonia's UI thread to the caller.
+        if (_ownerContext is null) Progress = value;
+        else _ownerContext.Post(static state =>
+        {
+            var (model, progress) = ((CommandRunViewModel<TResponse>, AssessmentProgress))state!;
+            model.Progress = progress;
+        }, (this, value));
     }
 
     private bool CanRun() =>

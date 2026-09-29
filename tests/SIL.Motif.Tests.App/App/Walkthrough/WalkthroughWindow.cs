@@ -1,11 +1,14 @@
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using SIL.Motif.App.Composition;
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -18,6 +21,8 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 public sealed class WalkthroughWindow : IDisposable
 {
+    private readonly string _managedRoot;
+    private readonly string? _parserPath;
     private readonly ScriptedProjectPicker _projectPicker;
     private readonly ScriptedFolderPicker _folderPicker;
     private readonly RecordingDragSource _dragSource;
@@ -38,11 +43,13 @@ public sealed class WalkthroughWindow : IDisposable
         ICommandStartGate? startGate = null, TimeProvider? timeProvider = null,
         string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null, IClipboard? clipboard = null)
     {
+        _managedRoot = managedRoot;
         _projectPicker = new ScriptedProjectPicker(projectPath);
         _folderPicker = new ScriptedFolderPicker(folderPath);
         _dragSource = new RecordingDragSource();
 
         parserPath ??= PanGlossExecutable.TryLocate();
+        _parserPath = parserPath;
         if (runnerLauncher is null)
             runnerLauncher = _ownedRunner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath));
         var composition = MotifAppComposition.Create(new MotifAppOptions(
@@ -60,6 +67,8 @@ public sealed class WalkthroughWindow : IDisposable
     }
 
     public MainWindow Window { get; }
+
+    internal string ManagedRoot => _managedRoot;
 
     public WorkspaceShellViewModel Workspace { get; }
 
@@ -90,11 +99,14 @@ public sealed class WalkthroughWindow : IDisposable
         WaitUntil(() => !setup.IsOpen, TimeSpan.FromSeconds(30), "skipping setup did not close the dialog");
     }
 
-    public void LoadKnownProjects()
+    internal void SetFakeParserBehavior(object behavior)
     {
-        var loading = Workspace.Project.LoadKnownProjectsAsync();
-        WaitUntil(() => loading.IsCompleted, TimeSpan.FromSeconds(30), "Known projects did not load");
-        loading.GetAwaiter().GetResult();
+        var grammarPaths = Directory.EnumerateFiles(_managedRoot, "*.fwdata", SearchOption.AllDirectories).ToArray();
+        Assert.NotEmpty(grammarPaths);
+        foreach (var grammarPath in grammarPaths)
+            FakeParser.Behave(Path.GetDirectoryName(grammarPath)!, behavior);
+        FakeParser.BehaveBesideExecutable(_parserPath
+            ?? throw new InvalidOperationException("A fake parser path is required to set its behavior."), behavior);
     }
 
     public void OpenProjectMenu()
@@ -112,13 +124,20 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void ChooseNewProject()
     {
-        OpenProjectMenu();
-        var entry = FindProjectMenuEntry<Button>("Select a new project");
-        Assert.True(entry.IsEffectivelyEnabled, "'Select a new project' is not effectively enabled.");
-        Assert.Same(Workspace.SelectNewProjectCommand, entry.Command);
-        entry.Command!.Execute(entry.CommandParameter);
-        ProjectMenuFlyout.Hide();
-        Pump();
+        var selectedPath = _projectPicker.Path;
+        ClickProjectMenuEntry("Select a new project");
+        var selectionTask = Workspace.SelectNewProjectCommand.ExecutionTask;
+        Assert.NotNull(selectionTask);
+        WaitUntil(() => !ProjectMenuFlyout.IsOpen,
+            TimeSpan.FromSeconds(10), "selecting a new project did not close the project menu");
+        WaitUntil(() => selectionTask.IsCompleted,
+            TimeSpan.FromSeconds(30), "the project picker did not finish");
+        WaitUntil(() => string.Equals(Workspace.Context.ProjectPath, selectedPath,
+                StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(Workspace.Context.Setup?.ProjectPath, selectedPath,
+                StringComparison.OrdinalIgnoreCase) &&
+            (Workspace.Baseline.ProjectLastWriteUtc is not null || Workspace.Baseline.ShownRefusal is not null),
+            TimeSpan.FromSeconds(60), "the selected project did not finish opening");
     }
 
     /// <summary>Clicks the project menu's Configure entry through the pointer, in the menu's own popup.</summary>
@@ -189,6 +208,69 @@ public sealed class WalkthroughWindow : IDisposable
                 StringComparison.Ordinal));
         ShowStageOwning(control);
         return control;
+    }
+
+    internal Control FindByAutomationId(string automationId)
+    {
+        return AllControls().Single(control =>
+            string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
+    }
+
+    internal void ClickAutomationId(string automationId)
+    {
+        var control = FindByAutomationId(automationId);
+        Assert.True(control.IsEffectivelyEnabled, $"AutomationId '{automationId}' is disabled.");
+        var topLevel = automationId == AutomationIds.SelectNewProject
+            ? TopLevel.GetTopLevel(control) ?? Window
+            : Window;
+        HeadlessClick.Click(topLevel, control, automationId);
+        Window.UpdateLayout();
+        Pump();
+    }
+
+    internal void TypeAutomationId(string automationId, string text)
+    {
+        var control = Assert.IsType<TextBox>(FindByAutomationId(automationId));
+        HeadlessClick.Click(Window, control, automationId);
+        Assert.True(control.IsFocused, $"AutomationId '{automationId}' did not receive focus from the click.");
+        Window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.None, null);
+        Window.KeyTextInput(text);
+        Pump();
+        Assert.Equal(text, control.Text);
+    }
+
+    internal string? TextByAutomationId(string automationId) => FindByAutomationId(automationId) switch
+    {
+        TextBlock text => text.Text,
+        TextBox text => text.Text,
+        ContentControl content => content.Content?.ToString(),
+        _ => null,
+    };
+
+    internal Rect BoundsByAutomationId(string automationId)
+    {
+        var control = FindByAutomationId(automationId);
+        if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0)
+            throw new InvalidOperationException($"AutomationId '{automationId}' has no visible bounds.");
+        var origin = control.TranslatePoint(new Point(), Window)
+            ?? throw new InvalidOperationException($"AutomationId '{automationId}' is outside the main window.");
+        return new Rect(origin, control.Bounds.Size);
+    }
+
+    private IEnumerable<Control> AllControls()
+    {
+        yield return Window;
+        foreach (var control in Window.GetLogicalDescendants().OfType<Control>()) yield return control;
+        foreach (var ownedWindow in Window.OwnedWindows)
+        {
+            yield return ownedWindow;
+            foreach (var control in ownedWindow.GetLogicalDescendants().OfType<Control>()) yield return control;
+        }
+        if (ProjectMenuFlyout.Content is Control content)
+        {
+            yield return content;
+            foreach (var control in content.GetLogicalDescendants().OfType<Control>()) yield return control;
+        }
     }
 
     // A person reaches a control on another page through the sidebar, and one on another tab by its tab.
@@ -302,30 +384,6 @@ public sealed class WalkthroughWindow : IDisposable
         Window.KeyTextInput(text);
         Pump();
         Assert.Equal(text, textBox.Text);
-    }
-
-    public void SelectKnownProject(string projectPath)
-    {
-        var project = Workspace.RecentProjects.Single(known =>
-            string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
-        OpenProjectMenu();
-        var openRecent = FindProjectMenuEntry<Button>("Open a recent project");
-        var recentMenu = Assert.IsType<MenuFlyout>(openRecent.Flyout);
-        HeadlessClick.Click(TopLevel.GetTopLevel(openRecent)!, openRecent, "Open a recent project");
-        Assert.True(recentMenu.IsOpen, "Clicking 'Open a recent project' did not open its list.");
-        var item = Window.RecentProjectItems.Single(candidate =>
-            string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate),
-                project.AutomationName, StringComparison.Ordinal));
-        Assert.Same(Workspace.OpenRecentProjectCommand, item.Command);
-        Assert.Same(project, item.CommandParameter);
-        var before = Workspace.OpenRecentProjectCommand.ExecutionTask;
-        HeadlessClick.Click(TopLevel.GetTopLevel(item)!, item, project.AutomationName);
-        Pump();
-        Assert.NotSame(before, Workspace.OpenRecentProjectCommand.ExecutionTask);
-        Assert.False(ProjectMenuFlyout.IsOpen, $"Clicking '{project.AutomationName}' left the project menu open.");
-        // The Baseline and Texts load partway through the open; the recent list is right only once it ends.
-        WaitUntil(() => Workspace.OpenRecentProjectCommand.ExecutionTask is { IsCompleted: true },
-            TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
     }
 
     private Flyout ProjectMenuFlyout =>

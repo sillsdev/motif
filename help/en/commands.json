@@ -1,0 +1,157 @@
+{
+  "open": {
+    "title": "Open a project",
+    "description": "Reads the saved FieldWorks language project and reports its identity and key counts. Use it to confirm a project path before measuring it.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "analyses": {
+    "title": "Inspect word analyses",
+    "description": "Lists manually approved analyses, or adds parser results from a named Assessment when current digests are supplied. It does not run PanGloss.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "config show": {
+    "title": "Show project settings",
+    "description": "Reads the project's Assessment scopes and settings. Use it to see the limits and options Motif will use for a later Assessment.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "report": {
+    "title": "Read an Assessment report",
+    "description": "Calculates a named report from an Assessment and project data. Use it to answer a focused question about words, Texts, or grammar without rerunning PanGloss.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "report --list-kinds": {
+    "title": "List report kinds",
+    "description": "Lists the report kinds accepted by report --kind. Run it first when you need to choose a report for stored evidence.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "compare": {
+    "title": "Compare two Assessments",
+    "description": "Joins two stored Assessments on their shared words and stores the Difference as a new Assessment. It lets you inspect changes without treating the result as a verdict.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "baseline capture": {
+    "title": "Capture a Baseline",
+    "description": "Reads the saved .fwdata project to create or reuse a file-backed Baseline. Use it when the latest FieldWorks save should be the point of comparison for later work.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "assess": {
+    "title": "Measure a Selection",
+    "description": "Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "stats": {
+    "title": "Query parse statistics",
+    "description": "Forwards statistics options to PanGloss using the grammar and cache recorded for an Assessment. Use it to inspect parse costs after an Assessment is available.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "selection show": {
+    "title": "Show the Default Selection",
+    "description": "Reads the saved Texts, added words, and limits that determine what an Assessment measures when no other Selection is supplied.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "selection set-default": {
+    "title": "Choose a Default Selection",
+    "description": "Saves which project Texts and words Motif should measure by default. Use it to focus repeated Assessments on material a linguist has chosen.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "setup skip": {
+    "title": "Skip project setup",
+    "description": "Marks first-time Selection setup as skipped for this project. Use it when the project can be opened but a Default Selection should not be chosen yet.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "texts list": {
+    "title": "List project Texts",
+    "description": "Lists Text records from the project's current Baseline with their identity and interlinearization data. Use it to find Text ids for a Default Selection or Assessment.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "overview": {
+    "title": "Read the project Overview",
+    "description": "Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "warnings": {
+    "title": "Read grammar warnings",
+    "description": "Reads stored grammar-check findings and can filter them by code or warning level. Use it after grammar check to inspect the reported problems.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "grammar check": {
+    "title": "Check a grammar",
+    "description": "Runs the grammar checker against the project's current Baseline and stores its findings. Use warnings to read those findings afterward.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "timing": {
+    "title": "Inspect parse timing",
+    "description": "Reads timing evidence for an Assessment, optionally narrowed to words or grouped by kind or rule. Use it to locate expensive parsing work after an Assessment.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "handoff": {
+    "title": "Prepare an AI Handoff",
+    "description": "Writes a folder with the grammar and selected Texts, plus retained parse evidence when an invocation is selected. The files contain real project data, so review them before sharing.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "add-corpus": {
+    "title": "Describe a Corpus",
+    "description": "Creates an empty Corpus and records its provenance, tokenisation, and licence capabilities. Use it before adding Documents to the Corpus.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "add-document": {
+    "title": "Add a Corpus Document",
+    "description": "Reads one source file or URL into a named Corpus Document and records its origin and licence details. Use it to preserve where an individual Document came from.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "add-corpus-bundle": {
+    "title": "Load a Corpus bundle",
+    "description": "Reads a bundle from a fetching tool and loads each listed source as a Document in its Corpus. The Motif store keeps the fetched text with its provenance and licence details.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "corpora": {
+    "title": "List Corpora",
+    "description": "Lists the Corpora and their recorded provenance. Use it to find a Corpus id before adding or inspecting a Document.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "show-corpus": {
+    "title": "Show a Corpus",
+    "description": "Reads the provenance, tokeniser, and licence capabilities recorded for one Corpus. Use it to verify what a Corpus allows before using its text as evidence.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "baseline-refresh": {
+    "title": "Queue a Baseline Refresh",
+    "description": "Queues a job to capture the project's saved state as a Baseline. Use it when you want to monitor the capture through the job queue.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "jobs show": {
+    "title": "Inspect a job",
+    "description": "Reads the stored status of one durable job. Use it to inspect a Baseline Refresh, Dry Run, Trial, or Apply job's current lifecycle state.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "jobs assessments": {
+    "title": "Read job Assessments",
+    "description": "Lists the Assessments produced by one completed job. Use it after jobs show reports completion and you need the evidence ids.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "jobs list": {
+    "title": "List queued jobs",
+    "description": "Lists jobs across Known projects in queue order. Use it to see which work will run next or find a job id for inspection.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "jobs cancel": {
+    "title": "Cancel a job",
+    "description": "Requests cancellation of a queued or running job. Use it when the work is no longer needed, then inspect the final state with jobs show.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "jobs requeue": {
+    "title": "Retry a job",
+    "description": "Queues an eligible job to run again. Use it after inspecting a refusal or transient failure; requeue does not change Proposal content.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "jobs move": {
+    "title": "Reorder queued work",
+    "description": "Changes a job's position in the queue by moving it before another job or to either end. Use it when work across Known projects needs a different order.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "apply --all-pending": {
+    "title": "Apply pending changes",
+    "description": "Applies the current pending changes to the FieldWorks project as one unit of work. Use it after FieldWorks releases the project, then reload when Motif reports that changes were applied.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  }
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tagline options</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF;color:#333333;font-family:"Noto Sans",system-ui,sans-serif}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1900px; box-sizing: border-box; padding: 72px 80px; background: #FFFFFF; font-family: 'Noto Sans', system-ui, sans-serif; color: #333333; display: flex; flex-direction: column; gap: 48px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h1 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 44px; font-weight: 700">Hero options</h1>
+<p style="margin: 0; font-size: 18px; color: #555555">Each pairs a headline with the line under it. The dynamic: you know the linguistics; the AI knows the machinery; Motif supplies the evidence.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+<sc-for list="{{heroes}}" as="h" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 14px; padding: 32px; border-radius: 14px; background: #FFFFFF; border: 1px solid #DDDDDD">
+<div style="font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">Option {{h.n}} · {{h.angle}}</div>
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 34px; line-height: 1.12; font-weight: 700">{{h.head}}</div>
+<div style="font-size: 18px; line-height: 1.55; color: #555555">{{h.sub}}</div>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 34px; font-weight: 700">One line for each reader</h2>
+<p style="margin: 0; font-size: 17px; color: #555555">For the “Who it’s for” cards, the Samples page, or rotating under the hero.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+<sc-for list="{{lines}}" as="l" hint-placeholder-count="8">
+<div style="display: flex; gap: 18px; padding: 22px 26px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DDDDDD; align-items: baseline">
+<div style="flex-shrink: 0; width: 170px; font-size: 15px; font-weight: 700; color: #555555">{{l.who}}</div>
+<div style="font-family: 'Noto Sans', system-ui, sans-serif; font-size: 20px; line-height: 1.4">{{l.line}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#800493","options":["#800493","#007a32","#0B63B5","#555555"]},"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+accent: this.props.accent ?? '#800493',
+heroes: [
+{ n: '1', angle: 'the owner’s phrase', head: 'Motif can help you teach a dumb computer your language.', sub: 'You know the linguistics. An AI consultant knows the parser. Motif gives you both the evidence — and checks every fix.' },
+{ n: '2', angle: 'the partnership', head: 'You know the language. The AI knows the parser.', sub: 'Motif puts them in the same room: which words fail, why, and what is slow — measured on your own texts.' },
+{ n: '3', angle: 'the struggle', head: 'Stop fighting the parser. Start teaching it.', sub: 'See why each word fails, get an AI consultant’s next step, and check the fix before it reaches FieldWorks.' },
+{ n: '4', angle: 'the hard part', head: 'Writing a parser is computer science. You shouldn’t have to do it alone.', sub: 'Motif gives an AI everything it needs to guide you through rules, slots and environments — while you stay the linguist.' },
+{ n: '5', angle: 'the question', head: 'Why won’t this word parse?', sub: 'Motif shows exactly where the grammar gives up. Your AI consultant explains what to change in FieldWorks.' },
+{ n: '6', angle: 'the outcome', head: 'From “it won’t parse” to “it parses — and fast.”', sub: 'Measure your grammar, fix what fails with an AI at your side, and find the one change that makes it faster.' }
+],
+lines: [
+{ who: 'Field linguist', line: 'You’ve described the morphology. Now get the computer to agree.' },
+{ who: 'Translator', line: 'Get your text glossed without first becoming a parser engineer.' },
+{ who: 'Native speaker', line: 'You know when a word is right. Motif helps the computer learn it too.' },
+{ who: 'Language technologist', line: 'Every command in JSON, every failure explained, every rule timed.' },
+{ who: 'Consultant', line: 'Review a team’s grammar from the evidence, not from screenshots.' },
+{ who: 'Anyone stuck', line: 'The parser isn’t smart. It’s literal. Motif shows you what it took literally.' },
+{ who: 'On speed', line: 'A grammar that parses right can still parse slowly. Find the one change that fixes it.' },
+{ who: 'On AI', line: 'The AI doesn’t replace your judgement. It translates it into rules.' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

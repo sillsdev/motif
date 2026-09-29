@@ -4,18 +4,21 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Cli;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Model.AppliedLog;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 using SIL.LCModel;
@@ -38,18 +41,27 @@ namespace SIL.Motif.Tests.Cli;
 /// project's own saved file and drains exactly one queued job through the real <see cref="DryRunJobHandler"/>.
 /// </remarks>
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
-public sealed class ProposalWorkflowTests
+public sealed class ProposalWorkflowTests : IDisposable
 {
     private const string ProductVersion = "1.0";
 
     private readonly SeededProject _seed;
     private readonly string _fwDataPath;
+    private readonly string _workerRoot = Path.Combine(Path.GetTempPath(),
+        "motif-proposal-workflow-worker-" + Guid.NewGuid().ToString("N"));
 
     public ProposalWorkflowTests(PristineProjectFixture pristine)
     {
+        Directory.CreateDirectory(_workerRoot);
         _seed = pristine.Seed;
         using var scratch = pristine.NewScratch();
         _fwDataPath = scratch.ProjectId.Path;
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_workerRoot, recursive: true); }
+        catch { }
     }
 
     [Fact]
@@ -188,15 +200,8 @@ public sealed class ProposalWorkflowTests
         AssertGlossOnDisk(_seed.FirstSenseId, NewLangProjFixture.AnalysisTag, SeededProject.FirstGloss);
     }
 
-    /// <remarks>
-    /// The receipt boundary: <c>apply</c> commits and saves the mutation to the real project (a
-    /// durable, observable fact on disk) before it ever tries to record "applied" in the store. The
-    /// paired database is made read-only right beforehand, so that write is the one that fails -- this
-    /// must not be reported the way a rolled-back apply is, since nothing here rolled back. See
-    /// <see cref="NeedsReconciliationException"/> and <see cref="ReconciliationBoundary.ReceiptRecording"/>.
-    /// </remarks>
     [Fact]
-    public void Apply_ManifestWriteFails_AfterAGenuineCommitAndSave_ReportsReconciliation_NotRollback()
+    public async Task ApplyReconciliationNeeded_ReportsStoreInconsistentExitCode()
     {
         var senseGuid = _seed.FirstSenseId;
         var wsTag = NewLangProjFixture.AnalysisTag;
@@ -217,26 +222,38 @@ public sealed class ProposalWorkflowTests
 
         Assert.True(RunDryRun(proposalId).Succeeded);
 
-        var dbPath = PairedDatabasePath();
-        File.SetAttributes(dbPath, FileAttributes.ReadOnly);
-        try
+        var start = new ProcessStartInfo(BuildOutput.Cli)
         {
-            var applyResult = ProposalCommands.Apply(
-                new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (var argument in new[]
+                 { "apply", proposalId, "--project", _fwDataPath, "--user", applier, "--force", "--json" })
+            start.ArgumentList.Add(argument);
+        var runner = IsolatedRunner.Options(Path.Combine(Path.GetTempPath(),
+            "motif-reconciliation-worker-" + Guid.NewGuid().ToString("N")));
+        start.Environment[RunnerOptions.RootVariable] = runner.Root;
+        start.Environment[ProcessRunnerLauncher.ExecutableVariable] = runner.WorkerExecutable;
+        start.Environment[RunnerOptions.NamespaceVariable] = runner.OwnerNamespace;
+        start.Environment[RunnerOptions.IdleVariable] = "1";
+        start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
+        start.Environment["MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR"] = _fwDataPath;
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        Assert.True(process.WaitForExit(60000));
 
-            Assert.False(applyResult.Succeeded);
-            Assert.Equal("apply.reconciliation-needed", applyResult.Refusal!.Code);
-            Assert.Contains("proposal store failed", applyResult.Refusal.Message, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("rolled back", applyResult.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(4, process.ExitCode);
+        Assert.Empty(await output);
+        var errorText = await error;
+        using var failure = JsonDocument.Parse(errorText);
+        Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());
+        Assert.Equal("StoreInconsistent", failure.RootElement.GetProperty("reason").GetString());
 
-            // The load-bearing proof: the mutation genuinely committed and saved despite the report above.
-            AssertGlossOnDisk(senseGuid, wsTag, newGloss);
-            AssertAppliedLogEntryCount(1);
-        }
-        finally
-        {
-            File.SetAttributes(dbPath, FileAttributes.Normal);
-        }
+        // The load-bearing proof: the mutation genuinely committed and saved despite the report above.
+        AssertGlossOnDisk(senseGuid, wsTag, newGloss);
+        AssertAppliedLogEntryCount(1);
 
         // The store itself was left exactly as dry-run wrote it -- never touched by the failed write.
         Assert.Equal("proposed", GetRecord(proposalId).Status);
@@ -528,6 +545,7 @@ public sealed class ProposalWorkflowTests
                      "--user", "tester", "--force", "--json" })
             start.ArgumentList.Add(argument);
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        start.Environment[RunnerOptions.RootVariable] = _workerRoot;
         using var process = Process.Start(start)!;
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();

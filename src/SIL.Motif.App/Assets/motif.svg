@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 547" width="700" height="547">
+  <title>Motif</title>
+  <rect x="8" y="94" width="122" height="349" rx="61" fill="#00A7E1"/>
+  <rect x="184" y="94" width="121" height="349" rx="60.5" fill="#005CB9"/>
+  <rect x="372" y="94" width="125" height="348" rx="62.5" fill="#FCC71E"/>
+  <rect x="564" y="93" width="126" height="350" rx="63" fill="#00A7E1"/>
+  <g fill="none" stroke="#005CB9" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path id="corner" d="M338 83V37a5 5 0 0 1 5-5h49"/>
+    <use href="#corner" transform="matrix(-1 0 0 1 876 0)"/>
+    <use href="#corner" transform="matrix(1 0 0 -1 0 541)"/>
+    <use href="#corner" transform="matrix(-1 0 0 -1 876 541)"/>
+  </g>
+</svg>

@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.PanGloss;
@@ -67,13 +69,25 @@ public static class TextWordsQuery
                     foreach (var token in line.Tokens)
                     {
                         var analysis = token.AnalysisKey is { } key ? analyses[key] : null;
+                        var storedAnalyses = token.WordformId is { } storedWordformId &&
+                            wordformsById.TryGetValue(storedWordformId, out var storedWordform)
+                                ? storedWordform.Analyses.Select(item => ReadAnalysis(item, projectName)).ToArray()
+                                : Array.Empty<ProjectAnalysis>();
                         var primary = token.Forms.Count == 0 ? string.Empty : Canonicalize(token.Forms[0]);
                         tokens.Add(new TextToken(token.Text, primary.Length == 0 ? null : primary,
                             GlossOf(analysis), token.Status)
                         {
                             Analysis = analysis,
+                            StoredAnalyses = storedAnalyses,
                             WordGloss = token.WordGloss,
                             Category = token.Category,
+                            WordformId = token.WordformId,
+                            OccurrenceIndex = token.OccurrenceIndex,
+                            StoredAnalysisId = token.AnalysisId is { } analysisId
+                                ? CanonicalId.FromGuid(analysisId).Value : null,
+                            IncorrectSpelling = token.WordformId is { } markedWordformId &&
+                                wordformsById.TryGetValue(markedWordformId, out var markedWordform) &&
+                                markedWordform.IncorrectSpelling,
                             WordLink = token.Text.Length == 0
                                 ? null : FieldWorksLinks.ForTarget(projectName, token.WordLinkTarget),
                         });
@@ -93,7 +107,12 @@ public static class TextWordsQuery
                                 text.TextId, text.Title, line.Number, line.Sentence, token.Status, analysis));
                         }
                     }
-                    lines.Add(new TextLine(line.Number, tokens));
+                    lines.Add(new TextLine(line.Number, tokens)
+                    {
+                        ParagraphId = line.ParagraphId,
+                        SegmentId = line.SegmentId,
+                        ParseIsCurrent = line.ParseIsCurrent,
+                    });
                 }
                 texts.Add(new TextLines(text.TextId, text.Title, lines));
             }
@@ -107,8 +126,13 @@ public static class TextWordsQuery
                     ?? Array.Empty<ProjectAnalysis>();
                 var disapproved = wordform?.Disapproved.Select(analysis => ReadAnalysis(analysis, projectName)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
+                var all = wordform?.Analyses.Select(analysis => ReadAnalysis(analysis, projectName)).ToArray()
+                    ?? Array.Empty<ProjectAnalysis>();
                 return new TextWord(form, accumulator.WordformId?.ToString("D"), accumulator.Occurrences,
-                    approved, disapproved, wordform?.CandidateCount ?? 0, wordform?.IncorrectSpelling ?? false);
+                    approved, disapproved, wordform?.CandidateCount ?? 0, wordform?.IncorrectSpelling ?? false)
+                {
+                    Analyses = all,
+                };
             }).ToList();
 
             return CommandOutcome<TextWordsResponse>.Success(new TextWordsResponse(words, texts, HasBaseline: true,
@@ -126,8 +150,13 @@ public static class TextWordsQuery
     {
         var morphs = analysis.Morphs.Select(morph => new ParserReadingMorph(
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
-            FieldWorksLinks.ForTarget(projectName, morph.LinkTarget))).ToArray();
-        return new ProjectAnalysis(analysis.Key, morphs);
+            FieldWorksLinks.ForTarget(projectName, morph.LinkTarget)) { Entry = morph.Entry }).ToArray();
+        return new ProjectAnalysis(analysis.Key, morphs)
+        {
+            StoredAnalysisId = CanonicalId.FromGuid(analysis.AnalysisId).Value,
+            StoredAnalysisOpinion = analysis.Opinion,
+            Identity = analysis.Identity,
+        };
     }
 
     private static string Canonicalize(string raw) => raw.Trim().Normalize(NormalizationForm.FormD);

@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -193,7 +194,7 @@ public sealed class DiscardDraftTests : IDisposable
     private static FailureEnvelope Envelope(string stderr) =>
         ProjectionJson.Deserialize<FailureEnvelope>(stderr)!;
 
-    private static CliRun Run(string arguments)
+    private CliRun Run(string arguments)
     {
         var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
@@ -204,6 +205,7 @@ public sealed class DiscardDraftTests : IDisposable
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        start.Environment[RunnerOptions.RootVariable] = _root;
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();

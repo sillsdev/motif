@@ -1,6 +1,7 @@
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
+using System.Collections.Specialized;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -27,6 +28,33 @@ public sealed class ProjectViewModelTests
         await viewModel.LoadKnownProjectsAsync();
 
         Assert.Equal(projects, viewModel.KnownProjects);
+    }
+
+    [Fact]
+    public async Task LoadingTheSameKnownProjectsDoesNotNotifyCollectionChanged()
+    {
+        var projects = new[]
+        {
+            new KnownProjectSummary(@"C:\projects\newest.fwdata", DateTimeOffset.UtcNow),
+            new KnownProjectSummary(@"C:\projects\oldest.fwdata", DateTimeOffset.UtcNow.AddDays(-1)),
+        };
+        var fake = new FakeCommandClient();
+        fake.KnownProjectsListIs(projects);
+        var viewModel = new ProjectViewModel(fake, new FakeProjectPicker());
+        await viewModel.LoadKnownProjectsAsync();
+        fake.KnownProjectsListIs(projects.Select(project =>
+            project with { LastSeenUtc = project.LastSeenUtc.AddMinutes(1) }).ToArray());
+        var notifications = 0;
+        viewModel.KnownProjects.CollectionChanged += CountNotification;
+
+        await viewModel.LoadKnownProjectsAsync();
+
+        Assert.Equal(0, notifications);
+        Assert.Equal(
+            projects.Select(project => project.FullFwDataPath),
+            viewModel.KnownProjects.Select(project => project.FullFwDataPath));
+
+        void CountNotification(object? sender, NotifyCollectionChangedEventArgs args) => notifications++;
     }
 
     [Fact]

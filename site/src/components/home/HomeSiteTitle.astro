@@ -1,0 +1,17 @@
+---
+import motifLogo from '../../assets/brand/motif.png';
+import silGlyph from '../../assets/brand/sil-glyph.png';
+
+const { siteTitleHref } = Astro.locals.starlightRoute;
+---
+
+<div class="home-brand">
+	<a class="home-brand__sil" href="https://software.sil.org/" aria-label={Astro.locals.t('home.silLogoAlt')}>
+		<img src={silGlyph.src} width="139" height="75" alt={Astro.locals.t('home.silLogoAlt')} />
+	</a>
+	<span class="home-brand__divider" aria-hidden="true"></span>
+	<a class="home-brand__motif" href={siteTitleHref} aria-label={Astro.locals.t('home.motifHome')}>
+		<img src={motifLogo.src} width="38" height="30" alt="" />
+		<span translate="no">Motif</span>
+	</a>
+</div>

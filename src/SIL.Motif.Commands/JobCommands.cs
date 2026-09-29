@@ -473,8 +473,7 @@ public static class JobCommands
     private static Version ParseProductVersion(string productVersion) =>
         Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
 
-    private static string NowStamp() =>
-        DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+    private static string NowStamp() => JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
 
     private static Refusal JobNotFound(string jobId) =>
         new("job.not-found", FailureReason.NotFound,
@@ -520,7 +519,8 @@ public static class JobCommands
                 CanonicalId.Parse(element.GetProperty("canonicalId").GetString()!),
                 element.GetProperty("field").GetString()!,
                 ReadAlternatives(element.GetProperty("before")),
-                ReadAlternatives(element.GetProperty("after"))));
+                ReadAlternatives(element.GetProperty("after")),
+                element.TryGetProperty("preview", out var preview) ? preview.Clone() : null));
         }
         return effects;
     }

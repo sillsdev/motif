@@ -1487,11 +1487,21 @@ public static partial class ProposalCommands
                     var nonFitting = ChangeFitPreflight.Check(cache, envelope, currentBaseline)
                         .Where(change => !change.StillFits).ToArray();
                     if (nonFitting.Length > 0)
+                    {
+                        var uncertain = nonFitting
+                            .Where(change => change.Status == ChangeFitStatus.Uncertain).ToArray();
+                        if (uncertain.Length > 0)
+                        {
+                            var changeIds = uncertain.Select(change => change.ChangeId ?? change.OperationId).ToArray();
+                            return CommandOutcome<ApplyProjection>.Refused(
+                                PendingChangeRefusals.Uncertain(changeIds, id));
+                        }
                         return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                             "apply.change-no-longer-fits", FailureReason.Refused,
                             $"Cannot apply Proposal {id}: {string.Join("; ", nonFitting.Select(change => change.Reason))}. " +
                             "Reopen it and remove or replace the changes that no longer fit.",
                             Fact(("proposalId", id))));
+                    }
                 }
                 var description = manifest.Label ?? "";
                 var receipt = ProposalApplier.Apply(cache, envelope, manifest.Anchor, user, description);
@@ -1514,6 +1524,8 @@ public static partial class ProposalCommands
 
                 try
                 {
+                    if (ShouldFailReceiptWriteForTest(project.FullFwDataPath))
+                        throw new IOException("Injected receipt write failure.");
                     repository.RecordAppliedReceipt(receipt);
                 }
                 catch (Exception ex)
@@ -1549,8 +1561,14 @@ public static partial class ProposalCommands
         catch (NeedsReconciliationException ex)
         {
             // Distinct from the rollback wording below: the mutation may already be durable.
+            var message = ex.Message;
+            try { ProjectReconciliationMarker.Mark(project.FullFwDataPath); }
+            catch (Exception markerFailure) when (markerFailure is IOException or UnauthorizedAccessException)
+            {
+                message += " Motif could not save a warning beside the project: " + markerFailure.Message;
+            }
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
-                "apply.reconciliation-needed", ReasonFor(ex), ex.Message, Fact(("proposalId", proposalId))));
+                "apply.reconciliation-needed", ReasonFor(ex), message, Fact(("proposalId", proposalId))));
         }
         catch (AppliedContentMismatchException ex)
         {
@@ -1584,6 +1602,16 @@ public static partial class ProposalCommands
 
     private static void RecordApplyUsage(UsageLog? usage, params string[] names) =>
         usage?.Record("apply", names.Select(UsageArgumentShape.Text).ToList());
+
+    private static bool ShouldFailReceiptWriteForTest(string fwDataPath)
+    {
+        var requestedPath = Environment.GetEnvironmentVariable("MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR");
+        if (requestedPath is null) return false;
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        return string.Equals(Path.GetFullPath(requestedPath), Path.GetFullPath(fwDataPath), comparison);
+    }
 
     public static CommandOutcome<AppliedLogProjection> Log(LogRequest request, UsageLog? usage = null)
     {
@@ -1768,6 +1796,7 @@ public static partial class ProposalCommands
     /// A caught exception knows more than a broad catch does; anything else is refused, which does not retry.
     private static FailureReason ReasonFor(Exception exception) => exception switch
     {
+        NeedsReconciliationException => FailureReason.StoreInconsistent,
         FileNotFoundException or DirectoryNotFoundException => FailureReason.InvalidArgument,
         ArgumentException => FailureReason.InvalidArgument,
         KeyNotFoundException => FailureReason.NotFound,

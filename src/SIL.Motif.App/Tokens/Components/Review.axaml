@@ -46,6 +46,15 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerEnd}" />
   </Style>
+  <Style Selector="Border.reviewSentenceToken">
+    <Setter Property="Padding" Value="{DynamicResource Component.Review.MorphPadding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+  </Style>
+  <Style Selector="Border.reviewSentenceToken.changed">
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Warning.Text}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+  </Style>
   <Style Selector="Rectangle.reviewParserOutline">
     <Setter Property="Stroke" Value="{DynamicResource Intent.TextFaint}" />
     <Setter Property="StrokeThickness" Value="{DynamicResource Intent.Stroke.Icon}" />

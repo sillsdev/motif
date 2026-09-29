@@ -39,7 +39,7 @@ public sealed class ReviewPageModelTests
     }
 
     [Fact]
-    public async Task RefreshReloadsChangeFitBeforeApply()
+    public async Task RefreshRechecksChangeFitBeforeApply()
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
@@ -49,11 +49,114 @@ public sealed class ReviewPageModelTests
         await context.OpenProjectAsync(ProjectPath);
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", false, ["Wordform was deleted."])]));
+        fake.RecheckCompletesWith(new PendingChangesSnapshot("draft/one", "revision/checked",
+            [Change("kept", "first")], [new ChangeFit("kept", ChangeFitStatus.Uncertain,
+                ["The words in the source sentence have changed."])]));
+        fake.PendingLoadRequests.Clear();
 
         await context.PublishBaselineCapturedAsync();
 
-        Assert.True(Assert.Single(context.Changes.Items).IsNoLongerFits);
+        Assert.Equal("revision/one", Assert.Single(fake.PendingRecheckRequests).ExpectedRevision);
+        Assert.Empty(fake.PendingLoadRequests);
+        Assert.True(Assert.Single(context.Changes.Items).IsUncertain);
         Assert.False(page.CanApply);
+    }
+
+    [Fact]
+    public async Task UncertainChangesHaveTheirOwnPlainApplyBlockReason()
+    {
+        var uncertain = new ChangeFit("uncertain", ChangeFitStatus.Uncertain,
+            ["The words in the source sentence have changed."])
+        {
+            Uncertainty = new ChangeUncertainty("The words in the source sentence have changed.",
+                [new OccurrenceWordToken(0, "wordform/first", "first")],
+                [new OccurrenceWordToken(0, "wordform/changed", "changed")]),
+        };
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("uncertain", "first")], [uncertain]));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        var item = Assert.Single(context.Changes.Items);
+        Assert.Equal("Uncertain — check again", item.FitStatus);
+        Assert.Empty(page.ReviewableChanges);
+        Assert.Same(item, Assert.Single(page.UncertainChanges));
+        Assert.True(Assert.Single(item.AfterWords, word => word.Form == "changed").IsChanged);
+        Assert.False(page.CanApply);
+        Assert.Equal("1 change needs another look because its sentence changed. Check it again or undo it.",
+            page.ApplyBlockReason);
+    }
+
+    [Theory]
+    [InlineData("The source Segment is gone or no longer resolves uniquely.",
+        "The sentence this decision refers to is no longer available.")]
+    [InlineData("The source occurrence no longer resolves uniquely.",
+        "The word this decision refers to is no longer in the sentence.")]
+    [InlineData("The paragraph parse is not current.",
+        "FieldWorks has not reparsed this paragraph after the edit.")]
+    [InlineData("The paragraph parse was not current when the decision was collected.",
+        "FieldWorks had not parsed this paragraph when you made this decision.")]
+    [InlineData("The words in the source sentence have changed.",
+        "The words in the sentence have changed since you made this decision.")]
+    public void UncertainReasonsAreInTheLinguistsWords(string reason, string expected)
+    {
+        var fit = new ChangeFit("uncertain", ChangeFitStatus.Uncertain, [reason])
+        {
+            Uncertainty = new ChangeUncertainty(reason, [], []),
+        };
+
+        var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading", fit: fit);
+
+        Assert.Equal(expected, change.UncertaintyReason);
+    }
+
+    [Fact]
+    public void UncertainActionsNameTheWordForScreenReaders()
+    {
+        var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading");
+        var checkAgainName = typeof(ChangeViewModel).GetProperty("CheckAgainAutomationName");
+        var undoName = typeof(ChangeViewModel).GetProperty("UndoAutomationName");
+
+        Assert.NotNull(checkAgainName);
+        Assert.NotNull(undoName);
+        Assert.Equal("Check again: kitabu", checkAgainName.GetValue(change));
+        Assert.Equal("Undo: kitabu", undoName.GetValue(change));
+    }
+
+    [Fact]
+    public void ReviewExposesACommandForReconcheckingOneUncertainChange()
+    {
+        Assert.NotNull(typeof(ReviewPageModel).GetProperty("ReconfirmChangeCommand"));
+    }
+
+    [Fact]
+    public async Task CheckAgainAndUndoTargetTheSelectedUncertainChange()
+    {
+        var uncertain = new ChangeFit("uncertain", ChangeFitStatus.Uncertain,
+            ["The words in the source sentence have changed."])
+        {
+            Uncertainty = new ChangeUncertainty("The words in the source sentence have changed.",
+                [new OccurrenceWordToken(0, "wordform/first", "first")],
+                [new OccurrenceWordToken(0, "wordform/changed", "changed")]),
+        };
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [Change("uncertain", "first")], [uncertain]));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReconfirmCompletesWith(new PendingChangesSnapshot("draft/one", "revision/two",
+            [Change("uncertain", "first")], [new ChangeFit("uncertain", true, [])]));
+
+        await page.ReconfirmChangeCommand.ExecuteAsync(Assert.Single(page.UncertainChanges));
+
+        Assert.Equal("uncertain", Assert.Single(fake.PendingReconfirmRequests).ChangeId);
+        Assert.True(Assert.Single(context.Changes.Items).Fit?.StillFits);
+        await context.Changes.RemoveCommand.ExecuteAsync(Assert.Single(context.Changes.Items));
+        Assert.Equal("uncertain", Assert.Single(fake.PendingRemoveRequests).ChangeId);
     }
 
     [Fact]
@@ -300,7 +403,8 @@ public sealed class ReviewPageModelTests
         fake.MeasurePendingCompletesWith(new MeasurePendingResult(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
-            new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")));
+            new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
+            "Applied pending changes.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);

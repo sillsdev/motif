@@ -24,14 +24,22 @@ public sealed class MotifAppHostCollection : ICollectionFixture<MotifAppHostExit
     public const string Name = "Real App startup (one Avalonia setup per process)";
 }
 
-/// <summary>
-/// Exits Motif through the classic desktop lifetime once every test in the collection has run, and fails
-/// the run if that exit does not close the session. It runs last because that shutdown also ends Avalonia's
-/// dispatcher, as <see cref="MotifAppHost"/> records.
-/// </summary>
+/// <summary>Verifies the collection's final Motif exit, through the error window or the classic lifetime.</summary>
 public sealed class MotifAppHostExit : IDisposable
 {
-    public void Dispose() => MotifAppHost.Shared.ExitThroughLifetime();
+    public void Dispose()
+    {
+        var dispatcherStopped = Dispatcher.UIThread.InvokeAsync(() => { }).Status ==
+            DispatcherOperationStatus.Aborted;
+        if (dispatcherStopped)
+        {
+            if (!MotifAppHost.Shared.ErrorWindowExitWasProved)
+                throw new InvalidOperationException("The dispatcher stopped before the error-window exit was proved.");
+            return;
+        }
+
+        MotifAppHost.Shared.ExitThroughLifetime();
+    }
 }
 
 /// <summary>
@@ -47,7 +55,8 @@ public sealed class MotifAppHostExit : IDisposable
 /// <c>SetupWithLifetime</c>, which runs <c>OnFrameworkInitializationCompleted</c>; <see cref="StopAsync"/>
 /// closes the session with <see cref="MotifDesktopSession.CloseAsync"/>, which is what the lifetime's exit
 /// calls; and every later start composes into the same lifetime through <c>App.StartDesktop</c>, the method
-/// that override consists of. The lifetime's own exit runs once, from <see cref="MotifAppHostExit"/>.
+/// that override consists of. The collection's final exit is checked by its last error-window test when that
+/// Close ends the dispatcher, or by <see cref="MotifAppHostExit"/> when the dispatcher is still running.
 /// Everything runs on one dedicated thread, because Avalonia binds its dispatcher to the thread that set it
 /// up.
 /// </remarks>
@@ -59,6 +68,7 @@ internal sealed class MotifAppHost
     private ClassicDesktopStyleApplicationLifetime? _lifetime;
     private MotifAppOptions? _options;
     private MotifDesktopSession? _session;
+    private static volatile bool _dispatcherShutDown;
 
     private MotifAppHost()
     {
@@ -74,16 +84,30 @@ internal sealed class MotifAppHost
     public IClassicDesktopStyleApplicationLifetime Lifetime =>
         _lifetime ?? throw new InvalidOperationException("Motif has not been started.");
 
+    /// <summary>Whether the final test proved that Close ended Motif and closed its session.</summary>
+    public bool ErrorWindowExitWasProved { get; private set; }
+
+    /// <summary>Records that the error-window test verified the lifetime exit and session closure.</summary>
+    public void RecordErrorWindowExitProved() => ErrorWindowExitWasProved = true;
+
     private static SIL.Motif.App.App CurrentApp => (SIL.Motif.App.App)Application.Current!;
 
     /// <summary>
     /// Runs <paramref name="work"/> on the Avalonia thread, pumping the dispatcher until it completes, and
     /// fails with <paramref name="step"/> named when <paramref name="timeout"/> passes first. A session the
-    /// work leaves open is closed afterwards, so one failure cannot cascade into the next test.
+    /// work leaves open is closed afterwards unless its app has already exited.
     /// </summary>
     public void Run(string step, TimeSpan timeout, Func<Task> work) => Run(step, timeout, work, null);
 
-    private void Run(string step, TimeSpan timeout, Func<Task> work, Func<string>? pending)
+    /// <summary>
+    /// Runs <paramref name="work"/> while pumping the Avalonia dispatcher, and includes the current pending
+    /// state in the timeout message when the work does not finish within <paramref name="timeout"/>.
+    /// </summary>
+    /// <param name="step">The operation named by a timeout failure.</param>
+    /// <param name="timeout">The maximum time to wait for the work.</param>
+    /// <param name="work">The asynchronous work to run on the Avalonia thread.</param>
+    /// <param name="pending">Returns diagnostic text describing the current stage when a timeout occurs.</param>
+    public void Run(string step, TimeSpan timeout, Func<Task> work, Func<string>? pending)
     {
         var completion = new TaskCompletionSource();
         _queue.Add((() =>
@@ -101,13 +125,20 @@ internal sealed class MotifAppHost
             }
             if (_session is not null)
             {
-                try
+                if (Dispatcher.UIThread.InvokeAsync(() => { }).Status == DispatcherOperationStatus.Aborted)
                 {
-                    Pump("close after '" + step + "'", timeout, StopAsync());
+                    _session = null;
                 }
-                catch (Exception exception)
+                else
                 {
-                    failure = failure is null ? exception : new AggregateException(failure, exception);
+                    try
+                    {
+                        Pump("close after '" + step + "'", timeout, StopAsync());
+                    }
+                    catch (Exception exception)
+                    {
+                        failure = failure is null ? exception : new AggregateException(failure, exception);
+                    }
                 }
             }
             if (failure is not null) ExceptionDispatchInfo.Throw(failure);
@@ -131,6 +162,7 @@ internal sealed class MotifAppHost
                 .UseSkia()
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                 .SetupWithLifetime(_lifetime);
+            Dispatcher.UIThread.ShutdownFinished += (_, _) => _dispatcherShutDown = true;
             AvaloniaSynchronizationContext.InstallIfNeeded();
             _session = CurrentApp.Session;
         }
@@ -197,7 +229,8 @@ internal sealed class MotifAppHost
                 await session.KnownProjectsLoaded;
                 _session = null;
                 _lifetime.Shutdown();
-                await session.Closed;
+                // The dispatcher is shut down by now and aborts posts, so the continuation must not need it.
+                await session.Closed.ConfigureAwait(false);
             }, () => exiting is null ? "the session never started" : Awaiting(exiting));
         }
         finally
@@ -215,16 +248,33 @@ internal sealed class MotifAppHost
     private static void Pump(string step, TimeSpan timeout, Task task, Func<string>? pending = null)
     {
         var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
-        while (!task.IsCompleted && Stopwatch.GetTimestamp() < deadline)
-        {
-            Dispatcher.UIThread.RunJobs();
-            Thread.Yield();
-        }
+        while (!task.IsCompleted && !_dispatcherShutDown && Remaining(deadline) is { } remaining)
+            RunDispatcherUntil(task, remaining);
+        // A shut-down dispatcher runs no frame, so only the thread pool can still finish the work.
+        if (!task.IsCompleted && _dispatcherShutDown && Remaining(deadline) is { } afterShutdown)
+            ((IAsyncResult)task).AsyncWaitHandle.WaitOne(afterShutdown);
         Dispatcher.UIThread.RunJobs();
         if (!task.IsCompleted)
             throw new TimeoutException($"'{step}' did not finish within {timeout}" +
                 (pending is null ? "." : "; " + pending() + "."));
         task.GetAwaiter().GetResult();
+    }
+
+    // Blocks in a dispatcher frame rather than spinning, so a two-core runner keeps a core for the awaited work.
+    private static void RunDispatcherUntil(Task task, TimeSpan limit)
+    {
+        var frame = new DispatcherFrame();
+        using var expiry = new CancellationTokenSource(limit);
+        using var expired = expiry.Token.Register(() => frame.Continue = false);
+        task.ContinueWith(static (_, state) => ((DispatcherFrame)state!).Continue = false, frame,
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        Dispatcher.UIThread.PushFrame(frame);
+    }
+
+    private static TimeSpan? Remaining(long deadline)
+    {
+        var ticks = deadline - Stopwatch.GetTimestamp();
+        return ticks > 0 ? TimeSpan.FromSeconds((double)ticks / Stopwatch.Frequency) : null;
     }
 
     private void Run()

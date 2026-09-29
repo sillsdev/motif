@@ -11,7 +11,7 @@ public sealed record SetDefaultSelectionRequest(
     string Name,
     IReadOnlyList<Guid> TextIds,
     IReadOnlyList<string> AddedWords,
-    int PerWordLimitMs = 1000,
+    int? PerWordLimitMs = 1000,
     StepCap? PerWordStepLimit = null);
 
 /// <summary>Records that the person chose to skip first-time project setup.</summary>

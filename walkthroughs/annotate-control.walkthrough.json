@@ -1,0 +1,9 @@
+{
+  "id": "annotate-control",
+  "fixture": "fresh-project",
+  "steps": [
+    { "id": "wait-for-pages", "kind": "waitFor", "automationId": "motif-pages", "condition": "visible", "timeoutMs": 10000 },
+    { "id": "highlight-pages", "kind": "highlight", "automationId": "motif-pages" },
+    { "id": "pages", "kind": "capture", "durationMs": 1200, "callouts": [ { "automationId": "motif-pages" } ], "cropPadding": 48 }
+  ]
+}

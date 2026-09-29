@@ -33,4 +33,6 @@ public enum AssessmentStage
 /// How much of this stage's own, command-known work is done, or <c>0</c> when the stage has no such count.
 /// </param>
 /// <param name="Total">This stage's own, command-known total, or <c>null</c> when there is none to report.</param>
+/// <param name="Stage">The command-owned phase currently being reported.</param>
+/// <param name="Message">The human-readable diagnostic associated with this progress step.</param>
 public sealed record AssessmentProgress(AssessmentStage Stage, int Completed, int? Total, string Message);

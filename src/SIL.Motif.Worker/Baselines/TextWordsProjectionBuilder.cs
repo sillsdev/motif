@@ -7,6 +7,7 @@ using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Texts;
@@ -17,10 +18,11 @@ namespace SIL.Motif.Worker.Baselines;
 public static class TextWordsProjectionBuilder
 {
     /// <summary>
-    /// Reads Text lines, occurrences, analyses and stable FieldWorks link targets from a saved cache, checking
-    /// <paramref name="cancellationToken"/> before each Text.
+    /// Reads selected Text lines, occurrences, analyses and FieldWorks link targets from a saved cache, checking
+    /// <paramref name="cancellationToken"/> before each selected Text. A null id set selects all Texts.
     /// </summary>
-    public static TextWordsProjection Build(LcmCache cache, CancellationToken cancellationToken)
+    public static TextWordsProjection Build(LcmCache cache, CancellationToken cancellationToken,
+        IReadOnlySet<Guid>? textIds = null)
     {
         ArgumentNullException.ThrowIfNull(cache);
         var wordforms = new Dictionary<Guid, TextWordsProjectedWordform>();
@@ -29,6 +31,7 @@ public static class TextWordsProjectionBuilder
         foreach (var text in cache.ServiceLocator.GetInstance<ITextRepository>().AllInstances()
                      .OrderBy(text => text.Guid.ToString("D"), StringComparer.Ordinal))
         {
+            if (textIds is not null && !textIds.Contains(text.Guid)) continue;
             cancellationToken.ThrowIfCancellationRequested();
             texts.Add(ReadText(cache, text, wordforms));
         }
@@ -50,8 +53,9 @@ public static class TextWordsProjectionBuilder
                 lineNumber++;
                 var sentence = segment.BaselineText?.Text ?? string.Empty;
                 var tokens = occurrencesBySegment[segment]
-                    .Select(occurrence => ReadToken(cache, occurrence.Analysis, wordforms, analyses)).ToArray();
-                lines.Add(new TextWordsProjectedLine(lineNumber, sentence, tokens));
+                    .Select(occurrence => ReadToken(cache, occurrence, wordforms, analyses)).ToArray();
+                lines.Add(new TextWordsProjectedLine(lineNumber, sentence, tokens, paragraph.Guid,
+                    segment.Guid, paragraph.ParseIsCurrent));
             }
         }
 
@@ -59,12 +63,14 @@ public static class TextWordsProjectionBuilder
     }
 
     private static TextWordsProjectedToken ReadToken(
-        LcmCache cache, IAnalysis analysis, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
+        LcmCache cache, AnalysisOccurrence occurrence, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
         Dictionary<string, TextWordsProjectedAnalysis> analyses)
     {
+        var analysis = occurrence.Analysis;
         if (analysis is IPunctuationForm punctuation)
             return new TextWordsProjectedToken(
-                punctuation.Form?.Text ?? string.Empty, [], null, null, null, null, null, null);
+                punctuation.Form?.Text ?? string.Empty, [], null, null, null, null, null, null,
+                occurrence.Index, null);
 
         var (wordform, wfiAnalysis) = analysis switch
         {
@@ -86,7 +92,7 @@ public static class TextWordsProjectionBuilder
         string? analysisKey = null;
         if (wfiAnalysis is { } selected)
         {
-            var projected = BuildProjectAnalysis(cache, selected);
+            var projected = BuildProjectAnalysis(cache, wordform, selected, OpinionOf(wordform, selected));
             analyses.TryAdd(projected.Key, projected);
             analysisKey = projected.Key;
         }
@@ -96,22 +102,24 @@ public static class TextWordsProjectionBuilder
         // Its own wordform, never a lookup by spelling: another wordform can share the spelling and win the lookup.
         var wordLinkTarget = tokenText.Length == 0 ? null : FieldWorksLinks.TargetFor(cache, wordform);
         return new TextWordsProjectedToken(tokenText, forms, wordform.Guid, status, analysisKey,
-            chosenWordGloss, category, wordLinkTarget);
+            chosenWordGloss, category, wordLinkTarget, occurrence.Index, wfiAnalysis?.Guid);
     }
 
     private static TextWordsProjectedWordform ReadWordform(LcmCache cache, IWfiWordform wordform)
     {
         var humanApproved = wordform.HumanApprovedAnalyses.ToList();
         var humanDisapproved = wordform.HumanDisapprovedParses.ToList();
-        var withOpinion = humanApproved.Concat(humanDisapproved).ToHashSet();
-        var candidates = wordform.AnalysesOC.Count(analysis => !withOpinion.Contains(analysis));
+        var analyses = wordform.AnalysesOC.Select(analysis =>
+            BuildProjectAnalysis(cache, wordform, analysis, OpinionOf(humanApproved, humanDisapproved, analysis))).ToArray();
         return new TextWordsProjectedWordform(wordform.Guid,
-            humanApproved.Select(analysis => BuildProjectAnalysis(cache, analysis)).ToArray(),
-            humanDisapproved.Select(analysis => BuildProjectAnalysis(cache, analysis)).ToArray(),
-            candidates, wordform.SpellingStatus == IncorrectSpellingStatus);
+            analyses.Where(analysis => analysis.Opinion == "approved").ToArray(),
+            analyses.Where(analysis => analysis.Opinion == "disapproved").ToArray(),
+            analyses.Count(analysis => analysis.Opinion == "unknown"),
+            wordform.SpellingStatus == IncorrectSpellingStatus, analyses);
     }
 
-    private static TextWordsProjectedAnalysis BuildProjectAnalysis(LcmCache cache, IWfiAnalysis analysis)
+    private static TextWordsProjectedAnalysis BuildProjectAnalysis(
+        LcmCache cache, IWfiWordform wordform, IWfiAnalysis analysis, string opinion)
     {
         var bundles = analysis.MorphBundlesOS.Select(bundle => new MorphBundleContent(
             bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"), bundle.InflTypeRA?.Guid.ToString("D")))
@@ -122,9 +130,31 @@ public static class TextWordsProjectionBuilder
         var displayMorphs = ParserReadingReader.ReadMorphs(cache, string.Empty, morphs);
         var projectedMorphs = displayMorphs.Select((morph, index) => new TextWordsProjectedMorph(
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
-            ParserReadingReader.EntryTargetFor(cache, morphs[index]))).ToArray();
-        return new TextWordsProjectedAnalysis(AnalysisContent.ComputeDigest(bundles), projectedMorphs);
+            ParserReadingReader.EntryTargetFor(cache, morphs[index])) { Entry = morph.Entry }).ToArray();
+        var identity = new ApprovedMorphology(analysis.MorphBundlesOS.Select(bundle => new ApprovedMorph(
+            bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"), bundle.InflTypeRA?.Guid.ToString("D"),
+            bundle.Form.AvailableWritingSystemIds.Order().Select(ws => bundle.Form.get_String(ws)?.Text)
+                .OfType<string>().Where(text => text.Length > 0).Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal).ToArray())).ToArray())
+        {
+            SourceAnalysisId = CanonicalId.FromGuid(analysis.Guid).Value,
+            SourceWordformGuid = CanonicalId.FromGuid(wordform.Guid).Value,
+            WritingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
+        };
+        return new TextWordsProjectedAnalysis(AnalysisContent.ComputeDigest(bundles), projectedMorphs)
+        {
+            AnalysisId = analysis.Guid,
+            Opinion = opinion,
+            Identity = identity,
+        };
     }
+
+    private static string OpinionOf(IWfiWordform wordform, IWfiAnalysis analysis) =>
+        OpinionOf(wordform.HumanApprovedAnalyses, wordform.HumanDisapprovedParses, analysis);
+
+    private static string OpinionOf(IEnumerable<IWfiAnalysis> approved, IEnumerable<IWfiAnalysis> disapproved,
+        IWfiAnalysis analysis) => approved.Contains(analysis) ? "approved"
+        : disapproved.Contains(analysis) ? "disapproved" : "unknown";
 
     private static string? BestText(IMultiAccessorBase accessor) => accessor.AvailableWritingSystemIds.OrderBy(ws => ws)
         .Select(ws => accessor.get_String(ws)?.Text).FirstOrDefault(text => !string.IsNullOrEmpty(text));

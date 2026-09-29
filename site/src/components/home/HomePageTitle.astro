@@ -1,0 +1,9 @@
+---
+import DefaultPageTitle from '@astrojs/starlight/components/PageTitle.astro';
+
+const routeId = Astro.locals.starlightRoute.entry.id.replace(/\.mdx?$/i, '');
+const isLearnLesson = routeId.includes('learn/') && !routeId.endsWith('/index');
+const isHome = routeId === 'index';
+---
+
+{!isLearnLesson && !isHome && <DefaultPageTitle />}

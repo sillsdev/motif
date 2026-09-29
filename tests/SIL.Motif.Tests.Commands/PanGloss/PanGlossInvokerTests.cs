@@ -1,7 +1,9 @@
 using System.Text.Json;
 using System.Collections.Concurrent;
+using System.Globalization;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -100,6 +102,46 @@ public sealed class PanGlossInvokerTests : IDisposable
         var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
         Assert.Contains("\"orientation\":\"word\"", completed.Output, StringComparison.Ordinal);
         Assert.Equal(["stats", grammar, "--cache", cache, "--group", "word", "--format", "jsonl"], Argv(grammar));
+    }
+
+    [Fact]
+    public async Task GrammarHealthReturnsItsReportWhenPanGlossExitsNonzero()
+    {
+        var grammar = Project("grammar-health-error");
+        const string report = "{\"schema_version\":3,\"fieldworks_project\":{\"name\":\"p\",\"source\":\"argument\"},\"summary\":[],\"diagnostics\":[]}";
+        FakeParser.Behave(_root, new { ExitCode = 1, GrammarHealthReportJson = report });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.GrammarHealth(grammar, "p"), "test:grammar-health-error", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Equal(report, completed.Output);
+    }
+
+    [Fact]
+    public async Task ChildEnvironmentKeepsDotnetRootSoAnApphostParserFindsItsRuntime()
+    {
+        var grammar = Project("dotnet-root-environment");
+        var previous = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        // The running runtime's own root, so the fake apphost still starts with the variable set.
+        var runtimeRoot = Path.GetFullPath(Path.Combine(
+            System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(), "..", "..", ".."));
+        Environment.SetEnvironmentVariable("DOTNET_ROOT", previous ?? runtimeRoot);
+        try
+        {
+            using var invoker = Invoker();
+            var outcome = await invoker.RunAsync(
+                new PanGlossRequest.Stats(grammar, Path.Combine(_root, "cache"), []),
+                "test:dotnet-root-environment", CancellationToken.None);
+
+            Assert.IsType<PanGlossOutcome.Completed>(outcome);
+            Assert.Contains("DOTNET_ROOT", EnvironmentNames(grammar));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DOTNET_ROOT", previous);
+        }
     }
 
     [Fact]
@@ -222,7 +264,8 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(project, argv[1]);
         Assert.EndsWith("words.txt", argv[2], StringComparison.Ordinal);
         Assert.EndsWith("out.tsv", argv[3], StringComparison.Ordinal);
-        Assert.Equal(["--word-timeout-ms", "1500", "--step-cap", "50000000", "--threads", "1", "--stats", "--cache", cache], argv[4..]);
+        Assert.Equal(["--word-timeout-ms", "1500", "--step-cap",
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads", "1", "--stats", "--cache", cache], argv[4..]);
         Assert.True(File.Exists(cache));
     }
 
@@ -235,7 +278,8 @@ public sealed class PanGlossInvokerTests : IDisposable
         await invoker.RunAsync(
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), "test:batch", CancellationToken.None);
 
-        Assert.Equal(["--word-timeout-ms", "1000", "--step-cap", "50000000", "--threads", "1"], Argv(project)[4..]);
+        Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads", "1"], Argv(project)[4..]);
     }
 
     [Fact]
@@ -263,6 +307,21 @@ public sealed class PanGlossInvokerTests : IDisposable
             "test:batch-budget", CancellationToken.None);
 
         Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--threads", "1"], Argv(project)[4..]);
+    }
+
+    [Fact]
+    public async Task TryAWordTraceSendsNeitherPerWordLimit()
+    {
+        var project = Project("trace-unbounded");
+        using var invoker = Invoker();
+
+        await invoker.RunAsync(new PanGlossRequest.Trace(project, "motifa"),
+            "test:trace", CancellationToken.None, Timeout.InfiniteTimeSpan);
+
+        Assert.Equal(["parse", project, "motifa", "--trace", "--trace-format", "json", "--trace-details"],
+            Argv(project));
+        Assert.DoesNotContain("--step-cap", Argv(project));
+        Assert.DoesNotContain("--word-timeout-ms", Argv(project));
     }
 
     [Theory]
@@ -363,6 +422,31 @@ public sealed class PanGlossInvokerTests : IDisposable
         await cancellation.CancelAsync();
         Assert.IsType<PanGlossOutcome.Cancelled>(await run);
         Assert.False(Directory.Exists(Path.GetDirectoryName(wordsPath)));
+    }
+
+    [Fact]
+    public async Task ABatchWithoutAWordTimeLimitHasNoWallClockDeadlineAndStillCancels()
+    {
+        var project = Project("batch-without-time-limit");
+        var heartbeat = Path.Combine(_root, "unlimited-batch-heartbeat.txt");
+        FakeParser.Behave(_root, new { heartbeatPath = heartbeat });
+        var request = new PanGlossRequest.Batch(project, ["motifa"], PerWordLimit: null);
+        using var invoker = Invoker();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+        Assert.Equal(Timeout.InfiniteTimeSpan, PanGlossInvoker.ResolveWallClockCap(request, null));
+        Assert.Equal(PanGlossInvoker.DefaultWallClockCap,
+            PanGlossInvoker.ResolveWallClockCap(new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), null));
+        var run = invoker.RunAsync(request, "test:unlimited-batch", cancellation.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!File.Exists(heartbeat) && !run.IsCompleted && DateTime.UtcNow < deadline)
+            await Task.Delay(20);
+        Assert.True(File.Exists(heartbeat));
+
+        await cancellation.CancelAsync();
+
+        Assert.IsType<PanGlossOutcome.Cancelled>(await run);
+        await AssertStoppedTicking(heartbeat);
     }
 
     [Fact]

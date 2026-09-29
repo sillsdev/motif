@@ -129,7 +129,7 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         Assert.False(outcome.Value!.FieldWorksHeldProject);
     }
 
-    [Fact]
+    [WindowsFileLockFact]
     public void PublishedCaptureSucceedsWhenMachineRegistrationCannotOpen()
     {
         var fwDataPath = _pristine.CopyProjectFile();

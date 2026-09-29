@@ -1,4 +1,4 @@
-"Class"	"Field"	"Label"	"Description"	"Reviewed"	"Source"	"SourceDetail"	"SourceHash"
+"Class"	"Field"	"Title"	"Description"	"Reviewed"	"Source"	"SourceDetail"	"SourceHash"
 "LexEntry"	"Bibliography"	"Bibliography"	"Bibliographic information"	"sourced"	"liblcm/MasterLCModel.xml"	"line 2592, <basic id=""Bibliography""> under <class id=""LexEntry"">"	"sha256:19cfcc8d6bb9040c7b12c9777b18a0a1fea3b6802eefd420ca131cea77ccf231"
 "LexEntry"	"CitationForm"	"Citation Form"	"If this is missing, then this defaults to the lexicalForm but the user has the option of specifying a real citation form especially useful for bound roots."	"sourced"	"liblcm/MasterLCModel.xml"	"line 2579, <basic id=""CitationForm""> under <class id=""LexEntry"">"	"sha256:235ec5bc1362c499e22725645331ce5afc124755b8839a530345b7dde58aeda9"
 "LexEntry"	"Comment"	"Note"	"Free text field for notes about environment of a variant or any other note. (This used to be on LexVariant and LexMinorEntry.)"	"sourced"	"liblcm/MasterLCModel.xml"	"line 2622, <basic id=""Comment""> under <class id=""LexEntry"">"	"sha256:961143337c514975b283df6973d07084649abeec3269f05b8022b22253d9553f"

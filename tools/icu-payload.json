@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "icuMajor": 70,
+  "normalizationData": {
+    "source": {
+      "kind": "nuget",
+      "package": "SIL.LCModel.Core",
+      "version": "11.0.0-beta0182",
+      "path": "contentFiles/IcuData"
+    },
+    "outputDirectory": "IcuData",
+    "files": [
+      "icudt70l/nfc_fw.nrm",
+      "icudt70l/nfkc_fw.nrm",
+      "data/UnicodeDataOverrides.txt"
+    ]
+  },
+  "buildPatches": [
+    {
+      "id": "silmods-macos-malloc-header",
+      "path": "tools/patches/sil-icu-macos-malloc-header.patch",
+      "appliesTo": [
+        "osx-arm64",
+        "osx-x64"
+      ],
+      "reason": "silmods.cpp uses malloc/free, already declared by its stdlib.h include; malloc.h is unavailable on macOS.",
+      "upstreamFollowUp": "Send this portability fix to sillsdev/icu."
+    }
+  ],
+  "rids": {
+    "win-x64": {
+      "nativeOutputDirectory": "lib/win-x64",
+      "libraries": [
+        "icudt70.dll",
+        "icuin70.dll",
+        "icuio70.dll",
+        "icutu70.dll",
+        "icuuc70.dll"
+      ],
+      "sources": [
+        {
+          "kind": "nuget",
+          "package": "Icu4c.Win.Fw.Bin",
+          "version": "70.1.182"
+        },
+        {
+          "kind": "nuget",
+          "package": "Icu4c.Win.Fw.Lib",
+          "version": "70.1.182"
+        }
+      ]
+    },
+    "linux-x64": {
+      "nativeOutputDirectory": ".",
+      "metapackage": "icu-fw",
+      "libraries": [
+        "libicudata.so.70",
+        "libicui18n.so.70",
+        "libicuio.so.70",
+        "libicutu.so.70",
+        "libicuuc.so.70"
+      ],
+      "minimumRuntime": "glibc >= 2.34; libstdc++ >= 12",
+      "sources": [
+        {
+          "kind": "deb",
+          "repository": "http://linux.lsdev.sil.org/ubuntu",
+          "suite": "jammy-experimental",
+          "component": "main",
+          "architecture": "amd64",
+          "package": "libicu70-fw",
+          "path": "pool/main/i/icu-fw/libicu70-fw_70.1.0.nightly20220714T065237Z.107d90bbc5-1+jammy1_amd64.deb",
+          "sha256": "b3b44b28904ad13ebeaf4907a28d723dc8ac20e425a279566713d6d6b807a6fb",
+          "size": 27747570,
+          "ships": true
+        },
+        {
+          "kind": "deb",
+          "repository": "http://linux.lsdev.sil.org/ubuntu",
+          "suite": "jammy-experimental",
+          "component": "main",
+          "architecture": "amd64",
+          "package": "icu70-bin-fw",
+          "path": "pool/main/i/icu-fw/icu70-bin-fw_70.1.0.nightly20220714T065237Z.107d90bbc5-1+jammy1_amd64.deb",
+          "sha256": "98c5f7599d40b2919be1005ad10d3f1bee38e71c25d61b07df1de94f67e5cae1",
+          "ships": false
+        }
+      ],
+      "sourceCommit": "107d90bbc550dacfad51f673b14ca3e834ed87c0"
+    },
+    "osx-arm64": {
+      "nativeOutputDirectory": ".",
+      "libraries": [
+        "libicudata.70.dylib",
+        "libicui18n.70.dylib",
+        "libicuio.70.dylib",
+        "libicutu.70.dylib",
+        "libicuuc.70.dylib"
+      ],
+      "source": {
+        "kind": "source-build",
+        "repository": "https://github.com/sillsdev/icu.git",
+        "branch": "fw",
+        "observedBranchHead": "c7f84b56305f",
+        "commit": "107d90bbc550dacfad51f673b14ca3e834ed87c0",
+        "sourceDirectory": "icu4c/source"
+      }
+    },
+    "osx-x64": {
+      "nativeOutputDirectory": ".",
+      "libraries": [
+        "libicudata.70.dylib",
+        "libicui18n.70.dylib",
+        "libicuio.70.dylib",
+        "libicutu.70.dylib",
+        "libicuuc.70.dylib"
+      ],
+      "source": {
+        "kind": "source-build",
+        "repository": "https://github.com/sillsdev/icu.git",
+        "branch": "fw",
+        "commit": "107d90bbc550dacfad51f673b14ca3e834ed87c0",
+        "sourceDirectory": "icu4c/source"
+      }
+    }
+  }
+}

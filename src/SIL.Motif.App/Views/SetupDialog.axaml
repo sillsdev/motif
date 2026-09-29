@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
@@ -29,7 +30,7 @@
         <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Classes="setupTitle" IsVisible="{Binding IsProjectStep}" Text="Found the project" />
           <TextBlock Classes="setupTitle" IsVisible="{Binding IsSelectionStep}" Text="What should Motif measure every time?" />
-          <TextBlock Classes="setupTitle" IsVisible="{Binding IsLimitsStep}" Text="How much time should each word get?" />
+          <TextBlock Classes="setupTitle" IsVisible="{Binding IsLimitsStep}" Text="How much work should each word get?" />
           <TextBlock Classes="setupTitle" IsVisible="{Binding IsFirstRunStep}" Text="{Binding FinishTitle}" />
 
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsProjectStep}"
@@ -38,7 +39,7 @@
                      Text="The default Selection is parsed on every run, so today's results can be compared with yesterday's. Interlinearized texts are a good start because their approved analyses are what accuracy is measured against."
                      TextWrapping="Wrap" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsLimitsStep}"
-                     Text="Set a per-word time limit and a parser step limit. The project defaults are already filled in." TextWrapping="Wrap" />
+                     Text="Choose a parser step limit. Motif estimates how long a word may take and gives it extra time to finish." TextWrapping="Wrap" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsFirstRunStep}"
                      Text="{Binding FinishDescription}" TextWrapping="Wrap" />
         </StackPanel>
@@ -86,19 +87,8 @@
           <StackPanel IsVisible="{Binding IsLimitsStep}" Spacing="{DynamicResource Intent.Space.Group}" VerticalAlignment="Center">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                <TextBlock Text="Time limit per word" FontWeight="SemiBold" />
-                <TextBlock Classes="setupMuted" Text="A word that runs out of time shows as Limit." TextWrapping="Wrap" />
-              </StackPanel>
-              <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding Selection.PerWordTimeLimitSeconds}"
-                             Minimum="0.1" Increment="0.1" FormatString="0.#"
-                             AutomationProperties.Name="Time limit per word, in seconds" />
-            </Grid>
-            <TextBlock Classes="setupError" Text="{Binding TimeLimitValidationMessage}"
-                       IsVisible="{Binding TimeLimitValidationMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                 <TextBlock Text="Parser step limit per word" FontWeight="SemiBold" />
-                <TextBlock Classes="setupMuted" Text="50,000,000 steps is the default. Choose no limit to let parsing continue until it finishes." TextWrapping="Wrap" />
+                <TextBlock Classes="setupMuted" Text="1,000,000 steps is the default. Choose no limit to let parsing continue until it finishes." TextWrapping="Wrap" />
               </StackPanel>
               <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding StepLimitSteps}"
                              Minimum="1" Increment="1000000" FormatString="N0"
@@ -108,6 +98,7 @@
             <CheckBox Content="No step limit" IsChecked="{Binding IsStepLimitUnbounded}" />
             <TextBlock Classes="setupError" Text="{Binding StepLimitValidationMessage}"
                        IsVisible="{Binding StepLimitValidationMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Classes="setupMuted" Text="{Binding StepLimitEstimateText}" TextWrapping="Wrap" />
           </StackPanel>
 
           <StackPanel IsVisible="{Binding IsFirstRunStep}" Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
@@ -121,7 +112,8 @@
 
         <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
           <Button Classes="setupSkip" Content="Skip for now" Command="{Binding SkipCommand}"
-                  AutomationProperties.Name="Skip setup for now" />
+                  AutomationProperties.Name="Skip setup for now"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.SkipSetup}" />
           <views:RefusalBlock Grid.Column="1" DataContext="{Binding ShownRefusal}" VerticalAlignment="Center" />
           <Button Grid.Column="2" Classes="setupSecondary" Content="Back" Command="{Binding BackCommand}"
                   IsVisible="{Binding IsBackVisible}" />

@@ -43,10 +43,10 @@ calling exactly one CLI verb.
 | | |
 | --- | --- |
 | `motif` CLI | `net10.0`. Batch, automation, and AI-agent use; the complete front end — every catalogued command has a verb — and owns the live project while it holds the FieldWorks lock |
-| `SIL.Motif.App` | `net10.0` Avalonia, in this repository. Ships its first window — Baseline, Selection, Assessment, statistics, Handoff. Calls the catalog in-process; never parses `--json` and never holds a live project model |
+| `SIL.Motif.App` | `net10.0` Avalonia, in this repository. A project workspace with seven pages — Overview, Texts, Try a Word, Timing, Warnings, Review changes and AI Handoff ([ADR 0046](docs/adr/0046-pages-not-stages.md)). Calls the catalog in-process; never parses `--json` and never holds a live project model |
 | FieldWorks integration | Intended, but not yet built: at a save boundary with the project released, FieldWorks will call Motif's apply surface for pending work and reload afterward. The current `apply` verb takes one Proposal id; see [AGENTS.md's compatibility target](AGENTS.md#compatibility-targets) for the planned integration shape |
 
-The command catalog has 47 descriptors: 22 are on the Released surface and 25 are Developer commands. The latter are hidden from help and refused at dispatch unless `MOTIF_DEVELOPER_COMMANDS=1` is set; see [the CLI API contract](docs/cli-api.md) for the complete split, usage lines, and exit-code rules.
+The command catalog has 64 descriptors: 30 are on the Released surface and 34 are Developer commands. `motif help` lists the Released ones, `motif help <verb> --full` prints one command's Help page, and `motif help --all --json` emits every command and glossary term for an agent in one call. Developer commands are hidden from help and refused at dispatch unless `MOTIF_DEVELOPER_COMMANDS=1` is set; see [the CLI API contract](docs/cli-api.md) for the complete split, usage lines, and exit-code rules.
 
 Everything else is infrastructure or a dependency — a job runner installed with Motif takes work that must
 outlive a command, PanGloss is a subprocess, and `SIL.Motif.Contract` is a published contract that a separate
@@ -386,6 +386,24 @@ Statistics groups PanGloss's own per-object rows into the same six groups the CL
 accepts, with client-side sort and filter. Handoff writes a self-contained folder — the grammar, the
 chosen Texts, the exact Selection, and PanGloss's statistics — with the data-sensitivity notice always
 shown, and its files are real drag sources for dropping straight into a chat model.
+
+## Documentation
+
+User documentation is generated from one source ([ADR 0047](docs/adr/0047-generated-help-walkthroughs-and-docs-site.md)).
+Every command, window control and glossary term has a Title, a Description and a Help page, kept under `help/<language>/`:
+`commands.json`, `terms.json` and `ui.json` for the short texts, and Markdown for Help pages and the Guide
+(`help/en/guide/`). The CLI and the window read them from the build; the website reads the same files. English is
+the source language and the layout is ready for Crowdin.
+
+The website is a Starlight site in `site/`. To build it locally after `./build.ps1`:
+
+```
+.\bin\Debug\motif.exe help --all --json > bin\help-export.json
+cd site; npm ci; $env:MOTIF_HELP_EXPORT = "$PWD\..\bin\help-export.json"; npm run build
+```
+
+Without an export it builds from the samples in `site/fixtures/`. Screenshots and clips will come from
+Walkthroughs, which are planned in `docs/superpowers/plans/2026-09-26-docs-content-plan.md` and not built yet.
 
 ## Vocabulary and design constraints
 

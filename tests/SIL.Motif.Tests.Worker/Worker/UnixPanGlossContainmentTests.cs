@@ -15,6 +15,15 @@ public sealed class RequiresUnixFactAttribute : FactAttribute
     }
 }
 
+public sealed class RequiresMacFactAttribute : FactAttribute
+{
+    public RequiresMacFactAttribute()
+    {
+        if (!OperatingSystem.IsMacOS())
+            Skip = "The process-footprint watchdog is available only on macOS.";
+    }
+}
+
 public sealed class UnixPanGlossContainmentTests
 {
     private static readonly TimeSpan BoundedWait = TimeSpan.FromSeconds(15);
@@ -58,15 +67,43 @@ public sealed class UnixPanGlossContainmentTests
         };
         startInfo.ArgumentList.Add("--allocate-memory");
         startInfo.ArgumentList.Add((320 * 1024 * 1024).ToString(CultureInfo.InvariantCulture));
+        startInfo.ArgumentList.Add("5000");
         using var process = job.Start(startInfo);
 
         await process.WaitForExitAsync().WaitAsync(BoundedWait);
 
         Assert.True(process.ExitCode is 73 or 137);
         Assert.Equal(MemoryLimitBytes, job.Report.MemoryLimitBytes);
+        if (OperatingSystem.IsMacOS())
+        {
+            var standardError = await process.ReadStandardErrorAsync();
+            Assert.True(job.Report.AggregateMemoryLimit);
+            Assert.Contains("watchdog", job.Report.Memory);
+            Assert.Contains(job.Report.Limitations,
+                limitation => limitation.Contains("sampling", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains("exceeded its macOS physical-footprint memory limit", standardError);
+        }
     }
 
-    private static ProcessStartInfo Shell(string script, string argument)
+    [RequiresMacFact]
+    public async Task MemoryLimitCountsTheCombinedFootprintOfAProcessGroup()
+    {
+        using var job = PanGlossContainment.CreateJob(MemoryLimitBytes);
+        var parser = ShellQuote(FakeParser.ExecutablePath);
+        var bytes = (160 * 1024 * 1024).ToString(CultureInfo.InvariantCulture);
+        var script = $"{parser} --allocate-memory {bytes} 5000 & first=$!; " +
+            $"{parser} --allocate-memory {bytes} 5000 & second=$!; " +
+            "wait \"$first\"; wait \"$second\"";
+        using var process = job.Start(Shell(script));
+
+        await process.WaitForExitAsync().WaitAsync(BoundedWait);
+
+        Assert.Equal(137, process.ExitCode);
+        var standardError = await process.ReadStandardErrorAsync();
+        Assert.Contains("exceeded its macOS physical-footprint memory limit", standardError);
+    }
+
+    private static ProcessStartInfo Shell(string script, string? argument = null)
     {
         var startInfo = new ProcessStartInfo("/bin/sh")
         {
@@ -77,9 +114,11 @@ public sealed class UnixPanGlossContainmentTests
         startInfo.ArgumentList.Add("-c");
         startInfo.ArgumentList.Add(script);
         startInfo.ArgumentList.Add("containment-test");
-        startInfo.ArgumentList.Add(argument);
+        if (argument is not null) startInfo.ArgumentList.Add(argument);
         return startInfo;
     }
+
+    private static string ShellQuote(string value) => "'" + value.Replace("'", "'\\''", StringComparison.Ordinal) + "'";
 
     private static int GetProcessGroupId(int processId) => UnixProcessIdentity.GetProcessGroupId(processId);
 

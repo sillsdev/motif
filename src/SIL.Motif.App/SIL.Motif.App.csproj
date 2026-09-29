@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />
     <ProjectReference Include="..\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Help\SIL.Motif.Help.csproj" />
   </ItemGroup>
 
 </Project>

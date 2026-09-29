@@ -43,6 +43,7 @@ public sealed class CommandsProjectReferenceTests
         var document = XDocument.Load(path);
         return document.Descendants()
             .Where(element => element.Name.LocalName == "ProjectReference")
-            .Select(element => Path.GetFileNameWithoutExtension(element.Attribute("Include")!.Value));
+            .Select(element => Path.GetFileNameWithoutExtension(
+                element.Attribute("Include")!.Value.Replace('\\', Path.DirectorySeparatorChar)));
     }
 }

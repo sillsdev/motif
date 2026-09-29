@@ -44,6 +44,27 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
+    public void ErrorFindingsHaveTheirOwnBucketAndSeverity()
+    {
+        var error = EntryWarning with
+        {
+            Severity = GrammarDiagnosticLevel.Error,
+            Text = "error: hc-unresolved-morph-type: msa does not resolve within this entry",
+        };
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([EntryWarning, error, PhonemeWarning]);
+
+        Assert.Equal(1, table.ErrorCount);
+        Assert.Single(table.ErrorGroups);
+        table.SetBucketCommand.Execute(GrammarFindingBucket.Errors);
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.Equal("error", row.Severity);
+        Assert.True(row.IsError);
+        Assert.Equal("1 error, 1 warning, 1 information finding.", table.BreakdownText);
+    }
+
+    [Fact]
     public void AnExactlyRepeatedReportIsOneRowWithItsCount()
     {
         var table = new GrammarWarningsViewModel();

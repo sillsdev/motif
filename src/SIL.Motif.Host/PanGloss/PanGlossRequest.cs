@@ -19,6 +19,8 @@ public abstract record PanGlossRequest
     /// <summary>The subcommand this request runs, as the binary spells it.</summary>
     public abstract string Subcommand { get; }
 
+    internal virtual bool AcceptsNonzeroExit => false;
+
     /// <summary>Throws for a request a caller has built wrongly; this is programmer error, not an outcome.</summary>
     internal abstract void Validate();
 
@@ -28,7 +30,7 @@ public abstract record PanGlossRequest
     /// <summary>Appends the subcommand and its arguments, one item each so paths need no quoting.</summary>
     internal abstract void AddArguments(ProcessStartInfo startInfo, string scratch);
 
-    /// <summary>Turns a zero exit into the request's output, or reports what the parser promised and did not write.</summary>
+    /// <summary>Turns process output into the request's outcome.</summary>
     internal abstract PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed);
 
     /// <summary>
@@ -37,7 +39,7 @@ public abstract record PanGlossRequest
     /// on deep-truncation grammars, and the queue already serialises parsers machine-wide.
     /// </summary>
     public sealed record Batch(
-        string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan PerWordLimit, string? StatsCachePath = null,
+        string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan? PerWordLimit, string? StatsCachePath = null,
         StepCap? PerWordStepLimit = null, string? ArtifactDirectory = null)
         : PanGlossRequest
     {
@@ -52,7 +54,7 @@ public abstract record PanGlossRequest
         {
             if (string.IsNullOrWhiteSpace(ProjectFilePath)) throw new ArgumentException("Required.", nameof(ProjectFilePath));
             ArgumentNullException.ThrowIfNull(Words);
-            if (PerWordLimit <= TimeSpan.Zero)
+            if (PerWordLimit is { } timeLimit && timeLimit <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(PerWordLimit), "A per-word limit must be positive.");
             if (!File.Exists(ProjectFilePath))
                 throw new FileNotFoundException("The project file the parser must read does not exist.", ProjectFilePath);
@@ -67,8 +69,11 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(ProjectFilePath);
             startInfo.ArgumentList.Add(Path.Combine(scratch, "words.txt"));
             startInfo.ArgumentList.Add(Path.Combine(scratch, "out.tsv"));
-            startInfo.ArgumentList.Add("--word-timeout-ms");
-            startInfo.ArgumentList.Add(((int)PerWordLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
+            if (PerWordLimit is { } timeLimit)
+            {
+                startInfo.ArgumentList.Add("--word-timeout-ms");
+                startInfo.ArgumentList.Add(((int)timeLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
+            }
             startInfo.ArgumentList.Add("--step-cap");
             startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToArgument());
             startInfo.ArgumentList.Add("--threads");
@@ -153,6 +158,7 @@ public abstract record PanGlossRequest
 
         internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
         {
+            // PanGloss's built-in 50,000,000-step runaway guard is kept for Try a Word by owner choice.
             startInfo.ArgumentList.Add("parse");
             startInfo.ArgumentList.Add(GrammarPath);
             startInfo.ArgumentList.Add(Word);
@@ -171,9 +177,12 @@ public abstract record PanGlossRequest
     /// standard output. Omitting its optional output path keeps the report available when PanGloss exits
     /// nonzero to signal error-level diagnostics.
     /// </summary>
+    /// <remarks>PanGloss can exit nonzero after writing an error report; that report remains usable. A nonzero exit
+    /// without a report is refused.</remarks>
     public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName) : PanGlossRequest
     {
         public override string Subcommand => "grammar-health";
+        internal override bool AcceptsNonzeroExit => true;
 
         internal override void Validate()
         {

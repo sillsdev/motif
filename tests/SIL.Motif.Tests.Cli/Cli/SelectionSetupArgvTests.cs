@@ -52,10 +52,10 @@ public sealed class SelectionSetupArgvTests : IDisposable
     {
         var skipped = Run($"setup skip --project \"{Project}\" --json");
 
-        Assert.Equal(0, skipped.ExitCode);
+        Assert.True(skipped.ExitCode == 0, $"Expected exit code 0; got {skipped.ExitCode}.{Environment.NewLine}{skipped.Error}");
         var read = Run($"selection show --project \"{Project}\" --json");
 
-        Assert.Equal(0, read.ExitCode);
+        Assert.True(read.ExitCode == 0, $"Expected exit code 0; got {read.ExitCode}.{Environment.NewLine}{read.Error}");
         using var document = JsonDocument.Parse(read.Output);
         Assert.True(document.RootElement.TryGetProperty("setupSkipped", out var setupSkipped), read.Output);
         Assert.True(setupSkipped.GetBoolean());

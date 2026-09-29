@@ -6,15 +6,15 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins the dependency boundary for <c>SIL.Motif.App</c>: it binds to typed command outcomes from
-/// <c>SIL.Motif.Commands</c> and never reaches around it into the CLI, LibLCM, or SQLite.
+/// <c>SIL.Motif.Commands</c> and Help content, and never reaches around it into the CLI, LibLCM, or SQLite.
 /// </summary>
 public sealed class AppDependencyTests
 {
     [Fact]
-    public void AppReferencesExactlyCommandsAndContract()
+    public void AppReferencesCommandsContractAndHelp()
     {
         Assert.Equal(
-            new[] { "SIL.Motif.Commands", "SIL.Motif.Contract" },
+            new[] { "SIL.Motif.Commands", "SIL.Motif.Contract", "SIL.Motif.Help" },
             ReferencedProjectNames("SIL.Motif.App").Order(StringComparer.Ordinal));
     }
 
@@ -56,6 +56,7 @@ public sealed class AppDependencyTests
         var document = XDocument.Load(ProjectFile(projectName));
         return document.Descendants()
             .Where(element => element.Name.LocalName == "ProjectReference")
-            .Select(element => Path.GetFileNameWithoutExtension(element.Attribute("Include")!.Value));
+            .Select(element => Path.GetFileNameWithoutExtension(
+                element.Attribute("Include")!.Value.Replace('\\', Path.DirectorySeparatorChar)));
     }
 }

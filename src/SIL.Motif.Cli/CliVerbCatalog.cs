@@ -8,9 +8,8 @@ namespace SIL.Motif.Cli;
 /// the single command it reaches (matched by name against
 /// <see cref="SIL.Motif.Commands.Catalog.CommandCatalog.All"/>), and the usage line(s) printed for it.
 /// A verb whose flag selects between two different handlers — <c>report</c>, <c>dry-run</c>,
-/// <c>trial</c> — contributes two descriptors sharing a <see cref="Section"/> and <see cref="Verb"/>
-/// but each naming a distinct <see cref="CommandName"/>; only the first of the pair carries a usage
-/// line, so the banner does not print the shared line twice.
+/// <c>trial</c> — contributes descriptors that share a <see cref="Section"/> and <see cref="Verb"/>
+/// while naming distinct <see cref="CommandName"/> values and their invocation paths.
 /// </summary>
 public sealed record CliVerbDescriptor(
     string Section, string Verb, string CommandName, IReadOnlyList<string> UsageLines);
@@ -44,12 +43,24 @@ public static class CliVerbCatalog
             new[] { "put-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> --kind <kind> --word <word> [--wordform-id <id>] " +
                 "[--assessment <id> --reading-index <zero-based> --reading-json <json>] " +
-                "[--stored-analysis-id <id>] [--json]" }),
+                "[--stored-analysis-id <id>] [--occurrence-text-id <guid> " +
+                "--occurrence-paragraph-id <guid> --occurrence-segment-id <guid> " +
+                "--occurrence-index <zero-based>] [--json]" }),
+        new CliVerbDescriptor("Commands", "remove-analysis", "remove-analysis",
+            new[] { "remove-analysis --project <fwdata> --expected-revision <revision> " +
+                "(--analysis-id <id> --change-id <id> --wordform-id <id> --word <word> " +
+                "| --analysis-ids <id,id,...> | --text-id <guid>) [--json]" }),
+        new CliVerbDescriptor("Commands", "accept-new-set", "accept-new-set",
+            new[] { "accept-new-set --project <fwdata> --expected-revision <revision> " +
+                "--assessment <id> (--wordform-id <id> | --text-id <guid> | --selection) [--json]" }),
         new CliVerbDescriptor("Commands", "remove-pending-change", "remove-pending-change",
             new[] { "remove-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> [--json]" }),
         new CliVerbDescriptor("Commands", "recheck-pending-changes", "recheck-pending-changes",
             new[] { "recheck-pending-changes --project <fwdata> --expected-revision <revision> [--json]" }),
+        new CliVerbDescriptor("Commands", "reconfirm-pending-change", "reconfirm-pending-change",
+            new[] { "reconfirm-pending-change --project <fwdata> --expected-revision <revision> " +
+                "--change-id <id> [--json]" }),
         new CliVerbDescriptor("Commands", "review-numbers", "review-numbers",
             new[] { "review-numbers --project <fwdata> [--from <assessmentId>] " +
                 "--to <assessmentId> --touched-words <count> [--json]" }),
@@ -128,11 +139,19 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "dry-run", "dry-run",
             new[] { "dry-run --project <fwdata> <proposalId> [--wait] [--json]" }),
-        new CliVerbDescriptor("Commands", "dry-run", "dry-run --wait", NoUsage),
+        new CliVerbDescriptor(
+            "Commands", "dry-run", "dry-run --wait",
+            new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
             new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]" }),
-        new CliVerbDescriptor("Commands", "trial", "trial --wait", NoUsage),
+        new CliVerbDescriptor(
+            "Commands", "trial", "trial --wait",
+            new[]
+            {
+                "trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] --wait " +
+                "[--wait-timeout-ms <ms>] [--json]",
+            }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --pending",
             new[]
@@ -176,6 +195,7 @@ public static class CliVerbCatalog
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
                 "[--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] " +
                 "[--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]",
+                "The default per-word step cap is 1,000,000 steps.",
             }),
 
         new CliVerbDescriptor(
@@ -222,7 +242,8 @@ public static class CliVerbCatalog
             "Handoff", "handoff", "handoff",
             new[]
             {
-                "handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]",
+                "handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR " +
+                "motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]",
             }),
 
         new CliVerbDescriptor(

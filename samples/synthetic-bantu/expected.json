@@ -1,0 +1,146 @@
+{
+  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Swahili, but it is not real Swahili, has not been checked by speakers, and must not be used as a description of any language.",
+  "fixed": {
+    "words": 11,
+    "parsed": 11,
+    "textCoverage": 1,
+    "work": 1723,
+    "steps": 158,
+    "wallClockMs": 9056,
+    "slowestWords": [
+      "nililala",
+      "ninampiga",
+      "ninasoma",
+      "ninawapiga"
+    ],
+    "failing": {},
+    "grammarFindings": []
+  },
+  "broken": {
+    "words": 11,
+    "parsed": 9,
+    "textCoverage": 0.8181818181818182,
+    "work": 32268,
+    "steps": 4957,
+    "wallClockMs": 9004,
+    "slowestWords": [
+      "ninaleta",
+      "ninampiga",
+      "ninasoma",
+      "ninawapiga"
+    ],
+    "failing": {
+      "nililala": "past-marker-entered-as-lu",
+      "vitabu": "class-8-prefix-entered-as-ki"
+    },
+    "grammarFindings": []
+  },
+  "variants": {
+    "fixed": {
+      "words": 11,
+      "parsed": 11,
+      "textCoverage": 1,
+      "work": 1723,
+      "steps": 158,
+      "wallClockMs": 9056,
+      "slowestWords": [
+        "nililala",
+        "ninampiga",
+        "ninasoma",
+        "ninawapiga"
+      ],
+      "failing": {},
+      "grammarFindings": []
+    },
+    "class-8-prefix-entered-as-ki": {
+      "words": 11,
+      "parsed": 10,
+      "textCoverage": 0.9090909090909091,
+      "work": 1723,
+      "steps": 158,
+      "wallClockMs": 9089,
+      "slowestWords": [
+        "nililala",
+        "ninampiga",
+        "ninasoma",
+        "ninawapiga"
+      ],
+      "failing": {
+        "vitabu": "class-8-prefix-entered-as-ki"
+      },
+      "grammarFindings": []
+    },
+    "object-before-tense": {
+      "words": 11,
+      "parsed": 9,
+      "textCoverage": 0.8181818181818182,
+      "work": 1685,
+      "steps": 158,
+      "wallClockMs": 10259,
+      "slowestWords": [
+        "nililala",
+        "ninampiga",
+        "ninasoma",
+        "ninawapiga"
+      ],
+      "failing": {
+        "ninampiga": "object-before-tense",
+        "ninawapiga": "object-before-tense"
+      },
+      "grammarFindings": []
+    },
+    "past-marker-entered-as-lu": {
+      "words": 11,
+      "parsed": 10,
+      "textCoverage": 0.9090909090909091,
+      "work": 1690,
+      "steps": 155,
+      "wallClockMs": 10191,
+      "slowestWords": [
+        "ninaleta",
+        "ninampiga",
+        "ninasoma",
+        "ninawapiga"
+      ],
+      "failing": {
+        "nililala": "past-marker-entered-as-lu"
+      },
+      "grammarFindings": []
+    },
+    "duplicated-object-marker-slots": {
+      "words": 11,
+      "parsed": 11,
+      "textCoverage": 1,
+      "work": 33595,
+      "steps": 5214,
+      "wallClockMs": 9007,
+      "slowestWords": [
+        "nililala",
+        "ninampiga",
+        "ninasoma",
+        "ninawapiga"
+      ],
+      "failing": {},
+      "grammarFindings": []
+    },
+    "all-bugs": {
+      "words": 11,
+      "parsed": 9,
+      "textCoverage": 0.8181818181818182,
+      "work": 32268,
+      "steps": 4957,
+      "wallClockMs": 9004,
+      "slowestWords": [
+        "ninaleta",
+        "ninampiga",
+        "ninasoma",
+        "ninawapiga"
+      ],
+      "failing": {
+        "nililala": "past-marker-entered-as-lu",
+        "vitabu": "class-8-prefix-entered-as-ki"
+      },
+      "grammarFindings": []
+    }
+  }
+}

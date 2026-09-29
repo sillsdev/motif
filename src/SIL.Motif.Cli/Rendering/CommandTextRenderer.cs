@@ -253,7 +253,7 @@ public static class CommandTextRenderer
         return $"Default Selection: {selection.Name}{Environment.NewLine}" +
             $"  Texts:       {selection.TextIds.Count:N0}{Environment.NewLine}" +
             $"  Added words: {selection.AddedWords.Count:N0}{Environment.NewLine}" +
-            $"  Time limit:  {selection.PerWordLimitMs:N0} ms{Environment.NewLine}" +
+            $"  Time limit:  {(selection.PerWordLimitMs is { } timeLimit ? $"{timeLimit:N0} ms" : "none")}{Environment.NewLine}" +
             $"  Step limit:  {selection.PerWordStepLimit?.ToArgument() ?? "project default"}{Environment.NewLine}" +
             $"  Updated:     {selection.UpdatedUtc}{Environment.NewLine}";
     }
@@ -305,7 +305,10 @@ public static class CommandTextRenderer
         text.AppendLine($"Timing     median {FormatMs(response.Timing.MedianMs)}  p95 {FormatMs(response.Timing.Percentile95Ms)}  " +
             (slowest is null ? "slowest (none)" : $"slowest {slowest.Word} {slowest.ElapsedMs:N0} ms"));
         if (response.Warnings is not null)
-            text.AppendLine($"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings");
+            text.AppendLine($"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings " +
+                $"({CountLabel(response.Warnings.ErrorCount, "error", "errors")}, " +
+                $"{CountLabel(response.Warnings.WarningCount, "warning", "warnings")}, " +
+                $"{response.Warnings.InformationCount?.ToString("N0") ?? "unknown"} information)");
         return text.ToString();
     }
 
@@ -318,7 +321,7 @@ public static class CommandTextRenderer
                 Environment.NewLine;
         var text = new StringBuilder();
         text.AppendLine($"Grammar findings: {response.TotalCount:N0} " +
-            $"({response.ErrorCount:N0} errors, {response.WarningCount:N0} warnings, " +
+            $"({CountLabel(response.ErrorCount, "error", "errors")}, {CountLabel(response.WarningCount, "warning", "warnings")}, " +
             $"{response.InformationCount:N0} information)");
         foreach (var kind in response.ByKind)
             text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}");
@@ -332,15 +335,13 @@ public static class CommandTextRenderer
         if (!response.HasBaseline)
             return "No Baseline has been captured. Run: motif baseline capture <fwdata>" + Environment.NewLine;
 
-        var warningCount = response.Findings.Count(finding =>
-            finding.Severity == GrammarDiagnosticLevel.Warning);
-        var errorCount = response.Findings.Count(finding =>
-            finding.Severity == GrammarDiagnosticLevel.Error);
-        var informationCount = response.Findings.Count(finding =>
-            finding.Severity == GrammarDiagnosticLevel.Information);
+        var errorCount = response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error);
+        var warningCount = response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning);
+        var informationCount = response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information);
         var text = new StringBuilder();
         text.AppendLine($"Grammar findings: {response.Findings.Count:N0} " +
-            $"({errorCount:N0} errors, {warningCount:N0} warnings, {informationCount:N0} information)");
+            $"({CountLabel(errorCount, "error", "errors")}, {CountLabel(warningCount, "warning", "warnings")}, " +
+            $"{informationCount:N0} information)");
         foreach (var summary in response.Summary)
             text.AppendLine($"  {summary.Code}: {summary.Count:N0} {summary.Level.ToWireValue()}");
         foreach (var finding in response.Findings)
@@ -367,6 +368,10 @@ public static class CommandTextRenderer
         }
         return text.ToString();
     }
+
+    private static string CountLabel(int? count, string singular, string plural) => count is { } value
+        ? $"{value:N0} {(value == 1 ? singular : plural)}"
+        : "unknown";
 
     private static string FormatPercent(double? value) => value is { } percent
         ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%"

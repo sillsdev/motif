@@ -15,16 +15,18 @@ public static class WfiAnalysisOperationKinds
 {
     public const string AddRefEvaluations = "analysis/wfiAnalysis/addRefEvaluations";
     public const string RemoveRefEvaluations = "analysis/wfiAnalysis/removeRefEvaluations";
+    public const string DeleteAnalysis = "analysis/wfiAnalysis/delete";
     public const string CreateAnalysis = "analysis/wfiWordform/createAnalyses";
 
 #pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
-        foreach (var kind in new[] { AddRefEvaluations, RemoveRefEvaluations, CreateAnalysis })
+        foreach (var kind in new[] { AddRefEvaluations, RemoveRefEvaluations, DeleteAnalysis, CreateAnalysis })
             OperationKindRegistry.Register(kind);
         OperationHandlerRegistry.Register(AddRefEvaluations, new HumanEvaluationHandler(true));
         OperationHandlerRegistry.Register(RemoveRefEvaluations, new HumanEvaluationHandler(false));
+        OperationHandlerRegistry.Register(DeleteAnalysis, new DeleteAnalysisHandler());
         OperationHandlerRegistry.Register(CreateAnalysis, new CreateAnalysisHandler());
     }
 #pragma warning restore CA2255
@@ -81,6 +83,126 @@ internal sealed class HumanEvaluationHandler(bool add) : IOperationHandler
 
     private static IReadOnlyDictionary<string, string> Read(IWfiAnalysis analysis) =>
         AnalysisFieldSnapshots.Read(analysis).AlternativesFields[SnapshotFields.WfiAnalysisEvaluations];
+}
+
+/// <summary>The closed empty payload for deleting one stored analysis.</summary>
+public static class DeleteAnalysisPayload
+{
+    public static void Parse(JsonElement after)
+    {
+        var kind = WfiAnalysisOperationKinds.DeleteAnalysis;
+        ClosedPayloadParsing.RequireObject(after, kind);
+        ClosedPayloadParsing.RejectUnknownProperties(after, [], kind);
+    }
+}
+
+internal sealed class DeleteAnalysisHandler : IOperationHandler
+{
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
+    public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation,
+        List<CanonicalId> touchedTargets)
+    {
+        DeleteAnalysisPayload.Parse(operation.After ?? throw new ContractParseException(
+            $"'{WfiAnalysisOperationKinds.DeleteAnalysis}' operation requires 'after'."));
+        var (analysisId, analysis) = TargetResolution.Resolve<IWfiAnalysis>(
+            cache, operation, WfiAnalysisOperationKinds.DeleteAnalysis);
+        var wordform = analysis.Owner as IWfiWordform ?? throw new ContractParseException(
+            $"'{WfiAnalysisOperationKinds.DeleteAnalysis}' target must be owned by a wordform.");
+        var wordformId = CanonicalId.FromGuid(wordform.Guid);
+        var before = Read(wordform);
+        var uses = ReadTextUses(cache, analysis, wordform);
+        touchedTargets.Add(analysisId);
+
+        analysis.MoveConcAnnotationsToWordform();
+        analysis.Delete();
+        VerifyTextUses(cache, uses, wordform);
+
+        return new ExpectedEffect(wordformId, SnapshotFields.WfiWordformAnalyses, before, Read(wordform),
+            Preview(uses));
+    }
+
+    public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
+    {
+        DeleteAnalysisPayload.Parse(operation.After ?? throw new ContractParseException(
+            $"'{WfiAnalysisOperationKinds.DeleteAnalysis}' operation requires 'after'."));
+        var (analysisId, analysis) = TargetResolution.Resolve<IWfiAnalysis>(
+            cache, operation, WfiAnalysisOperationKinds.DeleteAnalysis);
+        var wordform = analysis.Owner as IWfiWordform ?? throw new ContractParseException(
+            $"'{WfiAnalysisOperationKinds.DeleteAnalysis}' target must be owned by a wordform.");
+        var current = Read(wordform);
+        var uses = ReadTextUses(cache, analysis, wordform);
+        return new ExpectedEffect(CanonicalId.FromGuid(wordform.Guid), SnapshotFields.WfiWordformAnalyses,
+            current, current, Preview(uses));
+    }
+
+    private static Dictionary<string, string> Read(IWfiWordform wordform) => AnalysisFieldSnapshots.Read(wordform)
+        .AlternativesFields[SnapshotFields.WfiWordformAnalyses].ToDictionary(pair => pair.Key, pair => pair.Value,
+            StringComparer.Ordinal);
+
+    private static JsonElement Preview(IReadOnlyList<AnalysisTextUse> uses) =>
+        JsonSerializer.SerializeToElement(new { textUses = uses }, JsonOptions);
+
+    private static IReadOnlyList<AnalysisTextUse> ReadTextUses(LcmCache cache, IWfiAnalysis analysis,
+        IWfiWordform wordform)
+    {
+        var analysisId = CanonicalId.FromGuid(analysis.Guid);
+        var wordformId = CanonicalId.FromGuid(wordform.Guid).Value;
+        var wordformForm = wordform.Form.VernacularDefaultWritingSystem?.Text ?? "";
+        var uses = new List<AnalysisTextUse>();
+        foreach (var text in cache.ServiceLocator.GetInstance<ITextRepository>().AllInstances())
+        {
+            if (text.ContentsOA is not { } contents) continue;
+            foreach (var paragraphObject in contents.ParagraphsOS)
+            {
+                if (paragraphObject is not IStTxtPara paragraph) continue;
+                foreach (var segment in paragraph.SegmentsOS)
+                for (var index = 0; index < segment.AnalysesRS.Count; index++)
+                {
+                    var item = segment.AnalysesRS[index];
+                    var throughGloss = item.Owner?.Guid == analysis.Guid;
+                    if (item.Guid != analysis.Guid && !throughGloss) continue;
+                    uses.Add(new AnalysisTextUse(
+                        CanonicalId.FromGuid(text.Guid).Value,
+                        text.Name.get_String(cache.DefaultAnalWs)?.Text ?? "",
+                        CanonicalId.FromGuid(paragraph.Guid).Value,
+                        CanonicalId.FromGuid(segment.Guid).Value,
+                        index,
+                        wordformId,
+                        wordformForm,
+                        throughGloss,
+                        "The wordform replaces this analysis or its gloss at the same index; " +
+                        "the other words in the Segment keep their positions."));
+                }
+            }
+        }
+        return uses
+            .OrderBy(use => use.TextId, StringComparer.Ordinal)
+            .ThenBy(use => use.ParagraphId, StringComparer.Ordinal)
+            .ThenBy(use => use.SegmentId, StringComparer.Ordinal)
+            .ThenBy(use => use.Index)
+            .ToArray();
+    }
+
+    private static void VerifyTextUses(LcmCache cache, IReadOnlyList<AnalysisTextUse> uses,
+        IWfiWordform wordform)
+    {
+        foreach (var use in uses)
+        {
+            if (!CanonicalId.TryParse(use.SegmentId, out var segmentId) ||
+                !cache.ServiceLocator.ObjectRepository.TryGetObject(segmentId.ToGuid(), out var item) ||
+                item is not ISegment segment || use.Index >= segment.AnalysesRS.Count ||
+                segment.AnalysesRS[use.Index]?.Guid != wordform.Guid)
+                throw new InvalidOperationException(
+                    "Deleting the analysis did not preserve its wordform at the same Segment index.");
+        }
+    }
+
+    private sealed record AnalysisTextUse(string TextId, string TextName, string ParagraphId, string SegmentId,
+        int Index, string WordformId, string Wordform, bool ThroughGloss, string After);
 }
 
 /// <summary>One ordered morph bundle in a new parser candidate.</summary>

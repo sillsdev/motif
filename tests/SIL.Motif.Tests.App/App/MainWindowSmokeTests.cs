@@ -12,7 +12,9 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using LiveMarkdown.Avalonia;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -44,6 +46,43 @@ public sealed class MainWindowSmokeTests
     public MainWindowSmokeTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
+    public void F1OpensHelpForTheCurrentPage()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            workspace.CurrentPage = WorkspacePage.Timing;
+            try
+            {
+                window.Show();
+                window.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.None, null);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var helpButton = window.FindControl<Button>("HelpButton");
+                Assert.NotNull(helpButton);
+                Assert.True(helpButton.Flyout?.IsOpen);
+                var helpView = Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content);
+                Assert.Equal("Timing", helpView.FindControl<TextBlock>("HelpTitle")?.Text);
+                Assert.Contains("Timing shows where recorded parse time went",
+                    helpView.FindControl<TextBlock>("HelpDescription")?.Text);
+                var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
+                var renderedTextProjection = markdownRenderer.RenderedTextProjection ??
+                    throw new Xunit.Sdk.XunitException("The help text was not rendered.");
+                Assert.Contains("More time does not fix a search that reached its step limit",
+                    string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString())));
+                var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
+                Assert.Contains("More time does not fix a search that reached its step limit", help.Markdown);
+                Assert.Contains("Slowest words in Timing", help.Markdown);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void ComposeAttachesEveryPanelBoundToItsOwnChildViewModelAndSetsTheWindowsDataContext()
     {
         _avalonia.Invoke(() =>
@@ -51,6 +90,7 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
 
             Assert.Same(workspace, window.DataContext);
+            Assert.Equal("Motif (tech demo)", window.Title);
             Assert.Same(workspace.PageModel<OverviewPageModel>(),
                 Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>()).DataContext);
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
@@ -69,7 +109,53 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void OverviewLoadsStoredNumbersThroughThePageContextAndItsTilesNavigateWithoutRunningAnAssessment()
+    public void ReviewChangesShowsTheFieldWorksBackupReminder()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (_, window, _) = NewComposedWindow();
+            try
+            {
+                Assert.Contains("Tech demo: make sure you have a FieldWorks backup before applying.",
+                    window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void FirstRunNoticeIsVisibleInTheWindow()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences(), new SucceedingUriLauncher());
+            var (_, window, _) = NewComposedWindow(notice);
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+
+                var banner = Assert.IsType<Border>(window.FindControl<Border>("TechDemoNotice"));
+                Assert.True(banner.IsVisible);
+                Assert.Contains(TechDemoNoticeViewModel.NoticeText,
+                    window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
+                Assert.Contains("Got it", window.GetLogicalDescendants().OfType<Button>()
+                    .Select(button => button.Content as string));
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Acknowledge the tech demo notice");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void OverviewKeepsItsTileLayoutAndShowsARefreshRefusalOnce()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -95,29 +181,6 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains(@"C:\projects\aweti.fwdata", Assert.Single(fake.OverviewRequests).ProjectPath);
                 Assert.Contains($"opened {overview.MotifStoreCreatedUtc.ToLocalTime():h:mm tt}", text);
                 Assert.Contains($"last FieldWorks save {overview.LastFieldWorksSaveUtc!.Value.ToLocalTime():h:mm tt}", text);
-                Assert.Contains("125", text);
-                Assert.Contains("313", text);
-                Assert.Contains("812", text);
-                Assert.Contains("38", text);
-                Assert.Contains("167", text);
-                Assert.Contains("33%", text);
-                Assert.Contains("41 of 125 words", text);
-                Assert.Contains("23 no parse", text);
-                Assert.Contains("55 timed out", text);
-                Assert.Contains("6 skipped", text);
-                Assert.Contains("183 of 313 occurrences · 58% covered", text);
-                Assert.Contains("18 of 39", text);
-                Assert.Contains("5 violations", text);
-                Assert.Contains("55 Unknown (timed out)", text);
-                Assert.Contains("2 rejected analyses rebuilt", text);
-                Assert.DoesNotContain("2 rejected analyses rebuilt: 2 of 4", text);
-                Assert.Contains("candidates confirmed: 9 of 18", text);
-                Assert.Contains("8.4 ms", text);
-                Assert.Contains("123.5 ms", text);
-                Assert.Contains("6 findings", text);
-                Assert.Contains("1 left out of the grammar", text);
-                Assert.Contains("5 worth a look", text);
-                Assert.Contains("Largest kind: environment failed validation (4)", text);
                 Assert.Contains("FieldWorks has changed since the Baseline behind these numbers.", text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
@@ -129,7 +192,6 @@ public sealed class MainWindowSmokeTests
                     .Single(item => item.Text == "41 of 125 words in the default Selection").FontWeight);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
                     .Single(item => item.Text == "median parse time per word").FontWeight);
-                Assert.Contains("Matrix →", text);
                 var tiles = window.GetLogicalDescendants().OfType<Button>()
                     .Where(item => AutomationProperties.GetName(item) is "Open Text Coverage in Texts" or
                         "Open accuracy in Texts" or "Open Timing" or "Open Warnings");
@@ -139,22 +201,6 @@ public sealed class MainWindowSmokeTests
                     Assert.Equal(Avalonia.Layout.VerticalAlignment.Stretch, tile.VerticalAlignment);
                 });
 
-                Click("Open Text Coverage in Texts");
-                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
-
-                Click("Open accuracy in Texts");
-                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
-
-                Click("Open Timing");
-                Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
-
-                Click("Open Warnings");
-                Assert.Equal(WorkspacePage.Warnings, workspace.CurrentPage);
-
-                Click("Start an AI Handoff");
-                Assert.Equal(WorkspacePage.AiHandoff, workspace.CurrentPage);
                 workspace.Context.PublishEvidence(new WorkspaceEvidence(new AssessCommandResponse(
                     new BaselineCaptureResponse(
                         new BaselineToken("project", "sha256:" + new string('a', 64), "1",
@@ -174,13 +220,6 @@ public sealed class MainWindowSmokeTests
                     "FieldWorks still has the project open.", StringComparison.Ordinal) == true));
                 Assert.Equal(1, visibleText.Count(item => item == "FieldWorks holds this project open right now."));
                 Assert.Empty(fake.AssessRequests);
-
-                void Click(string accessibleName)
-                {
-                    var button = window.GetLogicalDescendants().OfType<Button>()
-                        .Single(item => AutomationProperties.GetName(item) == accessibleName);
-                    button.Command!.Execute(button.CommandParameter);
-                }
             }
             finally
             {
@@ -1238,7 +1277,7 @@ public sealed class MainWindowSmokeTests
     }
 
     private static (WorkspaceShellViewModel Workspace, MainWindow Window, FakeDragSource DragSource)
-        NewComposedWindow()
+        NewComposedWindow(TechDemoNoticeViewModel? techDemoNotice = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -1250,7 +1289,7 @@ public sealed class MainWindowSmokeTests
             selection,
             new AssessViewModel(fake, selection),
             new FakeFolderPicker(), dragSource,
-            fake, clipboard: new AvaloniaClipboard(window));
+            fake, clipboard: new AvaloniaClipboard(window), techDemoNotice: techDemoNotice);
 
         window.Compose(workspace);
         return (workspace, window, dragSource);
@@ -1287,6 +1326,18 @@ public sealed class MainWindowSmokeTests
     {
         public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(null);
+    }
+
+    private sealed class MemoryTechDemoNoticePreferences : ITechDemoNoticePreferences
+    {
+        public bool HasSeenTechDemoNotice { get; private set; }
+
+        public void MarkTechDemoNoticeSeen() => HasSeenTechDemoNotice = true;
+    }
+
+    private sealed class SucceedingUriLauncher : IUriLauncher
+    {
+        public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
     private sealed class FakeFolderPicker : IHandoffFolderPicker

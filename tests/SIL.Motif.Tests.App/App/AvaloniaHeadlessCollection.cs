@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Threading;
@@ -33,9 +33,11 @@ public sealed class AvaloniaHeadlessCollection : ICollectionFixture<AvaloniaHead
 /// So the platform gets a thread of its own here, and <see cref="Invoke"/> is the only way onto it. This
 /// remains a plain work queue rather than a dispatcher loop for the smoke tests; asynchronous callers use
 /// <see cref="RunUntilComplete"/> when they need dispatcher jobs pumped between awaits.
-/// <see cref="RunUntilComplete"/> uses <see cref="Dispatcher.UIThread.RunJobs"/>; the permanent continuation
-/// check <see cref="Walkthrough.AvaloniaHeadlessPlatformTests.TaskRunContinuationResumesOnAvaloniaThreadWhenPumped"/>
-/// pins that pump as sufficient, so no dispatcher main loop is needed.
+/// <see cref="RunUntilComplete"/> runs a dispatcher frame that the work's completion or its deadline ends,
+/// so the thread sleeps between jobs instead of spinning a core the awaited work needs. The permanent
+/// continuation check
+/// <see cref="Walkthrough.AvaloniaHeadlessPlatformTests.TaskRunContinuationResumesOnAvaloniaThreadWhenPumped"/>
+/// pins that frame as sufficient for an awaited continuation to resume on the Avalonia thread.
 /// </para>
 /// </remarks>
 public sealed class AvaloniaHeadlessFixture : IDisposable
@@ -55,6 +57,10 @@ public sealed class AvaloniaHeadlessFixture : IDisposable
 
 internal static class AvaloniaHeadlessPlatform
 {
+    private static readonly MethodInfo ResetDispatcher = typeof(Dispatcher).GetMethod(
+        "ResetBeforeUnitTests", BindingFlags.Static | BindingFlags.NonPublic)
+        ?? throw new MissingMethodException(typeof(Dispatcher).FullName, "ResetBeforeUnitTests");
+
     private static readonly Lazy<PlatformThread> Shared = new(
         static () => new PlatformThread(), LazyThreadSafetyMode.ExecutionAndPublication);
 
@@ -70,11 +76,14 @@ internal static class AvaloniaHeadlessPlatform
 
         public PlatformThread()
         {
+            // Reset the static dispatcher so setup binds it here; pinned by DedicatedThreadOwnsAvaloniaDispatcher.
+            ResetDispatcher.Invoke(null, null);
             var ready = new TaskCompletionSource();
             _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = "Avalonia headless" };
             if (OperatingSystem.IsWindows())
                 _thread.SetApartmentState(ApartmentState.STA);
-            _thread.Start();
+            using (ExecutionContext.SuppressFlow())
+                _thread.Start();
             ready.Task.GetAwaiter().GetResult();
         }
 
@@ -94,12 +103,15 @@ internal static class AvaloniaHeadlessPlatform
             Invoke(() =>
             {
                 var task = work();
-                var deadline = Stopwatch.GetTimestamp() +
-                    (long)(timeout.TotalSeconds * Stopwatch.Frequency);
-                while (!task.IsCompleted && Stopwatch.GetTimestamp() < deadline)
+                if (!task.IsCompleted)
                 {
-                    Dispatcher.UIThread.RunJobs();
-                    Thread.Yield();
+                    // Blocks in a dispatcher frame rather than spinning, so a two-core runner keeps a core free.
+                    var frame = new DispatcherFrame();
+                    using var expiry = new CancellationTokenSource(timeout);
+                    using var expired = expiry.Token.Register(() => frame.Continue = false);
+                    task.ContinueWith(static (_, state) => ((DispatcherFrame)state!).Continue = false, frame,
+                        CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                    Dispatcher.UIThread.PushFrame(frame);
                 }
 
                 Dispatcher.UIThread.RunJobs();
@@ -113,6 +125,9 @@ internal static class AvaloniaHeadlessPlatform
         {
             try
             {
+                if (!Dispatcher.UIThread.CheckAccess())
+                    throw new InvalidOperationException("Avalonia's UI dispatcher belongs to another thread.");
+
                 // The app's own renderer and system fonts, so text measures as it does on screen, not as a stub guesses.
                 AppBuilder.Configure<SIL.Motif.App.App>()
                     .UseSkia()

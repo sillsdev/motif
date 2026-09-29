@@ -27,6 +27,49 @@ public sealed class CommandRunViewModelTests
         Assert.Equal(0.5, run.ProgressFraction);
     }
 
+    [Fact]
+    public void ProgressFromAnotherThreadGoesToTheOwnersContextOrAppliesDirectlyWithoutOne()
+    {
+        var progress = new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing...");
+        var recording = new RecordingSynchronizationContext();
+        var previous = SynchronizationContext.Current;
+        TestRunViewModel withContext;
+        SynchronizationContext.SetSynchronizationContext(recording);
+        try { withContext = new TestRunViewModel(); }
+        finally { SynchronizationContext.SetSynchronizationContext(previous); }
+        var withoutContext = new TestRunViewModel();
+
+        // A dedicated thread, since a pool thread could be the one that created the runs.
+        var reporter = new Thread(() =>
+        {
+            ((IProgress<AssessmentProgress>)withContext).Report(progress);
+            ((IProgress<AssessmentProgress>)withoutContext).Report(progress);
+        });
+        reporter.Start();
+        reporter.Join();
+
+        Assert.Null(withContext.Progress);
+        Assert.Equal(1, recording.Posted);
+        recording.RunPosted();
+        Assert.Equal(progress, withContext.Progress);
+        Assert.Equal(progress, withoutContext.Progress);
+    }
+
+    private sealed class RecordingSynchronizationContext : SynchronizationContext
+    {
+        private readonly List<(SendOrPostCallback Callback, object? State)> _posted = [];
+
+        public int Posted => _posted.Count;
+
+        public override void Post(SendOrPostCallback d, object? state) => _posted.Add((d, state));
+
+        public void RunPosted()
+        {
+            foreach (var (callback, state) in _posted) callback(state);
+            _posted.Clear();
+        }
+    }
+
     [Theory]
     [InlineData(FailureReason.Cancelled, RunState.Cancelled)]
     [InlineData(FailureReason.Refused, RunState.Refused)]

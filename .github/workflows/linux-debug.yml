@@ -38,6 +38,7 @@ jobs:
       - name: Run the selected tests
         shell: pwsh
         run: |
+          $env:MOTIF_DEVELOPER_COMMANDS = '1'
           $out = 'bin/Release/linux-debug'
           New-Item -ItemType Directory -Force $out | Out-Null
           $failed = $false

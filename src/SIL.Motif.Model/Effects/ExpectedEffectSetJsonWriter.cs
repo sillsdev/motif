@@ -24,6 +24,12 @@ namespace SIL.Motif.Model.Effects;
 public static class ExpectedEffectSetJsonWriter
 {
     public static string WriteJson(IEnumerable<ExpectedEffect> effects)
+        => WriteJson(effects, includePreview: false);
+
+    public static string WritePublishedJson(IEnumerable<ExpectedEffect> effects)
+        => WriteJson(effects, includePreview: true);
+
+    private static string WriteJson(IEnumerable<ExpectedEffect> effects, bool includePreview)
     {
         var ordered = effects
             .OrderBy(e => e.CanonicalId)
@@ -41,6 +47,11 @@ public static class ExpectedEffectSetJsonWriter
                 writer.WriteString("field", effect.Field);
                 WriteAlternatives(writer, "before", effect.Before);
                 WriteAlternatives(writer, "after", effect.After);
+                if (includePreview && effect.Preview is { } preview)
+                {
+                    writer.WritePropertyName("preview");
+                    preview.WriteTo(writer);
+                }
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();

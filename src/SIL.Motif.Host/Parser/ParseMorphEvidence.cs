@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.Parser;
@@ -118,9 +119,6 @@ public static class MorphologyCorrectness
     /// project's own approved and disapproved analyses.
     /// </summary>
     public static bool Matches(ParseAnalysis actual, ApprovedMorphology expected) =>
-        actual.Morphs.Count > 0 && actual.Morphs.Count == expected.Morphs.Count &&
-        actual.Morphs.Zip(expected.Morphs).All(pair => pair.First.Form is not null && pair.First.Msa is not null &&
-            pair.First.Form == pair.Second.Form &&
-            pair.First.Msa == pair.Second.Msa && pair.First.InflType == pair.Second.InflType &&
-            (pair.First.GuessedString is null || pair.Second.Forms.Contains(pair.First.GuessedString, StringComparer.Ordinal)));
+        actual.Morphs.All(morph => morph.Form is not null && morph.Msa is not null) &&
+        AnalysisMorphologyMatcher.Matches(actual, expected);
 }

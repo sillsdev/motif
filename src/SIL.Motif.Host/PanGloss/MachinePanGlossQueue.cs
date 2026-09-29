@@ -3,24 +3,27 @@
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// Admits one user worker's PanGloss jobs in submission order, while every
-/// <see cref="MachinePanGlossQueue"/> on the machine competes for the same two capacity slots.
+/// Admits one user worker's PanGloss jobs in submission order against two shared capacity slots.
 /// </summary>
 /// <remarks>
+/// The slots are machine-wide by default. Test processes can set
+/// <c>MOTIF_TEST_PAN_GLOSS_SLOT_NAMESPACE</c> to isolate their slots; child processes inherit that scope.
 /// A job is admitted strictly in the order it was submitted to THIS queue: the queue does not start
 /// acquiring a slot for job N+1 until job N has already acquired one, though N and N+1 may then run
 /// concurrently (pinned by `RunAsync_AdmitsThreeProjectsInSubmissionOrder`). The two slots are
-/// machine-global rather than per-user, so independent queues never hold more than two between them,
-/// but which queue wins a given free slot is unspecified and never asserted (pinned by
+/// machine-global rather than per-user by default, so independent queues using the same slot names
+/// never hold more than two between them, but which queue wins a given free slot is unspecified and never asserted (pinned by
 /// `RunAsync_AcrossTwoUserNamespaces_NeverExceedsMachineCapacity`).
 /// </remarks>
 public sealed class MachinePanGlossQueue : IDisposable
 {
-    private static readonly string[] DefaultSlotNames =
+    private static readonly string[] MachineWideSlotNames =
     {
         "Global\\MotifPanGlossSlot-0",
         "Global\\MotifPanGlossSlot-1",
     };
+
+    internal const string TestSlotNamespaceVariable = "MOTIF_TEST_PAN_GLOSS_SLOT_NAMESPACE";
 
     // Machine leases are locks, not events, so polling is how a freed slot is noticed.
     private static readonly TimeSpan SlotPollInterval = TimeSpan.FromMilliseconds(10);
@@ -34,8 +37,9 @@ public sealed class MachinePanGlossQueue : IDisposable
     private readonly Task _runner;
     private bool _disposed;
 
-    /// <summary>Creates a queue that competes for the machine's two fixed, well-known PanGloss slots.</summary>
-    public MachinePanGlossQueue() : this(DefaultSlotNames)
+    /// <summary>Creates a queue for the machine-wide slots, or an isolated test-process scope when configured.</summary>
+    public MachinePanGlossQueue() : this(GetDefaultSlotNames(
+        Environment.GetEnvironmentVariable(TestSlotNamespaceVariable)))
     {
     }
 
@@ -46,6 +50,16 @@ public sealed class MachinePanGlossQueue : IDisposable
             throw new ArgumentException("At least one machine slot name is required.", nameof(slotNames));
         _slotNames = slotNames;
         _runner = RunAsync();
+    }
+
+    internal static IReadOnlyList<string> GetDefaultSlotNames(string? testProcessNamespace)
+    {
+        if (string.IsNullOrWhiteSpace(testProcessNamespace)) return MachineWideSlotNames;
+        return new[]
+        {
+            $"Global\\MotifPanGlossSlot-{testProcessNamespace}-0",
+            $"Global\\MotifPanGlossSlot-{testProcessNamespace}-1",
+        };
     }
 
     /// <summary>The job id currently recorded against each held slot, for diagnosing contention.</summary>
@@ -132,6 +146,12 @@ public sealed class MachinePanGlossQueue : IDisposable
                 linked.Dispose();
                 continue;
             }
+            catch (IOException exception)
+            {
+                linked.Dispose();
+                job.Fail(exception);
+                continue;
+            }
             _ = RunAdmittedJobAsync(job, lease, linked);
         }
     }
@@ -155,15 +175,17 @@ public sealed class MachinePanGlossQueue : IDisposable
     private async Task<MachineSlotLease> AcquireSlotAsync(string jobId, CancellationToken cancellationToken)
     {
         // One owner per slot per wait: ownership is per-thread, and per-poll owners would churn threads.
-        var owners = new WorkerMutexOwner[_slotNames.Count];
-        for (var i = 0; i < owners.Length; i++) owners[i] = new WorkerMutexOwner(_slotNames[i], machineWide: true);
+        var owners = new List<WorkerMutexOwner>(_slotNames.Count);
         var winner = -1;
         try
         {
+            foreach (var slotName in _slotNames)
+                owners.Add(new WorkerMutexOwner(slotName, machineWide: true));
+
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                for (var i = 0; i < owners.Length; i++)
+                for (var i = 0; i < owners.Count; i++)
                 {
                     if (!owners[i].TryAcquire()) continue;
                     winner = i;
@@ -176,7 +198,7 @@ public sealed class MachinePanGlossQueue : IDisposable
         }
         finally
         {
-            for (var i = 0; i < owners.Length; i++)
+            for (var i = 0; i < owners.Count; i++)
                 if (i != winner) owners[i].Dispose();
         }
     }
@@ -214,6 +236,7 @@ public sealed class MachinePanGlossQueue : IDisposable
 
         public abstract Task ExecuteAsync(PanGlossContainmentJob cpuJob, CancellationToken linkedToken);
         public abstract void Cancel(CancellationToken token);
+        public abstract void Fail(Exception exception);
     }
 
     private sealed class QueuedJob<T> : QueuedJob
@@ -247,5 +270,7 @@ public sealed class MachinePanGlossQueue : IDisposable
         }
 
         public override void Cancel(CancellationToken token) => _completion.TrySetCanceled(token);
+
+        public override void Fail(Exception exception) => _completion.TrySetException(exception);
     }
 }

@@ -1,0 +1,318 @@
+lemma	gloss	pos	inflected_form	features	segmentation	source
+adam	man	N	adam	N;NOM;SG	adam	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamlar	N;NOM;PL	adam + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamı	N;ACC;SG	adam + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adama	N;DAT;SG	adam + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamda	N;LOC;SG	adam + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamdan	N;ABL;SG	adam + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamın	N;GEN;SG	adam + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamımız	N;NOM;SG;PSS1P	adam + -ımız	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamımızda	N;LOC;SG;PSS1P	adam + -ımız + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamı	N;NOM;SG;PSS3S	adam + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamını	N;ACC;SG;PSS3S	adam + -ı + -n + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamına	N;DAT;SG;PSS3S	adam + -ı + -n + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamında	N;LOC;SG;PSS3S	adam + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamından	N;ABL;SG;PSS3S	adam + -ı + -n + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamının	N;GEN;SG;PSS3S	adam + -ı + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamları	N;NOM;PL;PSS3S	adam + -lar + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+adam	man	N	adamlarında	N;LOC;PL;PSS3S	adam + -lar + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=adam&oldid=92703278
+elma	apple	N	elma	N;NOM;SG	elma	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmalar	N;NOM;PL	elma + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmayı	N;ACC;SG	elma + -y + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmaya	N;DAT;SG	elma + -y + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmada	N;LOC;SG	elma + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmadan	N;ABL;SG	elma + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmanın	N;GEN;SG	elma + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmamız	N;NOM;SG;PSS1P	elma + -mız	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmamızda	N;LOC;SG;PSS1P	elma + -mız + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elması	N;NOM;SG;PSS3S	elma + -sı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmasını	N;ACC;SG;PSS3S	elma + -sı + -n + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmasına	N;DAT;SG;PSS3S	elma + -sı + -n + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmasında	N;LOC;SG;PSS3S	elma + -sı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmasından	N;ABL;SG;PSS3S	elma + -sı + -n + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmasının	N;GEN;SG;PSS3S	elma + -sı + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmaları	N;NOM;PL;PSS3S	elma + -lar + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+elma	apple	N	elmalarında	N;LOC;PL;PSS3S	elma + -lar + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=elma&oldid=89733167
+gece	night	N	gece	N;NOM;SG	gece	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	geceler	N;NOM;PL	gece + -ler	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	geceyi	N;ACC;SG	gece + -y + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	geceye	N;DAT;SG	gece + -y + -e	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecede	N;LOC;SG	gece + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	geceden	N;ABL;SG	gece + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecenin	N;GEN;SG	gece + -n + -in	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecemiz	N;NOM;SG;PSS1P	gece + -miz	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecemizde	N;LOC;SG;PSS1P	gece + -miz + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecesi	N;NOM;SG;PSS3S	gece + -si	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecesini	N;ACC;SG;PSS3S	gece + -si + -n + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecesine	N;DAT;SG;PSS3S	gece + -si + -n + -e	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecesinde	N;LOC;SG;PSS3S	gece + -si + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecesinden	N;ABL;SG;PSS3S	gece + -si + -n + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecesinin	N;GEN;SG;PSS3S	gece + -si + -n + -in	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	geceleri	N;NOM;PL;PSS3S	gece + -ler + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gece	night	N	gecelerinde	N;LOC;PL;PSS3S	gece + -ler + -i + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gece&oldid=92288803
+gün	day	N	gün	N;NOM;SG	gün	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günler	N;NOM;PL	gün + -ler	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günü	N;ACC;SG	gün + -ü	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	güne	N;DAT;SG	gün + -e	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günde	N;LOC;SG	gün + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günden	N;ABL;SG	gün + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günün	N;GEN;SG	gün + -ün	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günümüz	N;NOM;SG;PSS1P	gün + -ümüz	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günümüzde	N;LOC;SG;PSS1P	gün + -ümüz + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günü	N;NOM;SG;PSS3S	gün + -ü	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	gününü	N;ACC;SG;PSS3S	gün + -ü + -n + -ü	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	gününe	N;DAT;SG;PSS3S	gün + -ü + -n + -e	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	gününde	N;LOC;SG;PSS3S	gün + -ü + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	gününden	N;ABL;SG;PSS3S	gün + -ü + -n + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	gününün	N;GEN;SG;PSS3S	gün + -ü + -n + -ün	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günleri	N;NOM;PL;PSS3S	gün + -ler + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+gün	day	N	günlerinde	N;LOC;PL;PSS3S	gün + -ler + -i + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%BCn&oldid=92176131
+kahve	coffee	N	kahve	N;NOM;SG	kahve	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahveler	N;NOM;PL	kahve + -ler	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahveyi	N;ACC;SG	kahve + -y + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahveye	N;DAT;SG	kahve + -y + -e	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvede	N;LOC;SG	kahve + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahveden	N;ABL;SG	kahve + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvenin	N;GEN;SG	kahve + -n + -in	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvemiz	N;NOM;SG;PSS1P	kahve + -miz	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvemizde	N;LOC;SG;PSS1P	kahve + -miz + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvesi	N;NOM;SG;PSS3S	kahve + -si	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvesini	N;ACC;SG;PSS3S	kahve + -si + -n + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvesine	N;DAT;SG;PSS3S	kahve + -si + -n + -e	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvesinde	N;LOC;SG;PSS3S	kahve + -si + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvesinden	N;ABL;SG;PSS3S	kahve + -si + -n + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvesinin	N;GEN;SG;PSS3S	kahve + -si + -n + -in	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahveleri	N;NOM;PL;PSS3S	kahve + -ler + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kahve	coffee	N	kahvelerinde	N;LOC;PL;PSS3S	kahve + -ler + -i + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kahve&oldid=92944246
+kapı	door	N	kapı	N;NOM;SG	kapı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapılar	N;NOM;PL	kapı + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapıyı	N;ACC;SG	kapı + -y + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapıya	N;DAT;SG	kapı + -y + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapıda	N;LOC;SG	kapı + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapıdan	N;ABL;SG	kapı + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapının	N;GEN;SG	kapı + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapımız	N;NOM;SG;PSS1P	kapı + -mız	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapımızda	N;LOC;SG;PSS1P	kapı + -mız + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapısı	N;NOM;SG;PSS3S	kapı + -sı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapısını	N;ACC;SG;PSS3S	kapı + -sı + -n + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapısına	N;DAT;SG;PSS3S	kapı + -sı + -n + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapısında	N;LOC;SG;PSS3S	kapı + -sı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapısından	N;ABL;SG;PSS3S	kapı + -sı + -n + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapısının	N;GEN;SG;PSS3S	kapı + -sı + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapıları	N;NOM;PL;PSS3S	kapı + -lar + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kapı	door	N	kapılarında	N;LOC;PL;PSS3S	kapı + -lar + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kap%C4%B1&oldid=90798035
+kedi	cat	N	kedi	N;NOM;SG	kedi	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kediler	N;NOM;PL	kedi + -ler	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kediyi	N;ACC;SG	kedi + -y + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kediye	N;DAT;SG	kedi + -y + -e	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedide	N;LOC;SG	kedi + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kediden	N;ABL;SG	kedi + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedinin	N;GEN;SG	kedi + -n + -in	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedimiz	N;NOM;SG;PSS1P	kedi + -miz	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedimizde	N;LOC;SG;PSS1P	kedi + -miz + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedisi	N;NOM;SG;PSS3S	kedi + -si	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedisini	N;ACC;SG;PSS3S	kedi + -si + -n + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedisine	N;DAT;SG;PSS3S	kedi + -si + -n + -e	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedisinde	N;LOC;SG;PSS3S	kedi + -si + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedisinden	N;ABL;SG;PSS3S	kedi + -si + -n + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedisinin	N;GEN;SG;PSS3S	kedi + -si + -n + -in	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedileri	N;NOM;PL;PSS3S	kedi + -ler + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+kedi	cat	N	kedilerinde	N;LOC;PL;PSS3S	kedi + -ler + -i + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=kedi&oldid=90290154
+masa	table	N	masa	N;NOM;SG	masa	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masalar	N;NOM;PL	masa + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masayı	N;ACC;SG	masa + -y + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masaya	N;DAT;SG	masa + -y + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masada	N;LOC;SG	masa + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masadan	N;ABL;SG	masa + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masanın	N;GEN;SG	masa + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masamız	N;NOM;SG;PSS1P	masa + -mız	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masamızda	N;LOC;SG;PSS1P	masa + -mız + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masası	N;NOM;SG;PSS3S	masa + -sı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masasını	N;ACC;SG;PSS3S	masa + -sı + -n + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masasına	N;DAT;SG;PSS3S	masa + -sı + -n + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masasında	N;LOC;SG;PSS3S	masa + -sı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masasından	N;ABL;SG;PSS3S	masa + -sı + -n + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masasının	N;GEN;SG;PSS3S	masa + -sı + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masaları	N;NOM;PL;PSS3S	masa + -lar + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+masa	table	N	masalarında	N;LOC;PL;PSS3S	masa + -lar + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=masa&oldid=92440253
+oda	room	N	oda	N;NOM;SG	oda	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odalar	N;NOM;PL	oda + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odayı	N;ACC;SG	oda + -y + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odaya	N;DAT;SG	oda + -y + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odada	N;LOC;SG	oda + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odadan	N;ABL;SG	oda + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odanın	N;GEN;SG	oda + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odamız	N;NOM;SG;PSS1P	oda + -mız	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odamızda	N;LOC;SG;PSS1P	oda + -mız + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odası	N;NOM;SG;PSS3S	oda + -sı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odasını	N;ACC;SG;PSS3S	oda + -sı + -n + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odasına	N;DAT;SG;PSS3S	oda + -sı + -n + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odasında	N;LOC;SG;PSS3S	oda + -sı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odasından	N;ABL;SG;PSS3S	oda + -sı + -n + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odasının	N;GEN;SG;PSS3S	oda + -sı + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odaları	N;NOM;PL;PSS3S	oda + -lar + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+oda	room	N	odalarında	N;LOC;PL;PSS3S	oda + -lar + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=oda&oldid=92423372
+okul	school	N	okul	N;NOM;SG	okul	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okullar	N;NOM;PL	okul + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulu	N;ACC;SG	okul + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okula	N;DAT;SG	okul + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulda	N;LOC;SG	okul + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okuldan	N;ABL;SG	okul + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulun	N;GEN;SG	okul + -un	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulumuz	N;NOM;SG;PSS1P	okul + -umuz	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulumuzda	N;LOC;SG;PSS1P	okul + -umuz + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulu	N;NOM;SG;PSS3S	okul + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulunu	N;ACC;SG;PSS3S	okul + -u + -n + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okuluna	N;DAT;SG;PSS3S	okul + -u + -n + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulunda	N;LOC;SG;PSS3S	okul + -u + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulundan	N;ABL;SG;PSS3S	okul + -u + -n + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulunun	N;GEN;SG;PSS3S	okul + -u + -n + -un	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okulları	N;NOM;PL;PSS3S	okul + -lar + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+okul	school	N	okullarında	N;LOC;PL;PSS3S	okul + -lar + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okul&oldid=92687100
+şehir	city	N	şehir	N;NOM;SG	şehir	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehirler	N;NOM;PL	şehir + -ler	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehri	N;ACC;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehre	N;DAT;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehirde	N;LOC;SG	şehir + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehirden	N;ABL;SG	şehir + -den	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehrin	N;GEN;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehrimiz	N;NOM;SG;PSS1P		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehrimizde	N;LOC;SG;PSS1P		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehri	N;NOM;SG;PSS3S		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehrini	N;ACC;SG;PSS3S		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehrine	N;DAT;SG;PSS3S		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehrinde	N;LOC;SG;PSS3S		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehrinden	N;ABL;SG;PSS3S		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehrinin	N;GEN;SG;PSS3S		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehirleri	N;NOM;PL;PSS3S	şehir + -ler + -i	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+şehir	city	N	şehirlerinde	N;LOC;PL;PSS3S	şehir + -ler + -i + -n + -de	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C5%9Fehir&oldid=91064158
+telefon	telephone	N	telefon	N;NOM;SG	telefon	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonlar	N;NOM;PL	telefon + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonu	N;ACC;SG	telefon + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefona	N;DAT;SG	telefon + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonda	N;LOC;SG	telefon + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefondan	N;ABL;SG	telefon + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonun	N;GEN;SG	telefon + -un	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonumuz	N;NOM;SG;PSS1P	telefon + -umuz	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonumuzda	N;LOC;SG;PSS1P	telefon + -umuz + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonu	N;NOM;SG;PSS3S	telefon + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonunu	N;ACC;SG;PSS3S	telefon + -u + -n + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonuna	N;DAT;SG;PSS3S	telefon + -u + -n + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonunda	N;LOC;SG;PSS3S	telefon + -u + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonundan	N;ABL;SG;PSS3S	telefon + -u + -n + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonunun	N;GEN;SG;PSS3S	telefon + -u + -n + -un	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonları	N;NOM;PL;PSS3S	telefon + -lar + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+telefon	telephone	N	telefonlarında	N;LOC;PL;PSS3S	telefon + -lar + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=telefon&oldid=92566785
+yol	road; way	N	yol	N;NOM;SG	yol	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yollar	N;NOM;PL	yol + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolu	N;ACC;SG	yol + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yola	N;DAT;SG	yol + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolda	N;LOC;SG	yol + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yoldan	N;ABL;SG	yol + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolun	N;GEN;SG	yol + -un	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolumuz	N;NOM;SG;PSS1P	yol + -umuz	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolumuzda	N;LOC;SG;PSS1P	yol + -umuz + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolu	N;NOM;SG;PSS3S	yol + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolunu	N;ACC;SG;PSS3S	yol + -u + -n + -u	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yoluna	N;DAT;SG;PSS3S	yol + -u + -n + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolunda	N;LOC;SG;PSS3S	yol + -u + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolundan	N;ABL;SG;PSS3S	yol + -u + -n + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolunun	N;GEN;SG;PSS3S	yol + -u + -n + -un	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yolları	N;NOM;PL;PSS3S	yol + -lar + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+yol	road; way	N	yollarında	N;LOC;PL;PSS3S	yol + -lar + -ı + -n + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yol&oldid=92421319
+ağaç	tree	N	ağaç	N;NOM;SG	ağaç	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C4%9Fa%C3%A7&oldid=92711112
+ağaç	tree	N	ağaçlar	N;NOM;PL	ağaç + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C4%9Fa%C3%A7&oldid=92711112
+ağaç	tree	N	ağacı	N;ACC;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C4%9Fa%C3%A7&oldid=92711112
+ağaç	tree	N	ağaca	N;DAT;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C4%9Fa%C3%A7&oldid=92711112
+ağaç	tree	N	ağaçta	N;LOC;SG	ağaç + -ta	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C4%9Fa%C3%A7&oldid=92711112
+ağaç	tree	N	ağaçtan	N;ABL;SG	ağaç + -tan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C4%9Fa%C3%A7&oldid=92711112
+ağaç	tree	N	ağacın	N;GEN;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C4%9Fa%C3%A7&oldid=92711112
+köpek	dog	N	köpek	N;NOM;SG	köpek	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=k%C3%B6pek&oldid=92174700
+köpek	dog	N	köpekler	N;NOM;PL	köpek + -ler	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=k%C3%B6pek&oldid=92174700
+köpek	dog	N	köpeği	N;ACC;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=k%C3%B6pek&oldid=92174700
+köpek	dog	N	köpeğe	N;DAT;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=k%C3%B6pek&oldid=92174700
+köpek	dog	N	köpekte	N;LOC;SG	köpek + -te	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=k%C3%B6pek&oldid=92174700
+köpek	dog	N	köpekten	N;ABL;SG	köpek + -ten	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=k%C3%B6pek&oldid=92174700
+köpek	dog	N	köpeğin	N;GEN;SG		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=k%C3%B6pek&oldid=92174700
+para	money	N	para	N;NOM;SG	para	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=para&oldid=92525889
+para	money	N	paralar	N;NOM;PL	para + -lar	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=para&oldid=92525889
+para	money	N	parayı	N;ACC;SG	para + -y + -ı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=para&oldid=92525889
+para	money	N	paraya	N;DAT;SG	para + -y + -a	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=para&oldid=92525889
+para	money	N	parada	N;LOC;SG	para + -da	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=para&oldid=92525889
+para	money	N	paradan	N;ABL;SG	para + -dan	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=para&oldid=92525889
+para	money	N	paranın	N;GEN;SG	para + -n + -ın	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=para&oldid=92525889
+açmak	open	V	açmak	V;NFIN	aç + -mak	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C3%A7mak&oldid=90126917
+açmak	open	V	açıyor	V;IND;PRS;PROG;3;SG;POS;DECL	aç + -ıyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C3%A7mak&oldid=90126917
+açmak	open	V	açıyorum	V;IND;PRS;PROG;1;SG;POS;DECL	aç + -ıyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C3%A7mak&oldid=90126917
+açmak	open	V	açtı	V;IND;PST;3;SG;POS;DECL	aç + -tı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C3%A7mak&oldid=90126917
+açmak	open	V	açtım	V;IND;PST;1;SG;POS;DECL	aç + -tı + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=a%C3%A7mak&oldid=90126917
+almak	take; buy	V	almak	V;NFIN	al + -mak	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=almak&oldid=92513394
+almak	take; buy	V	alıyor	V;IND;PRS;PROG;3;SG;POS;DECL	al + -ıyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=almak&oldid=92513394
+almak	take; buy	V	alıyorum	V;IND;PRS;PROG;1;SG;POS;DECL	al + -ıyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=almak&oldid=92513394
+almak	take; buy	V	aldı	V;IND;PST;3;SG;POS;DECL	al + -dı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=almak&oldid=92513394
+almak	take; buy	V	aldım	V;IND;PST;1;SG;POS;DECL	al + -dı + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=almak&oldid=92513394
+bilmek	know	V	bilmek	V;NFIN	bil + -mek	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=bilmek&oldid=90858954
+bilmek	know	V	biliyor	V;IND;PRS;PROG;3;SG;POS;DECL	bil + -iyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=bilmek&oldid=90858954
+bilmek	know	V	biliyorum	V;IND;PRS;PROG;1;SG;POS;DECL	bil + -iyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=bilmek&oldid=90858954
+bilmek	know	V	bildi	V;IND;PST;3;SG;POS;DECL	bil + -di	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=bilmek&oldid=90858954
+bilmek	know	V	bildim	V;IND;PST;1;SG;POS;DECL	bil + -di + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=bilmek&oldid=90858954
+çalışmak	work	V	çalışmak	V;NFIN	çalış + -mak	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C3%A7al%C4%B1%C5%9Fmak&oldid=83931113
+çalışmak	work	V	çalışıyor	V;IND;PRS;PROG;3;SG;POS;DECL	çalış + -ıyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C3%A7al%C4%B1%C5%9Fmak&oldid=83931113
+çalışmak	work	V	çalışıyorum	V;IND;PRS;PROG;1;SG;POS;DECL	çalış + -ıyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C3%A7al%C4%B1%C5%9Fmak&oldid=83931113
+çalışmak	work	V	çalıştı	V;IND;PST;3;SG;POS;DECL	çalış + -tı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C3%A7al%C4%B1%C5%9Fmak&oldid=83931113
+çalışmak	work	V	çalıştım	V;IND;PST;1;SG;POS;DECL	çalış + -tı + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=%C3%A7al%C4%B1%C5%9Fmak&oldid=83931113
+gelmek	come	V	gelmek	V;NFIN	gel + -mek	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gelmek&oldid=92448097
+gelmek	come	V	geliyor	V;IND;PRS;PROG;3;SG;POS;DECL	gel + -iyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gelmek&oldid=92448097
+gelmek	come	V	geliyorum	V;IND;PRS;PROG;1;SG;POS;DECL	gel + -iyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gelmek&oldid=92448097
+gelmek	come	V	geldi	V;IND;PST;3;SG;POS;DECL	gel + -di	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gelmek&oldid=92448097
+gelmek	come	V	geldim	V;IND;PST;1;SG;POS;DECL	gel + -di + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=gelmek&oldid=92448097
+görmek	see	V	görmek	V;NFIN	gör + -mek	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%B6rmek&oldid=92288214
+görmek	see	V	görüyor	V;IND;PRS;PROG;3;SG;POS;DECL	gör + -üyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%B6rmek&oldid=92288214
+görmek	see	V	görüyorum	V;IND;PRS;PROG;1;SG;POS;DECL	gör + -üyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%B6rmek&oldid=92288214
+görmek	see	V	gördü	V;IND;PST;3;SG;POS;DECL	gör + -dü	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%B6rmek&oldid=92288214
+görmek	see	V	gördüm	V;IND;PST;1;SG;POS;DECL	gör + -dü + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=g%C3%B6rmek&oldid=92288214
+içmek	drink	V	içmek	V;NFIN	iç + -mek	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=i%C3%A7mek&oldid=92270350
+içmek	drink	V	içiyor	V;IND;PRS;PROG;3;SG;POS;DECL	iç + -iyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=i%C3%A7mek&oldid=92270350
+içmek	drink	V	içiyorum	V;IND;PRS;PROG;1;SG;POS;DECL	iç + -iyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=i%C3%A7mek&oldid=92270350
+içmek	drink	V	içti	V;IND;PST;3;SG;POS;DECL	iç + -ti	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=i%C3%A7mek&oldid=92270350
+içmek	drink	V	içtim	V;IND;PST;1;SG;POS;DECL	iç + -ti + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=i%C3%A7mek&oldid=92270350
+istemek	want	V	istemek	V;NFIN	iste + -mek	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=istemek&oldid=90026093
+istemek	want	V	istiyor	V;IND;PRS;PROG;3;SG;POS;DECL		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=istemek&oldid=90026093
+istemek	want	V	istiyorum	V;IND;PRS;PROG;1;SG;POS;DECL		UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=istemek&oldid=90026093
+istemek	want	V	istedi	V;IND;PST;3;SG;POS;DECL	iste + -di	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=istemek&oldid=90026093
+istemek	want	V	istedim	V;IND;PST;1;SG;POS;DECL	iste + -di + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=istemek&oldid=90026093
+okumak	read; study	V	okumak	V;NFIN	oku + -mak	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okumak&oldid=92186118
+okumak	read; study	V	okuyor	V;IND;PRS;PROG;3;SG;POS;DECL	oku + -yor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okumak&oldid=92186118
+okumak	read; study	V	okuyorum	V;IND;PRS;PROG;1;SG;POS;DECL	oku + -yor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okumak&oldid=92186118
+okumak	read; study	V	okudu	V;IND;PST;3;SG;POS;DECL	oku + -du	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okumak&oldid=92186118
+okumak	read; study	V	okudum	V;IND;PST;1;SG;POS;DECL	oku + -du + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=okumak&oldid=92186118
+olmak	be; become	V	olmak	V;NFIN	ol + -mak	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=olmak&oldid=92166434
+olmak	be; become	V	oluyor	V;IND;PRS;PROG;3;SG;POS;DECL	ol + -uyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=olmak&oldid=92166434
+olmak	be; become	V	oluyorum	V;IND;PRS;PROG;1;SG;POS;DECL	ol + -uyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=olmak&oldid=92166434
+olmak	be; become	V	oldu	V;IND;PST;3;SG;POS;DECL	ol + -du	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=olmak&oldid=92166434
+olmak	be; become	V	oldum	V;IND;PST;1;SG;POS;DECL	ol + -du + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=olmak&oldid=92166434
+sevmek	love; like	V	sevmek	V;NFIN	sev + -mek	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=sevmek&oldid=91576520
+sevmek	love; like	V	seviyor	V;IND;PRS;PROG;3;SG;POS;DECL	sev + -iyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=sevmek&oldid=91576520
+sevmek	love; like	V	seviyorum	V;IND;PRS;PROG;1;SG;POS;DECL	sev + -iyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=sevmek&oldid=91576520
+sevmek	love; like	V	sevdi	V;IND;PST;3;SG;POS;DECL	sev + -di	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=sevmek&oldid=91576520
+sevmek	love; like	V	sevdim	V;IND;PST;1;SG;POS;DECL	sev + -di + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=sevmek&oldid=91576520
+uyumak	sleep	V	uyumak	V;NFIN	uyu + -mak	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=uyumak&oldid=92193373
+uyumak	sleep	V	uyuyor	V;IND;PRS;PROG;3;SG;POS;DECL	uyu + -yor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=uyumak&oldid=92193373
+uyumak	sleep	V	uyuyorum	V;IND;PRS;PROG;1;SG;POS;DECL	uyu + -yor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=uyumak&oldid=92193373
+uyumak	sleep	V	uyudu	V;IND;PST;3;SG;POS;DECL	uyu + -du	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=uyumak&oldid=92193373
+uyumak	sleep	V	uyudum	V;IND;PST;1;SG;POS;DECL	uyu + -du + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=uyumak&oldid=92193373
+vermek	give	V	vermek	V;NFIN	ver + -mek	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=vermek&oldid=91985070
+vermek	give	V	veriyor	V;IND;PRS;PROG;3;SG;POS;DECL	ver + -iyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=vermek&oldid=91985070
+vermek	give	V	veriyorum	V;IND;PRS;PROG;1;SG;POS;DECL	ver + -iyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=vermek&oldid=91985070
+vermek	give	V	verdi	V;IND;PST;3;SG;POS;DECL	ver + -di	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=vermek&oldid=91985070
+vermek	give	V	verdim	V;IND;PST;1;SG;POS;DECL	ver + -di + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=vermek&oldid=91985070
+yapmak	do; make	V	yapmak	V;NFIN	yap + -mak	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yapmak&oldid=92284201
+yapmak	do; make	V	yapıyor	V;IND;PRS;PROG;3;SG;POS;DECL	yap + -ıyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yapmak&oldid=92284201
+yapmak	do; make	V	yapıyorum	V;IND;PRS;PROG;1;SG;POS;DECL	yap + -ıyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yapmak&oldid=92284201
+yapmak	do; make	V	yaptı	V;IND;PST;3;SG;POS;DECL	yap + -tı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yapmak&oldid=92284201
+yapmak	do; make	V	yaptım	V;IND;PST;1;SG;POS;DECL	yap + -tı + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yapmak&oldid=92284201
+yazmak	write	V	yazmak	V;NFIN	yaz + -mak	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yazmak&oldid=84666697
+yazmak	write	V	yazıyor	V;IND;PRS;PROG;3;SG;POS;DECL	yaz + -ıyor	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yazmak&oldid=84666697
+yazmak	write	V	yazıyorum	V;IND;PRS;PROG;1;SG;POS;DECL	yaz + -ıyor + -um	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yazmak&oldid=84666697
+yazmak	write	V	yazdı	V;IND;PST;3;SG;POS;DECL	yaz + -dı	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yazmak&oldid=84666697
+yazmak	write	V	yazdım	V;IND;PST;1;SG;POS;DECL	yaz + -dı + -m	UniMorph tur @ 6c179ace7d2f3d7f3484020e5304c1544d07bb6b; Wiktionary https://en.wiktionary.org/w/index.php?title=yazmak&oldid=84666697

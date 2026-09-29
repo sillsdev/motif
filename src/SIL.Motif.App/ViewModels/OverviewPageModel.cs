@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -18,9 +19,10 @@ public sealed partial class OverviewPageModel : PageModel
     public OverviewPageModel(WorkspaceContext context) : base(context)
     {
         History = new ProjectHistoryViewModel(context.Commands);
-        var openMatrix = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix));
-        OpenTextCoverageCommand = openMatrix;
-        OpenAccuracyCommand = openMatrix;
+        OpenTextCoverageCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix, []));
+        OpenAccuracyCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix,
+            Enum.GetValues<CompareColumnKind>()
+                .Select(column => new TextsListCell(WordProjectStatus.Approved, column)).ToArray()));
         OpenTimingCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Timing));
         OpenWarningsCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Warnings));
         OpenAiHandoffCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.AiHandoff));
@@ -187,7 +189,7 @@ public sealed partial class OverviewPageModel : PageModel
     public string WarningsLeftOut => Overview?.Warnings?.WarningCount is { } count
         ? $"{count:N0} left out of the grammar" : string.Empty;
 
-    /// <summary>The informational findings and largest kind returned by the Overview command.</summary>
+    /// <summary>The error and informational findings and largest kind returned by the Overview command.</summary>
     public string WarningsDetails => Overview?.Warnings is not { } warnings ? "No warning summary is available."
         : warnings.Count is null ? "No findings count was recorded."
         : FormatWarningDetails(warnings);
@@ -210,8 +212,8 @@ public sealed partial class OverviewPageModel : PageModel
     private static string FormatWarningDetails(OverviewWarningsSummary warnings)
     {
         var parts = new List<string>();
-        if (warnings.ErrorCount is { } errorCount && errorCount > 0)
-            parts.Add($"{errorCount:N0} errors");
+        if (warnings.ErrorCount is { } errorCount)
+            parts.Add($"{errorCount:N0} {(errorCount == 1 ? "error" : "errors")}");
         if (warnings.InformationCount is { } informationCount)
             parts.Add($"{informationCount:N0} worth a look");
         if (warnings.LargestKind is { } kind)
@@ -282,8 +284,9 @@ public sealed partial class OverviewPageModel : PageModel
         if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(OverviewIsStale));
     }
 
-    private static string FormatTime(DateTimeOffset? value) => value is { } at
-        ? at.ToLocalTime().ToString("h:mm tt", CultureInfo.CurrentCulture) : "not recorded";
+    private string FormatTime(DateTimeOffset? value) => value is { } at
+        ? TimeZoneInfo.ConvertTime(at, Context.Clock.LocalTimeZone).ToString("h:mm tt", CultureInfo.CurrentCulture)
+        : "not recorded";
 
     private static string FormatMilliseconds(double? value) => value is { } milliseconds
         ? $"{milliseconds:N1} ms" : "not recorded";

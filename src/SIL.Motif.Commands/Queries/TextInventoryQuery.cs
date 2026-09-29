@@ -41,10 +41,10 @@ public sealed record TextInventoryResponse(IReadOnlyList<TextChoiceSummary> Text
 
 /// <summary>
 /// Lists the Texts held in a project's current Baseline scratch copy, for the Selection editor's Text
-/// picker. It reads the current Baseline and changes nothing.
+/// picker. It reads a private copy and leaves the published Baseline unchanged.
 /// </summary>
 /// <remarks>
-/// Reads only the published Baseline bundle's own scratch copy — never the live project — the same
+/// Reads only a private copy of the published Baseline — never the live project — the same
 /// separation <see cref="SIL.Motif.Commands.Assess.SelectionComposer"/> relies on. A project with no
 /// current Baseline yet has no scratch copy to read, so it reports an empty inventory rather than opening
 /// the live project to make one up.
@@ -60,14 +60,24 @@ public static class TextInventoryQuery
                 return CommandOutcome<TextInventoryResponse>.Success(
                     new TextInventoryResponse(Array.Empty<TextChoiceSummary>(), HasBaseline: false));
 
-            using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
-            var repository = cache.ServiceLocator.GetInstance<ITextRepository>();
-            var texts = repository.AllInstances()
-                .Select(text => ReadChoice(cache, text))
-                .OrderByDescending(choice => choice.WordCoveragePercent)
-                .ThenBy(choice => choice.Title, StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
-            return CommandOutcome<TextInventoryResponse>.Success(new TextInventoryResponse(texts, HasBaseline: true));
+            var scratchRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.TextInventory", Guid.NewGuid().ToString("N"));
+            try
+            {
+                using var cache = new ScratchCacheFactory().CreateFromFileCopy(baseline.FwDataPath, scratchRoot);
+                var repository = cache.ServiceLocator.GetInstance<ITextRepository>();
+                var texts = repository.AllInstances()
+                    .Select(text => ReadChoice(cache, text))
+                    .OrderByDescending(choice => choice.WordCoveragePercent)
+                    .ThenBy(choice => choice.Title, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+                return CommandOutcome<TextInventoryResponse>.Success(new TextInventoryResponse(texts, HasBaseline: true));
+            }
+            finally
+            {
+                try { Directory.Delete(scratchRoot, recursive: true); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
         });
 
     // Mirrors InterlinearTextReader's own title choice: the first populated writing system, ws id ascending.

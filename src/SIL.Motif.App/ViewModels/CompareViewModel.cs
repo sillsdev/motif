@@ -126,7 +126,7 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>Raised whenever the chosen cells change, so other views of the same words can follow them.</summary>
     public event EventHandler? ChosenCellsChanged;
 
-    /// <summary>Raised whenever a word's check mark changes.</summary>
+    /// <summary>Raised when checked words change or a load replaces the comparison.</summary>
     public event EventHandler? CheckedWordsChanged;
 
     /// <summary>The words in the chosen cells, or <see langword="null"/> when no cell is chosen.</summary>
@@ -325,6 +325,7 @@ public sealed partial class CompareViewModel : ObservableObject
         OnPropertyChanged(nameof(FixFirstRows));
         OnPropertyChanged(nameof(FixFirstSummary));
         SelectionChanged();
+        CheckedWordsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void FocusWord(CompareWordViewModel word)
@@ -417,6 +418,7 @@ public sealed partial class CompareViewModel : ObservableObject
                 .Select(word => word.PendingState).ToArray();
             cell.PendingState = statuses.Contains(PendingChangeState.NoLongerFits)
                 ? PendingChangeState.NoLongerFits
+                : statuses.Contains(PendingChangeState.Uncertain) ? PendingChangeState.Uncertain
                 : statuses.FirstOrDefault(status => status != PendingChangeState.None);
         }
     }

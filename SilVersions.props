@@ -8,5 +8,6 @@
     <SilLexiconVersion>18.0.0-beta0043</SilLexiconVersion>
     <!-- One shared LibLCM package pin for every Motif project that consumes the model. -->
     <SilLCModelPackageVersion>11.0.0-beta0182</SilLCModelPackageVersion>
+    <IcuDotNetPackageVersion>3.0.2</IcuDotNetPackageVersion>
   </PropertyGroup>
 </Project>

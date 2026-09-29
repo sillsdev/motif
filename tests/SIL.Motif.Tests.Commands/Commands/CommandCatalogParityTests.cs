@@ -74,7 +74,7 @@ public sealed class CommandCatalogParityTests
     // Pinned so a colliding or typo'd near-copy of an existing refusal code shows up as a named diff.
     private static readonly string[] ExpectedRefusalCodes =
     {
-        "apply.applied-content-mismatch", "apply.change-no-longer-fits", "apply.drift", "apply.dry-run-missing",
+        "apply.applied-content-mismatch", "apply.change-no-longer-fits", "apply.change-uncertain", "apply.drift", "apply.dry-run-missing",
         "apply.changes-changed", "apply.not-ready", "apply.project-in-use",
         "apply.regression",
         "apply.reopen-failed",
@@ -86,11 +86,15 @@ public sealed class CommandCatalogParityTests
         "assessment.aggregate-unavailable", "assessment.cancelled", "assessment.invalid-evidence", "assessment.invalid-id", "assessment.not-found",
         "baseline.busy", "baseline.copy-unloadable", "baseline.owned-root-violation",
         "baseline.source-incomplete", "baseline.text-words-unreadable",
-        "change.analysis-identity-required", "change.assessment-missing", "change.assessment-required",
+        "change.analysis-identity-required", "change.analysis-owner-invalid",
+        "change.assessment-incomplete", "change.assessment-kind", "change.assessment-missing",
+        "change.assessment-required",
         "change.assessment-stale",
+        "change.assessment-word-missing",
         "change.baseline-missing", "change.cannot-compose", "change.invalid-identity", "change.no-effect",
-        "change.not-found", "change.project-saving", "change.reading-missing", "change.refresh-required", "change.revision-conflict", "change.slot-occupied",
-        "change.stored-analysis-missing", "change.wordform-ambiguous", "change.wordform-changed",
+        "change.not-found", "change.occurrence-unavailable", "change.occurrence-wordform-mismatch",
+        "change.project-saving", "change.reading-missing", "change.reconfirm-not-allowed", "change.reconfirm-unneeded", "change.refresh-required", "change.revision-conflict", "change.scope-invalid", "change.slot-occupied",
+        "change.stored-analysis-missing", "change.text-unavailable", "change.wordform-ambiguous", "change.wordform-changed",
         "change.wordform-missing",
         "review.assessment-not-found", "review.numbers-unavailable",
         "review.wrong-assessment-kind",

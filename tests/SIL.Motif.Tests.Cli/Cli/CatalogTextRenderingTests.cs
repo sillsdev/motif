@@ -108,4 +108,36 @@ public sealed class CatalogTextRenderingTests
 
         Assert.Contains("FieldWorks has changed since the current Baseline", rendered.Output, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void GrammarCheckTextAndJsonIdentifyErrorsSeparatelyFromWarnings()
+    {
+        var response = new GrammarCheckResponse(
+            [new GrammarWarning(GrammarDiagnosticLevel.Error, "Feature system", [],
+                [new GrammarWarningPart("A feature system could not be loaded.", GrammarWarningPartRole.Text)],
+                "error: hc-invalid-feature-system: A feature system could not be loaded.")],
+            HasBaseline: true);
+
+        var text = CommandTextRenderer.Render(CommandOutcome<GrammarCheckResponse>.Success(response), asJson: false);
+        var json = CommandTextRenderer.Render(CommandOutcome<GrammarCheckResponse>.Success(response), asJson: true);
+
+        Assert.Contains("(1 error, 0 warnings, 0 information)", text.Output);
+        Assert.Contains("error: hc-invalid-feature-system", text.Output);
+        Assert.Contains("\"severity\": \"error\"", json.Output);
+    }
+
+    [Fact]
+    public void WarningsTextAndJsonIdentifyErrorCountsSeparately()
+    {
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Error, "Feature system", [], [],
+            "error: hc-invalid-feature-system: A feature system could not be loaded.");
+        var response = new WarningsResponse(true, true, [finding], [], 0, 0) { ErrorCount = 1 };
+
+        var text = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), asJson: false);
+        var json = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), asJson: true);
+
+        Assert.Contains("Grammar findings: 1 (1 error, 0 warnings, 0 information)", text.Output);
+        Assert.Contains("\"errorCount\": 1", json.Output);
+        Assert.Contains("\"severity\": \"error\"", json.Output);
+    }
 }
