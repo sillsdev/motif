@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -368,6 +369,8 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public bool IsUncertain => Fit?.Status == ChangeFitStatus.Uncertain;
     public bool IsNoLongerFits => Fit?.Status == ChangeFitStatus.NoLongerFits;
     public bool HasUncertainty => Fit?.Uncertainty is not null;
+    public bool HasContext => Occurrence is not null || HasUncertainty;
+    public string ShowContextAutomationName => $"Show context: {Word}";
     public string UncertaintyReason => Fit?.Uncertainty?.Reason switch
     {
         null => string.Empty,
@@ -406,8 +409,13 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public string SourceText => Kind == ChangeKinds.AddCandidate
         ? GroupId is null ? "Add" : "Accepting a set"
         : string.Empty;
+    public bool HasSourceText => SourceText.Length > 0;
     /// <summary>The original change shown beneath an Uncertain item.</summary>
     public string TransitionText => StagedTransition.Text;
+    public OpinionMarkKind? NowOpinionMark => MarkFor(StagedTransition.Now);
+    public OpinionMarkKind? AfterOpinionMark => MarkFor(StagedTransition.AfterApply);
+    public bool HasNowOpinionMark => NowOpinionMark is not null;
+    public bool HasAfterOpinionMark => AfterOpinionMark is not null;
     public string ReviewLabel => Kind == ChangeKinds.Approve && analyses is { Count: > 1 }
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
@@ -461,6 +469,15 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         ReadingGrade.Approved => "Approved",
         ReadingGrade.Disapproved => "Disapproved",
         _ => "Unknown",
+    };
+
+    private static OpinionMarkKind? MarkFor(string opinion) => opinion switch
+    {
+        "Approved" => OpinionMarkKind.Approved,
+        "Disapproved" => OpinionMarkKind.Disapproved,
+        "Unknown" => OpinionMarkKind.Unknown,
+        "Not in FieldWorks" or "Removed" => OpinionMarkKind.None,
+        _ => null,
     };
 }
 /// <summary>One word in the before or after sentence shown for an uncertain change.</summary>

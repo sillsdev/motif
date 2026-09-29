@@ -14,6 +14,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -412,7 +413,7 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
-    public void TheMatrixAndTheReviewPageShowTheSameChangesList()
+    public void TheReviewPageShowsOrderedGroupsAndKeyboardReachableActions()
     {
         _avalonia.Invoke(() =>
         {
@@ -425,20 +426,37 @@ public sealed class WorkflowShellTests
 
                 var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
                 var list = review.GetLogicalDescendants().OfType<ItemsControl>()
-                    .Single(control => AutomationProperties.GetName(control) == "Changes to review");
+                    .Single(control => AutomationProperties.GetName(control) == "Changes grouped for review");
                 Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
                 var page = workspace.PageModel<ReviewPageModel>();
-                Assert.Equal(workspace.Context.Changes.Items, page.ReviewableChanges);
-                Assert.Equal(page.ReviewableChanges,
-                    Assert.IsAssignableFrom<IEnumerable<ChangeViewModel>>(list.ItemsSource));
-
-                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "kitabu"));
+                workspace.Context.Changes.Items.Add(new ChangeViewModel(
+                    ChangeKinds.AddCandidate, "kitabu", "reading", changeId: "add-kitabu"));
                 window.UpdateLayout();
 
-                Assert.Equal(workspace.Context.Changes.Items, page.ReviewableChanges);
-                Assert.Equal(page.ReviewableChanges,
-                    Assert.IsAssignableFrom<IEnumerable<ChangeViewModel>>(list.ItemsSource));
-                Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "kitabu");
+                var group = Assert.Single(page.ReviewGroups);
+                Assert.Equal("Added as Unknown", group.Title);
+                Assert.Equal(page.ReviewGroups.Select(item => item.Title),
+                    Assert.IsAssignableFrom<IEnumerable<ReviewChangeGroupViewModel>>(list.ItemsSource)
+                        .Select(item => item.Title));
+                Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == "Added as Unknown");
+                Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
+                    mark => mark.Kind == OpinionMarkKind.None);
+                Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
+                    mark => mark.Kind == OpinionMarkKind.Unknown);
+
+                var buttons = review.GetLogicalDescendants().OfType<Button>().ToArray();
+                var undo = buttons.Single(button => AutomationProperties.GetName(button) == "Undo: kitabu");
+                Assert.True(undo.IsTabStop);
+                Assert.True(undo.Focus());
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.True(undo.IsHitTestVisible);
+                Assert.Equal(1d, undo.Opacity);
+                Assert.Contains(buttons, button =>
+                    AutomationProperties.GetName(button) == "Undo all: Added as Unknown");
+                Assert.Contains(buttons, button =>
+                    AutomationProperties.GetName(button) == "Go to text in Added as Unknown");
+                Assert.Contains(buttons, button => AutomationProperties.GetName(button) == "Show context: kitabu");
             }
             finally
             {

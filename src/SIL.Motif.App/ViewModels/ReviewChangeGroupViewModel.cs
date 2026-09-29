@@ -26,6 +26,10 @@ public sealed class ReviewChangeGroupViewModel
     /// <summary>The changes shown inside this group.</summary>
     public IReadOnlyList<ChangeViewModel> Items { get; }
 
+    public string UndoAllAutomationName => $"Undo all: {Title}";
+
+    public string GoToTextAutomationName => $"Go to text in {Title}";
+
     /// <summary>Removes each change or accepted set in this group.</summary>
     public IAsyncRelayCommand UndoAllCommand { get; }
 
