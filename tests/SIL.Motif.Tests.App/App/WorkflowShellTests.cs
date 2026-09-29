@@ -18,6 +18,7 @@ using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Requests;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -468,6 +469,42 @@ public sealed class WorkflowShellTests
                 window.Close();
             }
         });
+    }
+
+    [Fact]
+    public void MissingReviewContextUsesTheSharedParsePrompt()
+    {
+        var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(
+            new BaselineToken("p", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z",
+                "sha256:" + new string('b', 64)), DateTimeOffset.UtcNow, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = NewComposedWindow(fake);
+            try
+            {
+                window.Show();
+                await workspace.SetProjectAsync(@"C:\projects\review-context.fwdata");
+                workspace.Context.Setup?.SkipCommand.Execute(null);
+                workspace.CurrentPage = WorkspacePage.Review;
+                var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading", "change",
+                    occurrence: new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 0));
+                workspace.Context.Changes.Items.Add(change);
+                workspace.PageModel<ReviewPageModel>().ToggleContextCommand.Execute(change);
+                window.UpdateLayout();
+
+                var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
+                Assert.True(change.HasUnavailableContext);
+                var prompts = review.GetLogicalDescendants().OfType<ParsePrompt>().ToArray();
+                Assert.Equal(2, prompts.Length);
+                Assert.All(prompts, prompt => Assert.Same(workspace.Context, prompt.DataContext));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]

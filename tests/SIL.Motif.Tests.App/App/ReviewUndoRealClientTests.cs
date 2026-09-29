@@ -69,7 +69,7 @@ public sealed class ReviewUndoRealClientTests(PristineProjectFixture pristine)
 
         Assert.True(changes.Items.Count > 1);
         Assert.All(changes.Items, item => Assert.Equal(ChangeKinds.AddCandidate, item.Kind));
-        Assert.All(changes.Items, item => Assert.Equal("Accepting a set", item.SourceText));
+        Assert.All(changes.Items, item => Assert.Equal("Added as Unknown from accepting a set", item.SourceText));
         var groupId = Assert.Single(changes.Items.Select(item => item.GroupId).Distinct());
         Assert.False(string.IsNullOrWhiteSpace(groupId));
         await changes.RemoveCommand.ExecuteAsync(changes.Items[0]);

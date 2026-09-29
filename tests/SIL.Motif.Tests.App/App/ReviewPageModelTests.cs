@@ -39,6 +39,34 @@ public sealed class ReviewPageModelTests
     }
 
     [Fact]
+    public async Task ReloadingChangesRebuildsReviewGroupsOnceForTheSnapshot()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+        var reviewGroupsChanges = 0;
+        page.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ReviewPageModel.ReviewGroups)) reviewGroupsChanges++;
+        };
+        var changes = new[]
+        {
+            Change("first", "first"),
+            Change("second", "second"),
+            Change("third", "third"),
+        };
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two", changes,
+            changes.Select(change => new ChangeFit(change.ChangeId, true, [])).ToArray()));
+
+        await context.Changes.ReloadAsync();
+
+        Assert.Equal(1, reviewGroupsChanges);
+        Assert.Equal(3, Assert.Single(page.ReviewGroups).Items.Count);
+    }
+
+    [Fact]
     public async Task RefreshRechecksChangeFitBeforeApply()
     {
         var fake = new FakeCommandClient();
@@ -82,7 +110,6 @@ public sealed class ReviewPageModelTests
 
         var item = Assert.Single(context.Changes.Items);
         Assert.Equal("Uncertain — check again", item.FitStatus);
-        Assert.Empty(page.ReviewableChanges);
         Assert.Same(item, Assert.Single(page.UncertainChanges));
         Assert.True(Assert.Single(item.AfterWords, word => word.Form == "changed").IsChanged);
         Assert.False(page.CanApply);

@@ -162,8 +162,9 @@
                               </ItemsControl>
                             </StackPanel>
                           </StackPanel>
-                          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ContextUnavailableText}"
-                                                   IsVisible="{Binding HasUnavailableContext}" />
+                          <Border IsVisible="{Binding HasUnavailableContext}">
+                            <views:ParsePrompt DataContext="{Binding $parent[views:ReviewPanel].Page.Context}" />
+                          </Border>
                           <ItemsControl ItemsSource="{Binding ContextTokens}"
                                         IsVisible="{Binding IsContextExpanded}"
                                         AutomationProperties.Name="Sentence context">

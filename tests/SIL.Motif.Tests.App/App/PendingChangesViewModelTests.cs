@@ -100,7 +100,7 @@ public sealed class PendingChangesViewModelTests
     }
 
     [Fact]
-    public async Task RemovingAStoredAnalysisUsesTheM7CommandAndPublishesARemovedChange()
+    public async Task RemovingAStoredAnalysisUsesTheCommandAndPublishesARemovedChange()
     {
         var removed = new PendingChange("change/remove", "wordform/one", "kitabu", ChangeKinds.RemoveAnalysis,
             null, "reading", ["operation/remove"])
@@ -127,7 +127,7 @@ public sealed class PendingChangesViewModelTests
     }
 
     [Fact]
-    public async Task AcceptingASetUsesTheM7TextScopeAndPublishesOneUndoGroup()
+    public async Task AcceptingASetUsesItsTextScopeAndPublishesOneUndoGroup()
     {
         var textId = Guid.Parse("00000001-0000-0000-0000-000000000001");
         var first = new PendingChange("change/one", "wordform/one", "kitabu", ChangeKinds.AddCandidate,
@@ -149,7 +149,8 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("assessment/one", request.AssessmentId);
         Assert.Equal(textId, request.TextId);
         Assert.False(request.Selection);
-        Assert.Equal(["Accepting a set", "Accepting a set"], changes.Items.Select(item => item.SourceText));
+        Assert.Equal(["Added as Unknown from accepting a set", "Added as Unknown from accepting a set"],
+            changes.Items.Select(item => item.SourceText));
         Assert.All(changes.Items, change => Assert.Equal("group/accepted", change.GroupId));
     }
 

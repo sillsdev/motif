@@ -88,8 +88,6 @@ public sealed class ReviewPageModel : PageModel
 
     public bool HasNonFittingChanges => Changes.Items.Any(item => item.IsNoLongerFits);
 
-    public IReadOnlyList<ChangeViewModel> ReviewableChanges => Changes.Items.Where(item => !item.IsUncertain).ToArray();
-
     public IReadOnlyList<ChangeViewModel> UncertainChanges => Changes.Items.Where(item => item.IsUncertain).ToArray();
 
     /// <summary>The pending changes grouped by their effect on FieldWorks.</summary>
@@ -351,7 +349,6 @@ public sealed class ReviewPageModel : PageModel
             OnPropertyChanged(nameof(CanApply));
             OnPropertyChanged(nameof(ApplyBlockReason));
             OnPropertyChanged(nameof(HasNonFittingChanges));
-            OnPropertyChanged(nameof(ReviewableChanges));
             OnPropertyChanged(nameof(UncertainChanges));
             OnPropertyChanged(nameof(HasUncertainChanges));
             OnPropertyChanged(nameof(ReviewGroups));

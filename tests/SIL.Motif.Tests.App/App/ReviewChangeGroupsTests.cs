@@ -124,14 +124,14 @@ public sealed class ReviewChangeGroupsTests
     }
 
     [Fact]
-    public void ExpandedContextExplainsWhenTheSourceSentenceIsNotLoaded()
+    public void ExpandedContextIsUnavailableWhenTheSourceSentenceIsNotLoaded()
     {
         var change = new ChangeViewModel(ChangeKinds.Approve, "word", "reading",
             occurrence: new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 0));
 
         change.ToggleContext();
 
-        Assert.Equal("The sentence is not loaded. Open Analyze texts to see it.", change.ContextUnavailableText);
+        Assert.True(change.HasUnavailableContext);
     }
 
     [Fact]

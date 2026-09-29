@@ -7,6 +7,7 @@ public sealed class ReviewChangeGroupViewModel
 {
     private readonly ChangesViewModel _changes;
     private readonly Action<ChangeViewModel> _openChange;
+    private readonly int _projectGeneration;
     private int _nextWordIndex;
 
     public ReviewChangeGroupViewModel(string title, IReadOnlyList<ChangeViewModel> items,
@@ -15,6 +16,7 @@ public sealed class ReviewChangeGroupViewModel
         Title = title;
         Items = items;
         _changes = changes;
+        _projectGeneration = changes.ProjectGeneration;
         _openChange = openChange;
         GoToTextCommand = new RelayCommand(GoToText);
         UndoAllCommand = new AsyncRelayCommand(UndoAllAsync);
@@ -57,6 +59,7 @@ public sealed class ReviewChangeGroupViewModel
         var removals = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in Items)
         {
+            if (_changes.ProjectGeneration != _projectGeneration) return;
             var key = item.GroupId ?? item.ChangeId;
             if (!removals.Add(key)) continue;
             var current = _changes.Items.FirstOrDefault(change => (change.GroupId ?? change.ChangeId) == key);

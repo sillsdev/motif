@@ -54,14 +54,20 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     private readonly ICommandClient _client;
     private readonly List<string> _collectionNotices = [];
     private int _projectGeneration;
+    private bool _isReplacingItems;
     public ChangesViewModel(ICommandClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         RemoveCommand = new AsyncRelayCommand<ChangeViewModel>(RemoveAsync);
-        Items.CollectionChanged += (_, _) => Raise();
+        Items.CollectionChanged += (_, _) =>
+        {
+            if (!_isReplacingItems) Raise();
+        };
     }
 
     public ObservableCollection<ChangeViewModel> Items { get; } = [];
+
+    internal int ProjectGeneration => _projectGeneration;
 
     /// <summary>The project these changes belong to, or <see langword="null"/> before one is open.</summary>
     public string? ProjectPath { get; private set; }
@@ -332,7 +338,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public void Reset()
     {
         _projectGeneration++;
-        Items.Clear();
+        ReplaceItems([]);
         Snapshot = new PendingChangesSnapshot(null, "none", [], []);
         LastRefusal = null;
         BeginCollection();
@@ -341,7 +347,6 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         OnPropertyChanged(nameof(LastRefusal));
         OnPropertyChanged(nameof(ShownRefusal));
         OnPropertyChanged(nameof(HasError));
-        Raise();
     }
 
     void IProjectStateParticipant.ClearProject()
@@ -379,14 +384,27 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             AddCollectionNotice("Cancelled the pending choice.");
         if (snapshot.SkippedWord is not null)
             AddCollectionNotice("Skipped one word because a choice is already pending.");
-        Items.Clear();
-        foreach (var change in snapshot.Changes)
+        ReplaceItems(snapshot.Changes.Select(change =>
         {
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
-            Items.Add(new ChangeViewModel(change.Kind, change.Word,
+            return new ChangeViewModel(change.Kind, change.Word,
                 change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage,
                 fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId, change.ReadingIndex,
-                change.GroupId));
+                change.GroupId);
+        }).ToArray());
+    }
+
+    private void ReplaceItems(IReadOnlyList<ChangeViewModel> changes)
+    {
+        _isReplacingItems = true;
+        try
+        {
+            Items.Clear();
+            foreach (var change in changes) Items.Add(change);
+        }
+        finally
+        {
+            _isReplacingItems = false;
         }
         Raise();
     }
@@ -475,17 +493,12 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     /// <summary>The sentence tokens surrounding the exact occurrence, when the Texts page has loaded them.</summary>
     public IReadOnlyList<ResultsTokenViewModel> ContextTokens { get; private set; } = [];
 
-    public string ContextUnavailableText => IsContextExpanded && Occurrence is not null && ContextTokens.Count == 0
-        ? "The sentence is not loaded. Open Analyze texts to see it."
-        : string.Empty;
-
-    public bool HasUnavailableContext => ContextUnavailableText.Length > 0;
+    public bool HasUnavailableContext => IsContextExpanded && Occurrence is not null && ContextTokens.Count == 0;
 
     internal void SetContextTokens(IReadOnlyList<ResultsTokenViewModel> tokens)
     {
         ContextTokens = tokens;
         OnPropertyChanged(nameof(ContextTokens));
-        OnPropertyChanged(nameof(ContextUnavailableText));
         OnPropertyChanged(nameof(HasUnavailableContext));
     }
 
@@ -493,7 +506,6 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
 
     partial void OnIsContextExpandedChanged(bool value)
     {
-        OnPropertyChanged(nameof(ContextUnavailableText));
         OnPropertyChanged(nameof(HasUnavailableContext));
     }
     public string Kind { get; } = kind;

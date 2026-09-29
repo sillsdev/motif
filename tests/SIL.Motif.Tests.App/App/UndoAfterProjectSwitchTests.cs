@@ -15,10 +15,10 @@ public sealed class UndoAfterProjectSwitchTests
     private const string SecondProject = @"C:\projects\second.fwdata";
 
     [Fact]
-    public async Task ARemoveResultFromThePreviousProjectCannotReplaceTheNewProjectsChanges()
+    public async Task UndoAllFromThePreviousProjectCannotRemoveTheNewProjectsChanges()
     {
-        var firstSnapshot = Snapshot("draft/first", "first-change", "first-word");
-        var secondSnapshot = Snapshot("draft/second", "second-change", "second-word");
+        var firstSnapshot = Snapshot("draft/first", "first-word", "second-word");
+        var secondSnapshot = Snapshot("draft/second", "new-first-word", "new-second-word");
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         fake.PendingLoadHandler = (request, _) => Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(
@@ -28,31 +28,51 @@ public sealed class UndoAfterProjectSwitchTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         fake.PendingRemoveHandler = (request, _) =>
         {
-            Assert.Equal(FirstProject, request.FwDataPath);
-            started.SetResult();
-            return release.Task;
+            if (request.FwDataPath == FirstProject)
+            {
+                started.SetResult();
+                return release.Task;
+            }
+            var remaining = secondSnapshot.Changes.Where(change => change.ChangeId != request.ChangeId).ToArray();
+            return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(secondSnapshot with
+            {
+                Revision = "revision/after-undo",
+                Changes = remaining,
+                FitSummary = secondSnapshot.FitSummary.Where(fit =>
+                    remaining.Any(change => change.ChangeId == fit.ChangeId)).ToArray(),
+            }));
         };
         var selection = new SelectionViewModel(fake);
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
             new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
+        var review = new ReviewPageModel(context);
         await context.OpenProjectAsync(FirstProject);
 
-        var undoing = context.Changes.RemoveCommand.ExecuteAsync(Assert.Single(context.Changes.Items));
+        var undoing = review.ReviewGroups.Single(group => group.Title == "Added")
+            .UndoAllCommand.ExecuteAsync(null);
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await context.OpenProjectAsync(SecondProject);
         release.SetResult(CommandOutcome<PendingChangesSnapshot>.Success(
-            new PendingChangesSnapshot("draft/first", "revision/after-undo", [], [])));
+            firstSnapshot with { Revision = "revision/after-undo", Changes = [], FitSummary = [] }));
         await undoing.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.Contains(fake.PendingLoadRequests, request => request.FwDataPath == SecondProject);
-        Assert.Equal("second-change", Assert.Single(context.Changes.Items).ChangeId);
+        Assert.Equal(FirstProject, Assert.Single(fake.PendingRemoveRequests).FwDataPath);
+        Assert.Equal(secondSnapshot.Changes.Select(change => change.ChangeId),
+            context.Changes.Snapshot.Changes.Select(change => change.ChangeId));
     }
 
-    private static PendingChangesSnapshot Snapshot(string draft, string id, string word)
+    private static PendingChangesSnapshot Snapshot(string draft, string firstWord, string secondWord)
     {
-        var change = new PendingChange(id, "wordform/" + id, word, ChangeKinds.Approve,
-            "assessment/one", "reading", ["operation/" + id]);
-        return new PendingChangesSnapshot(draft, "revision/one", [change], [new ChangeFit(id, true, [])]);
+        var changes = new[]
+        {
+            new PendingChange("shared-first", "wordform/shared-first", firstWord, ChangeKinds.AddCandidate,
+                "assessment/one", "first reading", ["operation/first"]),
+            new PendingChange("shared-second", "wordform/shared-second", secondWord, ChangeKinds.AddCandidate,
+                "assessment/one", "second reading", ["operation/second"]),
+        };
+        return new PendingChangesSnapshot(draft, "revision/one", changes,
+            changes.Select(change => new ChangeFit(change.ChangeId, true, [])).ToArray());
     }
 
     private sealed class FolderPicker : IHandoffFolderPicker
