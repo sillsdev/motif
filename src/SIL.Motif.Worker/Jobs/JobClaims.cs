@@ -86,7 +86,8 @@ public sealed class JobClaims
             claim.Transaction = transaction;
             claim.CommandText =
                 "UPDATE Jobs SET Status = 'running', OwnerId = $owner, ClaimToken = $token, " +
-                "LeaseUntilUtc = $until, HeartbeatUtc = $now, UpdatedUtc = $now, Version = Version + 1, " +
+                "LeaseUntilUtc = $until, HeartbeatUtc = $now, " +
+                "UpdatedUtc = MAX(CreatedUtc, UpdatedUtc, $now), Version = Version + 1, " +
                 "Attempt = Attempt + CASE WHEN Status = 'running' THEN 1 ELSE 0 END " +
                 "WHERE JobId = (SELECT JobId FROM Jobs WHERE ProjectKey = $project AND ArchivedUtc IS NULL " +
                 "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") ORDER BY QueueOrder, JobId LIMIT 1) " +
