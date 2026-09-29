@@ -107,6 +107,8 @@ public sealed class MarkingsGalleryTests
                     AssertReadable("Intent.Parser.SearchCapped", "Intent.Marking.Surface", variant);
                     AssertReadable("Intent.Change.Text", "Intent.Change.Fill", variant);
                     AssertReadable("Intent.Marking.Text", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Text", "Intent.Surface", variant);
+                    AssertReadable("Intent.Agreement.Suggestion", "Intent.Surface", variant);
                     AssertReadable("Intent.Opinion.Approved.Text", "Intent.Marking.Surface", variant);
                     AssertReadable("Intent.Marking.Link", "Intent.Marking.Surface", variant);
                     Assert.Equal(Color.Parse(variant == ThemeVariant.Light ? "#d5dce4" : "#4d5865"),

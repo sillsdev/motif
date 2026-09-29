@@ -20,7 +20,7 @@ public sealed partial class CompareViewModel : ObservableObject
         new(OpinionMarkKind.Approved, "Approved"),
         new(OpinionMarkKind.Unknown, "Unknown"),
         new(OpinionMarkKind.Disapproved, "Disapproved"),
-        new(OpinionMarkKind.None, "None"),
+        new(OpinionMarkKind.None, "Not in FieldWorks"),
     ];
 
     private static readonly IReadOnlyList<PanGlossLegendItem> PanGlossLegendItems =
@@ -530,7 +530,7 @@ public sealed partial class CompareViewModel : ObservableObject
         WordProjectStatus.Candidate => "Unknown",
         WordProjectStatus.Rejected => "Disapproved",
         WordProjectStatus.IncorrectSpelling => "Incorrect spelling",
-        _ => "None",
+        _ => "Not in FieldWorks",
     };
 
     public static string ColumnSentenceOf(CompareColumnKind column) => column switch
@@ -538,7 +538,7 @@ public sealed partial class CompareViewModel : ObservableObject
         CompareColumnKind.Match => "PanGloss agrees",
         CompareColumnKind.NoMatch => "PanGloss differs",
         CompareColumnKind.NoParse => "PanGloss found no parse",
-        CompareColumnKind.Timeout => "PanGloss stopped early",
+        CompareColumnKind.Timeout => "PanGloss is capped",
         _ => "PanGloss has not assessed the word",
     };
 
@@ -549,7 +549,7 @@ public sealed partial class CompareViewModel : ObservableObject
         AnalysisMarkingClass.Different => "Different",
         AnalysisMarkingClass.Extra => "Extra readings",
         AnalysisMarkingClass.None => "No parse",
-        AnalysisMarkingClass.Capped => "Stopped early",
+        AnalysisMarkingClass.Capped => "Capped",
         _ => "Not assessed",
     };
 
@@ -598,6 +598,9 @@ public sealed partial class CompareRowViewModel(WordProjectStatus row, IReadOnly
     public string Label { get; } = CompareViewModel.RowLabelOf(row);
     public string OpinionLabel { get; } = CompareViewModel.OpinionLabelOf(row);
     public OpinionMarkKind OpinionMark { get; } = CompareViewModel.OpinionMarkFor(row);
+    public bool IsOpinionMarkVisible => Row != WordProjectStatus.IncorrectSpelling;
+    public string AccessibleName => Row == WordProjectStatus.NotPresent
+        ? "Choose the words not in FieldWorks" : $"Choose the {OpinionLabel} row";
     public Verdict Verdict { get; } = WordProjectStatuses.VerdictOf(row);
     public IReadOnlyList<CompareCellViewModel> Cells { get; } = cells;
 
@@ -718,7 +721,8 @@ public sealed record OpinionLegendItem(OpinionMarkKind Kind, string Label);
 public sealed record PanGlossLegendItem(AnalysisMarkingClass Kind, string Label)
 {
     public bool IsSame => Kind == AnalysisMarkingClass.Same;
-    public bool IsDifferent => Kind is AnalysisMarkingClass.Conflict or AnalysisMarkingClass.Different;
+    public bool IsConflict => Kind == AnalysisMarkingClass.Conflict;
+    public bool IsDifferent => Kind == AnalysisMarkingClass.Different;
     public bool IsExtra => Kind == AnalysisMarkingClass.Extra;
     public bool IsNoParse => Kind == AnalysisMarkingClass.None;
     public bool IsCapped => Kind == AnalysisMarkingClass.Capped;
@@ -755,7 +759,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
         OpinionMark = OpinionMarks[0].Kind;
         OpinionLabel = string.Join(", ", OpinionMarks.Select(mark => mark.Label));
         PanGlossLabel = CompareViewModel.PanGlossClassLabel(Marking.PanGlossClass);
-        AccessibleName = $"{Word}: {OpinionLabel} in FieldWorks, PanGloss {PanGlossLabel}.";
+        AccessibleName = $"{Word}: {OpinionLabel} in FieldWorks, {CompareViewModel.ColumnSentenceOf(Column)}.";
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
         (Meaning, Family) = CompareViewModel.MeaningOf(Row, Column);
@@ -784,7 +788,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public string PanGlossLabel { get; }
     public string AccessibleName { get; }
     public bool IsSame => Marking.PanGlossClass == AnalysisMarkingClass.Same;
-    public bool IsDifferent => Marking.PanGlossClass is AnalysisMarkingClass.Conflict or AnalysisMarkingClass.Different;
+    public bool IsConflict => Marking.PanGlossClass == AnalysisMarkingClass.Conflict;
+    public bool IsDifferent => Marking.PanGlossClass == AnalysisMarkingClass.Different;
     public bool IsExtra => Marking.PanGlossClass == AnalysisMarkingClass.Extra;
     public bool IsNoParse => Marking.PanGlossClass == AnalysisMarkingClass.None;
     public bool IsCapped => Marking.PanGlossClass == AnalysisMarkingClass.Capped;

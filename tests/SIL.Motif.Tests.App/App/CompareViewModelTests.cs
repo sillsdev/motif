@@ -125,10 +125,23 @@ public sealed class CompareViewModelTests
     {
         var compare = new CompareViewModel();
 
-        Assert.Equal(["Approved", "Unknown", "Disapproved", "None"],
+        Assert.Equal(["Approved", "Unknown", "Disapproved", "Not in FieldWorks"],
             compare.OpinionLegend.Select(item => item.Label));
         Assert.Equal(["Same", "Conflict", "Different", "Extra", "No parse", "Capped", "Not assessed"],
             compare.PanGlossLegend.Select(item => item.Label));
+        Assert.True(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Conflict).IsConflict);
+        Assert.False(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Conflict).IsDifferent);
+        Assert.False(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Different).IsConflict);
+        Assert.True(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Different).IsDifferent);
+    }
+
+    [Fact]
+    public void MissingProjectRowUsesOneLabelAcrossItsHeaderAndLegend()
+    {
+        var compare = new CompareViewModel();
+
+        Assert.Equal("Not in FieldWorks", CompareViewModel.OpinionLabelOf(WordProjectStatus.NotPresent));
+        Assert.Equal("Not in FieldWorks", compare.OpinionLegend.Single(item => item.Kind == OpinionMarkKind.None).Label);
     }
 
     [Theory]
@@ -137,7 +150,7 @@ public sealed class CompareViewModelTests
     [InlineData(AnalysisMarkingClass.Different, "Different")]
     [InlineData(AnalysisMarkingClass.Extra, "Extra readings")]
     [InlineData(AnalysisMarkingClass.None, "No parse")]
-    [InlineData(AnalysisMarkingClass.Capped, "Stopped early")]
+    [InlineData(AnalysisMarkingClass.Capped, "Capped")]
     [InlineData(AnalysisMarkingClass.NotAssessed, "Not assessed")]
     public void CompactWordUsesEachPanGlossClassLabel(AnalysisMarkingClass markingClass, string expected) =>
         Assert.Equal(expected, CompareViewModel.PanGlossClassLabel(markingClass));
@@ -145,19 +158,15 @@ public sealed class CompareViewModelTests
     [Fact]
     public void ListedWordUsesTheSharedAnalysisMarkingState()
     {
-        var stored = new ParserReading([new ParserReadingMorph("kitabu", "book", "n", null, false, null)])
-        {
-            StoredAnalysisId = "analysis-1",
-            StoredAnalysisOpinion = ReadingGrade.Approved,
-        };
+        var stored = StoredReading("analysis-1", ReadingGrade.Approved);
         var result = new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 10, null)
         {
             ProjectStanding = ProjectStanding.Approved,
-            ExpectedAnalysis = stored,
-            Readings = [stored],
+            Readings = [new ParserReading(stored.Morphs)],
+            StoredAnalyses = [stored],
             ReadingGrades = [ReadingGrade.Approved],
             Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10,
-                false, false, false, [new ParseAnalysis([])], []),
+                false, false, false, [new ParseAnalysis([new ParseMorph("kitabu", "n", null, null)])], []),
         };
         var row = new AssessWordRowViewModel(result);
         var word = new CompareWordViewModel(row,
@@ -175,8 +184,8 @@ public sealed class CompareViewModelTests
         var result = new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 10, null)
         {
             ProjectStanding = ProjectStanding.Approved,
-            ExpectedAnalysis = approved,
-            Readings = [approved, disapproved],
+            Readings = [new ParserReading(approved.Morphs), new ParserReading(disapproved.Morphs)],
+            StoredAnalyses = [approved, disapproved],
             ReadingGrades = [ReadingGrade.Approved, ReadingGrade.Disapproved],
             Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10,
                 false, false, false, [new ParseAnalysis([]), new ParseAnalysis([])], []),
@@ -199,8 +208,7 @@ public sealed class CompareViewModelTests
         var result = new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 10, null)
         {
             ProjectStanding = ProjectStanding.Approved,
-            ExpectedAnalysis = stored,
-            MissedApproved = opinion == ReadingGrade.Approved ? [stored] : [],
+            StoredAnalyses = [stored],
         };
         var word = new CompareWordViewModel(new AssessWordRowViewModel(result),
             (WordProjectStatus.Approved, CompareColumnKind.NoParse));
@@ -226,6 +234,11 @@ public sealed class CompareViewModelTests
         {
             StoredAnalysisId = id,
             StoredAnalysisOpinion = opinion,
+            Identity = new ApprovedMorphology([new ApprovedMorph("kitabu", "n", null, ["entry"])])
+            {
+                SourceAnalysisId = id,
+                SourceWordformGuid = "wordform-1",
+            },
         };
 
     private static readonly AssessmentWordResult[] Sample =

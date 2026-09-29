@@ -31,6 +31,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 ProjectStanding = ProjectStanding.Approved,
                 ExpectedAnalysis = approvedReading,
                 MissedApproved = [approvedReading],
+                StoredAnalyses = [approvedReading],
             })]);
             compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                 cell.Column == CompareColumnKind.NoParse), additive: false);
@@ -56,8 +57,16 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Not assessed");
                 var wordCell = window.GetLogicalDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("matrixWordCell"));
-                Assert.Equal("kitabu: Approved in FieldWorks, PanGloss No parse.",
+                Assert.Equal("kitabu: Approved in FieldWorks, PanGloss found no parse.",
                     AutomationProperties.GetName(wordCell));
+                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == compare.Words.Single().Meaning);
+                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                    text.Text == compare.Words.Single().Meaning && text.Classes.Contains("error"));
+                var incorrectRow = window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Choose the Incorrect spelling row");
+                Assert.All(incorrectRow.GetLogicalDescendants().OfType<OpinionMark>(), mark => Assert.False(mark.IsVisible));
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Choose the words not in FieldWorks");
             }
             finally
             {
@@ -78,8 +87,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 "kitabu", "analysed", false, "Search completed", 10, null)
             {
                 ProjectStanding = ProjectStanding.Approved,
-                ExpectedAnalysis = approved,
-                Readings = [approved, disapproved],
+                    Readings = [new ParserReading([]), new ParserReading([])],
+                StoredAnalyses = [approved, disapproved],
                 ReadingGrades = [ReadingGrade.Approved, ReadingGrade.Disapproved],
                 Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10,
                     false, false, false, [new ParseAnalysis([]), new ParseAnalysis([])], []),

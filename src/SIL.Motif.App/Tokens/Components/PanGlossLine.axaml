@@ -23,13 +23,23 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Agreeing}" />
   </Style>
   <Style Selector="Border.panGlossLine.different">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Suggestion.Edge}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.DifferentPadding}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.different :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Suggestion}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.conflict">
     <Setter Property="Background" Value="{DynamicResource Intent.Agreement.Conflict.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Conflict.Edge}" />
     <Setter Property="BoxShadow" Value="{DynamicResource Intent.Agreement.Conflict.Shadow}" />
     <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.DifferentPadding}" />
   </Style>
-  <Style Selector="Border.panGlossLine.different TextBlock.f">
+  <Style Selector="Border.panGlossLine.conflict :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Conflict}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.conflict TextBlock.f">
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="Border.panGlossLine.none :is(TextBlock)">
