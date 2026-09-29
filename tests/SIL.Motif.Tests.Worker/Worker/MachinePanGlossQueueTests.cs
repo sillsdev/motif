@@ -220,9 +220,9 @@ public sealed class MachinePanGlossQueueTests
         var third = Enqueue("project-c");
 
         // Only two slots exist, so project-c cannot be admitted until one of the first two releases.
-        await firstTwoAdmitted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await firstTwoAdmitted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         releaseGates["project-a"].SetResult();
-        await thirdAdmitted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await thirdAdmitted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         releaseGates["project-b"].SetResult();
         releaseGates["project-c"].SetResult();
 
@@ -266,7 +266,7 @@ public sealed class MachinePanGlossQueueTests
             Enqueue(userB, "b-1"), Enqueue(userB, "b-2"),
         };
 
-        await bothSlotsFilled.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        await bothSlotsFilled.Task.WaitAsync(TimeSpan.FromSeconds(5));
         releaseAll.SetResult();
         await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(15));
 
