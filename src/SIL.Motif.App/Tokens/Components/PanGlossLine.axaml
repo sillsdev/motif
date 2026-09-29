@@ -24,7 +24,7 @@
   </Style>
   <Style Selector="Border.panGlossLine.different">
     <Setter Property="Background" Value="{DynamicResource Intent.Agreement.Conflict.Fill}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Action}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Conflict.Edge}" />
     <Setter Property="BoxShadow" Value="{DynamicResource Intent.Agreement.Conflict.Shadow}" />
     <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.DifferentPadding}" />
   </Style>
@@ -51,7 +51,7 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Component.PanGlossLine.ExtraStroke}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.PanGlossLine.ExtraRadius}" />
     <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.ExtraPadding}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Edge}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Suggestion.Edge}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
   </Style>
   <Style Selector="Border.panGlossExtra :is(TextBlock)">

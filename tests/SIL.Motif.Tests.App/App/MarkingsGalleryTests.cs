@@ -8,6 +8,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using SIL.Motif.App.Controls;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -26,10 +27,19 @@ public sealed class MarkingsGalleryTests
         {
             var gallery = new MarkingsGallery();
 
+            Assert.IsType<OpinionMark>(gallery.ApprovedMark);
+            Assert.IsType<OpinionMark>(gallery.DisapprovedMark);
+            Assert.IsType<OpinionMark>(gallery.UnknownMark);
+            Assert.IsType<OpinionMark>(gallery.EmptyMark);
             Assert.Contains("approved", gallery.ApprovedMark.Classes);
             Assert.Contains("disapproved", gallery.DisapprovedMark.Classes);
             Assert.Contains("unknown", gallery.UnknownMark.Classes);
             Assert.Contains("none", gallery.EmptyMark.Classes);
+            Assert.Equal("A", ((TextBlock)gallery.ApprovedMark.Child!).Text);
+            Assert.Equal("D", ((TextBlock)gallery.DisapprovedMark.Child!).Text);
+            Assert.Equal("U", ((TextBlock)gallery.UnknownMark.Child!).Text);
+            Assert.IsType<Avalonia.Controls.Shapes.Rectangle>(
+                ((Grid)gallery.EmptyMark.Child!).Children[0]);
             Assert.Contains("same", gallery.SameLine.Classes);
             Assert.Contains("different", gallery.DifferentLine.Classes);
             Assert.Contains("f", ((TextBlock)((Grid)gallery.DifferentLine.Child!).Children[1]!).Classes);
@@ -57,6 +67,13 @@ public sealed class MarkingsGalleryTests
                 Assert.Equal("Disapproved", AutomationProperties.GetName(gallery.DisapprovedMark));
                 Assert.Equal("Unknown", AutomationProperties.GetName(gallery.UnknownMark));
                 Assert.Equal("Not in FieldWorks", AutomationProperties.GetName(gallery.EmptyMark));
+                Assert.Equal(0d, gallery.ApprovedMark.CornerRadius.TopLeft);
+                Assert.Equal(0d, gallery.DisapprovedMark.CornerRadius.TopLeft);
+                Assert.Equal(7d, gallery.UnknownMark.CornerRadius.TopLeft);
+                var noneDash = Assert.IsType<Avalonia.Controls.Shapes.Rectangle>(
+                    ((Grid)gallery.EmptyMark.Child!).Children[0]);
+                Assert.Equal(new[] { 3d, 2d }, noneDash.StrokeDashArray);
+                Assert.Equal(Color.Parse("#d5dce4"), Assert.IsType<SolidColorBrush>(noneDash.Stroke).Color);
 
                 foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
                 foreach (var opinion in new[] { "Approved", "Disapproved", "Unknown" })
@@ -78,9 +95,13 @@ public sealed class MarkingsGalleryTests
                     AssertReadable("Intent.Change.Text", "Intent.Change.Fill", variant);
                     AssertReadable("Intent.Marking.Text", "Intent.Marking.Surface", variant);
                     AssertReadable("Intent.Opinion.Approved.Text", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Marking.Link", "Intent.Marking.Surface", variant);
                     Assert.Equal(Color.Parse(variant == ThemeVariant.Light ? "#d5dce4" : "#4d5865"),
                         ColorResource("Intent.Opinion.None.Outline", variant));
                 }
+                Assert.Equal(Color.Parse("#69737f"),
+                    ColorResource("Intent.Opinion.None.Text", ThemeVariant.Light));
+                Assert.Equal(Color.Parse("#164f91"), ColorResource("Intent.Marking.Link", ThemeVariant.Light));
             }
             finally
             {

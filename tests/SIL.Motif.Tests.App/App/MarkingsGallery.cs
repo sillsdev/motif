@@ -1,5 +1,6 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
+using SIL.Motif.App.Controls;
 
 namespace SIL.Motif.Tests.App;
 
@@ -9,10 +10,10 @@ internal sealed class MarkingsGallery : StackPanel
     {
         Spacing = 8;
         Children.Add(Heading("Opinion marks"));
-        ApprovedMark = Mark("approved", "A");
-        DisapprovedMark = Mark("disapproved", "D");
-        UnknownMark = Mark("unknown", "U");
-        EmptyMark = Mark("none", null);
+        ApprovedMark = new OpinionMark(OpinionMarkKind.Approved);
+        DisapprovedMark = new OpinionMark(OpinionMarkKind.Disapproved);
+        UnknownMark = new OpinionMark(OpinionMarkKind.Unknown);
+        EmptyMark = new OpinionMark(OpinionMarkKind.None);
         Children.Add(Row(ApprovedMark, DisapprovedMark, UnknownMark, EmptyMark));
 
         Children.Add(Heading("PanGloss readings"));
@@ -78,10 +79,10 @@ internal sealed class MarkingsGallery : StackPanel
         Children.Add(Row(CompactRoot, NormalRoot));
     }
 
-    public Border ApprovedMark { get; }
-    public Border DisapprovedMark { get; }
-    public Border UnknownMark { get; }
-    public Border EmptyMark { get; }
+    public OpinionMark ApprovedMark { get; }
+    public OpinionMark DisapprovedMark { get; }
+    public OpinionMark UnknownMark { get; }
+    public OpinionMark EmptyMark { get; }
     public Border SameLine { get; }
     public Border DifferentLine { get; }
     public Border ExtraCount { get; }
@@ -97,16 +98,6 @@ internal sealed class MarkingsGallery : StackPanel
     public TextBlock NormalText { get; }
     public StackPanel CompactRoot { get; }
     public StackPanel NormalRoot { get; }
-
-    private static Border Mark(string state, string? content)
-    {
-        var mark = new Border { Classes = { "opinionMark", state } };
-        if (state == "none")
-            mark.Child = new Grid { Children = { new Avalonia.Controls.Shapes.Rectangle { Classes = { "opinionDash" } } } };
-        else
-            mark.Child = Label(content!);
-        return mark;
-    }
 
     private static Border Line(string state, string content)
     {

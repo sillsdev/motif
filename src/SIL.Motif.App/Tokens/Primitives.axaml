@@ -37,6 +37,7 @@
   <Color x:Key="Primitive.Color.Blue500">#0064FA</Color>
   <Color x:Key="Primitive.Color.Blue600">#2468E0</Color>
   <Color x:Key="Primitive.Color.Blue700">#0B4FC4</Color>
+  <Color x:Key="Primitive.Color.Blue775">#164F91</Color>
   <Color x:Key="Primitive.Color.Blue900">#1D3354</Color>
 
   <Color x:Key="Primitive.Color.Green300">#6FCF87</Color>

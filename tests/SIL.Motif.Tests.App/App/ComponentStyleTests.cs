@@ -323,10 +323,12 @@ public sealed class ComponentStyleTests
             Border.CornerRadiusProperty, "Component.OpinionMark.UnknownRadius");
         yield return new("PanGlossLine", "a different reading", host => Add(host, Box("panGlossLine", "different")),
             Border.BackgroundProperty, "Intent.Agreement.Conflict.Fill");
+        yield return new("PanGlossLine", "a different reading edge", host => Add(host, Box("panGlossLine", "different")),
+            Border.BorderBrushProperty, "Intent.Agreement.Conflict.Edge");
         yield return new("PanGlossLine", "an inset edge", host => Add(host, Box("panGlossLine", "different")),
             Border.BoxShadowProperty, "Intent.Agreement.Conflict.Shadow");
         yield return new("PanGlossLine", "an extra reading count", host => Add(host, Box("panGlossExtra")),
-            Border.BorderBrushProperty, "Intent.Change.Edge");
+            Border.BorderBrushProperty, "Intent.Agreement.Suggestion.Edge");
         yield return new("PanGlossLine", "a suggested reading count", host => Inside(host, Box("panGlossExtra")),
             TextBlock.ForegroundProperty, "Intent.Agreement.Suggestion");
         yield return new("ActionChip", "the primary action", host => Add(host, Press("actionChip", "primary")),
@@ -343,6 +345,8 @@ public sealed class ComponentStyleTests
             Control.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
         yield return new("HoverReveal", "the staged button height", host => Add(host, Press("revealControl", "revealButton")),
             Button.HeightProperty, "Component.HoverReveal.Height");
+        yield return new("HoverReveal", "the FieldWorks link", host => Add(host, Press("revealControl", "revealLink")),
+            Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
             TextBlock.FontSizeProperty, "Component.Density.CompactType");
         yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
@@ -364,7 +368,7 @@ public sealed class ComponentStyleTests
         yield return new("HoverReveal", "the staged button surface", host => Add(host, Press("revealControl", "revealButton")),
             Button.BackgroundProperty, "Intent.Marking.Surface");
         yield return new("HoverReveal", "the FieldWorks link colour", host => Add(host, Press("revealControl", "revealLink")),
-            Button.ForegroundProperty, "Intent.Change.Text");
+            Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("HoverReveal", "the FieldWorks link padding", host => Add(host, Press("revealControl", "revealLink")),
             Button.PaddingProperty, "Intent.Inset.None");
     }
