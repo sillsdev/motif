@@ -40,9 +40,9 @@ namespace SIL.Motif.Commands.Assess;
 /// <remarks>
 /// <para>
 /// This command never wakes the durable job runner — it captures, measures, and returns within one call,
-/// the same synchronous shape <see cref="BaselineCaptureCommand"/> already established. A cancelled run
-/// records nothing: <see cref="RetainedInvocationRepository.Record"/> is called only after the Assessor has already
-/// returned, so a cancellation raised while it is still running never leaves a partial Assessment behind.
+/// the same synchronous shape <see cref="BaselineCaptureCommand"/> already established. It prepares the full
+/// response before recording and checks cancellation inside the transaction, so cancellation before commit
+/// leaves no retained invocation or member Assessment behind.
 /// </para>
 /// <para>
 /// Shares its interpretation of <c>ProducedAssessment</c> with <c>TrialJobHandler</c> through
@@ -376,9 +376,6 @@ public static class AssessCommand
                     composition.Descriptor, assessor.Name, scopeJson, scopeDigest, invocation.InvocationId,
                     pendingRecords.Select(record => new RetainedInvocationMember(record.Kind, record.AssessmentId))
                         .ToArray());
-                retainedInvocations.Record(retained, pendingRecords);
-                foreach (var lease in artifactLeases) lease.Retain();
-
                 var timing = produced.FirstOrDefault(item => item.Kind == AssessmentKind.ParseTime);
                 var words = timing?.Raw is AssessmentRaw.Batch batch
                     ? batch.Analysis.Words.Select(word => AssessmentWordRows.Row(word.Word,
@@ -439,30 +436,41 @@ public static class AssessCommand
                     }).ToArray();
                 }
 
+                var response = new AssessCommandResponse(baseline, composition.Projection, assessmentIds, summaryMarkdown)
+                {
+                    Words = words,
+                    CompletionSummary = completionSummary,
+                    GrammarWarnings = grammarWarnings,
+                    CorrectnessStatus = words.Any(word => word.Correctness is not null)
+                        ? $"{words.Sum(word => word.Correctness?.Matched ?? 0)}/" +
+                          $"{words.Sum(word => word.Correctness?.Expected ?? 0)} approved readings matched; " +
+                          $"{words.Count(word => word.Correctness?.Status == "covered")} words covered; " +
+                          $"{words.Count(word => word.Correctness?.Status == "unmatched")} unmatched; " +
+                            $"{words.Count(word => word.Correctness?.Unavailable.Count > 0 || word.Morphology?.InvalidShape == true)} with unavailable evidence; " +
+                            $"{words.Count(word => word.Correctness?.Expected == 0)} without approved expectations. " +
+                          "Search completion is reported separately for each word."
+                        : "Correctness unavailable: this Assessment did not collect approved morphology comparisons.",
+                    Measurements = pendingRecords.Select(record => new ProducedAssessmentReference(
+                        record.AssessmentId, record.Kind,
+                        record.Invocation?.InvocationId ?? throw new InvalidDataException(
+                            "An Assessment is missing its invocation evidence."))).ToArray(),
+                    InvocationId = invocation.InvocationId,
+                    SelectionDescriptor = composition.Descriptor,
+                };
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, completionSummary));
-                return CommandOutcome<AssessCommandResponse>.Success(
-                    new AssessCommandResponse(baseline, composition.Projection, assessmentIds, summaryMarkdown)
-                    {
-                        Words = words,
-                        CompletionSummary = completionSummary,
-                        GrammarWarnings = grammarWarnings,
-                        CorrectnessStatus = words.Any(word => word.Correctness is not null)
-                            ? $"{words.Sum(word => word.Correctness?.Matched ?? 0)}/" +
-                              $"{words.Sum(word => word.Correctness?.Expected ?? 0)} approved readings matched; " +
-                              $"{words.Count(word => word.Correctness?.Status == "covered")} words covered; " +
-                              $"{words.Count(word => word.Correctness?.Status == "unmatched")} unmatched; " +
-                                $"{words.Count(word => word.Correctness?.Unavailable.Count > 0 || word.Morphology?.InvalidShape == true)} with unavailable evidence; " +
-                                $"{words.Count(word => word.Correctness?.Expected == 0)} without approved expectations. " +
-                              "Search completion is reported separately for each word."
-                            : "Correctness unavailable: this Assessment did not collect approved morphology comparisons.",
-                        Measurements = pendingRecords.Select(record => new ProducedAssessmentReference(
-                            record.AssessmentId, record.Kind,
-                            record.Invocation?.InvocationId ?? throw new InvalidDataException(
-                                "An Assessment is missing its invocation evidence."))).ToArray(),
-                        InvocationId = invocation.InvocationId,
-                        SelectionDescriptor = composition.Descriptor,
-                    });
+                if (cancellationToken.IsCancellationRequested)
+                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                try
+                {
+                    retainedInvocations.Record(retained, pendingRecords, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                }
+                foreach (var lease in artifactLeases) lease.Retain();
+                return CommandOutcome<AssessCommandResponse>.Success(response);
             }
             finally
             {

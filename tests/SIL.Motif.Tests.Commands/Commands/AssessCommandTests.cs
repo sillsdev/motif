@@ -24,6 +24,7 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -420,6 +421,10 @@ public sealed class AssessCommandTests : IDisposable
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
         Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+        using var database = OpenDatabase(seeded.FwDataPath);
+        var project = new ProjectLocator(Path.GetFullPath(seeded.FwDataPath),
+            Path.GetFileNameWithoutExtension(seeded.FwDataPath));
+        Assert.Empty(new RetainedInvocationRepository(database).List(ProjectWorkspaceKey.Compute(project)));
     }
 
     [Fact]
@@ -946,6 +951,31 @@ public sealed class AssessCommandTests : IDisposable
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
         Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
+    [Fact]
+    public void CancellingDefaultSelectionAtCompletionDoesNotRetainTheInvocation()
+    {
+        using var seeded = NewSeededScratch();
+        var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Default", [], [SeededProject.AnalysedWordForm], 1000, StepCap.Default));
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+        using var cancellation = new CancellationTokenSource();
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, null), NewManagedRoot(), NewAssessor(), NewInvoker(),
+            progress =>
+            {
+                if (progress.Stage == AssessmentStage.Complete) cancellation.Cancel();
+            }, cancellation.Token);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("assessment.cancelled", outcome.Refusal!.Code);
+        using var database = OpenDatabase(seeded.FwDataPath);
+        var project = new ProjectLocator(
+            Path.GetFullPath(seeded.FwDataPath), Path.GetFileNameWithoutExtension(seeded.FwDataPath));
+        Assert.Empty(new RetainedInvocationRepository(database).List(ProjectWorkspaceKey.Compute(project)));
+        Assert.Empty(new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+        Assert.Empty(new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
     }
 
     [Fact]
