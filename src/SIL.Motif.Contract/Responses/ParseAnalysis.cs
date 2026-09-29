@@ -49,6 +49,9 @@ public sealed record ParserReading(IReadOnlyList<ParserReadingMorph> Morphs)
 
     /// <summary>The project's opinion of this stored analysis, or <see langword="null"/> when it is not known.</summary>
     public string? StoredAnalysisOpinion { get; init; }
+
+    /// <summary>The stored source morphology used by the ADR 0027 analysis matcher.</summary>
+    public ApprovedMorphology? Identity { get; init; }
 }
 
 /// <summary>One morph of a <see cref="ParserReading"/>.</summary>

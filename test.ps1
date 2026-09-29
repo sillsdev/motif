@@ -100,6 +100,10 @@ else {
     if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
+Write-Step 'offline restore regression'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/OfflineRestore.Tests.ps1')
+if ($LASTEXITCODE -ne 0) { exit 1 }
+
 $solutionProjectPaths = @{}
 foreach ($line in Get-Content $solution) {
     if ($line -match '^Project\("[^"]+"\)\s*=\s*"[^"]+",\s*"([^"]+\.csproj)"') {

@@ -1,3 +1,4 @@
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -91,6 +92,154 @@ public sealed class CompareViewModelTests
     {
         Assert.Equal("Not present", CompareViewModel.RowLabelOf(WordProjectStatus.NotPresent));
     }
+
+    [Fact]
+    public void MatrixCellAutomationNameUsesTheOpinionAndPanGlossSentence()
+    {
+        var cell = new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.Match);
+        cell.SetDisplayedCount(12, "word");
+
+        Assert.Equal("12 words: Approved in FieldWorks, PanGloss agrees", cell.AccessibleName);
+    }
+
+    [Theory]
+    [InlineData(WordProjectStatus.Approved, OpinionMarkKind.Approved)]
+    [InlineData(WordProjectStatus.Candidate, OpinionMarkKind.Unknown)]
+    [InlineData(WordProjectStatus.Rejected, OpinionMarkKind.Disapproved)]
+    [InlineData(WordProjectStatus.NotPresent, OpinionMarkKind.None)]
+    [InlineData(WordProjectStatus.IncorrectSpelling, OpinionMarkKind.None)]
+    public void MatrixRowsExposeTheirRoundFourOpinionMark(WordProjectStatus row, OpinionMarkKind expected) =>
+        Assert.Equal(expected, CompareViewModel.OpinionMarkFor(row));
+
+    [Theory]
+    [InlineData(CompareColumnKind.Match, "Agrees")]
+    [InlineData(CompareColumnKind.NoMatch, "Differs")]
+    [InlineData(CompareColumnKind.NoParse, "No parse")]
+    [InlineData(CompareColumnKind.Timeout, "Capped")]
+    [InlineData(CompareColumnKind.Skipped, "Not assessed")]
+    public void MatrixColumnsUsePanGlossAgreementLanguage(CompareColumnKind column, string expected) =>
+        Assert.Equal(expected, CompareViewModel.ColumnLabelOf(column));
+
+    [Fact]
+    public void MatrixLegendListsTheRoundFourMarksAndPanGlossClasses()
+    {
+        var compare = new CompareViewModel();
+
+        Assert.Equal(["Approved", "Unknown", "Disapproved", "Not in FieldWorks"],
+            compare.OpinionLegend.Select(item => item.Label));
+        Assert.Equal(["Same", "Conflict", "Different", "Extra", "No parse", "Capped", "Not assessed"],
+            compare.PanGlossLegend.Select(item => item.Label));
+        Assert.True(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Conflict).IsConflict);
+        Assert.False(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Conflict).IsDifferent);
+        Assert.False(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Different).IsConflict);
+        Assert.True(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Different).IsDifferent);
+    }
+
+    [Fact]
+    public void MissingProjectRowUsesOneLabelAcrossItsHeaderAndLegend()
+    {
+        var compare = new CompareViewModel();
+
+        Assert.Equal("Not in FieldWorks", CompareViewModel.OpinionLabelOf(WordProjectStatus.NotPresent));
+        Assert.Equal("Not in FieldWorks", compare.OpinionLegend.Single(item => item.Kind == OpinionMarkKind.None).Label);
+    }
+
+    [Theory]
+    [InlineData(AnalysisMarkingClass.Same, "Same")]
+    [InlineData(AnalysisMarkingClass.Conflict, "Conflict")]
+    [InlineData(AnalysisMarkingClass.Different, "Different")]
+    [InlineData(AnalysisMarkingClass.Extra, "Extra readings")]
+    [InlineData(AnalysisMarkingClass.None, "No parse")]
+    [InlineData(AnalysisMarkingClass.Capped, "Capped")]
+    [InlineData(AnalysisMarkingClass.NotAssessed, "Not assessed")]
+    public void CompactWordUsesEachPanGlossClassLabel(AnalysisMarkingClass markingClass, string expected) =>
+        Assert.Equal(expected, CompareViewModel.PanGlossClassLabel(markingClass));
+
+    [Fact]
+    public void ListedWordUsesTheSharedAnalysisMarkingState()
+    {
+        var stored = StoredReading("analysis-1", ReadingGrade.Approved);
+        var result = new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            Readings = [new ParserReading(stored.Morphs)],
+            StoredAnalyses = [stored],
+            ReadingGrades = [ReadingGrade.Approved],
+            Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10,
+                false, false, false, [new ParseAnalysis([new ParseMorph("kitabu", "n", null, null)])], []),
+        };
+        var row = new AssessWordRowViewModel(result);
+        var word = new CompareWordViewModel(row,
+            (WordProjectStatus.Approved, CompareColumnKind.Match));
+
+        Assert.Equal(AnalysisMarkingClass.Same, word.Marking.PanGlossClass);
+        Assert.Equal(OpinionMarkKind.Approved, word.OpinionMark);
+    }
+
+    [Fact]
+    public void ListedWordShowsEveryStoredOpinionInsteadOfMergingThem()
+    {
+        var approved = StoredReading("approved-id", ReadingGrade.Approved);
+        var disapproved = StoredReading("disapproved-id", ReadingGrade.Disapproved);
+        var result = new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            Readings = [new ParserReading(approved.Morphs), new ParserReading(disapproved.Morphs)],
+            StoredAnalyses = [approved, disapproved],
+            ReadingGrades = [ReadingGrade.Approved, ReadingGrade.Disapproved],
+            Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10,
+                false, false, false, [new ParseAnalysis([]), new ParseAnalysis([])], []),
+        };
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(result),
+            (WordProjectStatus.Approved, CompareColumnKind.NoMatch));
+
+        Assert.Equal([OpinionMarkKind.Approved, OpinionMarkKind.Disapproved],
+            word.OpinionMarks.Select(mark => mark.Kind));
+    }
+
+    [Theory]
+    [InlineData(ReadingGrade.Approved, OpinionMarkKind.Approved)]
+    [InlineData(ReadingGrade.Candidate, OpinionMarkKind.Unknown)]
+    [InlineData(ReadingGrade.NoOpinion, OpinionMarkKind.Unknown)]
+    [InlineData(ReadingGrade.Disapproved, OpinionMarkKind.Disapproved)]
+    public void ListedWordShowsTheOpinionRecordedForItsStoredAnalysis(string opinion, OpinionMarkKind expected)
+    {
+        var stored = StoredReading("analysis-1", opinion);
+        var result = new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            StoredAnalyses = [stored],
+        };
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(result),
+            (WordProjectStatus.Approved, CompareColumnKind.NoParse));
+
+        Assert.Equal(expected, Assert.Single(word.OpinionMarks).Kind);
+    }
+
+    [Fact]
+    public void ListedWordWithoutStoredAnalysesShowsTheDashedNoneMark()
+    {
+        var result = new AssessmentWordResult("motifextra", "analysed", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.NotPresent,
+        };
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(result),
+            (WordProjectStatus.NotPresent, CompareColumnKind.Match));
+
+        Assert.Equal(OpinionMarkKind.None, Assert.Single(word.OpinionMarks).Kind);
+    }
+
+    private static ParserReading StoredReading(string id, string opinion) =>
+        new([new ParserReadingMorph("kitabu", "book", "n", null, false, null)])
+        {
+            StoredAnalysisId = id,
+            StoredAnalysisOpinion = opinion,
+            Identity = new ApprovedMorphology([new ApprovedMorph("kitabu", "n", null, ["entry"])])
+            {
+                SourceAnalysisId = id,
+                SourceWordformGuid = "wordform-1",
+            },
+        };
 
     private static readonly AssessmentWordResult[] Sample =
     [

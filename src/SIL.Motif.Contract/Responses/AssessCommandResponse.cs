@@ -33,6 +33,8 @@ public sealed record AssessmentWordResult(
     public ParseWordEvidence? Morphology { get; init; }
     /// <summary><see cref="ParseWordEvidence.Analyses"/>, reading for reading, as forms, glosses and categories.</summary>
     public IReadOnlyList<ParserReading>? Readings { get; init; }
+    /// <summary>Every analysis the project held when this Assessment ran, with its morphology and opinion.</summary>
+    public IReadOnlyList<ParserReading> StoredAnalyses { get; init; } = [];
     /// <summary>
     /// A <c>silfw:</c> link selecting this word in FieldWorks' Word Analyses, where Parser ▸ Try a Word opens
     /// with it entered; <see langword="null"/> when the project has no wordform spelled this way.

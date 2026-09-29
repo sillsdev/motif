@@ -112,44 +112,61 @@ public sealed class ComponentStyleTests
     }
 
     [Fact]
-    public void PanGlossDifferentLineUsesInsetEmphasisAndScopedTypeWeight()
+    public void PanGlossDifferentAndConflictLinesUseDistinctEmphasis()
     {
         _avalonia.Invoke(() =>
         {
-            var form = Text("f");
-            var detail = Text("detail");
-            var divider = new Rectangle();
-            divider.Classes.Add("panGlossDivider");
-            var content = new Grid();
-            content.Children.Add(form);
-            content.Children.Add(detail);
-            content.Children.Add(divider);
-            var line = new Border
+            var differentForm = Text("f");
+            var differentDetail = Text("detail");
+            var differentContent = new StackPanel();
+            differentContent.Children.Add(differentForm);
+            differentContent.Children.Add(differentDetail);
+            var different = new Border
             {
                 Classes = { "panGlossLine", "different" },
-                Child = content,
+                Child = differentContent,
             };
+
+            var conflictForm = Text("f");
+            var conflictDetail = Text("detail");
+            var conflictContent = new StackPanel();
+            conflictContent.Children.Add(conflictForm);
+            conflictContent.Children.Add(conflictDetail);
+            var conflict = new Border
+            {
+                Classes = { "panGlossLine", "conflict" },
+                Child = conflictContent,
+            };
+
+            var divider = new Rectangle();
+            divider.Classes.Add("panGlossDivider");
             var capped = new Border
             {
                 Classes = { "panGlossLine", "capped" },
                 Child = Text("capped"),
             };
             var host = new StackPanel();
-            host.Children.Add(line);
+            host.Children.Add(different);
+            host.Children.Add(conflict);
             host.Children.Add(capped);
+            host.Children.Add(divider);
             var window = new Window { Content = host };
             try
             {
                 window.Show();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                Assert.Equal(new Thickness(0), line.BorderThickness);
-                Assert.Equal(new Thickness(3, 0, 0, 0), line.Padding);
-                Assert.Equal(1, line.BoxShadow.Count);
-                Assert.True(line.BoxShadow[0].IsInset);
-                Assert.Equal(Color.Parse("#215cc7"), line.BoxShadow[0].Color);
-                Assert.Equal(FontWeight.SemiBold, form.FontWeight);
-                Assert.Equal(FontWeight.Normal, detail.FontWeight);
+                Assert.Equal(new Thickness(0), different.BorderThickness);
+                Assert.Equal(new Thickness(3, 0, 0, 0), different.Padding);
+                Assert.Equal(0, different.BoxShadow.Count);
+                Assert.Equal(FontWeight.Normal, differentForm.FontWeight);
+                Assert.Equal(FontWeight.Normal, differentDetail.FontWeight);
+                Assert.Equal(new Thickness(3, 0, 0, 0), conflict.Padding);
+                Assert.Equal(1, conflict.BoxShadow.Count);
+                Assert.True(conflict.BoxShadow[0].IsInset);
+                Assert.Equal(Color.Parse("#215cc7"), conflict.BoxShadow[0].Color);
+                Assert.Equal(FontWeight.SemiBold, conflictForm.FontWeight);
+                Assert.Equal(FontWeight.Normal, conflictDetail.FontWeight);
                 Assert.Equal(FontWeight.Normal, ((TextBlock)capped.Child!).FontWeight);
                 Assert.Equal([1d, 2d], divider.StrokeDashArray);
             }
@@ -210,6 +227,10 @@ public sealed class ComponentStyleTests
         yield return new("HeatCell", "a heat shade", host => Add(host, Box("heat")), Border.BackgroundProperty, "Intent.Warning");
         yield return new("MatrixCell", "a matrix cell", host => Add(host, Box("matrixCell")),
             Border.BackgroundProperty, "Intent.Surface");
+        yield return new("MatrixCell", "a compact word cell", host => Add(host, Box("matrixWordCell")),
+            Border.PaddingProperty, "Component.MatrixCell.WordPadding");
+        yield return new("MatrixCell", "a compact word cell", host => Add(host, Box("matrixWordCell")),
+            Border.BorderBrushProperty, "Intent.Border");
         yield return new("MatrixCell", "a violation cell", host => Add(host, Box("matrixCell", "violation")),
             Border.BackgroundProperty, "Intent.Danger.Fill");
         yield return new("MatrixCell", "a compact matrix cell", host => Add(host, Box("matrixCell", "compact")),
@@ -330,11 +351,19 @@ public sealed class ComponentStyleTests
         yield return new("OpinionMark", "an unknown mark's shape", host => Add(host, Box("opinionMark", "unknown")),
             Border.CornerRadiusProperty, "Component.OpinionMark.UnknownRadius");
         yield return new("PanGlossLine", "a different reading", host => Add(host, Box("panGlossLine", "different")),
-            Border.BackgroundProperty, "Intent.Agreement.Conflict.Fill");
+            Border.BackgroundProperty, "Intent.Surface");
         yield return new("PanGlossLine", "a different reading edge", host => Add(host, Box("panGlossLine", "different")),
+            Border.BorderBrushProperty, "Intent.Agreement.Suggestion.Edge");
+        yield return new("PanGlossLine", "a different reading label", host => Inside(host, Box("panGlossLine", "different")),
+            TextBlock.ForegroundProperty, "Intent.Agreement.Suggestion");
+        yield return new("PanGlossLine", "a conflicting reading", host => Add(host, Box("panGlossLine", "conflict")),
+            Border.BackgroundProperty, "Intent.Agreement.Conflict.Fill");
+        yield return new("PanGlossLine", "a conflicting reading edge", host => Add(host, Box("panGlossLine", "conflict")),
             Border.BorderBrushProperty, "Intent.Agreement.Conflict.Edge");
-        yield return new("PanGlossLine", "an inset edge", host => Add(host, Box("panGlossLine", "different")),
+        yield return new("PanGlossLine", "a conflicting inset edge", host => Add(host, Box("panGlossLine", "conflict")),
             Border.BoxShadowProperty, "Intent.Agreement.Conflict.Shadow");
+        yield return new("PanGlossLine", "a conflicting reading label", host => Inside(host, Box("panGlossLine", "conflict")),
+            TextBlock.ForegroundProperty, "Intent.Agreement.Conflict");
         yield return new("PanGlossLine", "an extra reading count", host => Add(host, Box("panGlossExtra")),
             Border.BorderBrushProperty, "Intent.Agreement.Suggestion.Edge");
         yield return new("PanGlossLine", "a suggested reading count", host => Inside(host, Box("panGlossExtra")),
@@ -357,6 +386,8 @@ public sealed class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
             TextBlock.FontSizeProperty, "Component.Density.CompactType");
+        yield return new("Density", "the compact opinion mark size", CompactOpinionMark,
+            Control.HeightProperty, "Component.Density.CompactMarkSize");
         yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
             TextBlock.FontSizeProperty, "Component.Density.NormalType");
         yield return new("HoverReveal", "a neutral staged button", host => Add(host, Press("revealControl", "revealButton")),
@@ -407,6 +438,15 @@ public sealed class ComponentStyleTests
         root.Children.Add(text);
         host.Children.Add(root);
         return text;
+    }
+
+    private static Control CompactOpinionMark(Panel host)
+    {
+        var root = new StackPanel { Classes = { "analysisDensity" } };
+        var mark = Box("opinionMark");
+        root.Children.Add(mark);
+        host.Children.Add(root);
+        return mark;
     }
 
     private static T Add<T>(Panel host, T control) where T : Control

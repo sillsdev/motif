@@ -89,6 +89,31 @@ public sealed class AnalysisMarkingStateTests
         Assert.Null(state.PrimaryAction);
     }
 
+    public static IEnumerable<object[]> AssessmentWordClassCases =>
+    [
+        [Assessment("analysed", ProjectStanding.IncorrectSpelling, false, ReadingGrade.Approved),
+            AnalysisMarkingClass.Conflict],
+        [Assessment("capped", ProjectStanding.Approved, true, ReadingGrade.Disapproved),
+            AnalysisMarkingClass.Conflict],
+        [Assessment("skipped", ProjectStanding.Approved, false,
+            ReadingGrade.Approved, ReadingGrade.Candidate, ReadingGrade.Disapproved),
+            AnalysisMarkingClass.NotAssessed],
+    ];
+
+    [Theory]
+    [MemberData(nameof(AssessmentWordClassCases))]
+    public void AssessmentWordFixturesClassifyStoredOpinionsWithoutParserIds(
+        AssessmentWordResult result, AnalysisMarkingClass expectedClass)
+    {
+        Assert.All(result.Readings ?? [], reading => Assert.Null(reading.StoredAnalysisId));
+
+        var state = AnalysisMarkingState.Create(result);
+
+        Assert.Equal(expectedClass, state.PanGlossClass);
+        Assert.Equal(result.StoredAnalyses.Select(reading => reading.StoredAnalysisOpinion),
+            state.FieldWorksAnalyses.Select(analysis => analysis.Opinion));
+    }
+
     [Fact]
     public void PrimaryAddStagesUnknownWhileAddAsApprovedRemainsAFixChoice()
     {
@@ -194,4 +219,35 @@ public sealed class AnalysisMarkingStateTests
             Readings = readings.Select(_ => new ParserReading(
                 [new ParserReadingMorph("entry", "gloss", "n", null, false, "silfw://entry")])).ToArray(),
         };
+
+    private static AssessmentWordResult Assessment(string outcome, string standing, bool incomplete,
+        params string[] opinions)
+    {
+        var analyses = opinions.Select((opinion, index) =>
+        {
+            var reading = Reading($"form-{index + 1}", $"msa-{index + 1}");
+            var id = $"stored-{index + 1}";
+            return new ParserReading([new ParserReadingMorph($"form-{index + 1}", "book", "n", null, false, null)])
+            {
+                StoredAnalysisId = id,
+                StoredAnalysisOpinion = opinion,
+                Identity = new ApprovedMorphology(reading.Morphs.Select(morph => new ApprovedMorph(
+                    morph.Form, morph.Msa, morph.InflType, ["entry"])).ToArray())
+                {
+                    SourceAnalysisId = id,
+                    SourceWordformGuid = "wordform-1",
+                },
+            };
+        }).ToArray();
+        var parse = outcome is "analysed" or "capped" ? Reading("form-1", "msa-1") : null;
+        return new AssessmentWordResult("word", outcome, incomplete, "Complete", 3, null)
+        {
+            ProjectStanding = standing,
+            StoredAnalyses = analyses,
+            Morphology = new ParseWordEvidence("v1", 0, "word", 3, incomplete, false, false,
+                parse is null ? [] : [parse], []),
+            Readings = parse is null ? [] : [new ParserReading(
+                [new ParserReadingMorph("form-1", "book", "n", null, false, null)])],
+        };
+    }
 }

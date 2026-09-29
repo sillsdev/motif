@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Controls;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 
@@ -14,6 +15,25 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed partial class CompareViewModel : ObservableObject
 {
+    private static readonly IReadOnlyList<OpinionLegendItem> OpinionLegendItems =
+    [
+        new(OpinionMarkKind.Approved, "Approved"),
+        new(OpinionMarkKind.Unknown, "Unknown"),
+        new(OpinionMarkKind.Disapproved, "Disapproved"),
+        new(OpinionMarkKind.None, "Not in FieldWorks"),
+    ];
+
+    private static readonly IReadOnlyList<PanGlossLegendItem> PanGlossLegendItems =
+    [
+        new(AnalysisMarkingClass.Same, "Same"),
+        new(AnalysisMarkingClass.Conflict, "Conflict"),
+        new(AnalysisMarkingClass.Different, "Different"),
+        new(AnalysisMarkingClass.Extra, "Extra"),
+        new(AnalysisMarkingClass.None, "No parse"),
+        new(AnalysisMarkingClass.Capped, "Capped"),
+        new(AnalysisMarkingClass.NotAssessed, "Not assessed"),
+    ];
+
     private readonly List<CompareWordViewModel> _all = [];
     private ChangesViewModel? _changes;
     private string? _focusedWordSearch;
@@ -172,6 +192,10 @@ public sealed partial class CompareViewModel : ObservableObject
     public IReadOnlyList<CompareRowViewModel> Rows { get; }
 
     public IReadOnlyList<CompareColumnViewModel> Columns { get; }
+
+    public IReadOnlyList<OpinionLegendItem> OpinionLegend => OpinionLegendItems;
+
+    public IReadOnlyList<PanGlossLegendItem> PanGlossLegend => PanGlossLegendItems;
 
     public IEnumerable<CompareCellViewModel> Cells => Rows.SelectMany(row => row.Cells);
 
@@ -485,11 +509,48 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public static string ColumnLabelOf(CompareColumnKind column) => column switch
     {
-        CompareColumnKind.Match => "Match",
-        CompareColumnKind.NoMatch => "No match",
+        CompareColumnKind.Match => "Agrees",
+        CompareColumnKind.NoMatch => "Differs",
         CompareColumnKind.NoParse => "No parse",
-        CompareColumnKind.Timeout => "Timeout",
-        _ => "Skipped",
+        CompareColumnKind.Timeout => "Capped",
+        _ => "Not assessed",
+    };
+
+    public static OpinionMarkKind OpinionMarkFor(WordProjectStatus row) => row switch
+    {
+        WordProjectStatus.Approved => OpinionMarkKind.Approved,
+        WordProjectStatus.Candidate => OpinionMarkKind.Unknown,
+        WordProjectStatus.Rejected => OpinionMarkKind.Disapproved,
+        _ => OpinionMarkKind.None,
+    };
+
+    public static string OpinionLabelOf(WordProjectStatus row) => row switch
+    {
+        WordProjectStatus.Approved => "Approved",
+        WordProjectStatus.Candidate => "Unknown",
+        WordProjectStatus.Rejected => "Disapproved",
+        WordProjectStatus.IncorrectSpelling => "Incorrect spelling",
+        _ => "Not in FieldWorks",
+    };
+
+    public static string ColumnSentenceOf(CompareColumnKind column) => column switch
+    {
+        CompareColumnKind.Match => "PanGloss agrees",
+        CompareColumnKind.NoMatch => "PanGloss differs",
+        CompareColumnKind.NoParse => "PanGloss found no parse",
+        CompareColumnKind.Timeout => "PanGloss is capped",
+        _ => "PanGloss has not assessed the word",
+    };
+
+    public static string PanGlossClassLabel(AnalysisMarkingClass markingClass) => markingClass switch
+    {
+        AnalysisMarkingClass.Same => "Same",
+        AnalysisMarkingClass.Conflict => "Conflict",
+        AnalysisMarkingClass.Different => "Different",
+        AnalysisMarkingClass.Extra => "Extra readings",
+        AnalysisMarkingClass.None => "No parse",
+        AnalysisMarkingClass.Capped => "Capped",
+        _ => "Not assessed",
     };
 
     /// <summary>The verdict used to mark each parser outcome in a word list.</summary>
@@ -535,6 +596,11 @@ public sealed partial class CompareRowViewModel(WordProjectStatus row, IReadOnly
 {
     public WordProjectStatus Row { get; } = row;
     public string Label { get; } = CompareViewModel.RowLabelOf(row);
+    public string OpinionLabel { get; } = CompareViewModel.OpinionLabelOf(row);
+    public OpinionMarkKind OpinionMark { get; } = CompareViewModel.OpinionMarkFor(row);
+    public bool IsOpinionMarkVisible => Row != WordProjectStatus.IncorrectSpelling;
+    public string AccessibleName => Row == WordProjectStatus.NotPresent
+        ? "Choose the words not in FieldWorks" : $"Choose the {OpinionLabel} row";
     public Verdict Verdict { get; } = WordProjectStatuses.VerdictOf(row);
     public IReadOnlyList<CompareCellViewModel> Cells { get; } = cells;
 
@@ -550,6 +616,12 @@ public sealed partial class CompareColumnViewModel(CompareColumnKind column) : O
 {
     public CompareColumnKind Column { get; } = column;
     public string Label { get; } = CompareViewModel.ColumnLabelOf(column);
+    public string AccessibleName => $"Choose the PanGloss {Label} column";
+    public bool IsSame => Column == CompareColumnKind.Match;
+    public bool IsDifferent => Column == CompareColumnKind.NoMatch;
+    public bool IsNoParse => Column == CompareColumnKind.NoParse;
+    public bool IsCapped => Column == CompareColumnKind.Timeout;
+    public bool IsNotAssessed => Column == CompareColumnKind.Skipped;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CountText))]
@@ -639,8 +711,22 @@ public sealed partial class CompareCellViewModel : ObservableObject
     /// <summary>A combination the data cannot produce, and did not: drawn hatched rather than as a zero.</summary>
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
 
-    public string AccessibleName => $"{RowLabel}, {ColumnLabel}: {Count} {CountUnit}, {Label}" +
-        (PendingChangeStatus is { } status ? $", {status}" : string.Empty);
+    public string AccessibleName => $"{Count} {CountUnit}: {CompareViewModel.OpinionLabelOf(Row)} in FieldWorks, " +
+        CompareViewModel.ColumnSentenceOf(Column) +
+        (PendingChangeStatus is { } status ? $". {status}" : string.Empty);
+}
+
+public sealed record OpinionLegendItem(OpinionMarkKind Kind, string Label);
+
+public sealed record PanGlossLegendItem(AnalysisMarkingClass Kind, string Label)
+{
+    public bool IsSame => Kind == AnalysisMarkingClass.Same;
+    public bool IsConflict => Kind == AnalysisMarkingClass.Conflict;
+    public bool IsDifferent => Kind == AnalysisMarkingClass.Different;
+    public bool IsExtra => Kind == AnalysisMarkingClass.Extra;
+    public bool IsNoParse => Kind == AnalysisMarkingClass.None;
+    public bool IsCapped => Kind == AnalysisMarkingClass.Capped;
+    public bool IsNotAssessed => Kind == AnalysisMarkingClass.NotAssessed;
 }
 
 /// <summary>A shortcut that chooses every cell of one meaning.</summary>
@@ -666,6 +752,14 @@ public sealed partial class CompareWordViewModel : ObservableObject
         Standing = word.Standing;
         Row = place.Row;
         Column = place.Column;
+        Marking = word.Marking;
+        OpinionMarks = Marking.FieldWorksAnalyses.Select(analysis => new CompareOpinionMarkViewModel(
+            OpinionMarkFor(analysis.Opinion), OpinionLabelOf(analysis.Opinion))).ToArray();
+        if (OpinionMarks.Count == 0) OpinionMarks = [new(OpinionMarkKind.None, "Not in FieldWorks")];
+        OpinionMark = OpinionMarks[0].Kind;
+        OpinionLabel = string.Join(", ", OpinionMarks.Select(mark => mark.Label));
+        PanGlossLabel = CompareViewModel.PanGlossClassLabel(Marking.PanGlossClass);
+        AccessibleName = $"{Word}: {OpinionLabel} in FieldWorks, {CompareViewModel.ColumnSentenceOf(Column)}.";
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
         (Meaning, Family) = CompareViewModel.MeaningOf(Row, Column);
@@ -687,6 +781,19 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public WordProjectStatus? Standing { get; }
     public WordProjectStatus Row { get; }
     public CompareColumnKind Column { get; }
+    public AnalysisMarkingState Marking { get; }
+    public IReadOnlyList<CompareOpinionMarkViewModel> OpinionMarks { get; }
+    public OpinionMarkKind OpinionMark { get; }
+    public string OpinionLabel { get; }
+    public string PanGlossLabel { get; }
+    public string AccessibleName { get; }
+    public bool IsSame => Marking.PanGlossClass == AnalysisMarkingClass.Same;
+    public bool IsConflict => Marking.PanGlossClass == AnalysisMarkingClass.Conflict;
+    public bool IsDifferent => Marking.PanGlossClass == AnalysisMarkingClass.Different;
+    public bool IsExtra => Marking.PanGlossClass == AnalysisMarkingClass.Extra;
+    public bool IsNoParse => Marking.PanGlossClass == AnalysisMarkingClass.None;
+    public bool IsCapped => Marking.PanGlossClass == AnalysisMarkingClass.Capped;
+    public bool IsNotAssessed => Marking.PanGlossClass == AnalysisMarkingClass.NotAssessed;
     public int? Occurrences { get; }
     public string OccurrenceText => Occurrences is { } count ? $"×{count}" : "—";
     public IReadOnlyList<ParserReadingViewModel> MissedApproved { get; }
@@ -729,7 +836,26 @@ public sealed partial class CompareWordViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isExpanded;
+
+    private static OpinionMarkKind OpinionMarkFor(string opinion) => opinion switch
+    {
+        ReadingGrade.Approved => OpinionMarkKind.Approved,
+        ReadingGrade.Candidate or ReadingGrade.NoOpinion => OpinionMarkKind.Unknown,
+        ReadingGrade.Disapproved => OpinionMarkKind.Disapproved,
+        _ => OpinionMarkKind.None,
+    };
+
+    private static string OpinionLabelOf(string opinion) => opinion switch
+    {
+        ReadingGrade.Approved => "Approved",
+        ReadingGrade.Candidate or ReadingGrade.NoOpinion => "Unknown",
+        ReadingGrade.Disapproved => "Disapproved",
+        _ => "Not in FieldWorks",
+    };
 }
+
+/// <summary>One stored analysis opinion shown in a compact word cell.</summary>
+public sealed record CompareOpinionMarkViewModel(OpinionMarkKind Kind, string Label);
 
 /// <summary>A parser reading chosen by its position in one recorded Assessment word.</summary>
 public sealed record CompareReadingChoice(int Index, ParseAnalysis Reading, string Label);
