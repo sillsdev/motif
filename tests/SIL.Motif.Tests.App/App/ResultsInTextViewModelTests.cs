@@ -190,7 +190,7 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
-    public async Task OpinionsNeedAnExplicitReadingAndMarkEveryOccurrenceOfTheWordform()
+    public async Task OpinionsNeedAnExplicitReadingAndMarkTheSelectedOccurrence()
     {
         var (inText, _, _) = await Loaded();
         var tokens = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
@@ -206,12 +206,11 @@ public sealed class ResultsInTextViewModelTests
         await inText.AddChangeCommand.ExecuteAsync(ChangeKinds.Approve);
 
         Assert.Equal(ChangeKinds.Approve, Assert.Single(inText.Changes.Items).Kind);
-        Assert.All(tokens, token =>
-        {
-            Assert.True(token.IsPending);
-            Assert.Equal("Not applied yet", token.PendingChangeStatus);
-            Assert.Equal(PendingChangeState.NotAppliedYet, token.PendingState);
-        });
+        Assert.True(tokens[0].IsPending);
+        Assert.Equal("Not applied yet", tokens[0].PendingChangeStatus);
+        Assert.Equal(PendingChangeState.NotAppliedYet, tokens[0].PendingState);
+        Assert.False(tokens[1].IsPending);
+        Assert.Equal(PendingChangeState.None, tokens[1].PendingState);
         Assert.False(inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .Single(token => token.Form == "anapenda").IsPending);
     }

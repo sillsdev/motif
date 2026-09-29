@@ -106,11 +106,12 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.Equal(SeededProject.PunctuationForm, firstLineTokens[1].Text);
 
         var word = firstLineTokens[0];
-        Assert.Equal(CanonicalId.FromGuid(seededText.AnalysedWordformId).Value, word.WordformId);
+        Assert.Equal(seededText.AnalysedWordformId, word.WordformId);
         Assert.Equal(CanonicalId.FromGuid(seededText.ApprovedAnalysisId).Value, word.StoredAnalysisId);
-        Assert.False(word.ParseIsCurrent);
-        Assert.Equal(new OccurrenceAnchor(seededText.TextId, seededText.FirstParagraphId,
-            seededText.FirstSegmentId, 0), word.Occurrence);
+        Assert.False(text.Lines[0].ParseIsCurrent);
+        Assert.Equal(seededText.FirstParagraphId, text.Lines[0].ParagraphId);
+        Assert.Equal(seededText.FirstSegmentId, text.Lines[0].SegmentId);
+        Assert.Equal(0, word.OccurrenceIndex);
         Assert.Equal(occurrence.Analysis.Key, word.Analysis!.Key);
         Assert.Equal(
             [SeededProject.FirstGloss], word.Analysis.Morphs.Take(1).Select(morph => morph.Gloss));

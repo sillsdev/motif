@@ -181,8 +181,8 @@ public sealed class AnalysisMarkingStateTests
         {
             StoredAnalyses = analyses,
             StoredAnalysisId = analyses.FirstOrDefault()?.StoredAnalysisId,
-            Occurrence = new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 0),
-            WordformId = "wordform-1",
+            WordformId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011"),
+            OccurrenceIndex = 0,
         };
 
     private static AssessmentWordResult Result(string word, params ParseAnalysis[] readings) => Result(word, false, readings);
