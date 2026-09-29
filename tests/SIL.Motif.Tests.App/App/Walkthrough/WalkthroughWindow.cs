@@ -452,8 +452,33 @@ public sealed class WalkthroughWindow : IDisposable
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();
 
-    private void ClickControl(Control control, string accessibleName) =>
+    private void ClickControl(Control control, string accessibleName)
+    {
+        Rect? previousBounds = null;
+        var stablePasses = 0;
+        WaitUntil(() =>
+        {
+            Window.UpdateLayout();
+            var topLeft = control.TranslatePoint(new Point(0, 0), Window);
+            if (!control.IsEffectivelyVisible || topLeft is null)
+            {
+                previousBounds = null;
+                stablePasses = 0;
+                return false;
+            }
+
+            var bounds = new Rect(topLeft.Value, control.Bounds.Size);
+            if (bounds == previousBounds) stablePasses++;
+            else
+            {
+                previousBounds = bounds;
+                stablePasses = 0;
+            }
+
+            return stablePasses >= 2;
+        }, TimeSpan.FromSeconds(10), $"'{accessibleName}' did not settle before clicking");
         HeadlessClick.Click(Window, control, accessibleName);
+    }
 
     private sealed class ScriptedProjectPicker(string path) : IProjectPicker
     {
