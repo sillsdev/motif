@@ -173,8 +173,13 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
     private static WalkthroughWindow NewWindow(WalkthroughProject project) =>
         NewWindow(project, project.ManagedRoot);
 
-    private static WalkthroughWindow NewWindow(WalkthroughProject project, string managedRoot) =>
-        new(managedRoot, project.FwDataPath, parserPath: FakeParser.Copy(managedRoot));
+    private static WalkthroughWindow NewWindow(WalkthroughProject project, string managedRoot)
+    {
+        var parserPath = Path.Combine(managedRoot, FakeParser.ExecutableFileName);
+        if (!File.Exists(parserPath))
+            parserPath = FakeParser.Copy(managedRoot);
+        return new(managedRoot, project.FwDataPath, parserPath: parserPath);
+    }
 
     private static async Task SelectProjectAndFinishFirstRun(
         WalkthroughWindow walkthrough, string projectPath, string selectedText,
