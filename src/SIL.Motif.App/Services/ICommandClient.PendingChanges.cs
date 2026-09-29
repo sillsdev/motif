@@ -19,6 +19,12 @@ public partial interface ICommandClient
     Task<CommandOutcome<PendingChangesSnapshot>> RemovePendingChangeAsync(
         RemovePendingChangeRequest request, CancellationToken cancellationToken);
 
+    Task<CommandOutcome<PendingChangesSnapshot>> RemoveAnalysisAsync(
+        RemoveAnalysisRequest request, CancellationToken cancellationToken);
+
+    Task<CommandOutcome<PendingChangesSnapshot>> AcceptNewSetAsync(
+        AcceptNewSetRequest request, CancellationToken cancellationToken);
+
     Task<CommandOutcome<PendingChangesSnapshot>> RecheckPendingChangesAsync(
         RecheckPendingChangesRequest request, CancellationToken cancellationToken);
 

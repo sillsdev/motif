@@ -100,6 +100,60 @@ public sealed class PendingChangesViewModelTests
     }
 
     [Fact]
+    public async Task RemovingAStoredAnalysisUsesTheM7CommandAndPublishesARemovedChange()
+    {
+        var removed = new PendingChange("change/remove", "wordform/one", "kitabu", ChangeKinds.RemoveAnalysis,
+            null, "reading", ["operation/remove"])
+        {
+            StoredAnalysisId = "analysis/one",
+        };
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+        fake.RemoveAnalysisCompletesWith(new PendingChangesSnapshot("draft/one", "revision/removed", [removed],
+            [new ChangeFit(removed.ChangeId, true, [])]));
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+
+        await changes.RemoveAnalysisAsync("wordform/one", "kitabu", "analysis/one");
+
+        var request = Assert.Single(fake.RemoveAnalysisRequests);
+        Assert.Equal("project.fwdata", request.FwDataPath);
+        Assert.Equal("revision/one", request.ExpectedRevision);
+        Assert.Equal("wordform/one", request.WordformId);
+        Assert.Equal("kitabu", request.Word);
+        Assert.Equal("analysis/one", request.AnalysisId);
+        Assert.False(string.IsNullOrWhiteSpace(request.ChangeId));
+        Assert.Equal(ChangeKinds.RemoveAnalysis, Assert.Single(changes.Items).Kind);
+    }
+
+    [Fact]
+    public async Task AcceptingASetUsesTheM7TextScopeAndPublishesOneUndoGroup()
+    {
+        var textId = Guid.Parse("00000001-0000-0000-0000-000000000001");
+        var first = new PendingChange("change/one", "wordform/one", "kitabu", ChangeKinds.AddCandidate,
+            "assessment/one", "first reading", ["operation/one"]) { GroupId = "group/accepted" };
+        var second = new PendingChange("change/two", "wordform/two", "kitabu cha", ChangeKinds.AddCandidate,
+            "assessment/one", "second reading", ["operation/two"]) { GroupId = "group/accepted" };
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+        fake.AcceptNewSetCompletesWith(new PendingChangesSnapshot("draft/one", "revision/accepted", [first, second],
+            [new ChangeFit(first.ChangeId, true, []), new ChangeFit(second.ChangeId, true, [])]));
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+
+        await changes.AcceptNewSetAsync("assessment/one", textId: textId);
+
+        var request = Assert.Single(fake.AcceptNewSetRequests);
+        Assert.Equal("project.fwdata", request.FwDataPath);
+        Assert.Equal("revision/one", request.ExpectedRevision);
+        Assert.Equal("assessment/one", request.AssessmentId);
+        Assert.Equal(textId, request.TextId);
+        Assert.False(request.Selection);
+        Assert.Equal(["Accepting a set", "Accepting a set"], changes.Items.Select(item => item.SourceText));
+        Assert.All(changes.Items, change => Assert.Equal("group/accepted", change.GroupId));
+    }
+
+    [Fact]
     public async Task WordAndCompareChangesDoNotCarryAnOccurrenceAnchor()
     {
         var fake = new FakeCommandClient();

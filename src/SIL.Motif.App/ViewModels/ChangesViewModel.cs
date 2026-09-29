@@ -152,6 +152,74 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
     }
 
+    /// <summary>Stages removal of one stored analysis from its wordform.</summary>
+    public async Task RemoveAnalysisAsync(string wordformId, string word, string analysisId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(wordformId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(word);
+        ArgumentException.ThrowIfNullOrWhiteSpace(analysisId);
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            CanonicalId.Mint().Value, wordformId, word, analysisId);
+        var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
+        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Stages removal of selected stored analyses.</summary>
+    public async Task RemoveAnalysesAsync(IReadOnlyList<string> analysisIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(analysisIds);
+        if (analysisIds.Count == 0) throw new ArgumentException("Choose at least one analysis.", nameof(analysisIds));
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            AnalysisIds: analysisIds);
+        var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
+        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Stages removal of the stored analyses used in one Text.</summary>
+    public async Task RemoveAnalysesInTextAsync(Guid textId, CancellationToken cancellationToken = default)
+    {
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            TextId: textId);
+        var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
+        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Stages the missing readings from a complete Assessment in one word, Selection, or Text.</summary>
+    public async Task AcceptNewSetAsync(string assessmentId, string? wordformId = null, Guid? textId = null,
+        bool selection = false, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(assessmentId);
+        if ((wordformId is null ? 0 : 1) + (textId is null ? 0 : 1) + (selection ? 1 : 0) != 1)
+            throw new ArgumentException("Choose one word, one Selection, or one Text.");
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var request = new AcceptNewSetRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            assessmentId, wordformId, textId, selection);
+        var outcome = await _client.AcceptNewSetAsync(request, cancellationToken).ConfigureAwait(true);
+        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    private async Task AcceptStagingOutcomeAsync(CommandOutcome<PendingChangesSnapshot> outcome,
+        string path, int generation, CancellationToken cancellationToken)
+    {
+        if (!IsCurrentProject(path, generation)) return;
+        Accept(outcome, path, generation);
+        if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
+            await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
     public async Task AddAsync(string kind, CompareWordViewModel word,
         WorkspacePage originPage = WorkspacePage.Texts)
     {
