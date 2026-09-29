@@ -2,7 +2,10 @@ using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -16,12 +19,14 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
     public void AFirstProjectOpensCapturesSetsUpAndShowsItsFirstRun()
     {
         using var project = new TwoTextWalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
         var parser = FakeParser.Copy(project.ManagedRoot);
         var batchStarted = Path.Combine(project.ManagedRoot, "first-batch-started");
         var releaseBatch = Path.Combine(project.ManagedRoot, "release-first-batch");
+        var measurementStarted = Path.Combine(project.ManagedRoot, "review-measurement-started");
+        var releaseMeasurement = Path.Combine(project.ManagedRoot, "release-review-measurement");
 
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parser);
@@ -146,7 +151,77 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
             walkthrough.Click("What changed tab");
             Assert.Equal(TextsTab.WhatChanged, walkthrough.Workspace.PageModel<TextsPageModel>().Tab);
             Assert.True(walkthrough.Named<ContentControl>("DifferenceHost").IsEffectivelyVisible);
-            return Task.CompletedTask;
+
+            var changes = walkthrough.Workspace.Context.Changes;
+            await changes.RemoveAnalysisAsync(
+                CanonicalId.FromGuid(project.FirstText.AnalysedWordformId).Value,
+                SeededProject.AnalysedWordForm,
+                CanonicalId.FromGuid(project.FirstText.ApprovedAnalysisId).Value);
+            await changes.PutAsync(new ChangeIntent(CanonicalId.Mint().Value,
+                ChangeKinds.IncorrectSpelling,
+                CanonicalId.FromGuid(project.FirstText.UnanalysedWordformId).Value,
+                SeededProject.UnanalysedWordForm,
+                OriginPage: WorkspacePage.Texts.ToString()));
+            Assert.True(changes.Items.Count == 2,
+                changes.LastRefusal?.Message ?? $"Expected two changes, found {changes.Items.Count}.");
+
+            walkthrough.ShowPage(WorkspacePage.Review);
+            var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
+            Assert.Equal(["Removed", "Spelling → Incorrect"],
+                review.ReviewGroups.Select(group => group.Title));
+            var removal = review.ReviewGroups.SelectMany(group => group.Items)
+                .Single(change => change.Kind == ChangeKinds.RemoveAnalysis);
+            Assert.Equal("Current opinion", removal.StagedTransition.Now);
+            Assert.Equal("Removed", removal.StagedTransition.AfterApply);
+            Assert.Null(removal.NowOpinionMark);
+            Assert.Equal(OpinionMarkKind.None, removal.AfterOpinionMark);
+            var spelling = review.ReviewGroups.SelectMany(group => group.Items)
+                .Single(change => change.Kind == ChangeKinds.IncorrectSpelling);
+            Assert.Equal("Current spelling", spelling.StagedTransition.Now);
+            Assert.Equal("Incorrect", spelling.StagedTransition.AfterApply);
+
+            walkthrough.Click($"Undo: {SeededProject.AnalysedWordForm}");
+            walkthrough.WaitUntil(() => changes.Items.Count == 1,
+                StepTimeout(deadline), "Undo did not remove the selected pending analysis removal");
+            Assert.Equal("Spelling → Incorrect", Assert.Single(review.ReviewGroups).Title);
+
+            walkthrough.SetFakeParserBehavior(new
+            {
+                subcommands = new Dictionary<string, object>
+                {
+                    ["batch"] = new
+                    {
+                        startedPath = measurementStarted,
+                        holdUntilPath = releaseMeasurement,
+                        words = new[] { new { word = SeededProject.UnanalysedWordForm, outcome = "complete" } },
+                    },
+                    ["parse"] = new
+                    {
+                        traceJson = "{\"type\":\"WordAnalysis\",\"inputShape\":\"unlistedword\",\"children\":[" +
+                            "{\"type\":\"MorphologicalRuleAnalysis\",\"source\":\"SeededRule\",\"children\":[" +
+                            "{\"type\":\"Successful\",\"children\":[]}]}]}",
+                    },
+                },
+            });
+            try
+            {
+                walkthrough.Click("Check what applying does to the numbers");
+                walkthrough.WaitUntil(() => File.Exists(measurementStarted), StepTimeout(deadline),
+                    "the Review measurement did not reach the fake parser");
+                Assert.True(review.IsMeasuring);
+                Assert.False(File.Exists(releaseMeasurement));
+            }
+            finally
+            {
+                File.WriteAllText(releaseMeasurement, string.Empty);
+            }
+
+            walkthrough.WaitUntil(() => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
+                StepTimeout(deadline), "releasing the parser did not enable Apply");
+            walkthrough.Click("Apply to FieldWorks project");
+            walkthrough.WaitUntil(() => review.HasReceipt && changes.Items.Count == 0,
+                StepTimeout(deadline), "Apply did not finish from the Review page");
+            return;
         }, WalkthroughSteps.Remaining(deadline));
     }
 
