@@ -133,7 +133,7 @@
       </StackPanel>
     </ScrollViewer>
     <StackPanel Grid.Column="1" Classes="reviewStack reviewRight">
-      <Border Classes="card">
+      <Border Classes="card" IsVisible="{Binding !Context.NeedsAssessment}">
         <StackPanel Classes="reviewRelated">
           <views:CopyableTextBlock Classes="section-title" Text="What applying does to the numbers"
                                    TextWrapping="Wrap" />
@@ -145,6 +145,17 @@
                   AutomationProperties.Name="Check what applying does to the numbers" />
           <Button Content="Cancel" Command="{Binding CancelMeasureCommand}"
                   IsVisible="{Binding IsMeasuring}" />
+        </StackPanel>
+      </Border>
+      <Border Classes="card" IsVisible="{Binding Context.NeedsAssessment}">
+        <StackPanel Classes="reviewRelated">
+          <views:CopyableTextBlock Classes="section-title" Text="What applying does to the numbers"
+                                   TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted"
+                                   Text="These words haven't been parsed since the last Refresh."
+                                   TextWrapping="Wrap" />
+          <Button Content="Parse all words" Command="{Binding Context.ParseAllWordsCommand}"
+                  AutomationProperties.Name="Parse all words" />
         </StackPanel>
       </Border>
       <Border Classes="card">

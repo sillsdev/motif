@@ -123,6 +123,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The shell's action that captures a new Baseline from FieldWorks' last save.</summary>
     public IAsyncRelayCommand? RefreshBaselineCommand { get; init; }
 
+    /// <summary>The shell's action for measuring the saved Default Selection against the current Baseline.</summary>
+    public IAsyncRelayCommand? ParseAllWordsCommand { get; internal set; }
+
     /// <summary>Where a page asks a person to choose a folder.</summary>
     public IHandoffFolderPicker FolderPicker { get; }
 
@@ -169,7 +172,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     [ObservableProperty]
     private WorkspaceBaseline? _baseline;
 
-    partial void OnBaselineChanged(WorkspaceBaseline? value) => Evidence.Baseline = value;
+    partial void OnBaselineChanged(WorkspaceBaseline? value)
+    {
+        Evidence.Baseline = value;
+        OnPropertyChanged(nameof(NeedsAssessment));
+    }
 
     /// <summary>The grammar check in one line, as the page that owns the check last published it.</summary>
     [ObservableProperty]
@@ -180,6 +187,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The negation of <see cref="HasEvidence"/>, so a view never composes <c>!</c> itself.</summary>
     public bool HasNoEvidence => !Evidence.HasAssessment;
+
+    /// <summary>Whether the current Baseline has no Assessment and needs the saved Default Selection parsed.</summary>
+    public bool NeedsAssessment => Baseline?.HasBaseline == true && !Evidence.HasAssessment;
 
     /// <summary>Whether the project and Selection controls accept input: not while an Assessment runs.</summary>
     public bool ProjectAndSelectionEnabled => !Assess.IsActive;
@@ -285,8 +295,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>
-    /// Reads the stored evidence for the new Baseline, tells every page it was captured, and returns once each has
-    /// reloaded.
+    /// Tells every page the new Baseline was captured and returns once each page has reloaded.
     /// </summary>
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
     {
@@ -323,6 +332,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         ArgumentNullException.ThrowIfNull(evidence);
         Evidence.ShowRun(evidence);
         Changes.AssessmentId = Evidence.ParseTimeAssessmentId;
+        _ = PublishToPagesAsync(CancellationToken.None);
+    }
+
+    /// <summary>Clears numbers from the replaced Baseline before pages reload its saved evidence.</summary>
+    internal void ClearAssessmentForNewBaseline()
+    {
+        Evidence.ClearForNewBaseline();
+        Changes.AssessmentId = null;
         _ = PublishToPagesAsync(CancellationToken.None);
     }
 
@@ -436,9 +453,12 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(ProjectEvidence.HasAssessment)) return;
-        OnPropertyChanged(nameof(HasEvidence));
-        OnPropertyChanged(nameof(HasNoEvidence));
+        if (e.PropertyName == nameof(ProjectEvidence.HasAssessment))
+        {
+            OnPropertyChanged(nameof(HasEvidence));
+            OnPropertyChanged(nameof(HasNoEvidence));
+            OnPropertyChanged(nameof(NeedsAssessment));
+        }
     }
 
     ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Context;

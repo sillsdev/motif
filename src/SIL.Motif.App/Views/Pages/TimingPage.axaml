@@ -8,7 +8,8 @@
   <UserControl.Resources>
     <views:TimingKindLabelConverter x:Key="KindLabel" />
   </UserControl.Resources>
-  <ScrollViewer>
+  <Grid>
+    <ScrollViewer IsVisible="{Binding !Context.NeedsAssessment}">
     <Border Classes="timingPage">
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
         <views:CopyableTextBlock Text="Pick words and see where their parse time went: first by kind of rule, then by rule, then by word."
@@ -237,5 +238,16 @@
         </Expander>
       </StackPanel>
     </Border>
-  </ScrollViewer>
+    </ScrollViewer>
+    <Border Classes="card" IsVisible="{Binding Context.NeedsAssessment}"
+            HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Related}" HorizontalAlignment="Center">
+        <views:CopyableTextBlock Classes="muted"
+                                 Text="These words haven't been parsed since the last Refresh."
+                                 TextWrapping="Wrap" />
+        <Button Content="Parse all words" Command="{Binding Context.ParseAllWordsCommand}"
+                HorizontalAlignment="Center" AutomationProperties.Name="Parse all words" />
+      </StackPanel>
+    </Border>
+  </Grid>
 </UserControl>

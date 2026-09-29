@@ -23,6 +23,7 @@
           </Button>
           <Button DockPanel.Dock="Right" Content="Run assessment" Command="{Binding Assess.RunCommand}"
                 VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterGroup}"
+                IsVisible="{Binding !Context.NeedsAssessment}"
                 AutomationProperties.Name="Run the Assessment" />
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
             <Button Content="Matrix" Classes="tab" Classes.active="{Binding ShowMatrix}"
@@ -59,13 +60,13 @@
     </Border>
 
     <Panel Grid.Row="1">
-      <Panel IsVisible="{Binding ShowMatrix}">
+      <Panel IsVisible="{Binding ShowMatrixContent}">
         <ContentControl x:Name="CompareHost" />
         <views:CopyableTextBlock Classes="muted" Text="No results yet. Choose what to assess on Analyze texts, then run."
-                   IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Panel>
       <Grid x:Name="AnalyzeTextsHost" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"
-            IsVisible="{Binding ShowAnalyzeTexts}">
+            IsVisible="{Binding ShowAnalyzeTextsContent}">
         <ContentControl x:Name="SelectionHost" Width="{DynamicResource Component.TextsPage.SelectionPanelWidth}"
                         IsEnabled="{Binding Context.ProjectAndSelectionEnabled}" />
         <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
@@ -85,6 +86,16 @@
       </Grid>
       <ContentControl x:Name="ListsHost" IsVisible="{Binding ShowLists}" />
       <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
+      <Border Classes="card" IsVisible="{Binding ShowParsePrompt}"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Related}" HorizontalAlignment="Center">
+          <views:CopyableTextBlock Classes="muted"
+                                   Text="These words haven't been parsed since the last Refresh."
+                                   TextWrapping="Wrap" />
+          <Button Content="Parse all words" Command="{Binding Context.ParseAllWordsCommand}"
+                  HorizontalAlignment="Center" AutomationProperties.Name="Parse all words" />
+        </StackPanel>
+      </Border>
     </Panel>
   </Grid>
 </UserControl>

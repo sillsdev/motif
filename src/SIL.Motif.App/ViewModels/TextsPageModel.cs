@@ -82,7 +82,14 @@ public sealed partial class TextsPageModel : PageModel
 
     public bool ShowMatrix => Tab == TextsTab.Matrix;
 
+    public bool ShowMatrixContent => ShowMatrix && !Context.NeedsAssessment;
+
     public bool ShowAnalyzeTexts => Tab == TextsTab.AnalyzeTexts;
+
+    public bool ShowAnalyzeTextsContent => ShowAnalyzeTexts && !Context.NeedsAssessment;
+
+    public bool ShowParsePrompt => Context.NeedsAssessment && !Assess.IsActive &&
+        (ShowMatrix || ShowAnalyzeTexts);
 
     public bool ShowLists => Tab == TextsTab.Lists;
 
@@ -145,6 +152,7 @@ public sealed partial class TextsPageModel : PageModel
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         OnPropertyChanged(nameof(ShowEmptyResults));
+        OnPropertyChanged(nameof(ShowParsePrompt));
         OnPropertyChanged(nameof(ShowAssessStatus));
         OnPropertyChanged(nameof(ShowAssessRefusal));
         if (e.PropertyName == nameof(AssessViewModel.IsActive) && Assess.IsActive) Tab = TextsTab.Matrix;
@@ -152,6 +160,9 @@ public sealed partial class TextsPageModel : PageModel
 
     partial void OnTabChanged(TextsTab value)
     {
+        OnPropertyChanged(nameof(ShowMatrixContent));
+        OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
+        OnPropertyChanged(nameof(ShowParsePrompt));
         if (value == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
     }
 
@@ -162,6 +173,11 @@ public sealed partial class TextsPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(WorkspaceContext.HasEvidence)) OnPropertyChanged(nameof(ShowEmptyResults));
+        if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment))
+        {
+            OnPropertyChanged(nameof(ShowMatrixContent));
+            OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
+            OnPropertyChanged(nameof(ShowParsePrompt));
+        }
     }
 }
