@@ -177,7 +177,7 @@ public sealed class JobRunnerLoopTests : IDisposable
             new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal) { ["demo"] = handler });
 
     private static string Stamp() =>
-        DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
 
     public void Dispose()
     {

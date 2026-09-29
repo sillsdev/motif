@@ -47,7 +47,7 @@ public static class HandoffWriter
     /// was written in after PanGloss moves on. It must equal the tag in <c>pangloss-release.json</c>, whose
     /// runtime-specific asset the package bundles, so the documents describe the parser that wrote the files.
     /// </summary>
-    internal const string PanGlossRef = "v0.5.0";
+    internal const string PanGlossRef = "v0.5.1";
 
     private static readonly string[] AlwaysRequiredTopLevelFiles =
         [GrammarFileName, TextsFileName, PythonHelperFileName, HandoffMarkdownFileName];

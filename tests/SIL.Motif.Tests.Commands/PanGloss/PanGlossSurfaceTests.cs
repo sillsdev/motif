@@ -152,6 +152,18 @@ public sealed class PanGlossSurfaceTests
         Assert.DoesNotContain("assess", Commands(fakeDescription).Keys);
     }
 
+    [Fact]
+    public void GrammarHealthRequestWritesItsReportToStandardOutput()
+    {
+        var request = new PanGlossRequest.GrammarHealth("project.fwdata", "project");
+        var start = new ProcessStartInfo();
+
+        request.AddArguments(start, "scratch");
+
+        Assert.Equal(new[] { "grammar-health", "project.fwdata", "--fw-project", "project" },
+            start.ArgumentList);
+    }
+
     private static Dictionary<string, JsonElement> Commands(JsonDocument document) =>
         document.RootElement.GetProperty("commands").EnumerateArray()
             .ToDictionary(command => command.GetProperty("name").GetString()!, command => command);
@@ -194,7 +206,12 @@ public sealed class PanGlossSurfaceTests
                 Assert.True(++index < start.ArgumentList.Count, $"'{argument}' lacks its declared value.");
                 Assert.False(start.ArgumentList[index].StartsWith("--", StringComparison.Ordinal));
             }
-            Assert.Equal(command.GetProperty("positionals").GetArrayLength(), positionals);
+            var declaredPositionals = command.GetProperty("positionals").EnumerateArray()
+                .Select(positional => positional.GetString()!)
+                .ToArray();
+            var requiredPositionals = declaredPositionals.Count(positional =>
+                !positional.EndsWith("?", StringComparison.Ordinal));
+            Assert.InRange(positionals, requiredPositionals, declaredPositionals.Length);
         }
     }
 

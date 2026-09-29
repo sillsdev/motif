@@ -34,8 +34,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     }
 
     public ObservableCollection<GrammarFindingGroupViewModel> WarningGroups { get; } = [];
-    public ObservableCollection<GrammarFindingGroupViewModel> InformationGroups { get; } = [];
     public ObservableCollection<GrammarFindingGroupViewModel> ErrorGroups { get; } = [];
+    public ObservableCollection<GrammarFindingGroupViewModel> InformationGroups { get; } = [];
 
     public bool HasWarningGroups => WarningGroups.Count > 0 &&
         Bucket is not (GrammarFindingBucket.Errors or GrammarFindingBucket.Information);
@@ -139,7 +139,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     }
 
     /// <summary>The diagnostics in the grid's view, preserving its sort when filters change.</summary>
-    /// <summary>The diagnostics in the grid's view, preserving its sort when filters change.</summary>
     public DataGridCollectionView Rows { get; }
 
     [ObservableProperty]
@@ -225,13 +224,12 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 
     public string Code { get; }
     public string Name { get; }
-    /// <summary>The structured warning or information level used to choose its bucket.</summary>
+    /// <summary>The structured error, warning, or information level used to choose its bucket.</summary>
     public GrammarDiagnosticLevel Level { get; }
     public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
     public bool IsError => Level == GrammarDiagnosticLevel.Error;
     /// <summary>The number of diagnostics with this code, name, and level.</summary>
     public int Count { get; }
-    /// <summary>What this kind means, represented as a favorable or cautionary chip.</summary>
     /// <summary>What the selected diagnostic code means, when PanGloss supplied a description.</summary>
     public string? Description { get; }
     /// <summary>What usually helps with this diagnostic code, when PanGloss supplied guidance.</summary>
@@ -239,6 +237,7 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
     public bool HasDescription => Description is not null;
     public bool HasGuidance => Guidance is not null;
     public bool HasDetails => HasDescription || HasGuidance;
+    /// <summary>Whether a finding signals a difference or an informational limit.</summary>
     public Verdict Meaning => IsWarning || IsError ? Verdict.Differs : Verdict.Limit;
 
     [ObservableProperty]

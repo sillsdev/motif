@@ -96,7 +96,7 @@ public sealed record OverviewTiming(
 /// <summary>A word among the slowest measured words.</summary>
 public sealed record SlowWordTiming(string Word, int ElapsedMs);
 
-/// <summary>Counts of grammar warning findings and the largest warning category.</summary>
+/// <summary>Counts of grammar findings and the largest diagnostic category.</summary>
 public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? LargestKind, int? LargestKindCount)
 {
     /// <summary>The number of findings whose report level is error.</summary>

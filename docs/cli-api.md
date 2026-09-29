@@ -504,7 +504,7 @@ Selection fingerprints, Text Coverage, Accuracy, and parse-time median, p95, slo
 count. A rule is each distinct affix allomorph on a lexeme or alternate form, plus each compound and
 phonological rule; morphemes are not counted. Text Coverage and Accuracy use the same Compare placement rules as the App. A time- or step-limited
 word is Unknown, not a verdict. `Warnings` is a typed field in `OverviewResponse`; it is `null` until the
-current Baseline has a stored grammar check. It counts warning and information findings and groups them by
+current Baseline has a stored grammar check. It counts error, warning, and information findings and groups them by
 diagnostic code using the same data as `warnings`. With no matching Assessment the response still has the project and Selection facts, while
 Assessment metrics are empty. `--json` emits `OverviewResponse`.
 
@@ -531,7 +531,7 @@ the Assessment, so partial statistics cannot look complete. Opening Overview or 
 The Warnings page reads PanGloss's grammar-health report last stored for the current Baseline. Opening the page
 or running `warnings` never invokes PanGloss. The App's **Reload grammar** action and the CLI check run PanGloss
 `grammar-health` on the current Baseline. A written report replaces that Baseline's one stored result. PanGloss
-v0.5.0 may exit nonzero after writing a report that contains error-level findings; Motif still reads and stores
+v0.5.1 may exit nonzero after writing a report that contains error-level findings; Motif still reads and stores
 that report. A nonzero exit without a report is a refusal. The store also records the resolved default Selection
 digest at check time when one exists, but grammar findings remain valid after the Selection changes.
 
@@ -549,7 +549,7 @@ including separate counts for `error`, `warning`, and `info` findings.
 `--json` emits `WarningsResponse`, including `ErrorCount`, `WarningCount`, and `InformationCount`, plus each
 finding's description, origin, guidance, subjects, and links.
 
-PanGloss v0.5.0 writes an object with `schema_version: 3`, `fieldworks_project`, `summary`, and `diagnostics`.
+PanGloss v0.5.1 writes an object with `schema_version: 3`, `fieldworks_project`, `summary`, and `diagnostics`.
 The summary groups by `code` and includes `group_name`, `level` (`error`, `warning`, or `info`), and `count`. Each
 diagnostic includes `level`, `code`, `group_name`, `origin` (`check` or `import`), `description`, nullable
 `guidance`, and `subjects`.
@@ -561,7 +561,9 @@ Import diagnostics appear as **From import**, while grammar-check diagnostics ap
 Motif does not publish an audience property; support can be added when PanGloss includes audience in the report.
 Standard-error warning lines are not read as grammar findings.
 
-Schema version 3 adds the `error` level. Motif reads schema versions 2 and 3. A bare array or an earlier findings envelope is refused as
+Schema version 3 adds the `error` level. Motif reads schema versions 2 and 3. A nonzero parser exit is accepted
+when the report contains an error-level diagnostic; those findings are stored and shown normally. Other nonzero
+exits remain parser refusals. A bare array or an earlier findings envelope is refused as
 `grammarcheck.malformed-findings`. A different integer version is refused as
 `grammarcheck.unsupported-schema`, with the received version and the accepted versions; update PanGloss and Motif together.
 

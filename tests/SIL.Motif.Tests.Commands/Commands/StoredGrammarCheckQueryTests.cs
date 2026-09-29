@@ -169,7 +169,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
 
     private const string ReportWithOneFinding = """
         {
-          "schema_version": 2,
+          "schema_version": 3,
           "fieldworks_project": { "name": null, "source": null },
           "summary": [
             { "code": "hc-undeclared-segment", "group_name": "Undeclared segment", "level": "info", "count": 1 }
@@ -190,7 +190,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
 
     private const string EmptyReport = """
         {
-          "schema_version": 2,
+          "schema_version": 3,
           "fieldworks_project": { "name": null, "source": null },
           "summary": [],
           "diagnostics": []
