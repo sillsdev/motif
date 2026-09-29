@@ -28,6 +28,9 @@ public static class ChangeKinds
     /// <summary>Send the parser's reading to FieldWorks as a new candidate analysis.</summary>
     public const string AddCandidate = "add-candidate";
 
+    /// <summary>Remove one stored analysis from FieldWorks.</summary>
+    public const string RemoveAnalysis = "remove-analysis";
+
     /// <summary>The words a change of <paramref name="kind"/> is listed with.</summary>
     public static string LabelOf(string kind) => kind switch
     {
@@ -36,6 +39,7 @@ public static class ChangeKinds
         Candidate => "Back to candidate",
         IncorrectSpelling => "Incorrect spelling",
         AddCandidate => "Add as candidate",
+        RemoveAnalysis => "Remove analysis",
         _ => kind,
     };
 
@@ -389,6 +393,12 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public void ToggleContext() => IsContextExpanded = !IsContextExpanded;
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
+    /// <summary>The action that added this candidate to Review changes.</summary>
+    public string SourceText => Kind == ChangeKinds.AddCandidate
+        ? GroupId is null ? "Add" : "Accepting a set"
+        : string.Empty;
+    /// <summary>The original change shown beneath an Uncertain item.</summary>
+    public string TransitionText => StagedTransition.Text;
     public string ReviewLabel => Kind == ChangeKinds.Approve && analyses is { Count: > 1 }
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
@@ -429,6 +439,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
             ChangeKinds.Approve => "Approved",
             ChangeKinds.Reject => "Disapproved",
             ChangeKinds.Candidate or ChangeKinds.AddCandidate => "Unknown",
+            ChangeKinds.RemoveAnalysis => "Removed",
             ChangeKinds.IncorrectSpelling => "Incorrect",
             _ => "Changed",
         };

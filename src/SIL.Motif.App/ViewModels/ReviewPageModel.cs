@@ -86,6 +86,21 @@ public sealed class ReviewPageModel : PageModel
 
     public IReadOnlyList<ChangeViewModel> UncertainChanges => Changes.Items.Where(item => item.IsUncertain).ToArray();
 
+    /// <summary>The pending changes grouped by their effect on FieldWorks.</summary>
+    public IReadOnlyList<ReviewChangeGroupViewModel> ReviewGroups => Changes.Items
+        .Select(change => (Change: change, Group: GroupFor(change)))
+        .GroupBy(item => item.Group)
+        .OrderBy(group => group.Key.Order)
+        .Select(group => new ReviewChangeGroupViewModel(group.Key.Title,
+            group.Select(item => item.Change).OrderBy(item => item.Occurrence is null ? 1 : 0)
+                .ThenBy(item => item.Occurrence?.TextId.ToString("D") ?? "~", StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence?.ParagraphId.ToString("D") ?? "~", StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence?.SegmentId.ToString("D") ?? "~", StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence?.Index ?? int.MaxValue)
+                .ThenBy(item => item.Word, StringComparer.Ordinal)
+                .ThenBy(item => item.ChangeId, StringComparer.Ordinal).ToArray(), Changes))
+        .ToArray();
+
     public bool HasUncertainChanges => UncertainChanges.Count > 0;
 
     /// <summary>The Apply result in words without internal command vocabulary.</summary>
@@ -327,6 +342,7 @@ public sealed class ReviewPageModel : PageModel
             OnPropertyChanged(nameof(ReviewableChanges));
             OnPropertyChanged(nameof(UncertainChanges));
             OnPropertyChanged(nameof(HasUncertainChanges));
+            OnPropertyChanged(nameof(ReviewGroups));
             ReconfirmChangeCommand.NotifyCanExecuteChanged();
             RemoveNonFittingCommand.NotifyCanExecuteChanged();
             CheckAgainCommand.NotifyCanExecuteChanged();
@@ -334,6 +350,29 @@ public sealed class ReviewPageModel : PageModel
             ApplyCommand.NotifyCanExecuteChanged();
         }
     }
+
+    private static ReviewChangeGroupDefinition GroupFor(ChangeViewModel change)
+    {
+        if (change.IsUncertain) return new(9, "Uncertain — check again");
+        return change.Kind switch
+        {
+            ChangeKinds.AddCandidate => new(6, "Added as Unknown"),
+            ChangeKinds.RemoveAnalysis => new(7, "Removed"),
+            ChangeKinds.IncorrectSpelling => new(8, "Spelling → Incorrect"),
+            _ => change.StagedTransition.Now switch
+            {
+                "Unknown" when change.StagedTransition.AfterApply == "Approved" => new(0, "Unknown → Approved"),
+                "Unknown" when change.StagedTransition.AfterApply == "Disapproved" => new(1, "Unknown → Disapproved"),
+                "Approved" when change.StagedTransition.AfterApply == "Disapproved" => new(2, "Approved → Disapproved"),
+                "Approved" when change.StagedTransition.AfterApply == "Unknown" => new(3, "Approved → Unknown"),
+                "Disapproved" when change.StagedTransition.AfterApply == "Approved" => new(4, "Disapproved → Approved"),
+                "Disapproved" when change.StagedTransition.AfterApply == "Unknown" => new(5, "Disapproved → Unknown"),
+                _ => throw new InvalidOperationException($"The pending change '{change.Kind}' has no Review group."),
+            },
+        };
+    }
+
+    private sealed record ReviewChangeGroupDefinition(int Order, string Title);
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
