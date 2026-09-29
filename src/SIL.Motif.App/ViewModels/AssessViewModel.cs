@@ -163,7 +163,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         Words.SelectedRow = Words.Rows.FirstOrDefault(row => row.Word == word) ?? Words.SelectedRow;
     }
 
-    protected override bool CanStartCore() => ProjectPath is not null && (_rerunWords is not null || _selection.CanAssess);
+    protected override bool CanStartCore() => ProjectPath is not null &&
+        (_rerunWords is not null || _runDefaultSelection || _selection.CanAssess);
 
     /// <summary>When the last Assessment finished, so an older Handoff can say it is out of date.</summary>
     [ObservableProperty]

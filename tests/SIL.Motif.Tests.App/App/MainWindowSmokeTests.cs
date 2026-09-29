@@ -236,6 +236,8 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
             try
             {
+                workspace.Context.Baseline = new SIL.Motif.App.ViewModels.WorkspaceBaseline(
+                    true, "Captured", "Saved", "Today", "Not held", null);
                 workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with
                 {
                     AssessmentId = null,
@@ -252,9 +254,9 @@ public sealed class MainWindowSmokeTests
 
                 var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
                 var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
-                Assert.Contains("No Assessment for the default Selection.", text);
-                Assert.Contains("No Assessment", text);
-                Assert.Contains("Not recorded", text);
+                Assert.Contains("These words haven't been parsed since the last Refresh.", text);
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Parse all words");
                 Assert.Contains("No warning summary is available.", text);
                 Assert.DoesNotContain("0 of 0", text);
                 Assert.DoesNotContain("words hit the step limit", text);

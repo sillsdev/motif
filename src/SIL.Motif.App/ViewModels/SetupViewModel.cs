@@ -45,6 +45,19 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     public SelectionViewModel Selection { get; }
 
+    /// <summary>Whether the saved Default Selection can be run from the shell.</summary>
+    public bool CanRunDefaultSelection => ProjectPath is not null && _savedSelection is not null;
+
+    /// <summary>Runs the saved Default Selection with the limits loaded for the project.</summary>
+    public Task RunDefaultSelectionAsync()
+    {
+        if (!CanRunDefaultSelection) return Task.CompletedTask;
+        var savedLimitMs = _savedSelection!.PerWordLimitMs;
+        int? limitMs = savedLimitMs is > 0 and <= int.MaxValue ? (int)savedLimitMs.Value : null;
+        var stepLimit = _savedSelection.PerWordStepLimit ?? _configuredStepLimit;
+        return _context.Assess.RunDefaultSelectionAsync(limitMs, stepLimit);
+    }
+
     public IReadOnlyList<SetupStepIndicator> Indicators { get; }
 
     [ObservableProperty]
@@ -221,6 +234,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         OnPropertyChanged(nameof(StepLimitEstimateText));
 
         IsEditingExistingSelection = _savedSelection is not null;
+        OnPropertyChanged(nameof(CanRunDefaultSelection));
         CaptureSnapshot();
         if (_savedSelection is null && !_setupSkipped && _context.Baseline?.HasBaseline == true)
             OpenFirstTimeSetup();
@@ -248,6 +262,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         _configuredStepLimit = StepCap.Default;
         _parserStepRate = StepLimitEstimator.TypicalMachineRate;
         IsEditingExistingSelection = false;
+        OnPropertyChanged(nameof(CanRunDefaultSelection));
         ShownRefusal = null;
     }
 
@@ -316,6 +331,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         }
 
         _savedSelection = saved.Value!.Selection;
+        OnPropertyChanged(nameof(CanRunDefaultSelection));
         _setupSkipped = false;
         _configuredStepLimit = stepLimit;
         Selection.PerWordTimeLimitSeconds = timeLimitMs is { } savedLimitMs ? savedLimitMs / 1000m : null;

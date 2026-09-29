@@ -16,10 +16,11 @@
               <views:CopyableTextBlock Classes="overviewProjectName" Text="{Binding ProjectTitle}" />
               <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding ProjectDetails}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Classes="overviewAssessment" Text="{Binding AssessmentDetails}"
-                                       IsVisible="{Binding HasAssessment}" />
+                                       IsVisible="{Binding ShowAssessmentDetails}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Classes="overviewFingerprints" HorizontalAlignment="Right">
-              <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding FingerprintSummary}" TextAlignment="Right" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding FingerprintSummary}" TextAlignment="Right"
+                                       IsVisible="{Binding !Context.NeedsAssessment}" />
               <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding BaselineDetails}" TextAlignment="Right" />
               <views:RefusalBlock DataContext="{Binding OverviewRefusal}" />
             </StackPanel>
@@ -58,15 +59,15 @@
         <views:CopyableTextBlock Text="The default Selection could not be resolved against the current Baseline; its word and occurrence counts are unavailable."
                                  TextWrapping="Wrap" />
       </Border>
-      <Border Classes="notice" IsVisible="{Binding ShowNoAssessment}">
-        <views:CopyableTextBlock Text="No Assessment for the default Selection. Press Refresh when you are ready to measure it."
-                                 TextWrapping="Wrap" />
+      <Border Classes="card" IsVisible="{Binding Context.NeedsAssessment}">
+        <views:ParsePrompt DataContext="{Binding Context}" />
       </Border>
 
       <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
             ColumnSpacing="{DynamicResource Intent.Space.Group}"
             RowSpacing="{DynamicResource Intent.Space.Group}">
         <Button Grid.Row="0" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTextCoverageCommand}"
+                IsVisible="{Binding !Context.NeedsAssessment}"
                 AutomationProperties.Name="Open Text Coverage in Texts">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
@@ -83,6 +84,7 @@
         </Button>
 
         <Button Grid.Row="0" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenAccuracyCommand}"
+                IsVisible="{Binding !Context.NeedsAssessment}"
                 AutomationProperties.Name="Open accuracy in Texts">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
@@ -99,6 +101,7 @@
         </Button>
 
         <Button Grid.Row="1" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTimingCommand}"
+                IsVisible="{Binding !Context.NeedsAssessment}"
                 AutomationProperties.Name="Open Timing">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">

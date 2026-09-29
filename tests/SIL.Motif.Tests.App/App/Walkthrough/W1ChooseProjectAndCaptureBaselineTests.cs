@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Avalonia.Controls;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -17,12 +18,17 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
-            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: FakeParser.ExecutablePath);
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
 
-            walkthrough.Check(SeededProject.TextTitle);
+            walkthrough.ConfigureFromProjectMenu();
+            SetupWalkthroughActions.FinishFirstRun(
+                walkthrough, SeededProject.TextTitle, StepCap.DefaultSteps.ToString(),
+                WalkthroughSteps.Remaining(deadline));
+            Assert.False(walkthrough.Workspace.Context.NeedsAssessment);
             Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
-            Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
             Assert.Equal($"1 text, step cap {StepCap.DefaultSteps:N0}", walkthrough.Workspace.Selection.SummaryText);
 
             Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));

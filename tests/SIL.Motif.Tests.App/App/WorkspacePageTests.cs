@@ -3,6 +3,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -452,9 +453,11 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task RefreshCapturesABaselineThenAssessesTheSelectionAndSaysWhatChanged()
+    public async Task RefreshCapturesOnlyAndTheNextParseSaysWhatChanged()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
+        fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
+            "Default", [], ["kitabu"], string.Empty, string.Empty, 1000, StepCap.Default));
         await ChooseProjectAsync(fake, projectPicker, workspace, Saved.AddHours(3));
         workspace.Selection.AllWordforms = true;
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "timed-out", ProjectStanding.Approved)] });
@@ -462,19 +465,22 @@ public sealed class WorkspacePageTests
         workspace.ShowPageCommand.Execute(WorkspacePage.Overview);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved.AddHours(3), false, false));
-        fake.AssessCompletesWith(NewAssessResponse(Saved.AddHours(3)) with
-        {
-            Words = [Word("kitabu", "analysed", ProjectStanding.Approved)],
-        });
         await workspace.RefreshCommand.ExecuteAsync(null);
 
         Assert.Single(fake.CaptureBaselineRequests);
-        Assert.Equal(2, fake.AssessRequests.Count);
+        Assert.Single(fake.AssessRequests);
         Assert.Equal(ProjectFreshness.Refreshed, workspace.Freshness);
         Assert.Equal("Refreshed", workspace.FreshnessLabel);
-        Assert.False(workspace.RerunOffered);
-        Assert.True(workspace.SeeWhatChangedCommand.CanExecute(null));
+        Assert.True(workspace.Context.NeedsAssessment);
+        Assert.True(workspace.ShowsParseAllWordsAction);
+        Assert.False(workspace.SeeWhatChangedCommand.CanExecute(null));
 
+        fake.AssessCompletesWith(NewAssessResponse(Saved.AddHours(3)) with
+            { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
+        await workspace.ParseAllWordsCommand.ExecuteAsync(null);
+
+        Assert.False(workspace.Context.NeedsAssessment);
+        Assert.True(workspace.SeeWhatChangedCommand.CanExecute(null));
         workspace.SeeWhatChangedCommand.Execute(null);
 
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
@@ -482,23 +488,24 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task WhileRefreshingTheLineSaysSoAndCancelStopsTheRun()
+    public async Task WhileRefreshingTheTopRowHidesBothActionsUntilCaptureFinishes()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
-        workspace.Selection.AllWordforms = true;
-        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false));
-        fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
+        var captured = new TaskCompletionSource<CommandOutcome<BaselineCaptureResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnCaptureBaseline((_, _) => captured.Task);
 
         var refreshing = workspace.RefreshCommand.ExecuteAsync(null);
 
         Assert.Equal(ProjectFreshness.Refreshing, workspace.Freshness);
         Assert.Equal("Refreshing", workspace.FreshnessLabel);
-        Assert.False(workspace.RerunOffered);
-        Assert.True(workspace.CancelRefreshCommand.CanExecute(null));
+        Assert.False(workspace.ShowsRefreshAction);
+        Assert.False(workspace.ShowsParseAllWordsAction);
         Assert.False(workspace.RefreshCommand.CanExecute(null));
 
-        workspace.CancelRefreshCommand.Execute(null);
+        captured.SetResult(CommandOutcome<BaselineCaptureResponse>.Success(
+            new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false)));
         await refreshing;
 
         Assert.NotEqual(ProjectFreshness.Refreshing, workspace.Freshness);
@@ -515,7 +522,8 @@ public sealed class WorkspacePageTests
 
         Assert.Single(fake.CaptureBaselineRequests);
         Assert.Empty(fake.AssessRequests);
-        Assert.Equal(ProjectFreshness.Current, workspace.Freshness);
+        Assert.Equal(ProjectFreshness.Refreshed, workspace.Freshness);
+        Assert.True(workspace.Context.NeedsAssessment);
     }
 
     [Fact]
@@ -592,7 +600,7 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task ABaselineRefreshThatLeavesAnOlderAssessmentShowingIsNotCurrent()
+    public async Task RefreshClearsAnOlderAssessmentAndMakesTheNewBaselineReadyToParse()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
@@ -603,45 +611,29 @@ public sealed class WorkspacePageTests
 
         var later = Saved.AddHours(3);
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, later, false, false));
-        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
-
-        Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
-        Assert.Contains("the numbers still describe", workspace.FreshnessDetail);
-    }
-
-    [Fact]
-    public async Task ARefreshWhoseAssessmentIsCancelledStillSaysTheNumbersAreOlder()
-    {
-        var (fake, projectPicker, workspace) = NewWorkspace();
-        await ChooseProjectAsync(fake, projectPicker, workspace);
-        workspace.Selection.AllWordforms = true;
-        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
-        await workspace.Assess.RunCommand.ExecuteAsync(null);
-
-        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved.AddHours(3), false, false));
-        fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
-        var refreshing = workspace.RefreshCommand.ExecuteAsync(null);
-        workspace.CancelRefreshCommand.Execute(null);
-        await refreshing;
-
-        Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
-    }
-
-    [Fact]
-    public async Task ARefreshWhoseAssessmentIsRefusedStillSaysTheNumbersAreOlder()
-    {
-        var (fake, projectPicker, workspace) = NewWorkspace();
-        await ChooseProjectAsync(fake, projectPicker, workspace);
-        workspace.Selection.AllWordforms = true;
-        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
-        await workspace.Assess.RunCommand.ExecuteAsync(null);
-
-        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved.AddHours(3), false, false));
-        fake.AssessRefusesWith(new Refusal("assess.refused", FailureReason.Refused, "The parser declined."));
         await workspace.RefreshCommand.ExecuteAsync(null);
 
-        Assert.Equal(RunState.Refused, workspace.Assess.State);
-        Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
+        Assert.Equal(ProjectFreshness.Refreshed, workspace.Freshness);
+        Assert.True(workspace.Context.NeedsAssessment);
+        Assert.True(workspace.Context.HasNoEvidence);
+        Assert.Equal("Refreshed. Parse all words to update the numbers.", workspace.FreshnessDetail);
+    }
+
+    [Fact]
+    public async Task RefreshClearsOldNumbersAndLeavesTheNewBaselineUnmeasured()
+    {
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace);
+        workspace.Selection.AllWordforms = true;
+        fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved.AddHours(3), false, false));
+        await workspace.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal(ProjectFreshness.Refreshed, workspace.Freshness);
+        Assert.Null(workspace.Context.Evidence.Assessment);
+        Assert.True(workspace.Context.NeedsAssessment);
     }
 
     [Fact]
@@ -655,7 +647,7 @@ public sealed class WorkspacePageTests
         workspace.Context.PublishEvidence(new WorkspaceEvidence(stored, Saved.AddHours(-2), WasRerun: false));
 
         Assert.Equal(Saved.AddHours(-3), workspace.Context.Evidence.MeasuredSaveUtc);
-        Assert.True(workspace.Baseline.HasAssessment);
+        Assert.False(workspace.Context.NeedsAssessment);
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
         Assert.Contains("the numbers still describe", workspace.FreshnessDetail);
     }

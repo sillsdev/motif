@@ -5,7 +5,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 /// <summary>Holds the real command client's Assessment or Handoff before it starts, until released.</summary>
 internal sealed class HoldingStartGate : ICommandStartGate
 {
-    private readonly TaskCompletionSource _assess;
+    private TaskCompletionSource _assess;
     private readonly TaskCompletionSource _handoff;
 
     internal HoldingStartGate(bool holdAssess = false, bool holdHandoff = false)
@@ -15,6 +15,8 @@ internal sealed class HoldingStartGate : ICommandStartGate
     }
 
     internal int Waiting { get; private set; }
+
+    internal void HoldAssess() => _assess = NewGate(held: true);
 
     internal void ReleaseAssess() => _assess.TrySetResult();
 

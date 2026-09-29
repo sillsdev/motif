@@ -5,6 +5,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -17,6 +18,14 @@ internal static class SetupWalkthroughActions
             string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate), accessibleName,
                 StringComparison.Ordinal) || Equals(candidate.Content, accessibleName));
         HeadlessClick.Click(walkthrough.Window, button, accessibleName);
+    }
+
+    internal static void ClickParseAllWordsFromTexts(WalkthroughWindow walkthrough)
+    {
+        var texts = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<TextsPage>());
+        var button = Assert.Single(texts.GetLogicalDescendants().OfType<Button>(), candidate =>
+            Avalonia.Automation.AutomationProperties.GetName(candidate) == "Parse all words");
+        HeadlessClick.Click(walkthrough.Window, button, "Parse all words");
     }
 
     internal static void SelectProject(WalkthroughWindow walkthrough, string projectPath)
@@ -124,7 +133,7 @@ internal static class SetupWalkthroughActions
                 ["batch"] = new { words = new[] { new { word = selectedText, outcome = "complete" } } },
             },
         });
-        walkthrough.Click("Run the Assessment");
+        ClickParseAllWordsFromTexts(walkthrough);
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                 walkthrough.Workspace.Context.EvidencePublication.IsCompleted,

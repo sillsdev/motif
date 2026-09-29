@@ -249,10 +249,11 @@ same numbers, computed once. A projection of stored evidence, never a trigger to
 _Avoid_: dashboard, summary, health, status, to-do list
 
 **Refresh**:
-The one thing a person does to bring Motif up to date with the FieldWorks project: capture a new Baseline
-and measure it again. Always started by a person, never on its own. Motif records when each Refresh happened
-and when the FieldWorks project had last been saved, so the window can say how far behind it is. Coming back
-to the window only re-reads what Motif has already stored.
+The first of two things a person does to bring Motif up to date with the FieldWorks project: Refresh captures a
+new Baseline, then Parse all words measures the saved Default Selection against it. Both steps are started by a
+person, never on their own. Motif records when each Refresh happened and when the FieldWorks project had last been
+saved, so the window can say how far behind it is. Coming back to the window only re-reads what Motif has already
+stored.
 _Avoid_: reload, sync, auto-refresh, update
 
 **Review changes**:

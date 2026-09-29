@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class CancelAssessmentWalkthroughTests
 {
     [RealParserFact]
-    public void CancellingAssessmentLeavesNoInvocationAndAllowsARerun()
+    public void CancellingAssessmentAddsNoInvocationAndAllowsARerun()
     {
         using var project = new ConformanceProject();
         var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
@@ -23,7 +23,18 @@ public sealed class CancelAssessmentWalkthroughTests
 
             var existing = PanglossProcesses.Snapshot();
             var appeared = new HashSet<int>();
-            WalkthroughSteps.StartSlowAssessment(walkthrough, deadline);
+            walkthrough.TypePastedWords(string.Join(Environment.NewLine, ConformanceProject.SlowWords));
+            var beforeCancellation = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
+            var setupInvocation = Assert.Single(beforeCancellation);
+            Assert.Equal(["motifa"], setupInvocation.Selection.ResolvedWords);
+            Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+            walkthrough.Click("Run the Assessment");
+            Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+            Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Running &&
+                    walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled,
+                WalkthroughSteps.Remaining(deadline), "the slow Assessment did not reach its cancellable Running state");
             PanglossProcesses.TrackNew(existing, appeared);
 
             walkthrough.Click("Cancel the running Assessment");
@@ -41,7 +52,9 @@ public sealed class CancelAssessmentWalkthroughTests
             Assert.Equal("assessment.cancelled", walkthrough.Workspace.Assess.Refusal?.Code);
             Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
             Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
-            Assert.Empty(WalkthroughStoreAssertions.ListInvocations(project.FwDataPath));
+            var afterCancellation = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
+            Assert.Equal(beforeCancellation.Select(invocation => invocation.InvocationId),
+                afterCancellation.Select(invocation => invocation.InvocationId));
 
             walkthrough.Click("Refresh the project");
             walkthrough.WaitUntil(
@@ -51,13 +64,19 @@ public sealed class CancelAssessmentWalkthroughTests
             Assert.NotNull(walkthrough.Workspace.Baseline.Token);
             var baselineToken = walkthrough.Workspace.Baseline.Token!;
 
-            walkthrough.TypePastedWords(ConformanceProject.OneAnalysisShort);
-            walkthrough.Click("Run the Assessment");
+            Assert.True(walkthrough.Workspace.Assess.RunCommand.CanExecute(null));
+            var rerun = walkthrough.Workspace.Assess.RunCommand.ExecuteAsync(null);
             walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Assess.State == RunState.Completed,
-                WalkthroughSteps.Remaining(deadline), "the rerun after cancellation did not complete");
+                () => rerun.IsCompleted && walkthrough.Workspace.Assess.State == RunState.Completed &&
+                    walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+                WalkthroughSteps.Remaining(deadline), "the Assessment rerun after cancellation did not complete");
 
-            var invocation = Assert.Single(WalkthroughStoreAssertions.ListInvocations(project.FwDataPath));
+            var afterRerun = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
+            Assert.Equal(beforeCancellation.Count + 1, afterRerun.Count);
+            var invocation = Assert.Single(afterRerun, record =>
+                beforeCancellation.All(existingRecord => existingRecord.InvocationId != record.InvocationId));
+            Assert.Equal(ConformanceProject.SlowWords.Order(StringComparer.Ordinal),
+                invocation.Selection.ResolvedWords.Order(StringComparer.Ordinal));
             Assert.Equal(baselineToken, invocation.BaselineToken);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));

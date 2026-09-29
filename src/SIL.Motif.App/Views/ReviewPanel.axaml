@@ -137,7 +137,8 @@
         <StackPanel Classes="reviewRelated">
           <views:CopyableTextBlock Classes="section-title" Text="What applying does to the numbers"
                                    TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap"
+                                   IsVisible="{Binding !Context.NeedsAssessment}" />
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
                                    IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding MeasurementRefusal}" />
@@ -145,6 +146,8 @@
                   AutomationProperties.Name="Check what applying does to the numbers" />
           <Button Content="Cancel" Command="{Binding CancelMeasureCommand}"
                   IsVisible="{Binding IsMeasuring}" />
+          <views:ParsePrompt DataContext="{Binding Context}"
+                             IsVisible="{Binding NeedsAssessment}" />
         </StackPanel>
       </Border>
       <Border Classes="card">

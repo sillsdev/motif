@@ -87,7 +87,7 @@ public sealed partial class CommandClient : ICommandClient
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return AfterStartGate(GatedCommand.Assess, () => OneAtATime(
+        return AfterStartGate(GatedCommand.Assess, cancellationToken, () => OneAtATime(
             () => AssessCommand.Assess(request, _managedRoot, _options.ParserPath,
                 progress.Report, cancellationToken), cancellationToken));
     }
@@ -100,7 +100,7 @@ public sealed partial class CommandClient : ICommandClient
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return AfterStartGate(GatedCommand.Handoff, () => OneAtATime(
+        return AfterStartGate(GatedCommand.Handoff, cancellationToken, () => OneAtATime(
             () => HandoffCommand.Handoff(request, _managedRoot, _options.ParserPath,
                 progress.Report, cancellationToken), cancellationToken));
     }
@@ -109,9 +109,21 @@ public sealed partial class CommandClient : ICommandClient
         ProjectStoreResetRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => ProjectStoreReset.DeleteRefused(request));
 
-    private async Task<T> AfterStartGate<T>(GatedCommand command, Func<Task<T>> run)
+    private async Task<T> AfterStartGate<T>(
+        GatedCommand command, CancellationToken cancellationToken, Func<Task<T>> run)
     {
-        if (_options.StartGate is { } gate) await gate.WaitToStartAsync(command).ConfigureAwait(false);
+        if (_options.StartGate is { } gate)
+        {
+            try
+            {
+                await gate.WaitToStartAsync(command).WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Let the command produce its typed refusal without waiting for the held gate.
+            }
+        }
+
         return await run().ConfigureAwait(false);
     }
 
