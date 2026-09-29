@@ -105,6 +105,42 @@ public sealed class FakePanGlossBatchTests : IDisposable
             Assert.False(diagnostic.TryGetProperty("audience", out _)));
     }
 
+    [Theory]
+    [InlineData("batch")]
+    [InlineData("grammar-health")]
+    public void AHeldInvocationTimesOutWithItsOwnExitCode(string subcommand)
+    {
+        var project = Path.Combine(_root, "p.fwdata");
+        var startedPath = Path.Combine(_root, "started");
+        var releasePath = Path.Combine(_root, "release");
+        File.WriteAllText(project, "never read");
+        FakeParser.Behave(_root, new
+        {
+            subcommands = new Dictionary<string, object>
+            {
+                [subcommand] = new
+                {
+                    startedPath,
+                    holdUntilPath = releasePath,
+                    holdTimeoutMs = 25,
+                },
+            },
+        });
+
+        var result = subcommand switch
+        {
+            "batch" => RunBounded("batch", project, Path.Combine(_root, "words.txt"),
+                Path.Combine(_root, "out.tsv"), "--word-timeout-ms", "1000", "--threads", "1"),
+            "grammar-health" => RunBounded("grammar-health", project, Path.Combine(_root, "report.json")),
+            _ => throw new ArgumentOutOfRangeException(nameof(subcommand)),
+        };
+
+        Assert.True(File.Exists(startedPath));
+        Assert.False(result.TimedOut, "The fake parser did not enforce its hold timeout.");
+        Assert.Equal(86, result.ExitCode);
+        Assert.Contains("fake parser hold timed out", result.Error, StringComparison.Ordinal);
+    }
+
     private static CliRun Run(params string[] args)
     {
         var start = new ProcessStartInfo(FakeParser.ExecutablePath)
@@ -127,5 +163,25 @@ public sealed class FakePanGlossBatchTests : IDisposable
         public string FailureDetails =>
             $"Fake parser exited {ExitCode}.{Environment.NewLine}Standard error:{Environment.NewLine}{Error}" +
             $"{Environment.NewLine}Standard output:{Environment.NewLine}{Output}";
+    }
+
+    private static (int ExitCode, bool TimedOut, string Error) RunBounded(params string[] args)
+    {
+        var start = new ProcessStartInfo(FakeParser.ExecutablePath)
+        {
+            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
+        };
+        foreach (var arg in args) start.ArgumentList.Add(arg);
+        using var process = Process.Start(start)!;
+        var error = process.StandardError.ReadToEndAsync();
+        var output = process.StandardOutput.ReadToEndAsync();
+        var exited = process.WaitForExit(5000);
+        if (!exited)
+        {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit();
+        }
+        _ = output.GetAwaiter().GetResult();
+        return (exited ? process.ExitCode : -1, !exited, error.GetAwaiter().GetResult());
     }
 }

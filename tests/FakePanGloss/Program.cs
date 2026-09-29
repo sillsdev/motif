@@ -174,6 +174,12 @@ internal static class Program
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
         RecordArgv(directory, args);
         var behaviour = Behaviour.Read(directory, "batch");
+        if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
+        if (behaviour.HoldUntilPath is { } holdUntilPath)
+        {
+            var holdExit = WaitForHoldRelease(holdUntilPath, behaviour.HoldTimeoutMs);
+            if (holdExit != 0) return holdExit;
+        }
         if (behaviour.HeartbeatPath is { } heartbeat)
         {
             using var wordsHandle = File.Open(wordsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -331,7 +337,8 @@ internal static class Program
 
         var signature = behaviour.TraceSignature ?? word + "-sig";
         // Raw UTF-8 bytes, as serde_json writes them: Console.Out would encode through the console code page.
-        var envelope = TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped);
+        var envelope = TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped,
+            behaviour.TraceTimedOut);
         using (var stdout = Console.OpenStandardOutput())
             stdout.Write(new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(envelope));
         return behaviour.ExitCode;
@@ -340,11 +347,22 @@ internal static class Program
     private static readonly JsonSerializerOptions Unescaped =
         new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
+    private static int WaitForHoldRelease(string releasePath, int timeoutMs)
+    {
+        var deadline = Environment.TickCount64 + Math.Max(1, timeoutMs);
+        while (!File.Exists(releasePath) && Environment.TickCount64 < deadline) Thread.Sleep(10);
+        if (File.Exists(releasePath)) return 0;
+        Console.Error.WriteLine("fake parser hold timed out waiting for release");
+        return 86;
+    }
+
     // The pangloss.trace-details.v1 document, with the tree embedded verbatim so a malformed tree stays malformed.
-    private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped) =>
+    private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped, bool timedOut) =>
         "{\"schemaVersion\":\"pangloss.trace-details.v1\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
-        ",\"search\":{\"completed\":" + (capped ? "false" : "true") + ",\"capped\":" + (capped ? "true" : "false") +
-        ",\"timedOut\":false,\"invalidShape\":false,\"steps\":42,\"elapsedNs\":1500000}" +
+        ",\"search\":{\"completed\":" + (capped || timedOut ? "false" : "true") +
+        ",\"capped\":" + (capped ? "true" : "false") +
+        ",\"timedOut\":" + (timedOut ? "true" : "false") +
+        ",\"invalidShape\":false,\"steps\":42,\"elapsedNs\":1500000}" +
         ",\"result\":{\"signature\":" + JsonSerializer.Serialize(signature) + ",\"guessed\":false,\"analyses\":[]}" +
         ",\"categories\":{\"morphRule\":{\"attempts\":3,\"work\":12,\"outputs\":2,\"notApplied\":1,\"noRoot\":0," +
         "\"surfaceMismatch\":0,\"uses\":1,\"timingAvailable\":true,\"selfElapsedNs\":48700}," +
@@ -368,7 +386,10 @@ internal static class Program
 
         if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
         if (behaviour.HoldUntilPath is { } holdUntilPath)
-            while (!File.Exists(holdUntilPath)) Thread.Sleep(10);
+        {
+            var holdExit = WaitForHoldRelease(holdUntilPath, behaviour.HoldTimeoutMs);
+            if (holdExit != 0) return holdExit;
+        }
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
         if (behaviour.DelayMilliseconds > 0) Thread.Sleep(behaviour.DelayMilliseconds);
@@ -578,6 +599,8 @@ internal static class Program
         public string? TraceSignature { get; init; }
         public string? TraceJson { get; init; }
         public bool TraceCapped { get; init; }
+        public bool TraceTimedOut { get; init; }
+        public int HoldTimeoutMs { get; init; } = 60_000;
         public string? GrammarHealthReportJson { get; init; }
 
         internal static Behaviour Read(string? directory, string? subcommand = null)
