@@ -3,6 +3,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
@@ -204,11 +205,69 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
         AssertNoRunnerVariables();
     }
 
-    private static async Task WaitForHeartbeatAsync(string heartbeat)
+    [Fact]
+    public async Task RecheckWaitsBehindARunningAssessment()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var baseline = BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+        var heartbeat = Path.Combine(project.ManagedRoot, "assessment-heartbeat");
+        var parser = FakeParser.Copy(Path.Combine(project.ManagedRoot, "assessment-parser"));
+        FakeParser.BehaveBesideExecutable(parser,
+            new { subcommands = new { batch = new { heartbeatPath = heartbeat } } });
+        var client = RealCommandClient.Create(project.ManagedRoot, parser);
+        var loaded = await client.LoadPendingChangesAsync(
+            new PendingChangesRequest(project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText),
+            CancellationToken.None);
+        Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
+        var put = await client.PutPendingChangeAsync(new PutPendingChangeRequest(
+            project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, loaded.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(project.Text.AnalysedWordformId).Value,
+                SeededProject.AnalysedWordForm)), CancellationToken.None);
+        Assert.True(put.Succeeded, put.Refusal?.Message);
+
+        using var assessmentCancellation = new CancellationTokenSource();
+        var assessing = client.AssessAsync(
+            new AssessRequest(project.FwDataPath, new SelectionRequest(true, [], [], false, null)),
+            new Progress<AssessmentProgress>(), assessmentCancellation.Token);
+        Task<CommandOutcome<PendingChangesSnapshot>>? rechecking = null;
+        try
+        {
+            await WaitForHeartbeatAsync(heartbeat, assessing);
+            rechecking = client.RecheckPendingChangesAsync(new RecheckPendingChangesRequest(
+                project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, put.Value!.Revision),
+                CancellationToken.None);
+
+            await Task.Delay(100);
+            Assert.False(rechecking.IsCompleted);
+            assessmentCancellation.Cancel();
+            var assessment = await assessing.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal("assessment.cancelled", assessment.Refusal?.Code);
+            Assert.True((await rechecking.WaitAsync(TimeSpan.FromSeconds(10))).Succeeded);
+        }
+        finally
+        {
+            assessmentCancellation.Cancel();
+            await assessing;
+            if (rechecking is not null) await rechecking;
+        }
+    }
+
+    private static async Task WaitForHeartbeatAsync(string heartbeat,
+        Task<CommandOutcome<AssessCommandResponse>>? assessment = null)
     {
         var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(20);
-        while (!File.Exists(heartbeat) && DateTimeOffset.UtcNow < deadline)
+        while (!File.Exists(heartbeat) && assessment?.IsCompleted != true && DateTimeOffset.UtcNow < deadline)
             await Task.Delay(20);
-        Assert.True(File.Exists(heartbeat), "The grammar check did not reach the fake parser.");
+        var detail = assessment?.IsCompleted == true
+            ? $" Assessment ended (succeeded: {assessment.Result.Succeeded}) with " +
+              $"{assessment.Result.Refusal?.Code}: {assessment.Result.Refusal?.Message}; " +
+              $"selection words: {assessment.Result.Value?.Selection.Words.Count}; " +
+              $"recorded runs: {assessment.Result.Value?.AssessmentIds.Count}; " +
+              $"summary: {assessment.Result.Value?.SummaryMarkdown}"
+            : string.Empty;
+        Assert.True(File.Exists(heartbeat), $"The command did not reach the fake parser.{detail}");
     }
 }

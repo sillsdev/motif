@@ -52,10 +52,12 @@ public sealed class ReviewPageModelTests
         fake.RecheckCompletesWith(new PendingChangesSnapshot("draft/one", "revision/checked",
             [Change("kept", "first")], [new ChangeFit("kept", ChangeFitStatus.Uncertain,
                 ["The words in the source sentence have changed."])]));
+        fake.PendingLoadRequests.Clear();
 
         await context.PublishBaselineCapturedAsync();
 
         Assert.Equal("revision/one", Assert.Single(fake.PendingRecheckRequests).ExpectedRevision);
+        Assert.Empty(fake.PendingLoadRequests);
         Assert.True(Assert.Single(context.Changes.Items).IsUncertain);
         Assert.False(page.CanApply);
     }
@@ -82,10 +84,46 @@ public sealed class ReviewPageModelTests
         Assert.Equal("Uncertain — check again", item.FitStatus);
         Assert.Empty(page.ReviewableChanges);
         Assert.Same(item, Assert.Single(page.UncertainChanges));
-        Assert.True(Assert.Single(item.AfterWords.Where(word => word.Form == "changed")).IsChanged);
+        Assert.True(Assert.Single(item.AfterWords, word => word.Form == "changed").IsChanged);
         Assert.False(page.CanApply);
         Assert.Equal("1 change needs another look because its sentence changed. Check it again or undo it.",
             page.ApplyBlockReason);
+    }
+
+    [Theory]
+    [InlineData("The source Segment is gone or no longer resolves uniquely.",
+        "The sentence this decision refers to is no longer available.")]
+    [InlineData("The source occurrence no longer resolves uniquely.",
+        "The word this decision refers to is no longer in the sentence.")]
+    [InlineData("The paragraph parse is not current.",
+        "FieldWorks has not reparsed this paragraph after the edit.")]
+    [InlineData("The paragraph parse was not current when the decision was collected.",
+        "FieldWorks had not parsed this paragraph when you made this decision.")]
+    [InlineData("The words in the source sentence have changed.",
+        "The words in the sentence have changed since you made this decision.")]
+    public void UncertainReasonsAreInTheLinguistsWords(string reason, string expected)
+    {
+        var fit = new ChangeFit("uncertain", ChangeFitStatus.Uncertain, [reason])
+        {
+            Uncertainty = new ChangeUncertainty(reason, [], []),
+        };
+
+        var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading", fit: fit);
+
+        Assert.Equal(expected, change.UncertaintyReason);
+    }
+
+    [Fact]
+    public void UncertainActionsNameTheWordForScreenReaders()
+    {
+        var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading");
+        var checkAgainName = typeof(ChangeViewModel).GetProperty("CheckAgainAutomationName");
+        var undoName = typeof(ChangeViewModel).GetProperty("UndoAutomationName");
+
+        Assert.NotNull(checkAgainName);
+        Assert.NotNull(undoName);
+        Assert.Equal("Check again: kitabu", checkAgainName.GetValue(change));
+        Assert.Equal("Undo: kitabu", undoName.GetValue(change));
     }
 
     [Fact]

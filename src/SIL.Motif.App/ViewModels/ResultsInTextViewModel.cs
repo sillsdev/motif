@@ -314,9 +314,13 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             var words = line.Tokens.Where(token => token.IsWord).ToArray();
             foreach (var change in _changes.Items.Where(item => item.IsUncertain && item.AfterWords.Count > 0))
             {
+                if (change.Occurrence is not { } occurrence ||
+                    line.TextId != occurrence.TextId || line.ParagraphId != occurrence.ParagraphId ||
+                    line.SegmentId != occurrence.SegmentId ||
+                    !words.Any(token => token.Occurrence == occurrence)) continue;
                 if (words.Length != change.AfterWords.Count) continue;
                 var matches = words.Select((token, index) => (token, expected: change.AfterWords[index]))
-                    .All(pair => pair.token.OccurrenceIndex == pair.expected.Index &&
+                    .All(pair => pair.token.Occurrence?.Index == pair.expected.Index &&
                         pair.token.WordformId is { } wordformId &&
                         CanonicalId.FromGuid(wordformId).Value == pair.expected.WordformId &&
                         pair.token.Form.Normalize(System.Text.NormalizationForm.FormD) ==
@@ -355,6 +359,7 @@ public sealed class ResultsLineViewModel
     {
         ArgumentNullException.ThrowIfNull(line);
         Number = line.Number;
+        TextId = textId;
         ParagraphId = line.ParagraphId;
         SegmentId = line.SegmentId;
         Tokens = line.Tokens.Select(token => new ResultsTokenViewModel(title, line.Number, token,
@@ -368,6 +373,7 @@ public sealed class ResultsLineViewModel
     }
 
     public int Number { get; }
+    public Guid TextId { get; }
     public Guid ParagraphId { get; }
     public Guid SegmentId { get; }
     public IReadOnlyList<ResultsTokenViewModel> Tokens { get; }

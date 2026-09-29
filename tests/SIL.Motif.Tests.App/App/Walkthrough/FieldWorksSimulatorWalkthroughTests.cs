@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -74,10 +76,14 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             Assert.False(review.ApplyCommand.CanExecute(null));
             Assert.Contains("sentence changed", review.ApplyBlockReason, StringComparison.Ordinal);
+            Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(),
+                text => text.Text == "Uncertain — check again");
+            Assert.NotNull(walkthrough.Find<HyperlinkButton>($"Check again: {SeededProject.FirstForm}"));
+            Assert.NotNull(walkthrough.Find<HyperlinkButton>($"Undo: {SeededProject.FirstForm}"));
             Assert.Contains(review.UncertainChanges.Single().AfterWords,
                 word => word.Form == "changedword" && word.IsChanged);
 
-            walkthrough.Click("Check again");
+            walkthrough.Click($"Check again: {SeededProject.FirstForm}");
             walkthrough.WaitUntil(() => !review.HasUncertainChanges &&
                     review.Changes.Items.Single().Fit?.Status == "fits",
                 WalkthroughSteps.Remaining(deadline), "Check again did not clear uncertainty");

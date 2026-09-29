@@ -181,7 +181,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         ArgumentNullException.ThrowIfNull(token);
         var occurrence = kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
             ? token.Occurrence : null;
-        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, "", token.Form,
+        var wordformId = token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty;
+        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, wordformId, token.Form,
             AssessmentId, reading?.Analysis, DisplayReading: reading?.Text,
             ReadingIndex: reading?.Index, OriginPage: WorkspacePage.Texts.ToString(),
             Occurrence: occurrence)).ConfigureAwait(true);
@@ -294,7 +295,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         {
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
             Items.Add(new ChangeViewModel(change.Kind, change.Word,
-                change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage));
+                change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage,
+                fit?.Occurrence));
         }
         Raise();
     }
@@ -324,12 +326,13 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 /// <summary>One collected change: what should happen to one word, and what it held when the change was chosen.</summary>
 public sealed partial class ChangeViewModel(string kind, string word, string reading,
     string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null,
-    string? originPage = null) : ObservableObject
+    string? originPage = null, SIL.Motif.Contract.Requests.OccurrenceAnchor? occurrence = null) : ObservableObject
 {
     public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
         page != WorkspacePage.Review ? page : WorkspacePage.Texts;
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
     public ChangeFit? Fit { get; } = fit;
+    public SIL.Motif.Contract.Requests.OccurrenceAnchor? Occurrence { get; } = occurrence;
     public string FitStatus => Fit?.Status switch
     {
         null => string.Empty,
@@ -340,7 +343,20 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public bool IsUncertain => Fit?.Status == ChangeFitStatus.Uncertain;
     public bool IsNoLongerFits => Fit?.Status == ChangeFitStatus.NoLongerFits;
     public bool HasUncertainty => Fit?.Uncertainty is not null;
-    public string UncertaintyReason => Fit?.Uncertainty?.Reason ?? string.Empty;
+    public string UncertaintyReason => Fit?.Uncertainty?.Reason switch
+    {
+        null => string.Empty,
+        "The source Segment is gone or no longer resolves uniquely." =>
+            "The sentence this decision refers to is no longer available.",
+        "The source occurrence no longer resolves uniquely." =>
+            "The word this decision refers to is no longer in the sentence.",
+        "The paragraph parse is not current." => "FieldWorks has not reparsed this paragraph after the edit.",
+        "The paragraph parse was not current when the decision was collected." =>
+            "FieldWorks had not parsed this paragraph when you made this decision.",
+        "The words in the source sentence have changed." =>
+            "The words in the sentence have changed since you made this decision.",
+        _ => "This sentence needs another check.",
+    };
     public IReadOnlyList<UncertaintyTokenViewModel> BeforeWords { get; } =
         UncertaintyTokenViewModel.Create(fit?.Uncertainty?.BeforeTokens, fit?.Uncertainty?.AfterTokens, beforeSide: true);
     public IReadOnlyList<UncertaintyTokenViewModel> AfterWords { get; } =
@@ -355,6 +371,8 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public string ReviewLabel => Kind == ChangeKinds.Approve && analyses is { Count: > 1 }
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
+    public string CheckAgainAutomationName => $"Check again: {Word}";
+    public string UndoAutomationName => $"Undo: {Word}";
 
     /// <summary>The parser's reading, for a change that sends it to FieldWorks or judges it.</summary>
     public string Reading { get; } = reading;

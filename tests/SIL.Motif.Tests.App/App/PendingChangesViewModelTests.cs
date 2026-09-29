@@ -100,6 +100,30 @@ public sealed class PendingChangesViewModelTests
     }
 
     [Fact]
+    public async Task WordAndCompareChangesDoNotCarryAnOccurrenceAnchor()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        var analysis = new ParseAnalysis([new ParseMorph(null, null, null, "reading")]);
+        var assessmentWord = new AssessmentWordResult("word", "analysed", false, "Done", 1, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, "word", 1, false, false, false, [analysis], []),
+        };
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(assessmentWord),
+            (WordProjectStatus.NotPresent, CompareColumnKind.NoMatch))
+        {
+            SelectedReading = new CompareReadingChoice(0, analysis, "reading"),
+        };
+
+        await changes.AddAsync(ChangeKinds.Approve, word, WorkspacePage.Texts);
+        await changes.AddAsync(ChangeKinds.Approve, word, WorkspacePage.Texts);
+
+        Assert.Equal(2, fake.PendingPutRequests.Count);
+        Assert.All(fake.PendingPutRequests, request => Assert.Null(request.Change.Occurrence));
+    }
+
+    [Fact]
     public async Task ARefusedCandidateDoesNotHideLaterParserReadings()
     {
         var fake = new FakeCommandClient

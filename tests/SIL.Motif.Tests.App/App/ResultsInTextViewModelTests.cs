@@ -58,7 +58,7 @@ public sealed class ResultsInTextViewModelTests
         };
 
     private static async Task<(ResultsInTextViewModel InText, List<string> Shown, FakeCommandClient Client)> Loaded(
-        PendingChangesSnapshot? pending = null)
+        PendingChangesSnapshot? pending = null, IReadOnlyList<TextLine>? sourceLines = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake) { AllWordforms = true };
@@ -70,9 +70,8 @@ public sealed class ResultsInTextViewModelTests
         await changes.OpenProjectAsync(ProjectPath);
         var inText = new ResultsInTextViewModel(texts, assess, shown.Add, _ => { }, changes);
 
-        fake.ListTextWordsCompletesWith(new TextWordsResponse([],
-            [new TextLines(TextId, "Alpha",
-            [
+        var lines = sourceLines ??
+        [
                 new TextLine(1, [Word("kitabu", Stored(Book, "book"), 0), Word("anapenda", Stored(Love, "love"), 1),
                     Word("mtoto", null, 2), Word("zzz", null, 3), new TextToken(".", null, null, null)])
                 {
@@ -86,7 +85,9 @@ public sealed class ResultsInTextViewModelTests
                     SegmentId = SecondSegmentId,
                     ParseIsCurrent = true,
                 },
-            ])], HasBaseline: true));
+            ];
+        fake.ListTextWordsCompletesWith(new TextWordsResponse([],
+            [new TextLines(TextId, "Alpha", lines)], HasBaseline: true));
         await texts.SetProjectAsync(ProjectPath);
 
         fake.AssessCompletesWith(new AssessCommandResponse(
@@ -204,6 +205,75 @@ public sealed class ResultsInTextViewModelTests
         var change = Assert.Single(client.PendingPutRequests).Change;
         Assert.Equal(ChangeKinds.Approve, change.Kind);
         Assert.Equal(new OccurrenceAnchor(TextId, ParagraphId, SegmentId, 0), change.Occurrence);
+        Assert.Equal(CanonicalId.FromGuid(token.WordformId!.Value).Value, change.WordformId);
+    }
+
+    [Fact]
+    public async Task AnalyzeTextsSendsTheSegmentIndexWhenPunctuationPrecedesARepeatedWord()
+    {
+        var line = new TextLine(1,
+        [
+            new TextToken(",", null, null, null),
+            Word("kitabu", Stored(Book, "book"), 1),
+            Word("kitabu", Stored(Book, "book"), 2),
+            new TextToken(".", null, null, null),
+        ])
+        {
+            ParagraphId = ParagraphId,
+            SegmentId = SegmentId,
+            ParseIsCurrent = true,
+        };
+        var (inText, _, client) = await Loaded(sourceLines: [line]);
+        var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(item => item.Tokens)
+            .Single(token => token.OccurrenceIndex == 2);
+        inText.SelectToken(selected);
+        selected.SelectedReading = selected.Readings[0];
+
+        await inText.AddChangeCommand.ExecuteAsync(ChangeKinds.Reject);
+
+        var change = Assert.Single(client.PendingPutRequests).Change;
+        Assert.Equal(CanonicalId.FromGuid(selected.WordformId!.Value).Value, change.WordformId);
+        Assert.Equal(new OccurrenceAnchor(TextId, ParagraphId, SegmentId, 2), change.Occurrence);
+    }
+
+    [Theory]
+    [InlineData(ChangeKinds.Reject, true)]
+    [InlineData(ChangeKinds.Candidate, true)]
+    [InlineData(ChangeKinds.AddCandidate, false)]
+    public async Task AnalyzeTextsAnchorsOpinionChangesButNotCandidateAdds(string kind, bool hasAnchor)
+    {
+        var (inText, _, client) = await Loaded();
+        var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .First(candidate => candidate.Form == "kitabu");
+        inText.SelectToken(token);
+        token.SelectedReading = token.Readings[0];
+
+        await inText.AddChangeCommand.ExecuteAsync(kind);
+
+        Assert.NotEmpty(client.PendingPutRequests);
+        Assert.All(client.PendingPutRequests,
+            request => Assert.Equal(hasAnchor, request.Change.Occurrence is not null));
+    }
+
+    [Fact]
+    public async Task AnUncertainChangeExposesItsOccurrenceAnchor()
+    {
+        var anchor = new OccurrenceAnchor(TextId, ParagraphId, SegmentId, 1);
+        var fit = new ChangeFit("uncertain", ChangeFitStatus.Uncertain, [])
+        {
+            Uncertainty = new ChangeUncertainty("The words in the source sentence have changed.", [], []),
+        };
+        var occurrence = typeof(ChangeFit).GetProperty("Occurrence");
+        Assert.NotNull(occurrence);
+        occurrence.SetValue(fit, anchor);
+        var (inText, _, _) = await Loaded(new PendingChangesSnapshot("draft/uncertain", "revision/uncertain",
+            [new PendingChange("uncertain", "wordform/kitabu", "kitabu", ChangeKinds.Approve, null, null, [])],
+            [fit]));
+
+        var change = Assert.Single(inText.Changes.Items);
+        var changeOccurrence = typeof(ChangeViewModel).GetProperty("Occurrence");
+        Assert.NotNull(changeOccurrence);
+        Assert.Equal(anchor, changeOccurrence.GetValue(change));
     }
 
     [Fact]
@@ -211,6 +281,7 @@ public sealed class ResultsInTextViewModelTests
     {
         var fit = new ChangeFit("uncertain", ChangeFitStatus.Uncertain, ["The sentence changed."])
         {
+            Occurrence = new OccurrenceAnchor(TextId, ParagraphId, SegmentId, 0),
             Uncertainty = new ChangeUncertainty("The sentence changed.",
                 [new OccurrenceWordToken(0, CanonicalId.FromGuid(Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011")).Value, "kitabu"),
                  new OccurrenceWordToken(1, CanonicalId.FromGuid(Guid.Parse("aaaaaaaa-0000-0000-0000-000000000012")).Value, "old"),
@@ -231,6 +302,71 @@ public sealed class ResultsInTextViewModelTests
             .SelectMany(line => line.Tokens).First(candidate => candidate.Form == "kitabu").PendingChangeStatus);
         Assert.True(token.IsUncertainChanged);
     }
+
+    [Fact]
+    public async Task UncertainHighlightUsesItsAnchoredSegmentAndOccurrence()
+    {
+        var first = new TextLine(1,
+        [
+            Word("kitabu", Stored(Book, "book"), 0),
+            Word("anapenda", Stored(Love, "love"), 1),
+            Word("mtoto", null, 2),
+            Word("zzz", null, 3),
+        ])
+        {
+            ParagraphId = ParagraphId,
+            SegmentId = SegmentId,
+            ParseIsCurrent = true,
+        };
+        var duplicate = new TextLine(2,
+        [
+            Word("kitabu", Stored(Book, "book"), 0),
+            Word("anapenda", Stored(Love, "love"), 1),
+            Word("mtoto", null, 2),
+            Word("zzz", null, 3),
+        ])
+        {
+            ParagraphId = ParagraphId,
+            SegmentId = SecondSegmentId,
+            ParseIsCurrent = true,
+        };
+        var before = new[]
+        {
+            new OccurrenceWordToken(0, Wordform("kitabu"), "kitabu"),
+            new OccurrenceWordToken(1, Wordform("anapenda"), "old"),
+            new OccurrenceWordToken(2, Wordform("mtoto"), "mtoto"),
+            new OccurrenceWordToken(3, Wordform("zzz"), "zzz"),
+        };
+        var after = new[]
+        {
+            new OccurrenceWordToken(0, Wordform("kitabu"), "kitabu"),
+            new OccurrenceWordToken(1, Wordform("anapenda"), "anapenda"),
+            new OccurrenceWordToken(2, Wordform("mtoto"), "mtoto"),
+            new OccurrenceWordToken(3, Wordform("zzz"), "zzz"),
+        };
+        var fit = new ChangeFit("uncertain", ChangeFitStatus.Uncertain, [])
+        {
+            Uncertainty = new ChangeUncertainty("The words in the source sentence have changed.", before, after),
+        };
+        typeof(ChangeFit).GetProperty("Occurrence")!.SetValue(fit,
+            new OccurrenceAnchor(TextId, ParagraphId, SegmentId, 0));
+        var (inText, _, _) = await Loaded(new PendingChangesSnapshot("draft/uncertain", "revision/uncertain",
+            [new PendingChange("uncertain", Wordform("kitabu"), "kitabu", ChangeKinds.Approve, null, null, [])],
+            [fit]), [first, duplicate]);
+
+        var lines = inText.Texts.SelectMany(text => text.Lines).ToArray();
+        Assert.True(lines[0].Tokens[1].IsUncertainChanged);
+        Assert.False(lines[1].Tokens[1].IsUncertainChanged);
+    }
+
+    private static string Wordform(string form) => CanonicalId.FromGuid(form switch
+    {
+        "kitabu" => Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011"),
+        "anapenda" => Guid.Parse("aaaaaaaa-0000-0000-0000-000000000012"),
+        "mtoto" => Guid.Parse("aaaaaaaa-0000-0000-0000-000000000013"),
+        "zzz" => Guid.Parse("aaaaaaaa-0000-0000-0000-000000000014"),
+        _ => throw new ArgumentOutOfRangeException(nameof(form)),
+    }).Value;
 
     [Fact]
     public void ProjectStatusChipUsesTheWordStatusVerdict()

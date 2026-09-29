@@ -74,7 +74,7 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
         <StackPanel Classes="reviewRelated" IsVisible="{Binding HasUncertainChanges}">
-          <views:CopyableTextBlock Classes="section-title" Text="Needs another look" />
+          <views:CopyableTextBlock Classes="section-title" Text="Uncertain — check again" />
           <ItemsControl ItemsSource="{Binding UncertainChanges}" AutomationProperties.Name="Changes needing another look">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:ChangeViewModel">
@@ -84,10 +84,10 @@
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
                         <HyperlinkButton Classes="reviewLink" Content="Check again"
                                          Command="{Binding $parent[views:ReviewPanel].Page.ReconfirmChangeCommand}"
-                                         CommandParameter="{Binding}" AutomationProperties.Name="Check again" />
+                                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding CheckAgainAutomationName}" />
                         <HyperlinkButton Classes="reviewLink" Content="Undo"
                                          Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
-                                         CommandParameter="{Binding}" AutomationProperties.Name="Undo" />
+                                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding UndoAutomationName}" />
                       </StackPanel>
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
                         <views:CopyableTextBlock Classes="reviewWord" Text="{Binding Word}" />
@@ -158,7 +158,7 @@
                   IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project" />
           <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" />
           <views:RefusalBlock DataContext="{Binding Changes.ShownRefusal}" />
-          <HyperlinkButton Classes="reviewLink" Content="Check again against the refreshed project"
+          <HyperlinkButton Classes="reviewLink" Content="Recheck all changes against the refreshed project"
                            Command="{Binding CheckAgainCommand}"
                            IsVisible="{Binding HasNonFittingChanges}" />
           <HyperlinkButton Classes="reviewLink" Content="Remove the ones that no longer fit"

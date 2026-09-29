@@ -555,9 +555,10 @@ public static class PendingChanges
             {
                 var computed = ComputeFitSummary(cache, draft, changes, provenance, currentBaseline?.Token);
                 fitRepository.Save(revision, cacheLastWriteTicks, baselineIdentity, computed);
-                return computed;
+                    return computed;
             }
         }
+        fits = AddOccurrenceAnchors(fits, draft, changes);
         return new PendingChangesSnapshot(draft.ProposalId, revision, changes, fits);
     }
 
@@ -599,8 +600,30 @@ public static class PendingChanges
             return new ChangeFit(change.ChangeId, status, distinctReasons)
             {
                 Uncertainty = uncertainty,
+                Occurrence = OccurrenceOf(draft, change),
             };
         }).ToArray();
+    }
+
+    private static IReadOnlyList<ChangeFit> AddOccurrenceAnchors(IReadOnlyList<ChangeFit> fits,
+        DraftDocument draft, IReadOnlyList<PendingChange> changes)
+    {
+        var anchors = changes.ToDictionary(change => change.ChangeId,
+            change => OccurrenceOf(draft, change), StringComparer.Ordinal);
+        return fits.Select(fit => fit with { Occurrence = anchors.GetValueOrDefault(fit.ChangeId) }).ToArray();
+    }
+
+    private static OccurrenceAnchor? OccurrenceOf(DraftDocument draft, PendingChange change)
+    {
+        foreach (var id in change.OperationIds)
+        {
+            var operation = draft.Operations.FirstOrDefault(item => item.OperationId == id &&
+                ChangeIdOf(item) == change.ChangeId);
+            if (operation is not null && ReadFingerprint(operation)?.Occurrence is { } occurrence)
+                return occurrence.Anchor;
+        }
+
+        return null;
     }
 
     private static IReadOnlyList<ReviewAnalysis> DisplayAnalyses(MotifDatabase database, LcmCache cache,
