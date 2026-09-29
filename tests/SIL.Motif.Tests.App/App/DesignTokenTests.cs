@@ -76,7 +76,7 @@ public sealed class DesignTokenTests
             .Where(key => key?.StartsWith("Primitive.Inset.", StringComparison.Ordinal) == true);
 
         Assert.All(keys, key => Assert.Matches(
-            "^Primitive\\.Inset\\.-?\\d+_-?\\d+_-?\\d+_-?\\d+$", key!));
+            "^Primitive\\.Inset\\.(-?\\d+(p\\d+)?_){3}-?\\d+(p\\d+)?$", key!));
     }
 
     [Fact]
