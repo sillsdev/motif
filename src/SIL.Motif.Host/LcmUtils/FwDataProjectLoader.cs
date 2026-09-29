@@ -107,7 +107,7 @@ public class FwDataProjectLoader
         }
         else if (OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.X64)
         {
-            libraryDirectory = Path.Combine(baseDirectory, "lib", "sil-icu");
+            libraryDirectory = baseDirectory;
             libraryNames =
             [
                 "libicudata.so.70", "libicuuc.so.70", "libicui18n.so.70", "libicuio.so.70", "libicutu.so.70",
@@ -115,7 +115,7 @@ public class FwDataProjectLoader
         }
         else if (OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture is Architecture.Arm64 or Architecture.X64)
         {
-            libraryDirectory = Path.Combine(baseDirectory, "lib", "sil-icu");
+            libraryDirectory = baseDirectory;
             libraryNames =
             [
                 "libicudata.70.dylib", "libicuuc.70.dylib", "libicui18n.70.dylib", "libicuio.70.dylib",
