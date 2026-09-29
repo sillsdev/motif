@@ -425,6 +425,16 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public string? GroupId { get; } = groupId;
     public ChangeFit? Fit { get; } = fit;
     public OccurrenceAnchor? Occurrence { get; } = occurrence;
+    private string _whereText = occurrence is null ? "Not tied to a text occurrence" : "Text location not loaded";
+    public string WhereText => _whereText;
+
+    internal void SetWhereText(string whereText)
+    {
+        if (_whereText == whereText) return;
+        _whereText = whereText;
+        OnPropertyChanged(nameof(WhereText));
+    }
+
     public string? StoredAnalysisId { get; } = storedAnalysisId;
     public int? ReadingIndex { get; } = readingIndex;
     public string FitStatus => Fit?.Status switch
@@ -439,6 +449,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public bool HasUncertainty => Fit?.Uncertainty is not null;
     public bool HasContext => Occurrence is not null || HasUncertainty;
     public string ShowContextAutomationName => $"Show context: {Word}";
+    public string GoToTextAutomationName => $"Go to text: {Word}";
     public string UncertaintyReason => Fit?.Uncertainty?.Reason switch
     {
         null => string.Empty,

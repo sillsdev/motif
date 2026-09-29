@@ -50,8 +50,8 @@ public sealed class ReviewChangeGroupsTests
     [Fact]
     public async Task ItemsAreSortedByTextSentenceAndWord()
     {
-        var firstText = Guid.Parse("00000001-0000-0000-0000-000000000000");
-        var secondText = Guid.Parse("00000002-0000-0000-0000-000000000000");
+        var firstText = Guid.Parse("00000002-0000-0000-0000-000000000000");
+        var secondText = Guid.Parse("00000001-0000-0000-0000-000000000000");
         var paragraph = Guid.Parse("00000003-0000-0000-0000-000000000000");
         var firstSentence = Guid.Parse("00000004-0000-0000-0000-000000000000");
         var secondSentence = Guid.Parse("00000005-0000-0000-0000-000000000000");
@@ -66,10 +66,16 @@ public sealed class ReviewChangeGroupsTests
             Change("first-word", "z", ChangeKinds.Approve,
                 occurrence: new OccurrenceAnchor(firstText, paragraph, firstSentence, 1)),
         };
-        var (page, _) = await OpenReviewAsync(changes);
+        var textOrder = new Dictionary<Guid, int> { [firstText] = 0, [secondText] = 1 };
+        var (page, _) = await OpenReviewAsync(changes, occurrenceLocation: occurrence =>
+            new TextOccurrenceLocation(textOrder[occurrence.TextId],
+                occurrence.SegmentId == firstSentence ? 0 : 1, occurrence.Index,
+                $"Text {textOrder[occurrence.TextId] + 1}, sentence {(occurrence.SegmentId == firstSentence ? 1 : 2)}, word {occurrence.Index + 1}"));
 
         Assert.Equal(["first-word", "later-word", "later-sentence", "later-text"],
             Assert.Single(page.ReviewGroups).Items.Select(change => change.ChangeId));
+        Assert.Equal("Text 1, sentence 1, word 2",
+            Assert.Single(page.ReviewGroups).Items.Single(item => item.ChangeId == "first-word").WhereText);
     }
 
     [Fact]
@@ -87,6 +93,7 @@ public sealed class ReviewChangeGroupsTests
             group.Items.Single(item => item.ChangeId == "added").SourceText);
         Assert.Equal("Added as Unknown from accepting a set",
             group.Items.Single(item => item.ChangeId == "accepted").SourceText);
+        Assert.Equal("· 2 words", group.WordCountText);
         Assert.Equal("Undo accepted set containing: accepted",
             group.Items.Single(item => item.ChangeId == "accepted").UndoAutomationName);
     }
@@ -177,7 +184,8 @@ public sealed class ReviewChangeGroupsTests
     }
 
     private static async Task<(ReviewPageModel Page, FakeCommandClient Client)> OpenReviewAsync(
-        IReadOnlyList<PendingChange> changes, string[]? uncertainChangeIds = null)
+        IReadOnlyList<PendingChange> changes, string[]? uncertainChangeIds = null,
+        Func<OccurrenceAnchor, TextOccurrenceLocation?>? occurrenceLocation = null)
     {
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
@@ -188,6 +196,7 @@ public sealed class ReviewChangeGroupsTests
         var selection = new SelectionViewModel(fake);
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
             new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
+        if (occurrenceLocation is not null) context.RegisterOccurrenceLocationProvider(occurrenceLocation);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         return (page, fake);

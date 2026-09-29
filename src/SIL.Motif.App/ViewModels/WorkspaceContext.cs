@@ -73,6 +73,8 @@ public abstract record PageRequest(WorkspacePage Page);
 public sealed partial class WorkspaceContext : ObservableObject, IProjectStateParticipant
 {
     private Func<OccurrenceAnchor, IReadOnlyList<ResultsTokenViewModel>?>? _occurrenceContextProvider;
+    private Func<OccurrenceAnchor, bool>? _occurrenceNavigator;
+    private Func<OccurrenceAnchor, TextOccurrenceLocation?>? _occurrenceLocationProvider;
 
     public WorkspaceContext(
         SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
@@ -468,6 +470,16 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens <paramref name="word"/> in the Texts page's word list, with every filter cleared.</summary>
     public void OpenWord(string word) => Open(new OpenWordRequest(word));
 
+    public void OpenOccurrence(OccurrenceAnchor? occurrence, string word)
+    {
+        if (occurrence is { } anchor && _occurrenceNavigator?.Invoke(anchor) == true)
+        {
+            OpenTexts(TextsTab.AnalyzeTexts);
+            return;
+        }
+        OpenWord(word);
+    }
+
     /// <summary>Registers the Texts page as the source of loaded sentence context.</summary>
     internal void RegisterOccurrenceContextProvider(
         Func<OccurrenceAnchor, IReadOnlyList<ResultsTokenViewModel>?> provider) =>
@@ -476,6 +488,15 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Gets the loaded sentence for an exact source occurrence, when it is available.</summary>
     internal IReadOnlyList<ResultsTokenViewModel>? OccurrenceContext(OccurrenceAnchor occurrence) =>
         _occurrenceContextProvider?.Invoke(occurrence);
+
+    internal void RegisterOccurrenceNavigator(Func<OccurrenceAnchor, bool> navigator) =>
+        _occurrenceNavigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
+
+    internal void RegisterOccurrenceLocationProvider(Func<OccurrenceAnchor, TextOccurrenceLocation?> provider) =>
+        _occurrenceLocationProvider = provider ?? throw new ArgumentNullException(nameof(provider));
+
+    internal TextOccurrenceLocation? OccurrenceLocation(OccurrenceAnchor occurrence) =>
+        _occurrenceLocationProvider?.Invoke(occurrence);
 
     /// <summary>Opens Try a Word on <paramref name="word"/> and traces it straight away.</summary>
     public void TryWord(string word) => Open(new TryWordRequest(word));

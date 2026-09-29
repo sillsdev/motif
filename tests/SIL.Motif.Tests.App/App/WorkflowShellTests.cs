@@ -460,6 +460,8 @@ public sealed class WorkflowShellTests
                     AutomationProperties.GetName(button) == "Undo all: Added");
                 Assert.Contains(buttons, button =>
                     AutomationProperties.GetName(button) == "Go to text in Added");
+                Assert.Contains(buttons, button =>
+                    AutomationProperties.GetName(button) == "Go to text: kitabu");
             }
             finally
             {

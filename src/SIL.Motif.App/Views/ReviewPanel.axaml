@@ -28,7 +28,10 @@
                                        AutomationProperties.Name="{Binding UndoAllAutomationName}" />
                     </StackPanel>
                   </Border>
-                  <views:CopyableTextBlock Classes="section-title" Text="{Binding Title}" />
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                    <views:CopyableTextBlock Classes="section-title" Text="{Binding Title}" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding WordCountText}" />
+                  </StackPanel>
                 </DockPanel>
                 <ItemsControl ItemsSource="{Binding Items}"
                               AutomationProperties.Name="{Binding Title, StringFormat='Changes in {0}'}">
@@ -49,6 +52,10 @@
                                                  CommandParameter="{Binding}"
                                                  AutomationProperties.Name="{Binding ShowContextAutomationName}"
                                                  IsVisible="{Binding HasContext}" />
+                                <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Go to text"
+                                                 Command="{Binding $parent[views:ReviewPanel].Page.GoToTextCommand}"
+                                                 CommandParameter="{Binding}"
+                                                 AutomationProperties.Name="{Binding GoToTextAutomationName}" />
                                 <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Undo"
                                                  Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
                                                  CommandParameter="{Binding}"
@@ -61,6 +68,10 @@
                                                        VerticalAlignment="Center" />
                             </StackPanel>
                           </DockPanel>
+                          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                            <views:CopyableTextBlock Classes="reviewSmall" Text="Where:" />
+                            <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding WhereText}" />
+                          </StackPanel>
                           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding SourceText}"
                                                    IsVisible="{Binding HasSourceText}" />
                           <StackPanel Classes="reviewCompact">

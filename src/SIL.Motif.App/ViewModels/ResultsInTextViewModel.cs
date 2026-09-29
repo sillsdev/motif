@@ -153,6 +153,21 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             line.ParagraphId == occurrence.ParagraphId && line.SegmentId == occurrence.SegmentId &&
             line.Tokens.Any(token => token.Occurrence == occurrence));
 
+    public TextOccurrenceLocation? LocateOccurrence(OccurrenceAnchor occurrence)
+    {
+        for (var textIndex = 0; textIndex < Texts.Count; textIndex++)
+        for (var lineIndex = 0; lineIndex < Texts[textIndex].Lines.Count; lineIndex++)
+        {
+            var text = Texts[textIndex];
+            var line = text.Lines[lineIndex];
+            var token = line.Tokens.FirstOrDefault(candidate => candidate.Occurrence == occurrence);
+            if (token is not null)
+                return new TextOccurrenceLocation(textIndex, line.Number, token.OccurrenceIndex,
+                    $"{text.Title}, line {line.Number}, word {token.OccurrenceIndex + 1}");
+        }
+        return null;
+    }
+
     /// <summary>Opens the Texts page for the empty state that asks for a checked Text.</summary>
     public Action? OpenTexts { get; set; }
 
@@ -397,6 +412,13 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(Changes));
     }
 }
+
+/// <summary>A source position used to order and label a change from a Text occurrence.</summary>
+/// <param name="TextOrder">The Text's position in the loaded source.</param>
+/// <param name="LineOrder">The line's position within the Text.</param>
+/// <param name="WordIndex">The zero-based word position within the line.</param>
+/// <param name="Description">The location shown beside a Review change.</param>
+public sealed record TextOccurrenceLocation(int TextOrder, int LineOrder, int WordIndex, string Description);
 
 /// <summary>One chosen Text, line by line, with every word compared against the Assessment.</summary>
 public sealed class ResultsTextViewModel

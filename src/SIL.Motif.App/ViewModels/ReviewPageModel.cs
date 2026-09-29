@@ -31,6 +31,10 @@ public sealed class ReviewPageModel : PageModel
         ReconfirmChangeCommand = new AsyncRelayCommand<ChangeViewModel>(ReconfirmChangeAsync,
             change => change is { IsUncertain: true });
         ToggleContextCommand = new RelayCommand<ChangeViewModel>(ToggleContext);
+        GoToTextCommand = new RelayCommand<ChangeViewModel>(change =>
+        {
+            if (change is not null) Context.OpenOccurrence(change.Occurrence, change.Word);
+        });
         MeasureCommand = new AsyncRelayCommand(MeasureAsync,
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
         CancelMeasureCommand = new RelayCommand(() => _measurementCancellation?.Cancel(), () => IsMeasuring);
@@ -53,6 +57,8 @@ public sealed class ReviewPageModel : PageModel
     public IAsyncRelayCommand<ChangeViewModel> ReconfirmChangeCommand { get; }
 
     public IRelayCommand<ChangeViewModel> ToggleContextCommand { get; }
+
+    public IRelayCommand<ChangeViewModel> GoToTextCommand { get; }
 
     /// <summary>Starts a Trial of the touched words only when the person asks for one.</summary>
     public IAsyncRelayCommand MeasureCommand { get; }
@@ -92,14 +98,19 @@ public sealed class ReviewPageModel : PageModel
         .GroupBy(item => item.Group)
         .OrderBy(group => group.Key.Order)
         .Select(group => new ReviewChangeGroupViewModel(group.Key.Title,
-            group.Select(item => item.Change).OrderBy(item => item.Occurrence is null ? 1 : 0)
-                .ThenBy(item => item.Occurrence?.TextId.ToString("D") ?? "~", StringComparer.Ordinal)
-                .ThenBy(item => item.Occurrence?.ParagraphId.ToString("D") ?? "~", StringComparer.Ordinal)
-                .ThenBy(item => item.Occurrence?.SegmentId.ToString("D") ?? "~", StringComparer.Ordinal)
-                .ThenBy(item => item.Occurrence?.Index ?? int.MaxValue)
-                .ThenBy(item => item.Word, StringComparer.Ordinal)
-                .ThenBy(item => item.ChangeId, StringComparer.Ordinal).ToArray(), Changes,
-            word => Context.OpenWord(word)))
+            group.Select(item => item.Change).Select(change =>
+            {
+                var location = change.Occurrence is { } occurrence ? Context.OccurrenceLocation(occurrence) : null;
+                change.SetWhereText(location?.Description ?? (change.Occurrence is null
+                    ? "Not tied to a text occurrence" : "Text location not loaded"));
+                return (Change: change, Location: location);
+            }).OrderBy(item => item.Location?.TextOrder ?? int.MaxValue)
+                .ThenBy(item => item.Location?.LineOrder ?? int.MaxValue)
+                .ThenBy(item => item.Location?.WordIndex ?? int.MaxValue)
+                .ThenBy(item => item.Change.Word, StringComparer.Ordinal)
+                .ThenBy(item => item.Change.ChangeId, StringComparer.Ordinal)
+                .Select(item => item.Change).ToArray(), Changes,
+            change => Context.OpenOccurrence(change.Occurrence, change.Word)))
         .ToArray();
 
     public bool HasUncertainChanges => UncertainChanges.Count > 0;
