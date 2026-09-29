@@ -116,6 +116,18 @@ public sealed partial class CrashReportViewModel : ObservableObject
 
     /// <summary>Opens the Motif issue page.</summary>
     [RelayCommand]
-    private async Task ReportProblemAsync() =>
-        await _launcher.LaunchAsync(new Uri(AppLinks.Issues)).ConfigureAwait(true);
+    private async Task ReportProblemAsync()
+    {
+        Status = null;
+        try
+        {
+            if (!await _launcher.LaunchAsync(new Uri(AppLinks.Issues)).ConfigureAwait(true))
+                Status = AppLinks.Issues;
+        }
+        catch (Exception)
+        {
+            // The visible URL lets the reporter continue when the browser cannot be launched.
+            Status = AppLinks.Issues;
+        }
+    }
 }
