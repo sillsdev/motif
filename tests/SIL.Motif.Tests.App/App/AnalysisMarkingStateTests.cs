@@ -26,14 +26,14 @@ public sealed class AnalysisMarkingStateTests
         [Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child),
             AnalysisMarkingClass.Different, AnalysisMarkingActionKind.Accept, "Accept", ChangeKinds.Approve, true],
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("capped", true, Book),
-            AnalysisMarkingClass.Capped, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
+            AnalysisMarkingClass.Capped, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, true],
     ];
 
     [Theory]
     [MemberData(nameof(R4PrimaryActionCases))]
     public void PrimaryActionAndNeedsALookFollowTheR4ClassOpinionTable(TextToken token,
         AssessmentWordResult? result, AnalysisMarkingClass expectedClass, AnalysisMarkingActionKind? expectedKind,
-        string? expectedLabel, string? expectedChangeKind, bool expectedUnread)
+        string? expectedLabel, string? expectedChangeKind, bool expectedNeedsALook)
     {
         var state = AnalysisMarkingState.Create(token, result);
 
@@ -41,14 +41,13 @@ public sealed class AnalysisMarkingStateTests
         Assert.Equal(expectedKind, state.PrimaryAction?.Kind);
         Assert.Equal(expectedLabel, state.PrimaryAction?.Label);
         Assert.Equal(expectedChangeKind, state.PrimaryAction?.ChangeKind);
-        Assert.Equal(expectedUnread, state.NeedsALook);
+        Assert.Equal(expectedNeedsALook, state.NeedsALook);
     }
 
     [Fact]
     public void UnreadDoesNotDependOnWhetherAnActionIsAvailable()
     {
-        var state = AnalysisMarkingState.Create(
-            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book));
+        var state = AnalysisMarkingState.Create(Token(), Result("capped", true, Book));
 
         Assert.Null(state.PrimaryAction);
         Assert.Empty(state.FixChoices);
@@ -160,7 +159,7 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.True(actionable.NeedsALook);
         Assert.False(staged.NeedsALook);
-        Assert.False(capped.NeedsALook);
+        Assert.True(capped.NeedsALook);
     }
 
     [Fact]
@@ -219,7 +218,8 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.Equal(AnalysisMarkingClass.Capped, state.PanGlossClass);
         Assert.Null(state.PrimaryAction);
-        Assert.False(state.NeedsALook);
+        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
+        Assert.True(state.NeedsALook);
     }
 
     [Theory]

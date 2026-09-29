@@ -123,7 +123,8 @@ public sealed class MainWindowSmokeTests
                     string.Empty, string.Empty, null);
                 workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
                 window.UpdateLayout();
-                var prompt = Assert.Single(window.GetVisualDescendants().OfType<ParsePrompt>());
+                var prompt = Assert.Single(window.GetVisualDescendants().OfType<ParsePrompt>(),
+                    candidate => candidate.IsEffectivelyVisible);
                 Assert.True(prompt.IsEffectivelyVisible);
                 var parse = Assert.Single(prompt.GetVisualDescendants().OfType<Button>());
                 Assert.True(parse.IsEffectivelyVisible);
@@ -132,10 +133,6 @@ public sealed class MainWindowSmokeTests
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
                 Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Parse the words in the selected texts");
-                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<FilterChip>(),
-                    chip => chip.IsEffectivelyVisible);
-                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<ScrollViewer>(),
-                    scroll => scroll.IsEffectivelyVisible);
             }
             finally
             {

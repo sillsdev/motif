@@ -550,11 +550,21 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private void OnTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(ResultsTokenViewModel.IsSelectedForReadState)) return;
-        OnPropertyChanged(nameof(SelectedReadStateCount));
-        OnPropertyChanged(nameof(HasSelectedReadStateOccurrences));
-        MarkSelectionReadCommand.NotifyCanExecuteChanged();
-        MarkSelectionUnreadCommand.NotifyCanExecuteChanged();
+        if (e.PropertyName == nameof(ResultsTokenViewModel.IsSelectedForReadState))
+        {
+            OnPropertyChanged(nameof(SelectedReadStateCount));
+            OnPropertyChanged(nameof(HasSelectedReadStateOccurrences));
+            MarkSelectionReadCommand.NotifyCanExecuteChanged();
+            MarkSelectionUnreadCommand.NotifyCanExecuteChanged();
+        }
+
+        if (e.PropertyName == nameof(ResultsTokenViewModel.IsSelectedForActions))
+        {
+            OnPropertyChanged(nameof(CheckedWordCount));
+            OnPropertyChanged(nameof(HasCheckedWords));
+            OnPropertyChanged(nameof(HasCheckedUncertainChanges));
+            NotifyCheckedCommands();
+        }
     }
 
     private async Task SetReadStateAsync(IReadOnlyList<ResultsTokenViewModel> selection, bool isRead)
@@ -862,15 +872,6 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         MarkCheckedSpellingsIncorrectCommand.NotifyCanExecuteChanged();
         UndoCheckedChangesCommand.NotifyCanExecuteChanged();
         RecheckCheckedChangesCommand.NotifyCanExecuteChanged();
-    }
-
-    private void OnTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(ResultsTokenViewModel.IsSelectedForActions)) return;
-        OnPropertyChanged(nameof(CheckedWordCount));
-        OnPropertyChanged(nameof(HasCheckedWords));
-        OnPropertyChanged(nameof(HasCheckedUncertainChanges));
-        NotifyCheckedCommands();
     }
 
     private async Task StagePrimaryMarkingActionAsync()
