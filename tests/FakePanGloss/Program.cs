@@ -248,8 +248,7 @@ internal static class Program
         var fwDataPath = args[1];
         var grammarJsonPath = args[2];
         var directory = Path.GetDirectoryName(Path.GetFullPath(fwDataPath));
-        // A published Baseline's layout allows no extra files, so importing from one records nothing beside it.
-        RecordArgv(IsBaselinePublication(directory) ? null : directory, args);
+        RecordArgv(directory, args);
         var behaviour = Behaviour.Read(directory, "import");
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
@@ -502,7 +501,8 @@ internal static class Program
         if (File.Exists(Path.Combine(AppContext.BaseDirectory, RecordInvocationsSentinel)))
             File.AppendAllText(Path.Combine(AppContext.BaseDirectory, InvocationsFileName), args[0] + "\n");
         var serialized = JsonSerializer.Serialize(args);
-        if (directory is null) return;
+        // A published Baseline's layout allows no extra files, so no command records anything beside one.
+        if (directory is null || IsBaselinePublication(directory)) return;
         File.WriteAllText(Path.Combine(directory, ArgvFileName), serialized);
         File.WriteAllText(Path.Combine(directory, EnvironmentFileName), JsonSerializer.Serialize(
             Environment.GetEnvironmentVariables().Keys.Cast<string>().OrderBy(name => name)));
