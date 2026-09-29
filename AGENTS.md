@@ -43,6 +43,14 @@ Tests set `MOTIF_WRITING_SYSTEM_REPOSITORY_PATH` at module load, and child proce
 The same module initializer points SLDR at a private, empty cache (`MOTIF_TEST_SLDR_CACHE_PATH`): the
 machine-wide SLDR cache holds whatever earlier runs downloaded, about 1.4 MB of LDML per writing system, and a
 project whose writing systems carry it takes several hundred milliseconds longer to open, every time.
+**Nothing a test process touches may be shared with another test process**, because four suites in four
+worktrees must run at once: each process also gets its own runner namespace (`MOTIF_RUNNER_NAMESPACE`) and
+worker root (`MOTIF_WORKER_ROOT`), and the writing-system repository's default location follows its private
+one. Each of these was once machine-wide, and each serialized every suite on the machine behind one lock; the
+worker root also put test projects into the developer's real machine database. A test about the shared
+default sets its own value, and a new per-user or machine-wide resource gets a per-process test value too.
+Test processes also sweep their temporary roots of directories older runs left behind
+(`StaleTestDirectories`).
 No test run may show a Windows crash dialog: `test.ps1` suppresses it for its whole process tree, every
 test assembly does so again at load (`tests/Shared/NoCrashDialogs.cs`), and the runner and CLI do so at
 startup. `CrashDialogsTests` checks Windows suppression and requires a crashing child to exit promptly on
