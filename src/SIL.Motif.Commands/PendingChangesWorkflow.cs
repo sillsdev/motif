@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Worker.Store;

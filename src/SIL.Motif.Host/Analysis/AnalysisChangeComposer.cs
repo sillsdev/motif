@@ -3,30 +3,45 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
+using SIL.Motif.Runner.Resolution;
 using SIL.LCModel;
 
-namespace SIL.Motif.Runner.Composers;
+namespace SIL.Motif.Host.Analysis;
 
 /// <summary>One action a person collected for a word and a chosen analysis.</summary>
+/// <param name="Kind">The operation kind to compose.</param>
+/// <param name="WordformId">The wordform that owns the analysis.</param>
+/// <param name="Reading">The selected parser reading, when the action uses one.</param>
+/// <param name="StoredAnalysisId">The exact stored analysis selected by the person.</param>
+/// <param name="ChangeId">The pending change identity carried into operation metadata.</param>
 public sealed record AnalysisChangeIntent(string Kind, CanonicalId WordformId, ParseAnalysis? Reading,
     CanonicalId? StoredAnalysisId = null, string? ChangeId = null);
 
 /// <summary>Actions that a collected word change can request.</summary>
 public static class AnalysisChangeKinds
 {
+    /// <summary>Approve the selected analysis.</summary>
     public const string Approve = "approve";
+    /// <summary>Disapprove the selected analysis.</summary>
     public const string Reject = "reject";
+    /// <summary>Return the selected analysis to Unknown.</summary>
     public const string Candidate = "candidate";
+    /// <summary>Add the selected parser reading as Unknown.</summary>
     public const string AddCandidate = "add-candidate";
+    /// <summary>Mark the wordform spelling as incorrect.</summary>
     public const string IncorrectSpelling = "incorrect-spelling";
 }
 
 /// <summary>Composes a collected word change into closed analysis operations against a live project.</summary>
 public static class AnalysisChangeComposer
 {
+    /// <summary>Composes one collected analysis decision into closed operations for the live project.</summary>
+    /// <param name="cache">The caller-owned project cache.</param>
+    /// <param name="intent">The selected decision and its analysis identity.</param>
+    /// <returns>The operations that implement the decision.</returns>
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, AnalysisChangeIntent intent)
     {
-        var wordform = ReferenceFieldLowering.Resolve<IWfiWordform>(cache, intent.WordformId, nameof(AnalysisChangeComposer));
+        var wordform = Resolve<IWfiWordform>(cache, intent.WordformId);
         if (intent.Kind == AnalysisChangeKinds.IncorrectSpelling)
             return [new OperationEnvelope(CanonicalId.Mint(), WfiWordformSpellingStatusOperationKinds.SetSpellingStatus,
                 target: intent.WordformId, after: JsonSerializer.SerializeToElement(new { value = 2 }),
@@ -68,11 +83,11 @@ public static class AnalysisChangeComposer
             foreach (var morph in reading.Morphs)
             {
                 if (morph.Form is { } form)
-                    ReferenceFieldLowering.Resolve<IMoForm>(cache, FromGuid(form), nameof(AnalysisChangeComposer));
+                    Resolve<IMoForm>(cache, FromGuid(form));
                 if (morph.Msa is { } msa)
-                    ReferenceFieldLowering.Resolve<IMoMorphSynAnalysis>(cache, FromGuid(msa), nameof(AnalysisChangeComposer));
+                    Resolve<IMoMorphSynAnalysis>(cache, FromGuid(msa));
                 if (morph.InflType is { } infl)
-                    ReferenceFieldLowering.Resolve<ILexEntryInflType>(cache, FromGuid(infl), nameof(AnalysisChangeComposer));
+                    Resolve<ILexEntryInflType>(cache, FromGuid(infl));
             }
             creationId = CanonicalId.Mint();
             analysisId = CanonicalId.Mint();
@@ -111,6 +126,10 @@ public static class AnalysisChangeComposer
     private static JsonElement? ChangeExtension(string? changeId) => changeId is null
         ? null : JsonSerializer.SerializeToElement(new { changeId });
 
+    /// <summary>Tests whether a live stored analysis has the selected parser reading's morphology.</summary>
+    /// <param name="analysis">The stored analysis in the caller-owned project.</param>
+    /// <param name="reading">The parser reading to compare.</param>
+    /// <returns>Whether the ordered morph identities and guessed forms match.</returns>
     public static bool Matches(IWfiAnalysis analysis, ParseAnalysis reading) =>
         AnalysisMorphologyMatcher.Matches(reading, new ApprovedMorphology(analysis.MorphBundlesOS
             .Select(bundle => new ApprovedMorph(bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"),
@@ -118,6 +137,17 @@ public static class AnalysisChangeComposer
                     .Select(ws => bundle.Form.get_String(ws)?.Text)
                     .Where(text => text is not null).Cast<string>().ToArray()))
             .ToArray()));
+
+    private static TRef Resolve<TRef>(LcmCache cache, CanonicalId id) where TRef : ICmObject
+    {
+        var resolved = CanonicalIdResolver.Resolve(cache, id);
+        if (resolved is TRef typed) return typed;
+        var expectedName = typeof(TRef).Name.StartsWith("I", StringComparison.Ordinal)
+            ? typeof(TRef).Name[1..] : typeof(TRef).Name;
+        throw new InvalidOperationException(
+            $"'{nameof(AnalysisChangeComposer)}' operation: referenced object '{id.Value}' is not a {expectedName} " +
+            $"(it is a {resolved.GetType().Name}).");
+    }
 
     private static CanonicalId FromGuid(string value) => CanonicalId.FromGuid(Guid.Parse(value));
 

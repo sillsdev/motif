@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.Parser;

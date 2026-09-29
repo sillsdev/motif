@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Analysis;
 
 namespace SIL.Motif.App.ViewModels;
 
