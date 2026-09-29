@@ -24,6 +24,33 @@ public sealed class MachinePanGlossQueueTests
         Assert.Throws<ObjectDisposedException>(() => owner.TryAcquire());
     }
 
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    [RequiresUnixFact]
+    public async Task InaccessibleMachineLockFailsItsQueuedJobWithPathAndRecoveryGuidance()
+    {
+        var name = "MotifPanGlossRestrictedLockTest-" + Guid.NewGuid().ToString("N");
+        var path = UnixFileLock.GetLockPath(name, machineWide: true);
+        using (new FileStream(path, FileMode.CreateNew, FileAccess.Write)) { }
+
+        try
+        {
+            File.SetUnixFileMode(path, UnixFileMode.None);
+            using var queue = new MachinePanGlossQueue(new[] { name });
+            var error = await Assert.ThrowsAsync<IOException>(() => queue.RunAsync("denied",
+                (_, _) => Task.FromResult(0), CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5)));
+
+            Assert.Contains(path, error.Message);
+            Assert.Contains("read/write permissions", error.Message);
+            Assert.Contains("only if it is stale", error.Message);
+        }
+        finally
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            File.Delete(path);
+        }
+    }
+
     [Fact]
     public void DefaultSlotsStayMachineWideOutsideAnIsolatedTestProcess()
     {
