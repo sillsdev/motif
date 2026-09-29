@@ -401,8 +401,8 @@ public sealed class ResultsInTextViewModelTests
             .Where(token => token.Form == "kitabu").ToArray();
         var selected = tokens[0];
         inText.SelectToken(selected);
-        var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
-            candidate.Kind == AnalysisMarkingActionKind.Disapprove && candidate.StoredAnalysisId is not null));
+        var choice = Assert.Single(selected.Marking.FixChoices,
+            candidate => candidate.Kind == AnalysisMarkingActionKind.Disapprove && candidate.StoredAnalysisId is not null);
 
         await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
 
@@ -412,8 +412,8 @@ public sealed class ResultsInTextViewModelTests
         Assert.Equal(selected.Marking.FieldWorksAnalyses[0].StoredAnalysisId, request.Change.StoredAnalysisId);
         Assert.Equal(selected.Occurrence, request.Change.Occurrence);
         Assert.Null(request.Change.AssessmentId);
-        Assert.True(selected.Marking.StagedTransition is not null);
-        Assert.Null(tokens[1].Marking.StagedTransition);
+        Assert.Single(selected.Marking.StagedTransitions);
+        Assert.Empty(tokens[1].Marking.StagedTransitions);
     }
 
     [Fact]
@@ -424,8 +424,8 @@ public sealed class ResultsInTextViewModelTests
         var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .First(token => token.Form == "kitabu");
         inText.SelectToken(selected);
-        var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
-            candidate.Kind == AnalysisMarkingActionKind.Disapprove && candidate.ReadingIndex == 1));
+        var choice = Assert.Single(selected.Marking.FixChoices,
+            candidate => candidate.Kind == AnalysisMarkingActionKind.Disapprove && candidate.ReadingIndex == 1);
 
         await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
 
@@ -448,7 +448,28 @@ public sealed class ResultsInTextViewModelTests
         await inText.StagePrimaryMarkingActionCommand.ExecuteAsync(null);
 
         Assert.Empty(fake.PendingPutRequests);
-        Assert.Null(selected.Marking.StagedTransition);
+        Assert.Empty(selected.Marking.StagedTransitions);
+    }
+
+    [Fact]
+    public async Task StagedChangesRemainKeyedPerReadingAndOccurrence()
+    {
+        var (inText, _, _) = await Loaded();
+        var tokens = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Where(token => token.Form == "kitabu").ToArray();
+        var selected = tokens[0];
+        inText.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "book",
+            occurrence: selected.Occurrence, storedAnalysisId: "stored-book"));
+        inText.Changes.Items.Add(new ChangeViewModel(ChangeKinds.AddCandidate, "kitabu", "extra reading",
+            readingIndex: 1));
+
+        Assert.Equal(2, selected.Marking.StagedTransitions.Count);
+        Assert.Contains(selected.Marking.StagedTransitions,
+            transition => transition.StoredAnalysisId == "stored-book");
+        Assert.Contains(selected.Marking.StagedTransitions, transition => transition.ReadingIndex == 1);
+        Assert.False(selected.Marking.IsUnread);
+        Assert.Single(tokens[1].Marking.StagedTransitions,
+            transition => transition.ReadingIndex == 1);
     }
 
     [Fact]
@@ -459,8 +480,8 @@ public sealed class ResultsInTextViewModelTests
         var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .Single(token => token.Form == "mtoto");
         inText.SelectToken(selected);
-        var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
-            candidate.Label == "Add as Approved" && candidate.ReadingIndex == 0));
+        var choice = Assert.Single(selected.Marking.FixChoices,
+            candidate => candidate.Label == "Add as Approved" && candidate.ReadingIndex == 0);
 
         await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
 
@@ -479,8 +500,8 @@ public sealed class ResultsInTextViewModelTests
         var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .Single(token => token.Form == "mtoto");
         inText.SelectToken(selected);
-        var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
-            candidate.Kind == AnalysisMarkingActionKind.Add && candidate.Label == "Add as Unknown"));
+        var choice = Assert.Single(selected.Marking.FixChoices,
+            candidate => candidate.Kind == AnalysisMarkingActionKind.Add && candidate.Label == "Add as Unknown");
 
         await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
 

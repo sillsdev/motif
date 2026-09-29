@@ -580,9 +580,12 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     internal void SetStagedMarkings(IReadOnlyList<ChangeViewModel> changes)
     {
         Marking = AnalysisMarkingState.Create(_source, _assessment);
-        foreach (var change in changes)
-            Marking = Marking.WithStagedTransition(change.StagedTransition.Now,
-                change.StagedTransition.AfterApply, change.Fit?.Status);
+        Marking = Marking.WithStagedTransitions(changes.Select(change => change.StagedTransition with
+        {
+            StoredAnalysisId = change.StoredAnalysisId,
+            ReadingIndex = change.ReadingIndex,
+            FitStatus = change.Fit?.Status,
+        }).ToArray());
         OnPropertyChanged(nameof(Marking));
     }
 

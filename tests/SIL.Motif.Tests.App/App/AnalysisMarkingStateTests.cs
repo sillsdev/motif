@@ -60,7 +60,10 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.Equal(expectedClass, state.PanGlossClass);
         if (opinion == ReadingGrade.Disapproved && isBuilt)
+        {
             Assert.Null(state.PrimaryAction);
+            Assert.NotEmpty(state.FixChoices);
+        }
     }
 
     [Fact]
@@ -120,6 +123,18 @@ public sealed class AnalysisMarkingStateTests
     }
 
     [Fact]
+    public void DisapprovedDifferentReadingUsesTheR4FixMenu()
+    {
+        var state = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child));
+
+        Assert.Equal(["Accept PanGloss's reading", "Add as Unknown", "Keep FieldWorks"],
+            state.FixChoices.Select(choice => choice.Label));
+        Assert.Equal(ChangeKinds.Approve, state.FixChoices[0].ChangeKind);
+        Assert.Equal(ChangeKinds.AddCandidate, state.FixChoices[1].ChangeKind);
+    }
+
+    [Fact]
     public void TimedOutMatchedReadingHasNoDecision()
     {
         var state = AnalysisMarkingState.Create(
@@ -136,9 +151,9 @@ public sealed class AnalysisMarkingStateTests
     public void AStagedOpinionCarriesItsTransitionAndFitOverlay(string fit, bool uncertain, bool noLongerFits)
     {
         var state = AnalysisMarkingState.Create(Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), Result("book", Book))
-            .WithStagedTransition("Unknown", "Approved", fit);
+            .WithStagedTransitions([new StagedMarkingTransition("Unknown", "Approved", FitStatus: fit)]);
 
-        Assert.Equal("Unknown → Approved", state.StagedTransition!.Text);
+        Assert.Equal("Unknown → Approved", Assert.Single(state.StagedTransitions).Text);
         Assert.Equal(uncertain, state.IsUncertain);
         Assert.Equal(noLongerFits, state.NoLongerFits);
         Assert.False(state.IsUnread);

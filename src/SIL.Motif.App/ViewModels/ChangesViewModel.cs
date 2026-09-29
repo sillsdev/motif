@@ -312,7 +312,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
             Items.Add(new ChangeViewModel(change.Kind, change.Word,
                 change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage,
-                fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId));
+                fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId, change.ReadingIndex));
         }
         Raise();
     }
@@ -342,7 +342,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 /// <summary>One collected change: what should happen to one word, and what it held when the change was chosen.</summary>
 public sealed partial class ChangeViewModel(string kind, string word, string reading,
     string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null,
-    string? originPage = null, OccurrenceAnchor? occurrence = null, string? storedAnalysisId = null) : ObservableObject
+    string? originPage = null, OccurrenceAnchor? occurrence = null, string? storedAnalysisId = null,
+    int? readingIndex = null) : ObservableObject
 {
     public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
         page != WorkspacePage.Review ? page : WorkspacePage.Texts;
@@ -350,6 +351,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public ChangeFit? Fit { get; } = fit;
     public OccurrenceAnchor? Occurrence { get; } = occurrence;
     public string? StoredAnalysisId { get; } = storedAnalysisId;
+    public int? ReadingIndex { get; } = readingIndex;
     public string FitStatus => Fit?.Status switch
     {
         null => string.Empty,
@@ -399,7 +401,13 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
 
     public bool HasAnalyses => Analyses.Count > 0;
 
-    public StagedMarkingTransition StagedTransition { get; } = TransitionFor(kind, storedAnalysisId, analyses);
+    public StagedMarkingTransition StagedTransition { get; } =
+        TransitionFor(kind, storedAnalysisId, analyses) with
+        {
+            StoredAnalysisId = storedAnalysisId,
+            ReadingIndex = readingIndex,
+            FitStatus = fit?.Status,
+        };
 
     public string Summary => $"{Word}: {Label}";
 

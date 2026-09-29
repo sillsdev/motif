@@ -16,7 +16,6 @@ using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.LiveHost.Baselines;
-using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
@@ -533,6 +532,7 @@ public static class PendingChanges
                 Analyses = DisplayAnalysesOf(entry),
                 Occurrence = OccurrenceOf(fingerprint),
                 StoredAnalysisId = Property(entry, "storedAnalysisId"),
+                ReadingIndex = IntegerProperty(entry, "readingIndex"),
             };
         }).ToArray();
         if (changes.Length == 0)
@@ -786,7 +786,11 @@ public static class PendingChanges
 
     internal static string? Property(JsonElement entry, string name) =>
         entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty(name, out var value) &&
-            value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    private static int? IntegerProperty(JsonElement entry, string name) =>
+        entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty(name, out var value) &&
+        value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var result) ? result : null;
 
     private static int RemoveChange(DraftDocument draft, string changeId)
     {

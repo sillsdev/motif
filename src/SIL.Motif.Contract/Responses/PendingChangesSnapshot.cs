@@ -19,6 +19,9 @@ public sealed record PendingChange(
 
     /// <summary>The exact stored analysis selected by an in-text opinion change.</summary>
     public string? StoredAnalysisId { get; init; }
+
+    /// <summary>The exact Assessment reading selected by an in-text change.</summary>
+    public int? ReadingIndex { get; init; }
 }
 
 /// <summary>One reading shown beside a change, with its previous opinion and whether the change touches it.</summary>

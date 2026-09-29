@@ -28,24 +28,73 @@ namespace SIL.Motif.Tests.App;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pristine)
 {
-    [Fact]
-    public async Task RealCommandClientStagesStoredAndParserOnlyMarkingChoicesAtTheirOccurrences()
+    [Theory]
+    [InlineData(false, ChangeKinds.AddCandidate)]
+    [InlineData(true, ChangeKinds.Approve)]
+    public async Task MarkingAddCommandsReachTheRealCommandClient(bool addAsApproved, string expectedKind)
     {
-        await AssertStoredChoiceAsync("unknown", ChangeKinds.Approve);
-        await AssertStoredChoiceAsync("approved", ChangeKinds.Reject);
-        await AssertStoredChoiceAsync("disapproved", ChangeKinds.Approve);
-        await AssertStoredChoiceAsync("disapproved", ChangeKinds.Candidate);
-        await AssertParserChoiceAsync(SeededProject.UnanalysedWordForm, ChangeKinds.AddCandidate,
-            [Guessed("new unknown")], null);
-        await AssertParserChoiceAsync(SeededProject.UnanalysedWordForm, ChangeKinds.Approve,
-            [Guessed("new approved")], 0);
-        await AssertParserChoiceAsync(SeededProject.AnalysedWordForm, ChangeKinds.Reject,
-            [Guessed("extra reading")], 1, keepStoredReading: true);
+        using var project = await CreateProjectAsync();
+        var source = AnalyzedToken(project);
+        var token = TokenOf(project, SeededProject.UnanalysedWordForm);
+        var reading = StoredReading(Assert.Single(source.StoredAnalyses));
+        var assessmentId = RecordAssessment(project, [new AssessedWord(token.Form!, "analysed", [])
+        {
+            Morphology = new ParseWordEvidence("v1", 0, token.Form!, 1, false, false, false, [reading], []),
+        }]);
+        var assessment = await ReadAssessmentAsync(project);
+        var inText = await LoadInTextAsync(project, assessment, assessmentId);
+        var selected = ResultsToken(inText, token.Form!);
+        inText.SelectToken(selected);
+
+        if (addAsApproved)
+        {
+            var choice = Assert.Single(selected.Marking.FixChoices,
+                candidate => candidate.Label == "Add as Approved" && candidate.ReadingIndex == 0);
+            await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
+        }
+        else
+            await inText.StagePrimaryMarkingActionCommand.ExecuteAsync(null);
+
+        var staged = Assert.Single(inText.Changes.Snapshot.Changes);
+        Assert.Equal(expectedKind, staged.Kind);
+        Assert.Equal(assessmentId, staged.AssessmentId);
+        Assert.Equal(0, staged.ReadingIndex);
+        Assert.Equal(expectedKind == ChangeKinds.AddCandidate ? null : selected.Occurrence, staged.Occurrence);
+    }
+
+    [Fact]
+    public async Task StoredOpinionChoiceStagesWithoutAnAssessmentIdThroughTheRealCommandClient()
+    {
+        using var project = await CreateProjectAsync("approved");
+        var token = TokenOf(project, SeededProject.AnalysedWordForm);
+        var reading = Guessed("different parser reading");
+        RecordAssessment(project, [new AssessedWord(token.Form!, "analysed", [])
+        {
+            Morphology = new ParseWordEvidence("v1", 0, token.Form!, 1, false, false, false, [reading], []),
+        }]);
+        var assessment = await ReadAssessmentAsync(project);
+        var inText = await LoadInTextAsync(project, assessment, null);
+        var selected = ResultsToken(inText, token.Form!);
+        inText.SelectToken(selected);
+        var stored = Assert.Single(selected.Marking.FieldWorksAnalyses);
+        var choice = Assert.Single(selected.Marking.FixChoices,
+            candidate => candidate.Kind == AnalysisMarkingActionKind.Disapprove &&
+                         candidate.StoredAnalysisId == stored.StoredAnalysisId);
+        Assert.Null(choice.Reading);
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
+
+        var staged = Assert.Single(inText.Changes.Snapshot.Changes);
+        Assert.Equal(ChangeKinds.Reject, staged.Kind);
+        Assert.Equal(stored.StoredAnalysisId, staged.StoredAnalysisId);
+        Assert.Null(staged.AssessmentId);
+        Assert.Null(staged.ReadingIndex);
+        Assert.Equal(selected.Occurrence, staged.Occurrence);
     }
 
     [Theory]
     [InlineData("same", "analysed", false, AnalysisMarkingClass.Same)]
-    [InlineData("different", "analysed", false, AnalysisMarkingClass.Different)]
+    [InlineData("different", "analysed", false, AnalysisMarkingClass.Conflict)]
     [InlineData("extra", "analysed", false, AnalysisMarkingClass.Extra)]
     [InlineData("none", "no-analysis", false, AnalysisMarkingClass.None)]
     [InlineData("capped", "capped", true, AnalysisMarkingClass.Capped)]
@@ -79,50 +128,34 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         Assert.Equal(expected, AnalysisMarkingState.Create(token, result).PanGlossClass);
     }
 
-    private async Task AssertStoredChoiceAsync(string opinion, string kind)
+    private async Task<ResultsInTextViewModel> LoadInTextAsync(MarkingCommandProject project,
+        AssessCommandResponse assessment, string? assessmentId)
     {
-        using var project = await CreateProjectAsync(opinion);
-        var token = AnalyzedToken(project);
-        var analysis = Assert.Single(token.StoredAnalyses);
-        var request = new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId!, token.Form!,
-            StoredAnalysisId: analysis.StoredAnalysisId, OriginPage: "Texts", Occurrence: token.Occurrence);
-
-        var response = await PutAsync(project, request);
-
-        var staged = Assert.Single(response.Changes);
-        Assert.Equal(kind, staged.Kind);
-        Assert.Equal(analysis.StoredAnalysisId, staged.StoredAnalysisId);
-        Assert.Equal(token.Occurrence, staged.Occurrence);
-        Assert.Contains(response.FitSummary, fit => fit.ChangeId == staged.ChangeId);
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake) { AllWordforms = true };
+        var texts = new TextWordsViewModel(fake, selection);
+        var assess = new AssessViewModel(fake, selection) { ProjectPath = project.Project.FwDataPath };
+        var changes = new ChangesViewModel(project.Client);
+        await changes.OpenProjectAsync(project.Project.FwDataPath);
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes);
+        fake.ListTextWordsCompletesWith(project.Words);
+        await texts.SetProjectAsync(project.Project.FwDataPath);
+        fake.AssessCompletesWith(assessment);
+        await assess.RunCommand.ExecuteAsync(null);
+        changes.AssessmentId = assessmentId;
+        return inText;
     }
 
-    private async Task AssertParserChoiceAsync(string form, string kind,
-        IReadOnlyList<ParseAnalysis> readings, int? occurrenceIndex, bool keepStoredReading = false)
+    private static async Task<AssessCommandResponse> ReadAssessmentAsync(MarkingCommandProject project)
     {
-        using var project = await CreateProjectAsync();
-        var token = TokenOf(project, form);
-        if (keepStoredReading)
-        {
-            var stored = Assert.Single(token.StoredAnalyses);
-            readings = [StoredReading(stored), .. readings];
-        }
-        var assessmentId = RecordAssessment(project, [new AssessedWord(form, "analysed", [])
-        {
-            Morphology = new ParseWordEvidence("v1", 0, form, 1, false, false, false, readings, []),
-        }]);
-        var index = occurrenceIndex ?? 0;
-        var request = new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId!, form,
-            assessmentId, readings[index], ReadingIndex: index, OriginPage: "Texts",
-            Occurrence: kind == ChangeKinds.AddCandidate ? null : token.Occurrence);
-
-        var response = await PutAsync(project, request);
-
-        var staged = Assert.Single(response.Changes);
-        Assert.Equal(kind, staged.Kind);
-        Assert.Equal(kind == ChangeKinds.AddCandidate ? null : token.Occurrence, staged.Occurrence);
-        Assert.Null(staged.StoredAnalysisId);
-        Assert.Contains(response.FitSummary, fit => fit.ChangeId == staged.ChangeId);
+        var outcome = await project.Client.ReadCurrentEvidenceAsync(project.Project.FwDataPath, CancellationToken.None);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        return Assert.IsType<AssessCommandResponse>(outcome.Value!.Assessment);
     }
+
+    private static ResultsTokenViewModel ResultsToken(ResultsInTextViewModel inText, string form) =>
+        Assert.Single(inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens),
+            token => token.Form == form);
 
     private async Task<MarkingCommandProject> CreateProjectAsync(string? opinion = null)
     {
@@ -183,18 +216,6 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
             "sha256:grammar", "model", "pipeline", 0, words,
             SavedUtc: DateTimeOffset.UtcNow.ToString("O")));
         return assessmentId;
-    }
-
-    private static async Task<PendingChangesSnapshot> PutAsync(MarkingCommandProject project, ChangeIntent change)
-    {
-        var version = SIL.Motif.Host.MotifProductVersion.CurrentText;
-        var loaded = await project.Client.LoadPendingChangesAsync(
-            new PendingChangesRequest(project.Project.FwDataPath, version), CancellationToken.None);
-        Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
-        var outcome = await project.Client.PutPendingChangeAsync(new PutPendingChangeRequest(
-            project.Project.FwDataPath, version, loaded.Value!.Revision, change), CancellationToken.None);
-        Assert.True(outcome.Succeeded, outcome.Refusal?.Code + ": " + outcome.Refusal?.Message);
-        return outcome.Value!;
     }
 
     private static TextToken AnalyzedToken(MarkingCommandProject project) =>

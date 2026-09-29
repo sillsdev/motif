@@ -104,7 +104,11 @@ public sealed record AnalysisMarkingAction(
 /// <summary>The visible transition for one pending analysis change.</summary>
 /// <param name="Now">The current opinion or presence.</param>
 /// <param name="AfterApply">The opinion or presence after Apply.</param>
-public sealed record StagedMarkingTransition(string Now, string AfterApply)
+/// <param name="StoredAnalysisId">The stored analysis addressed by this change.</param>
+/// <param name="ReadingIndex">The Assessment reading addressed by this change.</param>
+/// <param name="FitStatus">The change's current fit with the project.</param>
+public sealed record StagedMarkingTransition(string Now, string AfterApply,
+    string? StoredAnalysisId = null, int? ReadingIndex = null, string? FitStatus = null)
 {
     /// <summary>The transition as a short line of text.</summary>
     public string Text => $"{Now} → {AfterApply}";
@@ -116,7 +120,7 @@ public sealed record StagedMarkingTransition(string Now, string AfterApply)
 /// <param name="PanGlossReadings">Every parser reading and any matching stored analyses.</param>
 /// <param name="PrimaryAction">The table-selected action, or <see langword="null"/> when no one-click action applies.</param>
 /// <param name="FixChoices">Explicit choices for changing an opinion or adding a reading.</param>
-/// <param name="StagedTransition">The pending change displayed on this occurrence.</param>
+/// <param name="StagedTransitions">The pending changes displayed on this occurrence.</param>
 /// <param name="IsUncertain">Whether the pending change's fit with the current project is uncertain.</param>
 /// <param name="NoLongerFits">Whether the pending change no longer fits the current project.</param>
 /// <param name="IsUnread">Whether an available action or Fix choice remains unstaged.</param>
@@ -127,7 +131,7 @@ public sealed record AnalysisMarkingState(
     IReadOnlyList<PanGlossReadingMarking> PanGlossReadings,
     AnalysisMarkingAction? PrimaryAction,
     IReadOnlyList<AnalysisMarkingChoice> FixChoices,
-    StagedMarkingTransition? StagedTransition,
+    IReadOnlyList<StagedMarkingTransition> StagedTransitions,
     bool IsUncertain,
     bool NoLongerFits,
     bool IsUnread)
@@ -183,25 +187,22 @@ public sealed record AnalysisMarkingState(
         var markingClass = Classify(token.IncorrectSpelling, result, stored, readings);
         var primary = BuildPrimaryAction(markingClass, stored, readings);
         var fixes = BuildFixChoices(markingClass, stored, readings);
-        return new AnalysisMarkingState(stored, markingClass, readings, primary, fixes, null,
+        return new AnalysisMarkingState(stored, markingClass, readings, primary, fixes, [],
             false, false, primary is not null || fixes.Count > 0);
     }
 
-    /// <summary>Attaches one pending transition and its current fit status.</summary>
-    /// <param name="now">The current opinion or presence.</param>
-    /// <param name="afterApply">The opinion or presence after Apply.</param>
-    /// <param name="fitStatus">The fit status reported for the pending change.</param>
-    /// <returns>A copy with the staged transition and an already-read marker state.</returns>
-    public AnalysisMarkingState WithStagedTransition(string now, string afterApply, string? fitStatus = null)
+    /// <summary>Attaches pending transitions and their current fit statuses.</summary>
+    /// <param name="transitions">The changes attached to this occurrence.</param>
+    /// <returns>A copy with staged transitions and an already-read marker state.</returns>
+    public AnalysisMarkingState WithStagedTransitions(IReadOnlyList<StagedMarkingTransition> transitions)
     {
-        ArgumentNullException.ThrowIfNull(now);
-        ArgumentNullException.ThrowIfNull(afterApply);
+        ArgumentNullException.ThrowIfNull(transitions);
         return this with
         {
-            StagedTransition = new StagedMarkingTransition(now, afterApply),
-            IsUncertain = fitStatus == ChangeFitStatus.Uncertain,
-            NoLongerFits = fitStatus == ChangeFitStatus.NoLongerFits,
-            IsUnread = false,
+            StagedTransitions = transitions,
+            IsUncertain = transitions.Any(transition => transition.FitStatus == ChangeFitStatus.Uncertain),
+            NoLongerFits = transitions.Any(transition => transition.FitStatus == ChangeFitStatus.NoLongerFits),
+            IsUnread = transitions.Count == 0 && IsUnread,
         };
     }
 
@@ -262,6 +263,25 @@ public sealed record AnalysisMarkingState(
         if (markingClass == AnalysisMarkingClass.None && stored.Any(analysis =>
                 analysis.Opinion == ReadingGrade.Approved))
         {
+            choices.Add(Choice(AnalysisMarkingActionKind.KeepFieldWorks, "Keep FieldWorks", "Nothing staged",
+                null, null, null, string.Empty, string.Empty, null));
+            return choices;
+        }
+
+        var parserOnlyReadings = readings.Select((reading, index) => (reading, index))
+            .Where(item => item.reading.IsParserOnly).ToArray();
+        if (markingClass == AnalysisMarkingClass.Different && parserOnlyReadings.Length > 0 &&
+            stored.Any(analysis => analysis.Opinion == ReadingGrade.Disapproved))
+        {
+            foreach (var (reading, index) in parserOnlyReadings)
+            {
+                choices.Add(Choice(AnalysisMarkingActionKind.Add, "Accept PanGloss's reading",
+                    "Not in FieldWorks → Approved", null, reading.Analysis, index,
+                    "Not in FieldWorks", "Approved", ChangeKinds.Approve));
+                choices.Add(Choice(AnalysisMarkingActionKind.Add, "Add as Unknown",
+                    "Not in FieldWorks → Unknown", null, reading.Analysis, index,
+                    "Not in FieldWorks", "Unknown", ChangeKinds.AddCandidate));
+            }
             choices.Add(Choice(AnalysisMarkingActionKind.KeepFieldWorks, "Keep FieldWorks", "Nothing staged",
                 null, null, null, string.Empty, string.Empty, null));
             return choices;
