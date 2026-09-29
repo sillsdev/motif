@@ -585,7 +585,17 @@ public sealed class MainWindowSmokeTests
                     Words =
                     [
                         new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 1, null)
-                            { ProjectStanding = ProjectStanding.Approved, MissedApproved = [] },
+                        {
+                            ProjectStanding = ProjectStanding.Approved,
+                            MissedApproved =
+                            [
+                                new ParserReading([new ParserReadingMorph("kitabu", "book", "n", null, false, null)])
+                                {
+                                    StoredAnalysisId = "approved-kitabu",
+                                    StoredAnalysisOpinion = ReadingGrade.Approved,
+                                },
+                            ],
+                        },
                         new AssessmentWordResult("mwalimu", "no-analysis", false, "Search completed", 1, null)
                             { ProjectStanding = ProjectStanding.NotPresent },
                     ],
@@ -598,7 +608,8 @@ public sealed class MainWindowSmokeTests
                 Assert.True(panel.IsEffectivelyVisible);
                 var lost = panel.GetVisualDescendants().OfType<Border>().Single(border =>
                     border.Tag is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.NoParse });
-                Assert.StartsWith("Approved, No parse: 1 word", AutomationProperties.GetName(lost));
+                Assert.Equal("1 word: Approved in FieldWorks, PanGloss found no parse",
+                    AutomationProperties.GetName(lost));
                 lost.RaiseEvent(new Avalonia.Input.PointerPressedEventArgs(lost,
                     new Avalonia.Input.Pointer(1, Avalonia.Input.PointerType.Mouse, true), window, default, 0,
                     new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton,

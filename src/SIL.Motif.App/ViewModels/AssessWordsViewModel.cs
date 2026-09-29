@@ -185,6 +185,7 @@ public sealed class AssessWordRowViewModel
     public AssessWordRowViewModel(AssessmentWordResult word, int? occurrenceCount = null)
     {
         ArgumentNullException.ThrowIfNull(word);
+        Marking = AnalysisMarkingState.Create(word);
         Word = word.Word;
         Outcome = word.Outcome;
         Morphology = word.Morphology;
@@ -246,6 +247,7 @@ public sealed class AssessWordRowViewModel
             .ToArray())).ToArray();
 
     public string Word { get; }
+    public AnalysisMarkingState Marking { get; }
     public string Outcome { get; }
     public ParseWordEvidence? Morphology { get; }
     public FixFirstPriority? FixFirst { get; }
