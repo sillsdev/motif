@@ -254,6 +254,32 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
+    public async Task SelectedOccurrencesCanBeMarkedReadAndUnreadFromThePage()
+    {
+        var (inText, _, fake) = await Loaded();
+        var first = inText.VisibleLines[0].Tokens[0];
+        var second = inText.VisibleLines[0].Tokens[1];
+        var outside = inText.VisibleLines[0].Tokens[2];
+        first.IsSelectedForReadState = true;
+        second.IsSelectedForReadState = true;
+
+        Assert.Equal(2, inText.SelectedReadStateCount);
+        await inText.MarkSelectionReadCommand.ExecuteAsync(null);
+        Assert.False(first.Marking.IsUnread);
+        Assert.False(second.Marking.IsUnread);
+        Assert.True(outside.Marking.IsUnread);
+
+        await inText.MarkSelectionUnreadCommand.ExecuteAsync(null);
+
+        Assert.True(first.Marking.IsUnread);
+        Assert.True(second.Marking.IsUnread);
+        Assert.True(outside.Marking.IsUnread);
+        var writes = fake.ReadWordStateRequests.Where(item => item.IsRead is not null).ToArray();
+        Assert.Equal([true, false], writes.Select(item => item.IsRead));
+        Assert.All(writes, request => Assert.Equal([first.Occurrence!, second.Occurrence!], request.Occurrences));
+    }
+
+    [Fact]
     public async Task WholeTextCanBeMarkedReadAndUnread()
     {
         var (inText, _, fake) = await Loaded();

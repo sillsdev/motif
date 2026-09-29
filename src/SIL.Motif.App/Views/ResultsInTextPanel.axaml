@@ -19,6 +19,14 @@
 
       <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasTexts}">
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+          <TextBlock Text="{Binding InText.SelectedReadStateCount}" IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
+                     AutomationProperties.Name="Selected occurrence count" />
+          <Button Content="Mark Selection Read" Command="{Binding InText.MarkSelectionReadCommand}"
+                  IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
+                  AutomationProperties.Name="Mark selected occurrences Read" />
+          <Button Content="Mark Selection Unread" Command="{Binding InText.MarkSelectionUnreadCommand}"
+                  IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
+                  AutomationProperties.Name="Mark selected occurrences Unread" />
           <Button Content="Mark Text Read" Command="{Binding InText.MarkTextReadCommand}"
                   AutomationProperties.Name="Mark the selected Text Read" />
           <Button Content="Mark Text Unread" Command="{Binding InText.MarkTextUnreadCommand}"
@@ -129,6 +137,9 @@
           </DockPanel>
           <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
           <views:CopyableTextBlock Text="{Binding VerdictLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
+          <CheckBox Content="Select for bulk Read/Unread"
+                    IsChecked="{Binding IsSelectedForReadState, Mode=TwoWay}"
+                    AutomationProperties.Name="Select this occurrence for Read and Unread actions" />
           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
             <Button Content="Mark as Read"
                     Command="{Binding $parent[views:ResultsInTextPanel].InText.MarkTokenReadCommand}"

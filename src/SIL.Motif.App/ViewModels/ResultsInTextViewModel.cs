@@ -91,6 +91,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             token => token is null ? Task.CompletedTask : MarkUnreadAsync(token), CanMarkTokenReadState);
         MarkTextReadCommand = new AsyncRelayCommand(MarkTextReadAsync, () => SelectedText is not null);
         MarkTextUnreadCommand = new AsyncRelayCommand(MarkTextUnreadAsync, () => SelectedText is not null);
+        MarkSelectionReadCommand = new AsyncRelayCommand(MarkSelectionReadAsync, CanMarkSelectionReadState);
+        MarkSelectionUnreadCommand = new AsyncRelayCommand(MarkSelectionUnreadAsync, CanMarkSelectionReadState);
         _texts.PropertyChanged += OnSourceChanged;
         _assess.PropertyChanged += OnSourceChanged;
         _changes.Items.CollectionChanged += OnChangesChanged;
@@ -124,6 +126,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     public IAsyncRelayCommand MarkTextUnreadCommand { get; }
 
+    public IAsyncRelayCommand MarkSelectionReadCommand { get; }
+
+    public IAsyncRelayCommand MarkSelectionUnreadCommand { get; }
+
     public ChangesViewModel Changes => _changes;
 
     internal Task ReadStateRefresh => _readStateRefresh;
@@ -142,6 +148,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     public int AllCount => _allWords.Count;
     public int UnreadCount => _allWords.Count(token => token.Marking.IsUnread);
+    public int SelectedReadStateCount => _allWords.Count(token => token.IsSelectedForReadState);
+    public bool HasSelectedReadStateOccurrences => SelectedReadStateCount > 0;
     public int DiffersCount => Count(OccurrenceVerdict.Differs);
     public int NewCount => Count(OccurrenceVerdict.New);
     public int NoParseCount => Count(OccurrenceVerdict.NoParse);
@@ -259,6 +267,14 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     /// <returns>A task that completes after the store command returns.</returns>
     public Task MarkTextUnreadAsync() => SetSelectedTextReadStateAsync(false);
 
+    /// <summary>Marks the selected word occurrences Read.</summary>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkSelectionReadAsync() => MarkReadAsync(SelectedReadStateOccurrences());
+
+    /// <summary>Marks the selected word occurrences Unread.</summary>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkSelectionUnreadAsync() => MarkUnreadAsync(SelectedReadStateOccurrences());
+
     /// <summary>Selects a word from any page, building its detail even when it has no chosen-text occurrence.</summary>
     public void SelectWord(string word)
     {
@@ -322,6 +338,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private void Rebuild()
     {
+        foreach (var token in _allWords) token.PropertyChanged -= OnTokenPropertyChanged;
         var readStateVersion = ++_readStateVersion;
         var previousTitle = SelectedText?.Title;
         var results = (_assess.Result?.Words ?? [])
@@ -335,12 +352,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             foreach (var text in response.Texts) Texts.Add(new ResultsTextViewModel(text, results, projectWords));
         }
         _allWords = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
+        foreach (var token in _allWords) token.PropertyChanged += OnTokenPropertyChanged;
         _readStateRefresh = RefreshReadStateAsync(readStateVersion);
         SelectedToken = null;
         AddChangeCommand.NotifyCanExecuteChanged();
         RefreshPendingMarkers();
         OnPropertyChanged(nameof(AllCount));
         OnPropertyChanged(nameof(UnreadCount));
+        OnPropertyChanged(nameof(SelectedReadStateCount));
+        OnPropertyChanged(nameof(HasSelectedReadStateOccurrences));
         OnPropertyChanged(nameof(DiffersCount));
         OnPropertyChanged(nameof(NewCount));
         OnPropertyChanged(nameof(NoParseCount));
@@ -388,6 +408,20 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private bool CanMarkTokenReadState(ResultsTokenViewModel? token) =>
         token is { IsWord: true, Occurrence: not null };
+
+    private bool CanMarkSelectionReadState() => SelectedReadStateCount > 0;
+
+    private ResultsTokenViewModel[] SelectedReadStateOccurrences() =>
+        _allWords.Where(token => token.IsSelectedForReadState).ToArray();
+
+    private void OnTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ResultsTokenViewModel.IsSelectedForReadState)) return;
+        OnPropertyChanged(nameof(SelectedReadStateCount));
+        OnPropertyChanged(nameof(HasSelectedReadStateOccurrences));
+        MarkSelectionReadCommand.NotifyCanExecuteChanged();
+        MarkSelectionUnreadCommand.NotifyCanExecuteChanged();
+    }
 
     private async Task SetReadStateAsync(IReadOnlyList<ResultsTokenViewModel> selection, bool isRead)
     {
@@ -607,6 +641,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     private readonly TextToken _source;
     private readonly AssessmentWordResult? _assessment;
     private bool _isUnread = true;
+
+    [ObservableProperty]
+    private bool _isSelectedForReadState;
 
     public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
         TextWordRowViewModel? projectWord = null, string? location = null, OccurrenceAnchor? occurrence = null)
