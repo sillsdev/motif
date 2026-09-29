@@ -14,7 +14,7 @@ internal sealed class TwoTextWalkthroughProject : IDisposable
         var cache = pristine.NewScratch();
         try
         {
-            SeededProject.SeedText(cache, pristine.Seed);
+            FirstText = SeededProject.SeedText(cache, pristine.Seed);
             var second = SeededProject.SeedText(cache, pristine.Seed);
             var secondText = cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(second.TextId);
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
@@ -34,6 +34,8 @@ internal sealed class TwoTextWalkthroughProject : IDisposable
     }
 
     public string FwDataPath { get; }
+
+    public SeededText FirstText { get; }
 
     public string ManagedRoot { get; }
 

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -28,6 +29,9 @@ public static class ChangeKinds
     /// <summary>Send the parser's reading to FieldWorks as a new candidate analysis.</summary>
     public const string AddCandidate = "add-candidate";
 
+    /// <summary>Remove one stored analysis from FieldWorks.</summary>
+    public const string RemoveAnalysis = "remove-analysis";
+
     /// <summary>The words a change of <paramref name="kind"/> is listed with.</summary>
     public static string LabelOf(string kind) => kind switch
     {
@@ -36,6 +40,7 @@ public static class ChangeKinds
         Candidate => "Back to candidate",
         IncorrectSpelling => "Incorrect spelling",
         AddCandidate => "Add as candidate",
+        RemoveAnalysis => "Remove analysis",
         _ => kind,
     };
 
@@ -49,14 +54,20 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     private readonly ICommandClient _client;
     private readonly List<string> _collectionNotices = [];
     private int _projectGeneration;
+    private bool _isReplacingItems;
     public ChangesViewModel(ICommandClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         RemoveCommand = new AsyncRelayCommand<ChangeViewModel>(RemoveAsync);
-        Items.CollectionChanged += (_, _) => Raise();
+        Items.CollectionChanged += (_, _) =>
+        {
+            if (!_isReplacingItems) Raise();
+        };
     }
 
     public ObservableCollection<ChangeViewModel> Items { get; } = [];
+
+    internal int ProjectGeneration => _projectGeneration;
 
     /// <summary>The project these changes belong to, or <see langword="null"/> before one is open.</summary>
     public string? ProjectPath { get; private set; }
@@ -141,6 +152,74 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         var outcome = await _client.RecheckPendingChangesAsync(new RecheckPendingChangesRequest(
             path, MotifProductVersion.CurrentText, Snapshot.Revision), cancellationToken)
             .ConfigureAwait(true);
+        if (!IsCurrentProject(path, generation)) return;
+        Accept(outcome, path, generation);
+        if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
+            await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Stages removal of one stored analysis from its wordform.</summary>
+    public async Task RemoveAnalysisAsync(string wordformId, string word, string analysisId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(wordformId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(word);
+        ArgumentException.ThrowIfNullOrWhiteSpace(analysisId);
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            CanonicalId.Mint().Value, wordformId, word, analysisId);
+        var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
+        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Stages removal of selected stored analyses.</summary>
+    public async Task RemoveAnalysesAsync(IReadOnlyList<string> analysisIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(analysisIds);
+        if (analysisIds.Count == 0) throw new ArgumentException("Choose at least one analysis.", nameof(analysisIds));
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            AnalysisIds: analysisIds);
+        var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
+        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Stages removal of the stored analyses used in one Text.</summary>
+    public async Task RemoveAnalysesInTextAsync(Guid textId, CancellationToken cancellationToken = default)
+    {
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            TextId: textId);
+        var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
+        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Stages the missing readings from a complete Assessment in one word, Selection, or Text.</summary>
+    public async Task AcceptNewSetAsync(string assessmentId, string? wordformId = null, Guid? textId = null,
+        bool selection = false, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(assessmentId);
+        if ((wordformId is null ? 0 : 1) + (textId is null ? 0 : 1) + (selection ? 1 : 0) != 1)
+            throw new ArgumentException("Choose one word, one Selection, or one Text.");
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var request = new AcceptNewSetRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            assessmentId, wordformId, textId, selection);
+        var outcome = await _client.AcceptNewSetAsync(request, cancellationToken).ConfigureAwait(true);
+        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    private async Task AcceptStagingOutcomeAsync(CommandOutcome<PendingChangesSnapshot> outcome,
+        string path, int generation, CancellationToken cancellationToken)
+    {
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
         if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
@@ -259,7 +338,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public void Reset()
     {
         _projectGeneration++;
-        Items.Clear();
+        ReplaceItems([]);
         Snapshot = new PendingChangesSnapshot(null, "none", [], []);
         LastRefusal = null;
         BeginCollection();
@@ -268,7 +347,6 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         OnPropertyChanged(nameof(LastRefusal));
         OnPropertyChanged(nameof(ShownRefusal));
         OnPropertyChanged(nameof(HasError));
-        Raise();
     }
 
     void IProjectStateParticipant.ClearProject()
@@ -306,14 +384,27 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             AddCollectionNotice("Cancelled the pending choice.");
         if (snapshot.SkippedWord is not null)
             AddCollectionNotice("Skipped one word because a choice is already pending.");
-        Items.Clear();
-        foreach (var change in snapshot.Changes)
+        ReplaceItems(snapshot.Changes.Select(change =>
         {
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
-            Items.Add(new ChangeViewModel(change.Kind, change.Word,
+            return new ChangeViewModel(change.Kind, change.Word,
                 change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage,
                 fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId, change.ReadingIndex,
-                change.GroupId));
+                change.GroupId);
+        }).ToArray());
+    }
+
+    private void ReplaceItems(IReadOnlyList<ChangeViewModel> changes)
+    {
+        _isReplacingItems = true;
+        try
+        {
+            Items.Clear();
+            foreach (var change in changes) Items.Add(change);
+        }
+        finally
+        {
+            _isReplacingItems = false;
         }
         Raise();
     }
@@ -352,6 +443,16 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public string? GroupId { get; } = groupId;
     public ChangeFit? Fit { get; } = fit;
     public OccurrenceAnchor? Occurrence { get; } = occurrence;
+    private string _whereText = occurrence is null ? "Not tied to a text occurrence" : "Text location not loaded";
+    public string WhereText => _whereText;
+
+    internal void SetWhereText(string whereText)
+    {
+        if (_whereText == whereText) return;
+        _whereText = whereText;
+        OnPropertyChanged(nameof(WhereText));
+    }
+
     public string? StoredAnalysisId { get; } = storedAnalysisId;
     public int? ReadingIndex { get; } = readingIndex;
     public string FitStatus => Fit?.Status switch
@@ -364,6 +465,9 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public bool IsUncertain => Fit?.Status == ChangeFitStatus.Uncertain;
     public bool IsNoLongerFits => Fit?.Status == ChangeFitStatus.NoLongerFits;
     public bool HasUncertainty => Fit?.Uncertainty is not null;
+    public bool HasContext => Occurrence is not null || HasUncertainty;
+    public string ShowContextAutomationName => $"Show context: {Word}";
+    public string GoToTextAutomationName => $"Go to text: {Word}";
     public string UncertaintyReason => Fit?.Uncertainty?.Reason switch
     {
         null => string.Empty,
@@ -386,14 +490,49 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     [ObservableProperty]
     private bool _isContextExpanded;
 
+    /// <summary>The sentence tokens surrounding the exact occurrence, when the Texts page has loaded them.</summary>
+    public IReadOnlyList<ResultsTokenViewModel> ContextTokens { get; private set; } = [];
+
+    public bool HasUnavailableContext => IsContextExpanded && Occurrence is not null && ContextTokens.Count == 0;
+
+    internal void SetContextTokens(IReadOnlyList<ResultsTokenViewModel> tokens)
+    {
+        ContextTokens = tokens;
+        OnPropertyChanged(nameof(ContextTokens));
+        OnPropertyChanged(nameof(HasUnavailableContext));
+    }
+
     public void ToggleContext() => IsContextExpanded = !IsContextExpanded;
+
+    partial void OnIsContextExpandedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasUnavailableContext));
+    }
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
+    /// <summary>What this added analysis will be and where it came from.</summary>
+    public string SourceText => IsAddition
+        ? $"Added as {StagedTransition.AfterApply} from {AdditionSource}"
+        : string.Empty;
+    public bool HasSourceText => SourceText.Length > 0;
+
+    private bool IsAddition => Kind == ChangeKinds.AddCandidate ||
+        StoredAnalysisId is null && Kind is (ChangeKinds.Approve or ChangeKinds.Reject);
+
+    private string AdditionSource => GroupId is not null ? "accepting a set"
+        : Kind is ChangeKinds.Approve or ChangeKinds.Reject ? "PanGloss" : "Add";
+    /// <summary>The original change shown beneath an Uncertain item.</summary>
+    public string TransitionText => StagedTransition.Text;
+    public OpinionMarkKind? NowOpinionMark => MarkFor(StagedTransition.Now);
+    public OpinionMarkKind? AfterOpinionMark => MarkFor(StagedTransition.AfterApply);
+    public bool HasNowOpinionMark => NowOpinionMark is not null;
+    public bool HasAfterOpinionMark => AfterOpinionMark is not null;
     public string ReviewLabel => Kind == ChangeKinds.Approve && analyses is { Count: > 1 }
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
     public string CheckAgainAutomationName => $"Check again: {Word}";
-    public string UndoAutomationName => $"Undo: {Word}";
+    public string UndoAutomationName => GroupId is null ? $"Undo: {Word}"
+        : $"Undo accepted set containing: {Word}";
 
     /// <summary>The parser's reading, for a change that sends it to FieldWorks or judges it.</summary>
     public string Reading { get; } = reading;
@@ -429,6 +568,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
             ChangeKinds.Approve => "Approved",
             ChangeKinds.Reject => "Disapproved",
             ChangeKinds.Candidate or ChangeKinds.AddCandidate => "Unknown",
+            ChangeKinds.RemoveAnalysis => "Removed",
             ChangeKinds.IncorrectSpelling => "Incorrect",
             _ => "Changed",
         };
@@ -441,6 +581,15 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         ReadingGrade.Approved => "Approved",
         ReadingGrade.Disapproved => "Disapproved",
         _ => "Unknown",
+    };
+
+    private static OpinionMarkKind? MarkFor(string opinion) => opinion switch
+    {
+        "Approved" => OpinionMarkKind.Approved,
+        "Disapproved" => OpinionMarkKind.Disapproved,
+        "Unknown" => OpinionMarkKind.Unknown,
+        "Not in FieldWorks" or "Removed" => OpinionMarkKind.None,
+        _ => null,
     };
 }
 /// <summary>One word in the before or after sentence shown for an uncertain change.</summary>

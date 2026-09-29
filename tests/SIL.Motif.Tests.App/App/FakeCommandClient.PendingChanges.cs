@@ -51,6 +51,8 @@ public sealed partial class FakeCommandClient
     private PendingChangesSnapshot _pending = new(null, "none", [], []);
     public List<PendingChangesRequest> PendingLoadRequests { get; } = [];
     public List<RemovePendingChangeRequest> PendingRemoveRequests { get; } = [];
+    public List<RemoveAnalysisRequest> RemoveAnalysisRequests { get; } = [];
+    public List<AcceptNewSetRequest> AcceptNewSetRequests { get; } = [];
 
     public Refusal? PendingPutRefusal { get; set; }
     public int? PendingPutRefusalOnCall { get; set; }
@@ -59,6 +61,18 @@ public sealed partial class FakeCommandClient
         PendingLoadHandler { get; set; }
     public Func<PutPendingChangeRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
         PendingPutHandler { get; set; }
+    public Func<RemovePendingChangeRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
+        PendingRemoveHandler { get; set; }
+    public Func<RemoveAnalysisRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
+        RemoveAnalysisHandler { get; set; }
+    public Func<AcceptNewSetRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
+        AcceptNewSetHandler { get; set; }
+    private PendingChangesSnapshot? _removeAnalysisResponse;
+    private PendingChangesSnapshot? _acceptNewSetResponse;
+
+    public void RemoveAnalysisCompletesWith(PendingChangesSnapshot response) => _removeAnalysisResponse = response;
+
+    public void AcceptNewSetCompletesWith(PendingChangesSnapshot response) => _acceptNewSetResponse = response;
 
     public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
     public List<RecheckPendingChangesRequest> PendingRecheckRequests { get; } = [];
@@ -128,12 +142,33 @@ public sealed partial class FakeCommandClient
         RemovePendingChangeRequest request, CancellationToken cancellationToken)
     {
         PendingRemoveRequests.Add(request);
+        if (PendingRemoveHandler is { } handler) return handler(request, cancellationToken);
         var changes = _pending.Changes.Where(item => item.ChangeId != request.ChangeId &&
             item.GroupId != request.ChangeId).ToArray();
         var changeIds = changes.Select(item => item.ChangeId).ToHashSet(StringComparer.Ordinal);
         _pending = _pending with { Revision = Guid.NewGuid().ToString("N"),
             Changes = changes,
             FitSummary = _pending.FitSummary.Where(item => changeIds.Contains(item.ChangeId)).ToArray() };
+        return Completed(_pending);
+    }
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> RemoveAnalysisAsync(
+        RemoveAnalysisRequest request, CancellationToken cancellationToken)
+    {
+        RemoveAnalysisRequests.Add(request);
+        if (RemoveAnalysisHandler is { } handler) return handler(request, cancellationToken);
+        if (_removeAnalysisResponse is not { } response) throw NotConfigured(nameof(RemoveAnalysisAsync));
+        _pending = response;
+        return Completed(_pending);
+    }
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> AcceptNewSetAsync(
+        AcceptNewSetRequest request, CancellationToken cancellationToken)
+    {
+        AcceptNewSetRequests.Add(request);
+        if (AcceptNewSetHandler is { } handler) return handler(request, cancellationToken);
+        if (_acceptNewSetResponse is not { } response) throw NotConfigured(nameof(AcceptNewSetAsync));
+        _pending = response;
         return Completed(_pending);
     }
 }

@@ -39,6 +39,18 @@ public sealed partial class TextsPageModel : PageModel
         {
             OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
         };
+        context.RegisterOccurrenceContextProvider(anchor => ResultsInText.FindOccurrenceLine(anchor)?.Tokens);
+        context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);
+        context.RegisterOccurrenceNavigator(anchor =>
+        {
+            var line = ResultsInText.FindOccurrenceLine(anchor);
+            var token = line?.Tokens.FirstOrDefault(item => item.Occurrence == anchor);
+            if (line is null || token is null) return false;
+            ResultsInText.SelectedText = ResultsInText.Texts.FirstOrDefault(text => text.Lines.Contains(line));
+            ResultsInText.Filter = ResultsInTextFilter.All;
+            ResultsInText.SelectToken(token);
+            return true;
+        });
         Assess.Compare.Changes = context.Changes;
         TextsLists = new TextsListsViewModel(Assess.Compare);
         TextsLists.HandOff = context.HandOff;

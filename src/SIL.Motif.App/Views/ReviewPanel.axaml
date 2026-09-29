@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ReviewPanel"
              x:DataType="vm:ReviewPageModel">
@@ -10,126 +11,183 @@
         <views:CopyableTextBlock Classes="section-title" Text="{Binding Changes.CountText}" />
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Changes.HasItems}"
                                  Text="No changes yet. Choose a word in Texts, then choose what should happen to its analysis." />
-        <ItemsControl x:Name="ChangeList" ItemsSource="{Binding ReviewableChanges}"
-                      AutomationProperties.Name="Changes to review">
+        <ItemsControl x:Name="ReviewGroups" ItemsSource="{Binding ReviewGroups}"
+                      AutomationProperties.Name="Changes grouped for review">
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ChangeViewModel">
-              <Border Classes="card reviewCard">
-                <StackPanel Classes="reviewRelated">
-                  <DockPanel LastChildFill="True">
-                    <HyperlinkButton Classes="reviewLink" DockPanel.Dock="Right" Content="Remove"
-                                     VerticalAlignment="Top"
-                                     Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
-                                     CommandParameter="{Binding}"
-                                     AutomationProperties.Name="{Binding Word, StringFormat='Remove the change to {0}'}" />
+            <DataTemplate x:DataType="vm:ReviewChangeGroupViewModel">
+              <StackPanel Classes="reviewRelated">
+                <DockPanel LastChildFill="True">
+                  <Border Classes="hoverReveal" DockPanel.Dock="Right"
+                          Background="{DynamicResource Intent.Clear}">
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                      <views:CopyableTextBlock Classes="reviewWord" Text="{Binding Word}" />
-                      <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding ReviewLabel}"
-                                               VerticalAlignment="Center" />
+                      <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Go to text"
+                                       Command="{Binding GoToTextCommand}"
+                                       AutomationProperties.Name="{Binding GoToTextAutomationName}" />
+                      <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Undo all"
+                                       Command="{Binding UndoAllCommand}"
+                                       AutomationProperties.Name="{Binding UndoAllAutomationName}" />
                     </StackPanel>
-                  </DockPanel>
-                  <ItemsControl ItemsSource="{Binding Analyses}" IsVisible="{Binding HasAnalyses}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ReviewAnalysisViewModel">
-                        <Grid>
-                          <Border Classes="reviewReading" Classes.parser="{Binding ParserBuilt}"
-                                  Classes.touched="{Binding Touched}">
-                            <StackPanel Classes="reviewCompact">
-                              <ItemsControl ItemsSource="{Binding Morphs}">
+                  </Border>
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                    <views:CopyableTextBlock Classes="section-title" Text="{Binding Title}" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding WordCountText}" />
+                  </StackPanel>
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding Items}"
+                              AutomationProperties.Name="{Binding Title, StringFormat='Changes in {0}'}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ChangeViewModel">
+                      <Border Classes="card reviewCard hoverReveal">
+                        <StackPanel Classes="reviewRelated">
+                          <DockPanel LastChildFill="True">
+                            <Border Classes="hoverReveal" DockPanel.Dock="Right">
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                                <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Check again"
+                                                 Command="{Binding $parent[views:ReviewPanel].Page.ReconfirmChangeCommand}"
+                                                 CommandParameter="{Binding}"
+                                                 AutomationProperties.Name="{Binding CheckAgainAutomationName}"
+                                                 IsVisible="{Binding IsUncertain}" />
+                                <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Show context"
+                                                 Command="{Binding $parent[views:ReviewPanel].Page.ToggleContextCommand}"
+                                                 CommandParameter="{Binding}"
+                                                 AutomationProperties.Name="{Binding ShowContextAutomationName}"
+                                                 IsVisible="{Binding HasContext}" />
+                                <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Go to text"
+                                                 Command="{Binding $parent[views:ReviewPanel].Page.GoToTextCommand}"
+                                                 CommandParameter="{Binding}"
+                                                 AutomationProperties.Name="{Binding GoToTextAutomationName}" />
+                                <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Undo"
+                                                 Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
+                                                 CommandParameter="{Binding}"
+                                                 AutomationProperties.Name="{Binding UndoAutomationName}" />
+                              </StackPanel>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                              <views:CopyableTextBlock Classes="reviewWord" Text="{Binding Word}" />
+                              <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding TransitionText}"
+                                                       VerticalAlignment="Center" />
+                            </StackPanel>
+                          </DockPanel>
+                          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                            <views:CopyableTextBlock Classes="reviewSmall" Text="Where:" />
+                            <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding WhereText}" />
+                          </StackPanel>
+                          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding SourceText}"
+                                                   IsVisible="{Binding HasSourceText}" />
+                          <StackPanel Classes="reviewCompact">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                              <views:CopyableTextBlock Classes="reviewSmall" Text="Now" />
+                              <controls:OpinionMark Kind="{Binding NowOpinionMark}"
+                                                    IsVisible="{Binding HasNowOpinionMark}" />
+                              <views:CopyableTextBlock Classes="reviewEmphasis"
+                                                       Text="{Binding StagedTransition.Now}" />
+                            </StackPanel>
+                            <Border Classes="stagedStrip">
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                                <views:CopyableTextBlock Classes="stagedLabel" Text="After" />
+                                <controls:OpinionMark Kind="{Binding AfterOpinionMark}"
+                                                      IsVisible="{Binding HasAfterOpinionMark}" />
+                                <views:CopyableTextBlock Text="{Binding StagedTransition.AfterApply}" />
+                              </StackPanel>
+                            </Border>
+                          </StackPanel>
+                          <ItemsControl ItemsSource="{Binding Analyses}" IsVisible="{Binding HasAnalyses}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:ReviewAnalysisViewModel">
+                                <Grid>
+                                  <Border Classes="reviewReading" Classes.parser="{Binding ParserBuilt}"
+                                          Classes.touched="{Binding Touched}">
+                                    <StackPanel Classes="reviewCompact">
+                                      <ItemsControl ItemsSource="{Binding Morphs}">
+                                        <ItemsControl.ItemsPanel>
+                                          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                          <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                                            <Border Classes="reviewMorph">
+                                              <StackPanel>
+                                                <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding Form}" />
+                                                <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}" />
+                                                <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Category}" />
+                                              </StackPanel>
+                                            </Border>
+                                          </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                      </ItemsControl>
+                                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                                        <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding Opinion}" />
+                                        <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Source}" />
+                                      </StackPanel>
+                                    </StackPanel>
+                                  </Border>
+                                  <Rectangle Classes="reviewParserOutline" IsVisible="{Binding ParserBuilt}" />
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Reading}"
+                                                   IsVisible="{Binding !HasAnalyses}" TextWrapping="Wrap" />
+                          <views:CopyableTextBlock Classes="reviewSmall" Classes.error="{Binding IsNoLongerFits}"
+                                                   Text="{Binding FitStatus}" TextWrapping="Wrap"
+                                                   IsVisible="{Binding IsNoLongerFits}" />
+                          <StackPanel Classes="reviewCompact" IsVisible="{Binding IsUncertain}">
+                            <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding UncertaintyReason}"
+                                                     TextWrapping="Wrap" IsVisible="{Binding HasUncertainty}" />
+                            <views:CopyableTextBlock Classes="reviewSmall" Text="Current sentence" />
+                            <ItemsControl ItemsSource="{Binding AfterWords}" AutomationProperties.Name="Current sentence">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
+                                  <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
+                                    <views:CopyableTextBlock Text="{Binding Form}" />
+                                  </Border>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <StackPanel Classes="reviewCompact" IsVisible="{Binding IsContextExpanded}">
+                              <views:CopyableTextBlock Classes="reviewSmall" Text="Sentence when the change was made" />
+                              <ItemsControl ItemsSource="{Binding BeforeWords}" AutomationProperties.Name="Sentence when the change was made">
                                 <ItemsControl.ItemsPanel>
-                                  <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" />
-                                  </ItemsPanelTemplate>
+                                  <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
-                                  <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                                    <Border Classes="reviewMorph">
-                                      <StackPanel>
-                                        <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding Form}" />
-                                        <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}" />
-                                        <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Category}" />
-                                      </StackPanel>
+                                  <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
+                                    <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
+                                      <views:CopyableTextBlock Text="{Binding Form}" />
                                     </Border>
                                   </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                               </ItemsControl>
-                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                                <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding Opinion}" />
-                                <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Source}" />
-                              </StackPanel>
                             </StackPanel>
+                          </StackPanel>
+                          <Border IsVisible="{Binding HasUnavailableContext}">
+                            <views:ParsePrompt DataContext="{Binding $parent[views:ReviewPanel].Page.Context}" />
                           </Border>
-                          <Rectangle Classes="reviewParserOutline" IsVisible="{Binding ParserBuilt}" />
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Reading}"
-                                           IsVisible="{Binding !HasAnalyses}" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Classes="reviewSmall" Classes.error="{Binding IsNoLongerFits}"
-                                           Text="{Binding FitStatus}" TextWrapping="Wrap" />
-                </StackPanel>
-              </Border>
+                          <ItemsControl ItemsSource="{Binding ContextTokens}"
+                                        IsVisible="{Binding IsContextExpanded}"
+                                        AutomationProperties.Name="Sentence context">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:ResultsTokenViewModel">
+                                <Border Classes="reviewSentenceToken">
+                                  <views:CopyableTextBlock Text="{Binding Text}" />
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <StackPanel Classes="reviewRelated" IsVisible="{Binding HasUncertainChanges}">
-          <views:CopyableTextBlock Classes="section-title" Text="Uncertain — check again" />
-          <ItemsControl ItemsSource="{Binding UncertainChanges}" AutomationProperties.Name="Changes needing another look">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:ChangeViewModel">
-                <Border Classes="card reviewCard uncertainCard">
-                  <StackPanel Classes="reviewRelated">
-                    <DockPanel LastChildFill="True">
-                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                        <HyperlinkButton Classes="reviewLink" Content="Check again"
-                                         Command="{Binding $parent[views:ReviewPanel].Page.ReconfirmChangeCommand}"
-                                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding CheckAgainAutomationName}" />
-                        <HyperlinkButton Classes="reviewLink" Content="Undo"
-                                         Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
-                                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding UndoAutomationName}" />
-                      </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                        <views:CopyableTextBlock Classes="reviewWord" Text="{Binding Word}" />
-                        <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding ReviewLabel}"
-                                                 VerticalAlignment="Center" />
-                      </StackPanel>
-                    </DockPanel>
-                    <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding FitStatus}" />
-                    <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding UncertaintyReason}"
-                                             TextWrapping="Wrap" IsVisible="{Binding HasUncertainty}" />
-                    <ItemsControl ItemsSource="{Binding AfterWords}" AutomationProperties.Name="Current sentence">
-                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
-                          <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
-                            <views:CopyableTextBlock Text="{Binding Form}" />
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <HyperlinkButton Classes="reviewLink" Content="Show context"
-                                     Command="{Binding $parent[views:ReviewPanel].Page.ToggleContextCommand}"
-                                     CommandParameter="{Binding}" IsVisible="{Binding HasUncertainty}" />
-                    <StackPanel Classes="reviewCompact" IsVisible="{Binding IsContextExpanded}">
-                      <views:CopyableTextBlock Classes="reviewSmall" Text="Sentence when the change was made" />
-                      <ItemsControl ItemsSource="{Binding BeforeWords}">
-                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
-                            <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
-                              <views:CopyableTextBlock Text="{Binding Form}" />
-                            </Border>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </StackPanel>
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
       </StackPanel>
     </ScrollViewer>
     <StackPanel Grid.Column="1" Classes="reviewStack reviewRight">
