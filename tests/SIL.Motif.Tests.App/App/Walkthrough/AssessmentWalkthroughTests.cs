@@ -137,6 +137,9 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
             var baselineDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, baselineDeadline);
+            WalkthroughSteps.EnsureAssessmentForAnalyze(walkthrough, TimeSpan.FromMinutes(3));
+            walkthrough.Workspace.Selection.AllWordforms = false;
+            foreach (var text in walkthrough.Workspace.Selection.Texts) text.IsChecked = false;
 
             var assessmentDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, assessmentDeadline);
@@ -200,7 +203,11 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
                 MotifSchema.CurrentSchema, new Version(1, 0));
             var invocations = new RetainedInvocationRepository(database).List(
                 ProjectWorkspaceKey.Compute(projectLocator));
-            Assert.Single(invocations);
+            Assert.Equal(2, invocations.Count);
+            Assert.Contains(invocations, invocation => invocation.InvocationId == result.InvocationId);
+            var setupInvocation = invocations.Single(invocation => invocation.InvocationId != result.InvocationId);
+            Assert.Equal(["motifanalysed", "motifunanalysed"],
+                setupInvocation.Selection.ResolvedWords.Order(StringComparer.Ordinal));
             Assert.Equal(result.InvocationId, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.InvocationId);
             Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
 
