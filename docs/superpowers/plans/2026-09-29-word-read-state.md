@@ -22,9 +22,9 @@ The linguist's Read marker survives closing the window because it lives beside t
 
 - [x] Add a failing repository test that saves one occurrence fingerprint, reloads it, and removes it by occurrence identity.
 - [x] Run `./test.ps1` and confirm the new repository test fails because the repository does not exist.
-- [x] Add the `ReadOccurrences` table and schema-shape entry; set `MotifSchema.CurrentSchema` to 29.
+- [x] Add the `ReadOccurrences` table and schema-shape entry; set `MotifSchema.CurrentSchema` to 28.
 - [x] Implement upsert, lookup, list, and delete operations for an occurrence-keyed JSON fingerprint.
-- [x] Add or update the refusal test to prove schema 28 is rejected by schema 29 without conversion.
+- [x] Add or update the refusal test to prove schema 27 is rejected by schema 28 without conversion.
 - [x] Run `./test.ps1` and confirm repository and schema tests pass.
 
 ### Slice 2: Capture and invalidate fingerprints through the command client
