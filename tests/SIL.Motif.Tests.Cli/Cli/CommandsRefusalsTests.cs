@@ -24,19 +24,28 @@ namespace SIL.Motif.Tests.Cli;
 /// store or draft was left byte-for-byte unchanged, not merely that the outcome was a refusal.
 /// </summary>
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
-public sealed class CommandsRefusalsTests
+public sealed class CommandsRefusalsTests : IDisposable
 {
     private const string ProductVersion = "1.0";
 
     private readonly string _fwDataPath;
+    private readonly string _workerRoot = Path.Combine(Path.GetTempPath(),
+        "motif-command-refusals-worker-" + Guid.NewGuid().ToString("N"));
     private readonly string _target;
 
     public CommandsRefusalsTests(PristineProjectFixture pristine)
     {
+        Directory.CreateDirectory(_workerRoot);
         var seed = pristine.Seed;
         using var scratch = pristine.NewScratch();
         _fwDataPath = scratch.ProjectId.Path;
         _target = CanonicalId.FromGuid(seed.FirstSenseId).Value;
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_workerRoot, recursive: true); }
+        catch { }
     }
 
     // --- New ---
@@ -741,7 +750,7 @@ public sealed class CommandsRefusalsTests
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        start.Environment[RunnerOptions.RootVariable] = Path.GetDirectoryName(_fwDataPath)!;
+        start.Environment[RunnerOptions.RootVariable] = _workerRoot;
 
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.

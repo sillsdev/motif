@@ -41,18 +41,27 @@ namespace SIL.Motif.Tests.Cli;
 /// project's own saved file and drains exactly one queued job through the real <see cref="DryRunJobHandler"/>.
 /// </remarks>
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
-public sealed class ProposalWorkflowTests
+public sealed class ProposalWorkflowTests : IDisposable
 {
     private const string ProductVersion = "1.0";
 
     private readonly SeededProject _seed;
     private readonly string _fwDataPath;
+    private readonly string _workerRoot = Path.Combine(Path.GetTempPath(),
+        "motif-proposal-workflow-worker-" + Guid.NewGuid().ToString("N"));
 
     public ProposalWorkflowTests(PristineProjectFixture pristine)
     {
+        Directory.CreateDirectory(_workerRoot);
         _seed = pristine.Seed;
         using var scratch = pristine.NewScratch();
         _fwDataPath = scratch.ProjectId.Path;
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_workerRoot, recursive: true); }
+        catch { }
     }
 
     [Fact]
@@ -551,8 +560,7 @@ public sealed class ProposalWorkflowTests
                      "--user", "tester", "--force", "--json" })
             start.ArgumentList.Add(argument);
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
-        start.Environment[RunnerOptions.RootVariable] = Path.GetDirectoryName(_fwDataPath)!;
-        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        start.Environment[RunnerOptions.RootVariable] = _workerRoot;
         using var process = Process.Start(start)!;
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();
