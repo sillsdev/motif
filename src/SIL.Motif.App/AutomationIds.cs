@@ -7,4 +7,5 @@ public static class AutomationIds
     public const string RefreshProject = "motif-refresh-project";
     public const string SkipSetup = "motif-skip-setup";
     public const string OverviewSelectionWordCount = "motif-overview-selection-word-count";
+    public const string Pages = "motif-pages";
 }

@@ -172,7 +172,8 @@
                    ItemsSource="{Binding Pages}"
                    SelectedItem="{Binding SelectedPage}"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                   AutomationProperties.Name="Pages">
+                   AutomationProperties.Name="Pages"
+                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.Pages}">
             <ListBox.Styles>
               <Style Selector="ListBoxItem" x:DataType="vm:PageViewModel">
                 <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />

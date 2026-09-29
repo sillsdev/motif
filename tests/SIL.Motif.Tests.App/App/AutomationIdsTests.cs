@@ -29,7 +29,7 @@ public sealed class AutomationIdsTests
                          @"AutomationProperties\.AutomationId\s*=\s*""(?<value>[^""]+)"""))
             {
                 var value = id.Groups["value"].Value;
-                var reference = Regex.Match(value, @"^\{x:Static\s+[\w.]+AutomationIds\.(?<name>\w+)\}$");
+                var reference = Regex.Match(value, @"^\{x:Static\s+[\w.:]+AutomationIds\.(?<name>\w+)\}$");
                 Assert.True(reference.Success, $"{view} has an AutomationId outside AutomationIds: {value}");
                 references.Add(reference.Groups["name"].Value);
             }
