@@ -18,10 +18,19 @@
       </ComboBox>
 
       <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasTexts}">
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+          <Button Content="Mark Text Read" Command="{Binding InText.MarkTextReadCommand}"
+                  AutomationProperties.Name="Mark the selected Text Read" />
+          <Button Content="Mark Text Unread" Command="{Binding InText.MarkTextUnreadCommand}"
+                  AutomationProperties.Name="Mark the selected Text Unread" />
+        </StackPanel>
         <WrapPanel>
           <views:FilterChip Label="All occurrences" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}" />
+          <views:FilterChip Label="Unread" Count="{Binding InText.UnreadCount}"
+                            IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Unread}}"
+                            Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Unread}" />
           <views:FilterChip Label="Differs from stored" Count="{Binding InText.DiffersCount}" Verdict="Differs"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Differs}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Differs}" />
@@ -120,6 +129,14 @@
           </DockPanel>
           <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
           <views:CopyableTextBlock Text="{Binding VerdictLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+            <Button Content="Mark as Read"
+                    Command="{Binding $parent[views:ResultsInTextPanel].InText.MarkTokenReadCommand}"
+                    CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence Read" />
+            <Button Content="Mark as Unread"
+                    Command="{Binding $parent[views:ResultsInTextPanel].InText.MarkTokenUnreadCommand}"
+                    CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence Unread" />
+          </StackPanel>
 
           <views:CopyableTextBlock Classes="section-title" Text="In the project" FontSize="{DynamicResource Intent.Type.Body}" />
           <DockPanel LastChildFill="False">

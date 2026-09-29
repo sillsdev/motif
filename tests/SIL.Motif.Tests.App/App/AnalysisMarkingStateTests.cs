@@ -31,7 +31,7 @@ public sealed class AnalysisMarkingStateTests
 
     [Theory]
     [MemberData(nameof(R4PrimaryActionCases))]
-    public void PrimaryActionAndUnreadStateFollowTheR4ClassOpinionTable(TextToken token,
+    public void PrimaryActionAndNeedsALookFollowTheR4ClassOpinionTable(TextToken token,
         AssessmentWordResult? result, AnalysisMarkingClass expectedClass, AnalysisMarkingActionKind? expectedKind,
         string? expectedLabel, string? expectedChangeKind, bool expectedUnread)
     {
@@ -41,7 +41,19 @@ public sealed class AnalysisMarkingStateTests
         Assert.Equal(expectedKind, state.PrimaryAction?.Kind);
         Assert.Equal(expectedLabel, state.PrimaryAction?.Label);
         Assert.Equal(expectedChangeKind, state.PrimaryAction?.ChangeKind);
-        Assert.Equal(expectedUnread, state.IsUnread);
+        Assert.Equal(expectedUnread, state.NeedsALook);
+    }
+
+    [Fact]
+    public void UnreadDoesNotDependOnWhetherAnActionIsAvailable()
+    {
+        var state = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book));
+
+        Assert.Null(state.PrimaryAction);
+        Assert.Empty(state.FixChoices);
+        Assert.True(state.IsUnread);
+        Assert.False(state.NeedsALook);
     }
 
     [Theory]
@@ -133,7 +145,7 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks &&
             choice.Label == "Keep FieldWorks");
-        Assert.True(state.IsUnread);
+        Assert.True(state.NeedsALook);
     }
 
     [Fact]
@@ -167,7 +179,7 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.Equal(AnalysisMarkingClass.Capped, state.PanGlossClass);
         Assert.Null(state.PrimaryAction);
-        Assert.False(state.IsUnread);
+        Assert.False(state.NeedsALook);
     }
 
     [Theory]
@@ -181,7 +193,8 @@ public sealed class AnalysisMarkingStateTests
         Assert.Equal("Unknown → Approved", Assert.Single(state.StagedTransitions).Text);
         Assert.Equal(uncertain, state.IsUncertain);
         Assert.Equal(noLongerFits, state.NoLongerFits);
-        Assert.False(state.IsUnread);
+        Assert.True(state.IsUnread);
+        Assert.False(state.NeedsALook);
     }
 
     private static ParseAnalysis Reading(string form, string msa) =>
