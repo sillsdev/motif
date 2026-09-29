@@ -174,12 +174,15 @@ public sealed record AnalysisMarkingState(
         var renderings = result?.Readings;
         var readings = parses.Select((analysis, index) =>
         {
-            var matches = token.StoredAnalyses.Where(storedAnalysis => storedAnalysis.Identity is { } identity &&
-                AnalysisMorphologyMatcher.Matches(analysis, identity)).ToArray();
+            var display = renderings is not null && index < renderings.Count ? renderings[index] : null;
+            var matches = token.StoredAnalyses.Where(storedAnalysis =>
+                storedAnalysis.Identity is { } identity && AnalysisMorphologyMatcher.Matches(analysis, identity) ||
+                storedAnalysis.Identity is null && display?.StoredAnalysisId is { } id &&
+                storedAnalysis.StoredAnalysisId == id).ToArray();
             var opinions = matches.Select(match => match.StoredAnalysisOpinion ?? ReadingGrade.Candidate)
                 .Distinct(StringComparer.Ordinal).ToArray();
             return new PanGlossReadingMarking(analysis,
-                renderings is not null && index < renderings.Count ? renderings[index] : null,
+                display,
                 matches.Select(match => match.StoredAnalysisId ?? string.Empty).ToArray(),
                 opinions.Length == 0 ? null : string.Join(", ", opinions));
         }).ToArray();
@@ -189,6 +192,30 @@ public sealed record AnalysisMarkingState(
         var fixes = BuildFixChoices(markingClass, stored, readings);
         return new AnalysisMarkingState(stored, markingClass, readings, primary, fixes, [],
             false, false, primary is not null || fixes.Count > 0);
+    }
+
+    /// <summary>Builds the shared marking state from the resolved evidence for one Assessment word.</summary>
+    public static AnalysisMarkingState Create(AssessmentWordResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        var stored = (result.Readings ?? [])
+            .Concat(result.ExpectedAnalysis is { } expected ? [expected] : [])
+            .Concat(result.MissedApproved ?? [])
+            .Where(reading => reading.StoredAnalysisId is not null)
+            .GroupBy(reading => reading.StoredAnalysisId!, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .Select(reading => new ProjectAnalysis(string.Empty, reading.Morphs)
+            {
+                StoredAnalysisId = reading.StoredAnalysisId,
+                StoredAnalysisOpinion = reading.StoredAnalysisOpinion,
+            })
+            .ToArray();
+        var token = new TextToken(result.Word, result.Word, null, null)
+        {
+            IncorrectSpelling = result.ProjectStanding == ProjectStanding.IncorrectSpelling,
+            StoredAnalyses = stored,
+        };
+        return Create(token, result);
     }
 
     /// <summary>Attaches pending transitions and their current fit statuses.</summary>

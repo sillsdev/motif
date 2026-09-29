@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Tests.TestFixtures;
@@ -60,6 +61,11 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
                 Assert.Equal(expected, actual);
                 Assert.Equal(expected.Length, list.WordCount);
             }
+
+            lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Approved, not parsed"));
+            var approvedNoParse = Assert.Single(compare.Words);
+            Assert.Equal(AnalysisMarkingClass.None, approvedNoParse.Marking.PanGlossClass);
+            Assert.Equal([OpinionMarkKind.Approved], approvedNoParse.OpinionMarks.Select(mark => mark.Kind));
 
         }, TimeSpan.FromMinutes(1));
     }

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ComparePanel"
@@ -64,7 +65,7 @@
       </StackPanel>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
         <views:CopyableTextBlock Width="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}"
-                                 Classes="columnHeader" Text="PROJECT ↓  PARSER →" VerticalAlignment="Bottom"
+                                 Classes="columnHeader" Text="FieldWorks ↓  PanGloss →" VerticalAlignment="Bottom"
                                  Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
         <ItemsControl Grid.Column="1" ItemsSource="{Binding Compare.Columns}">
           <ItemsControl.ItemsPanel>
@@ -76,11 +77,15 @@
             <DataTemplate x:DataType="vm:CompareColumnViewModel">
               <Button Classes="header" Theme="{DynamicResource BorderlessButton}"
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectColumnCommand}" CommandParameter="{Binding}"
-                      AutomationProperties.Name="{Binding Label, StringFormat='Choose the {0} column'}">
-                <StackPanel>
-                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="{DynamicResource Intent.Type.Body}" />
+                      AutomationProperties.Name="{Binding AccessibleName}">
+                <Border Classes="panGlossLine" Classes.same="{Binding IsSame}"
+                        Classes.different="{Binding IsDifferent}" Classes.none="{Binding IsNoParse}"
+                        Classes.capped="{Binding IsCapped}" Classes.notAssessed="{Binding IsNotAssessed}">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
                   <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" />
-                </StackPanel>
+                  </StackPanel>
+                </Border>
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -98,9 +103,12 @@
               <Button Width="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}"
                       Classes="header" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Stretch"
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectRowCommand}" CommandParameter="{Binding}"
-                      AutomationProperties.Name="{Binding Label, StringFormat='Choose the {0} row'}">
+                      AutomationProperties.Name="{Binding OpinionLabel, StringFormat='Choose the {0} row'}">
                 <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Intent.Space.Minimal}">
-                  <views:VerdictChip Verdict="{Binding Verdict}" Text="{Binding Label}" HorizontalAlignment="Left" />
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+                    <controls:OpinionMark Kind="{Binding OpinionMark}" />
+                    <TextBlock Text="{Binding OpinionLabel}" FontWeight="SemiBold" />
+                  </StackPanel>
                   <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" />
                 </StackPanel>
               </Button>
@@ -117,9 +125,51 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </Grid>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+      <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+          <TextBlock Text="FieldWorks" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <ItemsControl ItemsSource="{Binding Compare.OpinionLegend}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:OpinionLegendItem">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <controls:OpinionMark Kind="{Binding Kind}" />
+                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+          <TextBlock Text="PanGloss" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <ItemsControl ItemsSource="{Binding Compare.PanGlossLegend}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PanGlossLegendItem">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <Border Classes="panGlossLine" Classes.same="{Binding IsSame}"
+                          Classes.different="{Binding IsDifferent}" Classes.none="{Binding IsNoParse}"
+                          Classes.capped="{Binding IsCapped}" Classes.notAssessed="{Binding IsNotAssessed}"
+                          Classes.panGlossExtra="{Binding IsExtra}">
+                    <TextBlock Text="{Binding Label}" />
+                  </Border>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
     </StackPanel>
 
     <Border Grid.Row="2" Classes="card">
@@ -241,45 +291,53 @@
     </StackPanel>
 
     <Grid Grid.Row="5" RowDefinitions="Auto,*">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,*,Auto" Margin="{DynamicResource Component.TextsPage.DenseRowPadding}">
+      <Grid ColumnDefinitions="Auto,*,Auto,*,Auto" Margin="{DynamicResource Component.TextsPage.DenseRowPadding}">
         <Border Width="{DynamicResource Component.TextsPage.WordCheckWidth}" />
-        <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="WORD" />
+        <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="WORD · FIELDWORKS · PANGLOSS" />
         <views:CopyableTextBlock Grid.Column="2" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
                                  Classes="columnHeader" Text="IN TEXTS" />
-        <views:CopyableTextBlock Grid.Column="3" Width="{DynamicResource Component.TextsPage.WordProjectWidth}"
-                                 Classes="columnHeader" Text="IN THE PROJECT" />
-        <views:CopyableTextBlock Grid.Column="4" Width="{DynamicResource Component.TextsPage.WordParserWidth}"
-                                 Classes="columnHeader" Text="PARSER" />
-        <views:CopyableTextBlock Grid.Column="5" Width="{DynamicResource Component.TextsPage.WordMeaningWidth}"
-                                 Classes="columnHeader" Text="MEANING" />
-        <views:CopyableTextBlock Grid.Column="6" Classes="columnHeader" Text="CHOOSE AN ANALYSIS" />
-        <Border Grid.Column="7" Width="{DynamicResource Component.TextsPage.WordOpenWidth}" />
+        <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="CHOOSE AN ANALYSIS" />
+        <Border Grid.Column="4" Width="{DynamicResource Component.TextsPage.WordOpenWidth}" />
       </Grid>
       <ListBox Grid.Row="1" Classes="denseWords" ItemsSource="{Binding Compare.Words}"
                AutomationProperties.Name="Words in the chosen cells">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareWordViewModel">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,*,Auto" Margin="{DynamicResource Intent.Gap.AfterRelated}">
+            <Grid ColumnDefinitions="Auto,*,Auto,*,Auto" Margin="{DynamicResource Intent.Gap.AfterRelated}">
               <CheckBox Width="{DynamicResource Component.TextsPage.WordCheckWidth}"
                         Grid.Column="0" IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
                         AutomationProperties.Name="{Binding Word, StringFormat='Tick {0} for a change'}" />
-              <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
-                <views:CopyableTextBlock Text="{Binding Word}" FontWeight="SemiBold" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding PendingChangeStatus}"
-                                         IsVisible="{Binding HasPendingChange}" FontSize="{DynamicResource Intent.Type.Label}" />
-              </StackPanel>
+              <Border Grid.Column="1" Classes="matrixWordCell" AutomationProperties.Name="{Binding AccessibleName}">
+                <StackPanel Classes="analysisDensity" Spacing="{DynamicResource Intent.Space.Compact}">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                    <views:CopyableTextBlock Classes="densitySample" Text="{Binding Word}" FontWeight="SemiBold" />
+                    <ItemsControl Grid.Column="1" ItemsSource="{Binding OpinionMarks}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CompareOpinionMarkViewModel">
+                          <controls:OpinionMark Kind="{Binding Kind}" AutomationProperties.Name="{Binding Label}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+                  <Border Classes="panGlossLine" Classes.same="{Binding IsSame}"
+                          Classes.different="{Binding IsDifferent}" Classes.none="{Binding IsNoParse}"
+                          Classes.capped="{Binding IsCapped}" Classes.notAssessed="{Binding IsNotAssessed}"
+                          Classes.panGlossExtra="{Binding IsExtra}">
+                    <views:CopyableTextBlock Classes="densitySample" Text="{Binding PanGlossLabel}" />
+                  </Border>
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding PendingChangeStatus}"
+                                           IsVisible="{Binding HasPendingChange}"
+                                           FontSize="{DynamicResource Intent.Type.Label}" />
+                </StackPanel>
+              </Border>
               <views:CopyableTextBlock Grid.Column="2" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
                                        Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
-              <views:VerdictChip Grid.Column="3" Width="{DynamicResource Component.TextsPage.WordProjectWidth}"
-                                 Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}"
-                                 Compact="True" HorizontalAlignment="Left" />
-              <views:VerdictChip Grid.Column="4" Width="{DynamicResource Component.TextsPage.WordParserWidth}"
-                                 Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}"
-                                 Compact="True" HorizontalAlignment="Left" />
-              <views:CopyableTextBlock Grid.Column="5" Width="{DynamicResource Component.TextsPage.WordMeaningWidth}"
-                                       Text="{Binding Meaning}" FontSize="{DynamicResource Intent.Type.Small}"
-                                       VerticalAlignment="Center" Classes.error="{Binding IsViolation}" TextTrimming="CharacterEllipsis" />
-              <ComboBox Grid.Column="6" ItemsSource="{Binding ReadingChoices}" SelectedItem="{Binding SelectedReading}"
+              <ComboBox Grid.Column="3" ItemsSource="{Binding ReadingChoices}" SelectedItem="{Binding SelectedReading}"
                         PlaceholderText="Choose an analysis for an opinion" HorizontalAlignment="Stretch"
                         VerticalAlignment="Center"
                         AutomationProperties.Name="{Binding Word, StringFormat='Analysis for {0}'}">
@@ -289,7 +347,7 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <HyperlinkButton Grid.Column="7" Width="{DynamicResource Component.TextsPage.WordOpenWidth}"
+              <HyperlinkButton Grid.Column="4" Width="{DynamicResource Component.TextsPage.WordOpenWidth}"
                                Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
                                Command="{Binding $parent[views:ComparePanel].Compare.OpenWordCommand}" CommandParameter="{Binding}"
                                AutomationProperties.Name="{Binding Word, StringFormat='Analyze {0} in its texts'}" />

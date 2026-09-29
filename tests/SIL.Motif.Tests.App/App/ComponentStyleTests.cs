@@ -210,6 +210,10 @@ public sealed class ComponentStyleTests
         yield return new("HeatCell", "a heat shade", host => Add(host, Box("heat")), Border.BackgroundProperty, "Intent.Warning");
         yield return new("MatrixCell", "a matrix cell", host => Add(host, Box("matrixCell")),
             Border.BackgroundProperty, "Intent.Surface");
+        yield return new("MatrixCell", "a compact word cell", host => Add(host, Box("matrixWordCell")),
+            Border.PaddingProperty, "Component.MatrixCell.WordPadding");
+        yield return new("MatrixCell", "a compact word cell", host => Add(host, Box("matrixWordCell")),
+            Border.BorderBrushProperty, "Intent.Border");
         yield return new("MatrixCell", "a violation cell", host => Add(host, Box("matrixCell", "violation")),
             Border.BackgroundProperty, "Intent.Danger.Fill");
         yield return new("MatrixCell", "a compact matrix cell", host => Add(host, Box("matrixCell", "compact")),
@@ -357,6 +361,8 @@ public sealed class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
             TextBlock.FontSizeProperty, "Component.Density.CompactType");
+        yield return new("Density", "the compact opinion mark size", CompactOpinionMark,
+            Control.HeightProperty, "Component.Density.CompactMarkSize");
         yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
             TextBlock.FontSizeProperty, "Component.Density.NormalType");
         yield return new("HoverReveal", "a neutral staged button", host => Add(host, Press("revealControl", "revealButton")),
@@ -407,6 +413,15 @@ public sealed class ComponentStyleTests
         root.Children.Add(text);
         host.Children.Add(root);
         return text;
+    }
+
+    private static Control CompactOpinionMark(Panel host)
+    {
+        var root = new StackPanel { Classes = { "analysisDensity" } };
+        var mark = Box("opinionMark");
+        root.Children.Add(mark);
+        host.Children.Add(root);
+        return mark;
     }
 
     private static T Add<T>(Panel host, T control) where T : Control

@@ -21,6 +21,19 @@ public sealed class MarkingsGalleryTests
     public MarkingsGalleryTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
+    public void BoundOpinionMarkUpdatesItsLetterShapeAndAccessibleName()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var mark = new OpinionMark { Kind = OpinionMarkKind.Unknown };
+
+            Assert.Equal("U", Assert.IsType<TextBlock>(mark.Child).Text);
+            Assert.Contains("unknown", mark.Classes);
+            Assert.Equal("Unknown", AutomationProperties.GetName(mark));
+        });
+    }
+
+    [Fact]
     public void GalleryRendersEveryOpinionAndParserState()
     {
         _avalonia.Invoke(() =>
