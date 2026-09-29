@@ -23,7 +23,6 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
     private static readonly string[] RunnerVariables =
     [
         RunnerOptions.RootVariable,
-        RunnerOptions.NamespaceVariable,
         RunnerOptions.IdleVariable,
         RunnerOptions.LeaseVariable,
         ProcessRunnerLauncher.ExecutableVariable,
@@ -35,6 +34,9 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
     {
         var before = MotifVariables();
         Assert.All(RunnerVariables, name => Assert.Null(Environment.GetEnvironmentVariable(name)));
+        // Only the owner-lock isolation every test process sets; the launch argument must win over it.
+        Assert.Equal(ProcessRunnerNamespaceInitializer.Namespace,
+            Environment.GetEnvironmentVariable(RunnerOptions.NamespaceVariable));
         using var scratch = pristine.NewScratch();
         var path = scratch.ProjectId.Path;
         Guid wordformId = Guid.Empty;

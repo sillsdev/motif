@@ -16,6 +16,7 @@
   <ItemGroup Condition="'$(MotifTestProject)' == 'true'">
     <Compile Include="$(MSBuildThisFileDirectory)Shared\LcmCacheTestCollection.cs" Link="LcmCacheTestCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessPanGlossQueueInitializer.cs" Link="ProcessPanGlossQueueInitializer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessRunnerNamespaceInitializer.cs" Link="ProcessRunnerNamespaceInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessSldrOfflineInitializer.cs" Link="ProcessSldrOfflineInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\NoCrashDialogs.cs" Link="NoCrashDialogs.cs" />
