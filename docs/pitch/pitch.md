@@ -550,7 +550,7 @@ When a grammar is good enough, Motif publishes it as a Language Pack, with its r
 
 ### The marketplace
 
-A public home for parsers, owned by SIL (or a partner such as the Wikimedia Foundation), where language communities post grammars and any tool can use them:
+A public home for parsers, owned by SIL (or a hypothetical partner such as the Wikimedia Foundation), where language communities post grammars and any tool can use them:
 
 - **Spell checkers** in Firefox, LibreOffice and other editors
 - **Predictors** in Keyman keyboards and on phones
