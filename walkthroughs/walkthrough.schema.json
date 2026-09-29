@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif-docs.pages.dev/walkthrough.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "steps"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stepId" },
+              "kind": { "const": "click" },
+              "automationId": { "$ref": "#/$defs/automationId" },
+              "automationName": { "type": "string", "minLength": 1 }
+            },
+            "oneOf": [
+              { "required": ["automationId"], "not": { "required": ["automationName"] } },
+              { "required": ["automationName"], "not": { "required": ["automationId"] } }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "automationId", "text"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stepId" },
+              "kind": { "const": "type" },
+              "automationId": { "$ref": "#/$defs/automationId" },
+              "text": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "automationId", "condition", "timeoutMs"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stepId" },
+              "kind": { "const": "waitFor" },
+              "automationId": { "$ref": "#/$defs/automationId" },
+              "condition": { "enum": ["visible", "hidden", "enabled", "text"] },
+              "expectedText": { "type": "string" },
+              "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 }
+            },
+            "allOf": [
+              {
+                "if": { "properties": { "condition": { "const": "text" } } },
+                "then": { "required": ["expectedText"] },
+                "else": { "not": { "required": ["expectedText"] } }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "automationId"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stepId" },
+              "kind": { "const": "highlight" },
+              "automationId": { "$ref": "#/$defs/automationId" }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "durationMs"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stepId" },
+              "kind": { "const": "hold" },
+              "durationMs": { "type": "integer", "minimum": 1, "maximum": 60000 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "durationMs", "callouts"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stepId" },
+              "kind": { "const": "capture" },
+              "durationMs": { "type": "integer", "minimum": 100, "maximum": 60000 },
+              "callouts": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["automationId", "caption"],
+                  "properties": {
+                    "automationId": { "$ref": "#/$defs/automationId" },
+                    "caption": { "type": "string", "minLength": 1, "maxLength": 80 }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "stepId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "automationId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+  }
+}

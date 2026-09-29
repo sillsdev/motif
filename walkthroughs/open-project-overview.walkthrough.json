@@ -1,0 +1,14 @@
+{
+  "id": "open-project-overview",
+  "steps": [
+    { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
+    { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
+    { "id": "wait-for-count", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "open-texts", "kind": "click", "automationName": "Texts page" },
+    { "id": "open-overview", "kind": "click", "automationName": "Overview page" },
+    { "id": "confirm-overview-count", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "highlight-count", "kind": "highlight", "automationId": "motif-overview-selection-word-count" },
+    { "id": "overview", "kind": "capture", "durationMs": 1600, "callouts": [ { "automationId": "motif-overview-selection-word-count", "caption": "Words in the Selection" } ] },
+    { "id": "hold-overview", "kind": "hold", "durationMs": 250 }
+  ]
+}
