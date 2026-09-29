@@ -129,7 +129,7 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences(), new RecordingUriLauncher());
+            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences(), new SucceedingUriLauncher());
             var (_, window, _) = NewComposedWindow(notice);
             try
             {
@@ -1333,7 +1333,7 @@ public sealed class MainWindowSmokeTests
         public void MarkTechDemoNoticeSeen() => HasSeenTechDemoNotice = true;
     }
 
-    private sealed class RecordingUriLauncher : IUriLauncher
+    private sealed class SucceedingUriLauncher : IUriLauncher
     {
         public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }

@@ -10,7 +10,7 @@ public sealed class TechDemoNoticeViewModelTests
     public void GotItRemembersTheNoticeForTheNextWindow()
     {
         var preferences = new MemoryTechDemoNoticePreferences();
-        var firstWindow = new TechDemoNoticeViewModel(preferences, new RecordingUriLauncher());
+        var firstWindow = new TechDemoNoticeViewModel(preferences, new SucceedingUriLauncher());
 
         Assert.Equal(
             "Motif is a tech demo. It reads your project and writes nothing until you press Apply. Keep a FieldWorks backup, and tell us what goes wrong.",
@@ -21,7 +21,29 @@ public sealed class TechDemoNoticeViewModelTests
 
         Assert.False(firstWindow.IsVisible);
         Assert.True(preferences.HasSeenTechDemoNotice);
-        Assert.False(new TechDemoNoticeViewModel(preferences, new RecordingUriLauncher()).IsVisible);
+        Assert.False(new TechDemoNoticeViewModel(preferences, new SucceedingUriLauncher()).IsVisible);
+    }
+
+    [Fact]
+    public void FilePreferencesRoundTripAndTreatCorruptJsonAsUnseen()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.TechDemoNotice", Guid.NewGuid().ToString("N"));
+        var preferencesPath = Path.Combine(root, "preferences.json");
+        try
+        {
+            var preferences = new FileTechDemoNoticePreferences(preferencesPath);
+            Assert.False(preferences.HasSeenTechDemoNotice);
+
+            preferences.MarkTechDemoNoticeSeen();
+            Assert.True(new FileTechDemoNoticePreferences(preferencesPath).HasSeenTechDemoNotice);
+
+            File.WriteAllText(preferencesPath, "{");
+            Assert.False(new FileTechDemoNoticePreferences(preferencesPath).HasSeenTechDemoNotice);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
     }
 
     private sealed class MemoryTechDemoNoticePreferences : ITechDemoNoticePreferences
@@ -31,7 +53,7 @@ public sealed class TechDemoNoticeViewModelTests
         public void MarkTechDemoNoticeSeen() => HasSeenTechDemoNotice = true;
     }
 
-    private sealed class RecordingUriLauncher : IUriLauncher
+    private sealed class SucceedingUriLauncher : IUriLauncher
     {
         public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }

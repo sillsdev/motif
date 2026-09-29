@@ -33,6 +33,7 @@ internal sealed class FileTechDemoNoticePreferences(string preferencesPath) : IT
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
+            // A failed write only means the reminder may appear again next time.
         }
     }
 
