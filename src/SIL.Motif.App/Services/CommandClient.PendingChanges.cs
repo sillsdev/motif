@@ -36,4 +36,8 @@ public sealed partial class CommandClient
     public Task<CommandOutcome<PendingChangesSnapshot>> RecheckPendingChangesAsync(
         RecheckPendingChangesRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChanges.Recheck(request), cancellationToken);
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> ReconfirmPendingChangeAsync(
+        ReconfirmPendingChangeRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => PendingChanges.Reconfirm(request), cancellationToken);
 }

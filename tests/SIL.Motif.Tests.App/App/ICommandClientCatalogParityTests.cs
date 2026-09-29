@@ -30,6 +30,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.PutPendingChangeAsync)] = "put-pending-change",
             [nameof(ICommandClient.RemovePendingChangeAsync)] = "remove-pending-change",
             [nameof(ICommandClient.RecheckPendingChangesAsync)] = "recheck-pending-changes",
+            [nameof(ICommandClient.ReconfirmPendingChangeAsync)] = "reconfirm-pending-change",
             [nameof(ICommandClient.DeleteRefusedStoreAsync)] = "store delete-refused",
         };
 

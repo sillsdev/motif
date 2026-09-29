@@ -109,6 +109,26 @@ public sealed class TextWordsQueryTests : IDisposable
     }
 
     [Fact]
+    public void LinesAndTokensRetainTheOccurrenceIdentityForAnAnalyzeTextsDecision()
+    {
+        using var cache = _pristine.NewScratch();
+        var seededText = SeededProject.SeedText(cache, _pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        var fwDataPath = cache.ProjectId.Path;
+        Capture(fwDataPath);
+
+        var outcome = TextWordsQuery.Query(new TextWordsRequest(fwDataPath, [seededText.TextId]));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var line = Assert.Single(outcome.Value!.Texts).Lines[0];
+        var word = line.Tokens.First(token => token.Form is not null);
+        Assert.Equal(seededText.FirstParagraphId, line.ParagraphId);
+        Assert.Equal(seededText.FirstSegmentId, line.SegmentId);
+        Assert.Equal(0, word.OccurrenceIndex);
+        Assert.Equal(seededText.AnalysedWordformId, word.WordformId);
+    }
+
+    [Fact]
     public void OccurrencesOfTheSameFormKeepTheirOwnAnalysis_KeysAgreeAcrossSenseAndDifferAcrossMorphology()
     {
         using var cache = _pristine.NewScratch();

@@ -67,7 +67,7 @@
                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
                       <Panel Margin="{DynamicResource Component.TextsPage.WordGap}">
                         <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}" FontSize="{DynamicResource Intent.Type.Brand}" />
-                        <Border IsVisible="{Binding IsWord}" Classes="wordVerdict" Focusable="True" Tag="{Binding}"
+                        <Border IsVisible="{Binding IsWord}" Classes="wordVerdict" Classes.uncertainChanged="{Binding IsUncertainChanged}" Focusable="True" Tag="{Binding}"
                                 views:VerdictClasses.Verdict="{Binding Meaning}" Classes.dimmed="{Binding IsDimmed}"
                                 PointerPressed="OnTokenPressed" KeyDown="OnTokenKeyDown"
                                 ToolTip.Tip="{Binding VerdictLabel}">

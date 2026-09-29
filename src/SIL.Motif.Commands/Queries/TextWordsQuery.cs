@@ -74,6 +74,8 @@ public static class TextWordsQuery
                             Analysis = analysis,
                             WordGloss = token.WordGloss,
                             Category = token.Category,
+                            WordformId = token.WordformId,
+                            OccurrenceIndex = token.OccurrenceIndex,
                             WordLink = token.Text.Length == 0
                                 ? null : FieldWorksLinks.ForTarget(projectName, token.WordLinkTarget),
                         });
@@ -93,7 +95,12 @@ public static class TextWordsQuery
                                 text.TextId, text.Title, line.Number, line.Sentence, token.Status, analysis));
                         }
                     }
-                    lines.Add(new TextLine(line.Number, tokens));
+                    lines.Add(new TextLine(line.Number, tokens)
+                    {
+                        ParagraphId = line.ParagraphId,
+                        SegmentId = line.SegmentId,
+                        ParseIsCurrent = line.ParseIsCurrent,
+                    });
                 }
                 texts.Add(new TextLines(text.TextId, text.Title, lines));
             }

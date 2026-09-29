@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Cli;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using Xunit;
 
@@ -249,7 +250,7 @@ public sealed class JobVerbArgvTests : IDisposable
     private static FailureEnvelope Envelope(string stderr) =>
         ProjectionJson.Deserialize<FailureEnvelope>(stderr)!;
 
-    private static CliRun Run(string arguments)
+    private CliRun Run(string arguments)
     {
         var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
@@ -261,6 +262,7 @@ public sealed class JobVerbArgvTests : IDisposable
             CreateNoWindow = true,
         };
         // This suite asserts on the queue with nothing claiming it; a real kicked runner would race it.
+        start.Environment[RunnerOptions.RootVariable] = _root;
         start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         using var process = Process.Start(start)!;

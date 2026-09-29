@@ -122,6 +122,10 @@ public sealed class ComponentStyleTests
         yield return new("WordVerdict", "a word", host => Add(host, Box("wordVerdict")), Border.PaddingProperty, "Component.WordVerdict.Padding");
         yield return new("WordVerdict", "a dimmed word", host => Add(host, Box("wordVerdict", "dimmed")),
             Visual.OpacityProperty, "Intent.Opacity.Dimmed");
+        yield return new("WordVerdict", "a changed uncertain word", host => Add(host, Box("wordVerdict", "uncertainChanged")),
+            Border.BackgroundProperty, "Intent.Warning.Fill");
+        yield return new("WordVerdict", "a changed uncertain word", host => Add(host, Box("wordVerdict", "uncertainChanged")),
+            Border.BorderBrushProperty, "Intent.Warning.Text");
 
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.BackgroundProperty, "Intent.Clear");
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.MarginProperty, "Component.FilterChip.Margin");
@@ -210,6 +214,10 @@ public sealed class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.Warning");
         yield return new("Review", "a reading", host => Add(host, Box("reviewReading")),
             Border.BorderBrushProperty, "Intent.Border");
+        yield return new("Review", "a changed sentence word", host => Add(host, Box("reviewSentenceToken", "changed")),
+            Border.BackgroundProperty, "Intent.Warning.Fill");
+        yield return new("Review", "a changed sentence word", host => Add(host, Box("reviewSentenceToken", "changed")),
+            Border.BorderThicknessProperty, "Intent.Stroke.Box");
         yield return new("Review", "a parser outline", host => Add(host, With(new Rectangle(), ["reviewParserOutline"])),
             Rectangle.StrokeProperty, "Intent.TextFaint");
         yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
