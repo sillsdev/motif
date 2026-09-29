@@ -87,6 +87,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 e.PropertyName == nameof(SetupViewModel.IsOpen))
             {
                 OnPropertyChanged(nameof(ShowsParseAllWordsAction));
+                OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
                 ParseAllWordsCommand.NotifyCanExecuteChanged();
             }
         };
@@ -101,6 +102,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             OpenConfiguration?.Invoke();
             if (Context.Setup?.ConfigurationLoadTask is { } load) await load.ConfigureAwait(true);
         }, () => CanConfigure);
+        Context.ConfigureCommand = ConfigureCommand;
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         SeeWhatChangedCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.WhatChanged), () => ShowsSeeWhatChanged);
@@ -288,14 +290,12 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 ProjectFreshness.NoBaseline => "Refresh to capture one from FieldWorks' last save.",
                 ProjectFreshness.Current => BaselineAndSaveText(),
                 ProjectFreshness.SavedSince => SavedSinceText(),
-                ProjectFreshness.Refreshing => Assess.IsActive
-                    ? Assess.Progress?.Message is { Length: > 0 } message ? message : "Assessing the Selection..."
-                    : "Capturing a new Baseline...",
+                ProjectFreshness.Refreshing => "Capturing a new Baseline...",
                 ProjectFreshness.Refreshed when Context.NeedsAssessment =>
-                    "The new Baseline is ready. Parse all words to measure it.",
+                    "Refreshed. Parse all words to update the numbers.",
                 ProjectFreshness.Refreshed => Assess.Difference.HasDifference
                     ? Assess.Difference.Summary
-                    : "The words are parsed against this Baseline.",
+                    : "The words you chose have been parsed.",
                 _ => string.Empty,
             };
             if (Baseline.FieldWorksHeldProject != true) return detail;
@@ -313,15 +313,17 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public bool FreshnessIsBusy => Freshness == ProjectFreshness.Refreshing;
 
     /// <summary>Whether the top row offers Refresh instead of parsing or showing parse progress.</summary>
-    public bool ShowsRefreshAction => !FreshnessIsBusy && !IsParsingAllWords &&
+    public bool ShowsRefreshAction => !FreshnessIsBusy && !IsParsingAllWords && !Assess.IsActive &&
         (!Context.NeedsAssessment || FreshnessIsStale);
 
     /// <summary>Whether the top row offers the saved Default Selection against the current Baseline.</summary>
-    public bool ShowsParseAllWordsAction => !FreshnessIsBusy && !IsParsingAllWords &&
-        Context.NeedsAssessment && !FreshnessIsStale && !Assess.IsActive && Context.Setup?.IsOpen != true;
+    public bool ShowsParseAllWordsAction => ShowsParseAction && Context.Setup?.CanRunDefaultSelection == true;
 
-    /// <summary>Whether the top row is showing progress for its Parse all words action.</summary>
-    public bool ShowsParseAllWordsProgress => IsParsingAllWords;
+    /// <summary>Whether the top row offers to open Configure when there is no saved Selection to parse.</summary>
+    public bool ShowsChooseWhatToParseAction => ShowsParseAction && Context.Setup?.CanRunDefaultSelection == false;
+
+    /// <summary>Whether the top row is showing progress for an Assessment.</summary>
+    public bool ShowsParseAllWordsProgress => Assess.IsActive;
 
     /// <summary>The current number of words parsed, or the current run stage while no count is available.</summary>
     public string ParseAllWordsProgressText => Assess.Progress is
@@ -546,6 +548,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         generation == _refreshGeneration && projectPath is not null &&
         string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal);
 
+    private bool ShowsParseAction => !FreshnessIsBusy && !IsParsingAllWords && Context.NeedsAssessment &&
+        !FreshnessIsStale && !Assess.IsActive && Context.Setup is { IsOpen: false };
+
     private bool CanParseAllWords() => Context.NeedsAssessment && !FreshnessIsStale && !_isRefreshing &&
         !Assess.IsActive && Context.Setup is { IsOpen: false, CanRunDefaultSelection: true };
 
@@ -570,6 +575,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         OnPropertyChanged(nameof(ShowsRefreshAction));
         OnPropertyChanged(nameof(ShowsParseAllWordsAction));
+        OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
         OnPropertyChanged(nameof(ShowsParseAllWordsProgress));
         ParseAllWordsCommand.NotifyCanExecuteChanged();
     }
@@ -588,6 +594,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         OnPropertyChanged(nameof(ShowsSeeWhatChanged));
         OnPropertyChanged(nameof(ShowsRefreshAction));
         OnPropertyChanged(nameof(ShowsParseAllWordsAction));
+        OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
         OnPropertyChanged(nameof(ShowsParseAllWordsProgress));
         OnPropertyChanged(nameof(ParseAllWordsProgressText));
         OnPropertyChanged(nameof(ParseAllWordsProgressIsIndeterminate));
@@ -647,6 +654,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             case nameof(WorkspaceContext.NeedsAssessment):
                 OnPropertyChanged(nameof(ShowsRefreshAction));
                 OnPropertyChanged(nameof(ShowsParseAllWordsAction));
+                OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
                 ParseAllWordsCommand.NotifyCanExecuteChanged();
                 break;
         }
@@ -676,7 +684,10 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         {
             RefreshCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(ProjectSwitchEnabled));
+            OnPropertyChanged(nameof(ShowsRefreshAction));
             OnPropertyChanged(nameof(ShowsParseAllWordsAction));
+            OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
+            OnPropertyChanged(nameof(ShowsParseAllWordsProgress));
             // Shell-started parsing keeps the current page open while manual runs open Texts.
             if (Assess.IsActive && !_isRefreshing && !IsParsingAllWords &&
                 !(Assess.LastRunWasRerun && Context.CurrentPage == WorkspacePage.Timing))

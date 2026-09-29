@@ -36,6 +36,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
             ConfigureFakeReading(project, parserPath);
             walkthrough.Check(SeededProject.TextTitle);
+            Assert.Contains(project.Text.TextId, walkthrough.Workspace.Selection.ChosenTextIds);
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
 
             walkthrough.ShowPage(WorkspacePage.Texts);

@@ -88,13 +88,7 @@
       <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
       <Border Classes="card" IsVisible="{Binding ShowParsePrompt}"
               HorizontalAlignment="Center" VerticalAlignment="Center">
-        <StackPanel Spacing="{DynamicResource Intent.Space.Related}" HorizontalAlignment="Center">
-          <views:CopyableTextBlock Classes="muted"
-                                   Text="These words haven't been parsed since the last Refresh."
-                                   TextWrapping="Wrap" />
-          <Button Content="Parse all words" Command="{Binding Context.ParseAllWordsCommand}"
-                  HorizontalAlignment="Center" AutomationProperties.Name="Parse all words" />
-        </StackPanel>
+        <views:ParsePrompt DataContext="{Binding Context}" />
       </Border>
     </Panel>
   </Grid>

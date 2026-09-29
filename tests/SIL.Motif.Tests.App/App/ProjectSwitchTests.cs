@@ -321,12 +321,19 @@ public sealed class ProjectSwitchTests
         await opening;
         Assert.Contains(ProjectA, parts.Fake.CurrentEvidenceRequests);
         Assert.False(parts.Workspace.Context.NeedsAssessment);
+        var refreshedToken = NewToken("2026-09-06T00:00:00Z");
+        var refreshedAt = DateTimeOffset.UtcNow;
+        parts.Fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", refreshedAt,
+            null, EvidenceFreshness.Current,
+            new BaselineRecord("project-1", refreshedToken, "root", ProjectA, refreshedAt, refreshedAt),
+            null, null, null, null));
         parts.Fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
-            NewToken("2026-09-06T00:00:00Z"), ProjectA, DateTimeOffset.UtcNow, false, false));
+            refreshedToken, ProjectA, refreshedAt, false, false));
 
         await parts.Workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
         Assert.True(parts.Workspace.Context.NeedsAssessment);
+        Assert.Equal(2, parts.Fake.CurrentEvidenceRequests.Count(path => path == ProjectA));
     }
 
     [Fact]

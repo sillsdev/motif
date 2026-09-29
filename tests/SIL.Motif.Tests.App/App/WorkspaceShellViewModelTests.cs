@@ -677,6 +677,7 @@ public sealed class WorkspaceShellViewModelTests
         var parsing = workspace.ParseAllWordsCommand.ExecuteAsync(null);
         Assert.True(workspace.ShowsParseAllWordsProgress);
         Assert.Equal("Parsing 312 of 1,040 words", workspace.ParseAllWordsProgressText);
+        Assert.True(workspace.PageModel<TextsPageModel>().ShowParsePrompt);
         workspace.Assess.CancelCommand.Execute(null);
         await parsing;
 

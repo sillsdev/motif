@@ -31,7 +31,8 @@ public enum NumbersFreshness
 /// run. A stored read replaces the Assessment on screen only when it holds a different one: a stored Assessment
 /// whose words changed, or one recorded after the run this window shows, as when an agent ran it from the command
 /// line. The store's copy of this window's own run never replaces it, since a run's rows name readings the store
-/// does not. A successful Refresh clears the Assessment until a run measures the new Baseline.
+/// does not. A successful Refresh clears the in-memory Assessment, then restores stored evidence only when it
+/// matches the captured Baseline and Selection.
 /// </remarks>
 public sealed class ProjectEvidence : ObservableObject
 {

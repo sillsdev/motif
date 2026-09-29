@@ -88,8 +88,7 @@ public sealed partial class TextsPageModel : PageModel
 
     public bool ShowAnalyzeTextsContent => ShowAnalyzeTexts && !Context.NeedsAssessment;
 
-    public bool ShowParsePrompt => Context.NeedsAssessment && !Assess.IsActive &&
-        (ShowMatrix || ShowAnalyzeTexts);
+    public bool ShowParsePrompt => Context.NeedsAssessment && (ShowMatrix || ShowAnalyzeTexts);
 
     public bool ShowLists => Tab == TextsTab.Lists;
 

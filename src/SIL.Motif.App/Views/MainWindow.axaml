@@ -95,7 +95,11 @@
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsParseAllWordsAction}"
                   AutomationProperties.Name="Parse all words"
-                  ToolTip.Tip="Parse the saved Default Selection against this Baseline." />
+                  ToolTip.Tip="Parse the words you chose." />
+          <Button x:Name="ChooseWhatToParseButton" Content="Choose what to parse" Command="{Binding ConfigureCommand}"
+                  Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
+                  IsVisible="{Binding ShowsChooseWhatToParseAction}"
+                  AutomationProperties.Name="Choose what to parse" />
           <Button Content="Refresh" Command="{Binding RefreshCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsRefreshAction}" AutomationProperties.Name="Refresh the project"

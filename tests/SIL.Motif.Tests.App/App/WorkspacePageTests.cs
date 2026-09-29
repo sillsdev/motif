@@ -616,7 +616,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(ProjectFreshness.Refreshed, workspace.Freshness);
         Assert.True(workspace.Context.NeedsAssessment);
         Assert.True(workspace.Context.HasNoEvidence);
-        Assert.Contains("Parse all words", workspace.FreshnessDetail);
+        Assert.Equal("Refreshed. Parse all words to update the numbers.", workspace.FreshnessDetail);
     }
 
     [Fact]

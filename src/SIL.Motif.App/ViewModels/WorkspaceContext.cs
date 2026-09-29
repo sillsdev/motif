@@ -126,6 +126,27 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The shell's action for measuring the saved Default Selection against the current Baseline.</summary>
     public IAsyncRelayCommand? ParseAllWordsCommand { get; internal set; }
 
+    /// <summary>The shell's action for configuring the words to parse.</summary>
+    public IRelayCommand? ConfigureCommand { get; internal set; }
+
+    /// <summary>The sentence shared by every page when its measurements need a new parse.</summary>
+    public string ParsePromptText => Assess.IsActive
+        ? "Parsing… see the top row."
+        : "These words haven't been parsed since the last Refresh.";
+
+    /// <summary>The action offered by the shared parse prompt.</summary>
+    public string ParsePromptActionText => Setup?.CanRunDefaultSelection == true
+        ? "Parse all words"
+        : "Choose what to parse";
+
+    /// <summary>The command behind the shared parse prompt's action.</summary>
+    public IRelayCommand? ParsePromptActionCommand => Setup?.CanRunDefaultSelection == true
+        ? ParseAllWordsCommand
+        : ConfigureCommand;
+
+    /// <summary>Whether the shared prompt should offer an action while no Assessment is running.</summary>
+    public bool ShowParsePromptAction => !Assess.IsActive;
+
     /// <summary>Where a page asks a person to choose a folder.</summary>
     public IHandoffFolderPicker FolderPicker { get; }
 
@@ -220,6 +241,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     {
         Setup = setup;
         _projectParticipants.Add(setup);
+        setup.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(SetupViewModel.CanRunDefaultSelection) or nameof(SetupViewModel.IsOpen)))
+                return;
+            OnPropertyChanged(nameof(ParsePromptActionText));
+            OnPropertyChanged(nameof(ParsePromptActionCommand));
+        };
     }
 
     /// <summary>Forgets the evidence and tells every page to drop what it showed for the previous project.</summary>
@@ -295,7 +323,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>
-    /// Tells every page the new Baseline was captured and returns once each page has reloaded.
+    /// Rechecks pending changes, reads evidence for the new Baseline, then reloads every page and setup.
     /// </summary>
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
     {
@@ -448,7 +476,10 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(AssessViewModel.IsActive)) OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
+        if (e.PropertyName != nameof(AssessViewModel.IsActive)) return;
+        OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
+        OnPropertyChanged(nameof(ParsePromptText));
+        OnPropertyChanged(nameof(ShowParsePromptAction));
     }
 
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)

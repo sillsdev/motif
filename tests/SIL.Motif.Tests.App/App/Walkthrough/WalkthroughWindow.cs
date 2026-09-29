@@ -377,9 +377,8 @@ public sealed class WalkthroughWindow : IDisposable
         var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
             Equals(control.Content, content));
         ShowStageOwning(checkBox);
-        var before = checkBox.IsChecked;
-        ClickControl(checkBox, content);
-        Assert.NotEqual(before, checkBox.IsChecked);
+        if (checkBox.IsChecked != true) ClickControl(checkBox, content);
+        Assert.True(checkBox.IsChecked, $"'{content}' was not checked.");
     }
 
     public void Type(string accessibleName, string text)

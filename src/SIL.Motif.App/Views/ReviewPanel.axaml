@@ -151,11 +151,7 @@
         <StackPanel Classes="reviewRelated">
           <views:CopyableTextBlock Classes="section-title" Text="What applying does to the numbers"
                                    TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted"
-                                   Text="These words haven't been parsed since the last Refresh."
-                                   TextWrapping="Wrap" />
-          <Button Content="Parse all words" Command="{Binding Context.ParseAllWordsCommand}"
-                  AutomationProperties.Name="Parse all words" />
+          <views:ParsePrompt DataContext="{Binding Context}" />
         </StackPanel>
       </Border>
       <Border Classes="card">

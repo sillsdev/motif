@@ -287,13 +287,41 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                     "the stored Assessment did not load at startup");
                 Assert.False(workspace.Context.NeedsAssessment);
 
-                stage = "Refresh";
+                stage = "no-op Refresh";
                 var refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
                 Click(session.Window, refresh);
+                await Until(() => !workspace.RefreshCommand.IsRunning,
+                    "the no-op Refresh did not finish");
+                Assert.False(workspace.Context.NeedsAssessment,
+                    "a Refresh that reused the Baseline should keep its stored Assessment");
+                Assert.True(workspace.Context.Evidence.HasAssessment);
+                Assert.True(workspace.ShowsRefreshAction);
+
+                new SIL.Motif.Tests.TestFixtures.FieldWorksSimulator(project.FwDataPath).SaveEdit(_ => { });
+                stage = "Refresh after a FieldWorks save";
+                refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
+                Click(session.Window, refresh);
                 await Until(() => !workspace.RefreshCommand.IsRunning && workspace.Context.NeedsAssessment,
-                    "Refresh did not leave the new Baseline unparsed");
+                    "Refresh after a FieldWorks save did not leave the new Baseline unparsed");
                 Assert.True(workspace.ShowsParseAllWordsAction);
+
+                stage = "Overview prompt";
+                await ShowPageAsync(session, WorkspacePage.Overview);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "These words haven't been parsed since the last Refresh." && text.IsEffectivelyVisible);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
+                    button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
+                    ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
+
+                stage = "Review prompt";
+                await ShowPageAsync(session, WorkspacePage.Review);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "These words haven't been parsed since the last Refresh." && text.IsEffectivelyVisible);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
+                    button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
+                    ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
 
                 stage = "Texts prompt";
                 await ShowPageAsync(session, WorkspacePage.Texts);
@@ -311,6 +339,9 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 stage = "held Parse all words";
                 Click(session.Window, parseButton);
                 await Until(() => File.Exists(startedPath), "the parse did not reach the held fake parser");
+                Assert.True(texts.ShowParsePrompt);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Parsing… see the top row." && text.IsEffectivelyVisible);
                 await UntilFound(session.Window, () => "top-row parse progress did not appear",
                     text => text.StartsWith("Parsing ", StringComparison.Ordinal) &&
                         text.EndsWith(" words", StringComparison.Ordinal));
