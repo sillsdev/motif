@@ -519,7 +519,8 @@ public static class JobCommands
                 CanonicalId.Parse(element.GetProperty("canonicalId").GetString()!),
                 element.GetProperty("field").GetString()!,
                 ReadAlternatives(element.GetProperty("before")),
-                ReadAlternatives(element.GetProperty("after"))));
+                ReadAlternatives(element.GetProperty("after")),
+                element.TryGetProperty("preview", out var preview) ? preview.Clone() : null));
         }
         return effects;
     }

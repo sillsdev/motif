@@ -201,10 +201,12 @@ when it was the current opinion. The effect and semantic snapshot field is
 `analysis/wfiAnalysis/delete` targets one stored `WfiAnalysis` and has the closed empty `after` object
 `{}`. Its effect and snapshot field is the owning wordform's
 `analysis/wfiWordform/analyses` map, with the deleted row removed. The preview adds every Text, paragraph,
-Segment, and sequence index that references the analysis and explains the outcome: LibLCM removes each
-reference and does not insert the wordform in its place; later analyses shift left. Apply reads the owning
-wordform back, so a changed analysis identity, reading, opinion, or Text use makes the collected change fail
-its fit check. Cancelling the pending change is Undo.
+Segment, and sequence index that references the analysis or a gloss it owns. Before deleting the analysis,
+Motif calls `MoveConcAnnotationsToWordform()`, which replaces each such reference with the owning wordform
+at the same index. Neighboring words keep their positions, so the Segment remains aligned with its text.
+The owning wordform row is the semantic effect; occurrence details are separate preview and footprint
+evidence. Apply reads both back, so a changed analysis identity, reading, opinion, or Text use makes the
+collected change fail its fit check. Cancelling the pending change is Undo.
 
 `analysis/wfiWordform/createAnalyses` targets a `WfiWordform`, supplies a fresh `entityId`, and has
 the closed `after` shape `{ "morphs": [{ "form": "<id>", "msa": "<id>",

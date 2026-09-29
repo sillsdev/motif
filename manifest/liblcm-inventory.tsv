@@ -808,7 +808,7 @@
 "ScrSection"	"CmObject"	"false"	"out"	"not-domain-reachable"	"VerseRefMax"	"basic"	"Integer"	""	"n/a"	""	""	""	""	""	"n/a"	""	""
 "ScrSection"	"CmObject"	"false"	"out"	"not-domain-reachable"	"VerseRefMin"	"basic"	"Integer"	""	"n/a"	""	""	""	""	""	"n/a"	""	""
 "ScrSection"	"CmObject"	"false"	"out"	"not-domain-reachable"	"VerseRefStart"	"basic"	"Integer"	""	"n/a"	""	""	""	""	""	"n/a"	""	""
-"Segment"	"CmObject"	"false"	"out"	"not-domain-reachable"	"Analyses"	"rel"	"IAnalysis"	"seq"	"n/a"	""	""	""	""	""	"n/a"	""	""
+"Segment"	"CmObject"	"false"	"out"	"not a semantic root; touched indirectly by analysis/wfiAnalysis/delete"	"Analyses"	"rel"	"IAnalysis"	"seq"	"n/a"	""	""	""	""	""	"n/a"	""	"analysis/wfiAnalysis/delete calls MoveConcAnnotationsToWordform, replacing direct and owned-gloss references with the wordform at the same Segment index."
 "Segment"	"CmObject"	"false"	"out"	"not-domain-reachable"	"BeginOffset"	"basic"	"Integer"	""	"n/a"	""	""	""	""	""	"n/a"	""	""
 "Segment"	"CmObject"	"false"	"out"	"not-domain-reachable"	"BeginTimeOffset"	"basic"	"Unicode"	""	"n/a"	""	""	""	""	""	"n/a"	""	""
 "Segment"	"CmObject"	"false"	"out"	"not-domain-reachable"	"EndTimeOffset"	"basic"	"Unicode"	""	"n/a"	""	""	""	""	""	"n/a"	""	""

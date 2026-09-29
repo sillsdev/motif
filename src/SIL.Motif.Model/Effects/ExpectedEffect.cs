@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using SIL.Motif.Contract.Ids;
 
 namespace SIL.Motif.Model.Effects;
@@ -23,4 +24,5 @@ public sealed record ExpectedEffect(
     CanonicalId CanonicalId,
     string Field,
     IReadOnlyDictionary<string, string> Before,
-    IReadOnlyDictionary<string, string> After);
+    IReadOnlyDictionary<string, string> After,
+    JsonElement? Preview = null);

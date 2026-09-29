@@ -96,32 +96,23 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
     }
 
     [Fact]
-    public void LibLcmDelete_RemovesSegmentReferenceWithoutWordformFallback()
+    public void LibLcmMoveConcAnnotationsToWordform_PreservesThreeWordAlignment()
     {
-        ISegment segment = null!;
+        var occurrence = AddThreeWordTextOccurrence(_cache, _analysis, "Direct use", throughGloss: false);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
-        {
-            var text = _cache.ServiceLocator.GetInstance<ITextFactory>().Create();
-            text.ContentsOA = _cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
-            var paragraph = _cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
-            text.ContentsOA.ParagraphsOS.Add(paragraph);
-            segment = _cache.ServiceLocator.GetInstance<ISegmentFactory>().Create();
-            paragraph.SegmentsOS.Add(segment);
-            segment.AnalysesRS.Add(_analysis);
-        });
+            _analysis.MoveConcAnnotationsToWordform());
 
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, _analysis.Delete);
 
         Assert.Empty(_wordform.AnalysesOC);
-        Assert.Empty(segment.AnalysesRS);
-        Assert.DoesNotContain(_wordform, segment.AnalysesRS);
+        AssertThreeWordAlignment(occurrence.Segment, occurrence.First, _wordform, occurrence.Third);
     }
 
     [Fact]
-    public void RemoveAnalysis_ListsEveryTextUseAndApplyLeavesNoWordformFallback()
+    public void RemoveAnalysis_ListsEveryTextUseAndApplyKeepsWordformInPlace()
     {
-        var first = AddTextOccurrence(_cache, _analysis, "First use");
-        var second = AddTextOccurrence(_cache, _analysis, "Second use");
+        var first = AddThreeWordTextOccurrence(_cache, _analysis, "First use", throughGloss: false);
+        var second = AddThreeWordTextOccurrence(_cache, _analysis, "Second use", throughGloss: true);
         var proposal = Proposal("analysis/wfiAnalysis/delete",
             CanonicalId.FromGuid(_analysis.Guid), new { });
         var before = AnalysisFieldSnapshots.Read(_wordform);
@@ -131,22 +122,34 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         Assert.Single(_wordform.AnalysesOC);
         var effect = Assert.Single(dryRun.ExpectedEffects);
         Assert.Equal(SnapshotFields.WfiWordformAnalyses, effect.Field);
-        Assert.True(effect.Before.TryGetValue(CanonicalId.FromGuid(_analysis.Guid).Value, out var removed));
-        using (var document = JsonDocument.Parse(removed!))
-        {
-            var uses = document.RootElement.GetProperty("uses").EnumerateArray().ToArray();
-            Assert.Equal(2, uses.Length);
-            Assert.Contains(uses, use => use.GetProperty("textId").GetString() == CanonicalId.FromGuid(first.Text.Guid).Value);
-            Assert.Contains(uses, use => use.GetProperty("textId").GetString() == CanonicalId.FromGuid(second.Text.Guid).Value);
-            Assert.All(uses, use => Assert.Contains("no wordform fallback", use.GetProperty("after").GetString()));
-        }
+        var analysisId = CanonicalId.FromGuid(_analysis.Guid).Value;
+        Assert.Equal(before.AlternativesFields[SnapshotFields.WfiWordformAnalyses], effect.Before);
+        Assert.True(effect.Before.TryGetValue(analysisId, out var removed));
+        Assert.DoesNotContain("uses", removed!, StringComparison.Ordinal);
+        var uses = effect.Preview!.Value.GetProperty("textUses").EnumerateArray().ToArray();
+        Assert.Equal(2, uses.Length);
+        Assert.Contains(uses, use => use.GetProperty("segmentId").GetString() ==
+            CanonicalId.FromGuid(first.Segment.Guid).Value &&
+            use.GetProperty("index").GetInt32() == 1 && !use.GetProperty("throughGloss").GetBoolean());
+        Assert.Contains(uses, use => use.GetProperty("segmentId").GetString() ==
+            CanonicalId.FromGuid(second.Segment.Guid).Value &&
+            use.GetProperty("index").GetInt32() == 1 && use.GetProperty("throughGloss").GetBoolean());
+        Assert.All(uses, use => Assert.Contains("same index", use.GetProperty("after").GetString()));
+        Assert.Equal(3, first.Segment.AnalysesRS.Count);
+        Assert.Equal(3, second.Segment.AnalysesRS.Count);
+        Assert.Same(first.First, first.Segment.AnalysesRS[0]);
+        Assert.Same(_analysis, first.Segment.AnalysesRS[1]);
+        Assert.Same(first.Third, first.Segment.AnalysesRS[2]);
+        Assert.Same(second.First, second.Segment.AnalysesRS[0]);
+        Assert.Same(second.Gloss, second.Segment.AnalysesRS[1]);
+        Assert.Same(second.Third, second.Segment.AnalysesRS[2]);
         Assert.DoesNotContain(CanonicalId.FromGuid(_analysis.Guid).Value, effect.After.Keys);
 
         ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester");
 
         Assert.Empty(_wordform.AnalysesOC);
-        Assert.Empty(first.Segment.AnalysesRS);
-        Assert.Empty(second.Segment.AnalysesRS);
+        AssertThreeWordAlignment(first.Segment, first.First, _wordform, first.Third);
+        AssertThreeWordAlignment(second.Segment, second.First, _wordform, second.Third);
         var difference = Assert.Single(AnalysisFieldSnapshots.Diff(before, AnalysisFieldSnapshots.Read(_wordform)));
         Assert.Equal(SnapshotFields.WfiWordformAnalyses, difference.Field);
         Assert.Contains(CanonicalId.FromGuid(_analysis.Guid).Value, difference.Before.Keys);
@@ -156,7 +159,7 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
     [Fact]
     public void FailedFollowingOperation_RollsBackAnalysisDeletionAndTextReferences()
     {
-        var occurrence = AddTextOccurrence(_cache, _analysis, "Rollback use");
+        var occurrence = AddThreeWordTextOccurrence(_cache, _analysis, "Rollback use", throughGloss: true);
         var deletion = new OperationEnvelope(CanonicalId.Mint(), WfiAnalysisOperationKinds.DeleteAnalysis,
             target: CanonicalId.FromGuid(_analysis.Guid), after: JsonSerializer.SerializeToElement(new { }));
         var invalidCreation = new OperationEnvelope(CanonicalId.Mint(), WfiAnalysisOperationKinds.CreateAnalysis,
@@ -175,7 +178,27 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         Assert.ThrowsAny<Exception>(() => ProposalApplier.Apply(_cache, proposal, anchor, "tester"));
 
         Assert.Contains(_analysis, _wordform.AnalysesOC);
-        Assert.Contains(_analysis, occurrence.Segment.AnalysesRS);
+        Assert.Equal(3, occurrence.Segment.AnalysesRS.Count);
+        Assert.Equal(occurrence.Gloss is null ? _analysis : occurrence.Gloss, occurrence.Segment.AnalysesRS[1]);
+        Assert.Same(occurrence.First, occurrence.Segment.AnalysesRS[0]);
+        Assert.Same(occurrence.Third, occurrence.Segment.AnalysesRS[2]);
+    }
+
+    [Fact]
+    public void TextUseChangedAfterDryRun_IsDriftAndCannotApply()
+    {
+        var occurrence = AddThreeWordTextOccurrence(_cache, _analysis, "Drift use", throughGloss: false);
+        var proposal = Proposal("analysis/wfiAnalysis/delete",
+            CanonicalId.FromGuid(_analysis.Guid), new { });
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            occurrence.Segment.AnalysesRS[1] = occurrence.Third);
+
+        Assert.ThrowsAny<Exception>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester"));
+
+        Assert.Contains(_analysis, _wordform.AnalysesOC);
+        Assert.Equal(3, occurrence.Segment.AnalysesRS.Count);
+        Assert.Same(occurrence.Third, occurrence.Segment.AnalysesRS[1]);
     }
 
     [Fact]
@@ -616,6 +639,55 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         });
         return (text, segment);
     }
+
+    private (IText Text, ISegment Segment, IAnalysis First, IAnalysis Third, IWfiGloss? Gloss)
+        AddThreeWordTextOccurrence(LcmCache cache, IWfiAnalysis analysis, string name, bool throughGloss)
+    {
+        IText text = null!;
+        ISegment segment = null!;
+        IAnalysis first = null!;
+        IAnalysis third = null!;
+        IWfiGloss? gloss = null;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            text = cache.ServiceLocator.GetInstance<ITextFactory>().Create();
+            text.Name.set_String(cache.DefaultAnalWs, name);
+            text.ContentsOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+            text.ContentsOA.ParagraphsOS.Add(paragraph);
+            segment = cache.ServiceLocator.GetInstance<ISegmentFactory>().Create();
+            paragraph.SegmentsOS.Add(segment);
+            first = NewNeighborAnalysis(cache, "first-" + name);
+            third = NewNeighborAnalysis(cache, "third-" + name);
+            if (throughGloss)
+            {
+                gloss = cache.ServiceLocator.GetInstance<IWfiGlossFactory>().Create();
+                analysis.MeaningsOC.Add(gloss);
+            }
+            segment.AnalysesRS.Add(first);
+            segment.AnalysesRS.Add(throughGloss ? gloss! : analysis);
+            segment.AnalysesRS.Add(third);
+        });
+        return (text, segment, first, third, gloss);
+    }
+
+    private static IWfiAnalysis NewNeighborAnalysis(LcmCache cache, string form)
+    {
+        var wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+            .Create(TsStringUtils.MakeString(form, cache.DefaultVernWs));
+        var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+        wordform.AnalysesOC.Add(analysis);
+        return analysis;
+    }
+
+    private static void AssertThreeWordAlignment(ISegment segment, IAnalysis first, IWfiWordform wordform,
+        IAnalysis third)
+    {
+        Assert.Equal(3, segment.AnalysesRS.Count);
+        Assert.Same(first, segment.AnalysesRS[0]);
+        Assert.Same(wordform, segment.AnalysesRS[1]);
+        Assert.Same(third, segment.AnalysesRS[2]);
+    }
 }
 
 public sealed class WfiAnalysisPayloadTests
@@ -714,7 +786,7 @@ public sealed class WfiAnalysisConformanceTests
         var receipt = ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "tester");
 
         Assert.Empty(wordform.AnalysesOC);
-        Assert.Empty(segment.AnalysesRS);
+        Assert.Same(wordform, Assert.Single(segment.AnalysesRS));
         Assert.Single(receipt.ActualEffects);
     }
 }

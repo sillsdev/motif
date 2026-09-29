@@ -44,6 +44,11 @@ public static class FootprintDigest
                 foreach (var alternative in effect.Before)
                     writer.WriteString(alternative.Key, alternative.Value);
                 writer.WriteEndObject();
+                if (effect.Preview is { } preview)
+                {
+                    writer.WritePropertyName("preview");
+                    preview.WriteTo(writer);
+                }
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();

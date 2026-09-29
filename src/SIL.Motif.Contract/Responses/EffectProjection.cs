@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -12,4 +14,5 @@ public sealed record EffectChange(string Ws, string? Before, string? After);
 /// One identity-keyed field transition, shaped for display: only the writing-system alternatives
 /// that actually differ, in place of <c>ExpectedEffect</c>'s full before/after maps.
 /// </summary>
-public sealed record EffectView(string CanonicalId, string Field, IReadOnlyList<EffectChange> Changes);
+public sealed record EffectView(string CanonicalId, string Field, IReadOnlyList<EffectChange> Changes,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] JsonElement? Preview = null);

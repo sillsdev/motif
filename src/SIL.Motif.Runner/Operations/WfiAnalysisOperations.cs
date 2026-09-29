@@ -114,12 +114,15 @@ internal sealed class DeleteAnalysisHandler : IOperationHandler
             $"'{WfiAnalysisOperationKinds.DeleteAnalysis}' target must be owned by a wordform.");
         var wordformId = CanonicalId.FromGuid(wordform.Guid);
         var before = Read(wordform);
-        AddUses(before, analysisId, ReadTextUses(cache, analysisId, wordform));
+        var uses = ReadTextUses(cache, analysis, wordform);
         touchedTargets.Add(analysisId);
 
+        analysis.MoveConcAnnotationsToWordform();
         analysis.Delete();
+        VerifyTextUses(cache, uses, wordform);
 
-        return new ExpectedEffect(wordformId, SnapshotFields.WfiWordformAnalyses, before, Read(wordform));
+        return new ExpectedEffect(wordformId, SnapshotFields.WfiWordformAnalyses, before, Read(wordform),
+            Preview(uses));
     }
 
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
@@ -131,31 +134,22 @@ internal sealed class DeleteAnalysisHandler : IOperationHandler
         var wordform = analysis.Owner as IWfiWordform ?? throw new ContractParseException(
             $"'{WfiAnalysisOperationKinds.DeleteAnalysis}' target must be owned by a wordform.");
         var current = Read(wordform);
-        AddUses(current, analysisId, ReadTextUses(cache, analysisId, wordform));
+        var uses = ReadTextUses(cache, analysis, wordform);
         return new ExpectedEffect(CanonicalId.FromGuid(wordform.Guid), SnapshotFields.WfiWordformAnalyses,
-            current, current);
+            current, current, Preview(uses));
     }
 
     private static Dictionary<string, string> Read(IWfiWordform wordform) => AnalysisFieldSnapshots.Read(wordform)
         .AlternativesFields[SnapshotFields.WfiWordformAnalyses].ToDictionary(pair => pair.Key, pair => pair.Value,
             StringComparer.Ordinal);
 
-    private static void AddUses(Dictionary<string, string> analyses, CanonicalId analysisId,
-        IReadOnlyList<AnalysisTextUse> uses)
-    {
-        if (!analyses.TryGetValue(analysisId.Value, out var content))
-            throw new ContractParseException("The analysis is no longer owned by its wordform.");
-        using var document = JsonDocument.Parse(content);
-        analyses[analysisId.Value] = JsonSerializer.Serialize(new
-        {
-            analysis = document.RootElement.Clone(),
-            uses,
-        }, JsonOptions);
-    }
+    private static JsonElement Preview(IReadOnlyList<AnalysisTextUse> uses) =>
+        JsonSerializer.SerializeToElement(new { textUses = uses }, JsonOptions);
 
-    private static IReadOnlyList<AnalysisTextUse> ReadTextUses(LcmCache cache, CanonicalId analysisId,
+    private static IReadOnlyList<AnalysisTextUse> ReadTextUses(LcmCache cache, IWfiAnalysis analysis,
         IWfiWordform wordform)
     {
+        var analysisId = CanonicalId.FromGuid(analysis.Guid);
         var wordformId = CanonicalId.FromGuid(wordform.Guid).Value;
         var wordformForm = wordform.Form.VernacularDefaultWritingSystem?.Text ?? "";
         var uses = new List<AnalysisTextUse>();
@@ -168,7 +162,9 @@ internal sealed class DeleteAnalysisHandler : IOperationHandler
                 foreach (var segment in paragraph.SegmentsOS)
                 for (var index = 0; index < segment.AnalysesRS.Count; index++)
                 {
-                    if (segment.AnalysesRS[index].Guid != analysisId.ToGuid()) continue;
+                    var item = segment.AnalysesRS[index];
+                    var throughGloss = item.Owner?.Guid == analysis.Guid;
+                    if (item.Guid != analysis.Guid && !throughGloss) continue;
                     uses.Add(new AnalysisTextUse(
                         CanonicalId.FromGuid(text.Guid).Value,
                         text.Name.get_String(cache.DefaultAnalWs)?.Text ?? "",
@@ -177,8 +173,9 @@ internal sealed class DeleteAnalysisHandler : IOperationHandler
                         index,
                         wordformId,
                         wordformForm,
-                        "LibLCM removes the reference; it adds no wordform fallback. " +
-                        "Later analyses keep their order and shift left."));
+                        throughGloss,
+                        "The wordform replaces this analysis or its gloss at the same index; " +
+                        "the other words in the Segment keep their positions."));
                 }
             }
         }
@@ -190,8 +187,22 @@ internal sealed class DeleteAnalysisHandler : IOperationHandler
             .ToArray();
     }
 
+    private static void VerifyTextUses(LcmCache cache, IReadOnlyList<AnalysisTextUse> uses,
+        IWfiWordform wordform)
+    {
+        foreach (var use in uses)
+        {
+            if (!CanonicalId.TryParse(use.SegmentId, out var segmentId) ||
+                !cache.ServiceLocator.ObjectRepository.TryGetObject(segmentId.ToGuid(), out var item) ||
+                item is not ISegment segment || use.Index >= segment.AnalysesRS.Count ||
+                segment.AnalysesRS[use.Index]?.Guid != wordform.Guid)
+                throw new InvalidOperationException(
+                    "Deleting the analysis did not preserve its wordform at the same Segment index.");
+        }
+    }
+
     private sealed record AnalysisTextUse(string TextId, string TextName, string ParagraphId, string SegmentId,
-        int Index, string WordformId, string Wordform, string After);
+        int Index, string WordformId, string Wordform, bool ThroughGloss, string After);
 }
 
 /// <summary>One ordered morph bundle in a new parser candidate.</summary>

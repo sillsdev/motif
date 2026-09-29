@@ -102,6 +102,26 @@ public class SnapshotAndEffectJsonTests
     }
 
     [Fact]
+    public void PreviewEvidenceDoesNotChangeSemanticEffectDigestButDoesChangeTheFootprint()
+    {
+        using var firstPreview = JsonDocument.Parse("{\"textUses\":[{\"index\":1}]}");
+        using var changedPreview = JsonDocument.Parse("{\"textUses\":[{\"index\":2}]}");
+        var before = new Dictionary<string, string> { [SenseId.Value] = "snapshot row" };
+        var after = new Dictionary<string, string>();
+        var withoutPreview = new ExpectedEffect(SenseId, SnapshotFields.WfiWordformAnalyses, before, after);
+        var first = withoutPreview with { Preview = firstPreview.RootElement.Clone() };
+        var changed = withoutPreview with { Preview = changedPreview.RootElement.Clone() };
+
+        Assert.Equal(ExpectedEffectSetDigest.Compute([withoutPreview]), ExpectedEffectSetDigest.Compute([first]));
+        Assert.NotEqual(FootprintDigest.Compute([first]), FootprintDigest.Compute([changed]));
+        using var semantic = JsonDocument.Parse(ExpectedEffectSetJsonWriter.WriteJson([first]));
+        using var published = JsonDocument.Parse(ExpectedEffectSetJsonWriter.WritePublishedJson([first]));
+        Assert.False(semantic.RootElement[0].TryGetProperty("preview", out _));
+        Assert.Equal(1, published.RootElement[0].GetProperty("preview").GetProperty("textUses")[0]
+            .GetProperty("index").GetInt32());
+    }
+
+    [Fact]
     public void ExpectedEffectSetDigest_IsOrderIndependentOverTheEffectSet()
     {
         // The effect set is semantically a set: authored order must not affect the digest.
