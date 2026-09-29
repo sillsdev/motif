@@ -58,6 +58,9 @@ public class FwDataProjectLoader
                     "bundled FieldWorks normalization data is missing: " + string.Join(", ", missingDataFiles));
             }
 
+            // .NET binds its own ICU on first culture use; after SIL ICU 70 is loaded that bind can abort on macOS.
+            _ = string.Compare("a", "b", StringComparison.CurrentCulture);
+
             var previousIcuDataDirectory = Environment.GetEnvironmentVariable("ICU_DATA");
             Environment.SetEnvironmentVariable("ICU_DATA", dataDirectory, EnvironmentVariableTarget.Process);
             try
