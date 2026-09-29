@@ -11,11 +11,12 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
+public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITestOutputHelper output)
 {
     private static readonly DateTimeOffset CaptureTime = new(2026, 4, 2, 12, 0, 0, TimeSpan.Zero);
 
@@ -105,7 +106,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
         Assert.Equal(script.Steps.Count(step => step.Kind == WalkthroughStepKind.Capture), captures.Count);
         Assert.Equal(captures.Count,
             clipSegments.Count(segment => segment.Kind == WalkthroughClipSegmentKind.Capture));
-        WalkthroughArtifacts.Write(root, script, help, captures, clipSegments);
+        WalkthroughArtifacts.Write(root, script, help, captures, clipSegments, output.WriteLine);
     }
 
     private static string FindRepositoryRoot()

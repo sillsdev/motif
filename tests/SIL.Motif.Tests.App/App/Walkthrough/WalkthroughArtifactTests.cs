@@ -116,12 +116,47 @@ public sealed class WalkthroughArtifactTests
                 WalkthroughArtifacts.Width * WalkthroughArtifacts.Height * WalkthroughArtifacts.ChangedPixelTolerance);
             var tooDifferent = SolidPng(SKColors.White, allowedChangedPixels + 1);
 
-            Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
-                WalkthroughArtifacts.CheckBaseline(baselinePath, tooDifferent, update: false));
+            WithStrictBaselineGate(() => Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                WalkthroughArtifacts.CheckBaseline(baselinePath, tooDifferent, update: false)));
         }
         finally
         {
             File.Delete(baselinePath);
+        }
+    }
+
+    [Fact]
+    public void BaselineComparisonWritesDiagnosticsWithoutFailingWhenStrictGateIsOff()
+    {
+        var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
+        var diagnosticsDirectory = Path.Combine(Path.GetTempPath(), "SIL.Motif.WalkthroughDiffs");
+        var fileName = Path.GetFileNameWithoutExtension(baselinePath);
+        var actualPath = Path.Combine(diagnosticsDirectory, $"{fileName}-actual.png");
+        var diffPath = Path.Combine(diagnosticsDirectory, $"{fileName}-diff.png");
+        var previousStrictGate = Environment.GetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, null);
+            File.WriteAllBytes(baselinePath, SolidPng(SKColors.White, 0));
+            var changedPixels = (int)Math.Ceiling(
+                WalkthroughArtifacts.Width * WalkthroughArtifacts.Height * WalkthroughArtifacts.ChangedPixelTolerance) + 1;
+            var diagnostics = new List<string>();
+
+            var exception = Record.Exception(() => WalkthroughArtifacts.CheckBaseline(
+                baselinePath, SolidPng(SKColors.White, changedPixels), update: false, report: diagnostics.Add));
+
+            Assert.Null(exception);
+            var diagnostic = Assert.Single(diagnostics);
+            Assert.Contains($"differs in {changedPixels:N0} pixels", diagnostic, StringComparison.Ordinal);
+            Assert.True(File.Exists(actualPath), diagnostic);
+            Assert.True(File.Exists(diffPath), diagnostic);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, previousStrictGate);
+            File.Delete(baselinePath);
+            File.Delete(actualPath);
+            File.Delete(diffPath);
         }
     }
 
@@ -135,8 +170,8 @@ public sealed class WalkthroughArtifactTests
             var changedPixels = (int)Math.Ceiling(
                 WalkthroughArtifacts.Width * WalkthroughArtifacts.Height * 0.001) + 1;
 
-            Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
-                WalkthroughArtifacts.CheckBaseline(baselinePath, SolidPng(SKColors.White, changedPixels), update: false));
+            WithStrictBaselineGate(() => Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                WalkthroughArtifacts.CheckBaseline(baselinePath, SolidPng(SKColors.White, changedPixels), update: false)));
         }
         finally
         {
@@ -155,8 +190,8 @@ public sealed class WalkthroughArtifactTests
             var callout = new WalkthroughCaptureCallout(
                 "motif-pages", "Project pages", new Avalonia.Rect(0, 0, 1, 1));
 
-            Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
-                WalkthroughArtifacts.CheckBaseline(baselinePath, actual, update: false, [callout]));
+            WithStrictBaselineGate(() => Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                WalkthroughArtifacts.CheckBaseline(baselinePath, actual, update: false, [callout])));
         }
         finally
         {
@@ -174,11 +209,18 @@ public sealed class WalkthroughArtifactTests
             var changedPixels = (int)Math.Ceiling(
                 WalkthroughArtifacts.Width * WalkthroughArtifacts.Height * WalkthroughArtifacts.ChangedPixelTolerance) + 1;
 
-            var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
-                WalkthroughArtifacts.CheckBaseline(baselinePath, SolidPng(SKColors.White, changedPixels), update: false));
-            var diffPath = failure.Message.Split("Diff PNG: ", StringSplitOptions.None).Last();
-            Assert.True(File.Exists(diffPath), failure.Message);
-            File.Delete(diffPath);
+            WithStrictBaselineGate(() =>
+            {
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                    WalkthroughArtifacts.CheckBaseline(baselinePath, SolidPng(SKColors.White, changedPixels), update: false));
+                var actualPath = failure.Message.Split("Actual PNG: ", StringSplitOptions.None)[1]
+                    .Split("; Diff PNG: ", StringSplitOptions.None)[0];
+                var diffPath = failure.Message.Split("; Diff PNG: ", StringSplitOptions.None).Last();
+                Assert.True(File.Exists(actualPath), failure.Message);
+                Assert.True(File.Exists(diffPath), failure.Message);
+                File.Delete(actualPath);
+                File.Delete(diffPath);
+            });
         }
         finally
         {
@@ -235,6 +277,20 @@ public sealed class WalkthroughArtifactTests
         using var image = SKImage.FromBitmap(bitmap);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
+    }
+
+    private static void WithStrictBaselineGate(Action test)
+    {
+        var previousValue = Environment.GetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, "1");
+            test();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, previousValue);
+        }
     }
 
     private static IReadOnlyList<(string Start, string End, string Caption)> ParseWebVtt(string text)

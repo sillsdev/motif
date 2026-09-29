@@ -24,6 +24,10 @@ public sealed record PutPendingChangeRequest(
     string FwDataPath, string ProductVersion, string ExpectedRevision, ChangeIntent Change);
 
 /// <summary>Accepts the missing parser readings for one word, one Selection, or one Text.</summary>
+/// <param name="FwDataPath">The path to the FieldWorks project's <c>.fwdata</c> file.</param>
+/// <param name="ProductVersion">The Motif product version expected by the caller.</param>
+/// <param name="ExpectedRevision">The pending-change revision the caller expects to remain current.</param>
+/// <param name="AssessmentId">The Assessment that contains the readings to accept.</param>
 /// <param name="WordformId">The one wordform to accept, or <see langword="null"/> for another scope.</param>
 /// <param name="TextId">The Text to accept, or <see langword="null"/> for another scope.</param>
 /// <param name="Selection">Whether to use every word in the named Assessment's Selection.</param>

@@ -102,6 +102,8 @@ internal sealed record WalkthroughManifestCallout(double X, double Y, double Wid
 
 internal static class WalkthroughArtifacts
 {
+    /// <summary>Enables failures for pixel mismatches when set to <c>1</c>.</summary>
+    internal const string StrictComparisonVariable = "MOTIF_WALKTHROUGH_STRICT_BASELINES";
     public const int Width = 1280;
     public const int Height = 720;
     public const int Fps = 30;
@@ -133,7 +135,8 @@ internal static class WalkthroughArtifacts
 
     public static void Write(
         string repositoryRoot, WalkthroughScript script, WalkthroughHelpContent help,
-        IReadOnlyList<WalkthroughCapture> captures, IReadOnlyList<WalkthroughClipSegment>? clipSegments = null)
+        IReadOnlyList<WalkthroughCapture> captures, IReadOnlyList<WalkthroughClipSegment>? clipSegments = null,
+        Action<string>? reportBaselineMismatch = null)
     {
         var updateBaselines = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES") == "1";
         var prepared = captures.Select(capture =>
@@ -143,9 +146,10 @@ internal static class WalkthroughArtifacts
             var annotated = Annotate(repositoryRoot, capture.Png, capture.Callouts);
             var baselineRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets",
                 "WalkthroughBaselines", script.Id);
-            CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines, capture.Callouts);
+            CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines,
+                capture.Callouts, reportBaselineMismatch);
             CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines,
-                capture.Callouts);
+                capture.Callouts, reportBaselineMismatch);
             return new PreparedCapture(capture, caption, annotated);
         }).ToArray();
 
@@ -224,7 +228,8 @@ internal static class WalkthroughArtifacts
     }
 
     internal static void CheckBaseline(
-        string path, byte[] actual, bool update, IReadOnlyList<WalkthroughCaptureCallout>? callouts = null)
+        string path, byte[] actual, bool update, IReadOnlyList<WalkthroughCaptureCallout>? callouts = null,
+        Action<string>? report = null)
     {
         if (update)
         {
@@ -269,22 +274,39 @@ internal static class WalkthroughArtifacts
         var allowed = (int)Math.Ceiling(Width * Height * ChangedPixelTolerance);
         if (calloutChanged > 0 || changed > allowed)
         {
+            var actualPath = WriteActualPng(path, actual);
             var diffPath = WriteDiffPng(path, diffBitmap);
-            throw new Xunit.Sdk.XunitException(
+            var message =
                 $"Walkthrough baseline '{path}' differs in {changed:N0} pixels ({calloutChanged:N0} in callouts); " +
-                $"tolerance is {allowed:N0} pixels. Diff PNG: {diffPath}");
+                $"tolerance is {allowed:N0} pixels. Actual PNG: {actualPath}; Diff PNG: {diffPath}";
+            if (Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
+                throw new Xunit.Sdk.XunitException(message);
+            if (report is null) Console.WriteLine(message);
+            else report(message);
         }
+    }
+
+    private static string WriteActualPng(string baselinePath, byte[] actual)
+    {
+        var path = DiagnosticPngPath(baselinePath, "actual");
+        File.WriteAllBytes(path, actual);
+        return path;
     }
 
     private static string WriteDiffPng(string baselinePath, SKBitmap diffBitmap)
     {
-        var directory = Path.Combine(Path.GetTempPath(), "SIL.Motif.WalkthroughDiffs");
-        Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, Path.GetFileNameWithoutExtension(baselinePath) + "-diff.png");
+        var path = DiagnosticPngPath(baselinePath, "diff");
         using var image = SKImage.FromBitmap(diffBitmap);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         File.WriteAllBytes(path, data.ToArray());
         return path;
+    }
+
+    private static string DiagnosticPngPath(string baselinePath, string suffix)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "SIL.Motif.WalkthroughDiffs");
+        Directory.CreateDirectory(directory);
+        return Path.Combine(directory, Path.GetFileNameWithoutExtension(baselinePath) + $"-{suffix}.png");
     }
 
     private static string BuildWebVtt(IReadOnlyList<PreparedCapture> captures)
