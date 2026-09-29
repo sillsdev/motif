@@ -30,7 +30,12 @@ public static class PythonExecutable
                 UseShellExecute = false,
                 CreateNoWindow = true,
             });
-            process!.WaitForExit(5000);
+            // A cold interpreter can start slowly on a busy runner; one that never answers counts as absent.
+            if (!process!.WaitForExit(30000))
+            {
+                try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+                return false;
+            }
             return process.ExitCode == 0;
         }
         catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or IOException)
