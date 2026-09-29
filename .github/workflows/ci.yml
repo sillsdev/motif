@@ -173,3 +173,21 @@ jobs:
           path: bin/Release/test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+      # An aborting child leaves only exit code 134 in the test output; macOS's crash report holds its native stack.
+      - name: Collect macOS crash reports
+        if: runner.os == 'macOS' && (failure() || cancelled())
+        shell: bash
+        run: |
+          mkdir -p bin/Release/crash-reports
+          cp "$HOME"/Library/Logs/DiagnosticReports/*.ips bin/Release/crash-reports/ 2>/dev/null || true
+          ls -la bin/Release/crash-reports
+
+      - name: Upload macOS crash reports
+        if: runner.os == 'macOS' && (failure() || cancelled())
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-reports-${{ matrix.os }}
+          path: bin/Release/crash-reports/
+          if-no-files-found: ignore
+          retention-days: 14
