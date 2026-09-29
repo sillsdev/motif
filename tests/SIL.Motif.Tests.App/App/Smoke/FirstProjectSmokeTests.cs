@@ -72,6 +72,8 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
             walkthrough.WaitUntil(() => walkthrough.Workspace.PageModel<OverviewPageModel>().Overview is not null,
                 StepTimeout(deadline), "Overview did not load");
             Assert.True(walkthrough.Find<Border>("Project summary").IsEffectivelyVisible);
+            walkthrough.ShowPage(WorkspacePage.Texts);
+            Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.CurrentPage);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
