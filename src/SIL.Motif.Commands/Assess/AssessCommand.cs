@@ -403,9 +403,17 @@ public static class AssessCommand
                         var missedApproved = NameMissed(word.Word, word.Correctness);
                         var candidates = wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
                         var approved = wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
+                        var rejected = wordContext.Rejected.GetValueOrDefault(word.Word) ??
+                            Array.Empty<ApprovedMorphology>();
                         var nonApproved = candidates.Select(candidate => (Analysis: candidate, Opinion: ReadingGrade.Candidate))
-                            .Concat((wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>())
-                                .Select(rejected => (Analysis: rejected, Opinion: ReadingGrade.Disapproved)))
+                            .Concat(rejected.Select(analysis => (Analysis: analysis, Opinion: ReadingGrade.Disapproved)))
+                            .ToArray();
+                        var storedAnalyses = approved.Select(analysis =>
+                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Approved))
+                            .Concat(rejected.Select(analysis =>
+                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Disapproved)))
+                            .Concat(candidates.Select(analysis =>
+                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Candidate)))
                             .ToArray();
                         var expectedAnalysis = approved.FirstOrDefault() is { } approvedAnalysis
                             ? ReadStoredAnalysis(namingCache, projectName, approvedAnalysis, ReadingGrade.Approved)
@@ -423,6 +431,7 @@ public static class AssessCommand
                                 ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
                             MissedApproved = missedApproved,
                             ExpectedAnalysis = expectedAnalysis,
+                            StoredAnalyses = storedAnalyses,
                             Attempts = stats.Item1,
                             Passes = stats.Item2,
                         };
@@ -536,6 +545,7 @@ public static class AssessCommand
         {
             StoredAnalysisId = analysis.SourceAnalysisId,
             StoredAnalysisOpinion = opinion,
+            Identity = analysis,
         };
     }
 

@@ -176,9 +176,8 @@ public sealed record AnalysisMarkingState(
         {
             var display = renderings is not null && index < renderings.Count ? renderings[index] : null;
             var matches = token.StoredAnalyses.Where(storedAnalysis =>
-                storedAnalysis.Identity is { } identity && AnalysisMorphologyMatcher.Matches(analysis, identity) ||
-                storedAnalysis.Identity is null && display?.StoredAnalysisId is { } id &&
-                storedAnalysis.StoredAnalysisId == id).ToArray();
+                storedAnalysis.Identity is { } identity && AnalysisMorphologyMatcher.Matches(analysis, identity))
+                .ToArray();
             var opinions = matches.Select(match => match.StoredAnalysisOpinion ?? ReadingGrade.Candidate)
                 .Distinct(StringComparer.Ordinal).ToArray();
             return new PanGlossReadingMarking(analysis,
@@ -198,9 +197,7 @@ public sealed record AnalysisMarkingState(
     public static AnalysisMarkingState Create(AssessmentWordResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        var stored = (result.Readings ?? [])
-            .Concat(result.ExpectedAnalysis is { } expected ? [expected] : [])
-            .Concat(result.MissedApproved ?? [])
+        var stored = result.StoredAnalyses
             .Where(reading => reading.StoredAnalysisId is not null)
             .GroupBy(reading => reading.StoredAnalysisId!, StringComparer.Ordinal)
             .Select(group => group.First())
@@ -208,6 +205,7 @@ public sealed record AnalysisMarkingState(
             {
                 StoredAnalysisId = reading.StoredAnalysisId,
                 StoredAnalysisOpinion = reading.StoredAnalysisOpinion,
+                Identity = reading.Identity,
             })
             .ToArray();
         var token = new TextToken(result.Word, result.Word, null, null)
