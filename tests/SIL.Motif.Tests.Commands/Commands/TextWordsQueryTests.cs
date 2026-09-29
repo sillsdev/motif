@@ -5,6 +5,8 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.LcmUtils;
@@ -82,6 +84,11 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.Single(analysed.Approved);
         Assert.Equal(analysed.Approved[0].Key, occurrence.Analysis.Key);
         Assert.Empty(analysed.Disapproved);
+        var storedAnalysis = Assert.Single(analysed.Analyses);
+        Assert.Equal(CanonicalId.FromGuid(seededText.ApprovedAnalysisId).Value, storedAnalysis.StoredAnalysisId);
+        Assert.Equal("approved", storedAnalysis.StoredAnalysisOpinion);
+        Assert.Equal(2, storedAnalysis.Identity!.Morphs.Count);
+        Assert.False(string.IsNullOrWhiteSpace(storedAnalysis.Morphs[0].Entry));
 
         var unanalysedOccurrence = Assert.Single(unanalysed.Occurrences);
         Assert.Equal("unanalysed", unanalysedOccurrence.Status);
@@ -99,6 +106,12 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.Equal(SeededProject.PunctuationForm, firstLineTokens[1].Text);
 
         var word = firstLineTokens[0];
+        Assert.Equal(seededText.AnalysedWordformId, word.WordformId);
+        Assert.Equal(CanonicalId.FromGuid(seededText.ApprovedAnalysisId).Value, word.StoredAnalysisId);
+        Assert.False(text.Lines[0].ParseIsCurrent);
+        Assert.Equal(seededText.FirstParagraphId, text.Lines[0].ParagraphId);
+        Assert.Equal(seededText.FirstSegmentId, text.Lines[0].SegmentId);
+        Assert.Equal(0, word.OccurrenceIndex);
         Assert.Equal(occurrence.Analysis.Key, word.Analysis!.Key);
         Assert.Equal(
             [SeededProject.FirstGloss], word.Analysis.Morphs.Take(1).Select(morph => morph.Gloss));
@@ -158,6 +171,21 @@ public sealed class TextWordsQueryTests : IDisposable
         // The second and third analyses carry no human opinion either way: they are candidates.
         Assert.Equal(2, word.CandidateCount);
         Assert.False(word.IncorrectSpelling);
+
+        Assert.Equal(4, word.Analyses.Count);
+        Assert.Equal("approved", Assert.Single(word.Analyses,
+            analysis => analysis.StoredAnalysisId == CanonicalId.FromGuid(scenario.ApprovedAnalysisId).Value)
+            .StoredAnalysisOpinion);
+        Assert.Equal("disapproved", Assert.Single(word.Analyses,
+            analysis => analysis.StoredAnalysisId == CanonicalId.FromGuid(scenario.DisapprovedAnalysisId).Value)
+            .StoredAnalysisOpinion);
+        Assert.Equal("unknown", Assert.Single(word.Analyses,
+            analysis => analysis.StoredAnalysisId == CanonicalId.FromGuid(scenario.UnknownSameAnalysisId).Value)
+            .StoredAnalysisOpinion);
+        Assert.Equal("unknown", Assert.Single(word.Analyses,
+            analysis => analysis.StoredAnalysisId == CanonicalId.FromGuid(scenario.UnknownDifferentAnalysisId).Value)
+            .StoredAnalysisOpinion);
+        Assert.All(word.Analyses, analysis => Assert.NotNull(analysis.Identity));
     }
 
     [Fact]
@@ -196,6 +224,10 @@ public sealed class TextWordsQueryTests : IDisposable
 
         IText text = null!;
         Guid textId = default;
+        IWfiAnalysis sameKeyFirst = null!;
+        IWfiAnalysis sameKeySecond = null!;
+        IWfiAnalysis differentKey = null!;
+        IWfiAnalysis unused = null!;
 
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
@@ -207,11 +239,11 @@ public sealed class TextWordsQueryTests : IDisposable
             var wordform = services.GetInstance<IWfiWordformFactory>()
                 .Create(TsStringUtils.MakeString(DualForm, vernWs));
 
-            var sameKeyFirst = MakeSingleBundleAnalysis(cache, wordform, firstEntry.LexemeFormOA!, firstMsa, firstEntry.SensesOS[0]);
-            var sameKeySecond = MakeSingleBundleAnalysis(cache, wordform, firstEntry.LexemeFormOA!, firstMsa, secondSense);
-            var differentKey = MakeSingleBundleAnalysis(
+            sameKeyFirst = MakeSingleBundleAnalysis(cache, wordform, firstEntry.LexemeFormOA!, firstMsa, firstEntry.SensesOS[0]);
+            sameKeySecond = MakeSingleBundleAnalysis(cache, wordform, firstEntry.LexemeFormOA!, firstMsa, secondSense);
+            differentKey = MakeSingleBundleAnalysis(
                 cache, wordform, secondEntry.LexemeFormOA!, secondEntry.MorphoSyntaxAnalysesOC.First(), secondEntry.SensesOS[0]);
-            var unused = MakeSingleBundleAnalysis(
+            unused = MakeSingleBundleAnalysis(
                 cache, wordform, secondEntry.LexemeFormOA!, secondEntry.MorphoSyntaxAnalysesOC.First(), null);
 
             cache.LangProject.DefaultUserAgent.SetEvaluation(sameKeyFirst, Opinions.approves);
@@ -229,7 +261,7 @@ public sealed class TextWordsQueryTests : IDisposable
             textId = text.Guid;
         });
 
-        return new DualAnalysisScenario(textId);
+        return new DualAnalysisScenario(textId, sameKeyFirst.Guid, unused.Guid, sameKeySecond.Guid, differentKey.Guid);
     }
 
     private static IWfiAnalysis MakeSingleBundleAnalysis(
@@ -258,7 +290,8 @@ public sealed class TextWordsQueryTests : IDisposable
         segment.AnalysesRS.Add(analysis);
     }
 
-    private sealed record DualAnalysisScenario(Guid TextId);
+    private sealed record DualAnalysisScenario(Guid TextId, Guid ApprovedAnalysisId, Guid DisapprovedAnalysisId,
+        Guid UnknownSameAnalysisId, Guid UnknownDifferentAnalysisId);
 
     private void Capture(string fwDataPath)
     {

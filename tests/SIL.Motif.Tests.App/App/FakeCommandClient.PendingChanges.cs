@@ -116,6 +116,8 @@ public sealed partial class FakeCommandClient
             change.AssessmentId, change.DisplayReading, [change.ChangeId])
         {
             OriginPage = change.OriginPage,
+            Occurrence = change.Occurrence,
+            StoredAnalysisId = change.StoredAnalysisId,
         });
         _pending = _pending with { DraftId = _pending.DraftId ?? "draft/test", Revision = Guid.NewGuid().ToString("N"),
             Changes = changes, FitSummary = changes.Select(item => new ChangeFit(item.ChangeId, true, [])).ToArray() };

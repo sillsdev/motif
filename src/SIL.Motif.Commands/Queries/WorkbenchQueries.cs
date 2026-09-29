@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Requests;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -61,7 +62,10 @@ public sealed record TextWord(
     IReadOnlyList<ProjectAnalysis> Approved,
     IReadOnlyList<ProjectAnalysis> Disapproved,
     int CandidateCount = 0,
-    bool IncorrectSpelling = false);
+    bool IncorrectSpelling = false)
+{
+    public IReadOnlyList<ProjectAnalysis> Analyses { get; init; } = [];
+}
 
 /// <summary>One place a word occurs, and the analysis chosen there.</summary>
 /// <param name="TextId">The Text's own GUID.</param>
@@ -81,7 +85,12 @@ public sealed record WordOccurrence(
 /// morph, the same form, grammatical info and inflection type. Sense is not part of it (ADR 0027).
 /// </param>
 /// <param name="Morphs">The morphs in order, with form, gloss, category and a FieldWorks link.</param>
-public sealed record ProjectAnalysis(string Key, IReadOnlyList<ParserReadingMorph> Morphs);
+public sealed record ProjectAnalysis(string Key, IReadOnlyList<ParserReadingMorph> Morphs)
+{
+    public string? StoredAnalysisId { get; init; }
+    public string? StoredAnalysisOpinion { get; init; }
+    public ApprovedMorphology? Identity { get; init; }
+}
 
 /// <summary>One chosen Text, line by line.</summary>
 public sealed record TextLines(Guid TextId, string Title, IReadOnlyList<TextLine> Lines);
@@ -115,12 +124,18 @@ public sealed record TextToken(string Text, string? Form, string? Gloss, string?
     /// <summary>For a word, the analysis chosen at this occurrence, morph by morph; otherwise <see langword="null"/>.</summary>
     public ProjectAnalysis? Analysis { get; init; }
 
+    public IReadOnlyList<ProjectAnalysis> StoredAnalyses { get; init; } = [];
+
     /// <summary>For a word, its word-level gloss at this occurrence, or <see langword="null"/> when none was chosen.</summary>
     public string? WordGloss { get; init; }
 
     /// <summary>For a word, the grammatical category of the analysis chosen here, or <see langword="null"/>.</summary>
     public string? Category { get; init; }
 
+    public string? StoredAnalysisId { get; init; }
+
+    /// <summary>Whether FieldWorks marks this wordform's spelling as incorrect.</summary>
+    public bool IncorrectSpelling { get; init; }
     /// <summary>For a word, a <c>silfw:</c> link selecting its wordform in FieldWorks, or <see langword="null"/>.</summary>
     public string? WordLink { get; init; }
 }

@@ -188,6 +188,22 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             Occurrence: occurrence)).ConfigureAwait(true);
     }
 
+    public async Task AddFromMarkingAsync(AnalysisMarkingAction action, ResultsTokenViewModel token)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(token);
+        var kind = action.ChangeKind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate or
+            ChangeKinds.AddCandidate
+            ? action.ChangeKind
+            : throw new InvalidOperationException("This marking action does not stage a project change.");
+        var hasParserReading = action.Reading is not null;
+        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : "", token.Form,
+            hasParserReading ? AssessmentId : null, action.Reading, action.StoredAnalysisId,
+            ReadingIndex: action.ReadingIndex, OriginPage: WorkspacePage.Texts.ToString(),
+            Occurrence: kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
+                ? token.Occurrence : null)).ConfigureAwait(true);
+    }
+
     /// <summary>Adds an Approve change for one stored analysis without a parser reading.</summary>
     /// <param name="word">The word form that owns the analysis.</param>
     /// <param name="storedAnalysisId">The canonical ID of the stored analysis.</param>
@@ -296,7 +312,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
             Items.Add(new ChangeViewModel(change.Kind, change.Word,
                 change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage,
-                fit?.Occurrence));
+                fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId, change.ReadingIndex));
         }
         Raise();
     }
@@ -326,13 +342,16 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 /// <summary>One collected change: what should happen to one word, and what it held when the change was chosen.</summary>
 public sealed partial class ChangeViewModel(string kind, string word, string reading,
     string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null,
-    string? originPage = null, SIL.Motif.Contract.Requests.OccurrenceAnchor? occurrence = null) : ObservableObject
+    string? originPage = null, OccurrenceAnchor? occurrence = null, string? storedAnalysisId = null,
+    int? readingIndex = null) : ObservableObject
 {
     public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
         page != WorkspacePage.Review ? page : WorkspacePage.Texts;
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
     public ChangeFit? Fit { get; } = fit;
-    public SIL.Motif.Contract.Requests.OccurrenceAnchor? Occurrence { get; } = occurrence;
+    public OccurrenceAnchor? Occurrence { get; } = occurrence;
+    public string? StoredAnalysisId { get; } = storedAnalysisId;
+    public int? ReadingIndex { get; } = readingIndex;
     public string FitStatus => Fit?.Status switch
     {
         null => string.Empty,
@@ -382,13 +401,46 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
 
     public bool HasAnalyses => Analyses.Count > 0;
 
+    public StagedMarkingTransition StagedTransition { get; } =
+        TransitionFor(kind, storedAnalysisId, analyses) with
+        {
+            StoredAnalysisId = storedAnalysisId,
+            ReadingIndex = readingIndex,
+            FitStatus = fit?.Status,
+        };
+
     public string Summary => $"{Word}: {Label}";
 
     private static IReadOnlyList<ReviewAnalysisViewModel> BuildAnalyses(
         IReadOnlyList<ReviewAnalysis>? analyses, string kind) =>
         analyses?.Select(analysis => new ReviewAnalysisViewModel(analysis, kind)).ToArray() ?? [];
-}
 
+    private static StagedMarkingTransition TransitionFor(string kind, string? storedAnalysisId,
+        IReadOnlyList<ReviewAnalysis>? analyses)
+    {
+        var touched = analyses?.FirstOrDefault(analysis => analysis.Touched);
+        var before = touched is { Stored: true } ? OpinionLabel(touched.Opinion)
+            : touched is not null || storedAnalysisId is null ? "Not in FieldWorks"
+            : kind == ChangeKinds.Approve ? "Unknown" : "Current opinion";
+        var after = kind switch
+        {
+            ChangeKinds.Approve => "Approved",
+            ChangeKinds.Reject => "Disapproved",
+            ChangeKinds.Candidate or ChangeKinds.AddCandidate => "Unknown",
+            ChangeKinds.IncorrectSpelling => "Incorrect",
+            _ => "Changed",
+        };
+        if (kind == ChangeKinds.IncorrectSpelling) before = "Current spelling";
+        return new StagedMarkingTransition(before, after);
+    }
+
+    private static string OpinionLabel(string opinion) => opinion switch
+    {
+        ReadingGrade.Approved => "Approved",
+        ReadingGrade.Disapproved => "Disapproved",
+        _ => "Unknown",
+    };
+}
 /// <summary>One word in the before or after sentence shown for an uncertain change.</summary>
 public sealed record UncertaintyTokenViewModel(int Index, string WordformId, string Form, bool IsChanged)
 {

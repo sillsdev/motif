@@ -59,4 +59,8 @@ public sealed record ParserReading(IReadOnlyList<ParserReadingMorph> Morphs)
 /// <param name="Guessed">Whether the parser guessed this morph rather than finding it in the lexicon.</param>
 /// <param name="FieldWorksLink">A <c>silfw:</c> link opening the morph's entry, or <see langword="null"/>.</param>
 public sealed record ParserReadingMorph(
-    string Form, string Gloss, string Category, string? InflectionType, bool Guessed, string? FieldWorksLink);
+    string Form, string Gloss, string Category, string? InflectionType, bool Guessed, string? FieldWorksLink)
+{
+    /// <summary>The entry's lexeme form, marked with the morph type, or <see langword="null"/> when unresolved.</summary>
+    public string? Entry { get; init; }
+}

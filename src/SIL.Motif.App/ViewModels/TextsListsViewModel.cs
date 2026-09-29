@@ -42,6 +42,7 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
         {
             var states = Compare.Cells.Where(IsCell).Select(cell => cell.PendingState).ToArray();
             if (states.Contains(PendingChangeState.NoLongerFits)) return PendingChangeState.NoLongerFits;
+            if (states.Contains(PendingChangeState.Uncertain)) return PendingChangeState.Uncertain;
             return states.Any(state => state != PendingChangeState.None)
                 ? PendingChangeState.NotAppliedYet : PendingChangeState.None;
         }

@@ -84,6 +84,16 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
         var punctuation = Assert.Single(line.Tokens, token => token.WordformId is null);
         Assert.Equal(1, punctuation.OccurrenceIndex);
         Assert.Null(punctuation.AnalysisId);
+
+        var wordform = Assert.Single(projected.Wordforms, item => item.WordformId == text.AnalysedWordformId);
+        var analysis = Assert.Single(wordform.Analyses);
+        Assert.Equal(text.ApprovedAnalysisId, analysis.AnalysisId);
+        Assert.Equal("approved", analysis.Opinion);
+        Assert.Equal(2, analysis.Identity.Morphs.Count);
+        Assert.Equal(_pristine.Seed.FirstLexemeFormId.ToString("D"), analysis.Identity.Morphs[0].Form);
+        Assert.False(string.IsNullOrWhiteSpace(analysis.Morphs[0].Entry));
+        Assert.Equal(SeededProject.FirstGloss, analysis.Morphs[0].Gloss);
+        Assert.False(string.IsNullOrWhiteSpace(analysis.Morphs[0].Category));
     }
 
     [Fact]
@@ -109,6 +119,8 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
     [InlineData("UPDATE BaselineTextWords SET TextJson = '{}' WHERE ProjectKey = $project;")]
     [InlineData("UPDATE BaselineTextWords SET TextJson = 'not json' WHERE ProjectKey = $project;")]
     [InlineData("UPDATE BaselineTextWordforms SET WordformJson = '{}' WHERE ProjectKey = $project;")]
+    [InlineData("UPDATE BaselineTextWordforms SET WordformJson = json_set(WordformJson, " +
+        "'$.Analyses[0].Identity.SourceAnalysisId', 'wrong') WHERE ProjectKey = $project;")]
     [InlineData("DELETE FROM BaselineTextWordforms WHERE ProjectKey = $project;")]
     [InlineData("UPDATE BaselineTextWords SET TextJson = json_set(TextJson, '$.Analyses', json('[]')) " +
         "WHERE ProjectKey = $project;")]

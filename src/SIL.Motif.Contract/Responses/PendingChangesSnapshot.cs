@@ -13,6 +13,15 @@ public sealed record PendingChange(
 
     /// <summary>The page on which this change was collected.</summary>
     public string? OriginPage { get; init; }
+
+    /// <summary>The Text occurrence that supplied context for an in-text opinion change.</summary>
+    public OccurrenceAnchor? Occurrence { get; init; }
+
+    /// <summary>The exact stored analysis selected by an in-text opinion change.</summary>
+    public string? StoredAnalysisId { get; init; }
+
+    /// <summary>The exact Assessment reading selected by an in-text change.</summary>
+    public int? ReadingIndex { get; init; }
 }
 
 /// <summary>One reading shown beside a change, with its previous opinion and whether the change touches it.</summary>

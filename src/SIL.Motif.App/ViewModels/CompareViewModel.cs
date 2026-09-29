@@ -418,6 +418,7 @@ public sealed partial class CompareViewModel : ObservableObject
                 .Select(word => word.PendingState).ToArray();
             cell.PendingState = statuses.Contains(PendingChangeState.NoLongerFits)
                 ? PendingChangeState.NoLongerFits
+                : statuses.Contains(PendingChangeState.Uncertain) ? PendingChangeState.Uncertain
                 : statuses.FirstOrDefault(status => status != PendingChangeState.None);
         }
     }

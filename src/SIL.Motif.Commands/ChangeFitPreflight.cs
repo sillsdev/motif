@@ -6,7 +6,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Texts;
-using SIL.Motif.Runner.Composers;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Baselines;
 using SIL.LCModel;

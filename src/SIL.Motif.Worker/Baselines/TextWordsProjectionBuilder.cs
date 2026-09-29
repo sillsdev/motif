@@ -7,6 +7,7 @@ using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Texts;
@@ -91,7 +92,7 @@ public static class TextWordsProjectionBuilder
         string? analysisKey = null;
         if (wfiAnalysis is { } selected)
         {
-            var projected = BuildProjectAnalysis(cache, selected);
+            var projected = BuildProjectAnalysis(cache, wordform, selected, OpinionOf(wordform, selected));
             analyses.TryAdd(projected.Key, projected);
             analysisKey = projected.Key;
         }
@@ -108,15 +109,17 @@ public static class TextWordsProjectionBuilder
     {
         var humanApproved = wordform.HumanApprovedAnalyses.ToList();
         var humanDisapproved = wordform.HumanDisapprovedParses.ToList();
-        var withOpinion = humanApproved.Concat(humanDisapproved).ToHashSet();
-        var candidates = wordform.AnalysesOC.Count(analysis => !withOpinion.Contains(analysis));
+        var analyses = wordform.AnalysesOC.Select(analysis =>
+            BuildProjectAnalysis(cache, wordform, analysis, OpinionOf(humanApproved, humanDisapproved, analysis))).ToArray();
         return new TextWordsProjectedWordform(wordform.Guid,
-            humanApproved.Select(analysis => BuildProjectAnalysis(cache, analysis)).ToArray(),
-            humanDisapproved.Select(analysis => BuildProjectAnalysis(cache, analysis)).ToArray(),
-            candidates, wordform.SpellingStatus == IncorrectSpellingStatus);
+            analyses.Where(analysis => analysis.Opinion == "approved").ToArray(),
+            analyses.Where(analysis => analysis.Opinion == "disapproved").ToArray(),
+            analyses.Count(analysis => analysis.Opinion == "unknown"),
+            wordform.SpellingStatus == IncorrectSpellingStatus, analyses);
     }
 
-    private static TextWordsProjectedAnalysis BuildProjectAnalysis(LcmCache cache, IWfiAnalysis analysis)
+    private static TextWordsProjectedAnalysis BuildProjectAnalysis(
+        LcmCache cache, IWfiWordform wordform, IWfiAnalysis analysis, string opinion)
     {
         var bundles = analysis.MorphBundlesOS.Select(bundle => new MorphBundleContent(
             bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"), bundle.InflTypeRA?.Guid.ToString("D")))
@@ -127,9 +130,31 @@ public static class TextWordsProjectionBuilder
         var displayMorphs = ParserReadingReader.ReadMorphs(cache, string.Empty, morphs);
         var projectedMorphs = displayMorphs.Select((morph, index) => new TextWordsProjectedMorph(
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
-            ParserReadingReader.EntryTargetFor(cache, morphs[index]))).ToArray();
-        return new TextWordsProjectedAnalysis(AnalysisContent.ComputeDigest(bundles), projectedMorphs);
+            ParserReadingReader.EntryTargetFor(cache, morphs[index])) { Entry = morph.Entry }).ToArray();
+        var identity = new ApprovedMorphology(analysis.MorphBundlesOS.Select(bundle => new ApprovedMorph(
+            bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"), bundle.InflTypeRA?.Guid.ToString("D"),
+            bundle.Form.AvailableWritingSystemIds.Order().Select(ws => bundle.Form.get_String(ws)?.Text)
+                .OfType<string>().Where(text => text.Length > 0).Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal).ToArray())).ToArray())
+        {
+            SourceAnalysisId = CanonicalId.FromGuid(analysis.Guid).Value,
+            SourceWordformGuid = CanonicalId.FromGuid(wordform.Guid).Value,
+            WritingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
+        };
+        return new TextWordsProjectedAnalysis(AnalysisContent.ComputeDigest(bundles), projectedMorphs)
+        {
+            AnalysisId = analysis.Guid,
+            Opinion = opinion,
+            Identity = identity,
+        };
     }
+
+    private static string OpinionOf(IWfiWordform wordform, IWfiAnalysis analysis) =>
+        OpinionOf(wordform.HumanApprovedAnalyses, wordform.HumanDisapprovedParses, analysis);
+
+    private static string OpinionOf(IEnumerable<IWfiAnalysis> approved, IEnumerable<IWfiAnalysis> disapproved,
+        IWfiAnalysis analysis) => approved.Contains(analysis) ? "approved"
+        : disapproved.Contains(analysis) ? "disapproved" : "unknown";
 
     private static string? BestText(IMultiAccessorBase accessor) => accessor.AvailableWritingSystemIds.OrderBy(ws => ws)
         .Select(ws => accessor.get_String(ws)?.Text).FirstOrDefault(text => !string.IsNullOrEmpty(text));

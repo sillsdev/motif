@@ -1,4 +1,5 @@
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.Texts;
 
@@ -50,7 +51,8 @@ public sealed record TextWordsProjectedWordform(
     IReadOnlyList<TextWordsProjectedAnalysis> Approved,
     IReadOnlyList<TextWordsProjectedAnalysis> Disapproved,
     int CandidateCount,
-    bool IncorrectSpelling);
+    bool IncorrectSpelling,
+    IReadOnlyList<TextWordsProjectedAnalysis> Analyses);
 
 /// <summary>
 /// One stored analysis and its ordered display-ready morphology. Its key is the analysis content digest, so two
@@ -58,7 +60,12 @@ public sealed record TextWordsProjectedWordform(
 /// </summary>
 public sealed record TextWordsProjectedAnalysis(
     string Key,
-    IReadOnlyList<TextWordsProjectedMorph> Morphs);
+    IReadOnlyList<TextWordsProjectedMorph> Morphs)
+{
+    public Guid AnalysisId { get; init; }
+    public string Opinion { get; init; } = string.Empty;
+    public ApprovedMorphology? Identity { get; init; }
+}
 
 /// <summary>One display-ready morph with a stable target for a request-specific FieldWorks link.</summary>
 public sealed record TextWordsProjectedMorph(
@@ -67,4 +74,7 @@ public sealed record TextWordsProjectedMorph(
     string Category,
     string? InflectionType,
     bool Guessed,
-    FieldWorksLinkTarget? LinkTarget);
+    FieldWorksLinkTarget? LinkTarget)
+{
+    public string? Entry { get; init; }
+}
