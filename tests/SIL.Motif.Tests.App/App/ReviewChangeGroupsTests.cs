@@ -39,7 +39,7 @@ public sealed class ReviewChangeGroupsTests
             "Approved → Unknown",
             "Disapproved → Approved",
             "Disapproved → Unknown",
-            "Added as Unknown",
+            "Added",
             "Removed",
             "Spelling → Incorrect",
             "Uncertain — check again",
@@ -82,9 +82,36 @@ public sealed class ReviewChangeGroupsTests
         ]);
 
         var group = Assert.Single(page.ReviewGroups);
-        Assert.Equal("Added as Unknown", group.Title);
-        Assert.Equal("Add", group.Items.Single(item => item.ChangeId == "added").SourceText);
-        Assert.Equal("Accepting a set", group.Items.Single(item => item.ChangeId == "accepted").SourceText);
+        Assert.Equal("Added", group.Title);
+        Assert.Equal("Added as Unknown from Add",
+            group.Items.Single(item => item.ChangeId == "added").SourceText);
+        Assert.Equal("Added as Unknown from accepting a set",
+            group.Items.Single(item => item.ChangeId == "accepted").SourceText);
+    }
+
+    [Fact]
+    public async Task OpinionAddsShareAddedGroupAndNameTheirResultAndSource()
+    {
+        var (page, _) = await OpenReviewAsync(
+        [
+            Change("approved-reading", "approved", ChangeKinds.Approve, parserOnly: true),
+            Change("disapproved-reading", "disapproved", ChangeKinds.Reject, parserOnly: true),
+        ]);
+
+        var group = Assert.Single(page.ReviewGroups);
+        Assert.Equal("Added", group.Title);
+        Assert.Equal("Added as Approved from PanGloss",
+            group.Items.Single(item => item.ChangeId == "approved-reading").SourceText);
+        Assert.Equal("Added as Disapproved from PanGloss",
+            group.Items.Single(item => item.ChangeId == "disapproved-reading").SourceText);
+    }
+
+    [Fact]
+    public async Task UnrecognizedPendingChangeDoesNotBreakReviewGroups()
+    {
+        var (page, _) = await OpenReviewAsync([Change("future", "word", "future-change")]);
+
+        Assert.NotEmpty(page.ReviewGroups);
     }
 
     [Fact]
@@ -97,7 +124,7 @@ public sealed class ReviewChangeGroupsTests
             Change("other", "other", ChangeKinds.IncorrectSpelling),
         ]);
 
-        var group = page.ReviewGroups.Single(item => item.Title == "Added as Unknown");
+        var group = page.ReviewGroups.Single(item => item.Title == "Added");
         await group.UndoAllCommand.ExecuteAsync(null);
 
         Assert.Equal(["first", "second"], fake.PendingRemoveRequests.Select(request => request.ChangeId));
@@ -114,7 +141,7 @@ public sealed class ReviewChangeGroupsTests
             Change("added", "added", ChangeKinds.AddCandidate),
         ]);
 
-        var group = page.ReviewGroups.Single(item => item.Title == "Added as Unknown");
+        var group = page.ReviewGroups.Single(item => item.Title == "Added");
         await group.UndoAllCommand.ExecuteAsync(null);
 
         Assert.Equal(["added", "accepted-set"], fake.PendingRemoveRequests.Select(request => request.ChangeId));
@@ -154,14 +181,14 @@ public sealed class ReviewChangeGroupsTests
     }
 
     private static PendingChange Change(string id, string word, string kind,
-        string opinion = ReadingGrade.Candidate, OccurrenceAnchor? occurrence = null, string? groupId = null)
+        string opinion = ReadingGrade.Candidate, OccurrenceAnchor? occurrence = null, string? groupId = null,
+        bool parserOnly = false)
     {
-        var stored = kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate or "remove-analysis";
+        var stored = !parserOnly && kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate or "remove-analysis";
         return new PendingChange(id, "wordform/" + id, word, kind, null, word, ["operation/" + id])
         {
-            Analyses = stored
-                ? [new ReviewAnalysis(new ParserReading([]), opinion, true, true)]
-                : [],
+            Analyses = stored ? [new ReviewAnalysis(new ParserReading([]), opinion, true, true)]
+                : parserOnly ? [new ReviewAnalysis(new ParserReading([]), opinion, true, false)] : [],
             OriginPage = WorkspacePage.Texts.ToString(),
             Occurrence = occurrence,
             StoredAnalysisId = stored ? "analysis/" + id : null,

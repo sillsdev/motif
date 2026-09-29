@@ -366,7 +366,8 @@ public sealed class ReviewPageModel : PageModel
         if (change.IsUncertain) return new(9, "Uncertain — check again");
         return change.Kind switch
         {
-            ChangeKinds.AddCandidate => new(6, "Added as Unknown"),
+            ChangeKinds.AddCandidate => new(6, "Added"),
+            ChangeKinds.Approve or ChangeKinds.Reject when change.StoredAnalysisId is null => new(6, "Added"),
             ChangeKinds.RemoveAnalysis => new(7, "Removed"),
             ChangeKinds.IncorrectSpelling => new(8, "Spelling → Incorrect"),
             _ => change.StagedTransition.Now switch
@@ -377,7 +378,7 @@ public sealed class ReviewPageModel : PageModel
                 "Approved" when change.StagedTransition.AfterApply == "Unknown" => new(3, "Approved → Unknown"),
                 "Disapproved" when change.StagedTransition.AfterApply == "Approved" => new(4, "Disapproved → Approved"),
                 "Disapproved" when change.StagedTransition.AfterApply == "Unknown" => new(5, "Disapproved → Unknown"),
-                _ => throw new InvalidOperationException($"The pending change '{change.Kind}' has no Review group."),
+                _ => new(9, "Uncertain — check again"),
             },
         };
     }

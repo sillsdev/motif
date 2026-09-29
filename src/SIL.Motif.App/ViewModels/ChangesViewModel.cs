@@ -473,11 +473,17 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public void ToggleContext() => IsContextExpanded = !IsContextExpanded;
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
-    /// <summary>The action that added this candidate to Review changes.</summary>
-    public string SourceText => Kind == ChangeKinds.AddCandidate
-        ? GroupId is null ? "Add" : "Accepting a set"
+    /// <summary>What this added analysis will be and where it came from.</summary>
+    public string SourceText => IsAddition
+        ? $"Added as {StagedTransition.AfterApply} from {AdditionSource}"
         : string.Empty;
     public bool HasSourceText => SourceText.Length > 0;
+
+    private bool IsAddition => Kind == ChangeKinds.AddCandidate ||
+        StoredAnalysisId is null && Kind is (ChangeKinds.Approve or ChangeKinds.Reject);
+
+    private string AdditionSource => GroupId is not null ? "accepting a set"
+        : Kind is ChangeKinds.Approve or ChangeKinds.Reject ? "PanGloss" : "Add";
     /// <summary>The original change shown beneath an Uncertain item.</summary>
     public string TransitionText => StagedTransition.Text;
     public OpinionMarkKind? NowOpinionMark => MarkFor(StagedTransition.Now);
