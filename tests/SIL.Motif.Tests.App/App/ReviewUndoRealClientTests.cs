@@ -79,6 +79,58 @@ public sealed class ReviewUndoRealClientTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task AStoredDisapprovalFromMarkingAppearsInReviewGroups()
+    {
+        using var project = new WalkthroughProject(pristine);
+        new FieldWorksSimulator(project.FwDataPath).SaveEdit(cache =>
+        {
+            var text = cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(project.Text.TextId);
+            var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>()
+                .GetObject(project.Text.ApprovedAnalysisId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                foreach (var paragraph in text.ContentsOA!.ParagraphsOS.OfType<IStTxtPara>())
+                    paragraph.ParseIsCurrent = true;
+                cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.approves);
+            });
+        });
+        CaptureBaseline(project);
+        var client = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath);
+        var selection = new SelectionViewModel(client);
+        var changes = new ChangesViewModel(client);
+        var context = new WorkspaceContext(selection, new AssessViewModel(client, selection), changes, client,
+            new FolderPicker(), new DragSource(), new BaselineViewModel(client));
+        var review = new ReviewPageModel(context);
+        await context.OpenProjectAsync(project.FwDataPath);
+
+        var words = TextWordsQuery.Query(new TextWordsRequest(project.FwDataPath, [project.Text.TextId]));
+        Assert.True(words.Succeeded, words.Refusal?.Message);
+        var line = words.Value!.Texts.Single().Lines
+            .Single(candidate => candidate.ParagraphId == project.Text.FirstParagraphId);
+        var source = line.Tokens.Single(token => token.Form == SeededProject.AnalysedWordForm);
+        var result = new AssessmentWordResult(source.Form!, "analysed", false, "Complete", 3, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, source.Form!, 1, false, false, false,
+                [new ParseAnalysis([new ParseMorph(null, null, null, "different reading")])], []),
+        };
+        var occurrence = new OccurrenceAnchor(project.Text.TextId, line.ParagraphId, line.SegmentId,
+            source.OccurrenceIndex);
+        var marked = new ResultsTokenViewModel("First text", line.Number, source, result,
+            occurrence: occurrence);
+        var choice = Assert.Single(marked.Marking.FixChoices,
+            candidate => candidate.Kind == AnalysisMarkingActionKind.Disapprove &&
+                         candidate.StoredAnalysisId == CanonicalId.FromGuid(project.Text.ApprovedAnalysisId).Value);
+        var action = new AnalysisMarkingAction(choice.Kind, choice.Label, choice.StoredAnalysisId,
+            choice.Reading, choice.ReadingIndex, choice.Now, choice.AfterApply, choice.ChangeKind);
+
+        await changes.AddFromMarkingAsync(action, marked);
+
+        var group = Assert.Single(review.ReviewGroups);
+        Assert.Equal("Approved → Disapproved", group.Title);
+        Assert.Equal("Approved → Disapproved", Assert.Single(group.Items).TransitionText);
+    }
+
+    [Fact]
     public async Task UncertainChangesDisableApplyAfterARealRefresh()
     {
         using var project = new WalkthroughProject(pristine);
