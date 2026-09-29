@@ -176,7 +176,10 @@ internal static class Program
         var behaviour = Behaviour.Read(directory, "batch");
         if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
         if (behaviour.HoldUntilPath is { } holdUntilPath)
-            while (!File.Exists(holdUntilPath)) Thread.Sleep(10);
+        {
+            var holdExit = WaitForHoldRelease(holdUntilPath, behaviour.HoldTimeoutMs);
+            if (holdExit != 0) return holdExit;
+        }
         if (behaviour.HeartbeatPath is { } heartbeat)
         {
             using var wordsHandle = File.Open(wordsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -344,6 +347,15 @@ internal static class Program
     private static readonly JsonSerializerOptions Unescaped =
         new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
+    private static int WaitForHoldRelease(string releasePath, int timeoutMs)
+    {
+        var deadline = Environment.TickCount64 + Math.Max(1, timeoutMs);
+        while (!File.Exists(releasePath) && Environment.TickCount64 < deadline) Thread.Sleep(10);
+        if (File.Exists(releasePath)) return 0;
+        Console.Error.WriteLine("fake parser hold timed out waiting for release");
+        return 86;
+    }
+
     // The pangloss.trace-details.v1 document, with the tree embedded verbatim so a malformed tree stays malformed.
     private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped, bool timedOut) =>
         "{\"schemaVersion\":\"pangloss.trace-details.v1\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
@@ -374,7 +386,10 @@ internal static class Program
 
         if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
         if (behaviour.HoldUntilPath is { } holdUntilPath)
-            while (!File.Exists(holdUntilPath)) Thread.Sleep(10);
+        {
+            var holdExit = WaitForHoldRelease(holdUntilPath, behaviour.HoldTimeoutMs);
+            if (holdExit != 0) return holdExit;
+        }
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
         if (behaviour.DelayMilliseconds > 0) Thread.Sleep(behaviour.DelayMilliseconds);
@@ -585,6 +600,7 @@ internal static class Program
         public string? TraceJson { get; init; }
         public bool TraceCapped { get; init; }
         public bool TraceTimedOut { get; init; }
+        public int HoldTimeoutMs { get; init; } = 60_000;
         public string? GrammarHealthReportJson { get; init; }
 
         internal static Behaviour Read(string? directory, string? subcommand = null)
