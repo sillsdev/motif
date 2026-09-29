@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -26,9 +27,13 @@ public static class ReadStateCommands
     private static readonly JsonSerializerOptions JsonOptions = MotifJson.CreateOptions();
 
     /// <summary>Returns Read occurrences whose sentence, FieldWorks, and PanGloss evidence still matches.</summary>
-    public static CommandOutcome<WordReadStateResponse> Execute(WordReadStateRequest request)
+    public static CommandOutcome<WordReadStateResponse> Execute(
+        WordReadStateRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (cancellationToken.IsCancellationRequested)
+            return CommandOutcome<WordReadStateResponse>.Refused(new Refusal(
+                "word.read-state-cancelled", FailureReason.Cancelled, "Reading word state was cancelled."));
         if (request.TextId == Guid.Empty)
             return Invalid("A Text identity is required.");
         if (request.Occurrences is { } occurrences &&
@@ -49,6 +54,8 @@ public static class ReadStateCommands
         if (current is null)
         {
             repository.DeleteForText(request.TextId);
+            if (request.IsRead == true)
+                return Invalid("A current Baseline is required before marking a word Read.");
             return Success([], hasBaseline: false);
         }
 
@@ -61,7 +68,8 @@ public static class ReadStateCommands
                 : Success([], hasBaseline: true);
         }
 
-        var assessmentDigests = CurrentAssessmentDigests(database);
+        var assessmentDigests = CurrentAssessmentDigests(database, current.Baseline.Token, text,
+            request.AssessmentIds);
         Revalidate(repository, current.Projection, text, assessmentDigests);
 
         if (request.IsRead is null)
@@ -77,9 +85,16 @@ public static class ReadStateCommands
         }
 
         var fingerprints = new List<(OccurrenceAnchor Occurrence, ReadOccurrenceFingerprint Fingerprint)>();
+        var skipped = new List<OccurrenceAnchor>();
         foreach (var target in targets)
         {
-            if (!TryFingerprint(current.Projection, text, target, assessmentDigests, out var fingerprint))
+            var status = CaptureFingerprint(current.Projection, text, target, assessmentDigests, out var fingerprint);
+            if (status == FingerprintStatus.ParagraphNotParsed && request.Occurrences is null)
+            {
+                skipped.Add(target);
+                continue;
+            }
+            if (status != FingerprintStatus.Current)
                 return Invalid("The requested occurrence does not have current, unambiguous word evidence.");
             fingerprints.Add((target, fingerprint));
         }
@@ -87,12 +102,14 @@ public static class ReadStateCommands
             repository.Upsert(new ReadOccurrenceRecord(occurrence, JsonSerializer.Serialize(fingerprint, JsonOptions)));
 
         return Success(repository.GetForText(request.TextId).Select(record => record.Occurrence).ToArray(),
-            hasBaseline: true);
+            hasBaseline: true, skipped);
     }
 
     private static void Revalidate(ReadStateRepository repository, TextWordsProjection projection,
         TextWordsProjectedText text, IReadOnlyDictionary<string, string> assessmentDigests)
     {
+        var deletes = new List<OccurrenceAnchor>();
+        var rekeys = new List<(OccurrenceAnchor Old, ReadOccurrenceRecord Current)>();
         foreach (var record in repository.GetForText(text.TextId))
         {
             try
@@ -100,36 +117,47 @@ public static class ReadStateCommands
                 var expected = JsonSerializer.Deserialize<ReadOccurrenceFingerprint>(record.FingerprintJson,
                     JsonOptions);
                 if (expected is null || expected.Occurrence is null || expected.Assessments is null ||
-                    !TryFingerprint(projection, text, record.Occurrence, assessmentDigests,
-                        out var current) ||
-                    OccurrenceFitEvidenceResolver.Compare(expected.Occurrence, projection) is not null ||
+                    !OccurrenceFitEvidenceResolver.TryReanchor(expected.Occurrence, projection, out var anchor) ||
+                    CaptureFingerprint(projection, text, anchor, assessmentDigests,
+                        out var current) != FingerprintStatus.Current ||
                     expected.WordformDigest != current.WordformDigest ||
                     !expected.Assessments.SequenceEqual(current.Assessments))
-                    repository.Delete(record.Occurrence);
+                {
+                    deletes.Add(record.Occurrence);
+                    continue;
+                }
+
+                if (anchor != record.Occurrence)
+                    rekeys.Add((record.Occurrence, new ReadOccurrenceRecord(anchor,
+                        JsonSerializer.Serialize(current, JsonOptions))));
             }
             catch (JsonException)
             {
-                repository.Delete(record.Occurrence);
+                deletes.Add(record.Occurrence);
             }
         }
+        foreach (var occurrence in deletes) repository.Delete(occurrence);
+        foreach (var (old, _) in rekeys) repository.Delete(old);
+        foreach (var (_, current) in rekeys) repository.Upsert(current);
     }
 
-    private static bool TryFingerprint(TextWordsProjection projection, TextWordsProjectedText text,
+    private static FingerprintStatus CaptureFingerprint(TextWordsProjection projection, TextWordsProjectedText text,
         OccurrenceAnchor occurrence, IReadOnlyDictionary<string, string> assessmentDigests,
         out ReadOccurrenceFingerprint fingerprint)
     {
         fingerprint = null!;
         if (occurrence.TextId != text.TextId ||
             !OccurrenceFitEvidenceResolver.TryCapture(projection, occurrence, out var evidence, out _) ||
-            evidence is null || !evidence.ParseIsCurrent)
-            return false;
+            evidence is null)
+            return FingerprintStatus.Invalid;
+        if (!evidence.ParseIsCurrent) return FingerprintStatus.ParagraphNotParsed;
 
         var line = text.Lines.SingleOrDefault(candidate => candidate.ParagraphId == occurrence.ParagraphId &&
             candidate.SegmentId == occurrence.SegmentId);
         var token = line?.Tokens.SingleOrDefault(candidate => candidate.OccurrenceIndex == occurrence.Index);
         if (token?.WordformId is not { } wordformId ||
             projection.Wordforms.SingleOrDefault(wordform => wordform.WordformId == wordformId) is not { } wordform)
-            return false;
+            return FingerprintStatus.Invalid;
 
         var wordformDigest = Digest(new
         {
@@ -152,23 +180,26 @@ public static class ReadStateCommands
             .Select(form => new ReadAssessmentEvidence(form,
                 assessmentDigests.TryGetValue(form, out var digest) ? digest : null)).ToArray();
         fingerprint = new ReadOccurrenceFingerprint(evidence, wordformDigest, assessments);
-        return true;
+        return FingerprintStatus.Current;
     }
 
-    private static Dictionary<string, string> CurrentAssessmentDigests(MotifDatabase database)
+    private static Dictionary<string, string> CurrentAssessmentDigests(MotifDatabase database,
+        BaselineToken currentToken, TextWordsProjectedText text, IReadOnlyList<string>? assessmentIds)
     {
-        var latest = new Dictionary<string, string>(StringComparer.Ordinal);
-        var assessments = new AssessmentRepository(database)
-            .ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind())
-            .OrderBy(assessment => assessment.SavedUtc, StringComparer.Ordinal)
-            .ThenBy(assessment => assessment.AssessmentId, StringComparer.Ordinal);
-        foreach (var assessment in assessments)
-        foreach (var word in assessment.Words ?? [])
+        var forms = text.Lines.SelectMany(line => line.Tokens).Where(token => token.WordformId is not null)
+            .SelectMany(token => token.Forms).Select(Canonicalize).Where(form => form.Length > 0)
+            .ToHashSet(StringComparer.Ordinal);
+        var tokenJson = JsonSerializer.Serialize(currentToken, JsonOptions);
+        var repository = new AssessmentRepository(database);
+        var assessments = repository.ReadBaselineAssessmentWords(AssessmentKind.ParseTime.ToStoredKind(),
+            tokenJson, assessmentIds, forms);
+        var current = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var word in assessments.SelectMany(assessment => assessment.Words ?? []))
         {
             var form = Canonicalize(word.Word);
-            if (form.Length > 0) latest[form] = Digest(SemanticResult(word));
+            current[form] = Digest(SemanticResult(word));
         }
-        return latest;
+        return current;
     }
 
     private static object SemanticResult(AssessedWord word) => new
@@ -201,7 +232,6 @@ public static class ReadStateCommands
             correctness.Unavailable,
         } : null,
         word.ProjectStanding,
-        word.OccurrenceCount,
         word.ReadingGrades,
         word.MissedApprovedCount,
         word.MissedApproved,
@@ -225,8 +255,12 @@ public static class ReadStateCommands
     }
 
     private static CommandOutcome<WordReadStateResponse> Success(
-        IReadOnlyList<OccurrenceAnchor> occurrences, bool hasBaseline) =>
-        CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse(occurrences, hasBaseline));
+        IReadOnlyList<OccurrenceAnchor> occurrences, bool hasBaseline,
+        IReadOnlyList<OccurrenceAnchor>? skipped = null) =>
+        CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse(occurrences, hasBaseline)
+        {
+            SkippedOccurrences = skipped ?? [],
+        });
 
     private static CommandOutcome<WordReadStateResponse> Invalid(string message) =>
         CommandOutcome<WordReadStateResponse>.Refused(new Refusal(
@@ -238,4 +272,11 @@ public static class ReadStateCommands
         IReadOnlyList<ReadAssessmentEvidence> Assessments);
 
     private sealed record ReadAssessmentEvidence(string Form, string? Digest);
+
+    private enum FingerprintStatus
+    {
+        Current,
+        ParagraphNotParsed,
+        Invalid,
+    }
 }

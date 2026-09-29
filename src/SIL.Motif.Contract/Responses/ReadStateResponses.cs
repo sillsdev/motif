@@ -7,4 +7,8 @@ namespace SIL.Motif.Contract.Responses;
 /// <param name="HasBaseline">Whether the project has a current Baseline containing Text word evidence.</param>
 public sealed record WordReadStateResponse(
     IReadOnlyList<OccurrenceAnchor> ReadOccurrences,
-    bool HasBaseline);
+    bool HasBaseline)
+{
+    /// <summary>Occurrences not marked Read because their paragraph does not have a current parse.</summary>
+    public IReadOnlyList<OccurrenceAnchor> SkippedOccurrences { get; init; } = [];
+}

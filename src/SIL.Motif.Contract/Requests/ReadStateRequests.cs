@@ -11,4 +11,8 @@ public sealed record WordReadStateRequest(
     string ProjectPath,
     Guid TextId,
     IReadOnlyList<OccurrenceAnchor>? Occurrences = null,
-    bool? IsRead = null);
+    bool? IsRead = null)
+{
+    /// <summary>The ParseTime Assessments represented by the window, including its displayed reruns.</summary>
+    public IReadOnlyList<string>? AssessmentIds { get; init; }
+}
