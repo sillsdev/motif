@@ -135,8 +135,8 @@ public sealed class JobVerbArgvTests : IDisposable
         var defaultRun = Run($"trial --project \"{Project}\" {proposalId}");
         var allRun = Run($"trial --project \"{Project}\" {proposalId} --all-words");
 
-        Assert.Equal(0, defaultRun.ExitCode);
-        Assert.Equal(0, allRun.ExitCode);
+        Assert.True(defaultRun.ExitCode == 0, $"Expected exit code 0; got {defaultRun.ExitCode}.{Environment.NewLine}{defaultRun.Error}");
+        Assert.True(allRun.ExitCode == 0, $"Expected exit code 0; got {allRun.ExitCode}.{Environment.NewLine}{allRun.Error}");
         using var database = ProjectMotifDatabase.Open(Project);
         var jobs = new JobRepository(database);
         using var defaultInput = JsonDocument.Parse(jobs.Get(defaultRun.Output.Trim())!.InputJson);

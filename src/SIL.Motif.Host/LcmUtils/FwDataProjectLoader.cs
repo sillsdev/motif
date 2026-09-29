@@ -1,9 +1,10 @@
 // Adapted from languageforge-lexbox's FwDataMiniLcmBridge/LcmUtils/ProjectLoader.cs (SIL Global, MIT).
 
-using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using SIL.LCModel;
+using SIL.LCModel.Core.KernelInterfaces;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.Core.WritingSystems;
 using SIL.LCModel.Utils;
 using SIL.WritingSystems;
@@ -20,6 +21,8 @@ public class FwDataProjectLoader
 {
     private static bool _init;
     private static readonly object InitLock = new();
+    private static IntPtr[] _loadedIcuLibraryHandles = [];
+    private static string[] _loadedIcuLibraryPaths = [];
 
     /// <summary>
     /// Initializes ICU and SLDR. Idempotent — only runs once per process. Must happen before any
@@ -37,10 +40,45 @@ public class FwDataProjectLoader
         {
             if (_init) return;
 
-            Icu.Wrapper.Init();
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            var dataDirectory = Path.GetFullPath(Path.Combine(
+                AppContext.BaseDirectory, "IcuData", "icudt70l"));
+
+            var overrideDataPath = Path.GetFullPath(Path.Combine(
+                dataDirectory, "..", "data", "UnicodeDataOverrides.txt"));
+            var requiredDataFiles = new[]
             {
-                Debug.Assert(Icu.Wrapper.IcuVersion == "72.1.0.3");
+                Path.Combine(dataDirectory, "nfc_fw.nrm"),
+                Path.Combine(dataDirectory, "nfkc_fw.nrm"),
+                overrideDataPath,
+            };
+            var missingDataFiles = requiredDataFiles.Where(path => !File.Exists(path)).ToArray();
+            if (missingDataFiles.Length > 0)
+            {
+                throw CreateCustomIcuFailure(dataDirectory, [],
+                    "bundled FieldWorks normalization data is missing: " + string.Join(", ", missingDataFiles));
+            }
+
+            // .NET binds its own ICU on first culture use; after SIL ICU 70 is loaded that bind can abort on macOS.
+            _ = string.Compare("a", "b", StringComparison.CurrentCulture);
+
+            string[] loadedLibraries;
+            try
+            {
+                loadedLibraries = LoadBundledIcuLibraries();
+                Icu.Wrapper.DataDirectory = dataDirectory;
+                RegisterCustomIcuResolver(loadedLibraries);
+                InitializeCustomIcuDataDirectory(dataDirectory);
+            }
+            catch (Exception exception)
+            {
+                throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
+                    exception.GetType().Name + ": " + exception.Message, exception);
+            }
+
+            if (!CustomIcu.HaveCustomIcuLibrary)
+            {
+                throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
+                    "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
             }
 
             Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
@@ -49,6 +87,104 @@ public class FwDataProjectLoader
         }
     }
 
+    private static void InitializeCustomIcuDataDirectory(string dataDirectory)
+    {
+        var previousIcuDataDirectory = Environment.GetEnvironmentVariable("ICU_DATA");
+        try
+        {
+            Environment.SetEnvironmentVariable("ICU_DATA", dataDirectory, EnvironmentVariableTarget.Process);
+            CustomIcu.InitIcuDataDir();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(
+                "ICU_DATA", previousIcuDataDirectory, EnvironmentVariableTarget.Process);
+        }
+    }
+
+    private static string[] LoadBundledIcuLibraries()
+    {
+        var baseDirectory = AppContext.BaseDirectory;
+        string libraryDirectory;
+        string[] libraryNames;
+
+        if (OperatingSystem.IsWindows() && RuntimeInformation.ProcessArchitecture == Architecture.X64)
+        {
+            libraryDirectory = Path.Combine(baseDirectory, "lib", "win-x64");
+            libraryNames = ["icudt70.dll", "icuuc70.dll", "icuin70.dll", "icuio70.dll", "icutu70.dll"];
+        }
+        else if (OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.X64)
+        {
+            libraryDirectory = baseDirectory;
+            libraryNames =
+            [
+                "libicudata.so.70", "libicuuc.so.70", "libicui18n.so.70", "libicuio.so.70", "libicutu.so.70",
+            ];
+        }
+        else if (OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture is Architecture.Arm64 or Architecture.X64)
+        {
+            libraryDirectory = baseDirectory;
+            libraryNames =
+            [
+                "libicudata.70.dylib", "libicuuc.70.dylib", "libicui18n.70.dylib", "libicuio.70.dylib",
+                "libicutu.70.dylib",
+            ];
+        }
+        else
+        {
+            throw new PlatformNotSupportedException(
+                $"SIL ICU 70 is not configured for {RuntimeInformation.ProcessArchitecture} on {RuntimeInformation.OSDescription}.");
+        }
+
+        var paths = libraryNames.Select(name => Path.Combine(libraryDirectory, name)).ToArray();
+        var missingPaths = paths.Where(path => !File.Exists(path)).ToArray();
+        if (missingPaths.Length > 0)
+        {
+            throw new DllNotFoundException(
+                "Expected bundled SIL ICU libraries were not found: " + string.Join(", ", missingPaths));
+        }
+
+        var handles = new List<IntPtr>(paths.Length);
+        var loadedPaths = new List<string>(paths.Length);
+        try
+        {
+            foreach (var path in paths)
+            {
+                handles.Add(NativeLibrary.Load(path));
+                loadedPaths.Add(path);
+            }
+        }
+        finally
+        {
+            _loadedIcuLibraryHandles = handles.ToArray();
+            _loadedIcuLibraryPaths = loadedPaths.ToArray();
+        }
+
+        return paths;
+    }
+
+    private static void RegisterCustomIcuResolver(IReadOnlyCollection<string> loadedLibraries)
+    {
+        var icuuc = loadedLibraries.First(path => Path.GetFileName(path).StartsWith(
+            OperatingSystem.IsWindows() ? "icuuc" : "libicuuc", StringComparison.OrdinalIgnoreCase));
+        NativeLibrary.SetDllImportResolver(typeof(CustomIcu).Assembly, (name, _, _) =>
+            string.Equals(name, "icuuc70.dll", StringComparison.OrdinalIgnoreCase)
+                ? NativeLibrary.Load(icuuc)
+                : IntPtr.Zero);
+    }
+
+    private static InvalidOperationException CreateCustomIcuFailure(
+        string dataDirectory, IReadOnlyCollection<string> loadedLibraries, string cause, Exception? innerException = null)
+    {
+        var loaded = loadedLibraries.Count == 0
+            ? "No bundled ICU native library was loaded."
+            : "Bundled ICU native libraries loaded from: " + string.Join(", ", loadedLibraries) + ".";
+        return new InvalidOperationException(
+            "Motif refuses to open a FieldWorks project without SIL ICU 70. " + cause + ". " + loaded + " " +
+            $"Motif's bundled ICU data directory is '{dataDirectory}'. Expected nfc_fw.nrm, nfkc_fw.nrm, " +
+            $"and UnicodeDataOverrides.txt beside that directory or its parent data directory.",
+            innerException);
+    }
     /// <summary>
     /// Keeps a process's writing-system lookups off the network, for it and every process it starts.
     /// <b>Test-only.</b>

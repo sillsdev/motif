@@ -10,6 +10,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
@@ -199,6 +200,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             databasePath = database.FullPath;
         var apply = CliStart(runner.Options, "apply", "--all-pending", "--project", path, "--json");
         apply.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        apply.Environment["MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR"] = path;
         using var process = Process.Start(apply)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
@@ -206,7 +208,6 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         try
         {
             await WaitForPendingProposalAnchorAsync(path);
-            File.SetAttributes(databasePath, File.GetAttributes(databasePath) | FileAttributes.ReadOnly);
             await process.WaitForExitAsync();
             var output = await outputTask;
             var error = await errorTask;
@@ -217,10 +218,18 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             using var failure = JsonDocument.Parse(error);
             Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());
             Assert.Equal("StoreInconsistent", failure.RootElement.GetProperty("reason").GetString());
+
+            using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+                Assert.Contains("reconciliation-word", ApprovedMorphologyReader.ReadIncorrectSpellings(cache));
+            using var store = ProjectMotifDatabase.Open(path);
+            using var connection = store.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
+            command.Parameters.AddWithValue("$proposal", added.Value.DraftId);
+            Assert.Equal(0L, (long)command.ExecuteScalar()!);
         }
         finally
         {
-            File.SetAttributes(databasePath, File.GetAttributes(databasePath) & ~FileAttributes.ReadOnly);
             await worker.WaitForExitAsync();
         }
     }
