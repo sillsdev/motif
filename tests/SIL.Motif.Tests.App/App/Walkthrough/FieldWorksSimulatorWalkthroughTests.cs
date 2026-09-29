@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.Threading;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -210,6 +211,94 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.False(review.ApplyCommand.CanExecute(null));
             Assert.Equal("FieldWorks has this project open. Close it before applying changes.",
                 review.ApplyBlockReason);
+            return Task.CompletedTask;
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    [Fact]
+    public void ReleasingFieldWorksAllowsApplyAndShowsTheReceipt()
+    {
+        using var project = new WalkthroughProject(pristine);
+        PendingChangeFixture.AddIncorrectSpelling(
+            project.FwDataPath, project.ManagedRoot, "held-retry-word");
+        using var held = new FieldWorksSimulator(project.FwDataPath).Hold();
+        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+        var parser = FakeParser.Copy(project.ManagedRoot);
+        var heartbeat = Path.Combine(project.ManagedRoot, "apply-check-parser-heartbeat");
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: parser);
+            walkthrough.Show();
+            walkthrough.ChooseNewProject();
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Baseline.FieldWorksHeldProject &&
+                    walkthrough.Workspace.Selection.Texts.Count == 1 &&
+                    walkthrough.Workspace.Context.Setup?.IsOpen == true,
+                WalkthroughSteps.Remaining(deadline), "the window did not show the held project and its setup");
+            walkthrough.SkipSetup();
+            walkthrough.SetFakeParserBehavior(new
+            {
+                subcommands = new Dictionary<string, object>
+                {
+                    ["batch"] = new { heartbeatPath = heartbeat },
+                },
+            });
+            WalkthroughSteps.StartAssessmentOverPastedWords(walkthrough, deadline);
+            walkthrough.WaitUntil(
+                () => File.Exists(heartbeat) && walkthrough.Workspace.Assess.State == RunState.Running,
+                WalkthroughSteps.Remaining(deadline), "the Assessment did not reach the held fake parser");
+            walkthrough.Click("Cancel the running Assessment");
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Cancelled,
+                WalkthroughSteps.Remaining(deadline), "the held Assessment did not cancel");
+            walkthrough.SetFakeParserBehavior(new
+            {
+                subcommands = new Dictionary<string, object>
+                {
+                    ["batch"] = new { words = new[] { new { word = "motifa", outcome = "complete" } } },
+                },
+            });
+            WalkthroughSteps.StartAssessmentOverPastedWords(walkthrough, deadline);
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Completed &&
+                    walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+                WalkthroughSteps.Remaining(deadline), "the Assessment did not complete");
+
+            walkthrough.ShowPage(WorkspacePage.Review);
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Context.Changes.Items.Count == 1,
+                WalkthroughSteps.Remaining(deadline), "the pending change did not appear in Review");
+
+            var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
+            walkthrough.Click("Check what applying does to the numbers");
+            walkthrough.WaitUntil(
+                () => !review.IsMeasuring && review.NumbersText != "See what applying does to the numbers.",
+                WalkthroughSteps.Remaining(deadline), "the pending change was not checked");
+            Assert.Null(review.MeasurementRefusal);
+            Assert.False(review.CanApply);
+            Assert.Equal("FieldWorks has this project open. Close it before applying changes.",
+                review.ApplyBlockReason);
+
+            held.Dispose();
+            walkthrough.Window.Hide();
+            walkthrough.Window.Show();
+            walkthrough.Window.Activate();
+            Dispatcher.UIThread.RunJobs();
+            walkthrough.WaitUntil(
+                () => !walkthrough.Workspace.Baseline.FieldWorksHeldProject,
+                WalkthroughSteps.Remaining(deadline), "the window did not clear the held-project status after release");
+            walkthrough.Click("Check what applying does to the numbers");
+            walkthrough.WaitUntil(
+                () => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
+                WalkthroughSteps.Remaining(deadline), "the released project changes were not checked again");
+            Assert.Null(review.MeasurementRefusal);
+            Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
+            walkthrough.Click("Apply to FieldWorks project");
+            walkthrough.WaitUntil(
+                () => review.HasReceipt && review.Changes.Items.Count == 0,
+                WalkthroughSteps.Remaining(deadline), "Apply did not show its Receipt and clear the pending change");
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }

@@ -110,6 +110,39 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task ApplyAllPendingReturnsBusyExitWhenFieldWorksHoldsTheProject()
+    {
+        var (path, wordformId) = ReleasedProjectWithWord("busy-apply-word");
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "busy-pending-apply-worker");
+        var runner = IsolatedRunner.Process(root);
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(path, "1.0", initial.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "busy-apply-word", OriginPage: "Texts")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(
+            path, added.Value!.DraftId!, added.Value.Revision, ["busy-apply-word"]),
+            new Progress<MeasureProgress>(), CancellationToken.None, runnerLauncher: runner);
+        Assert.True(measured.Succeeded, measured.Refusal?.Message);
+
+        using var held = new FieldWorksSimulator(path).Hold();
+        var apply = CliStart(runner.Options, "apply", "--all-pending", "--project", path, "--json");
+        apply.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        var (exitCode, output, error) = await RunAsync(apply);
+
+        Assert.Equal(3, exitCode);
+        Assert.Empty(output);
+        using var failure = JsonDocument.Parse(error);
+        Assert.Equal("project.in-use", failure.RootElement.GetProperty("code").GetString());
+        Assert.Equal("Busy", failure.RootElement.GetProperty("reason").GetString());
+        var unchanged = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
+        Assert.True(unchanged.Succeeded, unchanged.Refusal?.Message);
+        Assert.Single(unchanged.Value!.Changes);
+    }
+
+    [Fact]
     public async Task ApplyAllPendingReturnsRefusedExitAndCodeForAnUncertainOccurrence()
     {
         string path;
