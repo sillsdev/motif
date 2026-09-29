@@ -3,7 +3,7 @@ namespace SIL.Motif.Host.PanGloss;
 /// <summary>Traces one word and preserves the parser diagnostic document.</summary>
 public sealed class PanGlossTracer : IPanGlossTracer
 {
-    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan DefaultTimeout = Timeout.InfiniteTimeSpan;
 
     private readonly IPanGlossInvoker _invoker;
 
@@ -15,7 +15,8 @@ public sealed class PanGlossTracer : IPanGlossTracer
         if (string.IsNullOrWhiteSpace(grammarPath)) throw new ArgumentException("Required.", nameof(grammarPath));
         if (string.IsNullOrEmpty(word)) throw new ArgumentException("Required.", nameof(word));
         var cap = timeout ?? DefaultTimeout;
-        if (cap <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout), "A trace timeout must be positive.");
+        if (cap != Timeout.InfiniteTimeSpan && cap <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(timeout), "A trace timeout must be positive or infinite.");
 
         var outcome = await _invoker.RunAsync(
             new PanGlossRequest.Trace(grammarPath, word), "trace:" + word, cancellationToken, cap).ConfigureAwait(false);

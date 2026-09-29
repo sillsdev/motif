@@ -1,4 +1,5 @@
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Host;
 using SIL.Motif.Contract.Commands;
@@ -24,4 +25,8 @@ public sealed partial class CommandClient
     public Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
         ShowConfigRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => ConfigCommands.Show(request));
+
+    public Task<CommandOutcome<ParserStepRate>> ReadParserStepRateAsync(
+        string projectPath, CancellationToken cancellationToken) =>
+        Task.Run(() => SelectionLimitEstimateQuery.ReadParserStepRate(projectPath), cancellationToken);
 }

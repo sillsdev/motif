@@ -12,7 +12,7 @@ public sealed record NamedSelectionRecord(
     IReadOnlyList<string> AddedWords,
     string CreatedUtc,
     string UpdatedUtc,
-    int PerWordLimitMs,
+    int? PerWordLimitMs,
     StepCap PerWordStepLimit);
 
 /// <summary>Stores named Selections and the one that is resolved by default for an Assessment.</summary>
@@ -54,12 +54,12 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
     /// <summary>Saves or replaces one named Selection and makes it the project's default atomically.</summary>
     public NamedSelectionRecord SetDefault(
         string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
-        int perWordLimitMs = 1000, StepCap? perWordStepLimit = null)
+        int? perWordLimitMs = 1000, StepCap? perWordStepLimit = null)
     {
         RequireName(name);
         ArgumentNullException.ThrowIfNull(textIds);
         ArgumentNullException.ThrowIfNull(addedWords);
-        if (perWordLimitMs <= 0) throw new ArgumentOutOfRangeException(nameof(perWordLimitMs));
+        if (perWordLimitMs is <= 0) throw new ArgumentOutOfRangeException(nameof(perWordLimitMs));
         name = name.Trim();
         var stepLimit = perWordStepLimit ?? StepCap.Default;
         var canonicalTextIds = textIds.Distinct().OrderBy(id => id.ToString("D"), StringComparer.Ordinal).ToArray();
@@ -97,7 +97,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             upsert.Parameters.AddWithValue("$words", JsonSerializer.Serialize(canonicalWords));
             upsert.Parameters.AddWithValue("$created", createdUtc);
             upsert.Parameters.AddWithValue("$updated", now);
-            upsert.Parameters.AddWithValue("$timeLimit", perWordLimitMs);
+            upsert.Parameters.AddWithValue("$timeLimit", perWordLimitMs is { } timeLimit ? timeLimit : DBNull.Value);
             upsert.Parameters.AddWithValue("$stepLimit", stepLimit.Steps is { } steps ? steps : DBNull.Value);
             upsert.ExecuteNonQuery();
         }
@@ -129,7 +129,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             return new NamedSelectionRecord(
                 reader.GetString(0), JsonSerializer.Deserialize<Guid[]>(reader.GetString(1))!,
                 JsonSerializer.Deserialize<string[]>(reader.GetString(2))!, reader.GetString(3), reader.GetString(4),
-                reader.GetInt32(5), reader.IsDBNull(6) ? StepCap.Unbounded : new StepCap(reader.GetInt64(6)));
+                reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                reader.IsDBNull(6) ? StepCap.Unbounded : new StepCap(reader.GetInt64(6)));
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentOutOfRangeException)
         {

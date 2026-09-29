@@ -184,14 +184,14 @@ public sealed class PanGlossTracerTests
     }
 
     [Fact]
-    public async Task ADefaultTimeoutIsForwardedAsTheWallClockCap_AndIsOverridable()
+    public async Task ADefaultTraceHasNoWallClockCap_AndAnExplicitTimeoutIsForwarded()
     {
         var stub = new StubInvoker();
         var tracer = new PanGlossTracer(stub);
 
         await tracer.TraceAsync("golden.xml", "sagd", CancellationToken.None);
-        Assert.Equal(PanGlossTracer.DefaultTimeout, stub.LastWallClockCap);
-        Assert.True(PanGlossTracer.DefaultTimeout < PanGlossInvoker.DefaultWallClockCap);
+        Assert.Equal(Timeout.InfiniteTimeSpan, stub.LastWallClockCap);
+        Assert.Equal(Timeout.InfiniteTimeSpan, PanGlossTracer.DefaultTimeout);
 
         await tracer.TraceAsync("golden.xml", "sagd", CancellationToken.None, TimeSpan.FromSeconds(7));
         Assert.Equal(TimeSpan.FromSeconds(7), stub.LastWallClockCap);

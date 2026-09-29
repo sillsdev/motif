@@ -19,6 +19,8 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 public sealed class WalkthroughWindow : IDisposable
 {
+    private readonly string _managedRoot;
+    private readonly string? _parserPath;
     private readonly ScriptedProjectPicker _projectPicker;
     private readonly ScriptedFolderPicker _folderPicker;
     private readonly RecordingDragSource _dragSource;
@@ -39,11 +41,13 @@ public sealed class WalkthroughWindow : IDisposable
         ICommandStartGate? startGate = null, TimeProvider? timeProvider = null,
         string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null, IClipboard? clipboard = null)
     {
+        _managedRoot = managedRoot;
         _projectPicker = new ScriptedProjectPicker(projectPath);
         _folderPicker = new ScriptedFolderPicker(folderPath);
         _dragSource = new RecordingDragSource();
 
         parserPath ??= PanGlossExecutable.TryLocate();
+        _parserPath = parserPath;
         if (runnerLauncher is null)
             runnerLauncher = _ownedRunner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath));
         var composition = MotifAppComposition.Create(new MotifAppOptions(
@@ -61,6 +65,8 @@ public sealed class WalkthroughWindow : IDisposable
     }
 
     public MainWindow Window { get; }
+
+    internal string ManagedRoot => _managedRoot;
 
     public WorkspaceShellViewModel Workspace { get; }
 
@@ -89,6 +95,16 @@ public sealed class WalkthroughWindow : IDisposable
         if (Workspace.Context.Setup is not { IsOpen: true } setup) return;
         Click("Skip setup for now");
         WaitUntil(() => !setup.IsOpen, TimeSpan.FromSeconds(30), "skipping setup did not close the dialog");
+    }
+
+    internal void SetFakeParserBehavior(object behavior)
+    {
+        var grammarPaths = Directory.EnumerateFiles(_managedRoot, "*.fwdata", SearchOption.AllDirectories).ToArray();
+        Assert.NotEmpty(grammarPaths);
+        foreach (var grammarPath in grammarPaths)
+            FakeParser.Behave(Path.GetDirectoryName(grammarPath)!, behavior);
+        FakeParser.BehaveBesideExecutable(_parserPath
+            ?? throw new InvalidOperationException("A fake parser path is required to set its behavior."), behavior);
     }
 
     public void OpenProjectMenu()

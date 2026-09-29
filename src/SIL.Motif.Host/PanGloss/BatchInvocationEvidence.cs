@@ -16,7 +16,7 @@ public sealed record BatchInvocationEvidence(
     string TsvSha256,
     string StandardErrorPath,
     string StandardErrorSha256,
-    int PerWordTimeoutMs,
+    int? PerWordTimeoutMs,
     StepCap PerWordStepLimit,
     int Threads,
     bool CollectStatistics)

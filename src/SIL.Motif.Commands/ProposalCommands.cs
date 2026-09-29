@@ -1524,6 +1524,8 @@ public static partial class ProposalCommands
 
                 try
                 {
+                    if (ShouldFailReceiptWriteForTest(project.FullFwDataPath))
+                        throw new IOException("Injected receipt write failure.");
                     repository.RecordAppliedReceipt(receipt);
                 }
                 catch (Exception ex)
@@ -1594,6 +1596,16 @@ public static partial class ProposalCommands
 
     private static void RecordApplyUsage(UsageLog? usage, params string[] names) =>
         usage?.Record("apply", names.Select(UsageArgumentShape.Text).ToList());
+
+    private static bool ShouldFailReceiptWriteForTest(string fwDataPath)
+    {
+        var requestedPath = Environment.GetEnvironmentVariable("MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR");
+        if (requestedPath is null) return false;
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        return string.Equals(Path.GetFullPath(requestedPath), Path.GetFullPath(fwDataPath), comparison);
+    }
 
     public static CommandOutcome<AppliedLogProjection> Log(LogRequest request, UsageLog? usage = null)
     {

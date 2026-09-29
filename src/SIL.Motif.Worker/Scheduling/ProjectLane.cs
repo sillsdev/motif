@@ -14,6 +14,7 @@ public sealed class ProjectLane : IDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _runner;
     private BaselineToken _baseline;
+    private TaskCompletionSource? _applyWaitersDrained;
     private bool _barrierClosed;
     private int _applyWaiters;
     private bool _disposed;
@@ -35,8 +36,8 @@ public sealed class ProjectLane : IDisposable
             ThrowIfDisposed();
             work.Node = _queue.AddLast(work);
             RegisterCancellation(work);
+            _signal.Release();
         }
-        _signal.Release();
         return completion.Task;
     }
 
@@ -59,8 +60,8 @@ public sealed class ProjectLane : IDisposable
                 throw new InvalidOperationException("The named Baseline is not the lane's blocked Baseline.");
             work.Node = _queue.AddLast(work);
             RegisterCancellation(work);
+            _signal.Release();
         }
-        _signal.Release();
         return completion.Task;
     }
 
@@ -69,10 +70,17 @@ public sealed class ProjectLane : IDisposable
     {
         if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan)
             throw new ArgumentOutOfRangeException(nameof(timeout));
-        lock (_gate) ThrowIfDisposed();
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(
-            cancellationToken, _shutdown.Token);
-        Interlocked.Increment(ref _applyWaiters);
+        CancellationTokenSource linked;
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            linked = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken, _shutdown.Token);
+            if (_applyWaiters == 0)
+                _applyWaitersDrained = new TaskCompletionSource(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+            _applyWaiters++;
+        }
         try
         {
             if (!await _liveGate.WaitAsync(timeout, linked.Token).ConfigureAwait(false)) return null;
@@ -80,19 +88,30 @@ public sealed class ProjectLane : IDisposable
         }
         finally
         {
-            Interlocked.Decrement(ref _applyWaiters);
+            linked.Dispose();
+            lock (_gate)
+            {
+                _applyWaiters--;
+                if (_applyWaiters == 0)
+                {
+                    _applyWaitersDrained?.TrySetResult();
+                    _applyWaitersDrained = null;
+                }
+            }
         }
     }
 
     public void Dispose()
     {
         QueuedWork[] queued;
+        Task applyWaitersDrained;
         lock (_gate)
         {
             if (_disposed) return;
             _disposed = true;
             queued = _queue.ToArray();
             _queue.Clear();
+            applyWaitersDrained = _applyWaitersDrained?.Task ?? Task.CompletedTask;
         }
         _shutdown.Cancel();
         _signal.Release();
@@ -103,6 +122,7 @@ public sealed class ProjectLane : IDisposable
         }
         try { _runner.GetAwaiter().GetResult(); }
         catch (OperationCanceledException) { }
+        applyWaitersDrained.GetAwaiter().GetResult();
         _shutdown.Dispose();
         _signal.Dispose();
         _liveGate.Dispose();

@@ -32,7 +32,7 @@ public static class SelectionCommands
             return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
                 "selection.invalid", FailureReason.InvalidArgument,
                 "A Selection name and non-null Text and word lists are required."));
-        if (request.PerWordLimitMs <= 0)
+        if (request.PerWordLimitMs is <= 0)
             return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
                 "selection.invalid-time-limit", FailureReason.InvalidArgument,
                 "The per-word time limit must be a positive number of milliseconds."));

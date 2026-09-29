@@ -216,9 +216,24 @@ public sealed class ProjectLaneTests
 
         await Task.Run(lane.Dispose).WaitAsync(TimeSpan.FromSeconds(2));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting);
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => refresh);
+        await WaitForExpectedCancellation(
+            Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting),
+            "waiting apply-gate acquisition");
+        await WaitForExpectedCancellation(
+            Assert.ThrowsAnyAsync<OperationCanceledException>(() => refresh), "held-back refresh");
         held.Dispose();
+    }
+
+    private static async Task WaitForExpectedCancellation(Task task, string operation)
+    {
+        try
+        {
+            await task.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException($"The {operation} did not end after lane disposal.", exception);
+        }
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Parser;
@@ -8,8 +9,8 @@ using SIL.Motif.Host.Parser;
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// Runs the <c>pangloss</c> executable: one queue slot, one containment job, both streams drained, one wall-clock
-/// cap, and an outcome for whatever happened.
+/// Runs the <c>pangloss</c> executable: one queue slot, one containment job, both streams drained, an applicable
+/// wall-clock deadline, and an outcome for whatever happened.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -18,13 +19,14 @@ namespace SIL.Motif.Host.PanGloss;
 /// containment cannot be skipped and a failure cannot escape as an exception.
 /// </para>
 /// <para>
-/// The default cap is the parser's own ratified execution limit rather than a number Motif chose. The
-/// per-word limit is a <see cref="PanGlossRequest.Batch"/> argument and bounds a word, not the process.
+/// The default cap is the parser's own ratified execution limit rather than a number Motif chose. A batch
+/// without a per-word time limit has no wall-clock deadline and remains cancellable. The per-word limit is a
+/// <see cref="PanGlossRequest.Batch"/> argument and bounds a word, not the process.
 /// </para>
 /// </remarks>
 public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 {
-    /// <summary>The parser's ratified execution limit, applied to every invocation that names no cap.</summary>
+    /// <summary>The parser's ratified execution limit for invocations that need a default deadline.</summary>
     public static readonly TimeSpan DefaultWallClockCap = TimeSpan.FromMinutes(10);
 
     private readonly string? _executable;
@@ -50,13 +52,17 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     }
 
     /// <inheritdoc />
+    public bool ExecutableMissing => _executable is null;
+
+    /// <inheritdoc />
     public async Task<PanGlossOutcome> RunAsync(
         PanGlossRequest request, string label, CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(label)) throw new ArgumentException("Required.", nameof(label));
-        var cap = wallClockCap ?? DefaultWallClockCap;
-        if (cap <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(wallClockCap), "A cap must be positive.");
+        var cap = ResolveWallClockCap(request, wallClockCap);
+        if (cap != Timeout.InfiniteTimeSpan && cap <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(wallClockCap), "A cap must be positive or infinite.");
         request.Validate();
 
         if (_executable is null)
@@ -91,6 +97,11 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
             return new PanGlossOutcome.Cancelled();
         }
     }
+
+    internal static TimeSpan ResolveWallClockCap(PanGlossRequest request, TimeSpan? wallClockCap) =>
+        wallClockCap ?? (request is PanGlossRequest.Batch { PerWordLimit: null }
+            ? Timeout.InfiniteTimeSpan
+            : DefaultWallClockCap);
 
     /// <summary>Releases the queue; a run still in flight completes or cancels on its own terms.</summary>
     public void Dispose()
@@ -259,7 +270,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     wordsPath, wordsDigest!,
                     tsvPath, tsvDigest,
                     stderrPath, BatchInvocationEvidence.DigestFile(stderrPath),
-                    (int)capturedBatch.PerWordLimit.TotalMilliseconds,
+                    capturedBatch.PerWordLimit is { } timeLimit
+                        ? (int)timeLimit.TotalMilliseconds : null,
                     capturedBatch.PerWordStepLimit ?? StepCap.Default,
                     1, capturedBatch.StatsCachePath is not null)
                 {

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -18,8 +19,12 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private int _loadGeneration;
     private NamedSelectionProjection? _savedSelection;
     private bool _setupSkipped;
+    private bool _awaitingFirstRun;
+    private int _setupGeneration;
+    private Task? _configurationLoadTask;
     private SelectionSnapshot? _snapshot;
     private StepCap _configuredStepLimit = StepCap.Default;
+    private ParserStepRate _parserStepRate = StepLimitEstimator.TypicalMachineRate;
 
     public SetupViewModel(WorkspaceContext context, TextWordsViewModel words)
     {
@@ -77,6 +82,24 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     public string StepCaption => $"Setting up {ProjectName} · step {Step + 1} of 4";
 
+    public string StepLimitEstimateText
+    {
+        get
+        {
+            if (!IsStepLimitValid) return "Enter a positive whole number of steps, or choose no limit.";
+            var estimate = CurrentStepLimitEstimate;
+            if (estimate is null) return "No step limit. Motif will not apply a per-word time limit.";
+            var source = estimate.IsTypicalMachine
+                ? " The estimate uses a typical machine."
+                : " The estimate uses the latest Assessment's parser statistics.";
+            if (estimate.PerWordTimeLimitMs is not { } limitMs || limitMs > int.MaxValue)
+                return $"At this limit a word takes up to about {FormatEstimate(estimate.EstimatedMilliseconds)}. " +
+                    $"Motif will not apply a per-word time limit.{source}";
+            return $"At this limit a word takes up to about {FormatEstimate(estimate.EstimatedMilliseconds)}. " +
+                $"Motif stops a word after {FormatEstimate(limitMs)}.{source}";
+        }
+    }
+
     [ObservableProperty]
     private bool _isOpen;
 
@@ -89,31 +112,38 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StepLimitValidationMessage))]
+    [NotifyPropertyChangedFor(nameof(StepLimitEstimateText))]
     private decimal? _stepLimitSteps = StepCap.DefaultSteps;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StepLimitValidationMessage))]
+    [NotifyPropertyChangedFor(nameof(StepLimitEstimateText))]
     private bool _isStepLimitUnbounded;
 
     public string? StepLimitValidationMessage => IsStepLimitUnbounded || IsStepLimitValid
         ? null
         : "Enter a positive whole number of steps, or choose no limit.";
 
-    public string? TimeLimitValidationMessage => IsTimeLimitValid
-        ? null
-        : "Enter a positive time limit no greater than 2,147,483 seconds.";
-
     private bool IsStepLimitValid => IsStepLimitUnbounded ||
         StepLimitSteps is > 0 and var steps && decimal.Truncate(steps) == steps && steps <= long.MaxValue;
 
-    private bool IsTimeLimitValid =>
-        Selection.PerWordTimeLimitSeconds is > 0 and <= int.MaxValue / 1000m;
+    private StepLimitEstimate? CurrentStepLimitEstimate => IsStepLimitUnbounded || !IsStepLimitValid
+        ? null
+        : StepLimitEstimator.Calculate(new StepCap((long)StepLimitSteps!.Value), _parserStepRate);
+
+    private static string FormatEstimate(decimal milliseconds) => milliseconds switch
+    {
+        < 1m => "less than 1 ms",
+        < 1000m => $"{decimal.Ceiling(milliseconds):N0} ms",
+        _ => $"{milliseconds / 1000m:0.#} s",
+    };
 
     private void OpenFirstTimeSetup()
     {
         if (IsOpen) return;
         CaptureSnapshot();
         Step = 0;
+        _setupGeneration++;
         IsOpen = true;
     }
 
@@ -142,6 +172,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     public IRelayCommand BackCommand { get; }
     public IRelayCommand NextCommand { get; }
     public IAsyncRelayCommand FinishCommand { get; }
+    internal Task? ConfigurationLoadTask => _configurationLoadTask;
 
     /// <summary>Loads the project's stored Selection and resolved per-word limits.</summary>
     public async Task ProjectOpenedAsync(string projectPath, CancellationToken cancellationToken = default)
@@ -178,9 +209,16 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
         var scope = config.Value!.Scopes.FirstOrDefault(candidate => candidate.Name == "default")
             ?? config.Value.Scopes.FirstOrDefault();
-        var timeLimitMs = _savedSelection?.PerWordLimitMs ?? scope?.PerWordLimitMs ?? 1000;
+        long? timeLimitMs = _savedSelection is { } savedSelection
+            ? savedSelection.PerWordLimitMs : scope?.PerWordLimitMs ?? 1000;
         var stepLimit = _savedSelection?.PerWordStepLimit ?? scope?.PerWordStepLimit ?? StepCap.Default;
         ApplyLimits(timeLimitMs, stepLimit);
+
+        var rate = await _context.Commands.ReadParserStepRateAsync(projectPath, cancellationToken)
+            .ConfigureAwait(true);
+        if (generation != _loadGeneration) return;
+        _parserStepRate = rate.Succeeded ? rate.Value! : StepLimitEstimator.TypicalMachineRate;
+        OnPropertyChanged(nameof(StepLimitEstimateText));
 
         IsEditingExistingSelection = _savedSelection is not null;
         CaptureSnapshot();
@@ -201,12 +239,14 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     internal void ProjectCleared()
     {
         ++_loadGeneration;
+        ++_setupGeneration;
         IsOpen = false;
         ProjectPath = null;
         _savedSelection = null;
         _setupSkipped = false;
         _snapshot = null;
         _configuredStepLimit = StepCap.Default;
+        _parserStepRate = StepLimitEstimator.TypicalMachineRate;
         IsEditingExistingSelection = false;
         ShownRefusal = null;
     }
@@ -222,6 +262,8 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     public void OpenForConfiguration()
     {
         if (ProjectPath is null || _context.Baseline?.HasBaseline != true) return;
+        var projectPath = ProjectPath;
+        _awaitingFirstRun = false;
         ShownRefusal = null;
         if (_savedSelection is { } saved)
         {
@@ -237,7 +279,9 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         IsEditingExistingSelection = _savedSelection is not null;
         CaptureSnapshot();
         Step = 0;
+        _setupGeneration++;
         IsOpen = true;
+        _configurationLoadTask = RefreshParserStepRateAsync(projectPath);
     }
 
     private async Task FinishAsync()
@@ -249,11 +293,6 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             OnPropertyChanged(nameof(StepLimitValidationMessage));
             return;
         }
-        if (!IsTimeLimitValid)
-        {
-            OnPropertyChanged(nameof(TimeLimitValidationMessage));
-            return;
-        }
         if (!Selection.CanAssess)
         {
             ShownRefusal = WindowRefusal.Plain("Choose at least one text or add a word before continuing.");
@@ -261,8 +300,9 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         }
 
         var stepLimit = IsStepLimitUnbounded ? StepCap.Unbounded : new StepCap((long)StepLimitSteps!.Value);
-        var timeLimitMs = decimal.ToInt32(decimal.Round(
-            Selection.PerWordTimeLimitSeconds!.Value * 1000m, 0, MidpointRounding.AwayFromZero));
+        var estimate = StepLimitEstimator.Calculate(stepLimit, _parserStepRate);
+        int? timeLimitMs = estimate?.PerWordTimeLimitMs is { } limitMs && limitMs <= int.MaxValue
+            ? (int)limitMs : null;
         Selection.PerWordStepLimit = stepLimit.Steps;
         Selection.PerWordStepLimitUnbounded = stepLimit.IsUnbounded;
         var saved = await _context.Commands.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
@@ -278,7 +318,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         _savedSelection = saved.Value!.Selection;
         _setupSkipped = false;
         _configuredStepLimit = stepLimit;
-        Selection.PerWordTimeLimitSeconds = timeLimitMs / 1000m;
+        Selection.PerWordTimeLimitSeconds = timeLimitMs is { } savedLimitMs ? savedLimitMs / 1000m : null;
         CaptureSnapshot();
 
         if (!runFirstAssessment)
@@ -288,7 +328,17 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             return;
         }
 
-        await _context.Assess.RunDefaultSelectionAsync(timeLimitMs, stepLimit).ConfigureAwait(true);
+        var setupGeneration = _setupGeneration;
+        _awaitingFirstRun = true;
+        try
+        {
+            await _context.Assess.RunDefaultSelectionAsync(timeLimitMs, stepLimit).ConfigureAwait(true);
+        }
+        finally
+        {
+            _awaitingFirstRun = false;
+        }
+        if (!IsOpen || _setupGeneration != setupGeneration) return;
         if (_context.Assess.State == RunState.Completed)
         {
             IsEditingExistingSelection = true;
@@ -302,7 +352,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         }
     }
 
-    private bool CanFinish() => IsFirstRunStep && IsStepLimitValid && IsTimeLimitValid &&
+    private bool CanFinish() => IsFirstRunStep && IsStepLimitValid &&
         Selection.CanAssess && !_context.Assess.IsActive;
 
     private async Task SkipAsync()
@@ -317,13 +367,14 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         }
         _setupSkipped = result.Value!.SetupSkipped;
         if (_snapshot is not null) RestoreSnapshot(_snapshot);
+        _setupGeneration++;
         IsOpen = false;
         ShownRefusal = null;
     }
 
-    private void ApplyLimits(long timeLimitMs, StepCap stepLimit)
+    private void ApplyLimits(long? timeLimitMs, StepCap stepLimit)
     {
-        Selection.PerWordTimeLimitSeconds = timeLimitMs / 1000m;
+        Selection.PerWordTimeLimitSeconds = timeLimitMs is { } limitMs ? limitMs / 1000m : null;
         _configuredStepLimit = stepLimit;
         Selection.PerWordStepLimit = stepLimit.Steps;
         Selection.PerWordStepLimitUnbounded = stepLimit.IsUnbounded;
@@ -372,17 +423,16 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         Selection.PerWordStepLimitUnbounded = IsStepLimitUnbounded;
         Selection.PerWordStepLimit = !IsStepLimitUnbounded && IsStepLimitValid ? StepLimitSteps : null;
         OnPropertyChanged(nameof(StepLimitValidationMessage));
+        OnPropertyChanged(nameof(StepLimitEstimateText));
         FinishCommand.NotifyCanExecuteChanged();
     }
 
     private void OnSelectionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(SelectionViewModel.CanAssess) or nameof(SelectionViewModel.PastedWords)
-            or nameof(SelectionViewModel.PerWordTimeLimitSeconds))
+        if (e.PropertyName is nameof(SelectionViewModel.CanAssess) or nameof(SelectionViewModel.PastedWords))
         {
             OnPropertyChanged(nameof(AddedWordsText));
             OnPropertyChanged(nameof(RunSummary));
-            OnPropertyChanged(nameof(TimeLimitValidationMessage));
             FinishCommand.NotifyCanExecuteChanged();
         }
     }
@@ -390,6 +440,24 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private void OnAssessmentChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(AssessViewModel.IsActive)) FinishCommand.NotifyCanExecuteChanged();
+        if (e.PropertyName == nameof(AssessViewModel.Progress) && _awaitingFirstRun &&
+            _context.Assess.Progress is not null)
+        {
+            _awaitingFirstRun = false;
+            IsEditingExistingSelection = true;
+            _setupGeneration++;
+            IsOpen = false;
+            ShownRefusal = null;
+        }
+    }
+
+    private async Task RefreshParserStepRateAsync(string projectPath)
+    {
+        var rate = await _context.Commands.ReadParserStepRateAsync(projectPath, CancellationToken.None)
+            .ConfigureAwait(true);
+        if (ProjectPath != projectPath || !IsOpen) return;
+        _parserStepRate = rate.Succeeded ? rate.Value! : StepLimitEstimator.TypicalMachineRate;
+        OnPropertyChanged(nameof(StepLimitEstimateText));
     }
 
     private void OnWordsChanged(object? sender, PropertyChangedEventArgs e)

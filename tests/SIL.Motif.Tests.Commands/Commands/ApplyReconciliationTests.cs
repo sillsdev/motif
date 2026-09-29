@@ -28,13 +28,10 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         const string draftName = "receipt-boundary-demo";
         var proposalId = CreateMeasuredProposal(projectPath, draftName,
             CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
-        string databasePath;
-        using (var database = ProjectMotifDatabase.Open(projectPath))
-            databasePath = database.FullPath;
-        File.SetAttributes(databasePath, FileAttributes.ReadOnly);
-
+        var previousFailurePath = Environment.GetEnvironmentVariable("MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR");
         try
         {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR", projectPath);
             var outcome = ProposalCommands.Apply(new ApplyRequest(
                 projectPath, "1.0", proposalId, "test-user", Force: true));
 
@@ -45,10 +42,17 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         }
         finally
         {
-            File.SetAttributes(databasePath, FileAttributes.Normal);
+            Environment.SetEnvironmentVariable("MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR", previousFailurePath);
         }
 
         AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+
+        using var failedStore = ProjectMotifDatabase.Open(projectPath);
+        using var connection = failedStore.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        Assert.Equal(0L, (long)command.ExecuteScalar()!);
     }
 
     private static string CreateMeasuredProposal(string projectPath, string draftName, string target, string gloss)
@@ -73,4 +77,5 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         var sense = cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(senseGuid);
         Assert.Equal(expected, sense.Gloss.get_String(wsHandle).Text);
     }
+
 }
