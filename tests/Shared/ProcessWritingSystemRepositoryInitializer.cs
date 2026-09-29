@@ -9,6 +9,7 @@ internal static class ProcessWritingSystemRepositoryInitializer
     [ModuleInitializer]
     internal static void Install()
     {
+        StaleTestDirectories.SweepTemporaryRoots();
         ProcessWritingSystemRepository.Install();
         Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrOfflineVariable, "1");
         Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrCachePathVariable, ProcessWritingSystemRepository.SldrCachePath);
