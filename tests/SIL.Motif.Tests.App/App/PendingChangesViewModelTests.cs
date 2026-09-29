@@ -167,6 +167,26 @@ public sealed class PendingChangesViewModelTests
     }
 
     [Fact]
+    public async Task UndoingAcceptedTextUsesGroupIdToRemoveEveryReading()
+    {
+        const string groupId = "accept/group";
+        var first = new PendingChange("change/one", "wordform/one", "one", "add-candidate", "assessment/one",
+            "first", ["operation/one"]) { GroupId = groupId };
+        var second = new PendingChange("change/two", "wordform/two", "two", "add-candidate", "assessment/one",
+            "second", ["operation/two"]) { GroupId = groupId };
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [first, second],
+            [new ChangeFit(first.ChangeId, true, []), new ChangeFit(second.ChangeId, true, [])]));
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+
+        await changes.RemoveCommand.ExecuteAsync(changes.Items[0]);
+
+        Assert.Equal(groupId, Assert.Single(fake.PendingRemoveRequests).ChangeId);
+        Assert.Empty(changes.Items);
+    }
+
+    [Fact]
     public async Task AStaleChangeIsVisibleAndBlocksReview()
     {
         var fake = new FakeCommandClient();

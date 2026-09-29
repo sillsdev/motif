@@ -81,13 +81,7 @@ public static class PendingChanges
                 return Refuse("change.baseline-missing", "Capture a Baseline before collecting changes.",
                     ("changeId", change.ChangeId));
 
-            var draft = current is null ? new DraftDocument
-            {
-                ProposalId = CanonicalId.Mint().Value,
-                Label = "Changes to word analyses",
-                Comment = "Changes to word analyses and spelling.",
-            } :
-                ParseDraft(current.ProposalJson!);
+            var draft = LoadDraft(current);
             var saved = ComposeAndSave(database, repository, current, draft, change, baseline, project,
                 request.ExpectedRevision);
             if (!saved.Succeeded)
@@ -169,12 +163,7 @@ public static class PendingChanges
             if (targets.Count == 0)
                 return Refuse("change.no-effect", "The selected Text contains no stored analyses to remove.");
 
-            var draft = current is null ? new DraftDocument
-            {
-                ProposalId = CanonicalId.Mint().Value,
-                Label = "Changes to word analyses",
-                Comment = "Changes to word analyses and spelling.",
-            } : ParseDraft(current.ProposalJson!);
+            var draft = LoadDraft(current);
             var existingOperations = draft.Operations.Count == 0 ? Array.Empty<OperationEnvelope>() :
                 ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
             var additions = new List<(OperationEnvelope Operation, ChangeFitFingerprint Fingerprint,
@@ -222,7 +211,7 @@ public static class PendingChanges
                 var intent = new ChangeIntent(addition.ChangeId, AnalysisChangeKinds.RemoveAnalysis,
                     CanonicalId.FromGuid(addition.Wordform.Guid).Value, addition.Form,
                     StoredAnalysisId: CanonicalId.FromGuid(addition.Analysis.Guid).Value);
-                draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
+                AddComposerProvenance(draft, new
                 {
                     composer = "AnalysisChange", changeId = addition.ChangeId,
                     kind = AnalysisChangeKinds.RemoveAnalysis, wordformId = intent.WordformId,
@@ -231,12 +220,9 @@ public static class PendingChanges
                         Path.GetFileNameWithoutExtension(baseline.FwDataPath), addition.Wordform,
                         intent, null),
                     operationIds = new[] { addition.Operation.OperationId.Value },
-                }, JsonOptions));
+                });
             }
-            var json = JsonSerializer.Serialize(draft, JsonOptions);
-            var saved = current is null
-                ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)
-                : repository.TrySaveDraft(DraftName, current.ProposalJson!, json);
+            var saved = SaveDraft(repository, current, draft);
             if (!saved)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("expectedRevision", request.ExpectedRevision));
@@ -254,7 +240,7 @@ public static class PendingChanges
                     ("assessmentId", request.AssessmentId), ("expectedRevision", request.ExpectedRevision));
             if ((request.WordformId is not null ? 1 : 0) + (request.TextId is not null ? 1 : 0) +
                 (request.Selection ? 1 : 0) != 1)
-                return Refuse("change.scope-invalid", "Choose one wordform, one Assessment Selection, or one Text.",
+                return Refuse("change.scope-invalid", "Choose one wordform, one Selection, or one Text.",
                     ("assessmentId", request.AssessmentId));
 
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
@@ -269,7 +255,8 @@ public static class PendingChanges
                     ("assessmentId", request.AssessmentId));
             }
             if (assessment.Kind != AssessmentKind.ParseTime.ToStoredKind())
-                return Refuse("change.assessment-kind", "Accept the new set requires a parse Assessment.",
+                return Refuse("change.assessment-kind",
+                    "Accept the new set requires an Assessment that parses every word. Run a complete Assessment first.",
                     ("assessmentId", request.AssessmentId));
             BaselineToken? assessmentBaseline;
             try
@@ -319,8 +306,8 @@ public static class PendingChanges
                         .Take(2).ToArray();
                     if (matches.Length != 1)
                         return Refuse(matches.Length == 0 ? "change.wordform-missing" : "change.wordform-ambiguous",
-                            matches.Length == 0 ? "A word in the Assessment Selection is no longer in the project."
-                                : "More than one wordform matches a word in the Assessment Selection.",
+                            matches.Length == 0 ? "A selected word isn't in the FieldWorks project."
+                                : "More than one wordform matches a word in the Selection.",
                             ("word", form), ("assessmentId", request.AssessmentId));
                     selected.Add(matches[0]);
                 }
@@ -348,12 +335,7 @@ public static class PendingChanges
                 prepared.Add((wordform, form, morphology.Analyses));
             }
 
-            var draft = current is null ? new DraftDocument
-            {
-                ProposalId = CanonicalId.Mint().Value,
-                Label = "Changes to word analyses",
-                Comment = "Changes to word analyses and spelling.",
-            } : ParseDraft(current.ProposalJson!);
+            var draft = LoadDraft(current);
             var existing = draft.Operations.Count == 0 ? Array.Empty<OperationEnvelope>() :
                 ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
             var additions = new List<(OperationEnvelope Operation, ChangeFitFingerprint Fingerprint,
@@ -397,6 +379,7 @@ public static class PendingChanges
                 return Refuse("change.slot-occupied", "Another change already addresses one of these readings.",
                     ("assessmentId", request.AssessmentId), ("operationId", collision.Existing.OperationId.Value));
 
+            var groupId = CanonicalId.Mint().Value;
             foreach (var addition in additions)
             {
                 draft.Operations.Add(ToDraft(addition.Operation, addition.Fingerprint, addition.ChangeId));
@@ -408,21 +391,18 @@ public static class PendingChanges
                 var intent = new ChangeIntent(addition.ChangeId, AnalysisChangeKinds.AddCandidate,
                     CanonicalId.FromGuid(addition.Wordform.Guid).Value, addition.Form,
                     AssessmentId: request.AssessmentId, Reading: addition.Reading);
-                draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
+                AddComposerProvenance(draft, new
                 {
-                    composer = "AnalysisChange", changeId = addition.ChangeId,
+                    composer = "AnalysisChange", changeId = addition.ChangeId, groupId,
                     kind = AnalysisChangeKinds.AddCandidate, wordformId = intent.WordformId,
                     word = addition.Form, assessmentId = request.AssessmentId,
                     displayAnalyses = DisplayAnalyses(database, cache,
                         Path.GetFileNameWithoutExtension(baseline.FwDataPath), addition.Wordform,
                         intent, addition.Reading),
                     operationIds = group.Select(item => item.Operation.OperationId.Value).ToArray(),
-                }, JsonOptions));
+                });
             }
-            var json = JsonSerializer.Serialize(draft, JsonOptions);
-            var saved = current is null
-                ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)
-                : repository.TrySaveDraft(DraftName, current.ProposalJson!, json);
+            var saved = SaveDraft(repository, current, draft);
             if (!saved)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("assessmentId", request.AssessmentId), ("expectedRevision", request.ExpectedRevision));
@@ -634,7 +614,7 @@ public static class PendingChanges
             draft.ContractVersions[OperationKind.GetGroup(operation.Kind)] = "1.0";
         }
         if (operations.Count > 0)
-            draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
+            AddComposerProvenance(draft, new
             {
                 composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
                 change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
@@ -642,11 +622,8 @@ public static class PendingChanges
                 displayAnalyses = DisplayAnalyses(database, cache, Path.GetFileNameWithoutExtension(
                     baseline.FwDataPath), wordform, change, reading),
                 operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
-            }, JsonOptions));
-        var json = JsonSerializer.Serialize(draft, JsonOptions);
-        var saved = current is null
-            ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)
-            : repository.TrySaveDraft(DraftName, current.ProposalJson!, json);
+            });
+        var saved = SaveDraft(repository, current, draft);
         if (!saved)
             return RefusePut("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                 ("changeId", change.ChangeId), ("expectedRevision", expectedRevision));
@@ -826,6 +803,26 @@ public static class PendingChanges
     private static ProposalRecord? Current(ProposalRepository repository) =>
         repository.DraftNameExists(DraftName) ? repository.GetDraft(DraftName) : null;
 
+    private static DraftDocument LoadDraft(ProposalRecord? current) => current is null
+        ? new DraftDocument
+        {
+            ProposalId = CanonicalId.Mint().Value,
+            Label = "Changes to word analyses",
+            Comment = "Changes to word analyses and spelling.",
+        }
+        : ParseDraft(current.ProposalJson!);
+
+    private static bool SaveDraft(ProposalRepository repository, ProposalRecord? current, DraftDocument draft)
+    {
+        var json = JsonSerializer.Serialize(draft, JsonOptions);
+        return current is null
+            ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)
+            : repository.TrySaveDraft(DraftName, current.ProposalJson!, json);
+    }
+
+    private static void AddComposerProvenance(DraftDocument draft, object provenance) =>
+        draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(provenance, JsonOptions));
+
     private static DraftDocument ParseDraft(string json) =>
         JsonSerializer.Deserialize<DraftDocument>(json, JsonOptions)
         ?? throw new InvalidDataException("The pending Draft has no content.");
@@ -870,6 +867,7 @@ public static class PendingChanges
                 Occurrence = OccurrenceOf(fingerprint),
                 StoredAnalysisId = Property(entry, "storedAnalysisId"),
                 ReadingIndex = IntegerProperty(entry, "readingIndex"),
+                GroupId = Property(entry, "groupId"),
             };
         }).ToArray();
         if (changes.Length == 0)
@@ -1121,6 +1119,10 @@ public static class PendingChanges
         entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty("changeId", out var id)
             ? id.GetString() : null;
 
+    private static string? GroupIdOf(JsonElement entry) =>
+        entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty("groupId", out var id)
+            ? id.GetString() : null;
+
     internal static string? Property(JsonElement entry, string name) =>
         entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty(name, out var value) &&
         value.ValueKind == JsonValueKind.String ? value.GetString() : null;
@@ -1131,11 +1133,16 @@ public static class PendingChanges
 
     private static int RemoveChange(DraftDocument draft, string changeId)
     {
-        var operationIds = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) == changeId)
+        var provenance = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) == changeId ||
+            GroupIdOf(entry) == changeId).ToArray();
+        var changeIds = provenance.Select(ChangeIdOf).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var operationIds = provenance
             .SelectMany(OperationIdsOf).ToHashSet(StringComparer.Ordinal);
         var removed = draft.Operations.RemoveAll(operation =>
-            ChangeIdOf(operation) == changeId || operationIds.Contains(operation.OperationId));
-        return removed + draft.ComposerProvenance.RemoveAll(entry => ChangeIdOf(entry) == changeId);
+            ChangeIdOf(operation) == changeId || changeIds.Contains(ChangeIdOf(operation) ?? "") ||
+            operationIds.Contains(operation.OperationId));
+        return removed + draft.ComposerProvenance.RemoveAll(entry => ChangeIdOf(entry) == changeId ||
+            GroupIdOf(entry) == changeId);
     }
 
     private static IEnumerable<string> OperationIdsOf(JsonElement entry) =>

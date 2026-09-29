@@ -190,12 +190,13 @@ that no longer fit. This evidence refresh does not alter Proposal intent. The Dr
 `Project.motif.db` when the App closes.
 
 `remove-analysis` stages deletion for one stored analysis, a comma-separated selection of analysis ids, or
-every distinct analysis used by a Text. Its preview lists every Text occurrence that references each analysis;
-LibLCM removes those references and leaves them without a wordform fallback. `remove-pending-change` is Undo
-for a staged removal. `accept-new-set` stages every parser reading
-from a complete parse Assessment that the selected wordform, Text, or Assessment Selection does not already
-have. It adds candidates with no human opinion and never removes an existing analysis. If any selected word
-was capped, timed out, skipped, malformed, or otherwise incomplete, the command refuses the entire action.
+every distinct analysis used by a Text. Its preview lists every Text occurrence that references the analysis
+or one of its glosses. Before deletion, Motif asks LibLCM to replace each such reference with the wordform at
+the same Segment index, preserving alignment for the other words. `remove-pending-change` is Undo for a staged
+removal. `accept-new-set` stages every parser reading from an Assessment that parses every word in the selected
+wordform, Text, or Selection and does not already have. It adds candidates with no human opinion and never
+removes an existing analysis. One Undo removes the whole Accept action. If any selected word was capped, timed
+out, skipped, malformed, or otherwise incomplete, the command refuses the entire action.
 
 `trial --pending` resolves the current pending Draft when `--draft` and `--revision` are omitted, reading only
 the paired project database, so it never opens the FieldWorks project to check them. A `--draft` or `--revision`

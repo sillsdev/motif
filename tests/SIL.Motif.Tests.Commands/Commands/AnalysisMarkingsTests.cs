@@ -4,9 +4,11 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
@@ -59,6 +61,7 @@ public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
     [Theory]
     [InlineData("capped", true, false)]
     [InlineData("skipped", false, false)]
+    [InlineData("timed-out", false, true)]
     public void AcceptNewSetRefusesIncompleteOrSkippedWordsWithoutWriting(string outcome, bool capped,
         bool timedOut)
     {
@@ -74,6 +77,104 @@ public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
         Assert.Equal("change.assessment-incomplete", accepted.Refusal?.Code);
         Assert.Contains("complete Assessment", accepted.Refusal!.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(PendingChanges.Load(new PendingChangesRequest(scenario.Path, ProductVersion)).Value!.Changes);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AcceptNewSetSupportsTextAndSelectionScopesAndUndoGroup(bool useTextScope)
+    {
+        var scenario = NewScenario("accept-scope-" + useTextScope);
+        var text = AddTextWithSecondWord(scenario);
+        scenario = text.Scenario;
+        var reading = Reading(scenario.FormId, scenario.MsaId);
+        RecordAssessment(scenario,
+        [
+            Word(scenario.Word, "analysed", [reading]),
+            Word(text.OtherWord, "analysed", [reading]),
+        ]);
+        var initial = PendingChanges.Load(new PendingChangesRequest(scenario.Path, ProductVersion)).Value!;
+        var request = new AcceptNewSetRequest(scenario.Path, ProductVersion, initial.Revision,
+            "assessment-accept", TextId: useTextScope ? text.TextId : null, Selection: !useTextScope);
+
+        var accepted = PendingChanges.AcceptNewSet(request);
+
+        Assert.True(accepted.Succeeded, accepted.Refusal?.Message);
+        Assert.Equal(2, accepted.Value!.Changes.Count);
+        Assert.All(accepted.Value.Changes, change => Assert.NotNull(change.GroupId));
+        var groupId = Assert.Single(accepted.Value.Changes.Select(change => change.GroupId).Distinct());
+        Assert.NotNull(groupId);
+
+        var undone = PendingChanges.Remove(new RemovePendingChangeRequest(scenario.Path, ProductVersion,
+            accepted.Value.Revision, groupId!));
+
+        Assert.True(undone.Succeeded, undone.Refusal?.Message);
+        Assert.Empty(undone.Value!.Changes);
+    }
+
+    [Fact]
+    public void AcceptNewSetNamesASelectionWordThatIsNotInTheFieldWorksProject()
+    {
+        var scenario = NewScenario("accept-pasted-word");
+        var reading = Reading(scenario.FormId, scenario.MsaId);
+        RecordAssessment(scenario, [Word("pasted-word", "analysed", [reading])]);
+        var initial = PendingChanges.Load(new PendingChangesRequest(scenario.Path, ProductVersion)).Value!;
+
+        var accepted = PendingChanges.AcceptNewSet(new AcceptNewSetRequest(scenario.Path, ProductVersion,
+            initial.Revision, "assessment-accept", Selection: true));
+
+        Assert.False(accepted.Succeeded);
+        Assert.Contains("isn't in the FieldWorks project", accepted.Refusal!.Message,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DeleteAnalysisProposal_RoundTripsThroughSerializationAndContractParsing()
+    {
+        var proposalId = CanonicalId.Mint().Value;
+        var operationId = CanonicalId.Mint().Value;
+        var target = CanonicalId.Mint().Value;
+        var draft = new DraftDocument
+        {
+            ProposalId = proposalId,
+            ContractVersions = new Dictionary<string, string> { ["analysis"] = "1.0" },
+            Operations =
+            [
+                new DraftOperation
+                {
+                    OperationId = operationId,
+                    Kind = "analysis/wfiAnalysis/delete",
+                    Target = target,
+                },
+            ],
+        };
+
+        var firstRead = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
+        var parsedOperation = Assert.Single(firstRead.Operations);
+        var roundTrip = ProposalCommands.BuildProposalJson(new DraftDocument
+        {
+            ProposalId = firstRead.ProposalId.Value,
+            ContractVersions = new Dictionary<string, string>(firstRead.ContractVersions),
+            Requires = firstRead.Requires.Select(item => item.Value).ToList(),
+            Operations = firstRead.Operations.Select(operation => new DraftOperation
+            {
+                OperationId = operation.OperationId.Value,
+                Kind = operation.Kind,
+                Target = operation.Target?.Value,
+                After = operation.After is { } after
+                    ? after.EnumerateObject().ToDictionary(property => property.Name,
+                        property => property.Value.Clone(), StringComparer.Ordinal)
+                    : new Dictionary<string, JsonElement>(StringComparer.Ordinal),
+            }).ToList(),
+        });
+        var secondRead = ProposalJsonParser.Parse(roundTrip);
+        var deletion = Assert.Single(secondRead.Operations);
+
+        Assert.Equal("analysis/wfiAnalysis/delete", deletion.Kind);
+        Assert.Equal(operationId, deletion.OperationId.Value);
+        Assert.Equal(target, deletion.Target!.Value.Value);
+        Assert.Equal(JsonValueKind.Object, deletion.After!.Value.ValueKind);
+        Assert.Empty(deletion.After.Value.EnumerateObject());
     }
 
     [Fact]
@@ -202,6 +303,39 @@ public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
         var token = CurrentBaseline(path).Baseline.Token;
         return new Scenario(path, word, CanonicalId.FromGuid(wordformId).Value,
             pristine.Seed.FirstLexemeFormId.ToString("D"), msaId.ToString("D"), token);
+    }
+
+    private (Scenario Scenario, Guid TextId, string OtherWord) AddTextWithSecondWord(Scenario scenario)
+    {
+        const string otherWord = "accept-second-word";
+        Guid textId = Guid.Empty;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(scenario.Path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var first = cache.ServiceLocator.GetInstance<IWfiWordformRepository>()
+                    .GetObject(CanonicalId.Parse(scenario.WordformId).ToGuid());
+                var second = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString(otherWord, cache.DefaultVernWs));
+                var firstAnalysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                var secondAnalysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                first.AnalysesOC.Add(firstAnalysis);
+                second.AnalysesOC.Add(secondAnalysis);
+
+                var text = cache.ServiceLocator.GetInstance<ITextFactory>().Create();
+                textId = text.Guid;
+                text.ContentsOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+                var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+                text.ContentsOA.ParagraphsOS.Add(paragraph);
+                paragraph.Contents = TsStringUtils.MakeString(scenario.Word + " " + otherWord,
+                    cache.DefaultVernWs);
+                paragraph.SegmentsOS[0].AnalysesRS.Add(firstAnalysis);
+                paragraph.SegmentsOS[0].AnalysesRS.Add(secondAnalysis);
+            });
+            new FwDataProjectLoader().Save(cache);
+        }
+        CaptureBaseline(scenario.Path);
+        return (scenario with { BaselineToken = CurrentBaseline(scenario.Path).Baseline.Token }, textId, otherWord);
     }
 
     private static void RecordAssessment(Scenario scenario, IReadOnlyList<AssessedWord> words)

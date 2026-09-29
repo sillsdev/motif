@@ -236,7 +236,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         if (ProjectPath is not { } path) return;
         var generation = _projectGeneration;
         var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
-            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId),
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.GroupId ?? change.ChangeId),
             CancellationToken.None).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
@@ -312,7 +312,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             var fit = snapshot.FitSummary.FirstOrDefault(item => item.ChangeId == change.ChangeId);
             Items.Add(new ChangeViewModel(change.Kind, change.Word,
                 change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage,
-                fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId, change.ReadingIndex));
+                fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId, change.ReadingIndex,
+                change.GroupId));
         }
         Raise();
     }
@@ -343,11 +344,12 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 public sealed partial class ChangeViewModel(string kind, string word, string reading,
     string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null,
     string? originPage = null, OccurrenceAnchor? occurrence = null, string? storedAnalysisId = null,
-    int? readingIndex = null) : ObservableObject
+    int? readingIndex = null, string? groupId = null) : ObservableObject
 {
     public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
         page != WorkspacePage.Review ? page : WorkspacePage.Texts;
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
+    public string? GroupId { get; } = groupId;
     public ChangeFit? Fit { get; } = fit;
     public OccurrenceAnchor? Occurrence { get; } = occurrence;
     public string? StoredAnalysisId { get; } = storedAnalysisId;

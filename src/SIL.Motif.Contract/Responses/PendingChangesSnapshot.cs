@@ -22,6 +22,9 @@ public sealed record PendingChange(
 
     /// <summary>The exact Assessment reading selected by an in-text change.</summary>
     public int? ReadingIndex { get; init; }
+
+    /// <summary>The authoring action that groups changes for one Undo operation.</summary>
+    public string? GroupId { get; init; }
 }
 
 /// <summary>One reading shown beside a change, with its previous opinion and whether the change touches it.</summary>

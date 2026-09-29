@@ -23,7 +23,7 @@ public sealed record OccurrenceAnchor(Guid TextId, Guid ParagraphId, Guid Segmen
 public sealed record PutPendingChangeRequest(
     string FwDataPath, string ProductVersion, string ExpectedRevision, ChangeIntent Change);
 
-/// <summary>Accepts the missing parser readings for one word, one Assessment Selection, or one Text.</summary>
+/// <summary>Accepts the missing parser readings for one word, one Selection, or one Text.</summary>
 /// <param name="WordformId">The one wordform to accept, or <see langword="null"/> for another scope.</param>
 /// <param name="TextId">The Text to accept, or <see langword="null"/> for another scope.</param>
 /// <param name="Selection">Whether to use every word in the named Assessment's Selection.</param>

@@ -172,6 +172,19 @@ public sealed class WindowRefusalTests
     }
 
     [Fact]
+    public void AnalysisMarkingRefusalsUseAssessmentAndSelectionTerms()
+    {
+        var assessment = WindowRefusal.From(Refusal(RefusalCodes.ChangeAssessmentKind)).Sentence;
+        var scope = WindowRefusal.From(Refusal(RefusalCodes.ChangeScopeInvalid)).Sentence;
+        var missingWord = WindowRefusal.From(Refusal(RefusalCodes.ChangeWordformMissing)).Sentence;
+
+        Assert.Contains("Assessment that parses every word", assessment);
+        Assert.Equal("Choose one wordform, one Selection, or one Text.", scope);
+        Assert.DoesNotContain("Assessment selection", scope, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("That word isn't in the FieldWorks project. Refresh and try again.", missingWord);
+    }
+
+    [Fact]
     public void EveryCatalogueCodeIsOneACommandOrTheWindowDeclares()
     {
         var root = RepoPaths.FindRepoRoot();
