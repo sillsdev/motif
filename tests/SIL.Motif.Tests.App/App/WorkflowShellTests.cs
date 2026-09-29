@@ -434,16 +434,20 @@ public sealed class WorkflowShellTests
                 window.UpdateLayout();
 
                 var group = Assert.Single(page.ReviewGroups);
-                Assert.Equal("Added as Unknown", group.Title);
+                Assert.Equal("Added", group.Title);
                 Assert.Equal(page.ReviewGroups.Select(item => item.Title),
                     Assert.IsAssignableFrom<IEnumerable<ReviewChangeGroupViewModel>>(list.ItemsSource)
                         .Select(item => item.Title));
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Text == "Added as Unknown");
+                    text => text.Text == "Added");
                 Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
                     mark => mark.Kind == OpinionMarkKind.None);
                 Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
                     mark => mark.Kind == OpinionMarkKind.Unknown);
+                var groupActions = review.GetVisualDescendants().OfType<Border>().Single(border =>
+                    border.Classes.Contains("hoverReveal") && border.GetVisualDescendants().OfType<Button>().Any(button =>
+                        AutomationProperties.GetName(button) == group.GoToTextAutomationName));
+                Assert.NotNull(groupActions.Background);
 
                 var buttons = review.GetLogicalDescendants().OfType<Button>().ToArray();
                 var undo = buttons.Single(button => AutomationProperties.GetName(button) == "Undo: kitabu");
@@ -453,10 +457,9 @@ public sealed class WorkflowShellTests
                 Assert.True(undo.IsHitTestVisible);
                 Assert.Equal(1d, undo.Opacity);
                 Assert.Contains(buttons, button =>
-                    AutomationProperties.GetName(button) == "Undo all: Added as Unknown");
+                    AutomationProperties.GetName(button) == "Undo all: Added");
                 Assert.Contains(buttons, button =>
-                    AutomationProperties.GetName(button) == "Go to text in Added as Unknown");
-                Assert.Contains(buttons, button => AutomationProperties.GetName(button) == "Show context: kitabu");
+                    AutomationProperties.GetName(button) == "Go to text in Added");
             }
             finally
             {
