@@ -34,10 +34,23 @@ public sealed partial class ResultsInTextPanel : UserControl
         }
     }
 
-    private void OnTokenKeyDown(object? sender, KeyEventArgs e)
+    private async void OnTokenKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key is not (Key.Enter or Key.Space) || sender is not Control { Tag: ResultsTokenViewModel token }) return;
-        InText.SelectToken(token);
-        e.Handled = true;
+        if (sender is not Control { Tag: ResultsTokenViewModel token }) return;
+        if (await OpenTokenCardOnKeyboardAsync(e.Key, token, InText.OpenTokenCardAsync)) e.Handled = true;
+    }
+
+    /// <summary>Opens a word card for Enter or Space and leaves other keys available to the control.</summary>
+    /// <param name="key">The key pressed on the word.</param>
+    /// <param name="token">The word occurrence attached to the focused control.</param>
+    /// <param name="openTokenCard">The action that selects and opens the occurrence's card.</param>
+    /// <returns>Whether the key opened the card.</returns>
+    internal static async Task<bool> OpenTokenCardOnKeyboardAsync(Key key, ResultsTokenViewModel? token,
+        Func<ResultsTokenViewModel, Task> openTokenCard)
+    {
+        ArgumentNullException.ThrowIfNull(openTokenCard);
+        if (key is not (Key.Enter or Key.Space) || token is null) return false;
+        await openTokenCard(token).ConfigureAwait(true);
+        return true;
     }
 }

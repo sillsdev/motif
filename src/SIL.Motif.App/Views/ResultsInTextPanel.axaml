@@ -22,16 +22,16 @@
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Text="{Binding InText.SelectedReadStateCount}" IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
                      AutomationProperties.Name="Selected occurrence count" />
-          <Button Content="Mark Selection Read" Command="{Binding InText.MarkSelectionReadCommand}"
+          <Button Content="Mark selected as read" Command="{Binding InText.MarkSelectionReadCommand}"
                   IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
-                  AutomationProperties.Name="Mark selected occurrences Read" />
-          <Button Content="Mark Selection Unread" Command="{Binding InText.MarkSelectionUnreadCommand}"
+                  AutomationProperties.Name="Mark selected occurrences as read" />
+          <Button Content="Mark selected as unread" Command="{Binding InText.MarkSelectionUnreadCommand}"
                   IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
-                  AutomationProperties.Name="Mark selected occurrences Unread" />
-          <Button Content="Mark Text Read" Command="{Binding InText.MarkTextReadCommand}"
-                  AutomationProperties.Name="Mark the selected Text Read" />
-          <Button Content="Mark Text Unread" Command="{Binding InText.MarkTextUnreadCommand}"
-                  AutomationProperties.Name="Mark the selected Text Unread" />
+                  AutomationProperties.Name="Mark selected occurrences as unread" />
+          <Button Content="Mark this Text as read" Command="{Binding InText.MarkTextReadCommand}"
+                  AutomationProperties.Name="Mark the selected Text as read" />
+          <Button Content="Mark this Text as unread" Command="{Binding InText.MarkTextUnreadCommand}"
+                  AutomationProperties.Name="Mark the selected Text as unread" />
         </StackPanel>
         <WrapPanel>
           <views:FilterChip Label="All occurrences" Count="{Binding InText.AllCount}"
@@ -62,9 +62,13 @@
         </WrapPanel>
       </StackPanel>
 
-      <views:CopyableTextBlock Grid.Row="2" Classes="muted"
-                               Text="{Binding InText.Changes.CollectionNotice}" TextWrapping="Wrap"
-                               IsVisible="{Binding InText.Changes.CollectionNotice, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+      <StackPanel Grid.Row="2" Spacing="{DynamicResource Intent.Space.Snug}">
+        <views:RefusalBlock DataContext="{Binding InText.ReadStateRefusal}" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ReadStateNotice}" TextWrapping="Wrap"
+                                 IsVisible="{Binding InText.HasReadStateNotice}" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding InText.Changes.CollectionNotice}" TextWrapping="Wrap"
+                                 IsVisible="{Binding InText.Changes.CollectionNotice, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+      </StackPanel>
       <StackPanel Grid.Row="3" Spacing="{DynamicResource Intent.Space.Related}"
                   Margin="{DynamicResource Component.TextsPage.EmptyStateMargin}"
                   IsVisible="{Binding InText.HasMessage}">
@@ -139,16 +143,16 @@
           </DockPanel>
           <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
           <views:CopyableTextBlock Text="{Binding VerdictLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
-          <CheckBox Content="Select for bulk Read/Unread"
+          <CheckBox Content="Select this occurrence for read or unread actions"
                     IsChecked="{Binding IsSelectedForReadState, Mode=TwoWay}"
-                    AutomationProperties.Name="Select this occurrence for Read and Unread actions" />
+                    AutomationProperties.Name="Select this occurrence for read or unread actions" />
           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-            <Button Content="Mark as Read"
+            <Button Content="Mark as read"
                     Command="{Binding $parent[views:ResultsInTextPanel].InText.MarkTokenReadCommand}"
-                    CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence Read" />
-            <Button Content="Mark as Unread"
+                    CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as read" />
+            <Button Content="Mark as unread"
                     Command="{Binding $parent[views:ResultsInTextPanel].InText.MarkTokenUnreadCommand}"
-                    CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence Unread" />
+                    CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as unread" />
           </StackPanel>
 
           <views:CopyableTextBlock Classes="section-title" Text="In the project" FontSize="{DynamicResource Intent.Type.Body}" />

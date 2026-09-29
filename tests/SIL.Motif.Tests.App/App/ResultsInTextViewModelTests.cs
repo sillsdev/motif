@@ -1,5 +1,8 @@
+using Avalonia.Input;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -68,7 +71,10 @@ public sealed class ResultsInTextViewModelTests
 
     private static async Task<(ResultsInTextViewModel InText, List<string> Shown, FakeCommandClient Client)> Loaded(
         PendingChangesSnapshot? pending = null, IReadOnlyList<TextLine>? sourceLines = null,
-        IReadOnlyList<OccurrenceAnchor>? readOccurrences = null)
+        IReadOnlyList<OccurrenceAnchor>? readOccurrences = null,
+        Func<WordReadStateRequest, CancellationToken, Task<CommandOutcome<WordReadStateResponse>>>? readStateHandler = null,
+        bool waitForReadState = true,
+        Func<ResultsInTextViewModel, ChangesViewModel, FakeCommandClient, Task>? afterAssessment = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake) { AllWordforms = true };
@@ -101,7 +107,7 @@ public sealed class ResultsInTextViewModelTests
             .SelectMany(line => line.Tokens.Where(token => token.Form is not null)
                 .Select(token => new OccurrenceAnchor(TextId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex)))
             .ToArray();
-        fake.OnReadWordState((request, _) =>
+        fake.OnReadWordState(readStateHandler ?? ((request, _) =>
         {
             if (request.IsRead is { } isRead)
             {
@@ -113,7 +119,7 @@ public sealed class ResultsInTextViewModelTests
             }
             return Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse(
                 readState.Where(occurrence => occurrence.TextId == request.TextId).ToArray(), true)));
-        });
+        }));
         fake.ListTextWordsCompletesWith(new TextWordsResponse([],
             [new TextLines(TextId, "Alpha", lines)], HasBaseline: true));
         await texts.SetProjectAsync(ProjectPath);
@@ -123,6 +129,8 @@ public sealed class ResultsInTextViewModelTests
                 ProjectPath, DateTimeOffset.UtcNow, FieldWorksHeldProject: false, ReusedExistingBytes: true),
             new SelectionProjection([], []), ["assessment/one"], "(summary)")
         {
+            Measurements = [new ProducedAssessmentReference("assessment/one", AssessmentKinds.ParseTime,
+                "invocation/one")],
             Words =
             [
                 Result("kitabu", Book, Child),
@@ -132,7 +140,8 @@ public sealed class ResultsInTextViewModelTests
             ],
         });
         await assess.RunCommand.ExecuteAsync(null);
-        await inText.ReadStateRefresh;
+        if (waitForReadState) await inText.ReadStateRefresh;
+        if (afterAssessment is not null) await afterAssessment(inText, changes, fake);
         return (inText, shown, fake);
     }
 
@@ -190,6 +199,122 @@ public sealed class ResultsInTextViewModelTests
         Assert.True(tokens[1].Marking.IsUnread);
         Assert.Contains(fake.ReadWordStateRequests,
             request => request.TextId == TextId && request.IsRead is null);
+    }
+
+    [Fact]
+    public async Task ReadStateRequestsNameTheAssessmentShownInTheWindow()
+    {
+        var (_, _, fake) = await Loaded();
+
+        Assert.Contains(fake.ReadWordStateRequests, request =>
+            request.AssessmentIds?.Contains("assessment/one") == true);
+    }
+
+    [Fact]
+    public async Task AnUncertainChangeRemainsMarkedUncertainAfterRefresh()
+    {
+        const string changeId = "change/refresh-uncertain";
+        var pending = new PendingChangesSnapshot("draft/refresh-uncertain", "revision/refresh-uncertain",
+            [new PendingChange(changeId, Wordform("kitabu"), "kitabu", ChangeKinds.Approve, null, null, [])],
+            [new ChangeFit(changeId, ChangeFitStatus.Uncertain, [])
+            {
+                Uncertainty = new ChangeUncertainty("The sentence changed.", [], []),
+            }]);
+        var (inText, _, _) = await Loaded(pending: pending, afterAssessment: async (viewModel, changes, client) =>
+        {
+            client.PendingLoadHandler = (_, _) => Task.FromResult(
+                CommandOutcome<PendingChangesSnapshot>.Success(pending));
+            await changes.ReloadAsync();
+
+            var token = viewModel.VisibleLines.SelectMany(line => line.Tokens)
+                .First(candidate => candidate.Form == "kitabu");
+            Assert.True(token.Marking.IsUncertain);
+            Assert.True(token.Marking.IsUnread);
+            Assert.False(token.Marking.NeedsALook);
+        });
+    }
+
+    [Fact]
+    public async Task EnterAndSpaceRouteWordTokensThroughTheCardOpener()
+    {
+        var (inText, _, _) = await Loaded();
+        var token = inText.VisibleLines.SelectMany(line => line.Tokens).First(candidate =>
+            candidate.Occurrence is not null);
+        var opened = false;
+
+        var handled = await ResultsInTextPanel.OpenTokenCardOnKeyboardAsync(Key.Space, token, _ =>
+        {
+            opened = true;
+            return Task.CompletedTask;
+        });
+
+        Assert.True(handled);
+        Assert.True(opened);
+        Assert.False(await ResultsInTextPanel.OpenTokenCardOnKeyboardAsync(Key.Tab, token,
+            _ => Task.CompletedTask));
+    }
+
+    [Fact]
+    public async Task MarkingOneOccurrenceDoesNotCancelThePendingReadStateLoad()
+    {
+        var pendingRead = new TaskCompletionSource<CommandOutcome<WordReadStateResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var (inText, _, _) = await Loaded(
+            readStateHandler: (request, _) => request.IsRead is null
+                ? pendingRead.Task
+                : Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse([], true))),
+            waitForReadState: false);
+        var tokens = inText.VisibleLines.SelectMany(line => line.Tokens)
+            .Where(token => token.Occurrence is not null).Take(2).ToArray();
+        Assert.Equal(2, tokens.Length);
+        var secondOccurrence = tokens[1].Occurrence!;
+        var refresh = inText.ReadStateRefresh;
+
+        await inText.MarkReadAsync(tokens[0]);
+        pendingRead.SetResult(CommandOutcome<WordReadStateResponse>.Success(
+            new WordReadStateResponse([secondOccurrence], true)));
+        await refresh;
+
+        Assert.False(tokens[1].Marking.IsUnread);
+    }
+
+    [Fact]
+    public async Task ARejectedSingleWordReadPublishesItsRefusalForTheWindow()
+    {
+        var (inText, _, client) = await Loaded();
+        var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .First(candidate => candidate.IsWord);
+        var changes = new List<string?>();
+        inText.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+        client.OnReadWordState((_, _) => Task.FromResult(
+            CommandOutcome<WordReadStateResponse>.Refused(new Refusal("word.read-state-invalid",
+                FailureReason.InvalidArgument, "This paragraph has not been parsed."))));
+
+        await inText.MarkReadAsync(token);
+
+        Assert.Contains("ReadStateRefusal", changes);
+        Assert.NotNull(inText.ReadStateRefusal);
+        Assert.Contains("This paragraph has not been parsed.", inText.ReadStateRefusal!.Details);
+    }
+
+    [Fact]
+    public async Task APartialTextReadPublishesTheSkippedOccurrenceNoticeForTheWindow()
+    {
+        var (inText, _, client) = await Loaded();
+        var changes = new List<string?>();
+        inText.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+        client.OnReadWordState((_, _) => Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(
+            new WordReadStateResponse([], true)
+            {
+                SkippedOccurrences = [new OccurrenceAnchor(TextId, SecondParagraphId, SecondSegmentId, 0)],
+            })));
+
+        await inText.MarkTextReadAsync();
+
+        Assert.Contains("ReadStateNotice", changes);
+        Assert.True(inText.HasReadStateNotice);
+        Assert.Equal("1 word occurrence was not marked Read because its paragraph has not been parsed.",
+            inText.ReadStateNotice);
     }
 
     [Fact]
@@ -689,6 +814,22 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
+    public async Task ARefusedMarkingStageLeavesTheOccurrenceUnread()
+    {
+        var (inText, _, fake) = await Loaded();
+        var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Single(token => token.Form == "mtoto");
+        inText.SelectToken(selected);
+        fake.PendingPutRefusal = new Refusal("pending-change-invalid", FailureReason.InvalidArgument,
+            "The proposed change was refused.");
+
+        await inText.StagePrimaryMarkingActionCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(fake.PendingPutRequests);
+        Assert.True(selected.Marking.IsUnread);
+    }
+
+    [Fact]
     public void ProjectStatusChipUsesTheWordStatusVerdict()
     {
         var analysis = new ProjectAnalysis("k1", [new ParserReadingMorph("form", "gloss", "n", null, false, null)]);
@@ -712,7 +853,7 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
-    public void BeforeAnyAssessmentItSaysSoInsteadOfShowingNothing()
+    public void BeforeAnyAssessmentItLeavesTheEmptyStateToTheSharedParsePrompt()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -720,7 +861,8 @@ public sealed class ResultsInTextViewModelTests
             new TextWordsViewModel(fake, selection), new AssessViewModel(fake, selection), _ => { }, _ => { },
             new ChangesViewModel(fake), fake);
 
-        Assert.StartsWith("Run an Assessment", inText.Message, StringComparison.Ordinal);
+        Assert.Null(inText.Message);
+        Assert.False(inText.HasMessage);
         Assert.Empty(inText.VisibleLines);
     }
 
