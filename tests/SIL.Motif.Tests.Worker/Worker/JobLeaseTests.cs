@@ -58,8 +58,23 @@ public sealed class JobLeaseTests : IDisposable
         var claimed = new JobClaims(_database).Claim(Project, "runner-a", claimUtc, Lease());
 
         Assert.NotNull(claimed);
-        Assert.Equal(createdUtc, claimed!.CreatedUtc);
-        Assert.Equal(createdUtc, claimed.UpdatedUtc);
+        Assert.Equal("2026-09-28T12:00:00.2000000Z", claimed!.CreatedUtc);
+        Assert.Equal(claimed.CreatedUtc, claimed.UpdatedUtc);
+    }
+
+    [Fact]
+    public void AClaimClockMovingBackwardWithinAMillisecondDoesNotPutUpdatedBeforeCreated()
+    {
+        const string createdUtc = "2026-09-28T12:00:00.1239000Z";
+        const string claimUtc = "2026-09-28T12:00:00.123Z";
+        var jobs = new JobRepository(_database);
+        jobs.Create("job-1", Project, "dry-run", "{}", createdUtc);
+
+        var claimed = new JobClaims(_database).Claim(Project, "runner-a", claimUtc, Lease());
+
+        Assert.NotNull(claimed);
+        Assert.Equal("2026-09-28T12:00:00.1239000Z", claimed!.CreatedUtc);
+        Assert.Equal(claimed.CreatedUtc, claimed.UpdatedUtc);
     }
 
     [Fact]

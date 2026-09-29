@@ -473,8 +473,7 @@ public static class JobCommands
     private static Version ParseProductVersion(string productVersion) =>
         Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
 
-    private static string NowStamp() =>
-        DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+    private static string NowStamp() => JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
 
     private static Refusal JobNotFound(string jobId) =>
         new("job.not-found", FailureReason.NotFound,

@@ -49,13 +49,14 @@ public sealed class JobClaims
             throw new ArgumentException("A project key is required.", nameof(projectKey));
         if (string.IsNullOrWhiteSpace(nowUtc))
             throw new ArgumentException("A timestamp is required.", nameof(nowUtc));
+        var now = Normalize(nowUtc);
 
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT JobId, QueueOrder FROM Jobs WHERE ProjectKey = $project AND " +
             "ArchivedUtc IS NULL AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") " +
             "ORDER BY QueueOrder, JobId LIMIT 1;";
-        command.Parameters.AddWithValue("$now", nowUtc);
+        command.Parameters.AddWithValue("$now", now);
         command.Parameters.AddWithValue("$project", projectKey);
         using var reader = command.ExecuteReader();
         return reader.Read() ? new JobQueueHead(reader.GetString(0), reader.GetDouble(1)) : null;
@@ -77,6 +78,7 @@ public sealed class JobClaims
             throw new ArgumentException("A timestamp is required.", nameof(nowUtc));
         if (lease <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(lease), "A lease must be positive.");
+        var now = Normalize(nowUtc);
 
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
@@ -94,8 +96,8 @@ public sealed class JobClaims
                 "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ");";
             claim.Parameters.AddWithValue("$owner", ownerId);
             claim.Parameters.AddWithValue("$token", token);
-            claim.Parameters.AddWithValue("$until", Stamp(nowUtc, lease));
-            claim.Parameters.AddWithValue("$now", nowUtc);
+            claim.Parameters.AddWithValue("$until", Stamp(now, lease));
+            claim.Parameters.AddWithValue("$now", now);
             claim.Parameters.AddWithValue("$project", projectKey);
             if (claim.ExecuteNonQuery() == 0)
             {
@@ -139,6 +141,7 @@ public sealed class JobClaims
             throw new ArgumentException("A claim token is required.", nameof(claimToken));
         if (lease <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(lease), "A lease must be positive.");
+        var now = Normalize(nowUtc);
 
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
@@ -147,8 +150,8 @@ public sealed class JobClaims
         command.CommandText =
             "UPDATE Jobs SET LeaseUntilUtc = $until, HeartbeatUtc = $now " +
             "WHERE JobId = $id AND ClaimToken = $token;";
-        command.Parameters.AddWithValue("$until", Stamp(nowUtc, lease));
-        command.Parameters.AddWithValue("$now", nowUtc);
+        command.Parameters.AddWithValue("$until", Stamp(now, lease));
+        command.Parameters.AddWithValue("$now", now);
         command.Parameters.AddWithValue("$id", jobId);
         command.Parameters.AddWithValue("$token", claimToken);
         var extended = command.ExecuteNonQuery() == 1;
@@ -181,11 +184,12 @@ public sealed class JobClaims
         return true;
     }
 
-    /// A lease deadline is written in the same sortable form as every other timestamp in this store.
+    private static string Normalize(string value) => JobTimestamp.FormatUtc(DateTimeOffset.Parse(value,
+        CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal));
+
     private static string Stamp(string nowUtc, TimeSpan lease) =>
-        (DateTimeOffset.Parse(nowUtc, CultureInfo.InvariantCulture,
-            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal) + lease)
-        .UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture);
+        JobTimestamp.FormatUtc(DateTimeOffset.Parse(nowUtc, CultureInfo.InvariantCulture,
+            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal) + lease);
 }
 
 /// <summary>
