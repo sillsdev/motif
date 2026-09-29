@@ -327,7 +327,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     {
         if (SelectedToken is not { } token || choice is null) return;
         await StageMarkingActionAsync(token, new AnalysisMarkingAction(choice.Kind, choice.Label,
-            choice.StoredAnalysisId, choice.Reading, choice.ReadingIndex, choice.Now, choice.AfterApply))
+            choice.StoredAnalysisId, choice.Reading, choice.ReadingIndex, choice.Now, choice.AfterApply,
+            choice.ChangeKind))
             .ConfigureAwait(true);
     }
 
@@ -335,14 +336,21 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     {
         if (action.Kind == AnalysisMarkingActionKind.KeepFieldWorks)
         {
-            KeepFieldWorks(token);
+            await MarkRead(token).ConfigureAwait(true);
             return;
         }
         await _changes.AddFromMarkingAsync(action, token).ConfigureAwait(true);
         RefreshPendingMarkers();
     }
 
-    private static void KeepFieldWorks(ResultsTokenViewModel token) => token.Marking.KeepFieldWorks();
+    /// <summary>Marks an occurrence as read without staging a project change.</summary>
+    /// <param name="token">The occurrence the reader chose to keep.</param>
+    /// <returns>A completed task because read state is not persisted.</returns>
+    public Task MarkRead(ResultsTokenViewModel token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        return Task.CompletedTask;
+    }
 
     private void RefreshPendingMarkers()
     {

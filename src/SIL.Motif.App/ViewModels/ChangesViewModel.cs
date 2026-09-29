@@ -192,15 +192,10 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(token);
-        var kind = action.Kind switch
-        {
-            AnalysisMarkingActionKind.Approve or AnalysisMarkingActionKind.Accept => ChangeKinds.Approve,
-            AnalysisMarkingActionKind.Add when action.AfterApply == "Approved" => ChangeKinds.Approve,
-            AnalysisMarkingActionKind.Add => ChangeKinds.AddCandidate,
-            AnalysisMarkingActionKind.Disapprove => ChangeKinds.Reject,
-            AnalysisMarkingActionKind.MakeUnknown => ChangeKinds.Candidate,
-            _ => throw new InvalidOperationException("This marking action does not stage a project change."),
-        };
+        var kind = action.ChangeKind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate or
+            ChangeKinds.AddCandidate
+            ? action.ChangeKind
+            : throw new InvalidOperationException("This marking action does not stage a project change.");
         var hasParserReading = action.Reading is not null;
         await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : "", token.Form,
             hasParserReading ? AssessmentId : null, action.Reading, action.StoredAnalysisId,

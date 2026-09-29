@@ -85,6 +85,9 @@ public static class TextWordsQuery
                             OccurrenceIndex = token.OccurrenceIndex,
                             StoredAnalysisId = token.AnalysisId is { } analysisId
                                 ? CanonicalId.FromGuid(analysisId).Value : null,
+                            IncorrectSpelling = token.WordformId is { } markedWordformId &&
+                                wordformsById.TryGetValue(markedWordformId, out var markedWordform) &&
+                                markedWordform.IncorrectSpelling,
                             WordLink = token.Text.Length == 0
                                 ? null : FieldWorksLinks.ForTarget(projectName, token.WordLinkTarget),
                         });

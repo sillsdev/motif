@@ -36,7 +36,7 @@ public sealed class ResultsInTextViewModelTests
             { Entry = "form" }])
         {
             StoredAnalysisId = "stored-" + reading.Morphs[0].Form,
-            StoredAnalysisOpinion = "approved",
+            StoredAnalysisOpinion = ReadingGrade.Approved,
             Identity = new ApprovedMorphology(reading.Morphs.Select(morph => new ApprovedMorph(
                 morph.Form, morph.Msa, morph.InflType, ["form"])).ToArray()),
         };
@@ -62,7 +62,7 @@ public sealed class ResultsInTextViewModelTests
         {
             Morphology = new ParseWordEvidence("v1", 0, word, 3, false, false, false, readings, []),
             Readings = readings.Select(_ => new ParserReading([new ParserReadingMorph(word, "gloss", "n", null, false, null)])).ToArray(),
-            ReadingGrades = readings.Select(_ => "no-opinion").ToArray(),
+            ReadingGrades = readings.Select(_ => ReadingGrade.NoOpinion).ToArray(),
         };
 
     private static async Task<(ResultsInTextViewModel InText, List<string> Shown, FakeCommandClient Client)> Loaded(
@@ -147,12 +147,12 @@ public sealed class ResultsInTextViewModelTests
         var tokens = inText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
 
         Assert.Equal(AnalysisMarkingClass.Extra, tokens[0].Marking.PanGlossClass);
-        Assert.Equal("approved", Assert.Single(tokens[0].Marking.FieldWorksAnalyses).Opinion);
+        Assert.Equal(ReadingGrade.Approved, Assert.Single(tokens[0].Marking.FieldWorksAnalyses).Opinion);
         Assert.Equal(AnalysisMarkingActionKind.KeepFieldWorks, tokens[0].Marking.PrimaryAction!.Kind);
         Assert.Contains(tokens[0].Marking.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Add &&
             choice.Label == "Add as Unknown" && choice.Subtitle == "Not in FieldWorks → Unknown");
-        Assert.Equal(AnalysisMarkingClass.Different, tokens[1].Marking.PanGlossClass);
-        Assert.Equal(AnalysisMarkingActionKind.Add, tokens[1].Marking.PrimaryAction!.Kind);
+        Assert.Equal(AnalysisMarkingClass.Conflict, tokens[1].Marking.PanGlossClass);
+        Assert.Null(tokens[1].Marking.PrimaryAction);
         Assert.Equal(AnalysisMarkingClass.Different, tokens[2].Marking.PanGlossClass);
         Assert.Equal(AnalysisMarkingClass.None, tokens[3].Marking.PanGlossClass);
     }
@@ -460,7 +460,7 @@ public sealed class ResultsInTextViewModelTests
             .Single(token => token.Form == "mtoto");
         inText.SelectToken(selected);
         var choice = Assert.Single(selected.Marking.FixChoices.Where(candidate =>
-            candidate.Kind == AnalysisMarkingActionKind.Approve && candidate.ReadingIndex == 0));
+            candidate.Label == "Add as Approved" && candidate.ReadingIndex == 0));
 
         await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
 
@@ -476,7 +476,6 @@ public sealed class ResultsInTextViewModelTests
     public async Task AParserOnlyReadingCanBeAddedAsUnknown()
     {
         var (inText, _, fake) = await Loaded();
-        inText.Changes.AssessmentId = "assessment/one";
         var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .Single(token => token.Form == "mtoto");
         inText.SelectToken(selected);
@@ -488,9 +487,25 @@ public sealed class ResultsInTextViewModelTests
         var request = Assert.Single(fake.PendingPutRequests);
         Assert.Equal(ChangeKinds.AddCandidate, request.Change.Kind);
         Assert.Equal(CanonicalId.FromGuid(selected.WordformId!.Value).Value, request.Change.WordformId);
-        Assert.Equal("assessment/one", request.Change.AssessmentId);
+        Assert.Null(request.Change.AssessmentId);
         Assert.Equal(0, request.Change.ReadingIndex);
         Assert.Null(request.Change.Occurrence);
+    }
+
+    [Fact]
+    public async Task PrimaryAddStagesAnUnknownReadingWithoutAnAssessmentId()
+    {
+        var (inText, _, fake) = await Loaded();
+        var selected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Single(token => token.Form == "mtoto");
+        inText.SelectToken(selected);
+
+        await inText.StagePrimaryMarkingActionCommand.ExecuteAsync(null);
+
+        var request = Assert.Single(fake.PendingPutRequests);
+        Assert.Equal(ChangeKinds.AddCandidate, request.Change.Kind);
+        Assert.Equal("Unknown", selected.Marking.PrimaryAction!.AfterApply);
+        Assert.Null(request.Change.AssessmentId);
     }
 
     [Fact]

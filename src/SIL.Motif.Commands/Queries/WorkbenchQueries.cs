@@ -134,6 +134,8 @@ public sealed record TextToken(string Text, string? Form, string? Gloss, string?
 
     public string? StoredAnalysisId { get; init; }
 
+    /// <summary>Whether FieldWorks marks this wordform's spelling as incorrect.</summary>
+    public bool IncorrectSpelling { get; init; }
     /// <summary>For a word, a <c>silfw:</c> link selecting its wordform in FieldWorks, or <see langword="null"/>.</summary>
     public string? WordLink { get; init; }
 }
