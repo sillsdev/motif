@@ -81,7 +81,7 @@ public class FwDataProjectLoader
                     "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
             }
 
-            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
+            InitializeSldr();
             InstallConfiguredGlobalWritingSystemRepository();
             _init = true;
         }
@@ -202,6 +202,37 @@ public class FwDataProjectLoader
 
     private static bool SldrOfflineRequested() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SldrOfflineVariable));
+
+    /// <summary>
+    /// Points a process's SLDR cache at a private directory instead of the machine-wide one. <b>Test-only.</b>
+    /// </summary>
+    /// <remarks>
+    /// The machine-wide cache holds whatever SLDR data earlier FieldWorks or Motif runs on that machine
+    /// downloaded, so an offline lookup there returns about 1.4 MB of LDML per writing system on one machine
+    /// and nothing on a fresh one. Every writing system a test project creates then carries that data, and
+    /// every later open of the project re-parses it and recompiles its non-default ICU collations, which
+    /// costs several hundred milliseconds per open. A test process sets this to an empty directory, so each
+    /// process gets the bare writing systems a fresh machine gets, whatever machine it runs on. Pinned by
+    /// `InitReadsTheSldrCacheTheEnvironmentNames`.
+    /// </remarks>
+    internal const string SldrCachePathVariable = "MOTIF_TEST_SLDR_CACHE_PATH";
+
+    private static void InitializeSldr()
+    {
+        var cachePath = Environment.GetEnvironmentVariable(SldrCachePathVariable);
+        if (string.IsNullOrWhiteSpace(cachePath))
+        {
+            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
+            return;
+        }
+
+        Directory.CreateDirectory(cachePath);
+        // The cache-path overload is internal to SIL.WritingSystems; the pinning test fails if it is renamed.
+        var initialize = typeof(Sldr).GetMethod(nameof(Sldr.Initialize), BindingFlags.Static | BindingFlags.NonPublic,
+            [typeof(bool), typeof(string)]) ?? throw new InvalidOperationException(
+            $"SIL.WritingSystems no longer offers Sldr.Initialize(bool, string), which '{SldrCachePathVariable}' needs.");
+        initialize.Invoke(null, [SldrOfflineRequested(), Path.GetFullPath(cachePath)]);
+    }
 
     private const string WritingSystemRepositoryPathEnvironmentVariable = "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH";
 

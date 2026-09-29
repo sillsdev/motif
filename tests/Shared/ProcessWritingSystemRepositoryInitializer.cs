@@ -11,6 +11,7 @@ internal static class ProcessWritingSystemRepositoryInitializer
     {
         ProcessWritingSystemRepository.Install();
         Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrOfflineVariable, "1");
+        Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrCachePathVariable, ProcessWritingSystemRepository.SldrCachePath);
         FwDataProjectLoader.Init();
     }
 #pragma warning restore CA2255

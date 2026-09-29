@@ -28,6 +28,17 @@ public sealed class FwDataProjectLoaderWritingSystemRepositoryTests
     }
 
     [Fact]
+    public void InitReadsTheSldrCacheTheEnvironmentNames()
+    {
+        FwDataProjectLoader.Init();
+
+        Assert.Equal(
+            Path.GetFullPath(Environment.GetEnvironmentVariable(FwDataProjectLoader.SldrCachePathVariable)!),
+            Sldr.SldrCachePath);
+        Assert.Equal(Path.GetFullPath(ProcessWritingSystemRepository.SldrCachePath), Sldr.SldrCachePath);
+    }
+
+    [Fact]
     public void InitKeepsSldrLookupsOffTheNetworkWhenTheEnvironmentAsks()
     {
         Assert.False(string.IsNullOrWhiteSpace(
