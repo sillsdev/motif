@@ -24,7 +24,9 @@ public static class MotifSchema
         : throw new NotSupportedException($"Motif schema {schema} is not known to this worker.");
 
     /// <summary>Builds every table, index and the identity row for a brand-new database, in one step.</summary>
-    internal static void Create(SqliteConnection connection, SqliteTransaction? transaction, ProjectLocator project)
+    internal static void Create(
+        SqliteConnection connection, SqliteTransaction? transaction, ProjectLocator project,
+        TimeProvider? timeProvider = null)
     {
         using (var command = connection.CreateCommand())
         {
@@ -44,7 +46,8 @@ public static class MotifSchema
         insert.Parameters.AddWithValue("$path", project.FullFwDataPath);
         insert.Parameters.AddWithValue("$identity", project.FieldWorksProjectIdentity);
         insert.Parameters.AddWithValue("$version", MinimumWorkerVersion(CurrentSchema).ToString());
-        insert.Parameters.AddWithValue("$created", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        insert.Parameters.AddWithValue("$created",
+            (timeProvider?.GetUtcNow() ?? DateTimeOffset.UtcNow).ToString("O", CultureInfo.InvariantCulture));
         insert.ExecuteNonQuery();
     }
 

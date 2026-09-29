@@ -2,6 +2,7 @@ using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Threading;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -41,15 +42,21 @@ public static class BaselineCaptureCommand
 {
     /// <summary>Captures and publishes a Baseline, resolving the managed root the real installation uses.</summary>
     public static CommandOutcome<BaselineCaptureResponse> Capture(BaselineCaptureRequest request) =>
-        Capture(request, RunnerOptions.ResolveRoot());
+        Capture(request, RunnerOptions.ResolveRoot(), TimeProvider.System);
 
     /// <summary>
     /// Captures and publishes a Baseline under an explicitly supplied managed root. The single-argument
     /// overload is what production code and the CLI call; this one exists so a test can supply its own
     /// disposable root rather than sharing the one real installation on the machine.
     /// </summary>
-    public static CommandOutcome<BaselineCaptureResponse> Capture(BaselineCaptureRequest request, string managedRoot)
+    public static CommandOutcome<BaselineCaptureResponse> Capture(BaselineCaptureRequest request, string managedRoot) =>
+        Capture(request, managedRoot, TimeProvider.System);
+
+    /// <summary>Captures and publishes a Baseline using the caller's clock.</summary>
+    public static CommandOutcome<BaselineCaptureResponse> Capture(
+        BaselineCaptureRequest request, string managedRoot, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var staging = Path.Combine(managedRoot, "captures");
@@ -115,7 +122,7 @@ public static class BaselineCaptureCommand
                     }
                     var declaredToken = new BaselineToken(
                         projectIdentity, semanticDigest, BaselineSemanticDigest.ProjectionVersion,
-                        DateTime.UtcNow.ToString("O"), bundleDigest);
+                        timeProvider.GetUtcNow().UtcDateTime.ToString("O", CultureInfo.InvariantCulture), bundleDigest);
 
                     publication = new BaselineCapturePublisher(database, managedRoot)
                         .PublishAsync(project, bundlePath, declaredToken, copy.SourceLastWriteUtc,
@@ -147,7 +154,7 @@ public static class BaselineCaptureCommand
                 DeleteDirectory(captureDirectory);
                 DeleteFile(bundlePath);
             }
-        });
+        }, timeProvider: timeProvider);
     }
 
     // A captured project is one the machine knows about, whichever front end captured it (ADR 0043).

@@ -284,8 +284,9 @@ public sealed partial class OverviewPageModel : PageModel
         if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(OverviewIsStale));
     }
 
-    private static string FormatTime(DateTimeOffset? value) => value is { } at
-        ? at.ToLocalTime().ToString("h:mm tt", CultureInfo.CurrentCulture) : "not recorded";
+    private string FormatTime(DateTimeOffset? value) => value is { } at
+        ? TimeZoneInfo.ConvertTime(at, Context.Clock.LocalTimeZone).ToString("h:mm tt", CultureInfo.CurrentCulture)
+        : "not recorded";
 
     private static string FormatMilliseconds(double? value) => value is { } milliseconds
         ? $"{milliseconds:N1} ms" : "not recorded";

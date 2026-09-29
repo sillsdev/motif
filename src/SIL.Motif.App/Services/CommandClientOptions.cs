@@ -11,11 +11,13 @@ namespace SIL.Motif.App.Services;
 /// `ALauncherForAnotherRootOrParserIsRefused`.
 /// </param>
 /// <param name="StartGate">Holds an Assessment or Handoff before it starts, or <see langword="null"/>.</param>
+/// <param name="TimeProvider">The clock synchronous command captures use, or <see langword="null"/> for system time.</param>
 public sealed record CommandClientOptions(
     string ManagedRoot,
     string? ParserPath,
     IJobRunnerLauncher RunnerLauncher,
-    ICommandStartGate? StartGate = null)
+    ICommandStartGate? StartGate = null,
+    TimeProvider? TimeProvider = null)
 {
     /// <summary>
     /// The installed window's settings, resolved once from the environment exactly as the command line

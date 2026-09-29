@@ -26,6 +26,7 @@ public sealed class MotifDatabase : IDisposable
     /// <param name="supportedSchema">The schema generation this worker requires; usually <see cref="MotifSchema.CurrentSchema"/>.</param>
     /// <param name="workerVersion">The worker version used for compatibility checks.</param>
     /// <param name="ownershipPatience">Maximum wait for store locks; defaults to 30 seconds.</param>
+    /// <param name="timeProvider">The clock used when creating the database, or <see langword="null"/> for system time.</param>
     /// <returns>An owned database boundary whose connections are configured for worker use.</returns>
     /// <exception cref="InvalidDataException">The file identity, metadata, or project binding is invalid.</exception>
     /// <exception cref="NotSupportedException">The schema or worker compatibility is unsupported.</exception>
@@ -34,9 +35,10 @@ public sealed class MotifDatabase : IDisposable
         ProjectLocator project,
         int supportedSchema,
         Version workerVersion,
-        TimeSpan? ownershipPatience = null)
+        TimeSpan? ownershipPatience = null,
+        TimeProvider? timeProvider = null)
     {
-        var descriptor = Describe(path, project, supportedSchema, workerVersion);
+        var descriptor = Describe(path, project, supportedSchema, workerVersion, timeProvider);
         return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience));
     }
 
@@ -86,7 +88,8 @@ public sealed class MotifDatabase : IDisposable
             ownershipPatience, onWaitingForOwnership);
 
     private static MotifSqliteStoreDescriptor Describe(
-        string path, ProjectLocator project, int supportedSchema, Version workerVersion)
+        string path, ProjectLocator project, int supportedSchema, Version workerVersion,
+        TimeProvider? timeProvider = null)
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("A database path is required.", nameof(path));
         ArgumentNullException.ThrowIfNull(project);
@@ -109,7 +112,7 @@ public sealed class MotifDatabase : IDisposable
             ApplicationId = MotifSchema.ApplicationId,
             CurrentSchema = supportedSchema,
             ValidateSchema = MotifSchema.ValidateSchema,
-            Create = (connection, transaction) => MotifSchema.Create(connection, transaction, project),
+            Create = (connection, transaction) => MotifSchema.Create(connection, transaction, project, timeProvider),
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);

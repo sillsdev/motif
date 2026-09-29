@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Threading;
@@ -56,6 +57,10 @@ public sealed class AvaloniaHeadlessFixture : IDisposable
 
 internal static class AvaloniaHeadlessPlatform
 {
+    private static readonly MethodInfo ResetDispatcher = typeof(Dispatcher).GetMethod(
+        "ResetBeforeUnitTests", BindingFlags.Static | BindingFlags.NonPublic)
+        ?? throw new MissingMethodException(typeof(Dispatcher).FullName, "ResetBeforeUnitTests");
+
     private static readonly Lazy<PlatformThread> Shared = new(
         static () => new PlatformThread(), LazyThreadSafetyMode.ExecutionAndPublication);
 
@@ -71,6 +76,8 @@ internal static class AvaloniaHeadlessPlatform
 
         public PlatformThread()
         {
+            // Reset the static dispatcher so setup binds it here; pinned by DedicatedThreadOwnsAvaloniaDispatcher.
+            ResetDispatcher.Invoke(null, null);
             var ready = new TaskCompletionSource();
             _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = "Avalonia headless" };
             if (OperatingSystem.IsWindows())
@@ -118,6 +125,9 @@ internal static class AvaloniaHeadlessPlatform
         {
             try
             {
+                if (!Dispatcher.UIThread.CheckAccess())
+                    throw new InvalidOperationException("Avalonia's UI dispatcher belongs to another thread.");
+
                 // The app's own renderer and system fonts, so text measures as it does on screen, not as a stub guesses.
                 AppBuilder.Configure<SIL.Motif.App.App>()
                     .UseSkia()

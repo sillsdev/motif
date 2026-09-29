@@ -8,7 +8,8 @@ namespace SIL.Motif.Tests.TestFixtures;
 
 public sealed class WalkthroughProject : IDisposable
 {
-    public WalkthroughProject(PristineProjectFixture pristine)
+    public WalkthroughProject(
+        PristineProjectFixture pristine, string? managedRoot = null, DateTime? sourceLastWriteUtc = null)
     {
         ArgumentNullException.ThrowIfNull(pristine);
 
@@ -17,6 +18,7 @@ public sealed class WalkthroughProject : IDisposable
         {
             Seed = pristine.Seed;
             Text = SeededProject.SeedText(cache, Seed);
+            TextId = Text.TextId;
             FirstMsaId = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
                 .GetObject(Seed.FirstEntryId).MorphoSyntaxAnalysesOC.Single().Guid;
             RealParserProject.PrepareForParsing(
@@ -29,7 +31,9 @@ public sealed class WalkthroughProject : IDisposable
             if (!cache.IsDisposed) cache.Dispose();
         }
 
-        ManagedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.Walkthrough", Guid.NewGuid().ToString("N"));
+        if (sourceLastWriteUtc is { } lastWriteUtc)
+            File.SetLastWriteTimeUtc(FwDataPath, DateTime.SpecifyKind(lastWriteUtc, DateTimeKind.Utc));
+        ManagedRoot = managedRoot ?? Path.Combine(Path.GetTempPath(), "SIL.Motif.Walkthrough", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(ManagedRoot);
         SourceSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(FwDataPath)));
     }
@@ -41,6 +45,9 @@ public sealed class WalkthroughProject : IDisposable
     public SeededText Text { get; }
 
     public Guid FirstMsaId { get; }
+
+    public Guid TextId { get; }
+
     public string ManagedRoot { get; }
 
     public string SourceSha256 { get; }

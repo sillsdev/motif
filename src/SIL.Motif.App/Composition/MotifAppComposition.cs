@@ -81,12 +81,12 @@ public static class MotifAppComposition
             ? new TechDemoNoticeViewModel(preferences, new AvaloniaLauncher(window))
             : null;
         var commandClient = new CommandClient(new CommandClientOptions(
-            options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate));
+            options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate, options.TimeProvider));
         var selection = new SelectionViewModel(commandClient);
         var assess = new AssessViewModel(commandClient, selection, options.TimeProvider);
         var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(commandClient, options.ProjectPicker ?? nativePickers),
-            new BaselineViewModel(commandClient),
+            new BaselineViewModel(commandClient, options.TimeProvider),
             selection,
             assess,
             options.HandoffFolderPicker ?? nativePickers,

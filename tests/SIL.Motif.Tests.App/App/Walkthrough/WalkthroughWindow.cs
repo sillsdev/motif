@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -7,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using SIL.Motif.App.Composition;
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -206,6 +208,69 @@ public sealed class WalkthroughWindow : IDisposable
                 StringComparison.Ordinal));
         ShowStageOwning(control);
         return control;
+    }
+
+    internal Control FindByAutomationId(string automationId)
+    {
+        return AllControls().Single(control =>
+            string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
+    }
+
+    internal void ClickAutomationId(string automationId)
+    {
+        var control = FindByAutomationId(automationId);
+        Assert.True(control.IsEffectivelyEnabled, $"AutomationId '{automationId}' is disabled.");
+        var topLevel = automationId == AutomationIds.SelectNewProject
+            ? TopLevel.GetTopLevel(control) ?? Window
+            : Window;
+        HeadlessClick.Click(topLevel, control, automationId);
+        Window.UpdateLayout();
+        Pump();
+    }
+
+    internal void TypeAutomationId(string automationId, string text)
+    {
+        var control = Assert.IsType<TextBox>(FindByAutomationId(automationId));
+        HeadlessClick.Click(Window, control, automationId);
+        Assert.True(control.IsFocused, $"AutomationId '{automationId}' did not receive focus from the click.");
+        Window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.None, null);
+        Window.KeyTextInput(text);
+        Pump();
+        Assert.Equal(text, control.Text);
+    }
+
+    internal string? TextByAutomationId(string automationId) => FindByAutomationId(automationId) switch
+    {
+        TextBlock text => text.Text,
+        TextBox text => text.Text,
+        ContentControl content => content.Content?.ToString(),
+        _ => null,
+    };
+
+    internal Rect BoundsByAutomationId(string automationId)
+    {
+        var control = FindByAutomationId(automationId);
+        if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0)
+            throw new InvalidOperationException($"AutomationId '{automationId}' has no visible bounds.");
+        var origin = control.TranslatePoint(new Point(), Window)
+            ?? throw new InvalidOperationException($"AutomationId '{automationId}' is outside the main window.");
+        return new Rect(origin, control.Bounds.Size);
+    }
+
+    private IEnumerable<Control> AllControls()
+    {
+        yield return Window;
+        foreach (var control in Window.GetLogicalDescendants().OfType<Control>()) yield return control;
+        foreach (var ownedWindow in Window.OwnedWindows)
+        {
+            yield return ownedWindow;
+            foreach (var control in ownedWindow.GetLogicalDescendants().OfType<Control>()) yield return control;
+        }
+        if (ProjectMenuFlyout.Content is Control content)
+        {
+            yield return content;
+            foreach (var control in content.GetLogicalDescendants().OfType<Control>()) yield return control;
+        }
     }
 
     // A person reaches a control on another page through the sidebar, and one on another tab by its tab.

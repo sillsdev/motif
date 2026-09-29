@@ -13,6 +13,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 /// Drives the composed window through its scripted clipboard and diagnostic file dialogs: opening a saved
 /// diagnostic from Try a Word, saving and copying its JSON, and copying the AI Handoff's starter prompt.
 /// </summary>
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class DesktopSeamWalkthroughTests
 {
     private const string DiagnosticJson = """

@@ -12,10 +12,13 @@ internal static class RealCommandClient
     /// <see langword="null"/> <paramref name="runner"/> starts nothing, so a test that queues work passes the
     /// runner it owns and disposes.
     /// </summary>
-    public static CommandClient Create(string managedRoot, string? parserPath = null, IJobRunnerLauncher? runner = null)
+    public static CommandClient Create(
+        string managedRoot, string? parserPath = null, IJobRunnerLauncher? runner = null,
+        TimeProvider? timeProvider = null)
     {
         parserPath ??= PanGlossExecutable.TryLocate();
         return new CommandClient(new CommandClientOptions(managedRoot, parserPath,
-            runner ?? new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath))));
+            runner ?? new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath)),
+            TimeProvider: timeProvider));
     }
 }

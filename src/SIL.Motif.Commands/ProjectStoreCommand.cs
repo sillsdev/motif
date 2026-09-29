@@ -33,9 +33,10 @@ public static class ProjectStoreCommand
     /// <param name="productVersion">The worker version used for store compatibility checks.</param>
     /// <param name="act">The verb to run against the open project store.</param>
     /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
+    /// <param name="timeProvider">The clock used when creating the store, or <see langword="null"/> for system time.</param>
     public static CommandOutcome<T> Run<T>(string fwDataPath, string productVersion,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act,
-        TimeSpan? ownershipPatience = null) where T : class
+        TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null) where T : class
     {
         ArgumentNullException.ThrowIfNull(act);
 
@@ -55,7 +56,7 @@ public static class ProjectStoreCommand
         MotifDatabase database;
         try
         {
-            database = catalog.OpenOwned(project, ownershipPatience);
+            database = catalog.OpenOwned(project, ownershipPatience, timeProvider);
         }
         catch (MotifStoreLockException exception)
         {
