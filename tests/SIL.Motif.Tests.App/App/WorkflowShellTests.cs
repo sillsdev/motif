@@ -193,7 +193,7 @@ public sealed class WorkflowShellTests
     {
         _avalonia.Invoke(() =>
         {
-            var (_, window) = NewComposedWindow();
+            var (workspace, window) = NewComposedWindow();
             try
             {
                 window.Show();
@@ -268,8 +268,8 @@ public sealed class WorkflowShellTests
             {
                 window.Show();
                 Assert.Equal((1240d, 780d, 820d, 600d), (window.Width, window.Height, window.MinWidth, window.MinHeight));
-                var banner = window.GetLogicalDescendants().OfType<Border>().Single(border => border.Classes.Contains("banner"));
-                Assert.Equal(new Thickness(16, 12, 16, 0), banner.Margin);
+                var topBar = window.GetLogicalDescendants().OfType<Border>().Single(border => border.Classes.Contains("topBar"));
+                Assert.Equal(new Thickness(18, 0, 18, 0), topBar.Padding);
 
                 var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
                 var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
@@ -392,7 +392,7 @@ public sealed class WorkflowShellTests
     {
         _avalonia.Invoke(() =>
         {
-            var (_, window) = NewComposedWindow();
+            var (workspace, window) = NewComposedWindow();
             try
             {
                 window.Show();
@@ -401,7 +401,7 @@ public sealed class WorkflowShellTests
                 Assert.False(window.FindControl<StackPanel>("FreshnessLine")!.IsEffectivelyVisible);
                 Assert.True(ButtonNamed(window, "Refresh the project").IsEffectivelyVisible);
                 Assert.False(ButtonNamed(window, "Refresh the project").IsEffectivelyEnabled);
-                Assert.False(ButtonNamed(window, "Cancel the refresh").IsEffectivelyVisible);
+                Assert.False(workspace.ShowsParseAllWordsAction);
                 Assert.False(ButtonNamed(window, "See what the refresh changed").IsEffectivelyVisible);
             }
             finally

@@ -192,7 +192,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
                 Assert.Fail(failure.Message + "; " + StatisticsState(statistics));
             }
 
-            Assert.True(walkthrough.Workspace.Baseline.HasAssessment);
+            Assert.False(walkthrough.Workspace.Context.NeedsAssessment);
             var projectLocator = new ProjectLocator(
                 Path.GetFullPath(project.FwDataPath), Path.GetFileNameWithoutExtension(project.FwDataPath));
             using var database = MotifDatabase.OpenOwned(

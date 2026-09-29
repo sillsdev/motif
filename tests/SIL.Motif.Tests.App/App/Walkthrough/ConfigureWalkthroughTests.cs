@@ -141,7 +141,12 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
                 startGate: startGate, parserPath: parser);
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
-            walkthrough.Check(SeededProject.TextTitle);
+            walkthrough.ConfigureFromProjectMenu();
+            var setup = walkthrough.Workspace.Context.Setup!;
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, true);
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             var heldBehavior = new
             {
                 subcommands = new Dictionary<string, object>
@@ -151,8 +156,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             };
             walkthrough.SetFakeParserBehavior(heldBehavior);
 
-            walkthrough.Click("Run the Assessment");
-            var setup = walkthrough.Workspace.Context.Setup!;
+            walkthrough.Click("Start first run");
             try
             {
                 walkthrough.WaitUntil(() => startGate.Waiting > 0 && walkthrough.Workspace.Assess.IsActive,
@@ -266,6 +270,12 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
     private static void RefreshAfterAFieldWorksSave(WalkthroughWindow walkthrough, WalkthroughProject project, long deadline)
     {
         new FieldWorksSimulator(project.FwDataPath).SaveEdit(_ => { });
+        var check = walkthrough.Workspace.CheckFreshnessAsync();
+        walkthrough.WaitUntil(() => check.IsCompleted, WalkthroughSteps.Remaining(deadline),
+            "checking the FieldWorks save did not finish");
+        check.GetAwaiter().GetResult();
+        walkthrough.WaitUntil(() => walkthrough.Workspace.ShowsRefreshAction,
+            WalkthroughSteps.Remaining(deadline), "the new FieldWorks save did not make Refresh available");
         RefreshAndWait(walkthrough, deadline);
     }
 
@@ -281,7 +291,6 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             WalkthroughSteps.Remaining(deadline), "the Refresh did not capture a new Baseline");
         Assert.True(baseline.ShownRefusal is null,
             $"the Refresh was refused: {baseline.ShownRefusal?.Code}: {baseline.ShownRefusal?.Details}");
-        walkthrough.Workspace.DismissRerunCommand.Execute(null);
     }
 
     private static void ConfigureAndExpectSetup(WalkthroughWindow walkthrough, string when)

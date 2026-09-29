@@ -101,7 +101,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                     ["batch"] = new { words = new[] { new { word = "motifa", outcome = "complete" } } },
                 },
             });
-            walkthrough.Click("Run the Assessment");
+            SetupWalkthroughActions.ClickParseAllWordsFromTexts(walkthrough);
             walkthrough.WaitUntil(
                 () => !setup.IsOpen && walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,

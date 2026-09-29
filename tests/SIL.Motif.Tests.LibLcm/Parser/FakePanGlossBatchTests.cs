@@ -32,6 +32,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
         File.WriteAllLines(words, ["motifa", "zzz"]);
         var outPath = Path.Combine(_root, "out.tsv");
         var cache = Path.Combine(_root, "cache.bin");
+        FakeParser.Behave(_root, new { words = new[] { new { word = "motifa", outcome = "complete" } } });
 
         var result = Run("batch", project, words, outPath, "--word-timeout-ms", "1000", "--threads", "1",
             "--stats", "--cache", cache);

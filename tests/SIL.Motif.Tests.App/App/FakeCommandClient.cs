@@ -76,6 +76,9 @@ public sealed partial class FakeCommandClient : ICommandClient
     public Func<ReadDefaultSelectionRequest, CancellationToken,
         Task<CommandOutcome<DefaultSelectionResponse>>>? DefaultSelectionHandler { get; set; }
 
+    public void DefaultSelectionCompletesWith(NamedSelectionProjection selection) =>
+        _readDefaultSelection = (_, _) => Completed(new DefaultSelectionResponse(selection));
+
     public void OnCaptureBaseline(
         Func<BaselineCaptureRequest, CancellationToken, Task<CommandOutcome<BaselineCaptureResponse>>> behavior) =>
         _captureBaseline = behavior;

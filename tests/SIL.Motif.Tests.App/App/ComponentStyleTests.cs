@@ -252,9 +252,12 @@ public sealed class ComponentStyleTests
 
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.HeightProperty, "Component.TopBar.Height");
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.PaddingProperty, "Component.TopBar.Padding");
-        yield return new("TopBar", "the banner", host => Add(host, Box("banner")), Border.MarginProperty, "Component.TopBar.BannerMargin");
         yield return new("TopBar", "the project menu", host => Add(host, Press("projectMenu")),
             Button.MaxWidthProperty, "Component.TopBar.ProjectMenuMaxWidth");
+        yield return new("TopBar", "the parse progress bar", host => Add(host, With(new ProgressBar(), ["topBarParseProgress"])),
+            ProgressBar.WidthProperty, "Component.TopBar.ParseProgressWidth");
+        yield return new("TopBar", "the parse progress bar", host => Add(host, With(new ProgressBar(), ["topBarParseProgress"])),
+            ProgressBar.HeightProperty, "Component.TopBar.ParseProgressHeight");
 
         yield return new("Menu", "a menu", host => Add(host, Stack("menu")), StackPanel.WidthProperty, "Component.Menu.Width");
         yield return new("Menu", "a menu entry", host => Add(host, Press("menuEntry")), Button.PaddingProperty, "Component.Menu.EntryPadding");

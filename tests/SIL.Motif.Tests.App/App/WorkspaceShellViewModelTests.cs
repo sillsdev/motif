@@ -15,11 +15,12 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Pins <see cref="WorkspaceShellViewModel"/>'s composition: choosing a project loads Baseline and Text
 /// state and propagates the project to every child; a completed Assessment feeds
-/// <see cref="BaselineViewModel.HasAssessment"/> and <see cref="StatisticsViewModel.SummaryMarkdown"/>; a
-/// Refresh that replaces an already-assessed Baseline offers a rerun, which Accept and Dismiss resolve;
+/// <see cref="WorkspaceContext.NeedsAssessment"/> and <see cref="StatisticsViewModel.SummaryMarkdown"/>; a
+/// Refresh leaves a Parse all words action, and the saved Default Selection runs with its stored limits;
 /// and choosing another project clears what the previous one displayed. The last test exercises the whole
 /// agreed workflow end to end.
 /// </summary>
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WorkspaceShellViewModelTests
 {
     private const string Digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -425,7 +426,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("Alpha", Assert.Single(workspace.Selection.Texts).Title);
         Assert.Null(workspace.Selection.TextsEmptyMessage);
         Assert.Equal(ProjectPath, Assert.Single(fake.ListTextsRequests.Skip(1)).ProjectPath);
-        Assert.False(workspace.RerunOffered);
+        Assert.True(workspace.Context.NeedsAssessment);
     }
 
     [Fact]
@@ -611,7 +612,7 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
-    public async Task ACompletedAssessmentFeedsBaselineHasAssessmentAndTheStatisticsSummary()
+    public async Task ACompletedAssessmentFeedsCurrentEvidenceAndTheStatisticsSummary()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
@@ -620,7 +621,7 @@ public sealed class WorkspaceShellViewModelTests
 
         await workspace.Assess.RunCommand.ExecuteAsync(null);
 
-        Assert.True(workspace.Baseline.HasAssessment);
+        Assert.False(workspace.Context.NeedsAssessment);
         Assert.Equal("(summary)", workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
         Assert.Equal("assessment/one", workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
         Assert.Equal("invocation/one", workspace.PageModel<AiHandoffPageModel>().Handoff.InvocationId);
@@ -629,44 +630,134 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
-    public async Task RefreshingAnAssessedBaselineOffersARerunAndAcceptingItRunsTheAssessmentAgain()
+    public async Task RefreshOffersParseAllWordsAndRunsTheSavedSelectionWithItsSavedLimits()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
+            "Default", [], ["word"], string.Empty, string.Empty, 1500, new StepCap(6600)));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
-        workspace.Selection.AllWordforms = true;
         fake.AssessCompletesWith(NewAssessResponse("(first)"));
         await workspace.Assess.RunCommand.ExecuteAsync(null);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
-        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+        await workspace.RefreshCommand.ExecuteAsync(null);
 
-        Assert.True(workspace.RerunOffered);
+        Assert.True(workspace.Context.NeedsAssessment);
+        Assert.True(workspace.ShowsParseAllWordsAction);
+        Assert.False(workspace.ShowsRefreshAction);
+        Assert.Single(fake.AssessRequests);
 
         fake.AssessCompletesWith(NewAssessResponse("(second)"));
-        await workspace.AcceptRerunCommand.ExecuteAsync(null);
+        await workspace.ParseAllWordsCommand.ExecuteAsync(null);
 
-        Assert.False(workspace.RerunOffered);
+        Assert.False(workspace.Context.NeedsAssessment);
+        Assert.True(workspace.ShowsRefreshAction);
+        Assert.False(workspace.ShowsParseAllWordsAction);
         Assert.Equal(2, fake.AssessRequests.Count);
+        Assert.Null(fake.AssessRequests[1].Selection);
+        Assert.Equal(1500, fake.AssessRequests[1].PerWordLimitMs);
+        Assert.Equal(new StepCap(6600), fake.AssessRequests[1].PerWordStepLimit);
         Assert.Equal("(second)", workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
     }
 
     [Fact]
-    public async Task DismissingARerunOfferClearsItWithoutRunningAnything()
+    public async Task CancellingParseLeavesTheParseActionAvailable()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
+            "Default", [], ["word"], string.Empty, string.Empty, 1000, StepCap.Default));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        await workspace.RefreshCommand.ExecuteAsync(null);
+        fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."),
+            new AssessmentProgress(AssessmentStage.Parsing, 312, 1040, "Parsing words"));
+
+        var parsing = workspace.ParseAllWordsCommand.ExecuteAsync(null);
+        Assert.True(workspace.ShowsParseAllWordsProgress);
+        Assert.Equal("Parsing 312 of 1,040 words", workspace.ParseAllWordsProgressText);
+        workspace.Assess.CancelCommand.Execute(null);
+        await parsing;
+
+        Assert.True(workspace.Context.NeedsAssessment);
+        Assert.True(workspace.ShowsParseAllWordsAction);
+        Assert.Single(fake.AssessRequests);
+    }
+
+    [Fact]
+    public async Task ARefusedParseLeavesTheParseActionAvailable()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
+            "Default", [], ["word"], string.Empty, string.Empty, 1000, StepCap.Default));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        await workspace.RefreshCommand.ExecuteAsync(null);
+        fake.AssessRefusesWith(new Refusal("assess.refused", FailureReason.Refused, "The parser declined."));
+
+        await workspace.ParseAllWordsCommand.ExecuteAsync(null);
+
+        Assert.Equal(RunState.Refused, workspace.Assess.State);
+        Assert.True(workspace.Context.NeedsAssessment);
+        Assert.True(workspace.ShowsParseAllWordsAction);
+    }
+
+    [Fact]
+    public async Task RefreshDoesNotRunAnAssessmentAndLeavesTheNewBaselineUnmeasured()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         workspace.Selection.AllWordforms = true;
-        fake.AssessCompletesWith(NewAssessResponse("(first)"));
+        fake.AssessCompletesWith(NewAssessResponse("before refresh"));
         await workspace.Assess.RunCommand.ExecuteAsync(null);
+
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
-        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+        await workspace.RefreshCommand.ExecuteAsync(null);
 
-        workspace.DismissRerunCommand.Execute(null);
-
-        Assert.False(workspace.RerunOffered);
         Assert.Single(fake.AssessRequests);
+        Assert.True(workspace.Context.NeedsAssessment);
+    }
+
+    [Fact]
+    public async Task ParseDependentPagesShareThePromptAndKeepIndependentContentAvailable()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
+            "Default", [TextId], [], string.Empty, string.Empty, 1000, StepCap.Default));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+
+        var texts = workspace.PageModel<TextsPageModel>();
+        Assert.True(workspace.Context.NeedsAssessment);
+        Assert.True(texts.ShowParsePrompt);
+        Assert.False(texts.ShowMatrixContent);
+        Assert.Same(workspace.ParseAllWordsCommand, workspace.Context.ParseAllWordsCommand);
+
+        texts.Tab = TextsTab.AnalyzeTexts;
+        Assert.True(texts.ShowParsePrompt);
+        Assert.False(texts.ShowAnalyzeTextsContent);
+        texts.Tab = TextsTab.Lists;
+        Assert.True(texts.ShowLists);
+        Assert.False(texts.ShowParsePrompt);
+        texts.Tab = TextsTab.WhatChanged;
+        Assert.True(texts.ShowWhatChanged);
+        Assert.False(texts.ShowParsePrompt);
+
+        Assert.True(workspace.PageModel<TimingPageModel>().ShowNoEvidence);
+        Assert.False(workspace.PageModel<TimingPageModel>().ShowStatistics);
+        Assert.True(workspace.PageModel<OverviewPageModel>().ShowNoAssessment);
+        Assert.False(workspace.PageModel<OverviewPageModel>().ShowAssessmentDetails);
+        Assert.True(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
+
+        workspace.CurrentPage = WorkspacePage.TryAWord;
+        Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
+        workspace.CurrentPage = WorkspacePage.AiHandoff;
+        Assert.Equal(WorkspacePage.AiHandoff, workspace.CurrentPage);
+        workspace.CurrentPage = WorkspacePage.Review;
+        Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);
     }
 
     [Fact]
@@ -699,6 +790,8 @@ public sealed class WorkspaceShellViewModelTests
     public async Task TheFullAgreedWorkflowCompletesAndProducesDraggableHandoffFiles()
     {
         var (fake, projectPicker, folderPicker, dragSource, workspace) = NewWorkspace();
+        fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
+            "Default", [TextId], [], string.Empty, string.Empty, 1000, StepCap.Default));
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
         projectPicker.PathToReturn = ProjectPath;
@@ -726,10 +819,10 @@ public sealed class WorkspaceShellViewModelTests
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
         await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
-        Assert.True(workspace.RerunOffered);
+        Assert.True(workspace.Context.NeedsAssessment);
         fake.AssessCompletesWith(NewAssessResponse("(rerun)"));
-        await workspace.AcceptRerunCommand.ExecuteAsync(null);
-        Assert.False(workspace.RerunOffered);
+        await workspace.ParseAllWordsCommand.ExecuteAsync(null);
+        Assert.False(workspace.Context.NeedsAssessment);
 
         folderPicker.PathToReturn = @"C:\out";
         fake.HandoffCompletesWith(new HandoffCommandResponse(

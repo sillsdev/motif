@@ -227,7 +227,6 @@ public sealed class ProjectSwitchTests
 
         Assert.Equal(tokenB, parts.Workspace.Baseline.Token);
         Assert.Empty(parts.Fake.AssessRequests);
-        Assert.False(parts.Workspace.RerunOffered);
     }
 
     [Fact]
@@ -299,7 +298,7 @@ public sealed class ProjectSwitchTests
     }
 
     [Fact]
-    public async Task StoredNumbersStillOfferARerunWhenTheBaselineAnswersLast()
+    public async Task StoredNumbersAreClearedWhenTheNewBaselineIsCaptured()
     {
         var parts = NewWorkspace();
         var baselineStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -321,13 +320,13 @@ public sealed class ProjectSwitchTests
             new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));
         await opening;
         Assert.Contains(ProjectA, parts.Fake.CurrentEvidenceRequests);
-        Assert.True(parts.Workspace.Baseline.HasAssessment);
+        Assert.False(parts.Workspace.Context.NeedsAssessment);
         parts.Fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectA, DateTimeOffset.UtcNow, false, false));
 
         await parts.Workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
-        Assert.True(parts.Workspace.RerunOffered);
+        Assert.True(parts.Workspace.Context.NeedsAssessment);
     }
 
     [Fact]

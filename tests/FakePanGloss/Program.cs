@@ -174,9 +174,13 @@ internal static class Program
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
         RecordArgv(directory, args);
         var behaviour = Behaviour.Read(directory, "batch");
+        var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
         if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
         if (behaviour.HoldUntilPath is { } holdUntilPath)
         {
+            using var stream = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+            using var writer = new StreamWriter(stream) { AutoFlush = true };
+            if (words.Length > 0) writer.WriteLine($"0\t{words[0]}\tSTARTED");
             var holdExit = WaitForHoldRelease(holdUntilPath, behaviour.HoldTimeoutMs);
             if (holdExit != 0) return holdExit;
         }
@@ -196,7 +200,6 @@ internal static class Program
                 Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");
                 return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
             default:
-                var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
                 if (behaviour.StreamProgress)
                 {
                     var rows = BatchTsv(behaviour, words).Split('\n', StringSplitOptions.RemoveEmptyEntries);

@@ -49,6 +49,10 @@ public sealed class WalkthroughWindow : IDisposable
         _dragSource = new RecordingDragSource();
 
         parserPath ??= PanGlossExecutable.TryLocate();
+        if (parserPath is not null && string.Equals(
+                Path.GetFullPath(parserPath), Path.GetFullPath(FakeParser.ExecutablePath),
+                StringComparison.OrdinalIgnoreCase))
+            parserPath = FakeParser.Copy(Path.Combine(managedRoot, "fake-pangloss-" + Guid.NewGuid().ToString("N")));
         _parserPath = parserPath;
         if (runnerLauncher is null)
             runnerLauncher = _ownedRunner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath));
@@ -96,7 +100,8 @@ public sealed class WalkthroughWindow : IDisposable
     {
         if (Workspace.Context.Setup is not { IsOpen: true } setup) return;
         Click("Skip setup for now");
-        WaitUntil(() => !setup.IsOpen, TimeSpan.FromSeconds(30), "skipping setup did not close the dialog");
+        WaitUntil(() => !setup.IsOpen && !SetupDialogIsShown, TimeSpan.FromSeconds(30),
+            "skipping setup did not close the dialog");
     }
 
     internal void SetFakeParserBehavior(object behavior)
@@ -323,6 +328,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void TypePastedWords(string text)
     {
+        WalkthroughSteps.EnsureAssessmentForAnalyze(this, TimeSpan.FromMinutes(3));
         ShowPage(WorkspacePage.Texts);
         ShowTextsTab(TextsTab.AnalyzeTexts);
         // A Text's counts arrive with its words and push this header down, so a click aimed earlier misses it.
@@ -365,6 +371,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void Check(string content)
     {
+        WalkthroughSteps.EnsureAssessmentForAnalyze(this, TimeSpan.FromMinutes(3));
         ShowPage(WorkspacePage.Texts);
         ShowTextsTab(TextsTab.AnalyzeTexts);
         var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
