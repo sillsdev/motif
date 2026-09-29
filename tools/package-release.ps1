@@ -76,11 +76,11 @@ foreach ($icuLibrary in $icuLibraries) {
         throw "SIL ICU library names for $RuntimeIdentifier must be file names."
     }
 }
-$isWindows = $RuntimeIdentifier.StartsWith('win-', [System.StringComparison]::Ordinal)
+$targetIsWindows = $RuntimeIdentifier.StartsWith('win-', [System.StringComparison]::Ordinal)
 $icuBuildOutputRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot 'bin/Release'))
 $icuBuildOutputDirectory = [System.IO.Path]::GetFullPath((Join-Path $icuBuildOutputRoot $icuNativeOutputDirectory))
-$parserFileName = if ($isWindows) { 'pangloss.exe' } else { 'pangloss' }
-$entryPointSuffix = if ($isWindows) { '.exe' } else { '' }
+$parserFileName = if ($targetIsWindows) { 'pangloss.exe' } else { 'pangloss' }
+$entryPointSuffix = if ($targetIsWindows) { '.exe' } else { '' }
 if ([string]::IsNullOrWhiteSpace($ParserArtifact)) {
     $downloadDirectory = Join-Path $repoRoot ".tmp/pangloss/$($parserPin.tag)/$RuntimeIdentifier"
     $downloadFileName = [System.IO.Path]::GetFileName([Uri] $parserAsset.url)
@@ -154,7 +154,7 @@ function Assert-SafeStagePath {
     $resolvedParent = [System.IO.Path]::GetFullPath(
         [System.IO.Path]::GetDirectoryName($resolvedStage))
     $resolvedExpectedParent = [System.IO.Path]::GetFullPath($ExpectedParent)
-    $pathComparer = if ($isWindows) { [System.StringComparer]::OrdinalIgnoreCase } else { [System.StringComparer]::Ordinal }
+    $pathComparer = if ($targetIsWindows) { [System.StringComparer]::OrdinalIgnoreCase } else { [System.StringComparer]::Ordinal }
     if (-not $pathComparer.Equals(
             $resolvedParent, $resolvedExpectedParent)) {
         throw "Staging path is outside the output parent: $resolvedStage"
@@ -213,7 +213,7 @@ try {
     }
 
     $icuRuntimeSource = [Environment]::GetEnvironmentVariable('MOTIF_SIL_ICU_STAGE')
-    if (-not $isWindows -and [string]::IsNullOrWhiteSpace($icuRuntimeSource)) {
+    if (-not $targetIsWindows -and [string]::IsNullOrWhiteSpace($icuRuntimeSource)) {
         throw "MOTIF_SIL_ICU_STAGE is required to package custom SIL ICU for $RuntimeIdentifier."
     }
     if (-not [string]::IsNullOrWhiteSpace($icuRuntimeSource)) {
@@ -251,7 +251,7 @@ try {
             throw "Published entry point is missing: $entryPoint"
         }
     }
-    if (-not $isWindows) {
+    if (-not $targetIsWindows) {
         $executableMode = [System.IO.UnixFileMode]::UserRead -bor
             [System.IO.UnixFileMode]::UserWrite -bor
             [System.IO.UnixFileMode]::UserExecute -bor
@@ -274,7 +274,7 @@ try {
         throw 'PanGloss changed after it was verified; no package was published.'
     }
     Copy-Item -LiteralPath $parser.FullName -Destination (Join-Path $stage $parserFileName)
-    if (-not $isWindows) {
+    if (-not $targetIsWindows) {
         [System.IO.File]::SetUnixFileMode(
             (Join-Path $stage $parserFileName),
             [System.IO.UnixFileMode]::UserRead -bor
@@ -302,7 +302,7 @@ try {
         $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $stage $icuRelativePath))
         $stagePrefix = $stage.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) +
             [System.IO.Path]::DirectorySeparatorChar
-        $pathComparison = if ($isWindows) {
+        $pathComparison = if ($targetIsWindows) {
             [System.StringComparison]::OrdinalIgnoreCase
         }
         else {
