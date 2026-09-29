@@ -126,6 +126,10 @@ For PR review, PR copy, review-comment responses, or Jira bug work, read
 [`jira-bugfix`](.claude/skills/jira-bugfix/SKILL.md). These are software-development workflows;
 they do not replace Motif's Proposal, Dry Run, or Assessment contracts.
 
+**Linux and macOS:** before changing code that touches child processes, environment variables, file
+locks, paths, native libraries, stored timestamps or the Avalonia dispatcher, or when a test fails only on
+CI's Ubuntu or macOS jobs, read [`cross-platform`](.claude/skills/cross-platform/SKILL.md).
+
 **The vocabulary changed on 2026-07-31** ([ADR 0015](docs/adr/0015-proposal-assessment-dry-run-vocabulary.md)).
 `Proposal` replaces *change set*; `Dry Run` is the LibLCM-side evaluation; `Assessment` means a PanGloss
 run and nothing else. Documents written before that date use the old words — they are historical
