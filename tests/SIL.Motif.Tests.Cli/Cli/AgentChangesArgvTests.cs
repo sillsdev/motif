@@ -39,7 +39,7 @@ public sealed class AgentChangesArgvTests : IDisposable
     }
 
     [Fact]
-    public async Task RemoveAnalysisRunsThroughTheExecutable()
+    public async Task RemoveAnalysisCommandRecordsAnFittingChange()
     {
         using var cache = _pristine.NewScratch();
         var text = SeededProject.SeedText(cache, _pristine.Seed);
@@ -48,7 +48,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         await CaptureBaseline(project);
         var pending = await ReadPending(project);
 
-        var response = await CliProcess.RunAsync(_workerRoot, null, true, "remove-analysis",
+        var response = CliInProcess.Run(_workerRoot, null, true, "remove-analysis",
             "--project", project, "--expected-revision", pending.Revision,
             "--change-id", "cli-remove-" + Guid.NewGuid().ToString("N"),
             "--wordform-id", CanonicalId.FromGuid(text.AnalysedWordformId).Value,
@@ -62,7 +62,7 @@ public sealed class AgentChangesArgvTests : IDisposable
     }
 
     [Fact]
-    public async Task AcceptNewSetRunsThroughTheExecutable()
+    public async Task AcceptNewSetCommandAddsACandidate()
     {
         using var cache = _pristine.NewScratch();
         var source = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
@@ -79,7 +79,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         RecordParseAssessment(project, word, _pristine.Seed.FirstLexemeFormId, msaId);
         var pending = await ReadPending(project);
 
-        var response = await CliProcess.RunAsync(_workerRoot, null, true, "accept-new-set",
+        var response = CliInProcess.Run(_workerRoot, null, true, "accept-new-set",
             "--project", project, "--expected-revision", pending.Revision,
             "--assessment", "cli-accept-assessment", "--wordform-id", CanonicalId.FromGuid(wordformId).Value,
             "--json");
@@ -91,7 +91,7 @@ public sealed class AgentChangesArgvTests : IDisposable
     }
 
     [Fact]
-    public async Task PutListRecheckAndRemoveRoundTripThroughTheExecutable()
+    public async Task PutListRecheckAndRemoveRoundTrip()
     {
         var project = _pristine.CopyProjectFile();
         var wordform = AddWordform(project, "agent-roundtrip-word");
@@ -101,7 +101,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         Assert.Empty(initial.Changes);
 
         var changeId = "agent-change-" + Guid.NewGuid().ToString("N");
-        var put = await CliProcess.RunAsync(_workerRoot, null, true, "put-pending-change", "--project", project,
+        var put = CliInProcess.Run(_workerRoot, null, true, "put-pending-change", "--project", project,
             "--expected-revision", initial.Revision, "--change-id", changeId,
             "--kind", "incorrect-spelling", "--word", "agent-roundtrip-word",
             "--wordform-id", wordform, "--json");
@@ -118,14 +118,14 @@ public sealed class AgentChangesArgvTests : IDisposable
         var drifted = await ReadPending(project);
         Assert.False(Assert.Single(drifted.FitSummary).StillFits);
 
-        var recheckedResult = await CliProcess.RunAsync(_workerRoot, null, true, "recheck-pending-changes", "--project", project,
+        var recheckedResult = CliInProcess.Run(_workerRoot, null, true, "recheck-pending-changes", "--project", project,
             "--expected-revision", drifted.Revision, "--json");
         var rechecked = SuccessfulSnapshot(recheckedResult);
         Assert.Contains(rechecked.Changes, change => change.ChangeId == changeId);
         Assert.True(Assert.Single(rechecked.FitSummary).StillFits);
         Assert.NotEqual(drifted.Revision, rechecked.Revision);
 
-        var removedResult = await CliProcess.RunAsync(_workerRoot, null, true, "remove-pending-change", "--project", project,
+        var removedResult = CliInProcess.Run(_workerRoot, null, true, "remove-pending-change", "--project", project,
             "--expected-revision", rechecked.Revision, "--change-id", changeId, "--json");
         var removed = SuccessfulSnapshot(removedResult);
         Assert.Empty(removed.Changes);
@@ -172,7 +172,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         await CaptureBaseline(scenario.Project);
         var beforeRecheck = await ReadPending(scenario.Project);
 
-        var response = await CliProcess.RunAsync(_workerRoot, null, true,
+        var response = CliInProcess.Run(_workerRoot, null, true,
             "recheck-pending-changes", "--project", scenario.Project,
             "--expected-revision", beforeRecheck.Revision, "--json");
         var rechecked = SuccessfulSnapshot(response);
@@ -184,7 +184,7 @@ public sealed class AgentChangesArgvTests : IDisposable
     }
 
     [Fact]
-    public async Task ReconfirmPendingChangeRunsThroughTheExecutable()
+    public async Task ReconfirmPendingChangeUpdatesTheFitSummary()
     {
         var scenario = await PrepareUncertainOccurrence();
         EditSentenceWord(scenario.Project, scenario.Text.FirstParagraphId, scenario.Text.FirstSegmentId,
@@ -193,13 +193,13 @@ public sealed class AgentChangesArgvTests : IDisposable
             File.GetLastWriteTimeUtc(scenario.Project).AddMinutes(1));
         await CaptureBaseline(scenario.Project);
         var pending = await ReadPending(scenario.Project);
-        var checkedResult = await CliProcess.RunAsync(_workerRoot, null, true,
+        var checkedResult = CliInProcess.Run(_workerRoot, null, true,
             "recheck-pending-changes", "--project", scenario.Project,
             "--expected-revision", pending.Revision, "--json");
         var uncertain = SuccessfulSnapshot(checkedResult);
         var change = Assert.Single(uncertain.Changes);
 
-        var result = await CliProcess.RunAsync(_workerRoot, null, true,
+        var result = CliInProcess.Run(_workerRoot, null, true,
             "reconfirm-pending-change", "--project", scenario.Project,
             "--expected-revision", uncertain.Revision, "--change-id", change.ChangeId, "--json");
         var reconfirmed = SuccessfulSnapshot(result);
@@ -215,11 +215,12 @@ public sealed class AgentChangesArgvTests : IDisposable
         catch (UnauthorizedAccessException) { }
     }
 
-    private async Task CaptureBaseline(string project)
+    private Task CaptureBaseline(string project)
     {
-        var result = await CliProcess.RunAsync(_workerRoot, null, false,
+        var result = CliInProcess.Run(_workerRoot, null, false,
             "baseline", "capture", project, "--json");
         Assert.True(result.ExitCode == 0, result.FailureDetails);
+        return Task.CompletedTask;
     }
 
     private async Task<CliOccurrenceScenario> PrepareUncertainOccurrence()
@@ -245,7 +246,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         await CaptureBaseline(project);
         var pending = await ReadPending(project);
         var changeId = "cli-occurrence-" + Guid.NewGuid().ToString("N");
-        var added = await CliProcess.RunAsync(_workerRoot, null, true,
+        var added = CliInProcess.Run(_workerRoot, null, true,
             "put-pending-change", "--project", project,
             "--expected-revision", pending.Revision,
             "--change-id", changeId, "--kind", AnalysisChangeKinds.Reject,
@@ -278,18 +279,18 @@ public sealed class AgentChangesArgvTests : IDisposable
         new FwDataProjectLoader().Save(cache);
     }
 
-    private async Task<PendingChangesSnapshot> ReadPending(string project)
+    private Task<PendingChangesSnapshot> ReadPending(string project)
     {
-        var result = await CliProcess.RunAsync(_workerRoot, null, true,
+        var result = CliInProcess.Run(_workerRoot, null, true,
             "pending-changes", "--project", project, "--json");
-        return SuccessfulSnapshot(result);
+        return Task.FromResult(SuccessfulSnapshot(result));
     }
 
     private Task<CliProcessResult> Put(string project, string revision, string changeId, string word, string wordformId) =>
-        CliProcess.RunAsync(_workerRoot, null, true,
+        Task.FromResult(CliInProcess.Run(_workerRoot, null, true,
             "put-pending-change", "--project", project, "--expected-revision", revision,
             "--change-id", changeId, "--kind", "incorrect-spelling", "--word", word,
-            "--wordform-id", wordformId, "--json");
+            "--wordform-id", wordformId, "--json"));
 
     private static PendingChangesSnapshot SuccessfulSnapshot(CliProcessResult result)
     {

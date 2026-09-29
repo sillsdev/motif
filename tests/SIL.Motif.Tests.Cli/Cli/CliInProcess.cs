@@ -11,7 +11,12 @@ internal static class CliInProcess
     public static CliProcessResult RunCommandLine(
         string workerRoot, string? parserPath, bool developerCommands, string commandLine)
     {
-        var arguments = SplitCommandLine(commandLine);
+        return Run(workerRoot, parserPath, developerCommands, SplitCommandLine(commandLine));
+    }
+
+    public static CliProcessResult Run(
+        string workerRoot, string? parserPath, bool developerCommands, params string[] arguments)
+    {
         var start = CliProcess.CreateStartInfo(workerRoot, parserPath, developerCommands);
         var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in start.Environment)
