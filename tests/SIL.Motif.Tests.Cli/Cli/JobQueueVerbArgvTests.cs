@@ -328,7 +328,7 @@ public sealed class JobQueueVerbArgvTests : IDisposable
         using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(locator), locator,
             MotifSchema.CurrentSchema, new Version(1, 0));
         var claimed = new JobClaims(database).Claim(ProjectWorkspaceKey.Compute(locator), "test-owner",
-            DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), TimeSpan.FromMinutes(5));
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow), TimeSpan.FromMinutes(5));
         Assert.NotNull(claimed);
         Assert.Equal(jobId, claimed!.JobId);
     }

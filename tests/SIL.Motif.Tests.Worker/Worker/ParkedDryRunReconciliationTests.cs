@@ -213,7 +213,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
     }
 
     private static string Stamp(DateTimeOffset moment) =>
-        moment.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        JobTimestamp.FormatUtc(moment);
 
     public void Dispose()
     {
