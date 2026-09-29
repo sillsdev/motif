@@ -1,0 +1,29 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.ActionChip.Height" ResourceKey="Primitive.Size.17" />
+    <StaticResource x:Key="Component.ActionChip.Padding" ResourceKey="Primitive.Inset.5_0_5_0" />
+    <StaticResource x:Key="Component.ActionChip.Radius" ResourceKey="Primitive.Radius.2" />
+    <StaticResource x:Key="Component.ActionChip.Type" ResourceKey="Primitive.Type.9" />
+    <StaticResource x:Key="Component.ActionChip.Stroke" ResourceKey="Primitive.Inset.1_1_1_1" />
+  </Styles.Resources>
+  <Style Selector="Button.actionChip">
+    <Setter Property="Height" Value="{DynamicResource Component.ActionChip.Height}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.ActionChip.Padding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.ActionChip.Radius}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.ActionChip.Stroke}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Marking.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Marking.Border}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Marking.Text}" />
+    <Setter Property="FontSize" Value="{DynamicResource Component.ActionChip.Type}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.actionChip:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Intent.Marking.Hover}" />
+  </Style>
+  <Style Selector="Button.actionChip.primary">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Approved.Accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />
+  </Style>
+</Styles>

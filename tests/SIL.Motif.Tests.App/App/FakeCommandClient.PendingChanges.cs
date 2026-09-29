@@ -50,6 +50,7 @@ public sealed partial class FakeCommandClient
     }
     private PendingChangesSnapshot _pending = new(null, "none", [], []);
     public List<PendingChangesRequest> PendingLoadRequests { get; } = [];
+    public List<RemovePendingChangeRequest> PendingRemoveRequests { get; } = [];
 
     public Refusal? PendingPutRefusal { get; set; }
     public int? PendingPutRefusalOnCall { get; set; }
@@ -61,9 +62,21 @@ public sealed partial class FakeCommandClient
 
     public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
     public List<RecheckPendingChangesRequest> PendingRecheckRequests { get; } = [];
+    public List<ReconfirmPendingChangeRequest> PendingReconfirmRequests { get; } = [];
     private PendingChangesSnapshot? _recheckResponse;
+    private PendingChangesSnapshot? _reconfirmResponse;
 
     public void RecheckCompletesWith(PendingChangesSnapshot response) => _recheckResponse = response;
+
+    public void ReconfirmCompletesWith(PendingChangesSnapshot response) => _reconfirmResponse = response;
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> ReconfirmPendingChangeAsync(
+        ReconfirmPendingChangeRequest request, CancellationToken cancellationToken)
+    {
+        PendingReconfirmRequests.Add(request);
+        _pending = _reconfirmResponse ?? _pending;
+        return Completed(_pending);
+    }
 
     public Task<CommandOutcome<PendingChangesSnapshot>> RecheckPendingChangesAsync(
         RecheckPendingChangesRequest request, CancellationToken cancellationToken)
@@ -112,6 +125,7 @@ public sealed partial class FakeCommandClient
     public Task<CommandOutcome<PendingChangesSnapshot>> RemovePendingChangeAsync(
         RemovePendingChangeRequest request, CancellationToken cancellationToken)
     {
+        PendingRemoveRequests.Add(request);
         _pending = _pending with { Revision = Guid.NewGuid().ToString("N"),
             Changes = _pending.Changes.Where(item => item.ChangeId != request.ChangeId).ToArray(),
             FitSummary = _pending.FitSummary.Where(item => item.ChangeId != request.ChangeId).ToArray() };

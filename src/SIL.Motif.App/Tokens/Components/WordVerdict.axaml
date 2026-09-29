@@ -37,4 +37,9 @@
   <Style Selector="Border.wordVerdict.dimmed">
     <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
   </Style>
+  <Style Selector="Border.wordVerdict.uncertainChanged">
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Warning.Text}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+  </Style>
 </Styles>

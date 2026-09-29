@@ -427,11 +427,17 @@ public sealed class WorkflowShellTests
                 var list = review.GetLogicalDescendants().OfType<ItemsControl>()
                     .Single(control => AutomationProperties.GetName(control) == "Changes to review");
                 Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
-                Assert.Same(workspace.Context.Changes.Items, list.ItemsSource);
+                var page = workspace.PageModel<ReviewPageModel>();
+                Assert.Equal(workspace.Context.Changes.Items, page.ReviewableChanges);
+                Assert.Equal(page.ReviewableChanges,
+                    Assert.IsAssignableFrom<IEnumerable<ChangeViewModel>>(list.ItemsSource));
 
                 workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "kitabu"));
                 window.UpdateLayout();
 
+                Assert.Equal(workspace.Context.Changes.Items, page.ReviewableChanges);
+                Assert.Equal(page.ReviewableChanges,
+                    Assert.IsAssignableFrom<IEnumerable<ChangeViewModel>>(list.ItemsSource));
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "kitabu");
             }
             finally

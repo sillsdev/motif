@@ -24,7 +24,7 @@ public sealed class CrashDialogsTests
 
     // A dialog would keep the child alive on Windows; prompt exit is required on every OS.
     [Fact]
-    public void AChildThatCrashesExitsWithTheCrashCodeRatherThanWaitingOnADialog()
+    public async Task AChildThatCrashesExitsWithTheCrashCodeRatherThanWaitingOnADialog()
     {
         var start = new ProcessStartInfo(FakeParser.ExecutablePath, "--crash-unhandled")
         {
@@ -32,15 +32,18 @@ public sealed class CrashDialogsTests
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        start.Environment.Remove("ICU_DATA");
         using var child = Process.Start(start)!;
-        _ = child.StandardError.ReadToEndAsync();
+        var standardErrorTask = child.StandardError.ReadToEndAsync();
 
         var exited = child.WaitForExit(30_000);
         if (!exited) child.Kill(entireProcessTree: true);
 
         Assert.True(exited, "The crashed child never exited: a crash dialog was holding it open.");
         var expectedCrashCode = OperatingSystem.IsWindows() ? unchecked((int)0xE0434352) : 134;
-        Assert.Equal(expectedCrashCode, child.ExitCode);
+        var standardError = await standardErrorTask;
+        Assert.True(child.ExitCode == expectedCrashCode,
+            $"Expected exit code {expectedCrashCode}; got {child.ExitCode}.{Environment.NewLine}{standardError}");
     }
 
     [DllImport("kernel32.dll")]

@@ -143,12 +143,15 @@ public sealed class ReleaseSurfaceTests : IDisposable
                      .Select(command => command.Name))
         {
             var text = Run(name, developerCommands: false);
-            Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), text.ExitCode);
+            var expectedExitCode = FailureEnvelope.ExitCodeFor(FailureReason.Refused);
+            Assert.True(text.ExitCode == expectedExitCode,
+                $"Expected exit code {expectedExitCode}; got {text.ExitCode}.{Environment.NewLine}{text.Error}");
             Assert.Contains(name, text.Error, StringComparison.Ordinal);
             Assert.Contains("not part of Motif 0.1.0", text.Error, StringComparison.Ordinal);
 
             var json = Run(name + " --json", developerCommands: false);
-            Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), json.ExitCode);
+            Assert.True(json.ExitCode == expectedExitCode,
+                $"Expected exit code {expectedExitCode}; got {json.ExitCode}.{Environment.NewLine}{json.Error}");
             Assert.Equal(string.Empty, json.Output);
             var envelope = ProjectionJson.Deserialize<FailureEnvelope>(json.Error)!;
             Assert.Equal(FailureReason.Refused, envelope.Reason);

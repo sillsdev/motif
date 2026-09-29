@@ -87,7 +87,17 @@ public sealed record ProjectAnalysis(string Key, IReadOnlyList<ParserReadingMorp
 public sealed record TextLines(Guid TextId, string Title, IReadOnlyList<TextLine> Lines);
 
 /// <summary>One line of a Text: its number and its tokens in order.</summary>
-public sealed record TextLine(int Number, IReadOnlyList<TextToken> Tokens);
+public sealed record TextLine(int Number, IReadOnlyList<TextToken> Tokens)
+{
+    /// <summary>The GUID of the paragraph that contains this line.</summary>
+    public Guid ParagraphId { get; init; }
+
+    /// <summary>The GUID of the Segment that supplies this line.</summary>
+    public Guid SegmentId { get; init; }
+
+    /// <summary>Whether FieldWorks has parsed the containing paragraph since its contents last changed.</summary>
+    public bool ParseIsCurrent { get; init; }
+}
 
 /// <summary>One token of a line: a word, or the punctuation between words.</summary>
 /// <param name="Text">The token as it appears in the line.</param>
@@ -96,6 +106,12 @@ public sealed record TextLine(int Number, IReadOnlyList<TextToken> Tokens);
 /// <param name="Status">For a word, as <see cref="WordOccurrence.Status"/>; <see langword="null"/> for punctuation.</param>
 public sealed record TextToken(string Text, string? Form, string? Gloss, string? Status)
 {
+    /// <summary>The source wordform identity, or <see langword="null"/> for punctuation.</summary>
+    public Guid? WordformId { get; init; }
+
+    /// <summary>The zero-based position in the source Segment's analysis sequence.</summary>
+    public int OccurrenceIndex { get; init; }
+
     /// <summary>For a word, the analysis chosen at this occurrence, morph by morph; otherwise <see langword="null"/>.</summary>
     public ProjectAnalysis? Analysis { get; init; }
 

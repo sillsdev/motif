@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract.Requests;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -43,6 +44,9 @@ public sealed record ChangeFit
 
     /// <summary>The sentence-token context to inspect when this change is uncertain.</summary>
     public ChangeUncertainty? Uncertainty { get; init; }
+
+    /// <summary>The Text occurrence that was selected when this change was collected, when available.</summary>
+    public OccurrenceAnchor? Occurrence { get; init; }
 }
 
 /// <summary>Sentence-token context to inspect when a pending change is uncertain.</summary>

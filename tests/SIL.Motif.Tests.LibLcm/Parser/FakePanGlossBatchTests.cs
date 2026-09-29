@@ -33,10 +33,10 @@ public sealed class FakePanGlossBatchTests : IDisposable
         var outPath = Path.Combine(_root, "out.tsv");
         var cache = Path.Combine(_root, "cache.bin");
 
-        var exit = Run("batch", project, words, outPath, "--word-timeout-ms", "1000", "--threads", "1",
+        var result = Run("batch", project, words, outPath, "--word-timeout-ms", "1000", "--threads", "1",
             "--stats", "--cache", cache);
 
-        Assert.Equal(0, exit);
+        Assert.True(result.ExitCode == 0, result.FailureDetails);
         var rows = File.ReadAllText(outPath).Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(2, rows.Length);
         Assert.Equal(["0", "motifa", "3", "ok", "motifa-sig"], rows[0].TrimEnd('\r').Split('\t'));
@@ -52,9 +52,9 @@ public sealed class FakePanGlossBatchTests : IDisposable
         var project = Path.Combine(_root, "p.fwdata");
         File.WriteAllText(project, "never read");
 
-        var exit = Run("assess", project, "--report", Path.Combine(_root, "r.json"));
+        var result = Run("assess", project, "--report", Path.Combine(_root, "r.json"));
 
-        Assert.Equal(64, exit);
+        Assert.True(result.ExitCode == 64, result.FailureDetails);
     }
 
     [Fact]
@@ -64,9 +64,9 @@ public sealed class FakePanGlossBatchTests : IDisposable
         var reportPath = Path.Combine(_root, "report.json");
         File.WriteAllText(grammar, "never read");
 
-        var exit = Run("grammar-health", grammar, reportPath);
+        var result = Run("grammar-health", grammar, reportPath);
 
-        Assert.Equal(0, exit);
+        Assert.True(result.ExitCode == 0, result.FailureDetails);
         using var report = JsonDocument.Parse(File.ReadAllText(reportPath));
         var root = report.RootElement;
         Assert.Equal(2, root.GetProperty("schema_version").GetInt32());
@@ -105,19 +105,27 @@ public sealed class FakePanGlossBatchTests : IDisposable
             Assert.False(diagnostic.TryGetProperty("audience", out _)));
     }
 
-    private static int Run(params string[] args)
+    private static CliRun Run(params string[] args)
     {
         var start = new ProcessStartInfo(FakeParser.ExecutablePath)
         {
             RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
         };
+        start.Environment.Remove("ICU_DATA");
         foreach (var arg in args) start.ArgumentList.Add(arg);
         using var process = Process.Start(start)!;
         var err = process.StandardError.ReadToEndAsync();
         var output = process.StandardOutput.ReadToEndAsync();
         process.WaitForExit();
-        _ = err.Result;
-        _ = output.Result;
-        return process.ExitCode;
+        var standardError = err.GetAwaiter().GetResult();
+        var standardOutput = output.GetAwaiter().GetResult();
+        return new CliRun(process.ExitCode, standardOutput, standardError);
+    }
+
+    private sealed record CliRun(int ExitCode, string Output, string Error)
+    {
+        public string FailureDetails =>
+            $"Fake parser exited {ExitCode}.{Environment.NewLine}Standard error:{Environment.NewLine}{Error}" +
+            $"{Environment.NewLine}Standard output:{Environment.NewLine}{Output}";
     }
 }

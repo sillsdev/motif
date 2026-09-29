@@ -80,6 +80,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
             if (isWindows)
                 MakeOwnStandardHandlesNonInheritable();
             var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true };
+            start.Environment.Remove("ICU_DATA");
             if (!isWindows)
             {
                 start.RedirectStandardInput = true;

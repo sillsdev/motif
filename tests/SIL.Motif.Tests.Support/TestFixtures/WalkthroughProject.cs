@@ -1,4 +1,7 @@
 using System.Security.Cryptography;
+using SIL.LCModel;
+using SIL.LCModel.DomainServices;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.LcmUtils;
 
 namespace SIL.Motif.Tests.TestFixtures;
@@ -12,7 +15,10 @@ public sealed class WalkthroughProject : IDisposable
         var cache = pristine.NewScratch();
         try
         {
-            SeededProject.SeedText(cache, pristine.Seed);
+            Seed = pristine.Seed;
+            Text = SeededProject.SeedText(cache, Seed);
+            FirstMsaId = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                .GetObject(Seed.FirstEntryId).MorphoSyntaxAnalysesOC.Single().Guid;
             RealParserProject.PrepareForParsing(
                 cache, "m", "o", "t", "i", "f", "a", "n", "l", "y", "s", "e", "d", "u", "b");
             new FwDataProjectLoader().Save(cache);
@@ -29,6 +35,12 @@ public sealed class WalkthroughProject : IDisposable
     }
 
     public string FwDataPath { get; }
+
+    public SeededProject Seed { get; }
+
+    public SeededText Text { get; }
+
+    public Guid FirstMsaId { get; }
 
     public string ManagedRoot { get; }
 

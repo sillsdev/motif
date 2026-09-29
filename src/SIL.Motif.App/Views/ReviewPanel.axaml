@@ -10,7 +10,7 @@
         <views:CopyableTextBlock Classes="section-title" Text="{Binding Changes.CountText}" />
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Changes.HasItems}"
                                  Text="No changes yet. Choose a word in Texts, then choose what should happen to its analysis." />
-        <ItemsControl x:Name="ChangeList" ItemsSource="{Binding Changes.Items}"
+        <ItemsControl x:Name="ChangeList" ItemsSource="{Binding ReviewableChanges}"
                       AutomationProperties.Name="Changes to review">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ChangeViewModel">
@@ -73,6 +73,63 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <StackPanel Classes="reviewRelated" IsVisible="{Binding HasUncertainChanges}">
+          <views:CopyableTextBlock Classes="section-title" Text="Uncertain — check again" />
+          <ItemsControl ItemsSource="{Binding UncertainChanges}" AutomationProperties.Name="Changes needing another look">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ChangeViewModel">
+                <Border Classes="card reviewCard uncertainCard">
+                  <StackPanel Classes="reviewRelated">
+                    <DockPanel LastChildFill="True">
+                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                        <HyperlinkButton Classes="reviewLink" Content="Check again"
+                                         Command="{Binding $parent[views:ReviewPanel].Page.ReconfirmChangeCommand}"
+                                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding CheckAgainAutomationName}" />
+                        <HyperlinkButton Classes="reviewLink" Content="Undo"
+                                         Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
+                                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding UndoAutomationName}" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                        <views:CopyableTextBlock Classes="reviewWord" Text="{Binding Word}" />
+                        <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding ReviewLabel}"
+                                                 VerticalAlignment="Center" />
+                      </StackPanel>
+                    </DockPanel>
+                    <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding FitStatus}" />
+                    <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding UncertaintyReason}"
+                                             TextWrapping="Wrap" IsVisible="{Binding HasUncertainty}" />
+                    <ItemsControl ItemsSource="{Binding AfterWords}" AutomationProperties.Name="Current sentence">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
+                          <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
+                            <views:CopyableTextBlock Text="{Binding Form}" />
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <HyperlinkButton Classes="reviewLink" Content="Show context"
+                                     Command="{Binding $parent[views:ReviewPanel].Page.ToggleContextCommand}"
+                                     CommandParameter="{Binding}" IsVisible="{Binding HasUncertainty}" />
+                    <StackPanel Classes="reviewCompact" IsVisible="{Binding IsContextExpanded}">
+                      <views:CopyableTextBlock Classes="reviewSmall" Text="Sentence when the change was made" />
+                      <ItemsControl ItemsSource="{Binding BeforeWords}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
+                            <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
+                              <views:CopyableTextBlock Text="{Binding Form}" />
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
       </StackPanel>
     </ScrollViewer>
     <StackPanel Grid.Column="1" Classes="reviewStack reviewRight">
@@ -104,7 +161,7 @@
                   IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project" />
           <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" />
           <views:RefusalBlock DataContext="{Binding Changes.ShownRefusal}" />
-          <HyperlinkButton Classes="reviewLink" Content="Check again against the refreshed project"
+          <HyperlinkButton Classes="reviewLink" Content="Recheck all changes against the refreshed project"
                            Command="{Binding CheckAgainCommand}"
                            IsVisible="{Binding HasNonFittingChanges}" />
           <HyperlinkButton Classes="reviewLink" Content="Remove the ones that no longer fit"

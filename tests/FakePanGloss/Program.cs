@@ -242,7 +242,8 @@ internal static class Program
         var fwDataPath = args[1];
         var grammarJsonPath = args[2];
         var directory = Path.GetDirectoryName(Path.GetFullPath(fwDataPath));
-        RecordArgv(directory, args);
+        // A published Baseline's layout allows no extra files, so importing from one records nothing beside it.
+        RecordArgv(IsBaselinePublication(directory) ? null : directory, args);
         var behaviour = Behaviour.Read(directory, "import");
 
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
@@ -469,6 +470,10 @@ internal static class Program
         Console.Error.WriteLine("grammar-health complete: 2 warning(s), 1 info");
         return behaviour.ExitCode;
     }
+
+    // Publications are folders named by their bundle's 64-hex-digit SHA-256 digest.
+    private static bool IsBaselinePublication(string? directory) =>
+        directory is not null && Path.GetFileName(directory) is { Length: 64 } name && name.All(char.IsAsciiHexDigit);
 
     private static void RecordArgv(string? directory, string[] args)
     {
