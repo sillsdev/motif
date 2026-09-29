@@ -67,8 +67,10 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Timing shows where recorded parse time went",
                     helpView.FindControl<TextBlock>("HelpDescription")?.Text);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
+                var renderedTextProjection = markdownRenderer.RenderedTextProjection ??
+                    throw new Xunit.Sdk.XunitException("The help text was not rendered.");
                 Assert.Contains("More time does not fix a search that reached its step limit",
-                    string.Join("\n", markdownRenderer.RenderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString())));
+                    string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString())));
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
                 Assert.Contains("More time does not fix a search that reached its step limit", help.Markdown);
                 Assert.Contains("Slowest words in Timing", help.Markdown);

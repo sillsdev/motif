@@ -106,6 +106,19 @@ public static class CliProcess
     /// <param name="cli">The running CLI process to monitor.</param>
     /// <returns>The worker process that drains the queued job.</returns>
     public static async Task<Process> StartQueuedWorkerAsync(
+        string projectPath, JobRunnerLaunchOptions options, Process cli) =>
+        await TryStartQueuedWorkerAsync(projectPath, options, cli) ?? throw new InvalidOperationException(
+            $"The CLI exited with {cli.ExitCode} before queueing a Dry Run for pending changes.");
+
+    /// <summary>
+    /// Starts the isolated worker once the CLI queues a Dry Run, or returns null when the CLI exits without
+    /// queueing one, leaving its exit code for the caller to judge.
+    /// </summary>
+    /// <param name="projectPath">The FieldWorks project whose job store is polled.</param>
+    /// <param name="options">The isolated worker settings.</param>
+    /// <param name="cli">The running CLI process to monitor.</param>
+    /// <returns>The worker process that drains the queued job, or null when none was queued.</returns>
+    public static async Task<Process?> TryStartQueuedWorkerAsync(
         string projectPath, JobRunnerLaunchOptions options, Process cli)
     {
         while (!cli.HasExited)
@@ -120,8 +133,7 @@ public static class CliProcess
             }
             await Task.Delay(20);
         }
-        throw new InvalidOperationException(
-            $"The CLI exited with {cli.ExitCode} before queueing a Dry Run for pending changes.");
+        return null;
     }
 
 }

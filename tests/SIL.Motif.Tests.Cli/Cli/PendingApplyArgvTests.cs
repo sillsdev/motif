@@ -240,7 +240,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var process = Process.Start(apply)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        using var worker = await CliProcess.StartQueuedWorkerAsync(path, runner.Options, process);
+        using var worker = await CliProcess.TryStartQueuedWorkerAsync(path, runner.Options, process);
         try
         {
             await WaitForPendingProposalAnchorAsync(path);
@@ -271,11 +271,10 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         }
         finally
         {
-            await worker.WaitForExitAsync();
+            if (worker is not null) await worker.WaitForExitAsync();
         }
     }
 
-    // Bounded by the CLI's own progress: a cold CLI start can take longer than any fixed wait on a slow runner.
     private static async Task WaitForPendingProposalAnchorAsync(string projectPath)
     {
         var deadline = DateTime.UtcNow.AddSeconds(15);

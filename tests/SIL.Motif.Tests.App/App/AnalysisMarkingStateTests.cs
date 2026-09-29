@@ -11,7 +11,7 @@ public sealed class AnalysisMarkingStateTests
     private static readonly ParseAnalysis Book = Reading("form-1", "msa-1");
     private static readonly ParseAnalysis Child = Reading("form-2", "msa-2");
 
-    public static IEnumerable<object[]> R4PrimaryActionCases =>
+    public static IEnumerable<object?[]> R4PrimaryActionCases =>
     [
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book),
             AnalysisMarkingClass.Same, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
