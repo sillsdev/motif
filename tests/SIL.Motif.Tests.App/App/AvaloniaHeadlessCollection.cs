@@ -76,7 +76,7 @@ internal static class AvaloniaHeadlessPlatform
 
         public PlatformThread()
         {
-            // Reset stale dispatcher state before starting the dedicated platform thread.
+            // Reset the static dispatcher so setup binds it here; pinned by DedicatedThreadOwnsAvaloniaDispatcher.
             ResetDispatcher.Invoke(null, null);
             var ready = new TaskCompletionSource();
             _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = "Avalonia headless" };

@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using SIL.Motif.App;
+using SIL.Motif.App.ViewModels;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -6,7 +8,16 @@ namespace SIL.Motif.Tests.App;
 public sealed class AutomationIdsTests
 {
     [Fact]
-    public void EveryAutomationIdConstantIsUsedOnceAndEveryViewIdUsesTheClass()
+    public void EveryWorkspacePageHasAUniqueAutomationId()
+    {
+        var ids = Enum.GetValues<WorkspacePage>().Select(AutomationIds.ForPage).ToArray();
+
+        Assert.All(ids, id => Assert.Matches("^motif-page-[a-z0-9-]+$", id));
+        Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public void AutomationIdConstantsHaveUniqueValuesAndEveryViewIdUsesTheClass()
     {
         var root = FindRepositoryRoot();
         var appRoot = Path.Combine(root.FullName, "src", "SIL.Motif.App");
@@ -14,30 +25,44 @@ public sealed class AutomationIdsTests
         Assert.True(File.Exists(idsPath), "The App must define its automation IDs in one class.");
 
         var idsSource = File.ReadAllText(idsPath);
-        var constants = Regex.Matches(idsSource, @"public\s+const\s+string\s+(?<name>\w+)\s*=")
-            .Select(match => match.Groups["name"].Value)
-            .ToArray();
+        var declarations = Regex.Matches(idsSource, @"public\s+const\s+string\s+(?<name>\w+)\s*=")
+            .Select(match => match.Groups["name"].Value).ToArray();
+        var constants = typeof(AutomationIds).GetFields(System.Reflection.BindingFlags.Public |
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.DeclaredOnly)
+            .Where(field => field.IsLiteral && !field.IsInitOnly)
+            .ToDictionary(field => field.Name, field => (string)field.GetRawConstantValue()!, StringComparer.Ordinal);
         Assert.NotEmpty(constants);
-        Assert.Equal(constants.Length, constants.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(declarations.Order(StringComparer.Ordinal), constants.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(constants.Count, constants.Values.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(constants.Values, value => Assert.Matches("^[a-z][a-z0-9-]*$", value));
 
-        var views = Directory.GetFiles(Path.Combine(appRoot, "Views"), "*.axaml", SearchOption.AllDirectories);
+        var views = Directory.GetFiles(Path.Combine(appRoot, "Views"), "*.axaml*", SearchOption.AllDirectories);
+        var mainWindow = File.ReadAllText(Path.Combine(appRoot, "Views", "MainWindow.axaml"));
+        Assert.Contains("Setter Property=\"AutomationProperties.AutomationId\" Value=\"{Binding AutomationId}\"",
+            mainWindow, StringComparison.Ordinal);
         var references = new List<string>();
         foreach (var view in views)
         {
             var source = File.ReadAllText(view);
-            foreach (Match id in Regex.Matches(source,
-                         @"AutomationProperties\.AutomationId\s*=\s*""(?<value>[^""]+)"""))
+            foreach (Match reference in Regex.Matches(source, @"AutomationIds\.(?<name>\w+)"))
             {
-                var value = id.Groups["value"].Value;
-                var reference = Regex.Match(value, @"^\{x:Static\s+[\w.:]+AutomationIds\.(?<name>\w+)\}$");
-                Assert.True(reference.Success, $"{view} has an AutomationId outside AutomationIds: {value}");
-                references.Add(reference.Groups["name"].Value);
+                var name = reference.Groups["name"].Value;
+                Assert.Contains(name, constants.Keys);
+                references.Add(name);
             }
+
+            var assignments = Regex.Matches(source,
+                @"(?:AutomationProperties\.AutomationId\s*=\s*""|Setter\s+Property=""AutomationProperties\.AutomationId""\s+Value="")(?<value>[^""]+)""");
+            foreach (Match assignment in assignments)
+            {
+                var value = assignment.Groups["value"].Value;
+                if (value == "{Binding AutomationId}") continue;
+                Assert.Matches(@"^\{x:Static\s+[\w.:]+AutomationIds\.\w+\}$", value);
+            }
+            Assert.DoesNotMatch(@"AutomationProperties\.SetAutomationId\s*\([^,]+,\s*""[^""]+""\s*\)", source);
         }
 
-        Assert.Equal(constants.Order(StringComparer.Ordinal), references.Order(StringComparer.Ordinal));
-        foreach (var name in constants)
-            Assert.Equal(1, references.Count(reference => reference == name));
+        Assert.All(constants.Keys, name => Assert.Contains(name, references));
     }
 
     private static DirectoryInfo FindRepositoryRoot()
