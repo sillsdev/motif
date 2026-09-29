@@ -29,6 +29,14 @@ public sealed partial class CommandClient
         PutPendingChangeRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChanges.Put(request), cancellationToken);
 
+    public Task<CommandOutcome<PendingChangesSnapshot>> RemoveAnalysisAsync(
+        RemoveAnalysisRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => PendingChanges.RemoveAnalysis(request), cancellationToken);
+
+    public Task<CommandOutcome<PendingChangesSnapshot>> AcceptNewSetAsync(
+        AcceptNewSetRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => PendingChanges.AcceptNewSet(request), cancellationToken);
+
     public Task<CommandOutcome<PendingChangesSnapshot>> RemovePendingChangeAsync(
         RemovePendingChangeRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChanges.Remove(request), cancellationToken);

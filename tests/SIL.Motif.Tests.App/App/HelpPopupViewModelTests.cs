@@ -67,6 +67,23 @@ public sealed class HelpPopupViewModelTests
         });
     }
 
+    [Fact]
+    public void PanGlossPageExplainsTheSupportedGrammarsInLinguistLanguage()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var viewModel = new HelpPopupViewModel(new RecordingUriLauncher(), HelpCatalog.Load());
+
+            viewModel.ShowPanGlossPage();
+
+            Assert.Equal("PanGloss", viewModel.Title);
+            Assert.Equal("PanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.",
+                viewModel.Description);
+            Assert.Contains("PanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.",
+                viewModel.Markdown);
+        });
+    }
+
     private sealed class RecordingUriLauncher : IUriLauncher
     {
         public List<Uri> Launches { get; } = [];

@@ -11,6 +11,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
@@ -28,6 +29,57 @@ namespace SIL.Motif.Tests.App;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public async Task RemoveAnalysisUsesTheRealCommandClientAndStagesTheExactStoredAnalysis()
+    {
+        using var project = await CreateProjectAsync();
+        var token = AnalyzedToken(project);
+        var stored = Assert.Single(token.StoredAnalyses);
+        var loaded = await project.Client.LoadPendingChangesAsync(new PendingChangesRequest(
+            project.Project.FwDataPath, MotifProductVersion.CurrentText), CancellationToken.None);
+        Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
+
+        var result = await project.Client.RemoveAnalysisAsync(new RemoveAnalysisRequest(
+            project.Project.FwDataPath, MotifProductVersion.CurrentText, loaded.Value!.Revision,
+            ChangeId: CanonicalId.Mint().Value, WordformId: CanonicalId.FromGuid(token.WordformId!.Value).Value,
+            Word: token.Form!, AnalysisId: stored.StoredAnalysisId), CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var change = Assert.Single(result.Value!.Changes);
+        Assert.Equal("remove-analysis", change.Kind);
+        Assert.Equal(stored.StoredAnalysisId, change.StoredAnalysisId);
+        Assert.Single(change.OperationIds);
+    }
+
+    [Fact]
+    public async Task AcceptingTheNewSetForAWordUsesTheRealCommandClientAndAddsOnlyMissingReadings()
+    {
+        using var project = await CreateProjectAsync("unknown");
+        var token = AnalyzedToken(project);
+        var stored = Assert.Single(token.StoredAnalyses);
+        var readings = new[] { StoredReading(stored), Guessed("new parser reading") };
+        var assessmentId = RecordAssessment(project, [new AssessedWord(token.Form!, "analysed", [])
+        {
+            Morphology = new ParseWordEvidence("v1", 0, token.Form!, 1, false, false, false, readings, []),
+        }]);
+        var assessment = await ReadAssessmentAsync(project);
+        var inText = await LoadInTextAsync(project, assessment, assessmentId);
+        var selected = ResultsToken(inText, token.Form!);
+        inText.SelectToken(selected);
+        var choice = Assert.Single(selected.Marking.FixChoices,
+            candidate => candidate.Kind == AnalysisMarkingActionKind.AcceptNewSet);
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
+
+        var staged = Assert.Single(inText.Changes.Snapshot.Changes);
+        Assert.Equal(ChangeKinds.AddCandidate, staged.Kind);
+        Assert.Equal(assessmentId, staged.AssessmentId);
+        Assert.NotNull(staged.GroupId);
+        Assert.Equal(2, staged.Analyses.Count);
+        Assert.Contains(staged.Analyses, analysis => analysis.Stored);
+        Assert.Contains(staged.Analyses, analysis => !analysis.Stored && analysis.Touched);
+    }
+
     [Theory]
     [InlineData(false, ChangeKinds.AddCandidate)]
     [InlineData(true, ChangeKinds.Approve)]
@@ -126,6 +178,27 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         var result = Assert.Single(assessment.Words);
 
         Assert.Equal(expected, AnalysisMarkingState.Create(token, result).PanGlossClass);
+    }
+
+    [Fact]
+    public async Task AnalyzeTextsKeepsTheStoredIdentityWhenPanGlossBuildsTheSameReading()
+    {
+        using var project = await CreateProjectAsync();
+        var token = AnalyzedToken(project);
+        var stored = Assert.Single(token.StoredAnalyses);
+        var reading = StoredReading(stored);
+        var assessmentId = RecordAssessment(project, [new AssessedWord(token.Form!, "analysed", [])
+        {
+            Morphology = new ParseWordEvidence("v1", 0, token.Form!, 1, false, false, false, [reading], []),
+        }]);
+        var assessment = await ReadAssessmentAsync(project);
+        var inText = await LoadInTextAsync(project, assessment, assessmentId);
+
+        var displayed = ResultsToken(inText, token.Form!);
+
+        var displayedAnalysis = Assert.Single(displayed.Marking.FieldWorksAnalyses);
+        Assert.Equal(stored.StoredAnalysisId, displayedAnalysis.StoredAnalysisId);
+        Assert.Equal(AnalysisMarkingClass.Same, displayed.Marking.PanGlossClass);
     }
 
     private async Task<ResultsInTextViewModel> LoadInTextAsync(MarkingCommandProject project,

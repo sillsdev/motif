@@ -54,10 +54,12 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.True(token.Readings.Count > 0,
                 string.Join("; ", walkthrough.Workspace.Assess.Result?.Words.Select(word =>
                     $"{word.Word}: {word.Outcome}, {word.Morphology?.Analyses.Count ?? 0} analyses") ?? []));
-            token.SelectedReading = token.Readings[0];
-            walkthrough.Click("Approve the selected parser reading");
+            var fixMenu = walkthrough.Find<Expander>("Fix actions for this word");
+            HeadlessClick.Click(walkthrough.Window, fixMenu, "Fix actions for this word");
+            Assert.True(fixMenu.IsExpanded);
+            walkthrough.Click("Add as Approved");
             walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Changes.Items.Count == 1,
-                WalkthroughSteps.Remaining(deadline), "the Analyze texts approval did not become pending");
+                WalkthroughSteps.Remaining(deadline), "the Analyze texts action did not become pending");
             Assert.Equal(SeededProject.FirstForm,
                 walkthrough.Workspace.Context.Changes.Items.Single().Word);
             Assert.Equal(expectedAnchor, ReadOccurrenceAnchor(project.FwDataPath));

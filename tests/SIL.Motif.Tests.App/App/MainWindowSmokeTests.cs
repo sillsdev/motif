@@ -64,8 +64,9 @@ public sealed class MainWindowSmokeTests
                 Assert.True(helpButton.Flyout?.IsOpen);
                 var helpView = Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content);
                 Assert.Equal("Timing", helpView.FindControl<TextBlock>("HelpTitle")?.Text);
+                var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.Contains("Timing shows where recorded parse time went",
-                    helpView.FindControl<TextBlock>("HelpDescription")?.Text);
+                    helpDescription?.Text ?? string.Empty);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
                 var renderedTextProjection = markdownRenderer.RenderedTextProjection ??
                     throw new Xunit.Sdk.XunitException("The help text was not rendered.");
@@ -74,6 +75,67 @@ public sealed class MainWindowSmokeTests
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
                 Assert.Contains("More time does not fix a search that reached its step limit", help.Markdown);
                 Assert.Contains("Slowest words in Timing", help.Markdown);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void PanGlossHelpFromAnalyzeTextsOpensTheLinguistPageInTheWindow()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                workspace.PageModel<TextsPageModel>().ResultsInText.OpenPanGlossGuideCommand.Execute(null);
+                window.UpdateLayout();
+
+                var helpButton = Assert.IsType<Button>(window.FindControl<Button>("HelpButton"));
+                Assert.True(helpButton.Flyout?.IsOpen);
+                var help = Assert.IsType<HelpPopupViewModel>(
+                    Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content).DataContext);
+                Assert.Equal("PanGloss", help.Title);
+                Assert.Equal("PanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.", help.Description);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AnalyzeTextsWithoutAnAssessmentUsesTheSharedParsePrompt()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                workspace.Context.Baseline = new WorkspaceBaseline(true, string.Empty, string.Empty,
+                    string.Empty, string.Empty, null);
+                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                window.UpdateLayout();
+                var prompt = Assert.Single(window.GetVisualDescendants().OfType<ParsePrompt>());
+                Assert.True(prompt.IsEffectivelyVisible);
+                var parse = Assert.Single(prompt.GetVisualDescendants().OfType<Button>());
+                Assert.True(parse.IsEffectivelyVisible);
+                Assert.Equal(workspace.Context.ParsePromptActionText, parse.Content);
+
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
+                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Parse the words in the selected texts");
+                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<FilterChip>(),
+                    chip => chip.IsEffectivelyVisible);
+                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<ScrollViewer>(),
+                    scroll => scroll.IsEffectivelyVisible);
             }
             finally
             {
@@ -872,6 +934,8 @@ public sealed class MainWindowSmokeTests
                             { Analysis = stored }])])],
                     HasBaseline: true));
                 await page.Words.SetProjectAsync(@"C:\projects\one.fwdata");
+                workspace.Assess.Result = AssessedWords(
+                    new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 1, null));
                 workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
                 window.Show();
                 window.ApplyTemplate();
@@ -1143,6 +1207,7 @@ public sealed class MainWindowSmokeTests
                 };
                 await changes.PutAsync(new ChangeIntent("newer", "reject", "wordform/one", "motifa"));
                 var notice = Assert.IsType<string>(changes.CollectionNotice);
+                workspace.Assess.Result = AssessedWords();
 
                 window.Show();
                 window.ApplyTemplate();
@@ -1216,6 +1281,16 @@ public sealed class MainWindowSmokeTests
         window.MouseDown(centre, MouseButton.Left);
         window.MouseUp(centre, MouseButton.Left);
     }
+
+    private static AssessCommandResponse AssessedWords(params AssessmentWordResult[] words) => new(
+        new BaselineCaptureResponse(
+            new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+            "project.fwdata", DateTimeOffset.UtcNow, false, false),
+        new SelectionProjection([], []), [], $"{words.Length} words assessed")
+    {
+        Words = words,
+    };
 
     private static void AssertSelectableCells(DataGrid grid)
     {

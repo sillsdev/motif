@@ -32,6 +32,9 @@ public static class ChangeKinds
     /// <summary>Remove one stored analysis from FieldWorks.</summary>
     public const string RemoveAnalysis = "remove-analysis";
 
+    /// <summary>Add all missing readings from the current completed Assessment.</summary>
+    public const string AcceptNewSet = "accept-new-set";
+
     /// <summary>The words a change of <paramref name="kind"/> is listed with.</summary>
     public static string LabelOf(string kind) => kind switch
     {

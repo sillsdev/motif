@@ -23,11 +23,15 @@ public sealed class MorphemeRow : WrapPanel
     public static readonly StyledProperty<bool> SeparatorsProperty =
         AvaloniaProperty.Register<MorphemeRow, bool>(nameof(Separators));
 
+    public static readonly StyledProperty<bool> RevealLinksProperty =
+        AvaloniaProperty.Register<MorphemeRow, bool>(nameof(RevealLinks));
+
     static MorphemeRow()
     {
         MorphsProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
         ShowCategoryProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
         SeparatorsProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
+        RevealLinksProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
     }
 
     public MorphemeRow() => Orientation = Orientation.Horizontal;
@@ -53,6 +57,13 @@ public sealed class MorphemeRow : WrapPanel
         set => SetValue(SeparatorsProperty, value);
     }
 
+    /// <summary>Whether FieldWorks links wait for hover or keyboard focus to appear.</summary>
+    public bool RevealLinks
+    {
+        get => GetValue(RevealLinksProperty);
+        set => SetValue(RevealLinksProperty, value);
+    }
+
     private void Rebuild()
     {
         Children.Clear();
@@ -65,10 +76,10 @@ public sealed class MorphemeRow : WrapPanel
     {
         var column = new StackPanel();
         column.Children.Add(morph.HasLink
-            ? Link(morph, morph.Form, FontWeight.SemiBold, "morphForm")
+            ? Link(morph, morph.Form, FontWeight.SemiBold, "morphForm", RevealLinks)
             : new CopyableTextBlock { Text = morph.Form, FontWeight = FontWeight.SemiBold, Classes = { "morphForm" } });
         column.Children.Add(morph.HasLink
-            ? Link(morph, morph.GlossOrPlaceholder, FontWeight.Normal, "morphGloss")
+            ? Link(morph, morph.GlossOrPlaceholder, FontWeight.Normal, "morphGloss", RevealLinks)
             : new CopyableTextBlock { Text = morph.GlossOrPlaceholder, Classes = { "morphGloss" } });
         if (ShowCategory && morph.Category is { Length: > 0 })
             column.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "morphCategory", "muted" } });
@@ -79,7 +90,8 @@ public sealed class MorphemeRow : WrapPanel
         return block;
     }
 
-    private static HyperlinkButton Link(ParserReadingMorphViewModel morph, string text, FontWeight weight, string role)
+    private static HyperlinkButton Link(ParserReadingMorphViewModel morph, string text, FontWeight weight,
+        string role, bool reveal)
     {
         var button = new HyperlinkButton
         {
@@ -89,6 +101,11 @@ public sealed class MorphemeRow : WrapPanel
             FontWeight = weight,
             Classes = { role },
         };
+        if (reveal)
+        {
+            button.Classes.Add("revealControl");
+            button.Classes.Add("revealLink");
+        }
         AutomationProperties.SetName(button, morph.LinkName);
         return button;
     }

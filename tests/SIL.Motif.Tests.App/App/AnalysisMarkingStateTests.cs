@@ -14,7 +14,7 @@ public sealed class AnalysisMarkingStateTests
     public static IEnumerable<object?[]> R4PrimaryActionCases =>
     [
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book),
-            AnalysisMarkingClass.Same, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
+            AnalysisMarkingClass.Same, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, true],
         [Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), Result("same", Book),
             AnalysisMarkingClass.Same, AnalysisMarkingActionKind.Approve, "Approve", ChangeKinds.Approve, true],
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("none"),
@@ -164,6 +164,18 @@ public sealed class AnalysisMarkingStateTests
     }
 
     [Fact]
+    public void AStoredAnalysisCanBeRemovedEvenWhenTheParserAgrees()
+    {
+        var stored = Stored(Book, ReadingGrade.Approved, "stored-1");
+
+        var state = AnalysisMarkingState.Create(Token(stored), Result("book", Book));
+
+        var remove = Assert.Single(state.FixChoices, choice => choice.Label == "Remove analysis");
+        Assert.Equal("stored-1", remove.StoredAnalysisId);
+        Assert.Equal("remove-analysis", remove.ChangeKind);
+    }
+
+    [Fact]
     public void DisapprovedToApprovedFixChoiceIsNamedApprove()
     {
         var state = AnalysisMarkingState.Create(
@@ -180,10 +192,23 @@ public sealed class AnalysisMarkingStateTests
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child));
 
-        Assert.Equal(["Accept PanGloss's reading", "Add as Unknown", "Keep FieldWorks"],
+        Assert.Equal(["Accept PanGloss's reading", "Add as Unknown", "Accept the new set as present",
+            "Keep FieldWorks", "Remove analysis"],
             state.FixChoices.Select(choice => choice.Label));
         Assert.Equal(ChangeKinds.Approve, state.FixChoices[0].ChangeKind);
         Assert.Equal(ChangeKinds.AddCandidate, state.FixChoices[1].ChangeKind);
+    }
+
+    [Fact]
+    public void MatchingUnknownAnalysisOffersOpinionActionsInTheFixMenu()
+    {
+        var state = AnalysisMarkingState.Create(Token(Stored(Book, ReadingGrade.Candidate, "stored-1")),
+            Result("book", Book));
+
+        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Approve &&
+            choice.StoredAnalysisId == "stored-1");
+        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Disapprove &&
+            choice.StoredAnalysisId == "stored-1");
     }
 
     [Fact]

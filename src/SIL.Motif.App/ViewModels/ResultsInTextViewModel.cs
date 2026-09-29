@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.App.Controls;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
@@ -89,9 +90,13 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         SetFilterCommand = new RelayCommand<ResultsInTextFilter>(filter => Filter = filter);
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
         TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });
+        OpenPanGlossGuideCommand = new RelayCommand(() => OpenPanGlossGuide?.Invoke());
+        RecheckChangesCommand = new AsyncRelayCommand(() => _changes.RecheckAsync(), CanRecheckChanges);
         AddChangeCommand = new AsyncRelayCommand<string>(AddSelectedChangeAsync, CanAddSelectedChange);
         StagePrimaryMarkingActionCommand = new AsyncRelayCommand(StagePrimaryMarkingActionAsync,
             CanStagePrimaryMarkingAction);
+        StagePrimaryMarkingActionForTokenCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
+            StagePrimaryMarkingActionForTokenAsync, CanStagePrimaryMarkingActionForToken);
         StageMarkingChoiceCommand = new AsyncRelayCommand<AnalysisMarkingChoice>(StageMarkingChoiceAsync,
             CanStageMarkingChoice);
         MarkTokenReadCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
@@ -102,6 +107,36 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         MarkTextUnreadCommand = new AsyncRelayCommand(MarkTextUnreadAsync, () => SelectedText is not null);
         MarkSelectionReadCommand = new AsyncRelayCommand(MarkSelectionReadAsync, CanMarkSelectionReadState);
         MarkSelectionUnreadCommand = new AsyncRelayCommand(MarkSelectionUnreadAsync, CanMarkSelectionReadState);
+        AcceptNewSetForSelectedTextCommand = new AsyncRelayCommand(AcceptNewSetForSelectedTextAsync,
+            CanAcceptNewSetForSelectedText);
+        AcceptNewSetForSelectionCommand = new AsyncRelayCommand(AcceptNewSetForSelectionAsync,
+            CanAcceptNewSetForSelection);
+        RemoveAnalysesForSelectedTextCommand = new AsyncRelayCommand(RemoveAnalysesForSelectedTextAsync,
+            () => SelectedText is not null);
+        RemoveAnalysesForSelectionCommand = new AsyncRelayCommand(RemoveAnalysesForSelectionAsync,
+            CanRemoveAnalysesForSelection);
+        AddParserReadingsForSelectedTextCommand = new AsyncRelayCommand(AddParserReadingsForSelectedTextAsync,
+            CanAddParserReadingsForSelectedText);
+        AddParserReadingsForSelectionCommand = new AsyncRelayCommand(AddParserReadingsForSelectionAsync,
+            CanAddParserReadingsForSelection);
+        MarkSpellingsIncorrectForSelectedTextCommand = new AsyncRelayCommand(
+            MarkSpellingsIncorrectForSelectedTextAsync, () => SelectedText is not null);
+        MarkSpellingsIncorrectForSelectionCommand = new AsyncRelayCommand(
+            MarkSpellingsIncorrectForSelectionAsync, () => _allWords.Count > 0);
+        UndoChangesForSelectedTextCommand = new AsyncRelayCommand(UndoChangesForSelectedTextAsync,
+            CanUndoChangesForSelectedText);
+        UndoChangesForSelectionCommand = new AsyncRelayCommand(UndoChangesForSelectionAsync,
+            CanUndoChangesForSelection);
+        AddCheckedParserReadingsCommand = new AsyncRelayCommand(AddCheckedParserReadingsAsync,
+            () => CanAddParserReadings(CheckedTokens));
+        AcceptCheckedNewSetCommand = new AsyncRelayCommand(AcceptCheckedNewSetAsync, CanAcceptCheckedNewSet);
+        RemoveCheckedAnalysesCommand = new AsyncRelayCommand(RemoveCheckedAnalysesAsync,
+            CanRemoveCheckedAnalyses);
+        MarkCheckedSpellingsIncorrectCommand = new AsyncRelayCommand(
+            MarkCheckedSpellingsIncorrectAsync, () => CheckedTokens.Length > 0);
+        UndoCheckedChangesCommand = new AsyncRelayCommand(UndoCheckedChangesAsync, CanUndoCheckedChanges);
+        RecheckCheckedChangesCommand = new AsyncRelayCommand(() => _changes.RecheckAsync(),
+            CanRecheckCheckedChanges);
         _texts.PropertyChanged += OnSourceChanged;
         _assess.PropertyChanged += OnSourceChanged;
         _changes.Items.CollectionChanged += OnChangesChanged;
@@ -121,9 +156,21 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     /// <summary>Opens the selected word in the Words view and traces it there.</summary>
     public IRelayCommand TryWordCommand { get; }
 
+    /// <summary>Opens the PanGloss guide in the window's Help popup.</summary>
+    public IRelayCommand OpenPanGlossGuideCommand { get; }
+
+    /// <summary>Checks pending changes against the latest project state.</summary>
+    public IAsyncRelayCommand RecheckChangesCommand { get; }
+
+    /// <summary>The window callback that shows the PanGloss guide.</summary>
+    public Action? OpenPanGlossGuide { get; set; }
+
     public IAsyncRelayCommand<string> AddChangeCommand { get; }
 
     public IAsyncRelayCommand StagePrimaryMarkingActionCommand { get; }
+
+    /// <summary>Stages the primary action for the word whose strip contains the button.</summary>
+    public IAsyncRelayCommand<ResultsTokenViewModel> StagePrimaryMarkingActionForTokenCommand { get; }
 
     public IAsyncRelayCommand<AnalysisMarkingChoice> StageMarkingChoiceCommand { get; }
 
@@ -138,6 +185,53 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public IAsyncRelayCommand MarkSelectionReadCommand { get; }
 
     public IAsyncRelayCommand MarkSelectionUnreadCommand { get; }
+    /// <summary>Accepts the missing readings from the current complete Assessment for the selected Text.</summary>
+    public IAsyncRelayCommand AcceptNewSetForSelectedTextCommand { get; }
+
+    /// <summary>Accepts the missing readings from the current complete Assessment for its Selection.</summary>
+    public IAsyncRelayCommand AcceptNewSetForSelectionCommand { get; }
+
+    /// <summary>Removes every stored analysis found in the selected Text.</summary>
+    public IAsyncRelayCommand RemoveAnalysesForSelectedTextCommand { get; }
+
+    /// <summary>Removes the distinct stored analyses found across the checked Texts.</summary>
+    public IAsyncRelayCommand RemoveAnalysesForSelectionCommand { get; }
+
+    /// <summary>Adds each missing parser reading as Unknown for the selected Text.</summary>
+    public IAsyncRelayCommand AddParserReadingsForSelectedTextCommand { get; }
+
+    /// <summary>Adds each missing parser reading as Unknown for the current Selection.</summary>
+    public IAsyncRelayCommand AddParserReadingsForSelectionCommand { get; }
+
+    /// <summary>Marks each distinct spelling Incorrect in the selected Text.</summary>
+    public IAsyncRelayCommand MarkSpellingsIncorrectForSelectedTextCommand { get; }
+
+    /// <summary>Marks each distinct spelling Incorrect in the current Selection.</summary>
+    public IAsyncRelayCommand MarkSpellingsIncorrectForSelectionCommand { get; }
+
+    /// <summary>Removes the pending changes for words in the selected Text.</summary>
+    public IAsyncRelayCommand UndoChangesForSelectedTextCommand { get; }
+
+    /// <summary>Removes the pending changes for words in the current Selection.</summary>
+    public IAsyncRelayCommand UndoChangesForSelectionCommand { get; }
+
+    /// <summary>Adds each missing reading as Unknown for the checked occurrences.</summary>
+    public IAsyncRelayCommand AddCheckedParserReadingsCommand { get; }
+
+    /// <summary>Accepts missing readings for checked words from the complete Assessment.</summary>
+    public IAsyncRelayCommand AcceptCheckedNewSetCommand { get; }
+
+    /// <summary>Removes stored analyses for the checked occurrences.</summary>
+    public IAsyncRelayCommand RemoveCheckedAnalysesCommand { get; }
+
+    /// <summary>Marks each checked spelling Incorrect once.</summary>
+    public IAsyncRelayCommand MarkCheckedSpellingsIncorrectCommand { get; }
+
+    /// <summary>Removes pending changes for the checked occurrences.</summary>
+    public IAsyncRelayCommand UndoCheckedChangesCommand { get; }
+
+    /// <summary>Checks pending changes that affect checked occurrences again.</summary>
+    public IAsyncRelayCommand RecheckCheckedChangesCommand { get; }
 
     public ChangesViewModel Changes => _changes;
 
@@ -154,6 +248,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private ResultsTokenViewModel? _selectedToken;
 
     public bool HasSelectedToken => SelectedToken is not null;
+
+    public int CheckedWordCount => _allWords.Count(token => token.IsSelectedForActions);
+
+    public bool HasCheckedWords => CheckedWordCount > 0;
+
+    public bool HasCheckedUncertainChanges => CheckedTokens.Any(token =>
+        _changes.Items.Any(change => change.Word == token.Form && change.IsUncertain));
+
+    private ResultsTokenViewModel[] CheckedTokens => _allWords.Where(token => token.IsSelectedForActions).ToArray();
 
     public int AllCount => _allWords.Count;
     public int UnreadCount => _allWords.Count(token => token.Marking.IsUnread);
@@ -182,6 +285,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>Whether there is a text to read, so the text picker and filters have something to act on.</summary>
     public bool HasTexts => Texts.Count > 0;
+
+    /// <summary>Whether an Assessment is available to compare with the selected Texts.</summary>
+    public bool HasAssessment => _assess.Result is not null;
+
+    /// <summary>Whether the selected Text has results to display.</summary>
+    public bool HasResults => HasAssessment && !HasMessage;
+
+    /// <summary>The Assessment action for the empty Analyze texts state.</summary>
+    public IAsyncRelayCommand ParseWordsCommand => _assess.RunCommand;
 
     /// <summary>Whether the only thing missing is a checked Text, which the Texts page can supply.</summary>
     public bool NeedsTexts => _assess.Result is not null && Texts.Count == 0;
@@ -313,6 +425,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         RefreshLines();
         MarkTextReadCommand.NotifyCanExecuteChanged();
         MarkTextUnreadCommand.NotifyCanExecuteChanged();
+        NotifyScopeCommands();
     }
 
     partial void OnFilterChanged(ResultsInTextFilter value) => RefreshLines();
@@ -343,6 +456,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     {
         if (ReferenceEquals(sender, _texts) && e.PropertyName is nameof(TextWordsViewModel.Response) or nameof(TextWordsViewModel.ProjectWords)) Rebuild();
         else if (ReferenceEquals(sender, _assess) && e.PropertyName == nameof(AssessViewModel.Result)) Rebuild();
+        NotifyScopeCommands();
     }
 
     private void Rebuild()
@@ -360,6 +474,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         {
             foreach (var text in response.Texts) Texts.Add(new ResultsTextViewModel(text, results, projectWords));
         }
+        foreach (var token in _allWords) token.PropertyChanged -= OnTokenPropertyChanged;
         _allWords = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
         foreach (var token in _allWords) token.PropertyChanged += OnTokenPropertyChanged;
         _readStateRefresh = RefreshReadStateAsync(readStateGeneration);
@@ -378,6 +493,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(NotAssessedCount));
         OnPropertyChanged(nameof(NeedsALookCount));
         OnPropertyChanged(nameof(HasNotAssessed));
+        OnPropertyChanged(nameof(CheckedWordCount));
+        OnPropertyChanged(nameof(HasCheckedWords));
+        NotifyCheckedCommands();
 
         var reselected = Texts.FirstOrDefault(text => text.Title == previousTitle) ?? Texts.FirstOrDefault();
         if (ReferenceEquals(reselected, SelectedText)) RefreshLines();
@@ -387,20 +505,25 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private void RefreshLines()
     {
         VisibleLines.Clear();
-        foreach (var line in SelectedText?.Lines ?? [])
+        if (HasAssessment)
         {
-            var any = false;
-            foreach (var token in line.Tokens.Where(token => token.IsWord))
+            foreach (var line in SelectedText?.Lines ?? [])
             {
-                var matches = MatchesFilter(token);
-                token.IsDimmed = !matches;
-                any |= matches;
+                var any = false;
+                foreach (var token in line.Tokens.Where(token => token.IsWord))
+                {
+                    var matches = MatchesFilter(token);
+                    token.IsDimmed = !matches;
+                    any |= matches;
+                }
+                if (any) VisibleLines.Add(line);
             }
-            if (any) VisibleLines.Add(line);
         }
         OnPropertyChanged(nameof(Message));
         OnPropertyChanged(nameof(HasMessage));
         OnPropertyChanged(nameof(HasTexts));
+        OnPropertyChanged(nameof(HasAssessment));
+        OnPropertyChanged(nameof(HasResults));
         OnPropertyChanged(nameof(NeedsTexts));
     }
 
@@ -544,7 +667,13 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         RefreshPendingMarkers();
     }
 
-    private void OnChangesChanged(object? sender, NotifyCollectionChangedEventArgs e) => RefreshPendingMarkers();
+    private void OnChangesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        RefreshPendingMarkers();
+        RecheckChangesCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanRecheckChanges() => _changes.Items.Any(change => change.IsUncertain);
 
     private void OnSelectedTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -555,12 +684,204 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private bool CanStagePrimaryMarkingAction() =>
         SelectedToken is { IsWord: true, Marking.PrimaryAction: not null };
 
+    private static bool CanStagePrimaryMarkingActionForToken(ResultsTokenViewModel? token) =>
+        token is { IsWord: true, Marking.PrimaryAction: not null };
+
     private bool CanStageMarkingChoice(AnalysisMarkingChoice? choice) =>
         SelectedToken is { IsWord: true } token && choice is not null && token.Marking.FixChoices.Contains(choice);
+
+    private bool CanAcceptNewSetForSelectedText() => _changes.AssessmentId is not null &&
+        HasCompleteAssessmentForSelectedText();
+
+    private bool CanAcceptNewSetForSelection() => _changes.AssessmentId is not null &&
+        _assess.Result?.Words is { Count: > 0 } words && words.All(IsCompleteParse);
+
+    private bool CanRemoveAnalysesForSelection() => _allWords.SelectMany(token => token.Marking.FieldWorksAnalyses)
+        .Any(analysis => !string.IsNullOrWhiteSpace(analysis.StoredAnalysisId));
+
+    private bool HasCompleteAssessmentForSelectedText()
+    {
+        if (SelectedText is null || _assess.Result is not { } assessment) return false;
+        var results = assessment.Words.GroupBy(word => word.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var forms = SelectedText.Lines.SelectMany(line => line.Tokens).Where(token => token.IsWord)
+            .Select(token => token.Form).Distinct(StringComparer.Ordinal).ToArray();
+        return forms.Length > 0 && forms.All(form => results.TryGetValue(form, out var result) && IsCompleteParse(result));
+    }
+
+    private static bool IsCompleteParse(AssessmentWordResult result) => !result.IsIncomplete &&
+        result.Outcome is not ("skipped" or "capped" or "timed-out") &&
+        result.Morphology is { Capped: false, TimedOut: false, InvalidShape: false, Unavailable.Count: 0 };
+
+    private Task AcceptNewSetForSelectedTextAsync() => SelectedText is { } text
+        ? _changes.AcceptNewSetForTextAsync(text.TextId) : Task.CompletedTask;
+
+    private Task AcceptNewSetForSelectionAsync() => _changes.AcceptNewSetForSelectionAsync();
+
+    private Task RemoveAnalysesForSelectedTextAsync() => SelectedText is { } text
+        ? _changes.StageAnalysisRemovalForTextAsync(text.TextId) : Task.CompletedTask;
+
+    private Task RemoveAnalysesForSelectionAsync()
+    {
+        var ids = _allWords.SelectMany(token => token.Marking.FieldWorksAnalyses)
+            .Select(analysis => analysis.StoredAnalysisId).Distinct(StringComparer.Ordinal).ToArray();
+        return _changes.StageAnalysisRemovalListAsync(ids);
+    }
+
+    private static bool CanAddParserReadings(IEnumerable<ResultsTokenViewModel> tokens) =>
+        tokens.Any(HasParserOnlyReading);
+
+    private bool CanAcceptCheckedNewSet()
+    {
+        if (_changes.AssessmentId is null || _assess.Result?.Words is not { Count: > 0 } words) return false;
+        var results = words.GroupBy(word => word.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var forms = CheckedTokens.Select(token => token.Form).Distinct(StringComparer.Ordinal).ToArray();
+        return forms.Length > 0 && forms.All(form => results.TryGetValue(form, out var result) && IsCompleteParse(result));
+    }
+
+    private bool CanRemoveCheckedAnalyses() => CheckedTokens.SelectMany(token => token.Marking.FieldWorksAnalyses)
+        .Any(analysis => !string.IsNullOrWhiteSpace(analysis.StoredAnalysisId));
+
+    private bool CanUndoCheckedChanges() => HasChangesFor(CheckedTokens);
+
+    private bool CanRecheckCheckedChanges() => HasCheckedUncertainChanges;
+
+    private Task AddCheckedParserReadingsAsync() => AddParserReadingsAsUnknownAsync(CheckedTokens);
+
+    private async Task AcceptCheckedNewSetAsync()
+    {
+        foreach (var token in DistinctWords(CheckedTokens))
+            await _changes.AcceptNewSetForWordAsync(token).ConfigureAwait(true);
+    }
+
+    private Task RemoveCheckedAnalysesAsync()
+    {
+        var ids = CheckedTokens.SelectMany(token => token.Marking.FieldWorksAnalyses)
+            .Select(analysis => analysis.StoredAnalysisId).Distinct(StringComparer.Ordinal).ToArray();
+        return _changes.StageAnalysisRemovalListAsync(ids);
+    }
+
+    private Task MarkCheckedSpellingsIncorrectAsync() => MarkSpellingsIncorrectAsync(CheckedTokens);
+
+    private Task UndoCheckedChangesAsync() => UndoChangesAsync(CheckedTokens);
+
+    private bool CanAddParserReadingsForSelectedText() => SelectedText is not null &&
+        SelectedText.Lines.SelectMany(line => line.Tokens).Any(HasParserOnlyReading);
+
+    private bool CanAddParserReadingsForSelection() => _allWords.Any(HasParserOnlyReading);
+
+    private static bool HasParserOnlyReading(ResultsTokenViewModel token) =>
+        token.Marking.PanGlossReadings.Any(reading => reading.IsParserOnly);
+
+    private Task AddParserReadingsForSelectedTextAsync() => SelectedText is { } text
+        ? AddParserReadingsAsUnknownAsync(text.Lines.SelectMany(line => line.Tokens))
+        : Task.CompletedTask;
+
+    private Task AddParserReadingsForSelectionAsync() => AddParserReadingsAsUnknownAsync(_allWords);
+
+    private async Task AddParserReadingsAsUnknownAsync(IEnumerable<ResultsTokenViewModel> tokens)
+    {
+        foreach (var token in DistinctWords(tokens))
+        {
+            foreach (var (reading, index) in token.Marking.PanGlossReadings
+                         .Select((reading, index) => (reading, index))
+                         .Where(item => item.reading.IsParserOnly)
+                         .DistinctBy(item => ProjectAnalysisKey.For(item.reading.Analysis)))
+            {
+                await _changes.AddFromMarkingAsync(new AnalysisMarkingAction(
+                    AnalysisMarkingActionKind.Add, "Add as Unknown", null, reading.Analysis, index,
+                    "Not in FieldWorks", "Unknown", ChangeKinds.AddCandidate), token).ConfigureAwait(true);
+            }
+        }
+    }
+
+    private Task MarkSpellingsIncorrectForSelectedTextAsync() => SelectedText is { } text
+        ? MarkSpellingsIncorrectAsync(text.Lines.SelectMany(line => line.Tokens))
+        : Task.CompletedTask;
+
+    private Task MarkSpellingsIncorrectForSelectionAsync() => MarkSpellingsIncorrectAsync(_allWords);
+
+    private async Task MarkSpellingsIncorrectAsync(IEnumerable<ResultsTokenViewModel> tokens)
+    {
+        foreach (var token in DistinctWords(tokens))
+            await _changes.AddFromTextAsync(ChangeKinds.IncorrectSpelling, token).ConfigureAwait(true);
+    }
+
+    private bool CanUndoChangesForSelectedText() => SelectedText is { } text &&
+        HasChangesFor(text.Lines.SelectMany(line => line.Tokens));
+
+    private bool CanUndoChangesForSelection() => HasChangesFor(_allWords);
+
+    private bool HasChangesFor(IEnumerable<ResultsTokenViewModel> tokens)
+    {
+        var forms = tokens.Where(token => token.IsWord).Select(token => token.Form)
+            .ToHashSet(StringComparer.Ordinal);
+        return _changes.Items.Any(change => forms.Contains(change.Word));
+    }
+
+    private Task UndoChangesForSelectedTextAsync() => SelectedText is { } text
+        ? UndoChangesAsync(text.Lines.SelectMany(line => line.Tokens))
+        : Task.CompletedTask;
+
+    private Task UndoChangesForSelectionAsync() => UndoChangesAsync(_allWords);
+
+    private async Task UndoChangesAsync(IEnumerable<ResultsTokenViewModel> tokens)
+    {
+        var forms = tokens.Where(token => token.IsWord).Select(token => token.Form)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var change in _changes.Items.Where(change => forms.Contains(change.Word))
+                     .DistinctBy(change => change.ChangeId).ToArray())
+            await _changes.RemoveCommand.ExecuteAsync(change).ConfigureAwait(true);
+    }
+
+    private static IEnumerable<ResultsTokenViewModel> DistinctWords(IEnumerable<ResultsTokenViewModel> tokens) =>
+        tokens.Where(token => token.IsWord).DistinctBy(token => token.WordformId is { } id
+            ? $"id:{id:N}" : $"word:{token.Form}");
+
+    private void NotifyScopeCommands()
+    {
+        AcceptNewSetForSelectedTextCommand.NotifyCanExecuteChanged();
+        AcceptNewSetForSelectionCommand.NotifyCanExecuteChanged();
+        RemoveAnalysesForSelectedTextCommand.NotifyCanExecuteChanged();
+        RemoveAnalysesForSelectionCommand.NotifyCanExecuteChanged();
+        AddParserReadingsForSelectedTextCommand.NotifyCanExecuteChanged();
+        AddParserReadingsForSelectionCommand.NotifyCanExecuteChanged();
+        MarkSpellingsIncorrectForSelectedTextCommand.NotifyCanExecuteChanged();
+        MarkSpellingsIncorrectForSelectionCommand.NotifyCanExecuteChanged();
+        UndoChangesForSelectedTextCommand.NotifyCanExecuteChanged();
+        UndoChangesForSelectionCommand.NotifyCanExecuteChanged();
+        NotifyCheckedCommands();
+    }
+
+    private void NotifyCheckedCommands()
+    {
+        AddCheckedParserReadingsCommand.NotifyCanExecuteChanged();
+        AcceptCheckedNewSetCommand.NotifyCanExecuteChanged();
+        RemoveCheckedAnalysesCommand.NotifyCanExecuteChanged();
+        MarkCheckedSpellingsIncorrectCommand.NotifyCanExecuteChanged();
+        UndoCheckedChangesCommand.NotifyCanExecuteChanged();
+        RecheckCheckedChangesCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OnTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ResultsTokenViewModel.IsSelectedForActions)) return;
+        OnPropertyChanged(nameof(CheckedWordCount));
+        OnPropertyChanged(nameof(HasCheckedWords));
+        OnPropertyChanged(nameof(HasCheckedUncertainChanges));
+        NotifyCheckedCommands();
+    }
 
     private async Task StagePrimaryMarkingActionAsync()
     {
         if (SelectedToken is not { } token || token.Marking.PrimaryAction is not { } action) return;
+        await StageMarkingActionAsync(token, action).ConfigureAwait(true);
+    }
+
+    private async Task StagePrimaryMarkingActionForTokenAsync(ResultsTokenViewModel? token)
+    {
+        if (token?.Marking.PrimaryAction is not { } action) return;
         await StageMarkingActionAsync(token, action).ConfigureAwait(true);
     }
 
@@ -580,8 +901,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             await MarkReadAsync(token).ConfigureAwait(true);
             return;
         }
-        var staged = await _changes.AddFromMarkingAsync(action, token).ConfigureAwait(true);
-        if (!staged) return;
+        if (action.Kind == AnalysisMarkingActionKind.RemoveAnalysis)
+            await _changes.StageAnalysisRemovalAsync(token, action).ConfigureAwait(true);
+        else if (action.Kind == AnalysisMarkingActionKind.AcceptNewSet)
+            await _changes.AcceptNewSetForWordAsync(token).ConfigureAwait(true);
+        else
+        {
+            var staged = await _changes.AddFromMarkingAsync(action, token).ConfigureAwait(true);
+            if (!staged) return;
+        }
         await MarkReadAsync(token).ConfigureAwait(true);
         RefreshPendingMarkers();
     }
@@ -622,6 +950,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             }
         }
         OnPropertyChanged(nameof(NeedsALookCount));
+        OnPropertyChanged(nameof(HasCheckedUncertainChanges));
         RefreshLines();
         OnPropertyChanged(nameof(Changes));
     }
@@ -644,11 +973,14 @@ public sealed class ResultsTextViewModel
         ArgumentNullException.ThrowIfNull(results);
         TextId = text.TextId;
         Title = text.Title;
+        TextId = text.TextId;
         Lines = text.Lines.Select(line => new ResultsLineViewModel(
             text.Title, line, results, projectWords, text.TextId)).ToArray();
     }
 
     public string Title { get; }
+
+    /// <summary>The FieldWorks Text identity used by Text-scoped marking commands.</summary>
     public Guid TextId { get; }
     public IReadOnlyList<ResultsLineViewModel> Lines { get; }
 }
@@ -758,9 +1090,14 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             _ => "This word was not part of the Assessment",
         };
         Marking = AnalysisMarkingState.Create(token, result, _isUnread);
+        FieldWorksAnalyses = Marking.FieldWorksAnalyses
+            .Select(analysis => new FieldWorksAnalysisDisplayViewModel(analysis)).ToArray();
     }
 
     public string Text { get; }
+
+    /// <summary>The accessible name of the checkbox that includes this occurrence in bulk actions.</summary>
+    public string SelectionAutomationName => $"Select {Form} for actions";
 
     /// <summary>The word's form as the Assessment names it, for finding it in the Words view.</summary>
     public string Form { get; }
@@ -768,6 +1105,53 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool IsWord { get; }
 
     public AnalysisMarkingState Marking { get; private set; }
+    /// <summary>Every stored analysis with its opinion mark and interlinear morphemes.</summary>
+    public IReadOnlyList<FieldWorksAnalysisDisplayViewModel> FieldWorksAnalyses { get; }
+
+    /// <summary>The opinion mark used beside the word, or the dashed mark when nothing is stored.</summary>
+    public OpinionMarkKind PrimaryOpinionMarkKind => FieldWorksAnalyses.Count == 0
+        ? OpinionMarkKind.None : FieldWorksAnalyses[0].OpinionMarkKind;
+
+    /// <summary>Whether FieldWorks stores at least one analysis for the word.</summary>
+    public bool HasFieldWorksAnalyses => FieldWorksAnalyses.Count > 0;
+
+    /// <summary>Whether PanGloss agrees with every stored reading.</summary>
+    public bool IsPanGlossSame => Marking.PanGlossClass == AnalysisMarkingClass.Same;
+
+    /// <summary>Whether PanGloss conflicts with a stored reading or opinion.</summary>
+    public bool IsPanGlossDifferent => Marking.PanGlossClass is AnalysisMarkingClass.Conflict or
+        AnalysisMarkingClass.Different;
+
+    /// <summary>Whether PanGloss has readings beyond the approved FieldWorks readings.</summary>
+    public bool IsPanGlossExtra => Marking.PanGlossClass == AnalysisMarkingClass.Extra;
+
+    /// <summary>Whether PanGloss completed without finding a reading.</summary>
+    public bool IsPanGlossNone => Marking.PanGlossClass == AnalysisMarkingClass.None;
+
+    /// <summary>Whether PanGloss stopped before completing its search.</summary>
+    public bool IsPanGlossCapped => Marking.PanGlossClass == AnalysisMarkingClass.Capped;
+
+    /// <summary>The short PanGloss result shown in the word strip and hover summary.</summary>
+    public string PanGlossSummary => Marking.PanGlossClass switch
+    {
+        AnalysisMarkingClass.Same => "Agrees with FieldWorks",
+        AnalysisMarkingClass.Conflict => "Conflicts with a FieldWorks opinion",
+        AnalysisMarkingClass.Different => "Different from FieldWorks",
+        AnalysisMarkingClass.Extra => "Has additional readings",
+        AnalysisMarkingClass.None => "No parse",
+        AnalysisMarkingClass.Capped => "Search stopped at a limit",
+        _ => "Not assessed",
+    };
+
+    /// <summary>Whether the word has a primary action available in its strip.</summary>
+    public bool HasPrimaryAction => Marking.PrimaryAction is not null;
+
+    /// <summary>The read-only hover summary for the stored opinion and current PanGloss result.</summary>
+    public string HoverSummary => $"{Form} · {FieldWorksSummary} · PanGloss: {PanGlossSummary}";
+
+    private string FieldWorksSummary => FieldWorksAnalyses.Count == 0
+        ? "No analysis in FieldWorks"
+        : string.Join(", ", FieldWorksAnalyses.Select(analysis => analysis.Opinion));
     public string Location { get; }
     public Uri? WordLink { get; }
     public OccurrenceAnchor? Occurrence { get; }
@@ -835,6 +1219,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     internal void SetStagedMarkings(IReadOnlyList<ChangeViewModel> changes)
     {
+        StagedChanges = changes.Select(change => new StagedMarkingDisplayViewModel(change)).ToArray();
         Marking = AnalysisMarkingState.Create(_source, _assessment, _isUnread);
         Marking = Marking.WithStagedTransitions(changes.Select(change => change.StagedTransition with
         {
@@ -842,8 +1227,12 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             ReadingIndex = change.ReadingIndex,
             FitStatus = change.Fit?.Status,
         }).ToArray());
+        OnPropertyChanged(nameof(StagedChanges));
         OnPropertyChanged(nameof(Marking));
     }
+
+    /// <summary>Pending changes that affect this word and can be undone from its strip.</summary>
+    public IReadOnlyList<StagedMarkingDisplayViewModel> StagedChanges { get; private set; } = [];
 
     /// <summary>The shared meaning behind <see cref="Verdict"/>, used for its colour and glyph.</summary>
     public Verdict Meaning => Verdict switch
@@ -864,6 +1253,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>Whether the active filter passes over this word, so it recedes rather than disappears.</summary>
     [ObservableProperty]
     private bool _isDimmed;
+
+    [ObservableProperty]
+    private bool _isSelectedForActions;
 
     // Forms already carry their own hyphens ("a-", "-a"), so they join as written; glosses join with one.
     private static string ReadingText(ParserReading? reading) => reading is null ? "?"
@@ -897,6 +1289,7 @@ public sealed class ResultsReadingViewModel
     }
 
     public string Text { get; }
+
     public string GradeLabel { get; }
     public bool HasGrade => GradeLabel.Length > 0;
     public bool IsDisapproved { get; }

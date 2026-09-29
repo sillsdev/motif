@@ -54,6 +54,9 @@ public sealed partial class HelpPopupViewModel : ObservableObject
     public void ShowForPage(WorkspacePage page, string? focusedAutomationId = null) =>
         SetPage(_content.ForPage(page, focusedAutomationId));
 
+    /// <summary>Shows the short guide to PanGloss from Analyze texts.</summary>
+    public void ShowPanGlossPage() => SetPage(_content.PanGlossPage());
+
     private async Task OpenOnlineAsync() =>
         await _uriLauncher.LaunchAsync(new Uri(OnlineUrl, UriKind.Absolute));
 
@@ -104,6 +107,15 @@ public sealed partial class HelpPopupViewModel : ObservableObject
             return pageEntry is null
                 ? guide
                 : guide with { Title = pageEntry.Title, Description = pageEntry.Description };
+        }
+
+        public HelpPageContent PanGlossPage()
+        {
+            var markdown = ReadGuide(_catalog.Locale, "pangloss") ?? ReadGuide("en", "pangloss")
+                ?? throw new InvalidDataException("The PanGloss guide page is missing from the Help resources.");
+            var description = FindDescription(markdown);
+            return new HelpPageContent(FindTitle(markdown), description, PrepareMarkdown(markdown),
+                BuildGuideUrl(_catalog.Locale, "pangloss"));
         }
 
         public bool TryResolveLink(Uri uri, out HelpPageContent page)

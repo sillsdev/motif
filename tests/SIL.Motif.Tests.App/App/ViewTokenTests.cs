@@ -82,6 +82,25 @@ public sealed class ViewTokenTests
     }
 
     [Fact]
+    public void AWordCardCanHideFieldWorksLinksUntilHoverOrKeyboardFocus()
+    {
+        var row = new MorphemeRow
+        {
+            RevealLinks = true,
+            Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph(
+                "form", "gloss", "n", null, false, "silfw://entry"))],
+        };
+        var links = row.GetLogicalDescendants().OfType<HyperlinkButton>().ToArray();
+
+        Assert.Equal(2, links.Length);
+        Assert.All(links, link =>
+        {
+            Assert.Contains("revealControl", link.Classes);
+            Assert.True(link.Focusable);
+        });
+    }
+
+    [Fact]
     public void AFilterChipSpacesItsGlyphFromATokenLabel() =>
         AssertStyled(() => new FilterChip { Label = "Agrees", Count = 3, Verdict = Verdict.Agrees },
             [new("the chip's row", chip => Nth<StackPanel>(chip, 0), StackPanel.SpacingProperty, "Intent.Space.Snug")]);
