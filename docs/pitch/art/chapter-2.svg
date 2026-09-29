@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 440">
+  <path d="M60 330 q0-20 20-20 l40 0 q20 0 20 20 l0 40 q0 20-20 20 l-40 0 q-20 0-20-20z" fill="#FAF9F5"/>
+  <path d="M150 270 q0-22 22-22 l44 0 q22 0 22 22 l0 100 q0 22-22 22 l-44 0 q-22 0-22-22z" fill="#FAF9F5"/>
+  <path d="M250 200 q0-22 22-22 l44 0 q22 0 22 22 l0 170 q0 22-22 22 l-44 0 q-22 0-22-22z" fill="#FAF9F5"/>
+  <path d="M350 130 q0-22 22-22 l44 0 q22 0 22 22 l0 240 q0 22-22 22 l-44 0 q-22 0-22-22z" fill="#FAF9F5"/>
+  <path d="M450 50 q0-22 22-22 l44 0 q22 0 22 22 l0 320 q0 22-22 22 l-44 0 q-22 0-22-22z" fill="#FAF9F5"/>
+  <path d="M100 300 C 170 250, 230 200, 290 160 S 420 70, 494 20" fill="none" stroke="#141413" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="100" cy="300" r="16" fill="#141413"/><path d="M470 14 l34 0 l-8 30z" fill="#141413"/>
+</svg>

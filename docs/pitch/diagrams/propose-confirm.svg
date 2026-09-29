@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="112 112 496 552" role="img" aria-label="Propose and confirm: the FST proposes candidates, HermitCrab confirms each one">
+  <defs><marker id="propose-confirm-head-141413" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#141413"/></marker><marker id="propose-confirm-head-B8552E" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#B8552E"/></marker></defs>
+  <path d="M 260 176 L 260 230" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#propose-confirm-head-141413)"/>
+  <path d="M 260 304 L 260 358" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#propose-confirm-head-141413)"/>
+  <path d="M 260 416 L 260 470" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#propose-confirm-head-141413)"/>
+  <path d="M 260 544 L 260 598" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#propose-confirm-head-141413)"/>
+  <path d="M 400 148 L 460 148" stroke="#B8552E" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="6 6"/>
+  <path d="M 460 148 L 460 508" stroke="#B8552E" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="6 6"/>
+  <path d="M 460 508 L 402 508" stroke="#B8552E" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="6 6" marker-end="url(#propose-confirm-head-B8552E)"/>
+  <rect x="120" y="120" width="280" height="56" rx="12" fill="#F4F1EA"/>
+  <text x="260" y="155" font-family="'Source Serif 4', Georgia, serif" fill="#141413" text-anchor="middle" font-style="italic"><tspan x="260" dy="0" font-size="20" font-weight="400">hawatanipenda</tspan></text>
+  <rect x="120" y="232" width="280" height="72" rx="12" fill="#F7E4D8"/>
+  <text x="134" y="264.0" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">The FST proposes</tspan><tspan x="134" dy="18" font-size="13" font-weight="400">in microseconds; never misses one</tspan></text>
+  <rect x="120" y="360" width="280" height="56" rx="12" fill="#F4F1EA"/>
+  <text x="134" y="393.0" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">A handful of candidates</tspan></text>
+  <rect x="120" y="472" width="280" height="72" rx="12" fill="#DCE6D0"/>
+  <text x="134" y="504.0" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">HermitCrab confirms</tspan><tspan x="134" dy="18" font-size="13" font-weight="400">the exact engine checks each one</tspan></text>
+  <rect x="120" y="600" width="280" height="56" rx="12" fill="#141413"/>
+  <text x="134" y="633.0" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#FAF9F5" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">Correct analyses, fast</tspan></text>
+  <text x="474" y="300" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#B8552E" text-anchor="start"><tspan x="474" dy="0" font-size="13" font-weight="400">A rule the FST</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">can't compile</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">safely goes to</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">the exact engine</tspan></text>
+</svg>
