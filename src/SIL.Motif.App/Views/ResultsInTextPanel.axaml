@@ -40,6 +40,9 @@
           <views:FilterChip Label="Unread" Count="{Binding InText.UnreadCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Unread}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Unread}" />
+          <views:FilterChip Label="Needs a look" Count="{Binding InText.NeedsALookCount}"
+                            IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NeedsALook}}"
+                            Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NeedsALook}" />
           <views:FilterChip Label="Differs from stored" Count="{Binding InText.DiffersCount}" Verdict="Differs"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Differs}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Differs}" />

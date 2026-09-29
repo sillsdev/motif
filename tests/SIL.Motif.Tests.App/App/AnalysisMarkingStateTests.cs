@@ -149,6 +149,21 @@ public sealed class AnalysisMarkingStateTests
     }
 
     [Fact]
+    public void NeedsALookTracksAvailableUnstagedActions()
+    {
+        var actionable = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), Result("book", Book));
+        var staged = actionable.WithStagedTransitions(
+            [new StagedMarkingTransition("Unknown", "Approved")]);
+        var capped = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("book", true, Book));
+
+        Assert.True(actionable.NeedsALook);
+        Assert.False(staged.NeedsALook);
+        Assert.False(capped.NeedsALook);
+    }
+
+    [Fact]
     public void DisapprovedToApprovedFixChoiceIsNamedApprove()
     {
         var state = AnalysisMarkingState.Create(

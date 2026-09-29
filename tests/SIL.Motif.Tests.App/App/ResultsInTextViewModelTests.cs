@@ -457,6 +457,38 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
+    public async Task NeedsALookFilterKeepsWordsWithAvailableMarkingActions()
+    {
+        var (inText, _, _) = await Loaded();
+
+        Assert.Contains("NeedsALook", Enum.GetNames<ResultsInTextFilter>());
+        inText.SetFilterCommand.Execute(Enum.Parse<ResultsInTextFilter>("NeedsALook"));
+
+        var visibleWords = inText.VisibleLines.SelectMany(line => line.Tokens)
+            .Where(token => token.IsWord && !token.IsDimmed).Select(token => token.Form).ToArray();
+        Assert.Equal(["kitabu", "anapenda", "mtoto", "kitabu"], visibleWords);
+        Assert.Equal(4, inText.NeedsALookCount);
+        Assert.DoesNotContain(inText.VisibleLines.SelectMany(line => line.Tokens),
+            token => token.Form == "zzz" && !token.IsDimmed);
+    }
+
+    [Fact]
+    public async Task NeedsALookFilterRefreshesWhenAnActionIsStaged()
+    {
+        var (inText, _, _) = await Loaded();
+        var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Single(candidate => candidate.Form == "mtoto");
+        inText.SetFilterCommand.Execute(ResultsInTextFilter.NeedsALook);
+        inText.SelectToken(token);
+
+        await inText.StagePrimaryMarkingActionCommand.ExecuteAsync(null);
+
+        Assert.Equal(3, inText.NeedsALookCount);
+        Assert.False(token.Marking.NeedsALook);
+        Assert.True(token.IsDimmed);
+    }
+
+    [Fact]
     public async Task AClickedWordOpensInTheWordsView_OnlyWhenAsked()
     {
         var (inText, shown, _) = await Loaded();

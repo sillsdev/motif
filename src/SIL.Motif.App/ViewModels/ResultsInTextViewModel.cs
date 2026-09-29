@@ -33,7 +33,7 @@ public enum OccurrenceVerdict
     NotAssessed,
 }
 
-/// <summary>The Analyze texts filter chips, one for every verdict an occurrence can have.</summary>
+/// <summary>The Analyze texts filter chips for occurrence verdicts and available marking actions.</summary>
 public enum ResultsInTextFilter
 {
     All,
@@ -44,6 +44,7 @@ public enum ResultsInTextFilter
     Matches,
     Limit,
     NotAssessed,
+    NeedsALook,
 }
 
 /// <summary>
@@ -165,6 +166,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public int MatchesCount => Count(OccurrenceVerdict.Matches);
     public int LimitCount => Count(OccurrenceVerdict.Limit);
     public int NotAssessedCount => Count(OccurrenceVerdict.NotAssessed);
+    public int NeedsALookCount => _allWords.Count(token => token.Marking.NeedsALook);
     public bool HasNotAssessed => NotAssessedCount > 0;
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
@@ -374,6 +376,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(MatchesCount));
         OnPropertyChanged(nameof(LimitCount));
         OnPropertyChanged(nameof(NotAssessedCount));
+        OnPropertyChanged(nameof(NeedsALookCount));
         OnPropertyChanged(nameof(HasNotAssessed));
 
         var reselected = Texts.FirstOrDefault(text => text.Title == previousTitle) ?? Texts.FirstOrDefault();
@@ -410,6 +413,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         ResultsInTextFilter.Limit => token.Verdict == OccurrenceVerdict.Limit,
         ResultsInTextFilter.NotAssessed => token.Verdict == OccurrenceVerdict.NotAssessed,
         ResultsInTextFilter.Matches => token.Verdict == OccurrenceVerdict.Matches,
+        ResultsInTextFilter.NeedsALook => token.Marking.NeedsALook,
         _ => true,
     };
 
@@ -617,6 +621,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
                     if (expected.IsChanged) token.IsUncertainChanged = true;
             }
         }
+        OnPropertyChanged(nameof(NeedsALookCount));
+        RefreshLines();
         OnPropertyChanged(nameof(Changes));
     }
 }
