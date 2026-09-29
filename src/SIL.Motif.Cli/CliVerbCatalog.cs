@@ -222,6 +222,14 @@ public static class CliVerbCatalog
             "Project", "store", "store delete-refused",
             new[] { "store delete-refused --project <fwdata> [--json]" }),
         new CliVerbDescriptor(
+            "Project", "word", "word read-state",
+            new[]
+            {
+                "word read-state --project <fwdata> --text <textId> [--read | --unread] " +
+                "[--occurrences <paragraphId>/<segmentId>/<wordIndex>[,...]] [--json]",
+                "With no action flag, it reads state; without occurrence anchors, an action applies to every word in the Text.",
+            }),
+        new CliVerbDescriptor(
             "Project", "overview", "overview",
             new[] { "overview --project <fwdata> [--json]" }),
         new CliVerbDescriptor(

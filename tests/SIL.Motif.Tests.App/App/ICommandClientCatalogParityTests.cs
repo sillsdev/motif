@@ -33,6 +33,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.AcceptNewSetAsync)] = "accept-new-set",
             [nameof(ICommandClient.RecheckPendingChangesAsync)] = "recheck-pending-changes",
             [nameof(ICommandClient.ReconfirmPendingChangeAsync)] = "reconfirm-pending-change",
+            [nameof(ICommandClient.ReadWordStateAsync)] = "word read-state",
             [nameof(ICommandClient.DeleteRefusedStoreAsync)] = "store delete-refused",
         };
 

@@ -134,6 +134,7 @@ public sealed class CommandCatalogParityTests
         "grammarcheck.parser-unavailable", "grammarcheck.timed-out",
         "wordtrace.cancelled", "wordtrace.malformed-diagnostic", "wordtrace.malformed-output", "wordtrace.no-baseline", "wordtrace.parser-refused",
         "wordtrace.parser-unavailable",
+        "word.read-state-invalid",
     };
 
     /// <summary>
