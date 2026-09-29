@@ -25,8 +25,8 @@ namespace SIL.Motif.Generator.Descriptions;
 public static class KindDescriptionTsvParser
 {
     private const int ColumnCount = 8;
-    private const string ExpectedHeader =
-        "\"Class\"\t\"Field\"\t\"Title\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"";
+    private static readonly string ExpectedHeader =
+        string.Join("\t", KindDescriptionTsvWriter.Header.Select(static column => $"\"{column}\""));
 
     public static IReadOnlyList<KindDescription> Parse(string path)
     {

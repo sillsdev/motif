@@ -64,6 +64,17 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void FullHelpAcceptsACommandCodeThatContainsAFlagLikePart()
+    {
+        var result = Run("help", "apply", "--all-pending", "--full");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("When to use it", result.Output, StringComparison.Ordinal);
+        Assert.Contains("What it prints", result.Output, StringComparison.Ordinal);
+        Assert.Contains("motif help overview", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MalformedHelpCallUsesTheInvocationErrorExitCode()
     {
         var result = Run("help", "--json");

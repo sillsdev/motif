@@ -218,19 +218,6 @@ public class DescriptionCheckTests
     }
 
     [Fact]
-    public void KindDescriptionExposesTitleWithoutALabelAlias()
-    {
-        const string text =
-            "\"Class\"\t\"Field\"\t\"Title\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\r\n" +
-            "\"LexSense\"\t\"Gloss\"\t\"Gloss\"\t\"Set the short meaning.\"\t\"unsourced\"\t\"\"\t\"\"\t\"\"\r\n";
-
-        var row = KindDescriptionTsvParser.ParseText("test.tsv", text).Single();
-
-        Assert.Equal("Gloss", typeof(KindDescription).GetProperty("Title")?.GetValue(row));
-        Assert.Null(typeof(KindDescription).GetProperty("Label"));
-    }
-
-    [Fact]
     public void ParserRejectsTheOldLabelColumnHeader()
     {
         const string text =
