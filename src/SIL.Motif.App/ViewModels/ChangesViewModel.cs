@@ -494,7 +494,8 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
     public string CheckAgainAutomationName => $"Check again: {Word}";
-    public string UndoAutomationName => $"Undo: {Word}";
+    public string UndoAutomationName => GroupId is null ? $"Undo: {Word}"
+        : $"Undo accepted set containing: {Word}";
 
     /// <summary>The parser's reading, for a change that sends it to FieldWorks or judges it.</summary>
     public string Reading { get; } = reading;

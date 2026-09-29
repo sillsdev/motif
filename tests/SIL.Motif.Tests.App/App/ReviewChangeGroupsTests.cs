@@ -87,6 +87,8 @@ public sealed class ReviewChangeGroupsTests
             group.Items.Single(item => item.ChangeId == "added").SourceText);
         Assert.Equal("Added as Unknown from accepting a set",
             group.Items.Single(item => item.ChangeId == "accepted").SourceText);
+        Assert.Equal("Undo accepted set containing: accepted",
+            group.Items.Single(item => item.ChangeId == "accepted").UndoAutomationName);
     }
 
     [Fact]
