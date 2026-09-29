@@ -9,7 +9,7 @@ namespace SIL.Motif.Generator.Descriptions.Harvest;
 /// <remarks>
 /// <list type="number">
 /// <item>If it is one of the five hand-corrected <see cref="HandCorrectedFields.ProdRestrictFamily"/> rows,
-/// its <c>Label</c>/<c>Description</c> are preserved byte-for-byte — regeneration must never silently replace
+/// its <c>Title</c>/<c>Description</c> are preserved byte-for-byte — regeneration must never silently replace
 /// a human's fix for a polarity bug with a fresh mechanical paraphrase of the same source. A citation
 /// and a <see cref="SourceDigest"/> are still attached when the source is available, because the row *is*
 /// sourced; it was just corrected by a human against that source rather than transcribed from it. The digest

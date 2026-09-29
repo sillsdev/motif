@@ -65,13 +65,14 @@ public class FieldWorksHelpDescriptionTsvTests
     public void KindDescriptionParser_ReadsLfRows()
     {
         const string text =
-            "\"Class\"\t\"Field\"\t\"Label\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\n" +
+            "\"Class\"\t\"Field\"\t\"Title\"\t\"Description\"\t\"Reviewed\"\t\"Source\"\t\"SourceDetail\"\t\"SourceHash\"\n" +
             "\"LexSense\"\t\"Gloss\"\t\"Gloss\"\t\"Short meaning.\"\t\"unsourced\"\t\"\"\t\"\"\t\"\"\n";
 
         var parsed = Assert.Single(KindDescriptionTsvParser.ParseText("test.tsv", text));
 
         Assert.Equal("LexSense", parsed.Class);
         Assert.Equal("Gloss", parsed.Field);
+        Assert.Equal("Gloss", parsed.Title);
     }
 
     [Fact]

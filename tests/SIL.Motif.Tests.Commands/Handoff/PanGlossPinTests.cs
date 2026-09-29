@@ -21,6 +21,7 @@ public sealed class PanGlossPinTests
     {
         var pin = ReadPin();
 
+        Assert.Equal("0.5.0", pin.Version);
         Assert.Matches(@"^\d+\.\d+\.\d+$", pin.Version);
         Assert.Equal($"v{pin.Version}", pin.Tag);
         var asset = Assert.Single(pin.Assets);

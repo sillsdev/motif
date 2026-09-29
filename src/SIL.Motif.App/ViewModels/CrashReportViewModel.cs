@@ -1,15 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// What Motif's error window shows about an error that escaped the UI thread, and its actions: copy the
-/// report, save it as a text file, and open an email to the maintainer asking for that file.
+/// What Motif's error window shows about an error that escaped the UI thread, and its actions for reporting it.
 /// </summary>
 /// <remarks>
-/// Each action replaces <see cref="Status"/> with how it went, so the line under the buttons always speaks of
-/// the last one. A failing action says so there; the window itself never closes on one.
+/// Copy, save, and email update <see cref="Status"/>; the problem link opens the shared issues page.
 /// </remarks>
 public sealed partial class CrashReportViewModel : ObservableObject
 {
@@ -20,6 +19,9 @@ public sealed partial class CrashReportViewModel : ObservableObject
     public const string Summary =
         "Motif will close when you close this window. To help get the problem fixed, save a report and email it " +
         "to the maintainer.";
+
+    /// <summary>Thanks the person for a report that can improve the demo.</summary>
+    public const string ThankYou = "Thank you for helping improve the demo.";
 
     private readonly IClipboard _clipboard;
     private readonly IReportFilePicker _files;
@@ -110,5 +112,22 @@ public sealed partial class CrashReportViewModel : ObservableObject
         Status = opened
             ? "Your email program should open. Attach the report you saved."
             : $"Motif could not open an email program. Write to {_supportEmail} and attach the saved report.";
+    }
+
+    /// <summary>Opens the Motif issue page.</summary>
+    [RelayCommand]
+    private async Task ReportProblemAsync()
+    {
+        Status = null;
+        try
+        {
+            if (!await _launcher.LaunchAsync(new Uri(AppLinks.Issues)).ConfigureAwait(true))
+                Status = AppLinks.Issues;
+        }
+        catch (Exception)
+        {
+            // The visible URL lets the reporter continue when the browser cannot be launched.
+            Status = AppLinks.Issues;
+        }
     }
 }

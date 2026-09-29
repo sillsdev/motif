@@ -47,13 +47,60 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
                 Assert.False(details.IsExpanded);
                 Assert.Equal("Details", details.Header);
                 Assert.Equal(report.Details, Named<SelectableTextBlock>(window, "Crash details text").Text);
-                Assert.Equal(["Copy details", "Save report", "Email maintainer", "Close"],
+                Assert.Equal(["Report a problem", "Copy details", "Save report", "Email maintainer", "Close"],
                     window.GetLogicalDescendants().OfType<Button>().Select(button => button.Content as string));
             }
             finally
             {
                 window.Close();
             }
+        });
+    }
+
+    [Fact]
+    public void ReportProblemOpensTheIssuesPageAndThanksTheReporter()
+    {
+        RunWithWindow(Report(), async window =>
+        {
+            Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text),
+                text => text?.Contains("Thank you for helping improve the demo.", StringComparison.Ordinal) == true);
+
+            window.GetLogicalDescendants().OfType<HyperlinkButton>()
+                .Single(button => Equals(button.Content, "Report a problem"))
+                .Command!.Execute(null);
+            await Until(() => _launcher.Launched.Count == 1);
+
+            Assert.Equal(new Uri("https://github.com/sillsdev/motif/issues"), _launcher.Launched[0]);
+        });
+    }
+
+    [Fact]
+    public void AProblemLinkThatDoesNotOpenShowsTheIssuesUrl()
+    {
+        _launcher.Opens = false;
+        RunWithWindow(Report(), async window =>
+        {
+            window.GetLogicalDescendants().OfType<HyperlinkButton>()
+                .Single(button => Equals(button.Content, "Report a problem"))
+                .Command!.Execute(null);
+            await Until(() => _launcher.Launched.Count == 1);
+
+            Assert.Equal(AppLinks.Issues, Named<TextBlock>(window, "Crash status").Text);
+        });
+    }
+
+    [Fact]
+    public void AProblemLinkThatThrowsShowsTheIssuesUrl()
+    {
+        _launcher.LaunchFailure = new InvalidOperationException("the browser is unavailable");
+        RunWithWindow(Report(), async window =>
+        {
+            window.GetLogicalDescendants().OfType<HyperlinkButton>()
+                .Single(button => Equals(button.Content, "Report a problem"))
+                .Command!.Execute(null);
+            await Until(() => _launcher.Launched.Count == 1);
+
+            Assert.Equal(AppLinks.Issues, Named<TextBlock>(window, "Crash status").Text);
         });
     }
 
@@ -370,9 +417,13 @@ public sealed class RecordingLauncher : IUriLauncher
     /// <summary>What each launch reports: whether a program opened the link.</summary>
     public bool Opens { get; set; } = true;
 
+    /// <summary>When set, the launch fails with this exception.</summary>
+    public Exception? LaunchFailure { get; set; }
+
     public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default)
     {
         Launched.Add(uri);
+        if (LaunchFailure is { } failure) return Task.FromException<bool>(failure);
         return Task.FromResult(Opens);
     }
 }

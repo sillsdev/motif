@@ -1,0 +1,16 @@
+---
+const { features, guideHref, guideTitle, guideDescription } = Astro.props;
+---
+
+<div class="home-feature-grid">
+	{features.map((feature) => (
+		<a class="home-feature-card" href={feature.href.replace(/^\//, '')}>
+			<strong>{feature.title}</strong>
+			<span>{feature.description}</span>
+		</a>
+	))}
+	<a class="home-feature-card home-feature-card--guide" href={guideHref.replace(/^\//, '')}>
+		<strong>{guideTitle}</strong>
+		<span>{guideDescription}</span>
+	</a>
+</div>

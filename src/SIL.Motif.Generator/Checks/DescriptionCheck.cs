@@ -6,7 +6,7 @@ namespace SIL.Motif.Generator.Checks;
 
 /// <summary>
 /// ADR 0023 decision 5: every emitted kind must carry a hand-written description, and
-/// <b>the build fails if one is missing or if it merely restates the label.</b>
+/// <b>the build fails if one is missing or if it merely restates the title.</b>
 /// </summary>
 /// <remarks>
 /// <para>
@@ -87,12 +87,12 @@ public static class DescriptionCheck
                 continue;
             }
 
-            // The bar: says what the name/label do not; "Is Abstract" cannot pass as a description of "IsAbstract".
-            if (RestatesOnly(description.Description, description.Label) ||
+            // The description adds meaning beyond the title and field name.
+            if (RestatesOnly(description.Description, description.Title) ||
                 RestatesOnly(description.Description, row.Manifest.Field))
             {
                 failures.Add(
-                    $"{key}: description '{description.Description}' only restates the label or field name. " +
+                    $"{key}: description '{description.Description}' only restates the title or field name. " +
                     "Say when an agent should reach for this operation, not what it is called.");
             }
 

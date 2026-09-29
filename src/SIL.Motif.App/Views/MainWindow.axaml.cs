@@ -2,9 +2,11 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -18,6 +20,10 @@ public sealed partial class MainWindow : Window
 {
     private static readonly string PreferencesFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Motif", "window-bounds.json");
+    private readonly IUriLauncher _uriLauncher;
+    private string? _helpAutomationId;
+    private HelpPopupView? HelpPopup =>
+        this.FindControl<Button>("HelpButton")?.Flyout is Flyout flyout ? flyout.Content as HelpPopupView : null;
 
     /// <summary>A window at the XAML's own size that neither reads nor writes the remembered bounds, as tests need.</summary>
     public MainWindow() : this(rememberBounds: false)
@@ -29,8 +35,20 @@ public sealed partial class MainWindow : Window
     /// last left it and saves them again on close.
     /// </summary>
     public MainWindow(bool rememberBounds)
+        : this(rememberBounds, uriLauncher: null)
+    {
+    }
+
+    /// <summary>Builds the window with an optional launcher for its online Help links.</summary>
+    /// <param name="rememberBounds">Whether to restore and save the window's size and place.</param>
+    /// <param name="uriLauncher">The adapter that opens online links, or the window's launcher when omitted.</param>
+    public MainWindow(bool rememberBounds, IUriLauncher? uriLauncher)
     {
         AvaloniaXamlLoader.Load(this);
+        _uriLauncher = uriLauncher ?? new AvaloniaLauncher(this);
+        if (HelpPopup is { } helpView)
+            helpView.DataContext = new HelpPopupViewModel(_uriLauncher);
+        AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         if (!rememberBounds) return;
         RestoreBounds();
         Closing += (_, _) => SaveBounds();
@@ -86,6 +104,31 @@ public sealed partial class MainWindow : Window
             item.AddHandler(MenuItem.ClickEvent, (_, _) => HideProjectMenu(), handledEventsToo: true);
             menu.Items.Add(item);
         }
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F1) return;
+        e.Handled = true;
+        _helpAutomationId = e.Source is Control control
+            ? Avalonia.Automation.AutomationProperties.GetAutomationId(control)
+            : null;
+        RefreshHelpContent();
+        if (this.FindControl<Button>("HelpButton") is { } button)
+            button.Flyout?.ShowAt(button);
+    }
+
+    private void OnHelpFlyoutOpened(object? sender, EventArgs e)
+    {
+        RefreshHelpContent();
+        _helpAutomationId = null;
+    }
+
+    private void RefreshHelpContent()
+    {
+        if (HelpPopup?.DataContext is not HelpPopupViewModel help) return;
+        var page = (DataContext as WorkspaceShellViewModel)?.CurrentPage ?? WorkspacePage.Overview;
+        help.ShowForPage(page, _helpAutomationId);
     }
 
     // Hide after the Command runs, as hiding unbinds it: pinned by `ConfigureReopensSetupAfterSkipAndRefresh`.

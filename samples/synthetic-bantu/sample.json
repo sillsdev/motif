@@ -1,0 +1,888 @@
+{
+  "id": "synthetic-bantu",
+  "title": "Synthetic Bantu-style sample",
+  "language": {
+    "name": "Synthetic Bantu-style",
+    "tag": "sw"
+  },
+  "teaches": [
+    "noun-class pairs 1/2, 7/8, and 9/10",
+    "obligatory noun-class prefixes before noun stems",
+    "subject, tense/aspect, optional object, stem, and final-vowel verb slots",
+    "separate personal and noun-class feature structures",
+    "parser work and grammar ambiguity"
+  ],
+  "summary": "A synthetic parser exercise demonstrates cited Bantu-style noun-class prefixes, a fixed verb template, and ambiguity from duplicated optional object-marker slots.",
+  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Swahili, but it is not real Swahili, has not been checked by speakers, and must not be used as a description of any language.",
+  "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Swahili, but it is not real Swahili, has not been checked by speakers, and must not be used as a description of any language. The grammar models only the cited 1/2, 7/8, and 9/10 noun-class pairs and the verb template SUBJECT – TENSE/ASPECT – (OBJECT) – STEM – FINAL VOWEL. It uses no productive phonological rules. The constructed Texts combine cited word forms for parser exercises; they are not speaker-checked sentences or evidence of clause-level agreement. The written n- plus dizi split is a teaching analysis, not a productive nasal rule.",
+  "research": {
+    "document": "docs/research/synthetic-samples/bantu.md",
+    "sections": [
+      {
+        "part": "noun stems, class pairs, and prefix slot",
+        "section": "§2"
+      },
+      {
+        "part": "verb template and marker inventory",
+        "section": "§2"
+      },
+      {
+        "part": "stem inventory and cited forms",
+        "section": "§3"
+      },
+      {
+        "part": "allomorph environments and phonology",
+        "section": "§2"
+      },
+      {
+        "part": "constructed parser Texts",
+        "section": "§3"
+      },
+      {
+        "part": "realistic modelling mistakes",
+        "section": "§4"
+      },
+      {
+        "part": "slow parsing bug",
+        "section": "§4"
+      }
+    ]
+  },
+  "phonemes": [
+    "a",
+    "b",
+    "d",
+    "e",
+    "g",
+    "i",
+    "k",
+    "l",
+    "m",
+    "n",
+    "o",
+    "p",
+    "r",
+    "s",
+    "t",
+    "u",
+    "v",
+    "w",
+    "y",
+    "z"
+  ],
+  "naturalClasses": [
+    {
+      "id": "vowels",
+      "name": "Vowels",
+      "abbreviation": "V",
+      "phonemes": [
+        "a",
+        "e",
+        "i",
+        "o",
+        "u"
+      ]
+    },
+    {
+      "id": "consonants",
+      "name": "Consonants",
+      "abbreviation": "C",
+      "phonemes": [
+        "b",
+        "d",
+        "g",
+        "k",
+        "l",
+        "m",
+        "n",
+        "p",
+        "r",
+        "s",
+        "t",
+        "v",
+        "w",
+        "y",
+        "z"
+      ]
+    }
+  ],
+  "environments": [
+    {
+      "id": "after-vowel",
+      "name": "After a vowel",
+      "representation": "/[V]_"
+    }
+  ],
+  "featureDefinitions": [
+    {
+      "id": "noun-class",
+      "name": "Noun class",
+      "abbreviation": "NC",
+      "values": [
+        {
+          "id": "class-1",
+          "name": "Class 1",
+          "abbreviation": "1"
+        },
+        {
+          "id": "class-2",
+          "name": "Class 2",
+          "abbreviation": "2"
+        },
+        {
+          "id": "class-7",
+          "name": "Class 7",
+          "abbreviation": "7"
+        },
+        {
+          "id": "class-8",
+          "name": "Class 8",
+          "abbreviation": "8"
+        },
+        {
+          "id": "class-9",
+          "name": "Class 9",
+          "abbreviation": "9"
+        },
+        {
+          "id": "class-10",
+          "name": "Class 10",
+          "abbreviation": "10"
+        }
+      ]
+    },
+    {
+      "id": "person",
+      "name": "Person",
+      "abbreviation": "PERS",
+      "values": [
+        {
+          "id": "first-singular",
+          "name": "First person singular",
+          "abbreviation": "1SG"
+        },
+        {
+          "id": "second-singular",
+          "name": "Second person singular",
+          "abbreviation": "2SG"
+        },
+        {
+          "id": "first-plural",
+          "name": "First person plural",
+          "abbreviation": "1PL"
+        },
+        {
+          "id": "second-plural",
+          "name": "Second person plural",
+          "abbreviation": "2PL"
+        }
+      ]
+    },
+    {
+      "id": "object-class",
+      "name": "Object class",
+      "abbreviation": "OC",
+      "values": [
+        {
+          "id": "object-class-1",
+          "name": "Class 1 object",
+          "abbreviation": "1OBJ"
+        },
+        {
+          "id": "object-class-2",
+          "name": "Class 2 object",
+          "abbreviation": "2OBJ"
+        }
+      ]
+    },
+    {
+      "id": "tense-aspect",
+      "name": "Tense and aspect",
+      "abbreviation": "TAM",
+      "values": [
+        {
+          "id": "present",
+          "name": "Present",
+          "abbreviation": "PRES"
+        },
+        {
+          "id": "past",
+          "name": "Past",
+          "abbreviation": "PST"
+        },
+        {
+          "id": "future",
+          "name": "Future",
+          "abbreviation": "FUT"
+        },
+        {
+          "id": "perfect",
+          "name": "Perfect",
+          "abbreviation": "PRF"
+        }
+      ]
+    }
+  ],
+  "inflectionClasses": [
+    {
+      "id": "class-1",
+      "name": "Noun class 1",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "class-2",
+      "name": "Noun class 2",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "class-7",
+      "name": "Noun class 7",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "class-8",
+      "name": "Noun class 8",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "class-9",
+      "name": "Noun class 9",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "class-10",
+      "name": "Noun class 10",
+      "partOfSpeech": "noun"
+    }
+  ],
+  "partsOfSpeech": [
+    {
+      "id": "noun",
+      "name": "Noun"
+    },
+    {
+      "id": "verb",
+      "name": "Verb"
+    }
+  ],
+  "stems": [
+    {
+      "id": "toto-class-1",
+      "form": "toto",
+      "partOfSpeech": "noun",
+      "gloss": "child",
+      "inflectionClass": "class-1",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-1"
+        }
+      ]
+    },
+    {
+      "id": "toto-class-2",
+      "form": "toto",
+      "partOfSpeech": "noun",
+      "gloss": "child",
+      "inflectionClass": "class-2",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-2"
+        }
+      ]
+    },
+    {
+      "id": "tabu-class-7",
+      "form": "tabu",
+      "partOfSpeech": "noun",
+      "gloss": "book",
+      "inflectionClass": "class-7",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-7"
+        }
+      ]
+    },
+    {
+      "id": "tabu-class-8",
+      "form": "tabu",
+      "partOfSpeech": "noun",
+      "gloss": "book",
+      "inflectionClass": "class-8",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-8"
+        }
+      ]
+    },
+    {
+      "id": "dizi-class-9",
+      "form": "dizi",
+      "partOfSpeech": "noun",
+      "gloss": "banana",
+      "inflectionClass": "class-9",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-9"
+        }
+      ]
+    },
+    {
+      "id": "dizi-class-10",
+      "form": "dizi",
+      "partOfSpeech": "noun",
+      "gloss": "banana",
+      "inflectionClass": "class-10",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-10"
+        }
+      ]
+    },
+    {
+      "id": "lal",
+      "form": "lal",
+      "partOfSpeech": "verb",
+      "gloss": "sleep"
+    },
+    {
+      "id": "let",
+      "form": "let",
+      "partOfSpeech": "verb",
+      "gloss": "bring"
+    },
+    {
+      "id": "lip",
+      "form": "lip",
+      "partOfSpeech": "verb",
+      "gloss": "pay"
+    },
+    {
+      "id": "pend",
+      "form": "pend",
+      "partOfSpeech": "verb",
+      "gloss": "like; love"
+    },
+    {
+      "id": "pig",
+      "form": "pig",
+      "partOfSpeech": "verb",
+      "gloss": "hit; strike"
+    },
+    {
+      "id": "andik",
+      "form": "andik",
+      "partOfSpeech": "verb",
+      "gloss": "write"
+    },
+    {
+      "id": "som",
+      "form": "som",
+      "partOfSpeech": "verb",
+      "gloss": "read; study"
+    },
+    {
+      "id": "sem",
+      "form": "sem",
+      "partOfSpeech": "verb",
+      "gloss": "say; speak"
+    }
+  ],
+  "affixSlots": [
+    {
+      "id": "noun-class-prefix",
+      "name": "Noun class prefix",
+      "partOfSpeech": "noun",
+      "optional": false
+    },
+    {
+      "id": "subject",
+      "name": "Subject",
+      "partOfSpeech": "verb",
+      "optional": false
+    },
+    {
+      "id": "tense-aspect-slot",
+      "name": "Tense/aspect",
+      "partOfSpeech": "verb",
+      "optional": false
+    },
+    {
+      "id": "object",
+      "name": "Object",
+      "partOfSpeech": "verb",
+      "optional": true
+    },
+    {
+      "id": "final-vowel",
+      "name": "Final vowel",
+      "partOfSpeech": "verb",
+      "optional": false
+    }
+  ],
+  "affixTemplates": [
+    {
+      "id": "noun",
+      "name": "Noun class prefix",
+      "partOfSpeech": "noun",
+      "prefixSlots": [
+        "noun-class-prefix"
+      ],
+      "final": true
+    },
+    {
+      "id": "verb",
+      "name": "Verb prefixes and final vowel",
+      "partOfSpeech": "verb",
+      "prefixSlots": [
+        "subject",
+        "tense-aspect-slot",
+        "object"
+      ],
+      "suffixSlots": [
+        "final-vowel"
+      ],
+      "final": true
+    }
+  ],
+  "affixes": [
+    {
+      "id": "noun-class-1-m",
+      "partOfSpeech": "noun",
+      "slots": [
+        "noun-class-prefix"
+      ],
+      "gloss": "class 1 noun prefix",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-1"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "noun-class-1-m",
+          "form": "m",
+          "morphType": "prefix",
+          "inflectionClasses": [
+            "class-1"
+          ],
+          "requiredFeatures": [
+            {
+              "featureId": "noun-class",
+              "valueId": "class-1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noun-class-2-wa",
+      "partOfSpeech": "noun",
+      "slots": [
+        "noun-class-prefix"
+      ],
+      "gloss": "class 2 noun prefix",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-2"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "noun-class-2-wa",
+          "form": "wa",
+          "morphType": "prefix",
+          "inflectionClasses": [
+            "class-2"
+          ],
+          "requiredFeatures": [
+            {
+              "featureId": "noun-class",
+              "valueId": "class-2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noun-class-7-ki",
+      "partOfSpeech": "noun",
+      "slots": [
+        "noun-class-prefix"
+      ],
+      "gloss": "class 7 noun prefix",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-7"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "noun-class-7-ki",
+          "form": "ki",
+          "morphType": "prefix",
+          "inflectionClasses": [
+            "class-7"
+          ],
+          "requiredFeatures": [
+            {
+              "featureId": "noun-class",
+              "valueId": "class-7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noun-class-8-vi",
+      "partOfSpeech": "noun",
+      "slots": [
+        "noun-class-prefix"
+      ],
+      "gloss": "class 8 noun prefix",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-8"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "noun-class-8-vi",
+          "form": "vi",
+          "morphType": "prefix",
+          "inflectionClasses": [
+            "class-8"
+          ],
+          "requiredFeatures": [
+            {
+              "featureId": "noun-class",
+              "valueId": "class-8"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noun-class-9-n",
+      "partOfSpeech": "noun",
+      "slots": [
+        "noun-class-prefix"
+      ],
+      "gloss": "class 9 noun prefix",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-9"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "noun-class-9-n",
+          "form": "n",
+          "morphType": "prefix",
+          "inflectionClasses": [
+            "class-9"
+          ],
+          "requiredFeatures": [
+            {
+              "featureId": "noun-class",
+              "valueId": "class-9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noun-class-10-n",
+      "partOfSpeech": "noun",
+      "slots": [
+        "noun-class-prefix"
+      ],
+      "gloss": "class 10 noun prefix",
+      "features": [
+        {
+          "featureId": "noun-class",
+          "valueId": "class-10"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "noun-class-10-n",
+          "form": "n",
+          "morphType": "prefix",
+          "inflectionClasses": [
+            "class-10"
+          ],
+          "requiredFeatures": [
+            {
+              "featureId": "noun-class",
+              "valueId": "class-10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "subject-1sg-ni",
+      "partOfSpeech": "verb",
+      "slots": [
+        "subject"
+      ],
+      "gloss": "first-person singular subject",
+      "features": [
+        {
+          "featureId": "person",
+          "valueId": "first-singular"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "subject-1sg-ni",
+          "form": "ni",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "subject-2sg-u",
+      "partOfSpeech": "verb",
+      "slots": [
+        "subject"
+      ],
+      "gloss": "second-person singular subject",
+      "features": [
+        {
+          "featureId": "person",
+          "valueId": "second-singular"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "subject-2sg-u",
+          "form": "u",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "subject-1pl-tu",
+      "partOfSpeech": "verb",
+      "slots": [
+        "subject"
+      ],
+      "gloss": "first-person plural subject",
+      "features": [
+        {
+          "featureId": "person",
+          "valueId": "first-plural"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "subject-1pl-tu",
+          "form": "tu",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "subject-2pl-m",
+      "partOfSpeech": "verb",
+      "slots": [
+        "subject"
+      ],
+      "gloss": "second-person plural subject",
+      "features": [
+        {
+          "featureId": "person",
+          "valueId": "second-plural"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "subject-2pl-m",
+          "form": "m",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "tense-present-na",
+      "partOfSpeech": "verb",
+      "slots": [
+        "tense-aspect-slot"
+      ],
+      "gloss": "present",
+      "features": [
+        {
+          "featureId": "tense-aspect",
+          "valueId": "present"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "tense-present-na",
+          "form": "na",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "tense-past-li",
+      "partOfSpeech": "verb",
+      "slots": [
+        "tense-aspect-slot"
+      ],
+      "gloss": "past",
+      "features": [
+        {
+          "featureId": "tense-aspect",
+          "valueId": "past"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "tense-past-li",
+          "form": "li",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "tense-future-ta",
+      "partOfSpeech": "verb",
+      "slots": [
+        "tense-aspect-slot"
+      ],
+      "gloss": "future",
+      "features": [
+        {
+          "featureId": "tense-aspect",
+          "valueId": "future"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "tense-future-ta",
+          "form": "ta",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "tense-perfect-me",
+      "partOfSpeech": "verb",
+      "slots": [
+        "tense-aspect-slot"
+      ],
+      "gloss": "perfect",
+      "features": [
+        {
+          "featureId": "tense-aspect",
+          "valueId": "perfect"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "tense-perfect-me",
+          "form": "me",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "object-class-1-m",
+      "partOfSpeech": "verb",
+      "slots": [
+        "object"
+      ],
+      "gloss": "class 1 object marker",
+      "features": [
+        {
+          "featureId": "object-class",
+          "valueId": "object-class-1"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "object-class-1-m",
+          "form": "m",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "object-class-2-wa",
+      "partOfSpeech": "verb",
+      "slots": [
+        "object"
+      ],
+      "gloss": "class 2 object marker",
+      "features": [
+        {
+          "featureId": "object-class",
+          "valueId": "object-class-2"
+        }
+      ],
+      "allomorphs": [
+        {
+          "id": "object-class-2-wa",
+          "form": "wa",
+          "morphType": "prefix"
+        }
+      ]
+    },
+    {
+      "id": "final-vowel-a",
+      "partOfSpeech": "verb",
+      "slots": [
+        "final-vowel"
+      ],
+      "gloss": "affirmative indicative final vowel",
+      "allomorphs": [
+        {
+          "id": "final-vowel-a",
+          "form": "a",
+          "morphType": "suffix"
+        }
+      ]
+    }
+  ],
+  "phonologicalRules": [],
+  "texts": [
+    {
+      "id": "class-one-and-two",
+      "title": "Child and children",
+      "sentences": [
+        "mtoto ninampiga",
+        "watoto ninawapiga"
+      ]
+    },
+    {
+      "id": "books-and-bananas",
+      "title": "Books and bananas",
+      "sentences": [
+        "kitabu ninasoma",
+        "vitabu ninaleta",
+        "ndizi ninasoma"
+      ]
+    },
+    {
+      "id": "finite-verb-forms",
+      "title": "Finite verb forms",
+      "sentences": [
+        "ninasoma",
+        "nililala"
+      ]
+    }
+  ]
+}

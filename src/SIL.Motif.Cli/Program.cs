@@ -25,11 +25,15 @@ using SIL.Motif.Worker.Store;
 using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Help;
 
 CrashDialogs.Suppress();
 
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
     Environment.GetEnvironmentVariable(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
+
+if (args.Length > 0 && args[0] == "help")
+    return HelpCommand.Run(args[1..], commandPolicy, Console.Out, Console.Error);
 
 if (args.Length == 0)
 {

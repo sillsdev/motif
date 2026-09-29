@@ -1,10 +1,10 @@
 {
-  "version": "0.3.2",
-  "tag": "v0.3.2",
+  "version": "0.5.0",
+  "tag": "v0.5.0",
   "assets": {
     "win-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.3.2/pangloss.exe",
-      "sha256": "dd54dc6b85fde567cad9feb413b56801742d8fcdad039ee5c750d5aa3f1a240f"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.5.0/pangloss.exe",
+      "sha256": "6a4f557504794d4aef7f62cb6f996224c98787cd8357a380eb65edc81939c46e"
     }
   }
 }

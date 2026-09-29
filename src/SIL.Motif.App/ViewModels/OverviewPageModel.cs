@@ -189,7 +189,7 @@ public sealed partial class OverviewPageModel : PageModel
     public string WarningsLeftOut => Overview?.Warnings?.WarningCount is { } count
         ? $"{count:N0} left out of the grammar" : string.Empty;
 
-    /// <summary>The informational findings and largest kind returned by the Overview command.</summary>
+    /// <summary>The error and informational findings and largest kind returned by the Overview command.</summary>
     public string WarningsDetails => Overview?.Warnings is not { } warnings ? "No warning summary is available."
         : warnings.Count is null ? "No findings count was recorded."
         : FormatWarningDetails(warnings);
@@ -212,6 +212,8 @@ public sealed partial class OverviewPageModel : PageModel
     private static string FormatWarningDetails(OverviewWarningsSummary warnings)
     {
         var parts = new List<string>();
+        if (warnings.ErrorCount is { } errorCount)
+            parts.Add($"{errorCount:N0} {(errorCount == 1 ? "error" : "errors")}");
         if (warnings.InformationCount is { } informationCount)
             parts.Add($"{informationCount:N0} worth a look");
         if (warnings.LargestKind is { } kind)

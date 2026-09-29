@@ -191,6 +191,24 @@ anything fails the run, so an entry cannot outlive the value it excuses. A new v
 `Primitives.axaml`. A new shared meaning goes in `Intent.axaml`, and its header lists it. A new
 component file gets a `StyleInclude` in `App.axaml` and a case in `ComponentStyleTests`.
 
+## Help text and the documentation site
+
+**Every Released command ships with its Help text** ([ADR 0047](docs/adr/0047-generated-help-walkthroughs-and-docs-site.md)):
+a Title of at most 30 characters and a one-to-three-sentence Description in `help/en/commands.json`, and a
+Help page at `help/en/commands/<slug>.md`. `HelpCatalogTests.EnglishCatalogCoversEveryReleasedCommandAndRequiredTerms`
+fails the suite when a Released command lacks any of them, so adding or promoting a command means writing them.
+Glossary terms live the same way in `terms.json` and `terms/`; the Guide lives in `help/en/guide/`.
+
+Help pages and Guide pages are plain CommonMark read by three readers — `motif help`, the window and the site —
+so they carry no front matter, MDX or HTML. Cross-links name codes, not URLs: `[text](cmd:assess)`,
+`[text](term:proposal)`, with multi-word codes percent-encoded (`cmd:baseline%20capture`) and Released commands
+only. Every statement about the window or the CLI must match the code; the window's words (ADR 0046) on Guide
+pages, the CLI's on command and agent pages. English is the source; other languages arrive through Crowdin as
+sibling folders, so never hard-code English text where a Title or Description would do.
+
+The site in `site/` is built from those files (see `README.md`, "Documentation"); `cd site; npm test` covers its
+sync script. It is not yet part of `./build.ps1` or CI.
+
 ## Non-negotiable design rules
 
 1. The canonical input is semantic CRUD+ intent, never a low-level property script or reflection
@@ -235,7 +253,7 @@ component file gets a `StyleInclude` in `App.axaml` and a case in `ComponentStyl
     read on, the body is for whoever implements or audits it. A status line like "Slice A built;
     the poisoning guard now fires for real" fails the rule — it names machinery only.
 
-18. **No migration code before 1.0.** Motif is pre-alpha: there is no database, no file, and no
+18. **No migration code before 1.0.** Users see Motif as a tech demo; for storage it is pre-1.0: there is no database, no file, and no
     on-disk shape in the world worth preserving, and every line written to carry an old one forward
     is a line paid for with nothing. A stored shape is either the current one or it is refused with
     an error telling the developer to delete it and let Motif recreate it. This applies to schema

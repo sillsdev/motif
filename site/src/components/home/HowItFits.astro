@@ -1,0 +1,21 @@
+---
+import HomeSection from './HomeSection.astro';
+
+const diagram = Object.values(import.meta.glob('../../assets/home/how-it-fits.svg', {
+	eager: true,
+	query: '?url',
+	import: 'default',
+}))[0];
+const { id, diagramAlt } = Astro.props;
+---
+
+<HomeSection id={id}>
+	<slot />
+	{diagram && (
+		<figure class="home-diagram" aria-label={diagramAlt}>
+			<img class="home-diagram__art" src={diagram} alt="" />
+			<slot name="diagram-labels" />
+			<slot name="diagram-loop" />
+		</figure>
+	)}
+</HomeSection>

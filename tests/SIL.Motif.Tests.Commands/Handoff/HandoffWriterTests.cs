@@ -75,6 +75,24 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.False(Directory.Exists(destination));
     }
 
+    [Fact]
+    public void SelectedWordsAreAssessedAfreshWithoutARetainedInvocation()
+    {
+        using var seeded = NewSeededScratch();
+        using var invoker = NewInvoker();
+        var destination = Path.Combine(_root, "handoff-selected-words");
+        var selectedWords = new SelectionRequest(false, [], ["motifa"], false, null);
+
+        var outcome = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, selectedWords, true),
+            NewManagedRoot(), NewAssessor(), invoker, onProgress: null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(["motifa"], outcome.Value!.Selection.Words);
+        Assert.NotEmpty(outcome.Value.AssessmentIds);
+        Assert.True(File.Exists(Path.Combine(destination, "grammar.json")));
+    }
+
     // Complete must arrive once, at the end: the nested Assessment reports its own part way through.
     [Fact]
     public void ProgressReachesCompleteOnlyOnceTheFolderIsActuallyWritten()

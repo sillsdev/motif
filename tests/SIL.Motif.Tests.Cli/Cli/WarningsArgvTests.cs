@@ -50,7 +50,7 @@ public sealed class WarningsArgvTests(PristineProjectFixture pristine) : IDispos
         Assert.Equal("hc-undeclared-segment", Assert.Single(ProjectionJson.Deserialize<WarningsResponse>(kind.Output)!.Findings).Code);
         Assert.Equal(0, leftOut.ExitCode);
         Assert.Equal("hc-unused-rule", Assert.Single(ProjectionJson.Deserialize<WarningsResponse>(leftOut.Output)!.Findings).Code);
-        Assert.Contains("1 warnings, 0 information", human.Output, StringComparison.Ordinal);
+        Assert.Contains("0 errors, 1 warning, 0 information", human.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("hc-undeclared-segment", human.Output, StringComparison.Ordinal);
     }
 

@@ -1,0 +1,35 @@
+{
+  "locale": "en",
+  "siteRoot": "https://motif-docs.pages.dev",
+  "entries": [
+    {
+      "kind": "command",
+      "code": "apply --all-pending",
+      "slug": "apply-all-pending",
+      "title": "Apply pending changes",
+      "description": "Applies each pending change to the FieldWorks project in one unit of work.",
+      "helpPage": null,
+      "usage": ["Usage: motif apply --all-pending"],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/apply-all-pending/"
+    },
+    {
+      "kind": "ui",
+      "code": "Motif.Overview.Refresh",
+      "slug": "motif-overview-refresh",
+      "title": "Refresh numbers",
+      "description": "Capture a new Baseline and measure it again.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/controls/motif-overview-refresh/"
+    },
+    {
+      "kind": "term",
+      "code": "proposal",
+      "slug": "proposal",
+      "title": "Proposal",
+      "description": "A named set of changes that can be reviewed and applied as one unit.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/proposal/"
+    }
+  ]
+}

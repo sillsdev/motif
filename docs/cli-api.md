@@ -34,6 +34,7 @@ that dispatches them.
 | `put-pending-change` | Developer | `put-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> --kind <kind> --word <word> [--wordform-id <id>] [--assessment <id> --reading-index <zero-based> --reading-json <json>] [--stored-analysis-id <id>] [--occurrence-text-id <guid> --occurrence-paragraph-id <guid> --occurrence-segment-id <guid> --occurrence-index <zero-based>] [--json]` |
 | `remove-pending-change` | Developer | `remove-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
 | `recheck-pending-changes` | Developer | `recheck-pending-changes --project <fwdata> --expected-revision <revision> [--json]` |
+| `review-numbers` | Developer | `review-numbers --project <fwdata> [--from <assessmentId>] --to <assessmentId> --touched-words <count> [--json]` |
 | `reconfirm-pending-change` | Developer | `reconfirm-pending-change --project <fwdata> --expected-revision <revision> --change-id <id> [--json]` |
 | `add-set-gloss` | Developer | `add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> --text <text> [--depends-on <opId>[,<opId>...]]` |
 | `add-delete-lexeme-form` | Developer | `add-delete-lexeme-form --project <fwdata> --draft <name> --target <canonicalId>` |
@@ -66,12 +67,14 @@ that dispatches them.
 | `stats` | Released | `stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]` |
 | `selection show` | Released | `selection show --project <fwdata> [--json]` |
 | `selection set-default` | Released | `selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] [--add-words <word,word>] [--json]` |
+| `texts list` | Released | `texts list --project <fwdata> [--json]` |
+| `setup skip` | Released | `setup skip --project <fwdata> [--json]` |
 | `store delete-refused` | Developer | `store delete-refused --project <fwdata> [--json]` |
 | `overview` | Released | `overview --project <fwdata> [--json]` |
 | `warnings` | Released | `warnings --project <fwdata> [--kind <code>] [--left-out] [--json]` |
 | `grammar check` | Released | `grammar check --project <fwdata> [--json]` |
 | `timing` | Released | `timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind\|rule] [--rule <name>] [--top N] [--json]` |
-| `handoff` | Released | `handoff <project> --out <folder> [--texts <guid,guid>] [--flextext] [--no-assess] [--json]` |
+| `handoff` | Released | `handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]` |
 | `add-corpus` | Released | `add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true\|false] [--may-redistribute true\|false] [--may-use-commercially true\|false] [--requires-attribution true\|false] [--licence-basis <text>]` |
 | `add-document` | Released | `add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> [--title <text>] [--licence <text>] [--may-derive true\|false] [--licence-basis <text>]` |
 | `add-corpus-bundle` | Released | `add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)` |
@@ -79,9 +82,9 @@ that dispatches them.
 | `show-corpus` | Released | `show-corpus --project <fwdata> <corpusId> [--json]` |
 | `baseline-refresh` | Released | `baseline-refresh --project <fwdata>` |
 | `dry-run` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
-| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> [--wait] [--json]` |
+| `dry-run --wait` | Developer | `dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--json]` |
 | `trial` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
-| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]` |
+| `trial --wait` | Developer | `trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] --wait [--wait-timeout-ms <ms>] [--json]` |
 | `trial --pending` | Developer | `trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> --wait [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]` |
 | `jobs show` | Released | `jobs show <jobId> --project <fwdata> [--json]` |
 | `jobs assessments` | Released | `jobs assessments <jobId> --project <fwdata> [--json]` |
@@ -100,16 +103,32 @@ wordform changes has an empty word Selection by default. `--all-words` measures 
 project instead, regardless of the scope's word query; `--scope` still chooses the Assessor, kinds,
 and limits.
 
+## Help
+
+`help` is the one verb outside the command catalog; it reads the Help text ADR 0047 describes, embedded in the
+binary, and never opens a project.
+
+```
+motif help                          # every Released command, with its Title
+motif help <command> [--full]       # Title, Description, usage lines and online address; --full adds the Help page
+motif help <command> --json         # the same entry as JSON
+motif help --all --json             # every Released command and glossary term, for an agent to read in one call
+```
+
+A name that is neither a Released command nor a glossary term is refused with exit `2`. Each entry of
+`--all --json` carries `kind` (`command`, `ui` or `term`), `code`, `slug`, `title`, `description`, `helpPage`
+and `url`; commands add `usage` and `surface`. Developer commands have no Help text and are not listed.
+
 ## Released and developer surfaces
 
 The Released surface contains `open`, `analyses`, `config show`, `report`, `report --list-kinds`,
 `compare`, `baseline capture`, `assess`, `stats`, `selection show`, `selection set-default`,
-`overview`, `warnings`, `grammar check`, `timing`, `handoff`, `add-corpus`, `add-document`,
+`texts list`, `setup skip`, `overview`, `warnings`, `grammar check`, `timing`, `handoff`, `add-corpus`, `add-document`,
 `add-corpus-bundle`, `corpora`, `show-corpus`, `baseline-refresh`, `jobs show`, `jobs assessments`,
 `jobs list`, `jobs cancel`, `jobs requeue`, `jobs move`, and `apply --all-pending`.
 
 The Developer surface contains `new`, `pending-changes`, `put-pending-change`,
-`remove-pending-change`, `recheck-pending-changes`, `reconfirm-pending-change`, `add-set-gloss`, `add-delete-lexeme-form`,
+`remove-pending-change`, `recheck-pending-changes`, `reconfirm-pending-change`, `review-numbers`, `store delete-refused`, `add-set-gloss`, `add-delete-lexeme-form`,
 `compose-author-lexeme-form`, `compose-author-feature-structure`, `promote-gloss`, `label`, `comment`,
 `finalize`, `discard-draft`, `reopen`, `duplicate`, `remove-operations`, `split`, `defer`, `reject`,
 `supersede`, `list`, `show`, `preflight`, `apply`, `log`, `dry-run`,
@@ -499,9 +518,10 @@ the Assessment, so partial statistics cannot look complete. Opening Overview or 
 
 The Warnings page reads PanGloss's grammar-health report last stored for the current Baseline. Opening the page
 or running `warnings` never invokes PanGloss. The App's **Reload grammar** action and the CLI check run PanGloss
-`grammar-health` on the current Baseline. A successful run replaces that Baseline's one stored result. The store
-also records the resolved default Selection digest at check time when one exists, but grammar findings remain
-valid after the Selection changes.
+`grammar-health` on the current Baseline. A written report replaces that Baseline's one stored result. PanGloss
+v0.5.0 may exit nonzero after writing a report that contains error-level findings; Motif still reads and stores
+that report. A nonzero exit without a report is a refusal. The store also records the resolved default Selection
+digest at check time when one exists, but grammar findings remain valid after the Selection changes.
 
 **`grammar check --project <fwdata> [--json]`** performs a new check. With no Baseline it succeeds with
 `hasBaseline: false` and no findings. `--json` emits `GrammarCheckResponse`. Its refusal codes are
@@ -510,13 +530,15 @@ valid after the Selection changes.
 
 **`warnings --project <fwdata> [--kind <code>] [--left-out] [--json]`** reads those stored findings.
 `--kind` matches one stable diagnostic code exactly, ignoring case. `--left-out` keeps only findings whose
-level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result.
+level is `warning`; the two filters can be combined. Counts by level and kind describe the filtered result,
+including separate counts for `error`, `warning`, and `info` findings.
 `warnings` reads the stored result. Without a check, text says the grammar has not been checked and JSON has
 `hasCheck: false` with empty findings.
-`--json` emits `WarningsResponse`, including each finding's description, origin, guidance, subjects, and links.
+`--json` emits `WarningsResponse`, including `ErrorCount`, `WarningCount`, and `InformationCount`, plus each
+finding's description, origin, guidance, subjects, and links.
 
-PanGloss v2 writes an object with `schema_version: 2`, `fieldworks_project`, `summary`, and `diagnostics`.
-The summary groups by `code` and includes `group_name`, `level` (`warning` or `info`), and `count`. Each
+PanGloss v0.5.0 writes an object with `schema_version: 3`, `fieldworks_project`, `summary`, and `diagnostics`.
+The summary groups by `code` and includes `group_name`, `level` (`error`, `warning`, or `info`), and `count`. Each
 diagnostic includes `level`, `code`, `group_name`, `origin` (`check` or `import`), `description`, nullable
 `guidance`, and `subjects`.
 
@@ -527,9 +549,9 @@ Import diagnostics appear as **From import**, while grammar-check diagnostics ap
 Motif does not publish an audience property; support can be added when PanGloss includes audience in the report.
 Standard-error warning lines are not read as grammar findings.
 
-Motif reads schema version 2 only. A bare array or an earlier findings envelope is refused as
+Schema version 3 adds the `error` level. Motif reads schema versions 2 and 3. A bare array or an earlier findings envelope is refused as
 `grammarcheck.malformed-findings`. A different integer version is refused as
-`grammarcheck.unsupported-schema`, with the received and expected versions; update PanGloss and Motif together.
+`grammarcheck.unsupported-schema`, with the received version and the accepted versions; update PanGloss and Motif together.
 
 **`stats <project> [--proposal <id>] [--json] [-- <forwarded to pangloss>...]`** passes a statistics query
 straight through to PanGloss's own `stats` command. Motif contributes exactly two arguments of its own —
@@ -565,12 +587,11 @@ recorded without a statistics cache), `stats.parser-unavailable` (the executable
 `stats.cancelled`. Every statistics invocation takes machine-queue admission and runs inside the
 Windows job object, with a default ten-minute wall-clock cap.
 
-**`handoff <project> --out <folder> --invocation <id> [--flextext] [--no-assess] [--json]`** writes a
-self-explaining folder that an AI agent with no network and no package installer can read on its own: the
-grammar, the chosen Texts, the exact selection that was parsed, and — unless `--no-assess` — PanGloss's own
-statistics, alongside a reader script and reference documents the repository maintains and copies in
-unchanged. It composes `baseline capture`, `assess`, and the six `stats` groups rather than reimplementing
-any of them, and shares the same project/store refusals every verb behind `ProjectStoreCommand` does.
+**`handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]`** writes the AI Handoff of
+[ADR 0045](adr/0045-the-handoff-is-five-files-and-a-pasted-header.md): exactly five flat files a person drags
+into a chat model — the grammar PanGloss parsed with, the chosen Texts, the retained Assessment, a reader script,
+and a `handoff.md` that explains the rest. It shares the same project/store refusals every verb behind
+`ProjectStoreCommand` does. With `--no-assess` it also accepts `--texts <guid,guid>`.
 Both `<project>` and `--out <folder>` are required positional/flag values; omitting either is a usage
 failure. `--invocation <id>` selects one completed retained Assessment. It is required unless `--no-assess`
 is given, and `--texts` cannot be combined with it: the retained Selection decides which Texts and words
@@ -582,12 +603,12 @@ different evidence.
 With `--no-assess`, the command keeps the Baseline-only path: no Assessment is selected, every Text is
 exported when `--texts` is absent, and a chosen GUID list restricts the Text files. A named id that does not
 resolve to a Text is skipped on this legacy Baseline-only path; retained-result exports refuse a missing
-Text id instead. A duplicate Text title is disambiguated by its own GUID in the file name, so two Texts
-sharing a title still produce two distinct files — pinned by `DuplicateTextTitlesProduceTwoDistinctFiles`.
+Text id instead. Every Text is one record in `texts.json`, keyed by its sanitized title and GUID, so two Texts sharing a title
+stay distinct.
 
 **Destination atomicity.** The folder is built in a sibling `.incoming-<guid>` directory next to the
 requested `--out` path, its exact listing is validated as complete, and only then is it moved into place
-with one `Directory.Move` — pinned by `AnEndToEndHandoffWritesTheExactListingAndEveryFileValidates`. A
+with one `Directory.Move` — pinned by `AnEndToEndHandoffWritesExactlyFiveFilesAndEveryJsonFileValidates`. A
 refusal returned during populate, or an exception thrown out of it — a cancellation, a PanGloss grammar-import
 failure — deletes the incoming directory and leaves no destination directory at all, pinned by
 `CancellationDuringGrammarImportLeavesNoDestinationDirectory` and
@@ -596,32 +617,17 @@ directory that is not empty, is refused as `handoff.destination-exists` without 
 it — pinned by `AnExistingNonEmptyDestinationRefusesWithoutTouchingIt` — so a mistyped `--out` that happens
 to name a real folder can never erase it.
 
-**`--no-assess`** omits `statistics.md` and the whole `statistics/` directory, but still writes the grammar,
-the Texts, and `selection.txt` — pinned by `NoAssessOmitsStatisticsButStillWritesGrammarTextsAndSelection`.
-The response's `assessmentIds` is empty in this case, and human text prints `(none; --no-assess)` where the
-Assessment ids would otherwise go.
+**The five files.** `grammar.json` (the grammar PanGloss actually parsed with), `texts.json` (every selected
+Text, one compact record per line), `assessment.json` (whether PanGloss accepted each Selection word, and how
+long it took), `parse_grammar_texts_assessment.py` (a reader for the three data files; see its own `--help`)
+and `handoff.md` (what the folder is, with links to each format's documentation at a pinned PanGloss release).
+The helper script is embedded in the `motif` binary, so the folder needs no network or package installer to be
+read.
 
-**`--flextext`** additionally writes a `.flextext.xml` beside each Text's `.flextext.json` mirror, pinned by
-`FlexTextAddsMatchingXmlBesideJson`; without it only the JSON form is written.
-
-The complete listing, with `--no-assess` not given: `instructions.md`, `grammar.json`, `selection.txt`,
-`statistics.md`, `recipes.md`, `read_handoff.py`, `reference/grammar-format.md`,
-`reference/flextext-json-format.md`, `reference/hc-mechanics.md`, one
-`texts/<title>-<guid>.flextext.json` per exported Text (plus a matching `.flextext.xml` under
-`--flextext`), and **six** `statistics/<group>.jsonl` files — one per group `pangloss stats --group`
-accepts: `word`, `object`, `allomorph`, `morpheme`, `group`, and `never-fires`, the only hyphenated one.
-`--no-assess` removes `statistics.md` and the entire `statistics/` directory from that listing and changes
-nothing else.
-
-`instructions.md`, `recipes.md`, `read_handoff.py`, and the three `reference/` documents are static assets
-this repository maintains and embeds in the `motif` binary; every Handoff carries its own unchanged copy,
-which is why the folder needs neither network access nor a package installer to be read. `instructions.md`
-explains what the folder is for, states plainly that it carries real linguistic data (uploading it to a
-chat model sends that data to whoever runs the model), and names the "as of FieldWorks' last save" wording
-that governs everything inside. The three `reference/` documents are maintained in the repository at
-`docs/handoff/grammar-format.md`, `docs/handoff/flextext-json-format.md`, and `docs/handoff/hc-mechanics.md`
-— `instructions.md` points a reader at their raw GitHub URLs for a newer copy, in case a question turns on
-a detail fixed after this particular Handoff was written.
+**`--no-assess`** omits `assessment.json`, leaving four files, and still writes the grammar and the Texts —
+pinned by `NoAssessOmitsAssessmentJsonButStillWritesGrammarAndTexts`. `handoff.md` then says no Assessment was
+run. The response's `assessmentIds` is empty in this case, and human text prints `(none; --no-assess)` where
+the Assessment ids would otherwise go.
 
 Human text prints the output directory, the Baseline's last-save timestamp with the same "(as of
 FieldWorks' last save)" wording `baseline capture` and `assess` use, the Selection's word count, the total

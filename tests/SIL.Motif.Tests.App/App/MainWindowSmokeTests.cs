@@ -12,7 +12,9 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using LiveMarkdown.Avalonia;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -44,6 +46,41 @@ public sealed class MainWindowSmokeTests
     public MainWindowSmokeTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
+    public void F1OpensHelpForTheCurrentPage()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            workspace.CurrentPage = WorkspacePage.Timing;
+            try
+            {
+                window.Show();
+                window.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.None, null);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var helpButton = window.FindControl<Button>("HelpButton");
+                Assert.NotNull(helpButton);
+                Assert.True(helpButton.Flyout?.IsOpen);
+                var helpView = Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content);
+                Assert.Equal("Timing", helpView.FindControl<TextBlock>("HelpTitle")?.Text);
+                Assert.Contains("Timing shows where recorded parse time went",
+                    helpView.FindControl<TextBlock>("HelpDescription")?.Text);
+                var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
+                Assert.Contains("More time does not fix a search that reached its step limit",
+                    string.Join("\n", markdownRenderer.RenderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString())));
+                var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
+                Assert.Contains("More time does not fix a search that reached its step limit", help.Markdown);
+                Assert.Contains("Slowest words in Timing", help.Markdown);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void ComposeAttachesEveryPanelBoundToItsOwnChildViewModelAndSetsTheWindowsDataContext()
     {
         _avalonia.Invoke(() =>
@@ -51,6 +88,7 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
 
             Assert.Same(workspace, window.DataContext);
+            Assert.Equal("Motif (tech demo)", window.Title);
             Assert.Same(workspace.PageModel<OverviewPageModel>(),
                 Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>()).DataContext);
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
@@ -65,6 +103,52 @@ public sealed class MainWindowSmokeTests
             Assert.Same(
                 workspace.PageModel<TimingPageModel>().Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
             Assert.Same(workspace.PageModel<AiHandoffPageModel>().Handoff, Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>()).Handoff);
+        });
+    }
+
+    [Fact]
+    public void ReviewChangesShowsTheFieldWorksBackupReminder()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (_, window, _) = NewComposedWindow();
+            try
+            {
+                Assert.Contains("Tech demo: make sure you have a FieldWorks backup before applying.",
+                    window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void FirstRunNoticeIsVisibleInTheWindow()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences(), new SucceedingUriLauncher());
+            var (_, window, _) = NewComposedWindow(notice);
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+
+                var banner = Assert.IsType<Border>(window.FindControl<Border>("TechDemoNotice"));
+                Assert.True(banner.IsVisible);
+                Assert.Contains(TechDemoNoticeViewModel.NoticeText,
+                    window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
+                Assert.Contains("Got it", window.GetLogicalDescendants().OfType<Button>()
+                    .Select(button => button.Content as string));
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Acknowledge the tech demo notice");
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 
@@ -1191,7 +1275,7 @@ public sealed class MainWindowSmokeTests
     }
 
     private static (WorkspaceShellViewModel Workspace, MainWindow Window, FakeDragSource DragSource)
-        NewComposedWindow()
+        NewComposedWindow(TechDemoNoticeViewModel? techDemoNotice = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -1203,7 +1287,7 @@ public sealed class MainWindowSmokeTests
             selection,
             new AssessViewModel(fake, selection),
             new FakeFolderPicker(), dragSource,
-            fake, clipboard: new AvaloniaClipboard(window));
+            fake, clipboard: new AvaloniaClipboard(window), techDemoNotice: techDemoNotice);
 
         window.Compose(workspace);
         return (workspace, window, dragSource);
@@ -1240,6 +1324,18 @@ public sealed class MainWindowSmokeTests
     {
         public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(null);
+    }
+
+    private sealed class MemoryTechDemoNoticePreferences : ITechDemoNoticePreferences
+    {
+        public bool HasSeenTechDemoNotice { get; private set; }
+
+        public void MarkTechDemoNoticeSeen() => HasSeenTechDemoNotice = true;
+    }
+
+    private sealed class SucceedingUriLauncher : IUriLauncher
+    {
+        public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
     private sealed class FakeFolderPicker : IHandoffFolderPicker

@@ -1,0 +1,13 @@
+{
+  "id": "synthetic-bantu",
+  "title": "Synthetic Bantu-style sample",
+  "language": {
+    "name": "Swahili",
+    "tag": "sw"
+  },
+  "teaches": [
+    "noun-class prefixes and agreement"
+  ],
+  "summary": "Practice tracing how a generated grammar handles noun-class prefixes and agreement.",
+  "disclaimer": "Generated to demonstrate Motif. Modelled loosely on Swahili; not real Swahili data and not a description of any language."
+}

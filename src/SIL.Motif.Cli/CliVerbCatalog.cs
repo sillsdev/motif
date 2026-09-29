@@ -8,9 +8,8 @@ namespace SIL.Motif.Cli;
 /// the single command it reaches (matched by name against
 /// <see cref="SIL.Motif.Commands.Catalog.CommandCatalog.All"/>), and the usage line(s) printed for it.
 /// A verb whose flag selects between two different handlers — <c>report</c>, <c>dry-run</c>,
-/// <c>trial</c> — contributes two descriptors sharing a <see cref="Section"/> and <see cref="Verb"/>
-/// but each naming a distinct <see cref="CommandName"/>; only the first of the pair carries a usage
-/// line, so the banner does not print the shared line twice.
+/// <c>trial</c> — contributes descriptors that share a <see cref="Section"/> and <see cref="Verb"/>
+/// while naming distinct <see cref="CommandName"/> values and their invocation paths.
 /// </summary>
 public sealed record CliVerbDescriptor(
     string Section, string Verb, string CommandName, IReadOnlyList<string> UsageLines);
@@ -133,11 +132,19 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "dry-run", "dry-run",
             new[] { "dry-run --project <fwdata> <proposalId> [--wait] [--json]" }),
-        new CliVerbDescriptor("Commands", "dry-run", "dry-run --wait", NoUsage),
+        new CliVerbDescriptor(
+            "Commands", "dry-run", "dry-run --wait",
+            new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
             new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]" }),
-        new CliVerbDescriptor("Commands", "trial", "trial --wait", NoUsage),
+        new CliVerbDescriptor(
+            "Commands", "trial", "trial --wait",
+            new[]
+            {
+                "trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] --wait " +
+                "[--wait-timeout-ms <ms>] [--json]",
+            }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --pending",
             new[]
@@ -228,7 +235,8 @@ public static class CliVerbCatalog
             "Handoff", "handoff", "handoff",
             new[]
             {
-                "handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]",
+                "handoff <project> --out <folder> --invocation <id> [--no-assess] [--json] OR " +
+                "motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]",
             }),
 
         new CliVerbDescriptor(
