@@ -30,7 +30,7 @@ public sealed class ReviewPageModel : PageModel
             () => HasNonFittingChanges && !Context.Evidence.IsStale);
         ReconfirmChangeCommand = new AsyncRelayCommand<ChangeViewModel>(ReconfirmChangeAsync,
             change => change is { IsUncertain: true });
-        ToggleContextCommand = new RelayCommand<ChangeViewModel>(change => change?.ToggleContext());
+        ToggleContextCommand = new RelayCommand<ChangeViewModel>(ToggleContext);
         MeasureCommand = new AsyncRelayCommand(MeasureAsync,
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
         CancelMeasureCommand = new RelayCommand(() => _measurementCancellation?.Cancel(), () => IsMeasuring);
@@ -98,7 +98,8 @@ public sealed class ReviewPageModel : PageModel
                 .ThenBy(item => item.Occurrence?.SegmentId.ToString("D") ?? "~", StringComparer.Ordinal)
                 .ThenBy(item => item.Occurrence?.Index ?? int.MaxValue)
                 .ThenBy(item => item.Word, StringComparer.Ordinal)
-                .ThenBy(item => item.ChangeId, StringComparer.Ordinal).ToArray(), Changes))
+                .ThenBy(item => item.ChangeId, StringComparer.Ordinal).ToArray(), Changes,
+            word => Context.OpenWord(word)))
         .ToArray();
 
     public bool HasUncertainChanges => UncertainChanges.Count > 0;
@@ -349,6 +350,15 @@ public sealed class ReviewPageModel : PageModel
             MeasureCommand.NotifyCanExecuteChanged();
             ApplyCommand.NotifyCanExecuteChanged();
         }
+    }
+
+    private void ToggleContext(ChangeViewModel? change)
+    {
+        if (change is null) return;
+        change.ToggleContext();
+        if (change.IsContextExpanded)
+            change.SetContextTokens(change.Occurrence is { } occurrence
+                ? Context.OccurrenceContext(occurrence) ?? [] : []);
     }
 
     private static ReviewChangeGroupDefinition GroupFor(ChangeViewModel change)

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -71,6 +72,8 @@ public abstract record PageRequest(WorkspacePage Page);
 /// </remarks>
 public sealed partial class WorkspaceContext : ObservableObject, IProjectStateParticipant
 {
+    private Func<OccurrenceAnchor, IReadOnlyList<ResultsTokenViewModel>?>? _occurrenceContextProvider;
+
     public WorkspaceContext(
         SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
         IFileDragSource dragSource, BaselineViewModel baseline, TimeProvider? clock = null, IClipboard? clipboard = null,
@@ -464,6 +467,15 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>Opens <paramref name="word"/> in the Texts page's word list, with every filter cleared.</summary>
     public void OpenWord(string word) => Open(new OpenWordRequest(word));
+
+    /// <summary>Registers the Texts page as the source of loaded sentence context.</summary>
+    internal void RegisterOccurrenceContextProvider(
+        Func<OccurrenceAnchor, IReadOnlyList<ResultsTokenViewModel>?> provider) =>
+        _occurrenceContextProvider = provider ?? throw new ArgumentNullException(nameof(provider));
+
+    /// <summary>Gets the loaded sentence for an exact source occurrence, when it is available.</summary>
+    internal IReadOnlyList<ResultsTokenViewModel>? OccurrenceContext(OccurrenceAnchor occurrence) =>
+        _occurrenceContextProvider?.Invoke(occurrence);
 
     /// <summary>Opens Try a Word on <paramref name="word"/> and traces it straight away.</summary>
     public void TryWord(string word) => Open(new TryWordRequest(word));

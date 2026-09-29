@@ -59,6 +59,8 @@ public sealed partial class FakeCommandClient
         PendingLoadHandler { get; set; }
     public Func<PutPendingChangeRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
         PendingPutHandler { get; set; }
+    public Func<RemovePendingChangeRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
+        PendingRemoveHandler { get; set; }
 
     public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
     public List<RecheckPendingChangesRequest> PendingRecheckRequests { get; } = [];
@@ -128,6 +130,7 @@ public sealed partial class FakeCommandClient
         RemovePendingChangeRequest request, CancellationToken cancellationToken)
     {
         PendingRemoveRequests.Add(request);
+        if (PendingRemoveHandler is { } handler) return handler(request, cancellationToken);
         var changes = _pending.Changes.Where(item => item.ChangeId != request.ChangeId &&
             item.GroupId != request.ChangeId).ToArray();
         var changeIds = changes.Select(item => item.ChangeId).ToHashSet(StringComparer.Ordinal);

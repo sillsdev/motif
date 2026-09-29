@@ -146,6 +146,13 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     /// <summary>Whether the only thing missing is a checked Text, which the Texts page can supply.</summary>
     public bool NeedsTexts => _assess.Result is not null && Texts.Count == 0;
 
+    /// <summary>Finds the loaded sentence that contains the requested source occurrence.</summary>
+    public ResultsLineViewModel? FindOccurrenceLine(OccurrenceAnchor occurrence) => Texts
+        .SelectMany(text => text.Lines)
+        .FirstOrDefault(line => line.TextId == occurrence.TextId &&
+            line.ParagraphId == occurrence.ParagraphId && line.SegmentId == occurrence.SegmentId &&
+            line.Tokens.Any(token => token.Occurrence == occurrence));
+
     /// <summary>Opens the Texts page for the empty state that asks for a checked Text.</summary>
     public Action? OpenTexts { get; set; }
 

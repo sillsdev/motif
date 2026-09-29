@@ -390,6 +390,15 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     [ObservableProperty]
     private bool _isContextExpanded;
 
+    /// <summary>The sentence tokens surrounding the exact occurrence, when the Texts page has loaded them.</summary>
+    public IReadOnlyList<ResultsTokenViewModel> ContextTokens { get; private set; } = [];
+
+    internal void SetContextTokens(IReadOnlyList<ResultsTokenViewModel> tokens)
+    {
+        ContextTokens = tokens;
+        OnPropertyChanged(nameof(ContextTokens));
+    }
+
     public void ToggleContext() => IsContextExpanded = !IsContextExpanded;
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);

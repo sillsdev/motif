@@ -39,6 +39,7 @@ public sealed partial class TextsPageModel : PageModel
         {
             OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
         };
+        context.RegisterOccurrenceContextProvider(anchor => ResultsInText.FindOccurrenceLine(anchor)?.Tokens);
         Assess.Compare.Changes = context.Changes;
         TextsLists = new TextsListsViewModel(Assess.Compare);
         TextsLists.HandOff = context.HandOff;

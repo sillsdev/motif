@@ -6,13 +6,17 @@ namespace SIL.Motif.App.ViewModels;
 public sealed class ReviewChangeGroupViewModel
 {
     private readonly ChangesViewModel _changes;
+    private readonly Action<string> _openWord;
+    private int _nextWordIndex;
 
     public ReviewChangeGroupViewModel(string title, IReadOnlyList<ChangeViewModel> items,
-        ChangesViewModel changes)
+        ChangesViewModel changes, Action<string> openWord)
     {
         Title = title;
         Items = items;
         _changes = changes;
+        _openWord = openWord;
+        GoToTextCommand = new RelayCommand(GoToText);
         UndoAllCommand = new AsyncRelayCommand(UndoAllAsync);
     }
 
@@ -24,6 +28,16 @@ public sealed class ReviewChangeGroupViewModel
 
     /// <summary>Removes each change or accepted set in this group.</summary>
     public IAsyncRelayCommand UndoAllCommand { get; }
+
+    /// <summary>Opens the next word in this group in Analyze texts.</summary>
+    public IRelayCommand GoToTextCommand { get; }
+
+    private void GoToText()
+    {
+        if (Items.Count == 0) return;
+        _openWord(Items[_nextWordIndex].Word);
+        _nextWordIndex = (_nextWordIndex + 1) % Items.Count;
+    }
 
     private async Task UndoAllAsync()
     {
