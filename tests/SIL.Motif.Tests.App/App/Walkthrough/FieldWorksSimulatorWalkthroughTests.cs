@@ -225,7 +225,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
         var parser = FakeParser.Copy(project.ManagedRoot);
         var prompt = "See what applying does to the numbers.";
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parser);
@@ -258,9 +258,14 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.Window.Show();
             walkthrough.Window.Activate();
             Dispatcher.UIThread.RunJobs();
+            var freshnessCheck = walkthrough.Workspace.CheckFreshnessAsync();
+            var concurrentFreshnessCheck = walkthrough.Workspace.CheckFreshnessAsync();
+            var checksShareTask = ReferenceEquals(freshnessCheck, concurrentFreshnessCheck);
+            await Task.WhenAll(freshnessCheck, concurrentFreshnessCheck);
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.Baseline.FieldWorksHeldProject,
                 StepFor(deadline), "the window did not clear the held-project status after release");
+            Assert.True(checksShareTask, "Concurrent activation checks should share one freshness read.");
             walkthrough.Click("Check what applying does to the numbers");
             Assert.True(review.IsMeasuring);
             walkthrough.WaitUntil(
@@ -276,7 +281,6 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             var receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
                 .Single(text => text.Text == review.ReceiptText);
             Assert.True(receipt.IsEffectivelyVisible);
-            return Task.CompletedTask;
         }, TimeSpan.FromSeconds(60));
     }
 
