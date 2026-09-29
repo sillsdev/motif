@@ -1629,3 +1629,48 @@ The lanes run in parallel, one worktree each. Every lane follows three rules:
 | CLI | G8, G9 and G12, with the Ctrl+C fix |
 | store | G11 |
 | shell | G1, G13 and G14. This lane starts after `fix/configure-reopens-setup` merges, because both touch `MainWindow.axaml.cs` and `WalkthroughWindow.cs` |
+
+## 11. Smoke tests after 2026-09-26
+
+**In plain terms:** the owner asked for a good set of smoke tests: clicking through the grammar pages and applying changes, now that the app has changed since this plan was written. Two planners, whose reports are in `_briefs/smoke/report-grammars.md` and `report-apply.md`, found the same thing. The smoke tests §7 planned, `FirstProjectSmokeTests` (Phase 1A) and `FieldWorksBesideMotifSmokeTests` (Phase 2A), were never built, and neither were the real-client I tests (Phase 3A). The new work therefore extends those planned tests, rather than adding S tests beyond the budget of five.
+
+### 11.1 S tests: the budget stays at five
+| S test | What it clicks through | When |
+|---|---|---|
+| `FirstProjectSmokeTests.AFirstProjectOpensCapturesSetsUpAndShowsItsFirstRun` | Open, then setup, then the first run with the fake parser **held**. Then the **grammar tour**: Overview, then Warnings (Check grammar; open a finding; its FieldWorks link is shown, not launched), then Try a Word (type a word; open a step), then Texts (Lists; switch Texts), Timing, and What changed. Each step asserts only that the page is reachable and usable. | **Now.** The Matrix and Analyze texts steps are added after M3 and M6. |
+| `FieldWorksBesideMotifSmokeTests` | The FieldWorks simulator saves an edit; then Refresh; then **Parse all words** (M10); then the run completes. Busy then retry: the held `.lock` blocks Apply; release it; Apply completes. | Busy-retry **now**, by extending `FieldWorksSimulatorWalkthroughTests`. The Refresh journey waits for **M10**. |
+| `ChangeToReceiptSmokeTests.AMarkedChangeReachesReviewAndApply` | Click a word's action in Analyze texts; see its mark; open Review; Apply; see the Receipt; read `.fwdata` back. This extends `ApplyReadBackWalkthroughTests`, whose Incorrect-spelling read-back stays as the baseline. | Waits for **M3 and M4**. |
+| `UncertainChangeSmokeTests.RefreshMarksUncertainAndCheckAgainResolvesIt` | Decide in Analyze texts; the simulator edits the sentence; Refresh; Uncertain; Apply blocked; Check again; Apply. | Built by the `feat/uncertain-window` lane, inside `FieldWorksSimulatorWalkthroughTests`. It moves to its own file when M3 and M4 restyle the pages. |
+| The walkthroughs (Package B) | Each walkthrough is a script-driven S test of its own path, starting with `open-project-overview`. They are captioned tours, and they don't count toward the five. | The engine lane. |
+
+### 11.2 I and U tests that can be built now on main
+- **Grammars (I, real `CommandClient`, fake parser):**
+  - `WarningsRealClientTests.CheckingTheGrammarStoresTheResultOverviewThenShows`;
+  - `TryWordRealClientTests.AWordInNoTextIsTracedThroughTheRealClient`, with no-parse, capped and scripted timed-out cases;
+  - `TimingRealClientTests.ARerunOfChosenWordsReplacesOnlyThoseWords`;
+  - `TextsRealClientTests.EachListHoldsTheWordsItsQuestionNames`;
+  - `OverviewRealClientTests.OpeningAProjectShowsItsStoredNumbersAndStartsNoParser`;
+  - `TextsRealClientTests.WhatChangedComparesTheRunWithTheOneBeforeIt`.
+- **The conformance grammar:** retire the 660-second `ConformanceGrammarWalkthroughTests` window test into two I tests, `ConformanceGrammarAssessTests.TheConformanceGrammarGivesItsKnownAnalyses` and `RealParserLimitTests.AStepCappedWordFinishesUnderAHigherStepLimit`. Both use `RealParserFact`. Keep the fixture-load guard.
+- **Apply (I, real client, `FieldWorksSimulator.SaveEdit`):**
+  - `FieldWorksAnalysisDriftRealClientTests.SavedAnalysisChangeBlocksApplyAndKeepsTheChange`;
+  - an exit-3 (Busy) case for `apply --all-pending`;
+  - `ExternalApplyActivationRealClientTests.ReturningFromFieldWorksReloadsTheApplyOutcome`, covering exits 0, 2, 3 and 4. For exit 4, the window must never claim a rollback or silently clear the draft. Check the recovery path first.
+- **Apply (U):** `ApplyRefusalTests.RefusalKeepsTheChangeAndExplainsWhy`.
+
+### 11.3 Tests that wait for a lane
+These are recorded in each lane's brief.
+- **M3 and M4:**
+  - `AnalysisActionRulesTests` (U), for the actions available on one word, a selection and a Text;
+  - `AnalysisOperationScopesTests` (I), for every operation at every scope;
+  - `ReviewChangeGroupsTests` (U);
+  - `ReviewUndoRealClientTests` (I);
+  - `UndoAfterProjectSwitchTests` (U and I);
+  - the Round 4 steps of the grammar tour.
+- **M7:** I coverage of Remove's use preview and of Accept's Unknown adds. This lane already has it.
+- **M8:** Read and Unread, following fingerprint rules.
+- **Receipt persistence:** `ReopenAfterApplyRealClientTests`.
+
+### 11.4 Honest limits
+- The checked-in fixtures hold **no XAmple grammar**. XAmple compatibility can't be claimed from these tests until such a fixture exists.
+- `silfw:` links are checked as URIs at U and I only. Launching FieldWorks is a platform check, not a smoke test.
