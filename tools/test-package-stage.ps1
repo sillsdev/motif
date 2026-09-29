@@ -46,6 +46,33 @@ if ($manifest.runtimeIdentifier -ne $RuntimeIdentifier) {
     throw "Package manifest RID '$($manifest.runtimeIdentifier)' does not match '$RuntimeIdentifier'."
 }
 
+$repoRoot = Split-Path $PSScriptRoot -Parent
+$icuPayload = Get-Content -LiteralPath (Join-Path $repoRoot 'tools/icu-payload.json') -Raw | ConvertFrom-Json
+$icuRidProperty = $icuPayload.rids.PSObject.Properties[$RuntimeIdentifier]
+if ($null -eq $icuRidProperty) {
+    throw "no SIL ICU payload for $RuntimeIdentifier in tools/icu-payload.json"
+}
+$icuNativeOutputDirectory = [string] $icuRidProperty.Value.nativeOutputDirectory
+$icuLibrariesProperty = $icuRidProperty.Value.PSObject.Properties['libraries']
+if ([string]::IsNullOrWhiteSpace($icuNativeOutputDirectory) -or
+    $null -eq $icuLibrariesProperty -or $null -eq $icuLibrariesProperty.Value) {
+    throw "SIL ICU payload for $RuntimeIdentifier is incomplete."
+}
+$expectedIcuPaths = @($icuLibrariesProperty.Value | ForEach-Object {
+    if ($icuNativeOutputDirectory -eq '.') { [string] $_ }
+    else { (Join-Path $icuNativeOutputDirectory ([string] $_)).Replace('\', '/') }
+})
+$icuDependency = @($manifest.dependencies | Where-Object { $_.name -eq 'SIL ICU' })
+if ($icuDependency.Count -ne 1) {
+    throw "Package manifest must record exactly one SIL ICU dependency."
+}
+$actualIcuPaths = @($icuDependency[0].files | ForEach-Object { [string] $_.path })
+$expectedIcuPaths = @($expectedIcuPaths | Sort-Object -CaseSensitive)
+$actualIcuPaths = @($actualIcuPaths | Sort-Object -CaseSensitive)
+if (($expectedIcuPaths -join "`n") -cne ($actualIcuPaths -join "`n")) {
+    throw "Package manifest SIL ICU file list does not match tools/icu-payload.json for $RuntimeIdentifier."
+}
+
 foreach ($entryPoint in $entryPoints) {
     $record = @($manifest.entryPoints | Where-Object { $_.name -eq $entryPoint.name })
     if ($record.Count -ne 1 -or $record[0].path -ne $entryPoint.file) {

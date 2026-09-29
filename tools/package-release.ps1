@@ -57,11 +57,28 @@ $icuRidProperty = $icuPayload.rids.PSObject.Properties[$RuntimeIdentifier]
 if ($null -eq $icuRidProperty) {
     throw "no SIL ICU payload for $RuntimeIdentifier in tools/icu-payload.json"
 }
-$icuFiles = @($icuRidProperty.Value.files)
-if ($icuFiles.Count -eq 0) {
-    throw "SIL ICU payload for $RuntimeIdentifier has no files in tools/icu-payload.json"
+$icuNativeOutputDirectory = [string] $icuRidProperty.Value.nativeOutputDirectory
+$icuLibrariesProperty = $icuRidProperty.Value.PSObject.Properties['libraries']
+if ([string]::IsNullOrWhiteSpace($icuNativeOutputDirectory) -or
+    [System.IO.Path]::IsPathRooted($icuNativeOutputDirectory) -or
+    @($icuNativeOutputDirectory -split '[\\/]') -contains '..') {
+    throw "SIL ICU payload for $RuntimeIdentifier has an invalid nativeOutputDirectory."
+}
+if ($null -eq $icuLibrariesProperty -or $null -eq $icuLibrariesProperty.Value) {
+    throw "SIL ICU payload for $RuntimeIdentifier has no libraries in tools/icu-payload.json"
+}
+$icuLibraries = @($icuLibrariesProperty.Value)
+if ($icuLibraries.Count -eq 0) {
+    throw "SIL ICU payload for $RuntimeIdentifier has no libraries in tools/icu-payload.json"
+}
+foreach ($icuLibrary in $icuLibraries) {
+    if ([string]::IsNullOrWhiteSpace([string] $icuLibrary) -or [string] $icuLibrary -in @('.', '..') -or [string] $icuLibrary -match '[/\\]') {
+        throw "SIL ICU library names for $RuntimeIdentifier must be file names."
+    }
 }
 $isWindows = $RuntimeIdentifier.StartsWith('win-', [System.StringComparison]::Ordinal)
+$icuBuildOutputRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot 'bin/Release'))
+$icuBuildOutputDirectory = [System.IO.Path]::GetFullPath((Join-Path $icuBuildOutputRoot $icuNativeOutputDirectory))
 $parserFileName = if ($isWindows) { 'pangloss.exe' } else { 'pangloss' }
 $entryPointSuffix = if ($isWindows) { '.exe' } else { '' }
 if ([string]::IsNullOrWhiteSpace($ParserArtifact)) {
@@ -195,6 +212,24 @@ try {
         throw 'The release wrapper gate failed; no package was published.'
     }
 
+    $icuRuntimeSource = [Environment]::GetEnvironmentVariable('MOTIF_SIL_ICU_STAGE')
+    if (-not $isWindows -and [string]::IsNullOrWhiteSpace($icuRuntimeSource)) {
+        throw "MOTIF_SIL_ICU_STAGE is required to package custom SIL ICU for $RuntimeIdentifier."
+    }
+    if (-not [string]::IsNullOrWhiteSpace($icuRuntimeSource)) {
+        $icuRuntimeSource = [System.IO.Path]::GetFullPath($icuRuntimeSource)
+        if (-not (Test-Path -LiteralPath $icuRuntimeSource -PathType Container)) {
+            throw "SIL ICU runtime staging directory does not exist: $icuRuntimeSource"
+        }
+        [System.IO.Directory]::CreateDirectory($icuBuildOutputDirectory) | Out-Null
+        foreach ($icuLibrary in $icuLibraries) {
+            $sourcePath = Join-Path $icuRuntimeSource $icuLibrary
+            if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+                throw "SIL ICU runtime library is missing for $RuntimeIdentifier`: $sourcePath"
+            }
+            Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $icuBuildOutputDirectory $icuLibrary) -Force
+        }
+    }
     [System.IO.Directory]::CreateDirectory($outputParentPath) | Out-Null
     Assert-SafeStagePath $stage $outputParentPath $stageName
     New-Item -ItemType Directory -Path $stage -ErrorAction Stop | Out-Null
@@ -252,23 +287,19 @@ try {
     }
 
     $icuRecords = @()
-    foreach ($icuFile in $icuFiles) {
-        if ([string]::IsNullOrWhiteSpace($icuFile.source) -or [string]::IsNullOrWhiteSpace($icuFile.destination)) {
-            throw "Each SIL ICU file for $RuntimeIdentifier must declare source and destination."
-        }
-        $sourcePath = [Environment]::ExpandEnvironmentVariables($icuFile.source)
-        if (-not [System.IO.Path]::IsPathRooted($sourcePath)) {
-            $sourcePath = Join-Path $repoRoot $sourcePath
-        }
-        $sourcePath = [System.IO.Path]::GetFullPath($sourcePath)
+    foreach ($icuLibrary in $icuLibraries) {
+        $sourcePath = Join-Path $icuBuildOutputDirectory $icuLibrary
         if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
-            throw "SIL ICU payload file is missing for $RuntimeIdentifier`: $sourcePath"
+            throw "SIL ICU library is missing from the Release build output for $RuntimeIdentifier`: $sourcePath"
         }
 
-        if ([System.IO.Path]::IsPathRooted($icuFile.destination)) {
-            throw "SIL ICU destination must be relative to the package root: $($icuFile.destination)"
+        $icuRelativePath = if ($icuNativeOutputDirectory -eq '.') {
+            $icuLibrary
         }
-        $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $stage $icuFile.destination))
+        else {
+            Join-Path $icuNativeOutputDirectory $icuLibrary
+        }
+        $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $stage $icuRelativePath))
         $stagePrefix = $stage.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) +
             [System.IO.Path]::DirectorySeparatorChar
         $pathComparison = if ($isWindows) {
@@ -278,14 +309,20 @@ try {
             [System.StringComparison]::Ordinal
         }
         if (-not $destinationPath.StartsWith($stagePrefix, $pathComparison)) {
-            throw "SIL ICU destination escapes the package root: $($icuFile.destination)"
+            throw "SIL ICU destination escapes the package root: $icuRelativePath"
         }
         if (Test-Path -LiteralPath $destinationPath) {
-            throw "SIL ICU destination would replace a staged file: $($icuFile.destination)"
+            $sourceHash = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+            $destinationHash = (Get-FileHash -LiteralPath $destinationPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($sourceHash -ne $destinationHash) {
+                throw "SIL ICU destination differs from the Release build output: $icuRelativePath"
+            }
         }
-        $destinationDirectory = [System.IO.Path]::GetDirectoryName($destinationPath)
-        New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
-        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
+        else {
+            $destinationDirectory = [System.IO.Path]::GetDirectoryName($destinationPath)
+            New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+            Copy-Item -LiteralPath $sourcePath -Destination $destinationPath
+        }
         $icuRecords += [ordered]@{
             path = Get-RelativePackagePath $stage $destinationPath
             sha256 = (Get-FileHash -LiteralPath $destinationPath -Algorithm SHA256).Hash.ToLowerInvariant()
