@@ -20,12 +20,12 @@ The linguist's Read marker survives closing the window because it lives beside t
 - Test: `tests/SIL.Motif.Tests.Commands/Store/ReadStateRepositoryTests.cs`
 - Test: `tests/SIL.Motif.Tests.Worker/Store/SchemaVersionGateTests.cs`
 
-- [ ] Add a failing repository test that saves one occurrence fingerprint, reloads it, and removes it by occurrence identity.
-- [ ] Run `./test.ps1` and confirm the new repository test fails because the repository does not exist.
-- [ ] Add the `ReadOccurrences` table and schema-shape entry; set `MotifSchema.CurrentSchema` to 29.
-- [ ] Implement upsert, lookup, list, and delete operations for an occurrence-keyed JSON fingerprint.
-- [ ] Add or update the refusal test to prove schema 28 is rejected by schema 29 without conversion.
-- [ ] Run `./test.ps1` and confirm repository and schema tests pass.
+- [x] Add a failing repository test that saves one occurrence fingerprint, reloads it, and removes it by occurrence identity.
+- [x] Run `./test.ps1` and confirm the new repository test fails because the repository does not exist.
+- [x] Add the `ReadOccurrences` table and schema-shape entry; set `MotifSchema.CurrentSchema` to 29.
+- [x] Implement upsert, lookup, list, and delete operations for an occurrence-keyed JSON fingerprint.
+- [x] Add or update the refusal test to prove schema 28 is rejected by schema 29 without conversion.
+- [x] Run `./test.ps1` and confirm repository and schema tests pass.
 
 ### Slice 2: Capture and invalidate fingerprints through the command client
 
@@ -40,12 +40,12 @@ After a new Assessment, a FieldWorks edit, or a changed sentence, the word shows
 - Create: `src/SIL.Motif.App/Services/CommandClient.ReadState.cs`
 - Test: `tests/SIL.Motif.Tests.App/App/ReadStateCommandClientTests.cs`
 
-- [ ] Add a failing integration test that marks a seeded Text occurrence Read and reads it back through the real `CommandClient` and store.
-- [ ] Run `./test.ps1` and confirm the new test fails because the typed Read State request is missing.
-- [ ] Capture `OccurrenceFitEvidence` from the current Baseline text projection and save the wordform analysis/opinion and Assessment-result digests alongside it.
-- [ ] Revalidate stored records against current projections and delete a record after any mismatch; treat uncertain occurrence evidence as a mismatch.
-- [ ] Add integration cases for a different Assessment result, an unchanged Assessment result, a FieldWorks opinion edit, and a sentence edit followed by Refresh.
-- [ ] Run `./test.ps1` and confirm all Read State integration cases pass.
+- [x] Add a failing integration test that marks a seeded Text occurrence Read and reads it back through the real `CommandClient` and store.
+- [x] Run the repository gate, escalating after `NU1301`, and confirm the missing typed request fails compilation.
+- [x] Capture `OccurrenceFitEvidence` from the current Baseline text projection and save the wordform analysis/opinion and Assessment-result digests alongside it.
+- [x] Revalidate stored records against current projections and delete a record after any mismatch; treat uncertain occurrence evidence as a mismatch.
+- [x] Add integration cases for a different Assessment result, an unchanged Assessment result, a FieldWorks opinion edit, and a sentence edit followed by Refresh.
+- [x] Run `./build.ps1` and the focused Read State integration tests; all cases pass.
 
 ### Slice 3: Make Read and Unread available in Analyze texts
 
