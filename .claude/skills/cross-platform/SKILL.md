@@ -95,6 +95,13 @@ the rule was broken.
 - Walkthrough pixel baselines match only the machine that captured them. CI reports pixel differences;
   `MOTIF_WALKTHROUGH_STRICT_BASELINES=1` turns them into failures on the reference machine.
 
+### PowerShell scripts
+
+`build.ps1`, `test.ps1` and the packaging scripts run under PowerShell 7 on every OS. PowerShell 7 defines
+read-only automatic variables `$IsWindows`, `$IsLinux` and `$IsMacOS`, and variable names are
+case-insensitive, so a script's own flag takes a distinct name, such as `$targetIsWindows` for the platform
+a package targets. Symptom: "Cannot overwrite variable IsWindows because it is read-only or constant."
+
 ### Test process isolation
 
 `test.ps1` runs each test project in its own process, several at once. Each process gets a private
