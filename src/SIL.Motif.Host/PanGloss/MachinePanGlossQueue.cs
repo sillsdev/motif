@@ -146,6 +146,12 @@ public sealed class MachinePanGlossQueue : IDisposable
                 linked.Dispose();
                 continue;
             }
+            catch (IOException exception)
+            {
+                linked.Dispose();
+                job.Fail(exception);
+                continue;
+            }
             _ = RunAdmittedJobAsync(job, lease, linked);
         }
     }
@@ -169,15 +175,17 @@ public sealed class MachinePanGlossQueue : IDisposable
     private async Task<MachineSlotLease> AcquireSlotAsync(string jobId, CancellationToken cancellationToken)
     {
         // One owner per slot per wait: ownership is per-thread, and per-poll owners would churn threads.
-        var owners = new WorkerMutexOwner[_slotNames.Count];
-        for (var i = 0; i < owners.Length; i++) owners[i] = new WorkerMutexOwner(_slotNames[i], machineWide: true);
+        var owners = new List<WorkerMutexOwner>(_slotNames.Count);
         var winner = -1;
         try
         {
+            foreach (var slotName in _slotNames)
+                owners.Add(new WorkerMutexOwner(slotName, machineWide: true));
+
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                for (var i = 0; i < owners.Length; i++)
+                for (var i = 0; i < owners.Count; i++)
                 {
                     if (!owners[i].TryAcquire()) continue;
                     winner = i;
@@ -190,7 +198,7 @@ public sealed class MachinePanGlossQueue : IDisposable
         }
         finally
         {
-            for (var i = 0; i < owners.Length; i++)
+            for (var i = 0; i < owners.Count; i++)
                 if (i != winner) owners[i].Dispose();
         }
     }
@@ -228,6 +236,7 @@ public sealed class MachinePanGlossQueue : IDisposable
 
         public abstract Task ExecuteAsync(PanGlossContainmentJob cpuJob, CancellationToken linkedToken);
         public abstract void Cancel(CancellationToken token);
+        public abstract void Fail(Exception exception);
     }
 
     private sealed class QueuedJob<T> : QueuedJob
@@ -261,5 +270,7 @@ public sealed class MachinePanGlossQueue : IDisposable
         }
 
         public override void Cancel(CancellationToken token) => _completion.TrySetCanceled(token);
+
+        public override void Fail(Exception exception) => _completion.TrySetException(exception);
     }
 }
