@@ -304,7 +304,7 @@ internal static class WalkthroughArtifacts
 
     private static string DiagnosticPngPath(string baselinePath, string suffix)
     {
-        var directory = Path.Combine(Path.GetTempPath(), "SIL.Motif.WalkthroughDiffs");
+        var directory = WalkthroughTestFiles.DiagnosticsDirectory;
         Directory.CreateDirectory(directory);
         return Path.Combine(directory, Path.GetFileNameWithoutExtension(baselinePath) + $"-{suffix}.png");
     }

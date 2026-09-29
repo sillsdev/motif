@@ -52,7 +52,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
         var root = FindRepositoryRoot();
         var script = WalkthroughScriptLoader.Load(scriptPath);
         var help = WalkthroughHelpContent.Load(root, script.Id, "en");
-        var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.Walkthrough", "engine", script.Id);
+        var managedRoot = WalkthroughTestFiles.EngineRoot(script.Id);
         WalkthroughTestFiles.DeleteDirectory(managedRoot);
         var clock = new FixedClock(CaptureTime, TimeZoneInfo.Utc);
         using var project = new WalkthroughProject(pristine, managedRoot,
