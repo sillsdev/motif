@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -149,8 +148,7 @@ public sealed class JobRunnerLoop
     private TimeSpan Jittered(TimeSpan interval) =>
         interval + TimeSpan.FromMilliseconds(_jitter.Next(0, (int)interval.TotalMilliseconds + 1));
 
-    private static string Now() =>
-        DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture);
+    private static string Now() => JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
 }
 
 /// <summary>The terminal status a <see cref="JobRunnerLoop.Handler"/> asks the loop to finish a job with.</summary>

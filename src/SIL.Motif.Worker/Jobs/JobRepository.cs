@@ -149,13 +149,19 @@ public sealed class JobRepository
         EnsureVersion(current, expectedVersion);
         if (JobStateMachine.IsTerminal(current.Status))
             throw new InvalidOperationException("A terminal job's queue position cannot be changed.");
+        var effectiveNow = ValidateUtc(nowUtc, nameof(nowUtc));
+        var created = ValidateUtc(current.CreatedUtc, nameof(current.CreatedUtc));
+        var updated = ValidateUtc(current.UpdatedUtc, nameof(current.UpdatedUtc));
+        if (effectiveNow < created) effectiveNow = created;
+        if (effectiveNow < updated) effectiveNow = updated;
+        var updatedUtc = JobTimestamp.FormatUtc(effectiveNow);
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
             command.CommandText = "UPDATE Jobs SET QueueOrder = $order, UpdatedUtc = $updated, " +
                 "Version = $version WHERE JobId = $id AND Version = $expected;";
             command.Parameters.AddWithValue("$order", queueOrder);
-            command.Parameters.AddWithValue("$updated", nowUtc);
+            command.Parameters.AddWithValue("$updated", updatedUtc);
             command.Parameters.AddWithValue("$version", current.Version + 1);
             command.Parameters.AddWithValue("$id", jobId);
             command.Parameters.AddWithValue("$expected", current.Version);
@@ -163,7 +169,7 @@ public sealed class JobRepository
                 throw new InvalidOperationException("The job changed concurrently; reload it before writing.");
         }
         transaction.Commit();
-        return current with { UpdatedUtc = nowUtc, Version = current.Version + 1 };
+        return current with { UpdatedUtc = updatedUtc, Version = current.Version + 1 };
     }
 
     /// <summary>Lists every attempt of one kind recorded for one project, oldest first, any status.</summary>
@@ -334,7 +340,7 @@ public sealed class JobRepository
         retry = retry with
         {
             FailureCategory = JobFailureCategory.None,
-            NotBeforeUtc = baseNow.Add(delay).ToString("O", CultureInfo.InvariantCulture)
+            NotBeforeUtc = JobTimestamp.FormatUtc(baseNow.Add(delay))
         };
         Insert(connection, transaction, Normalize(retry));
         transaction.Commit();
@@ -371,8 +377,8 @@ public sealed class JobRepository
             var interrupted = PrepareTransition(job, _stateMachine.Transition(job, JobStatus.Interrupted));
             interrupted = interrupted with
             {
-                UpdatedUtc = effectiveNow.ToString("O", CultureInfo.InvariantCulture),
-                ArchivedUtc = effectiveNow.ToString("O", CultureInfo.InvariantCulture),
+                UpdatedUtc = JobTimestamp.FormatUtc(effectiveNow),
+                ArchivedUtc = JobTimestamp.FormatUtc(effectiveNow),
                 FailureCategory = job.CancellationRequested ? JobFailureCategory.Cancellation : JobFailureCategory.Infrastructure
             };
             ValidateFailureCategory(interrupted);
@@ -461,8 +467,8 @@ public sealed class JobRepository
             Status = JobStatus.Failed,
             ResultJson = current.ResultJson ?? "{\"failure\":\"infrastructure-retry-exhausted\"}",
             FailureCategory = JobFailureCategory.Infrastructure,
-            UpdatedUtc = effectiveNow.ToString("O", CultureInfo.InvariantCulture),
-            ArchivedUtc = effectiveNow.ToString("O", CultureInfo.InvariantCulture),
+            UpdatedUtc = JobTimestamp.FormatUtc(effectiveNow),
+            ArchivedUtc = JobTimestamp.FormatUtc(effectiveNow),
             Version = current.Version + 1
         };
         ValidateFailureCategory(changed);
@@ -596,7 +602,15 @@ public sealed class JobRepository
         var updated = ValidateUtc(requested.UpdatedUtc, nameof(requested.UpdatedUtc));
         if (created > updated) throw new ArgumentException("CreatedUtc must not be later than UpdatedUtc.");
         var lineage = string.IsNullOrWhiteSpace(requested.LineageId) ? requested.JobId : requested.LineageId;
-        return requested with { Kind = kind, LineageId = lineage };
+        return requested with
+        {
+            Kind = kind,
+            LineageId = lineage,
+            CreatedUtc = JobTimestamp.FormatUtc(created),
+            UpdatedUtc = JobTimestamp.FormatUtc(updated),
+            NotBeforeUtc = requested.NotBeforeUtc is null
+                ? null : JobTimestamp.FormatUtc(ValidateUtc(requested.NotBeforeUtc, nameof(requested.NotBeforeUtc)))
+        };
     }
 
     private static void Insert(SqliteConnection connection, SqliteTransaction transaction, JobRecord record)

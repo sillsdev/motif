@@ -440,5 +440,5 @@ internal static class Program
 
     private static void EnqueueBaselineRefresh(Projects.ProjectRuntime runtime, DateTimeOffset now) =>
         runtime.Jobs.Create(CanonicalId.Mint("job/").Value, runtime.WorkspaceKey, BaselineRefreshKind, "{}",
-            now.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
+            JobTimestamp.FormatUtc(now));
 }
