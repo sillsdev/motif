@@ -6,6 +6,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class AvaloniaHeadlessPlatformTests
 {
     [Fact]
