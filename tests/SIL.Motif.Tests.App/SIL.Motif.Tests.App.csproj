@@ -22,4 +22,8 @@
     <ProjectReference Include="..\..\src\SIL.Motif.Worker\SIL.Motif.Worker.csproj" />
     <ProjectReference Include="..\SIL.Motif.Tests.Support\SIL.Motif.Tests.Support.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+  </ItemGroup>
 </Project>
