@@ -1561,8 +1561,14 @@ public static partial class ProposalCommands
         catch (NeedsReconciliationException ex)
         {
             // Distinct from the rollback wording below: the mutation may already be durable.
+            var message = ex.Message;
+            try { ProjectReconciliationMarker.Mark(project.FullFwDataPath); }
+            catch (Exception markerFailure) when (markerFailure is IOException or UnauthorizedAccessException)
+            {
+                message += " Motif could not save a warning beside the project: " + markerFailure.Message;
+            }
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
-                "apply.reconciliation-needed", ReasonFor(ex), ex.Message, Fact(("proposalId", proposalId))));
+                "apply.reconciliation-needed", ReasonFor(ex), message, Fact(("proposalId", proposalId))));
         }
         catch (AppliedContentMismatchException ex)
         {

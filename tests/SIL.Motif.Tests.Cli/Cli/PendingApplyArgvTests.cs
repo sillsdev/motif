@@ -12,7 +12,6 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Runner.Composers;
@@ -33,7 +32,8 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     {
         var (path, wordformId) = ReleasedProjectWithWord("review-word");
         var root = Path.Combine(Path.GetDirectoryName(path)!, "pending-apply-worker");
-        var runner = IsolatedRunner.Process(root);
+        var parser = FakeParser.Copy(root);
+        var runner = IsolatedRunner.Process(root, parser);
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
         var initial = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
@@ -47,14 +47,14 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         Assert.True(measured.Succeeded, measured.Refusal?.Message);
         Assert.True(measured.Value!.EvidenceComplete);
 
-        var apply = CliStart(runner.Options, "apply", "--all-pending", "--project", path);
+        var apply = CliProcess.Start(runner.Options, "apply", "--all-pending", "--project", path);
         if (includeRevision)
         {
             apply.ArgumentList.Add("--revision");
             apply.ArgumentList.Add(added.Value.Revision);
         }
         apply.ArgumentList.Add("--json");
-        var (exitCode, output, error) = await RunAsync(apply);
+        var (exitCode, output, error) = await CliProcess.RunAsync(apply);
 
         Assert.True(exitCode == 0, $"CLI failed with {exitCode}: {error}{output}");
         using var response = JsonDocument.Parse(output);
@@ -83,10 +83,10 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
 
-        var apply = CliStart(IsolatedRunner.Options(root), "apply", "--all-pending", "--project", path);
+        var apply = CliProcess.Start(IsolatedRunner.Options(root), "apply", "--all-pending", "--project", path);
         if (asJson) apply.ArgumentList.Add("--json");
         apply.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
-        var (exitCode, output, error) = await RunAsync(apply);
+        var (exitCode, output, error) = await CliProcess.RunAsync(apply);
 
         Assert.Equal(0, exitCode);
         Assert.Empty(error);
@@ -107,6 +107,40 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM Receipts;";
         Assert.Equal(0L, (long)command.ExecuteScalar()!);
+    }
+
+    [Fact]
+    public async Task ApplyAllPendingReturnsBusyExitWhenFieldWorksHoldsTheProject()
+    {
+        var (path, wordformId) = ReleasedProjectWithWord("busy-apply-word");
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "busy-pending-apply-worker");
+        var parser = FakeParser.Copy(root);
+        var runner = IsolatedRunner.Process(root, parser);
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
+        var added = PendingChanges.Put(new PutPendingChangeRequest(path, "1.0", initial.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "busy-apply-word", OriginPage: "Texts")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(
+            path, added.Value!.DraftId!, added.Value.Revision, ["busy-apply-word"]),
+            new Progress<MeasureProgress>(), CancellationToken.None, runnerLauncher: runner);
+        Assert.True(measured.Succeeded, measured.Refusal?.Message);
+
+        using var held = new FieldWorksSimulator(path).Hold();
+        var apply = CliProcess.Start(runner.Options, "apply", "--all-pending", "--project", path, "--json");
+        apply.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        var (exitCode, output, error) = await CliProcess.RunAsync(apply);
+
+        Assert.Equal(3, exitCode);
+        Assert.Empty(output);
+        using var failure = JsonDocument.Parse(error);
+        Assert.Equal("project.in-use", failure.RootElement.GetProperty("code").GetString());
+        Assert.Equal("Busy", failure.RootElement.GetProperty("reason").GetString());
+        var unchanged = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
+        Assert.True(unchanged.Succeeded, unchanged.Refusal?.Message);
+        Assert.Single(unchanged.Value!.Changes);
     }
 
     [Fact]
@@ -167,9 +201,9 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         Assert.True(rechecked.Succeeded, rechecked.Refusal?.Message);
         Assert.Equal("uncertain", Assert.Single(rechecked.Value!.FitSummary).Status);
 
-        var start = CliStart(IsolatedRunner.Options(root), "apply", "--all-pending", "--project", path, "--json");
+        var start = CliProcess.Start(IsolatedRunner.Options(root), "apply", "--all-pending", "--project", path, "--json");
         start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
-        var (exitCode, output, error) = await RunAsync(start);
+        var (exitCode, output, error) = await CliProcess.RunAsync(start);
 
         Assert.Equal(2, exitCode);
         Assert.Empty(output);
@@ -183,7 +217,8 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     {
         var (path, wordformId) = ReleasedProjectWithWord("reconciliation-word");
         var root = Path.Combine(Path.GetDirectoryName(path)!, "reconciliation-pending-worker");
-        var runner = IsolatedRunner.Process(root);
+        var parser = FakeParser.Copy(root);
+        var runner = IsolatedRunner.Process(root, parser);
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
         var initial = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
@@ -199,13 +234,13 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         string databasePath;
         using (var database = ProjectMotifDatabase.Open(path))
             databasePath = database.FullPath;
-        var apply = CliStart(runner.Options, "apply", "--all-pending", "--project", path, "--json");
+        var apply = CliProcess.Start(runner.Options, "apply", "--all-pending", "--project", path, "--json");
         apply.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
         apply.Environment["MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR"] = path;
         using var process = Process.Start(apply)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        using var worker = await StartQueuedWorkerAsync(path, runner.Options, process);
+        using var worker = await CliProcess.StartQueuedWorkerAsync(path, runner.Options, process);
         try
         {
             await WaitForPendingProposalAnchorAsync(path);
@@ -219,6 +254,9 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             using var failure = JsonDocument.Parse(error);
             Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());
             Assert.Equal("StoreInconsistent", failure.RootElement.GetProperty("reason").GetString());
+            Assert.Contains("applied and saved to the project", failure.RootElement.GetProperty("message").GetString());
+            Assert.Contains("recording that in the proposal store failed",
+                failure.RootElement.GetProperty("message").GetString());
 
             using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
                 Assert.Contains("reconciliation-word", ApprovedMorphologyReader.ReadIncorrectSpellings(cache));
@@ -228,6 +266,8 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
             command.Parameters.AddWithValue("$proposal", added.Value.DraftId);
             Assert.Equal(0L, (long)command.ExecuteScalar()!);
+            Assert.True(ProjectReconciliationMarker.Exists(path));
+            Assert.True(ProjectReconciliationMarker.Clear(path));
         }
         finally
         {
@@ -236,25 +276,6 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     }
 
     // Bounded by the CLI's own progress: a cold CLI start can take longer than any fixed wait on a slow runner.
-    private static async Task<Process> StartQueuedWorkerAsync(string projectPath, JobRunnerLaunchOptions options,
-        Process cli)
-    {
-        while (!cli.HasExited)
-        {
-            using var database = ProjectMotifDatabase.Open(projectPath);
-            if (new JobRepository(database).ListActive().Any(job => job.Kind == JobCommands.DryRunKind))
-            {
-                var start = new ProcessStartInfo(options.WorkerExecutable!) { UseShellExecute = false };
-                foreach (var argument in ProcessRunnerLauncher.LaunchArguments(options))
-                    start.ArgumentList.Add(argument);
-                return Process.Start(start)!;
-            }
-            await Task.Delay(20);
-        }
-        throw new InvalidOperationException(
-            $"The CLI exited with {cli.ExitCode} before queueing a Dry Run for pending changes.");
-    }
-
     private static async Task WaitForPendingProposalAnchorAsync(string projectPath)
     {
         var deadline = DateTime.UtcNow.AddSeconds(15);
@@ -268,35 +289,6 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             await Task.Delay(20);
         }
         throw new TimeoutException("The CLI did not bind its completed Dry Run to the pending Proposal.");
-    }
-
-    // The environment is the CLI's own configuration surface, so the child gets the runner settings there.
-    private static ProcessStartInfo CliStart(JobRunnerLaunchOptions runner, params string[] arguments)
-    {
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        foreach (var argument in arguments)
-            start.ArgumentList.Add(argument);
-        start.Environment[RunnerOptions.RootVariable] = runner.Root;
-        start.Environment[ProcessRunnerLauncher.ExecutableVariable] = runner.WorkerExecutable;
-        start.Environment[PanGlossExecutable.PathVariable] = runner.ParserPath;
-        start.Environment[RunnerOptions.NamespaceVariable] = runner.OwnerNamespace;
-        start.Environment[RunnerOptions.IdleVariable] = "1";
-        start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
-        return start;
-    }
-
-    private static async Task<(int ExitCode, string Output, string Error)> RunAsync(ProcessStartInfo start)
-    {
-        using var process = Process.Start(start)!;
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
-        return (process.ExitCode, await outputTask, await errorTask);
     }
 
     // The save-boundary contract has FieldWorks release the project before it calls the verb.
