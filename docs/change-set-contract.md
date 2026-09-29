@@ -184,8 +184,8 @@ resolves through the same tri-state rule.
 
 ### Word analysis operations
 
-The analysis composer accepts the five collected actions `approve`, `reject`, `candidate`,
-`incorrect-spelling`, and `add-candidate`. It resolves the selected wordform and the first parser
+The analysis composer accepts the six collected actions `approve`, `reject`, `candidate`,
+`incorrect-spelling`, `add-candidate`, and `remove-analysis`. It resolves the selected wordform and the first parser
 reading in a named Assessment against a scratch project. The display reading is explanatory text;
 the Assessment's morph references determine identity. It refuses ambiguous wordform text, absent
 evidence, unresolvable references, and a duplicate candidate. It may emit a create operation before
@@ -198,6 +198,16 @@ retracts the opposite opinion. Removing one reference returns that analysis to c
 when it was the current opinion. The effect and semantic snapshot field is
 `analysis/wfiAnalysis/evaluations`, an identity keyed map of the full evaluation membership.
 
+`analysis/wfiAnalysis/delete` targets one stored `WfiAnalysis` and has the closed empty `after` object
+`{}`. Its effect and snapshot field is the owning wordform's
+`analysis/wfiWordform/analyses` map, with the deleted row removed. The preview adds every Text, paragraph,
+Segment, and sequence index that references the analysis or a gloss it owns. Before deleting the analysis,
+Motif calls `MoveConcAnnotationsToWordform()`, which replaces each such reference with the owning wordform
+at the same index. Neighboring words keep their positions, so the Segment remains aligned with its text.
+The owning wordform row is the semantic effect; occurrence details are separate preview and footprint
+evidence. Apply reads both back, so a changed analysis identity, reading, opinion, or Text use makes the
+collected change fail its fit check. Cancelling the pending change is Undo.
+
 `analysis/wfiWordform/createAnalyses` targets a `WfiWordform`, supplies a fresh `entityId`, and has
 the closed `after` shape `{ "morphs": [{ "form": "<id>", "msa": "<id>",
 "inflType": "<id>", "guessedString": "..." }] }`. `morphs` is nonempty and ordered. The form,
@@ -208,9 +218,9 @@ and the default parser agent's approval. Its effect and snapshot field is
 form, and evaluation membership in each value. This mirrors FieldWorks' `ProcessAnalysis` in
 `Src/LexText/ParserCore/ParseFiler.cs`; the fixture
 `ParserCandidate_FilesReferencesGuessAndOnlyTheParserOpinion` checks all four bundle fields and
-both agents' opinions. The inventory's `delete` verb describes a LibLCM capability, but this
-operation family does not expose `deleteAnalyses`: none of the five collected actions deletes an
-analysis, and removing an owned analysis requires separate reference and ownership semantics.
+both agents' opinions. The inventory's `delete` verb for `WfiWordform.Analyses` maps to
+`analysis/wfiAnalysis/delete`; the operation targets the analysis identity and records the owning
+wordform effect, including all Text occurrences affected by LibLCM's reference cleanup.
 
 Each collected operation carries a nonsemantic `extensions.changeFit` fingerprint: wordform id,
 optional existing analysis id, wordform form, content digest for an existing analysis or parser

@@ -137,4 +137,16 @@ public class ManifestHandAuthoredRowsTests
             string.Join(Environment.NewLine + "  ",
                 notInScope.Select(r => $"{r.Class}.{r.Field} has Scope='{r.Scope}'")));
     }
+
+    [Fact]
+    public void SegmentAnalyses_RecordsTheAnalysisDeleteSideEffect()
+    {
+        var row = ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath())
+            .Single(item => item.Class == "Segment" && item.Field == "Analyses");
+
+        Assert.Equal("out", row.Scope);
+        Assert.Contains("touched indirectly by analysis/wfiAnalysis/delete", row.ScopeReason,
+            StringComparison.Ordinal);
+        Assert.Contains("MoveConcAnnotationsToWordform", row.Rationale, StringComparison.Ordinal);
+    }
 }

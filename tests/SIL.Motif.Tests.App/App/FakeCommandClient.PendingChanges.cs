@@ -128,9 +128,12 @@ public sealed partial class FakeCommandClient
         RemovePendingChangeRequest request, CancellationToken cancellationToken)
     {
         PendingRemoveRequests.Add(request);
+        var changes = _pending.Changes.Where(item => item.ChangeId != request.ChangeId &&
+            item.GroupId != request.ChangeId).ToArray();
+        var changeIds = changes.Select(item => item.ChangeId).ToHashSet(StringComparer.Ordinal);
         _pending = _pending with { Revision = Guid.NewGuid().ToString("N"),
-            Changes = _pending.Changes.Where(item => item.ChangeId != request.ChangeId).ToArray(),
-            FitSummary = _pending.FitSummary.Where(item => item.ChangeId != request.ChangeId).ToArray() };
+            Changes = changes,
+            FitSummary = _pending.FitSummary.Where(item => changeIds.Contains(item.ChangeId)).ToArray() };
         return Completed(_pending);
     }
 }

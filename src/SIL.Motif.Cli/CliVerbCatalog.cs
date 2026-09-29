@@ -46,6 +46,13 @@ public static class CliVerbCatalog
                 "[--stored-analysis-id <id>] [--occurrence-text-id <guid> " +
                 "--occurrence-paragraph-id <guid> --occurrence-segment-id <guid> " +
                 "--occurrence-index <zero-based>] [--json]" }),
+        new CliVerbDescriptor("Commands", "remove-analysis", "remove-analysis",
+            new[] { "remove-analysis --project <fwdata> --expected-revision <revision> " +
+                "(--analysis-id <id> --change-id <id> --wordform-id <id> --word <word> " +
+                "| --analysis-ids <id,id,...> | --text-id <guid>) [--json]" }),
+        new CliVerbDescriptor("Commands", "accept-new-set", "accept-new-set",
+            new[] { "accept-new-set --project <fwdata> --expected-revision <revision> " +
+                "--assessment <id> (--wordform-id <id> | --text-id <guid> | --selection) [--json]" }),
         new CliVerbDescriptor("Commands", "remove-pending-change", "remove-pending-change",
             new[] { "remove-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> [--json]" }),

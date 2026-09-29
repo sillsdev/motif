@@ -10,6 +10,7 @@ using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.Composers;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Runner.Snapshotting;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Analysis;
@@ -92,6 +93,112 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         Assert.Equal(msa.Guid, bundle.MsaRA!.Guid);
         Assert.Equal(Opinions.approves, created.GetAgentOpinion(_cache.LangProject.DefaultParserAgent));
         Assert.Single(receipt.ActualEffects);
+    }
+
+    [Fact]
+    public void LibLcmMoveConcAnnotationsToWordform_PreservesThreeWordAlignment()
+    {
+        var occurrence = AddThreeWordTextOccurrence(_cache, _analysis, "Direct use", throughGloss: false);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            _analysis.MoveConcAnnotationsToWordform());
+
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, _analysis.Delete);
+
+        Assert.Empty(_wordform.AnalysesOC);
+        AssertThreeWordAlignment(occurrence.Segment, occurrence.First, _wordform, occurrence.Third);
+    }
+
+    [Fact]
+    public void RemoveAnalysis_ListsEveryTextUseAndApplyKeepsWordformInPlace()
+    {
+        var first = AddThreeWordTextOccurrence(_cache, _analysis, "First use", throughGloss: false);
+        var second = AddThreeWordTextOccurrence(_cache, _analysis, "Second use", throughGloss: true);
+        var proposal = Proposal("analysis/wfiAnalysis/delete",
+            CanonicalId.FromGuid(_analysis.Guid), new { });
+        var before = AnalysisFieldSnapshots.Read(_wordform);
+
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+
+        Assert.Single(_wordform.AnalysesOC);
+        var effect = Assert.Single(dryRun.ExpectedEffects);
+        Assert.Equal(SnapshotFields.WfiWordformAnalyses, effect.Field);
+        var analysisId = CanonicalId.FromGuid(_analysis.Guid).Value;
+        Assert.Equal(before.AlternativesFields[SnapshotFields.WfiWordformAnalyses], effect.Before);
+        Assert.True(effect.Before.TryGetValue(analysisId, out var removed));
+        Assert.DoesNotContain("uses", removed!, StringComparison.Ordinal);
+        var uses = effect.Preview!.Value.GetProperty("textUses").EnumerateArray().ToArray();
+        Assert.Equal(2, uses.Length);
+        Assert.Contains(uses, use => use.GetProperty("segmentId").GetString() ==
+            CanonicalId.FromGuid(first.Segment.Guid).Value &&
+            use.GetProperty("index").GetInt32() == 1 && !use.GetProperty("throughGloss").GetBoolean());
+        Assert.Contains(uses, use => use.GetProperty("segmentId").GetString() ==
+            CanonicalId.FromGuid(second.Segment.Guid).Value &&
+            use.GetProperty("index").GetInt32() == 1 && use.GetProperty("throughGloss").GetBoolean());
+        Assert.All(uses, use => Assert.Contains("same index", use.GetProperty("after").GetString()));
+        Assert.Equal(3, first.Segment.AnalysesRS.Count);
+        Assert.Equal(3, second.Segment.AnalysesRS.Count);
+        Assert.Same(first.First, first.Segment.AnalysesRS[0]);
+        Assert.Same(_analysis, first.Segment.AnalysesRS[1]);
+        Assert.Same(first.Third, first.Segment.AnalysesRS[2]);
+        Assert.Same(second.First, second.Segment.AnalysesRS[0]);
+        Assert.Same(second.Gloss, second.Segment.AnalysesRS[1]);
+        Assert.Same(second.Third, second.Segment.AnalysesRS[2]);
+        Assert.DoesNotContain(CanonicalId.FromGuid(_analysis.Guid).Value, effect.After.Keys);
+
+        ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester");
+
+        Assert.Empty(_wordform.AnalysesOC);
+        AssertThreeWordAlignment(first.Segment, first.First, _wordform, first.Third);
+        AssertThreeWordAlignment(second.Segment, second.First, _wordform, second.Third);
+        var difference = Assert.Single(AnalysisFieldSnapshots.Diff(before, AnalysisFieldSnapshots.Read(_wordform)));
+        Assert.Equal(SnapshotFields.WfiWordformAnalyses, difference.Field);
+        Assert.Contains(CanonicalId.FromGuid(_analysis.Guid).Value, difference.Before.Keys);
+        Assert.DoesNotContain(CanonicalId.FromGuid(_analysis.Guid).Value, difference.After.Keys);
+    }
+
+    [Fact]
+    public void FailedFollowingOperation_RollsBackAnalysisDeletionAndTextReferences()
+    {
+        var occurrence = AddThreeWordTextOccurrence(_cache, _analysis, "Rollback use", throughGloss: true);
+        var deletion = new OperationEnvelope(CanonicalId.Mint(), WfiAnalysisOperationKinds.DeleteAnalysis,
+            target: CanonicalId.FromGuid(_analysis.Guid), after: JsonSerializer.SerializeToElement(new { }));
+        var invalidCreation = new OperationEnvelope(CanonicalId.Mint(), WfiAnalysisOperationKinds.CreateAnalysis,
+            entityId: CanonicalId.Mint(), target: CanonicalId.FromGuid(_wordform.Guid),
+            after: JsonSerializer.SerializeToElement(new
+            {
+                morphs = new[] { new { form = CanonicalId.Mint().Value, msa = CanonicalId.Mint().Value } },
+            }));
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" },
+            CanonicalId.Mint(), null, [deletion, invalidCreation]);
+        var anchor = new BoundDryRunAnchor(ContractIntentDigest.Compute(proposal),
+            FootprintProbe.ComputeCurrentFootprintDigest(_cache, proposal),
+            "sha256:" + new string('0', 64), "test", "test", SnapshotFields.ProjectionVersion,
+            "20260101T000000Z");
+
+        Assert.ThrowsAny<Exception>(() => ProposalApplier.Apply(_cache, proposal, anchor, "tester"));
+
+        Assert.Contains(_analysis, _wordform.AnalysesOC);
+        Assert.Equal(3, occurrence.Segment.AnalysesRS.Count);
+        Assert.Equal(occurrence.Gloss is null ? _analysis : occurrence.Gloss, occurrence.Segment.AnalysesRS[1]);
+        Assert.Same(occurrence.First, occurrence.Segment.AnalysesRS[0]);
+        Assert.Same(occurrence.Third, occurrence.Segment.AnalysesRS[2]);
+    }
+
+    [Fact]
+    public void TextUseChangedAfterDryRun_IsDriftAndCannotApply()
+    {
+        var occurrence = AddThreeWordTextOccurrence(_cache, _analysis, "Drift use", throughGloss: false);
+        var proposal = Proposal("analysis/wfiAnalysis/delete",
+            CanonicalId.FromGuid(_analysis.Guid), new { });
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            occurrence.Segment.AnalysesRS[1] = occurrence.Third);
+
+        Assert.ThrowsAny<Exception>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester"));
+
+        Assert.Contains(_analysis, _wordform.AnalysesOC);
+        Assert.Equal(3, occurrence.Segment.AnalysesRS.Count);
+        Assert.Same(occurrence.Third, occurrence.Segment.AnalysesRS[1]);
     }
 
     [Fact]
@@ -506,6 +613,81 @@ public sealed class WfiAnalysisOperationsTests : IDisposable
         return new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" }, CanonicalId.Mint(), null,
             new[] { new OperationEnvelope(CanonicalId.Mint(), kind, entityId, target, json.RootElement.Clone()) });
     }
+
+    [Fact]
+    public void DeleteAnalysisPayload_RejectsUnknownProperties()
+    {
+        using var document = JsonDocument.Parse("{\"unexpected\":true}");
+
+        Assert.Throws<ContractParseException>(() => DeleteAnalysisPayload.Parse(document.RootElement));
+    }
+
+    private static (IText Text, ISegment Segment) AddTextOccurrence(LcmCache cache, IWfiAnalysis analysis, string name)
+    {
+        IText text = null!;
+        ISegment segment = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            text = cache.ServiceLocator.GetInstance<ITextFactory>().Create();
+            text.Name.set_String(cache.DefaultAnalWs, name);
+            text.ContentsOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+            text.ContentsOA.ParagraphsOS.Add(paragraph);
+            segment = cache.ServiceLocator.GetInstance<ISegmentFactory>().Create();
+            paragraph.SegmentsOS.Add(segment);
+            segment.AnalysesRS.Add(analysis);
+        });
+        return (text, segment);
+    }
+
+    private (IText Text, ISegment Segment, IAnalysis First, IAnalysis Third, IWfiGloss? Gloss)
+        AddThreeWordTextOccurrence(LcmCache cache, IWfiAnalysis analysis, string name, bool throughGloss)
+    {
+        IText text = null!;
+        ISegment segment = null!;
+        IAnalysis first = null!;
+        IAnalysis third = null!;
+        IWfiGloss? gloss = null;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            text = cache.ServiceLocator.GetInstance<ITextFactory>().Create();
+            text.Name.set_String(cache.DefaultAnalWs, name);
+            text.ContentsOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+            text.ContentsOA.ParagraphsOS.Add(paragraph);
+            segment = cache.ServiceLocator.GetInstance<ISegmentFactory>().Create();
+            paragraph.SegmentsOS.Add(segment);
+            first = NewNeighborAnalysis(cache, "first-" + name);
+            third = NewNeighborAnalysis(cache, "third-" + name);
+            if (throughGloss)
+            {
+                gloss = cache.ServiceLocator.GetInstance<IWfiGlossFactory>().Create();
+                analysis.MeaningsOC.Add(gloss);
+            }
+            segment.AnalysesRS.Add(first);
+            segment.AnalysesRS.Add(throughGloss ? gloss! : analysis);
+            segment.AnalysesRS.Add(third);
+        });
+        return (text, segment, first, third, gloss);
+    }
+
+    private static IWfiAnalysis NewNeighborAnalysis(LcmCache cache, string form)
+    {
+        var wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+            .Create(TsStringUtils.MakeString(form, cache.DefaultVernWs));
+        var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+        wordform.AnalysesOC.Add(analysis);
+        return analysis;
+    }
+
+    private static void AssertThreeWordAlignment(ISegment segment, IAnalysis first, IWfiWordform wordform,
+        IAnalysis third)
+    {
+        Assert.Equal(3, segment.AnalysesRS.Count);
+        Assert.Same(first, segment.AnalysesRS[0]);
+        Assert.Same(wordform, segment.AnalysesRS[1]);
+        Assert.Same(third, segment.AnalysesRS[2]);
+    }
 }
 
 public sealed class WfiAnalysisPayloadTests
@@ -563,5 +745,48 @@ public sealed class WfiAnalysisConformanceTests
         var created = Assert.Single(wordform.AnalysesOC);
         Assert.Equal(source.LexemeFormOA.Guid, Assert.Single(created.MorphBundlesOS).MorphRA!.Guid);
         Assert.Equal(Opinions.approves, created.GetAgentOpinion(cache.LangProject.DefaultParserAgent));
+    }
+
+    [Fact]
+    public void RemoveAnalysis_AppliesAgainstSyntheticFieldWorksProject()
+    {
+        using var project = new ConformanceProject();
+        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath);
+        var source = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
+            .First(entry => entry.LexemeFormOA is not null && entry.MorphoSyntaxAnalysesOC.Count > 0);
+        IWfiWordform wordform = null!;
+        IWfiAnalysis analysis = null!;
+        ISegment segment = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("conformance-removal", cache.DefaultVernWs));
+            analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+            wordform.AnalysesOC.Add(analysis);
+            var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+            analysis.MorphBundlesOS.Add(bundle);
+            bundle.MorphRA = source.LexemeFormOA;
+            bundle.MsaRA = source.MorphoSyntaxAnalysesOC.First();
+
+            var text = cache.ServiceLocator.GetInstance<ITextFactory>().Create();
+            text.ContentsOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+            text.ContentsOA.ParagraphsOS.Add(paragraph);
+            paragraph.Contents = TsStringUtils.MakeString("conformance-removal", cache.DefaultVernWs);
+            segment = paragraph.SegmentsOS[0];
+            segment.AnalysesRS.Add(analysis);
+        });
+        var operations = AnalysisChangeComposer.Build(cache, new AnalysisChangeIntent(
+            AnalysisChangeKinds.RemoveAnalysis, CanonicalId.FromGuid(wordform.Guid), null,
+            CanonicalId.FromGuid(analysis.Guid)));
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0" },
+            CanonicalId.Mint(), null, operations);
+        var dryRun = ScratchDryRun.Of(cache, proposal);
+
+        var receipt = ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "tester");
+
+        Assert.Empty(wordform.AnalysesOC);
+        Assert.Same(wordform, Assert.Single(segment.AnalysesRS));
+        Assert.Single(receipt.ActualEffects);
     }
 }

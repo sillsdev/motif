@@ -1,13 +1,25 @@
+using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Commands;
+using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -24,6 +36,58 @@ public sealed class AgentChangesArgvTests : IDisposable
         _pristine = pristine;
         _workerRoot = Path.Combine(_root, "worker");
         Directory.CreateDirectory(_workerRoot);
+    }
+
+    [Fact]
+    public async Task RemoveAnalysisRunsThroughTheExecutable()
+    {
+        using var cache = _pristine.NewScratch();
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
+        var project = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        await CaptureBaseline(project);
+        var pending = await ReadPending(project);
+
+        var response = await CliProcess.RunAsync(_workerRoot, null, true, "remove-analysis",
+            "--project", project, "--expected-revision", pending.Revision,
+            "--change-id", "cli-remove-" + Guid.NewGuid().ToString("N"),
+            "--wordform-id", CanonicalId.FromGuid(text.AnalysedWordformId).Value,
+            "--word", SeededProject.AnalysedWordForm,
+            "--analysis-id", CanonicalId.FromGuid(text.ApprovedAnalysisId).Value, "--json");
+
+        var removed = SuccessfulSnapshot(response);
+        var change = Assert.Single(removed.Changes);
+        Assert.Equal("remove-analysis", change.Kind);
+        Assert.Equal("fits", Assert.Single(removed.FitSummary).Status);
+    }
+
+    [Fact]
+    public async Task AcceptNewSetRunsThroughTheExecutable()
+    {
+        using var cache = _pristine.NewScratch();
+        var source = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+            .GetObject(_pristine.Seed.FirstEntryId);
+        var msaId = source.MorphoSyntaxAnalysesOC.First().Guid;
+        Guid wordformId = Guid.Empty;
+        const string word = "cli-accept-word";
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs)).Guid);
+        var project = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        await CaptureBaseline(project);
+        RecordParseAssessment(project, word, _pristine.Seed.FirstLexemeFormId, msaId);
+        var pending = await ReadPending(project);
+
+        var response = await CliProcess.RunAsync(_workerRoot, null, true, "accept-new-set",
+            "--project", project, "--expected-revision", pending.Revision,
+            "--assessment", "cli-accept-assessment", "--wordform-id", CanonicalId.FromGuid(wordformId).Value,
+            "--json");
+
+        var accepted = SuccessfulSnapshot(response);
+        var change = Assert.Single(accepted.Changes);
+        Assert.Equal("add-candidate", change.Kind);
+        Assert.Single(change.OperationIds);
     }
 
     [Fact]
@@ -231,6 +295,26 @@ public sealed class AgentChangesArgvTests : IDisposable
     {
         Assert.True(result.ExitCode == 0, result.FailureDetails);
         return ProjectionJson.Deserialize<PendingChangesSnapshot>(result.Output)!;
+    }
+
+    private static void RecordParseAssessment(string path, string word, Guid formId, Guid msaId)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var project = new ProjectLocator(fullPath, Path.GetFileNameWithoutExtension(fullPath));
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project))!;
+        var selection = Selection.Create("CLI acceptance", [word]);
+        var reading = new ParseAnalysis([new ParseMorph(formId.ToString("D"), msaId.ToString("D"), null, null)]);
+        var morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, word, 0, false, false,
+            false, [reading], []);
+        var assessedWord = new AssessedWord(word, "analysed",
+            [new ParsedAnalysis(null, [], 0, "sha256:cli-reading")]) { Morphology = morphology };
+        new AssessmentRepository(database).Record(new NewAssessmentRecord(
+            "cli-accept-assessment", null, null, "test", AssessmentKind.ParseTime.ToStoredKind(), "{}",
+            "sha256:cli-scope", "whitespace-and-punctuation", "1", JsonSerializer.Serialize(baseline.Token),
+            selection, "sha256:cli-outcome", "sha256:cli-semantic", "sha256:cli-grammar", "cli-test",
+            "cli-test", 0, [assessedWord], SavedUtc: "2026-09-28T12:00:00Z"));
     }
 
     private static string AddWordform(string project, string word)
