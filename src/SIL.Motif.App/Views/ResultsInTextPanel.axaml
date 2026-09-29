@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="using:SIL.Motif.App.Controls"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ResultsInTextPanel"
              x:DataType="views:ResultsInTextPanel">
@@ -95,6 +96,7 @@
                                                FontSize="{DynamicResource Intent.Type.Brand}" FontWeight="SemiBold" AutomationProperties.Name="{Binding WordLinkName}" />
                               <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Text}" IsVisible="{Binding HasNoWordLink}"
                                                        FontSize="{DynamicResource Intent.Type.Brand}" FontWeight="SemiBold" />
+                              <controls:UnreadMark DockPanel.Dock="Right" IsVisible="{Binding Marking.IsUnread}" />
                               <Border DockPanel.Dock="Left" Classes="verdictChip differs compact"
                                       Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}"
                                       IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}">
