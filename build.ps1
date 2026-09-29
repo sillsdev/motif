@@ -43,13 +43,19 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
 
-if ([string]::IsNullOrWhiteSpace($env:HOME)) {
-    $env:HOME = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+$profileRoot = $env:USERPROFILE
+if ([string]::IsNullOrWhiteSpace($profileRoot)) { $profileRoot = $env:HOME }
+if ([string]::IsNullOrWhiteSpace($profileRoot)) {
+    $profileRoot = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
 }
-if ([string]::IsNullOrWhiteSpace($env:HOME)) {
-    throw 'Could not determine the user home directory for the local NuGet source.'
+if ([string]::IsNullOrWhiteSpace($profileRoot)) {
+    throw 'Could not determine the user home directory for NuGet packages.'
 }
-New-Item -ItemType Directory -Force -Path (Join-Path $env:HOME '.nuget/packages') | Out-Null
+if ([string]::IsNullOrWhiteSpace($env:HOME)) { $env:HOME = $profileRoot }
+if ([string]::IsNullOrWhiteSpace($env:NUGET_PACKAGES)) {
+    $env:NUGET_PACKAGES = Join-Path $profileRoot '.nuget/packages'
+}
+New-Item -ItemType Directory -Force -Path $env:NUGET_PACKAGES | Out-Null
 
 function Write-Step {
     param([string] $Text)
@@ -89,8 +95,20 @@ else {
     }
 }
 
+$restoreModule = Join-Path $repoRoot 'tools/MotifRestore.psm1'
+Import-Module $restoreModule -Force
+
+Write-Step 'dotnet restore'
+$restore = Invoke-MotifRestore -Target $solution
+$restore.Output | ForEach-Object { Write-Host $_ }
+if ($restore.ExitCode -ne 0) {
+    Write-Host ''
+    Write-Host 'Restore failed.' -ForegroundColor Red
+    exit 1
+}
+
 Write-Step "dotnet build ($Configuration)"
-& dotnet build $solution --configuration $Configuration --nologo
+& dotnet build $solution --configuration $Configuration --nologo --no-restore
 if ($LASTEXITCODE -ne 0) {
     Write-Host ''
     Write-Host 'Build failed.' -ForegroundColor Red
