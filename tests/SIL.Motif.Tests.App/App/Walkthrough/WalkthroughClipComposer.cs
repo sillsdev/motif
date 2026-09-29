@@ -6,8 +6,19 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal static class WalkthroughClipComposer
 {
+    internal static int FramesForSegment(int startMs, int durationMs)
+    {
+        if (startMs < 0) throw new ArgumentOutOfRangeException(nameof(startMs));
+        if (durationMs <= 0) throw new ArgumentOutOfRangeException(nameof(durationMs));
+        var startFrame = (long)Math.Round(startMs * WalkthroughArtifacts.Fps / 1000d,
+            MidpointRounding.AwayFromZero);
+        var endFrame = (long)Math.Round((startMs + (long)durationMs) * WalkthroughArtifacts.Fps / 1000d,
+            MidpointRounding.AwayFromZero);
+        return Math.Max(1, checked((int)(endFrame - startFrame)));
+    }
+
     public static ManifestClip? TryCompose(
-        string outputDirectory, IReadOnlyList<WalkthroughCapture> captures, string ffmpegExecutable = "ffmpeg")
+        string outputDirectory, IReadOnlyList<WalkthroughClipSegment> segments, string ffmpegExecutable = "ffmpeg")
     {
         if (!CanRunFfmpeg(ffmpegExecutable))
         {
@@ -19,7 +30,7 @@ internal static class WalkthroughClipComposer
         Directory.CreateDirectory(frameDirectory);
         try
         {
-            var frames = WriteFrames(frameDirectory, captures);
+            var frames = WriteFrames(frameDirectory, segments);
             Directory.CreateDirectory(outputDirectory);
             var webm = Path.Combine(outputDirectory, "clip.webm");
             var mp4 = Path.Combine(outputDirectory, "clip.mp4");
@@ -42,14 +53,18 @@ internal static class WalkthroughClipComposer
         }
     }
 
-    private static IReadOnlyList<string> WriteFrames(string frameDirectory, IReadOnlyList<WalkthroughCapture> captures)
+    private static IReadOnlyList<string> WriteFrames(
+        string frameDirectory, IReadOnlyList<WalkthroughClipSegment> segments)
     {
         var files = new List<string>();
-        foreach (var capture in captures)
+        var timelineEnd = 0;
+        foreach (var segment in segments)
         {
-            using var screenshot = SKBitmap.Decode(capture.Png)
-                ?? throw new InvalidDataException($"Could not decode capture '{capture.Id}' for clip output.");
-            var count = Math.Max(1, (int)Math.Ceiling(capture.DurationMs * WalkthroughArtifacts.Fps / 1000d));
+            if (segment.StartMs != timelineEnd || segment.DurationMs <= 0)
+                throw new InvalidDataException("Walkthrough clip segments must form one positive-duration timeline.");
+            using var screenshot = SKBitmap.Decode(segment.Png)
+                ?? throw new InvalidDataException("Could not decode a walkthrough timeline frame.");
+            var count = FramesForSegment(segment.StartMs, segment.DurationMs);
             for (var index = 0; index < count; index++)
             {
                 var progress = count == 1 ? 1f : (float)index / (count - 1);
@@ -58,20 +73,24 @@ internal static class WalkthroughClipComposer
                 using (var canvas = new SKCanvas(frame))
                 {
                     canvas.Clear(SKColors.White);
-                    DrawScene(canvas, screenshot, capture.Callouts[0].Bounds, progress);
+                    DrawScene(canvas, screenshot, segment.TargetBounds, progress,
+                        segment.Kind == WalkthroughClipSegmentKind.Click && segment.ClickTarget is not null);
                 }
                 using var image = SKImage.FromBitmap(frame);
                 using var data = image.Encode(SKEncodedImageFormat.Png, 100);
                 File.WriteAllBytes(framePath, data.ToArray());
                 files.Add(framePath);
             }
+            timelineEnd = segment.StartMs + segment.DurationMs;
         }
         return files;
     }
 
-    private static void DrawScene(SKCanvas canvas, SKBitmap screenshot, Avalonia.Rect target, float progress)
+    private static void DrawScene(
+        SKCanvas canvas, SKBitmap screenshot, Avalonia.Rect? targetBounds, float progress, bool clicked)
     {
-        var zoom = 1f + 0.045f * MathF.Sin(MathF.PI * progress);
+        var target = targetBounds ?? new Avalonia.Rect(0, 0, WalkthroughArtifacts.Width, WalkthroughArtifacts.Height);
+        var zoom = targetBounds is null ? 1f : 1f + 0.045f * MathF.Sin(MathF.PI * progress);
         var centerX = (float)(target.X + target.Width / 2);
         var centerY = (float)(target.Y + target.Height / 2);
         canvas.Save();
@@ -92,7 +111,7 @@ internal static class WalkthroughClipComposer
             StrokeWidth = 3,
             Style = SKPaintStyle.Stroke,
         };
-        if (progress > 0.35f)
+        if (clicked && progress > 0.35f)
             canvas.DrawCircle(centerX, centerY, 8 + 34 * Math.Clamp((progress - 0.35f) / 0.65f, 0, 1), ripple);
 
         using var shadow = new SKPaint { Color = new SKColor(0, 0, 0, 170), IsAntialias = true, Style = SKPaintStyle.Fill };

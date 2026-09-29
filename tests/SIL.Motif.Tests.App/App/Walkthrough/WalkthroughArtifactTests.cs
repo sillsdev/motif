@@ -1,47 +1,108 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using Avalonia;
+using SIL.Motif.Tests.TestFixtures;
 using SkiaSharp;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
+[Collection(LcmCacheTestCollection.Name)]
 public sealed class WalkthroughArtifactTests
 {
     [Fact]
-    public void ManifestUsesTheDocsSiteShape()
+    public void WriteProducesSiteShapedAssetsAndParsableCaptions()
     {
-        var manifest = new WalkthroughManifest(
-            "open-project-overview", "en", "Open a project", "See its summary.", 1280, 720, 30,
-            [new WalkthroughManifestStep("overview", "Words in the Selection", 0, 1600,
-                "screenshots/overview.png", "screenshots/overview-annotated.png",
-                [new WalkthroughManifestCallout(10, 20, 30, 40, "1")])],
-            null);
+        var root = Path.Combine(Path.GetTempPath(), $"walkthrough-output-{Guid.NewGuid():N}");
+        var output = Path.Combine(root, "generated");
+        var previousOutput = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT");
+        var previousUpdate = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES");
+        var previousClips = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS");
+        try
+        {
+            var repositoryRoot = FindRepositoryRoot();
+            var fontDirectory = Path.Combine(root, "tests", "SIL.Motif.Tests.App", "Assets", "Fonts");
+            Directory.CreateDirectory(fontDirectory);
+            File.Copy(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets", "Fonts", "Andika-Bold.ttf"),
+                Path.Combine(fontDirectory, "Andika-Bold.ttf"));
+            var helpPath = Path.Combine(root, "help", "en", "walkthroughs", "example.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(helpPath)!);
+            File.WriteAllText(helpPath,
+                """{"id":"example","title":"Example","description":"A walkthrough.","steps":{"overview":"Overview caption."},"callouts":{"overview":{"motif-pages":"Project pages"}}}""");
+            var help = WalkthroughHelpContent.Load(root, "example", "en");
+            var script = new WalkthroughScript("example", []);
+            var callout = new WalkthroughCaptureCallout("motif-pages", "Project pages", new Rect(80, 110, 360, 150));
+            var capture = new WalkthroughCapture("overview", 0, 1600, [callout], SolidPng(SKColors.White, 0));
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT", output);
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES", "1");
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS", "0");
 
-        using var document = System.Text.Json.JsonDocument.Parse(WalkthroughArtifacts.SerializeManifest(manifest));
-        var root = document.RootElement;
-        Assert.Equal(
-            ["id", "locale", "title", "description", "width", "height", "fps", "steps", "clip"],
-            root.EnumerateObject().Select(property => property.Name));
-        Assert.Equal(System.Text.Json.JsonValueKind.Null, root.GetProperty("clip").ValueKind);
-        var step = Assert.Single(root.GetProperty("steps").EnumerateArray());
-        Assert.Equal(
-            ["id", "caption", "startMs", "endMs", "screenshot", "annotated", "callouts"],
-            step.EnumerateObject().Select(property => property.Name));
-        var callout = Assert.Single(step.GetProperty("callouts").EnumerateArray());
-        Assert.Equal(["x", "y", "width", "height", "label"],
-            callout.EnumerateObject().Select(property => property.Name));
-        Assert.Equal("1", callout.GetProperty("label").GetString());
+            WalkthroughArtifacts.Write(root, script, help, [capture]);
+
+            var outputDirectory = Path.Combine(output, script.Id);
+            var manifestPath = Path.Combine(outputDirectory, "manifest.json");
+            Assert.True(File.Exists(manifestPath));
+            using var fixture = JsonDocument.Parse(File.ReadAllText(Path.Combine(repositoryRoot, "tests",
+                "SIL.Motif.Tests.App", "Assets", "WalkthroughSiteFixture", "manifest.json")));
+            using var document = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            var fixtureRoot = fixture.RootElement;
+            var manifest = document.RootElement;
+            Assert.Equal(fixtureRoot.EnumerateObject().Select(property => property.Name),
+                manifest.EnumerateObject().Select(property => property.Name));
+            var fixtureStep = Assert.Single(fixtureRoot.GetProperty("steps").EnumerateArray());
+            var step = Assert.Single(manifest.GetProperty("steps").EnumerateArray());
+            Assert.Equal(fixtureStep.EnumerateObject().Select(property => property.Name),
+                step.EnumerateObject().Select(property => property.Name));
+            var fixtureCallout = Assert.Single(fixtureStep.GetProperty("callouts").EnumerateArray());
+            var writtenCallout = Assert.Single(step.GetProperty("callouts").EnumerateArray());
+            Assert.Equal(fixtureCallout.EnumerateObject().Select(property => property.Name).Append("caption"),
+                writtenCallout.EnumerateObject().Select(property => property.Name));
+            Assert.Equal("Project pages", writtenCallout.GetProperty("caption").GetString());
+            Assert.Equal("steps/01-overview.png", step.GetProperty("screenshot").GetString());
+            Assert.Equal("steps/01-overview-annotated.png", step.GetProperty("annotated").GetString());
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "steps", "01-overview.png")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "steps", "01-overview-annotated.png")));
+
+            var captionsPath = Path.Combine(outputDirectory, "captions.en.vtt");
+            var cue = Assert.Single(ParseWebVtt(File.ReadAllText(captionsPath)));
+            Assert.Equal(("00:00:00.000", "00:00:01.600", "Overview caption."), cue);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT", previousOutput);
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES", previousUpdate);
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS", previousClips);
+            WalkthroughTestFiles.DeleteDirectory(root);
+        }
     }
 
     [Fact]
-    public void ManifestClipUsesTheDocsSiteAssetNames()
+    public void CropZoomsToCalloutAndTransformsItsBounds()
     {
-        var manifest = new WalkthroughManifest(
-            "open-project-overview", "en", "Open a project", "See its summary.", 1280, 720, 30, [],
-            new ManifestClip("clip.webm", "clip.mp4", "clip.webp", "poster.png"));
+        var baseline = SolidPng(SKColors.White, 0);
+        using (var bitmap = SKBitmap.Decode(baseline)!)
+        {
+            using var canvas = new SKCanvas(bitmap);
+            using var blue = new SKPaint { Color = SKColors.Blue, Style = SKPaintStyle.Fill };
+            canvas.DrawRect(new SKRect(100, 100, 200, 200), blue);
+            bitmap.SetPixel(1000, 100, SKColors.Red);
+            using var image = SKImage.FromBitmap(bitmap);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            baseline = data.ToArray();
+        }
+        var capture = new WalkthroughCapture("crop", 0, 1000,
+            [new WalkthroughCaptureCallout("motif-pages", "Project pages", new Rect(100, 100, 100, 100))], baseline);
 
-        using var document = System.Text.Json.JsonDocument.Parse(WalkthroughArtifacts.SerializeManifest(manifest));
-        Assert.Equal(["webm", "mp4", "webp", "poster"],
-            document.RootElement.GetProperty("clip").EnumerateObject().Select(property => property.Name));
-        Assert.Equal("poster.png", document.RootElement.GetProperty("clip").GetProperty("poster").GetString());
+        var cropped = WalkthroughArtifacts.Crop(capture, 48);
+
+        using var output = SKBitmap.Decode(cropped.Png)!;
+        Assert.Equal((WalkthroughArtifacts.Width, WalkthroughArtifacts.Height), (output.Width, output.Height));
+        Assert.True(cropped.Callouts[0].Bounds.Width > 300);
+        Assert.True(cropped.Callouts[0].Bounds.X > 0);
+        Assert.DoesNotContain(Enumerable.Range(0, output.Height).SelectMany(y => Enumerable.Range(0, output.Width)
+            .Select(x => output.GetPixel(x, y))), color => color == SKColors.Red);
+        Assert.Contains(Enumerable.Range(0, output.Height).SelectMany(y => Enumerable.Range(0, output.Width)
+            .Select(x => output.GetPixel(x, y))), color => color.Blue > color.Red);
     }
 
     [Fact]
@@ -137,6 +198,24 @@ public sealed class WalkthroughArtifactTests
         Assert.False(Directory.Exists(output));
     }
 
+    [Fact]
+    public void ClipFrameCountsFollowRoundedTimelineBoundaries()
+    {
+        var segments = new[]
+        {
+            (StartMs: 0, DurationMs: 250),
+            (StartMs: 250, DurationMs: 250),
+            (StartMs: 500, DurationMs: 1600),
+            (StartMs: 2100, DurationMs: 250),
+        };
+
+        var frameCounts = segments.Select(segment =>
+            WalkthroughClipComposer.FramesForSegment(segment.StartMs, segment.DurationMs)).ToArray();
+
+        Assert.Equal([8, 7, 48, 8], frameCounts);
+        Assert.Equal(71, frameCounts.Sum());
+    }
+
     private static byte[] SolidPng(SKColor baseColor, int changedPixels)
     {
         using var bitmap = new SKBitmap(WalkthroughArtifacts.Width, WalkthroughArtifacts.Height);
@@ -156,5 +235,24 @@ public sealed class WalkthroughArtifactTests
         using var image = SKImage.FromBitmap(bitmap);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
+    }
+
+    private static IReadOnlyList<(string Start, string End, string Caption)> ParseWebVtt(string text)
+    {
+        Assert.StartsWith("WEBVTT\n\n", text, StringComparison.Ordinal);
+        var cues = Regex.Matches(text,
+                @"(?m)^(?<start>\d{2}:\d{2}:\d{2}\.\d{3}) --> (?<end>\d{2}:\d{2}:\d{2}\.\d{3})\r?\n(?<caption>[^\r\n]+)\r?$")
+            .Select(match => (match.Groups["start"].Value, match.Groups["end"].Value, match.Groups["caption"].Value))
+            .ToArray();
+        Assert.NotEmpty(cues);
+        return cues;
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Motif.sln")))
+            directory = directory.Parent;
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate Motif.sln.");
     }
 }

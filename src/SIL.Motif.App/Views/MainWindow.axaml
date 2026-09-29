@@ -177,6 +177,7 @@
             <ListBox.Styles>
               <Style Selector="ListBoxItem" x:DataType="vm:PageViewModel">
                 <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                <Setter Property="AutomationProperties.AutomationId" Value="{Binding AutomationId}" />
               </Style>
               <Style Selector="ListBox.collapsed ListBoxItem" x:DataType="vm:PageViewModel">
                 <Setter Property="ToolTip.Tip" Value="{Binding Title}" />

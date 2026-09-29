@@ -4,5 +4,10 @@
   "description": "The Pages list gives a quick route to each part of the project.",
   "steps": {
     "pages": "Choose the part of the project you want to work in."
+  },
+  "callouts": {
+    "pages": {
+      "motif-pages": "Project pages"
+    }
   }
 }

@@ -11,14 +11,15 @@ using Xunit;
 namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal sealed record WalkthroughHelpContent(
-    string Locale, string Title, string Description, IReadOnlyDictionary<string, string> StepCaptions)
+    string Locale, string Title, string Description, IReadOnlyDictionary<string, string> StepCaptions,
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> CalloutCaptions)
 {
     public static WalkthroughHelpContent Load(string root, string id, string locale)
     {
         var path = Path.Combine(root, "help", locale, "walkthroughs", $"{id}.json");
         using var document = JsonDocument.Parse(File.ReadAllBytes(path));
         var element = document.RootElement;
-        RequireProperties(element, "id", "title", "description", "steps");
+        RequireProperties(element, "id", "title", "description", "steps", "callouts");
         if (RequiredString(element, "id") != id) throw new InvalidDataException($"Help file '{path}' has the wrong id.");
         var title = RequiredString(element, "title");
         var description = RequiredString(element, "description");
@@ -30,8 +31,29 @@ internal sealed record WalkthroughHelpContent(
                 ? property.Value.GetString()!
                 : throw new InvalidDataException($"Help caption '{property.Name}' in '{path}' must be a non-empty string."),
             StringComparer.Ordinal);
-        return new WalkthroughHelpContent(locale, title, description, steps);
+        var calloutCaptions = element.GetProperty("callouts");
+        if (calloutCaptions.ValueKind != JsonValueKind.Object)
+            throw new InvalidDataException($"Help file '{path}' needs a callouts object.");
+        var callouts = calloutCaptions.EnumerateObject().ToDictionary(
+            property => property.Name,
+            property =>
+            {
+                if (property.Value.ValueKind != JsonValueKind.Object)
+                    throw new InvalidDataException($"Help callouts for '{property.Name}' in '{path}' must be an object.");
+                return (IReadOnlyDictionary<string, string>)property.Value.EnumerateObject().ToDictionary(
+                    item => item.Name,
+                    item => item.Value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(item.Value.GetString())
+                        ? item.Value.GetString()!
+                        : throw new InvalidDataException($"Help callout '{item.Name}' in '{path}' must be a non-empty string."),
+                    StringComparer.Ordinal);
+            }, StringComparer.Ordinal);
+        return new WalkthroughHelpContent(locale, title, description, steps, callouts);
     }
+
+    public string CalloutCaption(string stepId, string automationId) =>
+        CalloutCaptions.TryGetValue(stepId, out var captions) && captions.TryGetValue(automationId, out var caption)
+            ? caption
+            : throw new InvalidDataException($"Help file has no caption for callout '{automationId}' in step '{stepId}'.");
 
     private static string RequiredString(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String &&
@@ -58,6 +80,12 @@ internal sealed record WalkthroughCaptureCallout(string AutomationId, string Cap
 internal sealed record WalkthroughCapture(
     string Id, int StartMs, int DurationMs, IReadOnlyList<WalkthroughCaptureCallout> Callouts, byte[] Png);
 
+internal enum WalkthroughClipSegmentKind { Click, Hold, Capture }
+
+internal sealed record WalkthroughClipSegment(
+    int StartMs, int DurationMs, byte[] Png, Avalonia.Rect? TargetBounds,
+    WalkthroughClipSegmentKind Kind, string? ClickTarget);
+
 internal sealed record WalkthroughManifest(
     string Id, string Locale, string Title, string Description, int Width, int Height, int Fps,
     IReadOnlyList<WalkthroughManifestStep> Steps, ManifestClip? Clip);
@@ -66,7 +94,11 @@ internal sealed record WalkthroughManifestStep(
     string Id, string Caption, int StartMs, int EndMs, string Screenshot, string Annotated,
     IReadOnlyList<WalkthroughManifestCallout> Callouts);
 
-internal sealed record WalkthroughManifestCallout(double X, double Y, double Width, double Height, string Label);
+internal sealed record WalkthroughManifestCallout(double X, double Y, double Width, double Height, string Label)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Caption { get; init; }
+}
 
 internal static class WalkthroughArtifacts
 {
@@ -83,18 +115,25 @@ internal static class WalkthroughArtifacts
     };
 
     public static WalkthroughCapture Capture(
-        string id, int startMs, int durationMs, Window window, IReadOnlyList<WalkthroughCaptureCallout> callouts)
+        string id, int startMs, int durationMs, Window window, IReadOnlyList<WalkthroughCaptureCallout> callouts,
+        int? cropPadding = null)
+    {
+        var capture = new WalkthroughCapture(id, startMs, durationMs, callouts, CaptureFrame(window));
+        return cropPadding is { } padding ? Crop(capture, padding) : capture;
+    }
+
+    internal static byte[] CaptureFrame(Window window)
     {
         using var bitmap = new RenderTargetBitmap(new PixelSize(Width, Height), new Vector(96, 96));
         bitmap.Render(window);
         using var stream = new MemoryStream();
         bitmap.Save(stream, PngBitmapEncoderOptions.Default);
-        return new WalkthroughCapture(id, startMs, durationMs, callouts, stream.ToArray());
+        return stream.ToArray();
     }
 
     public static void Write(
         string repositoryRoot, WalkthroughScript script, WalkthroughHelpContent help,
-        IReadOnlyList<WalkthroughCapture> captures)
+        IReadOnlyList<WalkthroughCapture> captures, IReadOnlyList<WalkthroughClipSegment>? clipSegments = null)
     {
         var updateBaselines = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES") == "1";
         var prepared = captures.Select(capture =>
@@ -113,25 +152,27 @@ internal static class WalkthroughArtifacts
         var configuredOutput = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT");
         if (string.IsNullOrWhiteSpace(configuredOutput)) return;
         var directory = Path.Combine(Path.GetFullPath(configuredOutput), script.Id);
-        var screenshots = Path.Combine(directory, "screenshots");
-        Directory.CreateDirectory(screenshots);
-        var manifestSteps = prepared.Select(item =>
+        var stepsDirectory = Path.Combine(directory, "steps");
+        Directory.CreateDirectory(stepsDirectory);
+        var manifestSteps = prepared.Select((item, index) =>
         {
-            var imageName = $"{item.Capture.Id}.png";
-            var annotatedName = $"{item.Capture.Id}-annotated.png";
-            File.WriteAllBytes(Path.Combine(screenshots, imageName), item.Capture.Png);
-            File.WriteAllBytes(Path.Combine(screenshots, annotatedName), item.AnnotatedPng);
+            var imageName = $"{index + 1:D2}-{item.Capture.Id}.png";
+            var annotatedName = $"{index + 1:D2}-{item.Capture.Id}-annotated.png";
+            File.WriteAllBytes(Path.Combine(stepsDirectory, imageName), item.Capture.Png);
+            File.WriteAllBytes(Path.Combine(stepsDirectory, annotatedName), item.AnnotatedPng);
             return new WalkthroughManifestStep(
                 item.Capture.Id, item.Caption, item.Capture.StartMs,
                 item.Capture.StartMs + item.Capture.DurationMs,
-                $"screenshots/{imageName}", $"screenshots/{annotatedName}",
-                item.Capture.Callouts.Select((callout, index) => new WalkthroughManifestCallout(
+                $"steps/{imageName}", $"steps/{annotatedName}",
+                item.Capture.Callouts.Select((callout, calloutIndex) => new WalkthroughManifestCallout(
                     callout.Bounds.X, callout.Bounds.Y, callout.Bounds.Width, callout.Bounds.Height,
-                    (index + 1).ToString(CultureInfo.InvariantCulture))).ToArray());
+                    (calloutIndex + 1).ToString(CultureInfo.InvariantCulture)) { Caption = callout.Caption }).ToArray());
         }).ToArray();
 
         var clip = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS") == "1"
-            ? WalkthroughClipComposer.TryCompose(directory, prepared.Select(item => item.Capture).ToArray())
+            ? WalkthroughClipComposer.TryCompose(directory, clipSegments ?? prepared.Select(item =>
+                new WalkthroughClipSegment(item.Capture.StartMs, item.Capture.DurationMs, item.Capture.Png,
+                    item.Capture.Callouts.FirstOrDefault()?.Bounds, WalkthroughClipSegmentKind.Capture, null)).ToArray())
             : null;
         var manifest = new WalkthroughManifest(script.Id, help.Locale, help.Title, help.Description,
             Width, Height, Fps, manifestSteps, clip);
@@ -154,6 +195,7 @@ internal static class WalkthroughArtifacts
             "Assets", "Fonts", "Andika-Bold.ttf"));
         using var number = new SKPaint { Color = SKColors.White, IsAntialias = true };
         using var font = new SKFont(typeface, 20);
+        using var captionFont = new SKFont(typeface, 16);
 
         for (var index = 0; index < callouts.Count; index++)
         {
@@ -166,6 +208,14 @@ internal static class WalkthroughArtifacts
             canvas.DrawCircle(markerX, markerY, 15, fill);
             canvas.DrawText((index + 1).ToString(CultureInfo.InvariantCulture), markerX, markerY + 7,
                 SKTextAlign.Center, font, number);
+            var caption = callouts[index].Caption;
+            var captionWidth = Math.Min(bitmap.Width - 36, captionFont.MeasureText(caption) + 20);
+            var captionX = Math.Clamp(box.Left, 18, bitmap.Width - captionWidth - 18);
+            var captionY = Math.Clamp(box.Top - 38, 18, bitmap.Height - 38);
+            var captionBox = new SKRect(captionX, captionY, captionX + captionWidth, captionY + 30);
+            canvas.DrawRoundRect(captionBox, 5, 5, fill);
+            canvas.DrawText(caption, captionBox.Left + 10, captionBox.Top + 20,
+                SKTextAlign.Left, captionFont, number);
         }
 
         using var image = SKImage.FromBitmap(bitmap);
@@ -259,6 +309,45 @@ internal static class WalkthroughArtifacts
     }
 
     private sealed record PreparedCapture(WalkthroughCapture Capture, string Caption, byte[] AnnotatedPng);
+
+    internal static WalkthroughCapture Crop(WalkthroughCapture capture, int padding)
+    {
+        if (padding is < 0 or > 256) throw new ArgumentOutOfRangeException(nameof(padding));
+        if (capture.Callouts.Count == 0) throw new InvalidDataException("A cropped capture needs at least one callout.");
+        using var source = SKBitmap.Decode(capture.Png)
+            ?? throw new InvalidDataException("Could not read rendered walkthrough PNG for cropping.");
+        var left = Math.Max(0, (int)Math.Floor(capture.Callouts.Min(callout => callout.Bounds.X) - padding));
+        var top = Math.Max(0, (int)Math.Floor(capture.Callouts.Min(callout => callout.Bounds.Y) - padding));
+        var right = Math.Min(source.Width, (int)Math.Ceiling(capture.Callouts.Max(callout => callout.Bounds.Right) + padding));
+        var bottom = Math.Min(source.Height, (int)Math.Ceiling(capture.Callouts.Max(callout => callout.Bounds.Bottom) + padding));
+        var cropWidth = Math.Max(1, right - left);
+        var cropHeight = Math.Max(1, bottom - top);
+        using var cropped = new SKBitmap(cropWidth, cropHeight);
+        using (var cropCanvas = new SKCanvas(cropped))
+            cropCanvas.DrawBitmap(source, new SKRect(left, top, right, bottom), new SKRect(0, 0, cropWidth, cropHeight));
+
+        var scale = Math.Min((float)Width / cropWidth, (float)Height / cropHeight);
+        var scaledWidth = cropWidth * scale;
+        var scaledHeight = cropHeight * scale;
+        var offsetX = (Width - scaledWidth) / 2;
+        var offsetY = (Height - scaledHeight) / 2;
+        using var output = new SKBitmap(Width, Height);
+        using (var canvas = new SKCanvas(output))
+        {
+            canvas.Clear(source.GetPixel(left, top));
+            canvas.DrawBitmap(cropped, new SKRect(offsetX, offsetY, offsetX + scaledWidth, offsetY + scaledHeight));
+        }
+        var transformed = capture.Callouts.Select(callout => new WalkthroughCaptureCallout(
+            callout.AutomationId, callout.Caption,
+            new Avalonia.Rect(
+                (callout.Bounds.X - left) * scale + offsetX,
+                (callout.Bounds.Y - top) * scale + offsetY,
+                callout.Bounds.Width * scale,
+                callout.Bounds.Height * scale))).ToArray();
+        using var image = SKImage.FromBitmap(output);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return capture with { Callouts = transformed, Png = data.ToArray() };
+    }
 }
 
 internal sealed record ManifestClip(string Webm, string Mp4, string Webp, string Poster);

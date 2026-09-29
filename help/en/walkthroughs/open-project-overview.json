@@ -4,5 +4,10 @@
   "description": "Open a language project and see its Overview.",
   "steps": {
     "overview": "The Overview shows the latest stored measurements."
+  },
+  "callouts": {
+    "overview": {
+      "motif-overview-selection-word-count": "Words in the Selection"
+    }
   }
 }

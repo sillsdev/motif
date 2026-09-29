@@ -212,23 +212,8 @@ public sealed class WalkthroughWindow : IDisposable
 
     internal Control FindByAutomationId(string automationId)
     {
-        if (automationId == AutomationIds.SelectNewProject && !ProjectMenuFlyout.IsOpen)
-            ClickAutomationId(AutomationIds.ProjectMenu);
-
         return AllControls().Single(control =>
             string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
-    }
-
-    internal Control FindByAutomationName(string automationName) => AllControls().Single(control =>
-        string.Equals(AutomationProperties.GetName(control), automationName, StringComparison.Ordinal));
-
-    internal void ClickAutomationName(string automationName)
-    {
-        var control = FindByAutomationName(automationName);
-        Assert.True(control.IsEffectivelyEnabled, $"Automation name '{automationName}' is disabled.");
-        HeadlessClick.Click(Window, control, automationName);
-        Window.UpdateLayout();
-        Pump();
     }
 
     internal void ClickAutomationId(string automationId)

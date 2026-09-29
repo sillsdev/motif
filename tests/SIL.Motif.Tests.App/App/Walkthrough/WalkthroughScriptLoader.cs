@@ -4,21 +4,22 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal enum WalkthroughStepKind { Click, Type, WaitFor, Highlight, Hold, Capture }
 
-internal sealed record WalkthroughCallout(string AutomationId, string Caption);
+internal sealed record WalkthroughCallout(string AutomationId);
 
 internal sealed record WalkthroughStep(
     string Id,
     WalkthroughStepKind Kind,
     string? AutomationId = null,
-    string? AutomationName = null,
     string? Text = null,
     string? Condition = null,
     string? ExpectedText = null,
     int? TimeoutMs = null,
     int? DurationMs = null,
-    IReadOnlyList<WalkthroughCallout>? Callouts = null);
+    IReadOnlyList<WalkthroughCallout>? Callouts = null,
+    int? CropPadding = null);
 
-internal sealed record WalkthroughScript(string Id, IReadOnlyList<WalkthroughStep> Steps);
+internal sealed record WalkthroughScript(
+    string Id, IReadOnlyList<WalkthroughStep> Steps, string Fixture = "fresh-project");
 
 internal static class WalkthroughScriptLoader
 {
@@ -28,16 +29,18 @@ internal static class WalkthroughScriptLoader
         {
             using var document = JsonDocument.Parse(File.ReadAllBytes(path));
             var root = document.RootElement;
-            CheckProperties(root, "script", "id", "steps");
+            CheckProperties(root, "script", "id", "fixture", "steps");
             var id = ReadRequiredString(root, "id", "script");
             CheckId(id, "script id");
+            var fixture = ReadRequiredString(root, "fixture", "script");
+            CheckId(fixture, "script fixture");
             var items = Required(root, "steps", "script");
             if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() == 0)
                 throw Invalid("script.steps must be a non-empty array");
             var steps = items.EnumerateArray().Select((step, index) => ReadStep(step, index)).ToArray();
             if (steps.Select(step => step.Id).Distinct(StringComparer.Ordinal).Count() != steps.Length)
                 throw Invalid("step ids must be unique within a script");
-            return new WalkthroughScript(id, steps);
+            return new WalkthroughScript(id, steps, fixture);
         }
         catch (JsonException exception)
         {
@@ -86,13 +89,8 @@ internal static class WalkthroughScriptLoader
         var context = $"step '{id}'";
         if (kind == WalkthroughStepKind.Click)
         {
-            CheckProperties(element, context, "id", "kind", "automationId", "automationName");
-            var hasId = element.TryGetProperty("automationId", out var idValue);
-            var hasName = element.TryGetProperty("automationName", out var nameValue);
-            if (hasId == hasName) throw Invalid($"{context} needs exactly one of automationId and automationName");
-            return new WalkthroughStep(id, kind,
-                AutomationId: hasId ? ReadAutomationIdValue(idValue, $"{context}.automationId") : null,
-                AutomationName: hasName ? ReadString(nameValue, $"{context}.automationName") : null);
+            CheckProperties(element, context, "id", "kind", "automationId");
+            return new WalkthroughStep(id, kind, AutomationId: ReadAutomationId(element, context));
         }
 
         CheckProperties(element, context, "id", "kind", "automationId");
@@ -131,22 +129,23 @@ internal static class WalkthroughScriptLoader
 
     private static WalkthroughStep ReadCapture(JsonElement element, string id)
     {
-        CheckProperties(element, $"step '{id}'", "id", "kind", "durationMs", "callouts");
+        CheckProperties(element, $"step '{id}'", "id", "kind", "durationMs", "callouts", "cropPadding");
         var items = Required(element, "callouts", $"step '{id}'");
         if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() == 0)
             throw Invalid($"step '{id}' callouts must be a non-empty array");
         var callouts = items.EnumerateArray().Select((item, index) =>
         {
             var context = $"step '{id}' callout {index}";
-            CheckProperties(item, context, "automationId", "caption");
-            var caption = ReadRequiredString(item, "caption", context);
-            if (caption.Length > 80) throw Invalid($"{context} caption must be at most 80 characters");
-            return new WalkthroughCallout(ReadAutomationId(item, context), caption);
+            CheckProperties(item, context, "automationId");
+            return new WalkthroughCallout(ReadAutomationId(item, context));
         }).ToArray();
         if (callouts.Select(item => item.AutomationId).Distinct(StringComparer.Ordinal).Count() != callouts.Length)
             throw Invalid($"step '{id}' callout AutomationIds must be unique");
         return new WalkthroughStep(id, WalkthroughStepKind.Capture,
-            DurationMs: ReadBoundedInteger(element, "durationMs", id, 100, 60000), Callouts: callouts);
+            DurationMs: ReadBoundedInteger(element, "durationMs", id, 100, 60000), Callouts: callouts,
+            CropPadding: element.TryGetProperty("cropPadding", out _)
+                ? ReadBoundedInteger(element, "cropPadding", id, 0, 256)
+                : null);
     }
 
     private static string ReadAutomationId(JsonElement element, string context)
@@ -154,9 +153,6 @@ internal static class WalkthroughScriptLoader
         var value = ReadRequiredString(element, "automationId", context);
         return ValidateAutomationId(value, context);
     }
-
-    private static string ReadAutomationIdValue(JsonElement value, string context) =>
-        ValidateAutomationId(ReadString(value, context), context);
 
     private static string ValidateAutomationId(string value, string context)
     {
