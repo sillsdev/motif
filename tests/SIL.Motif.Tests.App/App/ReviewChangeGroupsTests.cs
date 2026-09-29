@@ -117,6 +117,17 @@ public sealed class ReviewChangeGroupsTests
     }
 
     [Fact]
+    public void ExpandedContextExplainsWhenTheSourceSentenceIsNotLoaded()
+    {
+        var change = new ChangeViewModel(ChangeKinds.Approve, "word", "reading",
+            occurrence: new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 0));
+
+        change.ToggleContext();
+
+        Assert.Equal("The sentence is not loaded. Open Analyze texts to see it.", change.ContextUnavailableText);
+    }
+
+    [Fact]
     public async Task UndoAllRemovesEveryChangeInTheGroupOneAtATime()
     {
         var (page, fake) = await OpenReviewAsync(

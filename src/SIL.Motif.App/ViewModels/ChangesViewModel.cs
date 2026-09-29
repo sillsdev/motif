@@ -464,13 +464,27 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     /// <summary>The sentence tokens surrounding the exact occurrence, when the Texts page has loaded them.</summary>
     public IReadOnlyList<ResultsTokenViewModel> ContextTokens { get; private set; } = [];
 
+    public string ContextUnavailableText => IsContextExpanded && Occurrence is not null && ContextTokens.Count == 0
+        ? "The sentence is not loaded. Open Analyze texts to see it."
+        : string.Empty;
+
+    public bool HasUnavailableContext => ContextUnavailableText.Length > 0;
+
     internal void SetContextTokens(IReadOnlyList<ResultsTokenViewModel> tokens)
     {
         ContextTokens = tokens;
         OnPropertyChanged(nameof(ContextTokens));
+        OnPropertyChanged(nameof(ContextUnavailableText));
+        OnPropertyChanged(nameof(HasUnavailableContext));
     }
 
     public void ToggleContext() => IsContextExpanded = !IsContextExpanded;
+
+    partial void OnIsContextExpandedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ContextUnavailableText));
+        OnPropertyChanged(nameof(HasUnavailableContext));
+    }
     public string Kind { get; } = kind;
     public string Label { get; } = ChangeKinds.LabelOf(kind);
     /// <summary>What this added analysis will be and where it came from.</summary>

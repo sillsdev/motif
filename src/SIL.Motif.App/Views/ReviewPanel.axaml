@@ -150,6 +150,8 @@
                               </ItemsControl>
                             </StackPanel>
                           </StackPanel>
+                          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ContextUnavailableText}"
+                                                   IsVisible="{Binding HasUnavailableContext}" />
                           <ItemsControl ItemsSource="{Binding ContextTokens}"
                                         IsVisible="{Binding IsContextExpanded}"
                                         AutomationProperties.Name="Sentence context">
