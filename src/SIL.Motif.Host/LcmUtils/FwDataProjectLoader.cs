@@ -61,39 +61,44 @@ public class FwDataProjectLoader
             // .NET binds its own ICU on first culture use; after SIL ICU 70 is loaded that bind can abort on macOS.
             _ = string.Compare("a", "b", StringComparison.CurrentCulture);
 
-            var previousIcuDataDirectory = Environment.GetEnvironmentVariable("ICU_DATA");
-            Environment.SetEnvironmentVariable("ICU_DATA", dataDirectory, EnvironmentVariableTarget.Process);
+            string[] loadedLibraries;
             try
             {
-                string[] loadedLibraries;
-                try
-                {
-                    loadedLibraries = LoadBundledIcuLibraries();
-                    Icu.Wrapper.DataDirectory = dataDirectory;
-                    RegisterCustomIcuResolver(loadedLibraries);
-                    CustomIcu.InitIcuDataDir();
-                }
-                catch (Exception exception)
-                {
-                    throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
-                        exception.GetType().Name + ": " + exception.Message, exception);
-                }
-
-                if (!CustomIcu.HaveCustomIcuLibrary)
-                {
-                    throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
-                        "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
-                }
-
-                Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
-                InstallConfiguredGlobalWritingSystemRepository();
-                _init = true;
+                loadedLibraries = LoadBundledIcuLibraries();
+                Icu.Wrapper.DataDirectory = dataDirectory;
+                RegisterCustomIcuResolver(loadedLibraries);
+                InitializeCustomIcuDataDirectory(dataDirectory);
             }
-            finally
+            catch (Exception exception)
             {
-                Environment.SetEnvironmentVariable(
-                    "ICU_DATA", previousIcuDataDirectory, EnvironmentVariableTarget.Process);
+                throw CreateCustomIcuFailure(dataDirectory, _loadedIcuLibraryPaths,
+                    exception.GetType().Name + ": " + exception.Message, exception);
             }
+
+            if (!CustomIcu.HaveCustomIcuLibrary)
+            {
+                throw CreateCustomIcuFailure(dataDirectory, loadedLibraries,
+                    "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
+            }
+
+            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
+            InstallConfiguredGlobalWritingSystemRepository();
+            _init = true;
+        }
+    }
+
+    private static void InitializeCustomIcuDataDirectory(string dataDirectory)
+    {
+        var previousIcuDataDirectory = Environment.GetEnvironmentVariable("ICU_DATA");
+        try
+        {
+            Environment.SetEnvironmentVariable("ICU_DATA", dataDirectory, EnvironmentVariableTarget.Process);
+            CustomIcu.InitIcuDataDir();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(
+                "ICU_DATA", previousIcuDataDirectory, EnvironmentVariableTarget.Process);
         }
     }
 

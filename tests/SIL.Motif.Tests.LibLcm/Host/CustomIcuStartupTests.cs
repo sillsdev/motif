@@ -9,6 +9,18 @@ namespace SIL.Motif.Tests.LibLcm.Host;
 public sealed class CustomIcuStartupTests
 {
     [Fact]
+    public void TestHostInitializesFieldWorksIcuBeforeTestsCanLaunchChildren()
+    {
+        var customDataDirectory = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "IcuData", "icudt70l"));
+
+        Assert.True(CustomIcu.HaveCustomIcuLibrary);
+        Assert.StartsWith("70.", Icu.Wrapper.IcuVersion);
+        Assert.Equal(customDataDirectory, Icu.Wrapper.DataDirectory);
+        Assert.NotEqual(customDataDirectory, Environment.GetEnvironmentVariable("ICU_DATA"));
+    }
+
+    [Fact]
     public void StartupLoadsFieldWorksNormalizationData()
     {
         var originalIcuDataDirectory = Environment.GetEnvironmentVariable("ICU_DATA");
