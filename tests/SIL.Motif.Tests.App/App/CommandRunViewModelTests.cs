@@ -28,7 +28,7 @@ public sealed class CommandRunViewModelTests
     }
 
     [Fact]
-    public async Task ProgressFromAnotherThreadGoesToTheOwnersContextOrAppliesDirectlyWithoutOne()
+    public void ProgressFromAnotherThreadGoesToTheOwnersContextOrAppliesDirectlyWithoutOne()
     {
         var progress = new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing...");
         var recording = new RecordingSynchronizationContext();
@@ -39,11 +39,14 @@ public sealed class CommandRunViewModelTests
         finally { SynchronizationContext.SetSynchronizationContext(previous); }
         var withoutContext = new TestRunViewModel();
 
-        await Task.Run(() =>
+        // A dedicated thread, since a pool thread could be the one that created the runs.
+        var reporter = new Thread(() =>
         {
             ((IProgress<AssessmentProgress>)withContext).Report(progress);
             ((IProgress<AssessmentProgress>)withoutContext).Report(progress);
         });
+        reporter.Start();
+        reporter.Join();
 
         Assert.Null(withContext.Progress);
         Assert.Equal(1, recording.Posted);
