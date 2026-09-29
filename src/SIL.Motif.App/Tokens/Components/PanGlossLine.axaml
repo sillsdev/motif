@@ -1,0 +1,62 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.PanGlossLine.DifferentPadding" ResourceKey="Primitive.Inset.3_0_0_0" />
+    <StaticResource x:Key="Component.PanGlossLine.Type" ResourceKey="Primitive.Type.10" />
+    <StaticResource x:Key="Component.PanGlossLine.ExtraPadding" ResourceKey="Primitive.Inset.3_0_3_0" />
+    <StaticResource x:Key="Component.PanGlossLine.ExtraType" ResourceKey="Primitive.Type.9" />
+    <StaticResource x:Key="Component.PanGlossLine.ExtraRadius" ResourceKey="Primitive.Radius.2" />
+    <StaticResource x:Key="Component.PanGlossLine.ExtraStroke" ResourceKey="Primitive.Inset.1_1_1_1" />
+    <StaticResource x:Key="Component.PanGlossLine.DividerHeight" ResourceKey="Primitive.Size.1" />
+    <StaticResource x:Key="Component.PanGlossLine.DividerThickness" ResourceKey="Primitive.Stroke.1" />
+    <StaticResource x:Key="Component.PanGlossLine.DividerDash" ResourceKey="Primitive.Dash.1_2" />
+  </Styles.Resources>
+  <Style Selector="Border.panGlossLine">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector="Border.panGlossLine :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Component.PanGlossLine.Type}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Marking.Text}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.same :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Agreeing}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.different">
+    <Setter Property="Background" Value="{DynamicResource Intent.Agreement.Conflict.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Conflict.Edge}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Agreement.Conflict.Shadow}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.DifferentPadding}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.different TextBlock.f">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Conflict}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.panGlossLine.none :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Parser.NoReading}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector="Border.panGlossLine.capped :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Parser.SearchCapped}" />
+  </Style>
+  <Style Selector="Rectangle.panGlossDivider">
+    <Setter Property="Height" Value="{DynamicResource Component.PanGlossLine.DividerHeight}" />
+    <Setter Property="Fill" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="Stroke" Value="{DynamicResource Intent.Marking.Divider}" />
+    <Setter Property="StrokeThickness" Value="{DynamicResource Component.PanGlossLine.DividerThickness}" />
+    <Setter Property="StrokeDashArray" Value="{DynamicResource Component.PanGlossLine.DividerDash}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+  <Style Selector="Border.panGlossExtra">
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.PanGlossLine.ExtraStroke}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.PanGlossLine.ExtraRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.ExtraPadding}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Suggestion.Edge}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="Border.panGlossExtra :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Component.PanGlossLine.ExtraType}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Suggestion}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+</Styles>

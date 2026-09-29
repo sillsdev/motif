@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
+using Avalonia.Headless;
+using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Xunit;
@@ -77,6 +79,79 @@ public sealed class ComponentStyleTests
                 window.Show();
                 Dispatcher.UIThread.RunJobs();
                 Assert.Equal([3d, 2d], outline.StrokeDashArray);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ActionChipUsesItsHoverSurface()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var chip = Press("actionChip");
+            var window = new Window { Content = chip, Width = 120, Height = 40 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                window.MouseMove(CentreOf(chip, window));
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(Application.Current!.TryGetResource("Intent.Marking.Hover", ThemeVariant.Light, out var expected));
+                Assert.Equal(expected, chip.Background);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void PanGlossDifferentLineUsesInsetEmphasisAndScopedTypeWeight()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var form = Text("f");
+            var detail = Text("detail");
+            var divider = new Rectangle();
+            divider.Classes.Add("panGlossDivider");
+            var content = new Grid();
+            content.Children.Add(form);
+            content.Children.Add(detail);
+            content.Children.Add(divider);
+            var line = new Border
+            {
+                Classes = { "panGlossLine", "different" },
+                Child = content,
+            };
+            var capped = new Border
+            {
+                Classes = { "panGlossLine", "capped" },
+                Child = Text("capped"),
+            };
+            var host = new StackPanel();
+            host.Children.Add(line);
+            host.Children.Add(capped);
+            var window = new Window { Content = host };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(new Thickness(0), line.BorderThickness);
+                Assert.Equal(new Thickness(3, 0, 0, 0), line.Padding);
+                Assert.Equal(1, line.BoxShadow.Count);
+                Assert.True(line.BoxShadow[0].IsInset);
+                Assert.Equal(Color.Parse("#215cc7"), line.BoxShadow[0].Color);
+                Assert.Equal(FontWeight.SemiBold, form.FontWeight);
+                Assert.Equal(FontWeight.Normal, detail.FontWeight);
+                Assert.Equal(FontWeight.Normal, ((TextBlock)capped.Child!).FontWeight);
+                Assert.Equal([1d, 2d], divider.StrokeDashArray);
             }
             finally
             {
@@ -243,6 +318,95 @@ public sealed class ComponentStyleTests
         yield return new("Overview", "a handoff icon", host => Add(host,
                 new PathIcon { Classes = { "overviewHandoffIcon" } }),
             Control.WidthProperty, "Component.Overview.HandoffIconSize");
+
+        yield return new("OpinionMark", "an approved fill", host => Add(host, Box("opinionMark", "approved")),
+            Border.BackgroundProperty, "Intent.Opinion.Approved.Fill");
+        yield return new("OpinionMark", "a mark's stroke", host => Add(host, Box("opinionMark", "approved")),
+            Border.BorderThicknessProperty, "Component.OpinionMark.Stroke");
+        yield return new("OpinionMark", "the missing-analysis text", host => Inside(host, Box("opinionMark", "none")),
+            TextBlock.ForegroundProperty, "Intent.Opinion.None.Text");
+        yield return new("OpinionMark", "the missing-analysis outline", EmptyMarkDash,
+            Shape.StrokeProperty, "Intent.Opinion.None.Outline");
+        yield return new("OpinionMark", "an unknown mark's shape", host => Add(host, Box("opinionMark", "unknown")),
+            Border.CornerRadiusProperty, "Component.OpinionMark.UnknownRadius");
+        yield return new("PanGlossLine", "a different reading", host => Add(host, Box("panGlossLine", "different")),
+            Border.BackgroundProperty, "Intent.Agreement.Conflict.Fill");
+        yield return new("PanGlossLine", "a different reading edge", host => Add(host, Box("panGlossLine", "different")),
+            Border.BorderBrushProperty, "Intent.Agreement.Conflict.Edge");
+        yield return new("PanGlossLine", "an inset edge", host => Add(host, Box("panGlossLine", "different")),
+            Border.BoxShadowProperty, "Intent.Agreement.Conflict.Shadow");
+        yield return new("PanGlossLine", "an extra reading count", host => Add(host, Box("panGlossExtra")),
+            Border.BorderBrushProperty, "Intent.Agreement.Suggestion.Edge");
+        yield return new("PanGlossLine", "a suggested reading count", host => Inside(host, Box("panGlossExtra")),
+            TextBlock.ForegroundProperty, "Intent.Agreement.Suggestion");
+        yield return new("ActionChip", "the primary action", host => Add(host, Press("actionChip", "primary")),
+            Button.HeightProperty, "Component.ActionChip.Height");
+        yield return new("ActionChip", "the Fix menu action", host => Add(host, Press("actionChip", "fix")),
+            Button.BorderBrushProperty, "Intent.Marking.Border");
+        yield return new("ActionChip", "the Fix menu text", host => Add(host, Press("actionChip", "fix")),
+            Button.ForegroundProperty, "Intent.Marking.Text");
+        yield return new("ActionChip", "the primary action text", host => Add(host, Press("actionChip", "primary")),
+            Button.ForegroundProperty, "Intent.Opinion.Approved.Text");
+        yield return new("StagedStrip", "the staged change", host => Add(host, Box("stagedStrip")),
+            Border.BackgroundProperty, "Intent.Change.Fill");
+        yield return new("HoverReveal", "a hidden secondary action", RevealControl,
+            Control.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
+        yield return new("HoverReveal", "the staged button height", host => Add(host, Press("revealControl", "revealButton")),
+            Button.HeightProperty, "Component.HoverReveal.Height");
+        yield return new("HoverReveal", "the FieldWorks link", host => Add(host, Press("revealControl", "revealLink")),
+            Button.ForegroundProperty, "Intent.Marking.Link");
+        yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
+            TextBlock.FontSizeProperty, "Component.Density.CompactType");
+        yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
+            TextBlock.FontSizeProperty, "Component.Density.NormalType");
+        yield return new("HoverReveal", "a neutral staged button", host => Add(host, Press("revealControl", "revealButton")),
+            Button.FontSizeProperty, "Component.HoverReveal.ButtonType");
+        yield return new("HoverReveal", "the staged button radius", host => Add(host, Press("revealControl", "revealButton")),
+            Button.CornerRadiusProperty, "Component.HoverReveal.ButtonRadius");
+        yield return new("HoverReveal", "the staged button border", host => Add(host, Press("revealControl", "revealButton")),
+            Button.BorderThicknessProperty, "Intent.Stroke.Box");
+        yield return new("HoverReveal", "the staged button text", host => Add(host, Press("revealControl", "revealButton")),
+            Button.ForegroundProperty, "Intent.Marking.Text");
+        yield return new("HoverReveal", "a FieldWorks link", host => Add(host, Press("revealControl", "revealLink")),
+            Button.FontSizeProperty, "Component.HoverReveal.LinkType");
+        yield return new("HoverReveal", "the staged button padding", host => Add(host, Press("revealControl", "revealButton")),
+            Button.PaddingProperty, "Component.HoverReveal.ButtonPadding");
+        yield return new("HoverReveal", "the staged button edge", host => Add(host, Press("revealControl", "revealButton")),
+            Button.BorderBrushProperty, "Intent.Marking.Border");
+        yield return new("HoverReveal", "the staged button surface", host => Add(host, Press("revealControl", "revealButton")),
+            Button.BackgroundProperty, "Intent.Marking.Surface");
+        yield return new("HoverReveal", "the FieldWorks link colour", host => Add(host, Press("revealControl", "revealLink")),
+            Button.ForegroundProperty, "Intent.Marking.Link");
+        yield return new("HoverReveal", "the FieldWorks link padding", host => Add(host, Press("revealControl", "revealLink")),
+            Button.PaddingProperty, "Intent.Inset.None");
+    }
+
+    private static Button RevealControl(Panel host)
+    {
+        var button = Press("revealControl", "revealButton");
+        Add(host, new Border { Classes = { "hoverReveal" }, Child = button });
+        return button;
+    }
+
+    private static Rectangle EmptyMarkDash(Panel host)
+    {
+        var dash = new Rectangle { Classes = { "opinionDash" } };
+        Add(host, new Border
+        {
+            Classes = { "opinionMark", "none" },
+            Child = new Grid { Children = { dash } },
+        });
+        return dash;
+    }
+
+    private static TextBlock DensityText(Panel host, bool normal)
+    {
+        var root = new StackPanel { Classes = { "analysisDensity" } };
+        if (normal) root.Classes.Add("normal");
+        var text = Text("densitySample");
+        root.Children.Add(text);
+        host.Children.Add(root);
+        return text;
     }
 
     private static T Add<T>(Panel host, T control) where T : Control
@@ -325,4 +489,8 @@ public sealed class ComponentStyleTests
         Assert.NotNull(root);
         return System.IO.Path.Combine(root.FullName, "src", "SIL.Motif.App");
     }
+
+    private static Point CentreOf(Control control, Window window) =>
+        control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)
+        ?? throw new InvalidOperationException("The control is not positioned in the window.");
 }
