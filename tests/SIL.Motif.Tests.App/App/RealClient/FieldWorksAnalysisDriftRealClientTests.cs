@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -21,28 +22,13 @@ public sealed class FieldWorksAnalysisDriftRealClientTests(PristineProjectFixtur
     {
         using var project = new WalkthroughProject(pristine);
         var word = "analysis-drift-word";
-        Guid wordformId = Guid.Empty;
-        Guid analysisId = Guid.Empty;
-        new FieldWorksSimulator(project.FwDataPath).SaveEdit(cache =>
-            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-            {
-                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                    .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs));
-                wordformId = wordform.Guid;
-                var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
-                wordform.AnalysesOC.Add(analysis);
-                analysisId = analysis.Guid;
-                var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
-                    .GetObject(pristine.Seed.FirstEntryId);
-                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
-                analysis.MorphBundlesOS.Add(bundle);
-                bundle.MorphRA = entry.LexemeFormOA;
-                bundle.MsaRA = entry.MorphoSyntaxAnalysesOC.First();
-            }));
+        var (wordformId, analysisId) = StoredAnalysisFixture.Add(
+            project.FwDataPath, pristine.Seed.FirstEntryId, word);
 
+        var parser = FakeParser.Copy(project.ManagedRoot);
         await using var runner = new InProcessRunnerLauncher(
-            new JobRunnerLaunchOptions(project.ManagedRoot, FakeParser.ExecutablePath));
-        var client = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath, runner);
+            new JobRunnerLaunchOptions(project.ManagedRoot, parser));
+        var client = RealCommandClient.Create(project.ManagedRoot, parser, runner);
         var captured = await client.CaptureBaselineAsync(
             new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
@@ -75,13 +61,16 @@ public sealed class FieldWorksAnalysisDriftRealClientTests(PristineProjectFixtur
         Assert.True(changed.Succeeded, changed.Refusal?.Message);
         Assert.False(Assert.Single(changed.Value!.FitSummary).StillFits);
 
+        var beforeApply = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(project.FwDataPath)));
         var applied = await client.ApplyPendingAsync(new ApplyPendingRequest(
             project.FwDataPath, changed.Value.DraftId!, changed.Value.Revision, "test-user"),
             CancellationToken.None);
 
         Assert.False(applied.Succeeded);
-        Assert.NotNull(applied.Refusal);
+        Assert.Equal("apply.change-no-longer-fits", applied.Refusal?.Code);
         Assert.False(applied.Value?.Applied ?? false);
+        Assert.Equal(beforeApply,
+            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(project.FwDataPath))));
         var retained = await client.LoadPendingChangesAsync(
             new PendingChangesRequest(project.FwDataPath, "1.0"), CancellationToken.None);
         Assert.True(retained.Succeeded, retained.Refusal?.Message);

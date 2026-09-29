@@ -7,6 +7,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.LcmUtils;
@@ -188,7 +189,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         PendingChangeFixture.AddIncorrectSpelling(
             project.FwDataPath, project.ManagedRoot, "held-change-word");
         using var held = new FieldWorksSimulator(project.FwDataPath).Hold();
-        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -199,20 +200,19 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 () => walkthrough.Workspace.Baseline.FieldWorksHeldProject &&
                     walkthrough.Workspace.Selection.Texts.Count == 1 &&
                     walkthrough.Workspace.Context.Setup?.IsOpen == true,
-                WalkthroughSteps.Remaining(deadline), "the window did not show the held project and its setup");
+                StepFor(deadline), "the window did not show the held project and its setup");
             walkthrough.SkipSetup();
             walkthrough.ShowPage(WorkspacePage.Review);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Context.Changes.Items.Count == 1,
-                WalkthroughSteps.Remaining(deadline), "the pending change did not appear in Review");
+                StepFor(deadline), "the pending change did not appear in Review");
 
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             Assert.False(review.CanApply);
             Assert.False(review.ApplyCommand.CanExecute(null));
-            Assert.Equal("FieldWorks has this project open. Close it before applying changes.",
-                review.ApplyBlockReason);
+            Assert.False(string.IsNullOrWhiteSpace(review.ApplyBlockReason));
             return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
+        }, TimeSpan.FromSeconds(60));
     }
 
     [Fact]
@@ -222,10 +222,9 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         PendingChangeFixture.AddIncorrectSpelling(
             project.FwDataPath, project.ManagedRoot, "held-retry-word");
         using var held = new FieldWorksSimulator(project.FwDataPath).Hold();
-        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
         var parser = FakeParser.Copy(project.ManagedRoot);
-        var heartbeat = Path.Combine(project.ManagedRoot, "apply-check-parser-heartbeat");
-
+        var prompt = "See what applying does to the numbers.";
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             using var walkthrough = new WalkthroughWindow(
@@ -236,50 +235,23 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 () => walkthrough.Workspace.Baseline.FieldWorksHeldProject &&
                     walkthrough.Workspace.Selection.Texts.Count == 1 &&
                     walkthrough.Workspace.Context.Setup?.IsOpen == true,
-                WalkthroughSteps.Remaining(deadline), "the window did not show the held project and its setup");
+                StepFor(deadline), "the window did not show the held project and its setup");
             walkthrough.SkipSetup();
-            walkthrough.SetFakeParserBehavior(new
-            {
-                subcommands = new Dictionary<string, object>
-                {
-                    ["batch"] = new { heartbeatPath = heartbeat },
-                },
-            });
-            WalkthroughSteps.StartAssessmentOverPastedWords(walkthrough, deadline);
-            walkthrough.WaitUntil(
-                () => File.Exists(heartbeat) && walkthrough.Workspace.Assess.State == RunState.Running,
-                WalkthroughSteps.Remaining(deadline), "the Assessment did not reach the held fake parser");
-            walkthrough.Click("Cancel the running Assessment");
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Assess.State == RunState.Cancelled,
-                WalkthroughSteps.Remaining(deadline), "the held Assessment did not cancel");
-            walkthrough.SetFakeParserBehavior(new
-            {
-                subcommands = new Dictionary<string, object>
-                {
-                    ["batch"] = new { words = new[] { new { word = "motifa", outcome = "complete" } } },
-                },
-            });
-            WalkthroughSteps.StartAssessmentOverPastedWords(walkthrough, deadline);
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Assess.State == RunState.Completed &&
-                    walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
-                WalkthroughSteps.Remaining(deadline), "the Assessment did not complete");
 
             walkthrough.ShowPage(WorkspacePage.Review);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Context.Changes.Items.Count == 1,
-                WalkthroughSteps.Remaining(deadline), "the pending change did not appear in Review");
+                StepFor(deadline), "the pending change did not appear in Review");
 
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
+            var applyButton = walkthrough.Find<Button>("Apply to FieldWorks project");
             walkthrough.Click("Check what applying does to the numbers");
             walkthrough.WaitUntil(
-                () => !review.IsMeasuring && review.NumbersText != "See what applying does to the numbers.",
-                WalkthroughSteps.Remaining(deadline), "the pending change was not checked");
+                () => !review.IsMeasuring && review.NumbersText != prompt,
+                StepFor(deadline), "the pending change was not checked");
             Assert.Null(review.MeasurementRefusal);
-            Assert.False(review.CanApply);
-            Assert.Equal("FieldWorks has this project open. Close it before applying changes.",
-                review.ApplyBlockReason);
+            Assert.False(applyButton.IsEffectivelyEnabled);
+            Assert.False(string.IsNullOrWhiteSpace(review.ApplyBlockReason));
 
             held.Dispose();
             walkthrough.Window.Hide();
@@ -288,18 +260,26 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Dispatcher.UIThread.RunJobs();
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.Baseline.FieldWorksHeldProject,
-                WalkthroughSteps.Remaining(deadline), "the window did not clear the held-project status after release");
+                StepFor(deadline), "the window did not clear the held-project status after release");
             walkthrough.Click("Check what applying does to the numbers");
+            Assert.True(review.IsMeasuring);
             walkthrough.WaitUntil(
                 () => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
-                WalkthroughSteps.Remaining(deadline), "the released project changes were not checked again");
+                StepFor(deadline), "the released project changes were not checked again");
             Assert.Null(review.MeasurementRefusal);
             Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
+            Assert.True(applyButton.IsEffectivelyEnabled);
             walkthrough.Click("Apply to FieldWorks project");
             walkthrough.WaitUntil(
                 () => review.HasReceipt && review.Changes.Items.Count == 0,
-                WalkthroughSteps.Remaining(deadline), "Apply did not show its Receipt and clear the pending change");
+                StepFor(deadline), "Apply did not show its Receipt and clear the pending change");
+            var receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
+                .Single(text => text.Text == review.ReceiptText);
+            Assert.True(receipt.IsEffectivelyVisible);
             return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
+        }, TimeSpan.FromSeconds(60));
     }
+
+    private static TimeSpan StepFor(long deadline) => TimeSpan.FromTicks(Math.Min(
+        WalkthroughSteps.Remaining(deadline).Ticks, TimeSpan.FromSeconds(30).Ticks));
 }

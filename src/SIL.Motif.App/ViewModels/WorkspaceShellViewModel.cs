@@ -323,6 +323,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         if (!HasProject || _isRefreshing) return;
         await Baseline.CheckAsync(cancellationToken).ConfigureAwait(true);
         await Context.Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
+        if (Context.ProjectPath is { } projectPath && ProjectReconciliationMarker.Exists(projectPath))
+            PageModel<ReviewPageModel>().ShowReconciliationNeeded();
         // A run under way publishes its own result, which a stored read must not replace.
         if (!Assess.IsActive) await Context.ReadStoredEvidenceAsync(cancellationToken).ConfigureAwait(true);
         RaiseFreshness();
@@ -498,7 +500,11 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             if (Baseline.ShownRefusal is not null) return;
             await _reloadAfterRefresh.ConfigureAwait(true);
             if (!IsCurrentRefresh(generation, projectPath) || _refreshCancelled ||
-                !Assess.RunCommand.CanExecute(null)) return;
+                projectPath is null) return;
+
+            if (!ProjectReconciliationMarker.Exists(projectPath) || ProjectReconciliationMarker.Clear(projectPath))
+                PageModel<ReviewPageModel>().ClearReconciliationNeeded();
+            if (!Assess.RunCommand.CanExecute(null)) return;
 
             // The run this Refresh starts is the rerun a fresh Baseline would otherwise offer.
             RerunOffered = false;

@@ -1,7 +1,10 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text.Json;
+using Avalonia.Input;
 using Avalonia.Threading;
 using SIL.LCModel;
+using SIL.Motif.App.Services;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.App;
@@ -28,87 +31,92 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public Task ReceiptWriteFailureIsShownAndBlockedWhenTheWorkspaceChecksActivation()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var project = new WalkthroughProject(pristine);
+            PendingChangeFixture.AddIncorrectSpelling(
+                project.FwDataPath, project.ManagedRoot, "reconciliation-activation-word");
+            var parser = FakeParser.Copy(project.ManagedRoot);
+            await using var runner = new InProcessRunnerLauncher(
+                new JobRunnerLaunchOptions(project.ManagedRoot, parser));
+            var client = RealCommandClient.Create(project.ManagedRoot, parser, runner);
+            await using var workspace = CreateWorkspace(client);
+
+            await workspace.Context.OpenProjectAsync(project.FwDataPath);
+            var review = workspace.PageModel<ReviewPageModel>();
+            await review.MeasureCommand.ExecuteAsync(null);
+            Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
+
+            var before = ProjectSha256(project.FwDataPath);
+            var outcome = await RunReconciliationFailureAsync(project.FwDataPath,
+                IsolatedRunner.Process(project.ManagedRoot).Options);
+
+            Assert.Equal(4, outcome.ExitCode);
+            using var failure = JsonDocument.Parse(outcome.Error);
+            Assert.Contains("applied and saved to the project", failure.RootElement.GetProperty("message").GetString());
+            Assert.Contains("recording that in the proposal store failed",
+                failure.RootElement.GetProperty("message").GetString());
+            Assert.NotEqual(before, ProjectSha256(project.FwDataPath));
+            Assert.True(ProjectReconciliationMarker.Exists(project.FwDataPath));
+
+            await workspace.CheckFreshnessAsync();
+
+            Assert.Equal("apply.reconciliation-needed", review.ApplyRefusal?.Code);
+            Assert.Equal("Applying may have completed, but its result could not be confirmed. " +
+                "Check the project before retrying.", review.ApplyRefusal?.Sentence);
+            Assert.Equal(review.ApplyRefusal?.Sentence, review.ApplyBlockReason);
+            Assert.False(review.CanApply);
+            Assert.False(review.ApplyCommand.CanExecute(null));
+            Assert.True(ProjectReconciliationMarker.Clear(project.FwDataPath));
+        }, TimeSpan.FromMinutes(3));
+        return Task.CompletedTask;
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(2)]
     [InlineData(3)]
     [InlineData(4)]
-    public async Task ReturningFromFieldWorksReloadsTheApplyOutcome(int expectedExitCode)
+    public Task ReturningFromFieldWorksReloadsTheApplyOutcome(int expectedExitCode)
     {
-        using var project = new WalkthroughProject(pristine);
-        var runner = IsolatedRunner.Process(project.ManagedRoot);
-        var parser = FakeParser.Copy(project.ManagedRoot);
-        Guid analysisId = Guid.Empty;
-
-        if (expectedExitCode == 2)
-            AddApprovalChange(project, pristine, out analysisId);
-        else
-            PendingChangeFixture.AddIncorrectSpelling(
-                project.FwDataPath, project.ManagedRoot, "external-apply-word");
-
-        var pending = PendingChanges.Load(new PendingChangesRequest(project.FwDataPath, "1.0"));
-        Assert.True(pending.Succeeded, pending.Refusal?.Message);
-        if (expectedExitCode is 0 or 3 or 4)
-        {
-            var change = Assert.Single(pending.Value!.Changes);
-            var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(
-                    project.FwDataPath, pending.Value.DraftId!, pending.Value.Revision, [change.Word]),
-                new Progress<MeasureProgress>(), CancellationToken.None, runnerLauncher: runner);
-            Assert.True(measured.Succeeded, measured.Refusal?.Message);
-            Assert.True(measured.Value!.EvidenceComplete);
-        }
-
-        using var held = expectedExitCode == 3 ? new FieldWorksSimulator(project.FwDataPath).Hold() : null;
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var noRunner = new NoRunnerLauncher(new JobRunnerLaunchOptions(
-                project.ManagedRoot, parser));
-            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                parserPath: parser, runnerLauncher: noRunner);
-            walkthrough.Show();
-            walkthrough.ChooseNewProject();
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Baseline.HasBaseline &&
-                    walkthrough.Workspace.Context.Changes.Items.Count == 1 &&
-                    walkthrough.Workspace.Context.Setup?.IsOpen == true &&
-                    walkthrough.Workspace.Baseline.FieldWorksHeldProject == (expectedExitCode == 3),
-                TimeSpan.FromSeconds(45), "the window did not load the pending change and project state");
-            walkthrough.SkipSetup();
-            await walkthrough.Workspace.CheckFreshnessAsync();
-            var originalBaselineToken = walkthrough.Workspace.Baseline.Token;
-            if (expectedExitCode == 0)
+            using var project = new WalkthroughProject(pristine);
+            var parser = FakeParser.Copy(project.ManagedRoot);
+            var cliRunner = IsolatedRunner.Process(project.ManagedRoot, parser);
+            Guid analysisId = Guid.Empty;
+
+            if (expectedExitCode == 2)
+                AddApprovalChange(project, pristine, out analysisId);
+            else
+                PendingChangeFixture.AddIncorrectSpelling(
+                    project.FwDataPath, project.ManagedRoot, "external-apply-word");
+
+            var pending = PendingChanges.Load(new PendingChangesRequest(project.FwDataPath, "1.0"));
+            Assert.True(pending.Succeeded, pending.Refusal?.Message);
+            if (expectedExitCode is 0 or 3 or 4)
             {
-                var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
-                var heartbeat = Path.Combine(project.ManagedRoot, "external-apply-assessment-heartbeat");
-                walkthrough.SetFakeParserBehavior(new
-                {
-                    subcommands = new Dictionary<string, object>
-                    {
-                        ["batch"] = new { heartbeatPath = heartbeat },
-                    },
-                });
-                WalkthroughSteps.StartAssessmentOverPastedWords(walkthrough, deadline);
-                walkthrough.WaitUntil(
-                    () => File.Exists(heartbeat) && walkthrough.Workspace.Assess.State == RunState.Running,
-                    WalkthroughSteps.Remaining(deadline), "the Assessment did not reach the held fake parser");
-                walkthrough.Click("Cancel the running Assessment");
-                walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Assess.State == RunState.Cancelled,
-                    WalkthroughSteps.Remaining(deadline), "the held Assessment did not cancel");
-                walkthrough.SetFakeParserBehavior(new
-                {
-                    subcommands = new Dictionary<string, object>
-                    {
-                        ["batch"] = new { words = new[] { new { word = "motifa", outcome = "complete" } } },
-                    },
-                });
-                WalkthroughSteps.StartAssessmentOverPastedWords(walkthrough, deadline);
-                walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.Assess.State == RunState.Completed &&
-                        walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
-                    WalkthroughSteps.Remaining(deadline), "the Assessment did not complete");
-                Assert.True(walkthrough.Workspace.Context.Evidence.HasAssessment);
+                var change = Assert.Single(pending.Value!.Changes);
+                var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(
+                        project.FwDataPath, pending.Value.DraftId!, pending.Value.Revision, [change.Word]),
+                    new Progress<MeasureProgress>(), CancellationToken.None, runnerLauncher: cliRunner);
+                Assert.True(measured.Succeeded, measured.Refusal?.Message);
+                Assert.True(measured.Value!.EvidenceComplete);
             }
+
+            using var held = expectedExitCode == 3 ? new FieldWorksSimulator(project.FwDataPath).Hold() : null;
+            await using var appRunner = new InProcessRunnerLauncher(
+                new JobRunnerLaunchOptions(project.ManagedRoot, parser));
+            var client = RealCommandClient.Create(project.ManagedRoot, parser, appRunner);
+            await using var workspace = CreateWorkspace(client);
+            await workspace.Context.OpenProjectAsync(project.FwDataPath);
+            var review = workspace.PageModel<ReviewPageModel>();
+            var originalBaselineToken = workspace.Baseline.Token;
+            var originalFit = Assert.Single(workspace.Context.Changes.Snapshot.FitSummary);
+            var before = expectedExitCode == 4 ? ProjectSha256(project.FwDataPath) : null;
 
             if (expectedExitCode == 2)
             {
@@ -125,10 +133,11 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
             }
 
             var outcome = expectedExitCode == 4
-                ? await RunReconciliationFailureAsync(project.FwDataPath, runner.Options)
+                ? await RunReconciliationFailureAsync(project.FwDataPath, cliRunner.Options)
                 : expectedExitCode == 0
-                    ? await RunApplyWithWorkerAsync(project.FwDataPath, runner.Options)
-                : await RunCliAsync(CliStart(runner.Options, project.FwDataPath));
+                    ? await RunApplyWithWorkerAsync(project.FwDataPath, cliRunner.Options)
+                    : await CliProcess.RunAsync(CliProcess.Start(cliRunner.Options,
+                        "apply", "--all-pending", "--project", project.FwDataPath, "--json"));
             Assert.True(outcome.ExitCode == expectedExitCode,
                 $"Expected CLI exit {expectedExitCode}, got {outcome.ExitCode}. stderr: {outcome.Error} stdout: {outcome.Output}");
 
@@ -153,75 +162,47 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
                 Assert.Equal(expectedCode, failure.RootElement.GetProperty("code").GetString());
             }
 
+            if (expectedExitCode == 4)
+                Assert.NotEqual(before, ProjectSha256(project.FwDataPath));
+
             held?.Dispose();
-            walkthrough.Window.Hide();
-            walkthrough.Window.Show();
-            walkthrough.Window.Activate();
-            Dispatcher.UIThread.RunJobs();
+            await workspace.CheckFreshnessAsync();
 
             switch (expectedExitCode)
             {
                 case 0:
-                    walkthrough.WaitUntil(
-                        () => walkthrough.Workspace.Context.Changes.Items.Count == 0,
-                        TimeSpan.FromSeconds(45),
-                        $"activation did not clear the applied change; freshness='{walkthrough.Workspace.Freshness}', " +
-                        $"applied='{walkthrough.Workspace.Context.Evidence.AppliedSinceRefresh}', " +
-                        $"changes='{walkthrough.Workspace.Context.Changes.Items.Count}'");
-                    Assert.Equal(ProjectFreshness.SavedSince, walkthrough.Workspace.Freshness);
+                    Assert.Empty(workspace.Context.Changes.Items);
                     break;
                 case 2:
-                    walkthrough.WaitUntil(
-                        () => walkthrough.Workspace.Baseline.Token != originalBaselineToken,
-                        TimeSpan.FromSeconds(45), "activation did not reload the changed FieldWorks Baseline");
-                    Assert.Single(walkthrough.Workspace.Context.Changes.Items);
-                    Assert.False(Assert.Single(walkthrough.Workspace.Context.Changes.Items).Fit?.StillFits);
+                    Assert.NotEqual(originalBaselineToken, workspace.Baseline.Token);
+                    Assert.False(Assert.Single(workspace.Context.Changes.Items).Fit?.StillFits);
                     break;
                 case 3:
-                    walkthrough.WaitUntil(
-                        () => !walkthrough.Workspace.Baseline.FieldWorksHeldProject,
-                        TimeSpan.FromSeconds(45), "activation did not clear the released project's held status");
-                    Assert.Single(walkthrough.Workspace.Context.Changes.Items);
+                    Assert.False(workspace.Baseline.FieldWorksHeldProject);
+                    var refreshedFit = Assert.Single(workspace.Context.Changes.Snapshot.FitSummary);
+                    Assert.Equal(originalFit.ChangeId, refreshedFit.ChangeId);
+                    Assert.Equal(originalFit.StillFits, refreshedFit.StillFits);
+                    Assert.Equal(originalFit.Status, refreshedFit.Status);
+                    Assert.Equal(originalFit.Reasons, refreshedFit.Reasons);
+                    Assert.Single(workspace.Context.Changes.Items);
+                    await review.MeasureCommand.ExecuteAsync(null);
+                    Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
                     break;
                 case 4:
-                    walkthrough.WaitUntil(
-                        () => walkthrough.Workspace.Context.Changes.Items.Count == 1,
-                        TimeSpan.FromSeconds(45),
-                        $"activation did not reload the unreconciled pending change; " +
-                        $"freshness='{walkthrough.Workspace.Freshness}', " +
-                        $"applied='{walkthrough.Workspace.Context.Evidence.AppliedSinceRefresh}', " +
-                        $"changes='{walkthrough.Workspace.Context.Changes.Items.Count}'");
-                    Assert.False(walkthrough.Workspace.Context.Evidence.AppliedSinceRefresh);
+                    Assert.Equal("apply.reconciliation-needed", review.ApplyRefusal?.Code);
+                    Assert.False(review.ApplyCommand.CanExecute(null));
                     break;
             }
-
-            return;
         }, TimeSpan.FromMinutes(3));
+        return Task.CompletedTask;
     }
 
     private static void AddApprovalChange(
         WalkthroughProject project, PristineProjectFixture pristine, out Guid analysisId)
     {
         var word = "external-analysis-drift";
-        Guid wordformId = Guid.Empty;
-        var storedAnalysisId = Guid.Empty;
-        analysisId = Guid.Empty;
-        new FieldWorksSimulator(project.FwDataPath).SaveEdit(cache =>
-            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-            {
-                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                    .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs));
-                wordformId = wordform.Guid;
-                var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
-                wordform.AnalysesOC.Add(analysis);
-                storedAnalysisId = analysis.Guid;
-                var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
-                    .GetObject(pristine.Seed.FirstEntryId);
-                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
-                analysis.MorphBundlesOS.Add(bundle);
-                bundle.MorphRA = entry.LexemeFormOA;
-                bundle.MsaRA = entry.MorphoSyntaxAnalysesOC.First();
-            }));
+        var (wordformId, storedAnalysisId) = StoredAnalysisFixture.Add(
+            project.FwDataPath, pristine.Seed.FirstEntryId, word);
         analysisId = storedAnalysisId;
         var captured = BaselineCaptureCommand.Capture(
             new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
@@ -236,42 +217,15 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
         Assert.True(added.Succeeded, added.Refusal?.Message);
     }
 
-    private static ProcessStartInfo CliStart(JobRunnerLaunchOptions runner, string projectPath)
-    {
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        foreach (var argument in new[] { "apply", "--all-pending", "--project", projectPath, "--json" })
-            start.ArgumentList.Add(argument);
-        start.Environment[RunnerOptions.RootVariable] = runner.Root;
-        start.Environment[ProcessRunnerLauncher.ExecutableVariable] = runner.WorkerExecutable;
-        start.Environment[PanGlossExecutable.PathVariable] = runner.ParserPath;
-        start.Environment[RunnerOptions.NamespaceVariable] = runner.OwnerNamespace;
-        start.Environment[RunnerOptions.IdleVariable] = "1";
-        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
-        start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
-        return start;
-    }
-
-    private static async Task<(int ExitCode, string Output, string Error)> RunCliAsync(ProcessStartInfo start)
-    {
-        using var process = Process.Start(start)!;
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
-        return (process.ExitCode, await outputTask, await errorTask);
-    }
-
     private static async Task<(int ExitCode, string Output, string Error)> RunApplyWithWorkerAsync(
         string projectPath, JobRunnerLaunchOptions runner)
     {
-        using var process = Process.Start(CliStart(runner, projectPath))!;
+        var start = CliProcess.Start(runner, "apply", "--all-pending", "--project", projectPath, "--json");
+        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        using var worker = await StartQueuedWorkerAsync(projectPath, runner, process);
+        using var worker = await CliProcess.StartQueuedWorkerAsync(projectPath, runner, process);
         await process.WaitForExitAsync();
         await worker.WaitForExitAsync();
         return (process.ExitCode, await outputTask, await errorTask);
@@ -280,59 +234,46 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
     private static async Task<(int ExitCode, string Output, string Error)> RunReconciliationFailureAsync(
         string projectPath, JobRunnerLaunchOptions runner)
     {
-        string databasePath;
-        using (var database = ProjectMotifDatabase.Open(projectPath))
-            databasePath = database.FullPath;
-        var start = CliStart(runner, projectPath);
+        var start = CliProcess.Start(runner, "apply", "--all-pending", "--project", projectPath, "--json");
+        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        start.Environment["MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR"] = projectPath;
         using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        using var worker = await StartQueuedWorkerAsync(projectPath, runner, process);
-        try
-        {
-            await WaitForPendingProposalAnchorAsync(projectPath);
-            File.SetAttributes(databasePath, File.GetAttributes(databasePath) | FileAttributes.ReadOnly);
-            await process.WaitForExitAsync();
-            return (process.ExitCode, await outputTask, await errorTask);
-        }
-        finally
-        {
-            File.SetAttributes(databasePath, File.GetAttributes(databasePath) & ~FileAttributes.ReadOnly);
-            await worker.WaitForExitAsync();
-        }
+        using var worker = await CliProcess.StartQueuedWorkerAsync(projectPath, runner, process);
+        await process.WaitForExitAsync();
+        await worker.WaitForExitAsync();
+        return (process.ExitCode, await outputTask, await errorTask);
     }
 
-    private static async Task<Process> StartQueuedWorkerAsync(
-        string projectPath, JobRunnerLaunchOptions options, Process cli)
+    private static WorkspaceShellViewModel CreateWorkspace(ICommandClient client)
     {
-        while (!cli.HasExited)
-        {
-            using var database = ProjectMotifDatabase.Open(projectPath);
-            if (new JobRepository(database).ListActive().Any(job => job.Kind == JobCommands.DryRunKind))
-            {
-                var start = new ProcessStartInfo(options.WorkerExecutable!) { UseShellExecute = false };
-                foreach (var argument in ProcessRunnerLauncher.LaunchArguments(options))
-                    start.ArgumentList.Add(argument);
-                return Process.Start(start)!;
-            }
-            await Task.Delay(20);
-        }
-        throw new InvalidOperationException(
-            $"The CLI exited with {cli.ExitCode} before queueing a Dry Run for pending changes.");
+        var selection = new SelectionViewModel(client);
+        return new WorkspaceShellViewModel(new ProjectViewModel(client, new ProjectPicker()),
+            new BaselineViewModel(client), selection, new AssessViewModel(client, selection),
+            new FolderPicker(), new DragSource(), client);
     }
 
-    private static async Task WaitForPendingProposalAnchorAsync(string projectPath)
+    private static string ProjectSha256(string path) =>
+        Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+
+    private sealed class ProjectPicker : IProjectPicker
     {
-        var deadline = DateTime.UtcNow.AddSeconds(15);
-        while (DateTime.UtcNow < deadline)
-        {
-            using var database = ProjectMotifDatabase.Open(projectPath);
-            using var connection = database.OpenConnection();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT AnchorJson FROM Proposals ORDER BY rowid DESC LIMIT 1;";
-            if (command.ExecuteScalar() is string) return;
-            await Task.Delay(20);
-        }
-        throw new TimeoutException("The CLI did not bind its completed Dry Run to the pending Proposal.");
+        public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
     }
+
+    private sealed class FolderPicker : IHandoffFolderPicker
+    {
+        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+    }
+
+    private sealed class DragSource : IFileDragSource
+    {
+        public Task<DragDropEffects> StartDragAsync(PointerPressedEventArgs trigger,
+            IReadOnlyList<string> filePaths, DragDropEffects allowedEffects) =>
+            Task.FromResult(allowedEffects);
+    }
+
 }

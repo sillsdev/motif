@@ -1,10 +1,15 @@
 using System.Diagnostics;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
+/// <summary>Starts Motif CLI processes with the same isolated runner configuration across test projects.</summary>
 public static class CliProcess
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
@@ -60,6 +65,65 @@ public static class CliProcess
         }
         return new CliProcessResult(process.ExitCode, await outputTask, await errorTask);
     }
+
+    /// <summary>Builds a CLI process using the supplied runner and arguments.</summary>
+    /// <param name="runner">The worker and parser settings for the test project.</param>
+    /// <param name="arguments">The verb and its arguments.</param>
+    /// <returns>A redirected process start with developer commands disabled.</returns>
+    public static ProcessStartInfo Start(JobRunnerLaunchOptions runner, params string[] arguments)
+    {
+        var start = new ProcessStartInfo(BuildOutput.Cli)
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        start.Environment[RunnerOptions.RootVariable] = runner.Root;
+        start.Environment[ProcessRunnerLauncher.ExecutableVariable] = runner.WorkerExecutable;
+        start.Environment[PanGlossExecutable.PathVariable] = runner.ParserPath;
+        start.Environment[RunnerOptions.NamespaceVariable] = runner.OwnerNamespace;
+        start.Environment[RunnerOptions.IdleVariable] = "1";
+        start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
+        return start;
+    }
+
+    /// <summary>Runs a redirected CLI process and returns its exit code and both output streams.</summary>
+    /// <param name="start">The CLI process to run.</param>
+    /// <returns>The process exit code, standard output, and standard error.</returns>
+    public static async Task<(int ExitCode, string Output, string Error)> RunAsync(ProcessStartInfo start)
+    {
+        using var process = Process.Start(start)!;
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        return (process.ExitCode, await outputTask, await errorTask);
+    }
+
+    /// <summary>Starts a worker after the CLI has queued a pending-change Dry Run.</summary>
+    /// <param name="projectPath">The project whose queue the CLI populated.</param>
+    /// <param name="options">The isolated worker settings.</param>
+    /// <param name="cli">The running CLI process to monitor.</param>
+    /// <returns>The worker process that drains the queued job.</returns>
+    public static async Task<Process> StartQueuedWorkerAsync(
+        string projectPath, JobRunnerLaunchOptions options, Process cli)
+    {
+        while (!cli.HasExited)
+        {
+            using var database = ProjectMotifDatabase.Open(projectPath);
+            if (new JobRepository(database).ListActive().Any(job => job.Kind == JobCommands.DryRunKind))
+            {
+                var start = new ProcessStartInfo(options.WorkerExecutable!) { UseShellExecute = false };
+                foreach (var argument in ProcessRunnerLauncher.LaunchArguments(options))
+                    start.ArgumentList.Add(argument);
+                return Process.Start(start)!;
+            }
+            await Task.Delay(20);
+        }
+        throw new InvalidOperationException(
+            $"The CLI exited with {cli.ExitCode} before queueing a Dry Run for pending changes.");
+    }
+
 }
 
 public sealed record CliProcessResult(int ExitCode, string Output, string Error)

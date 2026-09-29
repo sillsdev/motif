@@ -95,6 +95,8 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>Why the last Apply could not finish, in the window's words.</summary>
     public WindowRefusal? ApplyRefusal { get; private set; }
 
+    private bool NeedsReconciliation => ApplyRefusal?.Code == RefusalCodes.ApplyReconciliationNeeded;
+
     /// <summary>The words on the action that writes the measured changes.</summary>
     public string ApplyButtonText => "Apply to FieldWorks project";
 
@@ -107,11 +109,13 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
     public bool CanApply => Changes.HasItems && !HasUncertainChanges && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
         Context.Baseline?.FieldWorksHeldProject != true &&
+        !NeedsReconciliation &&
         !Context.Evidence.IsStale &&
         EvidenceComplete && WordsLosingApprovedAnalysis.Count == 0 && !IsMeasuring && !IsApplying;
 
     /// <summary>What prevents Apply, in words shown beside the action.</summary>
     public string ApplyBlockReason => IsApplying ? "Applying changes to FieldWorks..." :
+        NeedsReconciliation ? ApplyRefusal!.Sentence :
         !Changes.HasItems ? "Choose a change in Texts to begin." :
         HasUncertainChanges ? UncertainSentence(UncertainChanges.Count)
         : Changes.Items.Any(item => item.IsNoLongerFits)
@@ -124,6 +128,33 @@ public sealed class ReviewPageModel : PageModel
                 ? "FieldWorks has this project open. Close it before applying changes."
             : WordsLosingApprovedAnalysis.Count > 0 ? LostAnalysisSentence(WordsLosingApprovedAnalysis)
                 : !EvidenceComplete ? "See what applying does to the numbers before applying." : string.Empty;
+
+    /// <summary>Shows that a saved project change could not be matched to its recorded Receipt.</summary>
+    internal void ShowReconciliationNeeded()
+    {
+        if (!NeedsReconciliation)
+        {
+            ApplyRefusal = WindowRefusal.From(new Refusal(
+                RefusalCodes.ApplyReconciliationNeeded,
+                FailureReason.StoreInconsistent,
+                "A previous Apply may have saved changes to the FieldWorks project, but Motif could not record its Receipt. " +
+                "Refresh the project after checking it before trying Apply again.",
+                new Dictionary<string, string>()));
+        }
+
+        OnPropertyChanged(nameof(ApplyRefusal));
+        RaiseApplyState();
+    }
+
+    /// <summary>Clears the reconciliation warning after a successful project refresh.</summary>
+    internal void ClearReconciliationNeeded() => ShowReconciliationNeeded(false);
+
+    private void ShowReconciliationNeeded(bool needed)
+    {
+        if (!needed && NeedsReconciliation) ApplyRefusal = null;
+        OnPropertyChanged(nameof(ApplyRefusal));
+        RaiseApplyState();
+    }
 
     private static string UncertainSentence(int count) =>
         $"{count} {(count == 1 ? "change needs" : "changes need")} another look because " +
@@ -255,6 +286,7 @@ public sealed class ReviewPageModel : PageModel
         {
             ApplyRefusal = WindowRefusal.From(result.Refusal!);
             OnPropertyChanged(nameof(ApplyRefusal));
+            RaiseApplyState();
             await Changes.ReloadAsync().ConfigureAwait(true);
             return;
         }
