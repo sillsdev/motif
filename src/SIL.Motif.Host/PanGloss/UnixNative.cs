@@ -7,6 +7,7 @@ namespace SIL.Motif.Host.PanGloss;
 internal static partial class UnixNative
 {
     internal const int LockExclusive = 2;
+    internal const int LockShared = 1;
     internal const int LockNonBlocking = 4;
     internal const int LockUnlock = 8;
 
@@ -111,6 +112,7 @@ internal sealed class UnixFileLock : IDisposable
 {
     private const int AccessDenied = 13;
     private readonly int _fileDescriptor;
+    private readonly WorkerLockAccess _access;
     private bool _held;
     private bool _disposed;
 
@@ -123,8 +125,13 @@ internal sealed class UnixFileLock : IDisposable
         return Path.Combine("/tmp", "motif-lock-" + digest);
     }
 
-    internal UnixFileLock(string name, bool machineWide)
+    internal UnixFileLock(string name, bool machineWide) : this(name, machineWide, WorkerLockAccess.Exclusive)
     {
+    }
+
+    internal UnixFileLock(string name, bool machineWide, WorkerLockAccess access)
+    {
+        _access = access;
         var lockPath = GetLockPath(name, machineWide);
         var path = UnixNative.Utf8(lockPath);
         try
@@ -166,7 +173,8 @@ internal sealed class UnixFileLock : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_held) return true;
-        if (UnixNative.Flock(_fileDescriptor, UnixNative.LockExclusive | UnixNative.LockNonBlocking) == 0)
+        var access = _access == WorkerLockAccess.Shared ? UnixNative.LockShared : UnixNative.LockExclusive;
+        if (UnixNative.Flock(_fileDescriptor, access | UnixNative.LockNonBlocking) == 0)
         {
             _held = true;
             return true;

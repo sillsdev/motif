@@ -13,8 +13,8 @@ internal static class PackageUpdateSmoke
             return 1;
         }
 
-        using var activityLease = MotifUpdateGate.TryAcquire();
-        if (activityLease is null)
+        using var updateLease = MotifUpdateGate.TryAcquireForUpdate();
+        if (updateLease is null)
         {
             Console.Error.WriteLine("Motif cannot update while a Worker job, Assessment, Handoff, or pending apply is running.");
             return 3;
