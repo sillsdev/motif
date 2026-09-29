@@ -327,6 +327,7 @@ public sealed class MainWindowSmokeTests
                     string.IsNullOrWhiteSpace(EffectiveAccessibleName(control)),
                     $"{control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name.");
 
+            workspace.Context.ProjectPath = @"C:\projects\one.fwdata";
             workspace.CurrentPage = WorkspacePage.Timing;
             var pickedWords = Assert.Single(window.GetLogicalDescendants().OfType<TextBox>(), input =>
                 AutomationProperties.GetName(input) == "Words picked by hand");
@@ -444,22 +445,23 @@ public sealed class MainWindowSmokeTests
                     Code = "fwdata.dropped-item",
                     Guidance = "Restore the missing item in FieldWorks.",
                 };
+                const string projectPath = @"C:\projects\aweti.fwdata";
                 fake.CheckGrammarCompletesWith(new GrammarCheckResponse([warning], HasBaseline: true));
                 var grammarModel = workspace.PageModel<WarningsPageModel>().Grammar;
-                grammarModel.HasBaseline = true;
-                grammarModel.HasChecked = true;
+                grammarModel.LoadStored(projectPath, new GrammarCheckResponse([], HasBaseline: true));
                 workspace.CurrentPage = WorkspacePage.Warnings;
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
                 var checkAgain = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Check the grammar again");
+                    AutomationProperties.GetName(button) == "Check the grammar again" &&
+                    button.IsEffectivelyVisible);
                 Assert.True(checkAgain.IsEffectivelyEnabled);
                 ClickButton(window, checkAgain);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                Assert.Single(fake.CheckGrammarRequests);
+                Assert.Equal(projectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
                 grammarModel.Warnings.SelectGroupCommand.Execute(
                     Assert.Single(grammarModel.Warnings.WarningGroups));
                 window.UpdateLayout();
