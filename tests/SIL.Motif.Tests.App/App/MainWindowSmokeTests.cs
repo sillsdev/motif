@@ -397,6 +397,7 @@ public sealed class MainWindowSmokeTests
         _avalonia.Invoke(() =>
         {
             var (workspace, window, _) = NewComposedWindow();
+            var fake = (FakeCommandClient)workspace.Context.Commands;
             try
             {
                 using var statisticsDocument = JsonDocument.Parse(
@@ -431,26 +432,38 @@ public sealed class MainWindowSmokeTests
                 RaiseLeftPointerPress(statisticsCell, window);
                 Assert.Same(workspace.PageModel<TimingPageModel>().Statistics.Rows[0], statistics.SelectedItem);
 
-                workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Load([
-                    new GrammarWarning(
-                        GrammarDiagnosticLevel.Warning, "Entry",
-                        [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Object,
-                            ObjectId: "entry-1", FieldWorksKind: "LexEntry",
-                            FieldWorksLink: "silfw://motif.test/project/entry-1")],
-                        [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)],
-                        "warning: lex entry: dropped")
-                    {
-                        Group = "Dropped item",
-                        Code = "fwdata.dropped-item",
-                        Guidance = "Restore the missing item in FieldWorks.",
-                    }]);
-                workspace.PageModel<WarningsPageModel>().Grammar.HasBaseline = true;
-                workspace.PageModel<WarningsPageModel>().Grammar.HasChecked = true;
+                var warning = new GrammarWarning(
+                    GrammarDiagnosticLevel.Warning, "Entry",
+                    [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Object,
+                        ObjectId: "entry-1", FieldWorksKind: "LexEntry",
+                        FieldWorksLink: "silfw://motif.test/project/entry-1")],
+                    [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)],
+                    "warning: lex entry: dropped")
+                {
+                    Group = "Dropped item",
+                    Code = "fwdata.dropped-item",
+                    Guidance = "Restore the missing item in FieldWorks.",
+                };
+                fake.CheckGrammarCompletesWith(new GrammarCheckResponse([warning], HasBaseline: true));
+                var grammarModel = workspace.PageModel<WarningsPageModel>().Grammar;
+                grammarModel.HasBaseline = true;
+                grammarModel.HasChecked = true;
                 workspace.CurrentPage = WorkspacePage.Warnings;
-                workspace.PageModel<WarningsPageModel>().Grammar.Warnings.SelectGroupCommand.Execute(
-                    Assert.Single(workspace.PageModel<WarningsPageModel>().Grammar.Warnings.WarningGroups));
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var checkAgain = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Check the grammar again");
+                Assert.True(checkAgain.IsEffectivelyEnabled);
+                ClickButton(window, checkAgain);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Single(fake.CheckGrammarRequests);
+                grammarModel.Warnings.SelectGroupCommand.Execute(
+                    Assert.Single(grammarModel.Warnings.WarningGroups));
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
                 Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
