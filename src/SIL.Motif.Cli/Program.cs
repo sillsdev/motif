@@ -41,17 +41,16 @@ if (args.Length == 0)
     return 1;
 }
 
-var commandName = ResolveCommandName(args);
-var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
-if (command is not null && !commandPolicy.IsAvailable(command))
-    return RefuseUnavailableCommand(commandName, args.Contains("--json", StringComparer.Ordinal));
-
 var verb = args[0];
 var rest = args[1..];
 
 try
 {
     var (flags, positionals, forwardedArguments) = ParseArgs(rest);
+    var commandName = ResolveCommandName(verb, flags, positionals);
+    var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
+    if (command is not null && !commandPolicy.IsAvailable(command))
+        return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"));
 
     // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
     if (flags.TryGetValue("project", out var projectForRegistry))
@@ -362,7 +361,9 @@ try
                 return Usage("Usage: motif put-pending-change --project <fwdata> " +
                     "--expected-revision <revision> --change-id <id> --kind <kind> --word <word> " +
                     "[--wordform-id <id>] [--assessment <id> --reading-index <zero-based> " +
-                    "--reading-json <json>] [--stored-analysis-id <id>] [--json]", asJson);
+                    "--reading-json <json>] [--stored-analysis-id <id>] " +
+                    "[--occurrence-text-id <guid> --occurrence-paragraph-id <guid> " +
+                    "--occurrence-segment-id <guid> --occurrence-index <zero-based>] [--json]", asJson);
             ParseAnalysis? chosenReading = null;
             if (flags.TryGetValue("reading-json", out var readingJson))
             {
@@ -379,12 +380,30 @@ try
                     return Usage("--reading-index must be a zero-based nonnegative integer.", asJson);
                 readingIndex = parsedIndex;
             }
+            var occurrenceFlags = new[]
+            {
+                "occurrence-text-id", "occurrence-paragraph-id", "occurrence-segment-id", "occurrence-index",
+            };
+            var hasOccurrence = occurrenceFlags.Any(flags.ContainsKey);
+            OccurrenceAnchor? occurrence = null;
+            if (hasOccurrence)
+            {
+                if (occurrenceFlags.Any(name => !flags.ContainsKey(name)) ||
+                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-text-id"), out var textId) ||
+                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-paragraph-id"), out var paragraphId) ||
+                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-segment-id"), out var segmentId) ||
+                    !int.TryParse(flags.GetValueOrDefault("occurrence-index"), out var occurrenceIndex) ||
+                    occurrenceIndex < 0)
+                    return Usage("Occurrence requires --occurrence-text-id, --occurrence-paragraph-id, " +
+                        "--occurrence-segment-id, and a nonnegative --occurrence-index.", asJson);
+                occurrence = new OccurrenceAnchor(textId, paragraphId, segmentId, occurrenceIndex);
+            }
             result = RenderProposal(PendingChanges.Put(new PutPendingChangeRequest(
                 putProject, CliProductVersion(), putRevision,
                 new ChangeIntent(putId, putKind, flags.GetValueOrDefault("wordform-id") ?? "",
                     putWord, flags.GetValueOrDefault("assessment"), chosenReading,
                     flags.GetValueOrDefault("stored-analysis-id"), flags.GetValueOrDefault("display-reading"),
-                    readingIndex))));
+                    readingIndex, Occurrence: occurrence))));
             break;
 
         case "remove-pending-change":
@@ -404,6 +423,16 @@ try
                     "--expected-revision <revision> [--json]", asJson);
             result = RenderProposal(PendingChanges.Recheck(new RecheckPendingChangesRequest(
                 recheckProject, CliProductVersion(), recheckRevision)));
+            break;
+
+        case "reconfirm-pending-change":
+            if (!flags.TryGetValue("project", out var reconfirmProject) ||
+                !flags.TryGetValue("expected-revision", out var reconfirmRevision) ||
+                !flags.TryGetValue("change-id", out var reconfirmId))
+                return Usage("Usage: motif reconfirm-pending-change --project <fwdata> " +
+                    "--expected-revision <revision> --change-id <id> [--json]", asJson);
+            result = RenderProposal(PendingChanges.Reconfirm(new ReconfirmPendingChangeRequest(
+                reconfirmProject, CliProductVersion(), reconfirmRevision, reconfirmId)));
             break;
 
         case "review-numbers":
@@ -838,17 +867,18 @@ try
                 ? new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
                     assessWords, assessRetryFailed, assessRetrySlowerThan, assessRetrySource)
                 : null;
-            result = RenderCommand(AssessCommand.Assess(
+            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(AssessCommand.Assess(
                 new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap),
-                asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
+                asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
             break;
 
         case "stats":
             if (positionals.Count != 1) return Usage(StatsUsage(), asJson);
             var statsOutput = asJson ? StatsOutputKind.JsonRows : StatsOutputKind.Text;
             if (flags.ContainsKey("proposal")) return Usage(StatsUsage(), asJson);
-            result = RenderCommand(StatsCommand.Stats(new StatsRequest(
-                positionals[0], flags.GetValueOrDefault("assessment"), statsOutput, forwardedArguments)));
+            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(StatsCommand.Stats(
+                new StatsRequest(positionals[0], flags.GetValueOrDefault("assessment"), statsOutput, forwardedArguments),
+                cancellationToken)));
             break;
 
         case "handoff":
@@ -865,9 +895,9 @@ try
             // No --texts means every wordform and every Text; a chosen list means only those Texts' words.
             var handoffSelection = new SelectionRequest(
                 handoffTextIds.Count == 0, handoffTextIds, Array.Empty<string>(), false, null);
-            result = RenderCommand(HandoffCommand.Handoff(
+            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(HandoffCommand.Handoff(
                 new HandoffRequest(positionals[0], handoffOut, handoffSelection, !handoffNoAssess, handoffInvocation),
-                asJson ? null : progress => Console.Error.WriteLine(progress.Message)));
+                asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
             break;
 
         case "jobs":
@@ -1055,27 +1085,25 @@ static string AnalysesUsage() =>
     "--assessment <assessmentId> --current-selection-sha256 <sha256> " +
     "--current-grammar-sha256 <sha256> [--json]";
 
-static string ResolveCommandName(string[] invocation)
+static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
+    IReadOnlyList<string> positionals)
 {
-    if (invocation.Length == 0) return string.Empty;
-
-    var first = invocation[0];
-    if (first == "apply" && invocation.Contains("--all-pending", StringComparer.Ordinal))
+    if (verb == "apply" && flags.ContainsKey("all-pending"))
         return "apply --all-pending";
-    if (first == "trial" && invocation.Contains("--pending", StringComparer.Ordinal))
+    if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
-    if (first is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup" or "store")
+    if (verb is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup" or "store")
     {
-        var candidate = invocation.Length > 1 ? first + " " + invocation[1] : first;
+        var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;
-        return first;
+        return verb;
     }
 
-    if (first is "report" && invocation.Contains("--list-kinds", StringComparer.Ordinal))
+    if (verb == "report" && flags.ContainsKey("list-kinds"))
         return "report --list-kinds";
-    if (first is "dry-run" or "trial" && invocation.Contains("--wait", StringComparer.Ordinal))
-        return first + " --wait";
-    return first;
+    if (verb is "dry-run" or "trial" && flags.ContainsKey("wait"))
+        return verb + " --wait";
+    return verb;
 }
 
 static int RefuseUnavailableCommand(string commandName, bool asJson)

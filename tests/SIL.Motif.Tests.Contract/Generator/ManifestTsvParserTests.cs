@@ -44,6 +44,21 @@ public class ManifestTsvParserTests
     }
 
     [Fact]
+    public void Parse_LfFixture_ParsesRowsLikeTheCrlfManifest()
+    {
+        var row =
+            "\"LexSense\"\t\"CmObject\"\t\"false\"\t\"in\"\t\"reason\"\t\"Gloss\"\t\"basic\"\t\"MultiUnicode\"\t\"\"\t" +
+            "\"name-referenced\"\t\"lexSense\"\t\"lexical\"\t\"semantic-operation\"\t\"unordered\"\t\"set|clear\"\t" +
+            "\"yes\"\t\"\"\t\"Description.\"";
+        var path = WriteFixture(Header + "\n" + row + "\n");
+
+        var parsed = Assert.Single(ManifestTsvParser.Parse(path));
+
+        Assert.Equal("LexSense", parsed.Class);
+        Assert.Equal("Gloss", parsed.Field);
+    }
+
+    [Fact]
     public void Parse_Fixture_RejectsWrongColumnCount()
     {
         var path = WriteFixture(Header + "\r\n" + "\"OnlyOneColumn\"\r\n");

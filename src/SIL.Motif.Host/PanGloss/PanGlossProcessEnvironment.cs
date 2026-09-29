@@ -5,7 +5,9 @@ namespace SIL.Motif.Host.PanGloss;
 
 internal static class PanGlossProcessEnvironment
 {
-    private static readonly string[] AllowedNames = ["SystemRoot", "PATH", "TEMP", "TMP"];
+    // A .NET apphost parser finds a runtime outside the default install location only through DOTNET_ROOT.
+    private static readonly string[] AllowedNames =
+        ["SystemRoot", "PATH", "TEMP", "TMP", "TMPDIR", "DOTNET_ROOT", "DOTNET_ROOT_X64", "DOTNET_ROOT_ARM64"];
 
     /// <summary>
     /// PanGloss writes UTF-8 to its standard streams regardless of the console code page, so a redirected

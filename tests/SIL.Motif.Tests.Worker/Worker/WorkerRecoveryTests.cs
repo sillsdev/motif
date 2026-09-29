@@ -1,6 +1,7 @@
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.PanGloss;
 using SIL.Motif.Worker.Store;
@@ -252,7 +253,7 @@ public sealed class WorkerRecoveryTests : IDisposable
         Assert.Single(result.RetryJobs);
     }
 
-    [Fact]
+    [WindowsFileLockFact]
     public void RecoverInterruptedJobs_WhenAPanGlossWorkspaceFileIsLocked_ReportsADiagnosticWithoutAbortingRecovery()
     {
         var sweepRoot = Path.Combine(_root, "sweep-locked");

@@ -18,6 +18,8 @@ internal static class FakeParser
     private const string RecordInvocationsSentinel = "_fake-pangloss-record-invocations";
     private const string InvocationsFileName = "_pangloss-invocations.log";
 
+    internal static string ExecutableFileName => OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss";
+
     /// <summary>
     /// The fake parser's path: a directory below the test binaries, never beside them, because parser
     /// discovery prefers an executable sitting next to the running application.
@@ -26,8 +28,7 @@ internal static class FakeParser
     {
         get
         {
-            var name = OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss";
-            var path = Path.Combine(AppContext.BaseDirectory, "fake-pangloss", name);
+            var path = Path.Combine(AppContext.BaseDirectory, "fake-pangloss", ExecutableFileName);
             if (!File.Exists(path))
                 throw new FileNotFoundException("The fake parser was not built beside the tests.", path);
             return path;
@@ -84,6 +85,6 @@ internal static class FakeParser
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(source, target, overwrite: true);
         }
-        return Path.Combine(candidateDirectory, OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss");
+        return Path.Combine(candidateDirectory, ExecutableFileName);
     }
 }

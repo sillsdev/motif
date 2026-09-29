@@ -30,7 +30,7 @@ a later, disposable, rebuildable cache, never the source of truth and never sync
 
 ## Environment (verified)
 
-- .NET SDKs 8/9/10 present; `SIL.LCModel 11.0.0-beta0150` in the local NuGet cache (no need to build
+- .NET SDKs 8/9/10 present; `SIL.LCModel 11.0.0-beta0182` in the local NuGet cache (no need to build
   LibLCM from source).
 - Test projects available read-only: `FieldWorks/TestLangProj` (populated), LibLCM `NewLangProj`
   template. Always copy to scratch before opening; never mutate a shared project.

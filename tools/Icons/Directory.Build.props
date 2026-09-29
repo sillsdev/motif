@@ -1,0 +1,3 @@
+<Project>
+  <!-- Stops the repository's build settings reaching the icon renderer, whose output must not land in bin. -->
+</Project>

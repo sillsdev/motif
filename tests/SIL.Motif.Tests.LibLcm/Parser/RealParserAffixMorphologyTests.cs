@@ -20,10 +20,11 @@ public sealed class RealParserAffixMorphologyTests(PristineProjectFixture pristi
     public async Task AuthoredCircumfixProjectsBothSourceFormsInSurfaceOrder()
     {
         using var cache = pristine.NewScratch();
-        (AuthoredMorph Root, AuthoredMorph Prefix, AuthoredMorph Suffix) authored = default;
+        (AuthoredMorph Root, AuthoredMorph Prefix, AuthoredMorph Suffix)? authored = null;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => authored = AuthorCircumfix(cache));
+        var authoredMorphs = authored ?? throw new InvalidOperationException("The circumfix was not authored.");
         const string word = "dkat";
-        Approve(cache, word, authored.Prefix, authored.Root, authored.Suffix);
+        Approve(cache, word, authoredMorphs.Prefix, authoredMorphs.Root, authoredMorphs.Suffix);
         RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b", "d", "k");
 
         var row = await RunCorrectness(cache, word);
@@ -37,19 +38,20 @@ public sealed class RealParserAffixMorphologyTests(PristineProjectFixture pristi
         Assert.Empty(row.Morphology.Unavailable);
         var morphs = Assert.Single(row.Morphology.Analyses).Morphs;
         Assert.Equal(3, morphs.Count);
-        AssertMorph(morphs[0], authored.Prefix.Form, authored.Prefix.Msa);
-        AssertMorph(morphs[1], authored.Root.Form, authored.Root.Msa);
-        AssertMorph(morphs[2], authored.Suffix.Form, authored.Suffix.Msa);
+        AssertMorph(morphs[0], authoredMorphs.Prefix.Form, authoredMorphs.Prefix.Msa);
+        AssertMorph(morphs[1], authoredMorphs.Root.Form, authoredMorphs.Root.Msa);
+        AssertMorph(morphs[2], authoredMorphs.Suffix.Form, authoredMorphs.Suffix.Msa);
     }
 
     [RealParserFact]
     public async Task AuthoredInfixProjectsBeforeTheRootInInsertBeforeLastOrder()
     {
         using var cache = pristine.NewScratch();
-        (AuthoredMorph Root, AuthoredMorph Infix) authored = default;
+        (AuthoredMorph Root, AuthoredMorph Infix)? authored = null;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => authored = AuthorInfix(cache));
+        var authoredMorphs = authored ?? throw new InvalidOperationException("The infix was not authored.");
         const string word = "kia";
-        Approve(cache, word, authored.Infix, authored.Root);
+        Approve(cache, word, authoredMorphs.Infix, authoredMorphs.Root);
         RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b", "k");
 
         var row = await RunCorrectness(cache, word);
@@ -63,8 +65,8 @@ public sealed class RealParserAffixMorphologyTests(PristineProjectFixture pristi
         Assert.Empty(row.Morphology.Unavailable);
         var morphs = Assert.Single(row.Morphology.Analyses).Morphs;
         Assert.Equal(2, morphs.Count);
-        AssertMorph(morphs[0], authored.Infix.Form, authored.Infix.Msa);
-        AssertMorph(morphs[1], authored.Root.Form, authored.Root.Msa);
+        AssertMorph(morphs[0], authoredMorphs.Infix.Form, authoredMorphs.Infix.Msa);
+        AssertMorph(morphs[1], authoredMorphs.Root.Form, authoredMorphs.Root.Msa);
     }
 
     private static (AuthoredMorph Root, AuthoredMorph Prefix, AuthoredMorph Suffix) AuthorCircumfix(

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -18,9 +19,10 @@ public sealed partial class OverviewPageModel : PageModel
     public OverviewPageModel(WorkspaceContext context) : base(context)
     {
         History = new ProjectHistoryViewModel(context.Commands);
-        var openMatrix = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix));
-        OpenTextCoverageCommand = openMatrix;
-        OpenAccuracyCommand = openMatrix;
+        OpenTextCoverageCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix, []));
+        OpenAccuracyCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix,
+            Enum.GetValues<CompareColumnKind>()
+                .Select(column => new TextsListCell(WordProjectStatus.Approved, column)).ToArray()));
         OpenTimingCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Timing));
         OpenWarningsCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Warnings));
         OpenAiHandoffCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.AiHandoff));

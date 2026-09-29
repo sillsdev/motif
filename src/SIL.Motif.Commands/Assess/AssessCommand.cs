@@ -11,6 +11,7 @@ using SIL.LCModel;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
@@ -103,9 +104,15 @@ public static class AssessCommand
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
+            if (cancellationToken.IsCancellationRequested)
+                return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
             if (request.PerWordLimitMs is <= 0)
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                     "assess.invalid-limit", FailureReason.InvalidArgument, "A per-word time limit must be positive."));
+            if (invoker.ExecutableMissing)
+                return CommandOutcome<AssessCommandResponse>.Refused(cancellationToken.IsCancellationRequested
+                    ? Cancelled(request.ProjectPath)
+                    : ParserUnavailable(request.ProjectPath, PanGlossExecutable.NotFoundMessage, executableMissing: true));
             AssessmentScopeConfiguration configured;
             try
             {
@@ -136,6 +143,7 @@ public static class AssessCommand
             SelectionRequest selectionRequest;
             string? namedSelection = null;
             int? defaultPerWordLimitMs = null;
+            var usesDefaultSelection = request.Selection is null;
             if (request.Selection is null)
             {
                 var saved = namedSelections.GetDefault();
@@ -169,24 +177,28 @@ public static class AssessCommand
 
             AssessmentScope scope;
             var exportedCandidate = Path.GetDirectoryName(baseline.FwDataPath)!;
-
-            onProgress?.Invoke(new AssessmentProgress(
-                AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection..."));
             IReadOnlyList<ProducedAssessment> produced;
             try
             {
-                var collected = assessor.SupportedKinds.Contains(AssessmentKind.Correctness)
+                var supportedKinds = assessor.SupportedKinds;
+                var collected = supportedKinds.Contains(AssessmentKind.Correctness)
                     ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
-                var unsupported = collected.Where(kind => !assessor.SupportedKinds.Contains(kind)).ToArray();
+                var unsupported = collected.Where(kind => !supportedKinds.Contains(kind)).ToArray();
                 if (unsupported.Length > 0)
                     return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                         "assess.unsupported-kind", FailureReason.Refused,
                         $"The Assessor does not declare required Assessment kind '{unsupported[0]}'.",
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
-                scope = new AssessmentScope(composition.Selection.Words, collected,
-                    request.PerWordLimitMs is { } ms ? TimeSpan.FromMilliseconds(ms)
-                        : defaultPerWordLimitMs is { } savedMs ? TimeSpan.FromMilliseconds(savedMs) : configured.PerWordLimit,
-                    request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ?? configured.PerWordStepLimit);
+                var stepLimit = request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ?? configured.PerWordStepLimit;
+                TimeSpan? timeLimit = request.PerWordLimitMs is { } ms
+                    ? TimeSpan.FromMilliseconds(ms)
+                    : stepLimit.IsUnbounded ? null
+                    : usesDefaultSelection
+                        ? defaultPerWordLimitMs is { } savedMs ? TimeSpan.FromMilliseconds(savedMs) : null
+                        : EstimatePerWordTimeLimit(assessments, stepLimit);
+                scope = new AssessmentScope(composition.Selection.Words, collected, timeLimit, stepLimit);
+                onProgress?.Invoke(new AssessmentProgress(
+                    AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection..."));
                 produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
@@ -253,17 +265,18 @@ public static class AssessCommand
                 }
 
                 var invocations = pendingRecords.Select(record => record.Invocation).Distinct().ToArray();
+                var invocationCandidates = invocations.OfType<BatchInvocationEvidence>().Distinct().ToArray();
+                var invocation = invocationCandidates.Length == 1 ? invocationCandidates[0] : null;
                 if (invocations.Any(item => item is null) ||
-                    invocations.OfType<BatchInvocationEvidence>().Distinct().Count() != 1 ||
-                    pendingRecords.Any(record => record.GrammarSourceSha256 !=
-                        invocations.OfType<BatchInvocationEvidence>().Single().SourceBytesSha256))
+                    invocationCandidates.Length != 1 ||
+                    invocation is null ||
+                    pendingRecords.Any(record => record.GrammarSourceSha256 != invocation.SourceBytesSha256))
                 {
                     return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                         "assess.invocation-inconsistent", FailureReason.Refused,
                         "The collected Assessments do not share one non-null invocation evidence record " +
                         "and its source-byte digest."));
                 }
-                var invocation = invocations.OfType<BatchInvocationEvidence>().Single();
 
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
@@ -331,6 +344,11 @@ public static class AssessCommand
                 {
                     Words = record.Words.Select(word => word with
                     {
+                        Morphology = word.Morphology is { } morphology &&
+                            wordStats is not null && wordStats.TryGetValue(word.Word, out var attempts) &&
+                            attempts.Attempts is { } count
+                                ? morphology with { Attempts = count }
+                                : word.Morphology,
                         ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
                         OccurrenceCount = wordContext.HasTextSelection
                             ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
@@ -369,7 +387,7 @@ public static class AssessCommand
                     : Array.Empty<AssessmentWordResult>();
                 var completionSummary = AssessmentWordRows.CompletionSummary(words);
                 summaryMarkdown = RenderSummaryMarkdown(completionSummary, summaryMarkdown);
-                var grammarWarnings = invocation?.GrammarWarningLines is { Count: > 0 } warningLines
+                var grammarWarnings = invocation.GrammarWarningLines is { Count: > 0 } warningLines
                     ? warningLines : null;
                 if (words.Length > 0)
                 {
@@ -430,7 +448,9 @@ public static class AssessCommand
                               "Search completion is reported separately for each word."
                             : "Correctness unavailable: this Assessment did not collect approved morphology comparisons.",
                         Measurements = pendingRecords.Select(record => new ProducedAssessmentReference(
-                            record.AssessmentId, record.Kind, record.Invocation!.InvocationId)).ToArray(),
+                            record.AssessmentId, record.Kind,
+                            record.Invocation?.InvocationId ?? throw new InvalidDataException(
+                                "An Assessment is missing its invocation evidence."))).ToArray(),
                         InvocationId = invocation.InvocationId,
                         SelectionDescriptor = composition.Descriptor,
                     });
@@ -459,6 +479,17 @@ public static class AssessCommand
         "assess.parser-unavailable", FailureReason.Refused, message,
         ParserNotFoundFact.Mark(
             new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath }, executableMissing));
+
+    private static TimeSpan? EstimatePerWordTimeLimit(AssessmentRepository assessments, StepCap stepLimit)
+    {
+        var latest = assessments.ListByKind(AssessmentKind.ParseTime.ToStoredKind()).LastOrDefault();
+        var rate = StepLimitEstimator.FromAssessment(
+            latest is null ? null : assessments.Get(latest.AssessmentId));
+        var estimate = StepLimitEstimator.Calculate(stepLimit, rate);
+        return estimate?.PerWordTimeLimitMs is { } milliseconds && milliseconds <= int.MaxValue
+            ? TimeSpan.FromMilliseconds(milliseconds)
+            : null;
+    }
 
     private static Refusal Cancelled(string projectPath) => new(
         "assessment.cancelled", FailureReason.Cancelled,

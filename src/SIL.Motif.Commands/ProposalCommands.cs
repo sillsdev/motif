@@ -1487,11 +1487,21 @@ public static partial class ProposalCommands
                     var nonFitting = ChangeFitPreflight.Check(cache, envelope, currentBaseline)
                         .Where(change => !change.StillFits).ToArray();
                     if (nonFitting.Length > 0)
+                    {
+                        var uncertain = nonFitting
+                            .Where(change => change.Status == ChangeFitStatus.Uncertain).ToArray();
+                        if (uncertain.Length > 0)
+                        {
+                            var changeIds = uncertain.Select(change => change.ChangeId ?? change.OperationId).ToArray();
+                            return CommandOutcome<ApplyProjection>.Refused(
+                                PendingChangeRefusals.Uncertain(changeIds, id));
+                        }
                         return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                             "apply.change-no-longer-fits", FailureReason.Refused,
                             $"Cannot apply Proposal {id}: {string.Join("; ", nonFitting.Select(change => change.Reason))}. " +
                             "Reopen it and remove or replace the changes that no longer fit.",
                             Fact(("proposalId", id))));
+                    }
                 }
                 var description = manifest.Label ?? "";
                 var receipt = ProposalApplier.Apply(cache, envelope, manifest.Anchor, user, description);
@@ -1768,6 +1778,7 @@ public static partial class ProposalCommands
     /// A caught exception knows more than a broad catch does; anything else is refused, which does not retry.
     private static FailureReason ReasonFor(Exception exception) => exception switch
     {
+        NeedsReconciliationException => FailureReason.StoreInconsistent,
         FileNotFoundException or DirectoryNotFoundException => FailureReason.InvalidArgument,
         ArgumentException => FailureReason.InvalidArgument,
         KeyNotFoundException => FailureReason.NotFound,

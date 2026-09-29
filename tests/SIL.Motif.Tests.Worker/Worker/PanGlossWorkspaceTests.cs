@@ -95,7 +95,7 @@ public sealed class PanGlossWorkspaceTests : IDisposable
         Assert.Empty(result.DeletedPaths);
     }
 
-    [Fact]
+    [WindowsFileLockFact]
     public void CompleteAndDelete_WithALockedFile_LeavesTheMarkerForARetryInsteadOfThrowing()
     {
         var workspace = PanGlossWorkspace.Create(_ownership, "locked-job");

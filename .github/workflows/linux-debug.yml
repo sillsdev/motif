@@ -1,0 +1,65 @@
+name: linux debug
+
+# A fast Linux loop: a push to linux-debug/** runs only the tests named in .github/linux-debug.txt on a
+# Linux runner, so a platform fix is checked in minutes instead of a full three-OS suite.
+# .github/linux-debug.txt holds one "<test project name> | <dotnet test --filter expression>" per line;
+# an empty filter runs that whole project.
+on:
+  push:
+    branches: ['linux-debug/**']
+
+jobs:
+  linux-debug:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install LibLCM ICU (Ubuntu)
+        shell: bash
+        run: |
+          wget -qO - http://linux.lsdev.sil.org/downloads/sil-testing.gpg | sudo tee /etc/apt/trusted.gpg.d/linux-lsdev-sil-org.asc
+          sudo add-apt-repository "deb http://linux.lsdev.sil.org/ubuntu $(lsb_release -sc)-experimental main"
+          sudo apt-get update
+          sudo apt-get install -y icu-fw
+
+      - name: Build
+        shell: pwsh
+        run: ./build.ps1 -Configuration Release
+
+      - name: Run the selected tests
+        shell: pwsh
+        run: |
+          $env:MOTIF_DEVELOPER_COMMANDS = '1'
+          $out = 'bin/Release/linux-debug'
+          New-Item -ItemType Directory -Force $out | Out-Null
+          $failed = $false
+          foreach ($line in Get-Content .github/linux-debug.txt) {
+            if ([string]::IsNullOrWhiteSpace($line) -or $line.TrimStart().StartsWith('#')) { continue }
+            $project, $filter = $line.Split('|', 2) | ForEach-Object { $_.Trim() }
+            $csproj = "tests/$project/$project.csproj"
+            $testArgs = @('test', $csproj, '-c', 'Release', '--no-build', '--logger', 'console;verbosity=normal',
+              '--logger', "trx;LogFileName=$project.trx", '--results-directory', "$out/$project",
+              '--blame-hang-timeout', '5m', '--blame-hang-dump-type', 'none')
+            if ($filter) { $testArgs += @('--filter', $filter) }
+            Write-Host "==> $project $filter"
+            dotnet @testArgs 2>&1 | Tee-Object -FilePath "$out/$project.log"
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-debug-results
+          path: bin/Release/linux-debug/
+          retention-days: 7

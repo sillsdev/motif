@@ -1,6 +1,12 @@
 <Project>
   <PropertyGroup Label="SIL Ecosystem Versions">
-    <!-- SIL.WritingSystems/SIL.Core, pinned directly above SIL.LCModel's 17.x: 18 recovers an abandoned SLDR mutex. -->
-    <SilLibPalasoVersion>18.0.0-beta0042</SilLibPalasoVersion>
+    <!-- Core and WritingSystems 18 recover abandoned SLDR mutexes; the local packer overrides this pair. -->
+    <SilLibPalasoVersion>18.0.0-beta0043</SilLibPalasoVersion>
+    <!-- Core.Desktop 18 selects L10NSharp 10, which ships a netstandard2.0 asset. -->
+    <SilCoreDesktopVersion>18.0.0-beta0043</SilCoreDesktopVersion>
+    <!-- Keep Lexicon at the same release because LCModel requests the older 17.0.0 package. -->
+    <SilLexiconVersion>18.0.0-beta0043</SilLexiconVersion>
+    <!-- One shared LibLCM package pin for every Motif project that consumes the model. -->
+    <SilLCModelPackageVersion>11.0.0-beta0182</SilLCModelPackageVersion>
   </PropertyGroup>
 </Project>

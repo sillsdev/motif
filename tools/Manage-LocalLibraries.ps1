@@ -28,8 +28,8 @@
   Path to a local libpalaso checkout. Overrides the LIBPALASO_PATH environment variable.
 
   .EXAMPLE
-  $env:LOCAL_NUGET_REPO = 'C:\localnugetpackages'
-  ./tools/Manage-LocalLibraries.ps1 -PalasoPath C:\Users\johnm\Documents\repos\libpalaso
+  $env:LOCAL_NUGET_REPO = '/path/to/local-nuget-packages'
+  ./tools/Manage-LocalLibraries.ps1 -PalasoPath /path/to/libpalaso
 #>
 [CmdletBinding()]
 param(
@@ -53,7 +53,7 @@ if (-not (Test-Path $sourceDir)) {
 
 $localRepo = $env:LOCAL_NUGET_REPO
 if (-not $localRepo) {
-    throw 'LOCAL_NUGET_REPO is not set. Set it to a folder path, e.g. C:\localnugetpackages.'
+    throw 'LOCAL_NUGET_REPO is not set. Set it to a folder path.'
 }
 if (-not (Test-Path $localRepo)) {
     Write-Host "Creating local NuGet repo folder: $localRepo" -ForegroundColor Yellow
@@ -108,9 +108,16 @@ Set-Content -LiteralPath $versionsPropsPath -Value $content -NoNewline
 Write-Host "Updated SilVersions.props (SilLibPalasoVersion = $version)" -ForegroundColor Yellow
 
 # A stale extraction of this same version would otherwise keep serving old bits after a re-pack.
-$cacheRoot = Join-Path $env:USERPROFILE '.nuget\packages'
+$cacheRoot = $env:NUGET_PACKAGES
+if ([string]::IsNullOrWhiteSpace($cacheRoot)) {
+    $homePath = $env:HOME
+    if ([string]::IsNullOrWhiteSpace($homePath)) {
+        $homePath = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+    }
+    $cacheRoot = Join-Path $homePath '.nuget/packages'
+}
 foreach ($id in @('sil.core', 'sil.writingsystems')) {
-    $stale = Join-Path $cacheRoot "$id\$($version.ToLowerInvariant())"
+    $stale = Join-Path $cacheRoot "$id/$($version.ToLowerInvariant())"
     if (Test-Path $stale) {
         Remove-Item -Recurse -Force $stale
         Write-Host "Cleared stale cache entry: $stale" -ForegroundColor Yellow

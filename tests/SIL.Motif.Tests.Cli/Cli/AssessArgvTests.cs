@@ -10,7 +10,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// Drives the real <c>motif.exe</c> for <c>assess</c>, restricted to the argv-shaped cases that fail
+/// Drives the real <c>motif</c> apphost for <c>assess</c>, restricted to the argv-shaped cases that fail
 /// before any subprocess starts: usage, unparseable flags, a missing <c>--words</c> file, and a
 /// nonexistent project. A run that actually reaches the Assessor needs a real <c>pangloss</c> executable
 /// resolvable on the machine, which this suite does not assume.

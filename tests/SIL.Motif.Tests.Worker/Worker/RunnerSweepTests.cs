@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
@@ -99,6 +100,180 @@ public sealed class RunnerSweepTests : IDisposable
             shutdown.Cancel();
             await sweeping;
             await lifetime;
+        }
+    }
+
+    [Fact]
+    public async Task ARunnerThatHasRetiredClaimsNothingSoItsSuccessorCan()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "retired");
+        SeedJob(runtime, "late-job", queueOrder: 1.0);
+        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        activity.Set(false);
+        Assert.True(activity.TryRetire());
+        var ran = false;
+
+        var outcome = await SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+            (_, _) => { ran = true; return Task.CompletedTask; });
+
+        Assert.Null(outcome.JobId);
+        Assert.False(ran);
+        // Queued, not cancelled: the runner its enqueue kicked takes it once this one lets go of the mutex.
+        Assert.Equal(JobStatus.Queued, runtime.Jobs.Get("late-job")!.Status);
+    }
+
+    [Fact]
+    public async Task ARunnerCannotRetireWhileASweepIsStillScanning()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "slow-scan");
+        SeedJob(runtime, "late-job", queueOrder: 1.0);
+        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        activity.Set(false);
+        var scanned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ran = false;
+
+        var sweeping = SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+            (_, _) => { ran = true; return Task.CompletedTask; },
+            async () => { scanned.TrySetResult(); await release.Task; });
+        bool retiredMidScan;
+        try
+        {
+            await scanned.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            retiredMidScan = activity.TryRetire();
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+        var outcome = await sweeping.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Retiring here would decline the claim after a successor gave up waiting for the mutex.
+        Assert.False(retiredMidScan);
+        Assert.Equal("late-job", outcome.JobId);
+        Assert.True(ran);
+    }
+
+    [Fact]
+    public async Task AnIdleTimeoutThatExpiresMidScanRetiresOnlyOnceTheScanEnds()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        SeedProject(known, "idle-scan");
+        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        activity.Set(false);
+        var scanned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var shutdown = new CancellationTokenSource();
+
+        var sweeping = SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+            scannedAsync: async () => { scanned.TrySetResult(); await release.Task; });
+        Task retiring;
+        try
+        {
+            await scanned.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            retiring = SIL.Motif.Worker.Program.RunUntilRetiredAsync(new WorkerLifetime(),
+                TimeSpan.FromMilliseconds(50), activity, shutdown.Token);
+
+            // Many idle timeouts pass while the scan is held; none of them may retire the runner.
+            Assert.NotSame(retiring, await Task.WhenAny(retiring, Task.Delay(TimeSpan.FromMilliseconds(500))));
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+        await sweeping.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await retiring.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(activity.TryBeginSweep());
+    }
+
+    [Fact]
+    public async Task AMachineDatabaseFileDeletedBetweenSweepsFailsTheSweepAsAMachineDatabaseLoss()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        SeedProject(known, "file-lost");
+        // Unpooled connections are all closed between sweeps, so the file deletes as a user's root would.
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+            File.Delete(machine.FullPath + suffix);
+
+        var failure = await Assert.ThrowsAsync<IOException>(() => SIL.Motif.Worker.Program.SweepOnceAsync(known,
+            _runtimes, _lanes, _options, new FakeInvoker(), OwnerId, CancellationToken.None));
+
+        Assert.Contains("machine database", failure.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AMachineDatabaseMissingItsKnownProjectsTableFailsTheSweepAsAMachineDatabaseLoss()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        using (var connection = machine.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "DROP TABLE KnownProjects;";
+            command.ExecuteNonQuery();
+        }
+
+        var failure = await Assert.ThrowsAsync<IOException>(() => SIL.Motif.Worker.Program.SweepOnceAsync(known,
+            _runtimes, _lanes, _options, new FakeInvoker(), OwnerId, CancellationToken.None));
+
+        Assert.Contains("machine database", failure.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ASweepThatBeginsAfterShutdownClaimsNothing()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "shut-down");
+        SeedJob(runtime, "late-job", queueOrder: 1.0);
+        using var shutdown = new CancellationTokenSource();
+        shutdown.Cancel();
+
+        var outcome = await SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, shutdown.Token, runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        Assert.Null(outcome.JobId);
+        Assert.Equal(JobStatus.Queued, runtime.Jobs.Get("late-job")!.Status);
+    }
+
+    [Fact]
+    public async Task ARunnerCannotRetireOnceASweepHasBegunToClaim()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "claiming");
+        SeedJob(runtime, "claimed-job", queueOrder: 1.0);
+        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        activity.Set(false);
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var sweeping = SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None, activity, async (_, _) =>
+            {
+                started.TrySetResult(true);
+                await release.Task;
+            });
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.False(activity.TryRetire());
+        }
+        finally
+        {
+            release.TrySetResult(true);
+            await sweeping;
         }
     }
 

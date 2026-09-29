@@ -5,7 +5,7 @@ namespace SIL.Motif.Host.LcmUtils;
 /// <summary>
 /// A <see cref="CoreGlobalWritingSystemRepository"/> whose writes are no-ops, so any
 /// <see cref="SIL.LCModel.LcmCache"/> wired to it cannot register a writing-system change in the
-/// machine-wide <c>%ProgramData%\SIL\WritingSystemRepository</c> store.
+/// operating-system-wide writing-system repository shared by processes.
 /// </summary>
 /// <remarks>
 /// <para>

@@ -52,6 +52,7 @@ public static class FsFeatStrucFeatureSpecsOperationKinds
     public const string CreateFeatureSpecs = "grammar/fsFeatStruc/createFeatureSpecs";
     public const string DeleteFeatureSpecs = "grammar/fsFeatStruc/deleteFeatureSpecs";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -60,6 +61,7 @@ public static class FsFeatStrucFeatureSpecsOperationKinds
         OperationHandlerRegistry.Register(CreateFeatureSpecs, FsFeatStrucFeatureSpecsCreateHandler.Instance);
         OperationHandlerRegistry.Register(DeleteFeatureSpecs, FsFeatStrucFeatureSpecsDeleteHandler.Instance);
     }
+#pragma warning restore CA2255
 }
 
 /// <summary>

@@ -44,8 +44,9 @@ public sealed class CoverageReportProducer : IReportProducer
         var scope = ScopeCodec.ReadTrial(assessment.ScopeJson, KindName);
         var words = assessment.Words.Select((word, index) => new WordAnalysis(
             index, word.Word, 0, StoredWordOutcome.Parse(word.Outcome, KindName), string.Empty)).ToList();
-        var batch = new BatchAnalysis(
-            words, (int)scope.PerWordLimit.TotalMilliseconds, string.Empty, Array.Empty<string>()) { PerWordStepLimit = scope.PerWordStepLimit };
+        var batch = new BatchAnalysis(words,
+            scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null,
+            string.Empty, Array.Empty<string>()) { PerWordStepLimit = scope.PerWordStepLimit };
         var selection = new Selection(assessment.SelectionName, assessment.SelectionWords, assessment.SelectionSha256);
         var figure = GrammarCoverageFigure.Compute(batch, selection, assessment.GrammarSourceSha256);
         return new RenderedReport(KindName, figure.Describe(assessment.SelectionSha256, assessment.GrammarSourceSha256));
@@ -68,7 +69,7 @@ internal static class CorrectnessCoverage
                 _ => WordOutcome.Skipped,
             }, string.Empty)).ToArray();
         return GrammarCoverageFigure.Compute(new BatchAnalysis(compared,
-            (int)scope.PerWordLimit.TotalMilliseconds, string.Empty, [])
+            scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null, string.Empty, [])
             { PerWordStepLimit = scope.PerWordStepLimit }, selection, grammarSourceSha256);
     }
 

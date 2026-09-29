@@ -1,8 +1,10 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using WorkerRunnerOptions = SIL.Motif.Worker.RunnerOptions;
 
 namespace SIL.Motif.Commands;
@@ -61,9 +63,9 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
 
     /// <summary>Spawns the runner with this launcher's settings.</summary>
     /// <remarks>
-    /// This process's standard handles are marked non-inheritable before the spawn, so a caller capturing
-    /// this process's own stdio — a redirecting parent, a shell's command substitution — reaches end-of-file
-    /// when this process exits rather than when the runner idles out, pinned by
+    /// The caller's output pipes are not kept open until the runner idles out. Windows marks this
+    /// process's standard handles non-inheritable; Unix redirects and drains the runner's standard streams,
+    /// pinned by
     /// `ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked`.
     /// </remarks>
     public void Start(string projectPath, Action<string>? reportWarning = null)
@@ -74,14 +76,26 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
 
         try
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            var isWindows = OperatingSystem.IsWindows();
+            if (isWindows)
                 MakeOwnStandardHandlesNonInheritable();
             var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true };
+            if (!isWindows)
+            {
+                start.RedirectStandardInput = true;
+                start.RedirectStandardOutput = true;
+                start.RedirectStandardError = true;
+            }
             foreach (var argument in LaunchArguments(Options))
                 start.ArgumentList.Add(argument);
-            Process.Start(start);
+            var process = Process.Start(start);
+            if (process is null) return;
+            if (isWindows)
+                process.Dispose();
+            else
+                _ = DrainAndDisposeAsync(process);
         }
-        catch (Exception exception) when (exception is IOException or InvalidOperationException)
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or Win32Exception)
         {
             // Reported, not thrown: the enqueue already succeeded, and the next enqueue will kick again.
             reportWarning?.Invoke("warning: could not start the background runner (" + exception.Message +
@@ -150,7 +164,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
         if (configured is not null)
             return File.Exists(configured) ? configured : null;
 
-        var fileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        var fileName = OperatingSystem.IsWindows()
             ? "SIL.Motif.Worker.exe"
             : "SIL.Motif.Worker";
 
@@ -166,6 +180,26 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
             var handle = GetStdHandle(which);
             if (handle != IntPtr.Zero && handle != new IntPtr(-1))
                 SetHandleInformation(handle, HandleFlagInherit, 0);
+        }
+    }
+
+    private static async Task DrainAndDisposeAsync(Process process)
+    {
+        try
+        {
+            process.StandardInput.Close();
+            await Task.WhenAll(process.StandardOutput.ReadToEndAsync(), process.StandardError.ReadToEndAsync())
+                .ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        finally
+        {
+            process.Dispose();
         }
     }
 }

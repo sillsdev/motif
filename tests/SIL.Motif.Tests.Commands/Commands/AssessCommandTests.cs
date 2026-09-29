@@ -11,6 +11,7 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
@@ -74,6 +75,101 @@ public sealed class AssessCommandTests : IDisposable
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
+    [Fact]
+    public void LimitEstimateUsesTheLatestStoredParserStatistics()
+    {
+        using var seeded = NewSeededScratch();
+        var cachePath = Path.Combine(_managedRootsParent, "estimate.sqlite");
+        // PanGloss derives word attempts from StepBudget ticks (pg-cli/src/stats_cmd.rs:330).
+        WriteStatsCache(cachePath, ("motifa", 10, 1, 90, 2_000_000L));
+        var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, "motifa", 2000, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")
+                {
+                    Morphology = new ParseWordEvidence(
+                        SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0, "motifa", 2000,
+                        false, false, false, [], []),
+                }],
+                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+            AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate),
+        };
+        var measured = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa"], false, null)), NewManagedRoot(), assessor,
+            NewInvoker(), null, CancellationToken.None);
+        Assert.True(measured.Succeeded, measured.Refusal?.Message);
+
+        var rate = SelectionLimitEstimateQuery.ReadParserStepRate(seeded.FwDataPath);
+        Assert.True(rate.Succeeded, rate.Refusal?.Message);
+        Assert.False(rate.Value!.IsTypicalMachine);
+        Assert.Equal(200m, rate.Value.MillisecondsPerStep);
+        var parseRecord = measured.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
+            .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
+        Assert.Equal(10, Assert.Single(OpenRepository(seeded.FwDataPath).Get(parseRecord.AssessmentId)
+            .Words!).Morphology!.Attempts);
+
+        var estimate = StepLimitEstimator.Calculate(new StepCap(4), rate.Value);
+        Assert.NotNull(estimate);
+        Assert.Equal(800m, estimate.EstimatedMilliseconds);
+        Assert.Equal(8_000, estimate.PerWordTimeLimitMs);
+    }
+
+    [Fact]
+    public void LimitEstimateUsesTheDocumentedTypicalMachineRateWithoutStoredStatistics()
+    {
+        using var seeded = NewSeededScratch();
+
+        var rate = SelectionLimitEstimateQuery.ReadParserStepRate(seeded.FwDataPath);
+
+        Assert.True(rate.Succeeded, rate.Refusal?.Message);
+        Assert.True(rate.Value!.IsTypicalMachine);
+        Assert.Equal(StepLimitEstimator.TypicalMachineMillisecondsPerStep,
+            rate.Value.MillisecondsPerStep);
+        var estimate = StepLimitEstimator.Calculate(new StepCap(1_000_000), rate.Value);
+        Assert.NotNull(estimate);
+        Assert.Equal(4_000, estimate.EstimatedMilliseconds);
+        Assert.Equal(40_000, estimate.PerWordTimeLimitMs);
+    }
+
+    [Fact]
+    public void SavingNoStepLimitStoresNoTimeLimitAndTheDefaultRunUsesNoTimeLimit()
+    {
+        using var seeded = NewSeededScratch();
+        var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Default", [], ["motifa"], null, StepCap.Unbounded));
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+        Assert.Null(saved.Value!.Selection!.PerWordLimitMs);
+
+        AssessmentScope? observedScope = null;
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")],
+                null, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Unbounded }),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) =>
+            {
+                observedScope = scope;
+                return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
+            },
+        };
+
+        var assessed = AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
+            NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        Assert.Null(observedScope!.PerWordLimit);
+        Assert.Equal(StepCap.Unbounded, observedScope.PerWordStepLimit);
     }
 
     [Fact]
@@ -144,9 +240,10 @@ public sealed class AssessCommandTests : IDisposable
         var parseAssessment = assessed.Value.AssessmentIds
             .Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
-        Assert.Equal(parseAssessment.Words!.Select(word => word.ProjectStanding),
+        var parseWords = parseAssessment.Words!;
+        Assert.Equal(parseWords.Select(word => word.ProjectStanding),
             assessed.Value.Words.Select(word => word.ProjectStanding));
-        Assert.Equal(parseAssessment.Words.Select(word => word.ReadingGrades),
+        Assert.Equal(parseWords.Select(word => word.ReadingGrades),
             assessed.Value.Words.Select(word => word.ReadingGrades));
         Assert.Single(parseAssessment.ObjectTimings);
         Assert.Equal(1, parseAssessment.ObjectTimings.Single(row =>
@@ -443,11 +540,11 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Theory]
-    [InlineData(null, null, null, 500000)]
-    [InlineData(4000, 150000, null, 150000)]
-    [InlineData(4000, 150000, 750000, 750000)]
+    [InlineData(null, null, null, 500000, 20_000)]
+    [InlineData(4000, 150000, null, 150000, 4000)]
+    [InlineData(4000, 150000, 750000, 750000, 4000)]
     public void TheRunUsesRequestLimitsBeforeProjectConfiguredLimits(
-        int? requestedMs, int? selectionStepLimit, int? requestStepLimit, int expectedStepLimit)
+        int? requestedMs, int? selectionStepLimit, int? requestStepLimit, int expectedStepLimit, int expectedMs)
     {
         using var seeded = NewSeededScratch();
         var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
@@ -480,7 +577,7 @@ public sealed class AssessCommandTests : IDisposable
             assessor, NewInvoker(), null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        Assert.Equal(TimeSpan.FromMilliseconds(requestedMs ?? 2500), seen!.PerWordLimit);
+        Assert.Equal(TimeSpan.FromMilliseconds(expectedMs), seen!.PerWordLimit);
         Assert.Equal(expectedStepLimit, seen.PerWordStepLimit);
     }
 
@@ -582,14 +679,15 @@ public sealed class AssessCommandTests : IDisposable
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var response = outcome.Value!;
         Assert.Equal(["warning: dropped allomorph", "capability: missing boundary marker"], response.GrammarWarnings);
-        Assert.Equal(2, response.Words[0].Morphology!.Analyses.Count);
-        Assert.Equal(2, response.Words[0].Morphology.Analyses[0].Morphs.Count);
+        var morphology = response.Words[0].Morphology!;
+        Assert.Equal(2, morphology.Analyses.Count);
+        Assert.Equal(2, morphology.Analyses[0].Morphs.Count);
         Assert.Equal(
             ["11111111-1111-1111-1111-111111111111", "33333333-3333-3333-3333-333333333333",
                 "66666666-6666-6666-6666-666666666666"],
-            response.Words[0].Morphology.Analyses.SelectMany(analysis => analysis.Morphs)
+            morphology.Analyses.SelectMany(analysis => analysis.Morphs)
                 .Select(morph => morph.Form));
-        Assert.Equal("guess-a", response.Words[0].Morphology.Analyses[0].Morphs[0].GuessedString);
+        Assert.Equal("guess-a", morphology.Analyses[0].Morphs[0].GuessedString);
         Assert.True(response.Words[1].IsIncomplete);
         Assert.Single(response.Words[1].Morphology!.Analyses);
         Assert.Equal("source identity unavailable", response.Words[2].Morphology!.Unavailable.Single());
@@ -957,14 +1055,30 @@ public sealed class AssessCommandTests : IDisposable
         using var seeded = NewSeededScratch();
         var assessor = new LazyPanGlossAssessor(() =>
             throw new SIL.Motif.Host.Parser.ParserUnavailableException("parser absent"));
+        var stages = new List<AssessmentStage>();
 
         var outcome = AssessCommand.Run(
             new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, NewInvoker(),
-            onProgress: null, CancellationToken.None);
+            progress => stages.Add(progress.Stage), CancellationToken.None);
 
         Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
         Assert.Contains("parser absent", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(AssessmentStage.Parsing, stages);
         Assert.Empty(OpenRepository(seeded.FwDataPath).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+    }
+
+    [Fact]
+    public void AnAssessmentWithNoParserRefusesBeforeReportingCaptureProgress()
+    {
+        using var seeded = NewSeededScratch();
+        var stages = new List<AssessmentStage>();
+
+        var outcome = AssessCommand.Assess(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(),
+            parserPath: null, progress => stages.Add(progress.Stage), CancellationToken.None);
+
+        Assert.Equal("assess.parser-unavailable", outcome.Refusal!.Code);
+        Assert.Empty(stages);
     }
 
     private static readonly IReadOnlyList<AssessmentKind> CollectedKinds =

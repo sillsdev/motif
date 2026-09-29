@@ -1,13 +1,14 @@
 using SIL.Motif.Tests.TestFixtures;
 using System.Diagnostics;
 using System.Text.Json;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// Covers <c>config show</c> against the real <c>motif.exe</c> rather than the command layer, so the
+/// Covers <c>config show</c> against the real <c>motif</c> apphost rather than the command layer, so the
 /// documented defaults and the failure contract are proven for the surface an outside caller actually runs.
 /// </summary>
 public sealed class ConfigCommandArgvTests : IDisposable
@@ -40,7 +41,7 @@ public sealed class ConfigCommandArgvTests : IDisposable
         Assert.Equal("pangloss", scope.GetProperty("assessor").GetString());
         Assert.False(scope.TryGetProperty("engine", out _));
         var stepLimit = scope.GetProperty("perWordStepLimit");
-        Assert.Equal(50000000, stepLimit.GetProperty("steps").GetInt64());
+        Assert.Equal(StepCap.DefaultSteps, stepLimit.GetProperty("steps").GetInt64());
         Assert.False(stepLimit.GetProperty("isUnbounded").GetBoolean());
         Assert.Equal(1000, scope.GetProperty("perWordLimitMs").GetInt64());
     }

@@ -88,7 +88,8 @@ public sealed class PanGlossAssessor : IAssessor
             var matchingArtifacts = evidence.InvocationId == invocationId &&
                 Path.GetFullPath(evidence.SourcePath) == Path.Combine(Path.GetFullPath(directory), "source.fwdata");
             if (!matchingArtifacts || evidence.PerWordStepLimit != scope.PerWordStepLimit ||
-                evidence.PerWordTimeoutMs != (int)scope.PerWordLimit.TotalMilliseconds ||
+                evidence.PerWordTimeoutMs != (scope.PerWordLimit is { } timeLimit
+                    ? (int)timeLimit.TotalMilliseconds : null) ||
                 evidence.Threads != 1 || evidence.CollectStatistics != (cachePath is not null))
                 throw new AssessorUnavailableException(AssessorName, "The invocation evidence does not match the requested scope.");
             IReadOnlyList<WordAnalysis> rows;

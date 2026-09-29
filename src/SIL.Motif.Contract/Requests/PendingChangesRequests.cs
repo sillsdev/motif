@@ -9,7 +9,15 @@ public sealed record PendingChangesRequest(string FwDataPath, string ProductVers
 public sealed record ChangeIntent(
     string ChangeId, string Kind, string WordformId, string Word,
     string? AssessmentId = null, ParseAnalysis? Reading = null, string? StoredAnalysisId = null,
-    string? DisplayReading = null, int? ReadingIndex = null, string? OriginPage = null);
+    string? DisplayReading = null, int? ReadingIndex = null, string? OriginPage = null,
+    OccurrenceAnchor? Occurrence = null);
+
+/// <summary>The Text occurrence whose sentence provided context for a collected decision.</summary>
+/// <param name="TextId">The GUID of the Text containing the occurrence.</param>
+/// <param name="ParagraphId">The GUID of the paragraph containing the occurrence.</param>
+/// <param name="SegmentId">The GUID of the Segment containing the occurrence.</param>
+/// <param name="Index">The zero-based position in the Segment's analysis sequence.</param>
+public sealed record OccurrenceAnchor(Guid TextId, Guid ParagraphId, Guid SegmentId, int Index);
 
 /// <summary>Writes one change only if the Draft still has the revision the caller read.</summary>
 public sealed record PutPendingChangeRequest(
@@ -22,3 +30,7 @@ public sealed record RemovePendingChangeRequest(
 /// <summary>Checks pending changes against the current Baseline and renews only fingerprints that still fit.</summary>
 public sealed record RecheckPendingChangesRequest(
     string FwDataPath, string ProductVersion, string ExpectedRevision);
+
+/// <summary>Refreshes one pending change's occurrence evidence when its semantic fit still holds.</summary>
+public sealed record ReconfirmPendingChangeRequest(
+    string FwDataPath, string ProductVersion, string ExpectedRevision, string ChangeId);

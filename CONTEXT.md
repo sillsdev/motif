@@ -103,13 +103,46 @@ Every distinct morphology in that set is expected; finding one reading does not 
 _Avoid_: the approved analysis, any parse
 
 **Candidate**:
-An analysis a FieldWorks project holds for a word form that no person has approved or rejected, whoever
+An analysis a FieldWorks project holds for a word form that no person has approved or disapproved, whoever
 produced it: FieldWorks' parser, its guesser, or nobody. FieldWorks' own name for these is "Analysis
-Candidates", and it offers them in texts as guesses, coloured tan. One of the five things a project can hold
-for a word that Motif compares an Assessment against: not present, candidate, approved, rejected, or an
-incorrect spelling. FieldWorks' parser re-judges candidates whenever it runs, and deletes one it no longer
-produces unless a text uses it.
+Candidates", and it offers them in texts as guesses, coloured tan. The window shows a candidate as
+**Unknown**, the Opinion FieldWorks' User Opinion menu gives it
+([ADR 0049](docs/adr/0049-fieldworks-opinions-and-now-after-apply.md)). One of the five things a project
+can hold for a word that Motif compares an Assessment against: not present, candidate, approved,
+disapproved, or an incorrect spelling. FieldWorks' parser re-judges candidates whenever it runs, and deletes
+one it no longer produces unless a text uses it.
 _Avoid_: not approved, present, unapproved analysis, no-opinion analysis
+
+**Opinion**:
+A person's judgement on one analysis, in FieldWorks' words: **Approved**, **Disapproved** or **Unknown**.
+Shown with FieldWorks' colours (cyan, red, brown) and always with a letter and glyph too, never by colour
+alone. It is changed one analysis at a time, in its text. A staged change of Opinion is read "now → after
+Apply", never as an Opinion of its own.
+_Avoid_: rejected, grade, verdict, no opinion, status
+
+**Read**:
+A word the linguist has looked at in Motif. Its opposite is **Unread**. It is kept in the Motif store and never sent to FieldWorks. It clears on its own, by the same fingerprint rules as a pending change: a new PanGloss result for the word, a change to its FieldWorks analyses or opinion, or a change to the sentence it was read in. The window colours Unread words and can show only those.
+_Avoid_: reviewed, checked, seen, approved, needs a look
+
+**Parser agreement**:
+Whether the current Assessment still produces what FieldWorks holds for a word, judged by the same-analysis
+rule of [ADR 0027](docs/adr/0027-what-counts-as-the-same-word-analysis.md): agreeing (an approved analysis
+the parser still builds, or a disapproved one it no longer builds), a conflict, or a suggestion (the parser
+builds an analysis FieldWorks lacks). A word whose search did not complete, was skipped or was not assessed
+has no agreement either way — an unfinished search never shows that the parser does not produce something.
+_Avoid_: match, parse success, coverage, correctness
+
+**Uncertain**:
+A staged Opinion change whose sentence changed underneath it: after a Refresh, some word in the same
+sentence line of the Text is different. It stays staged but cannot be applied until the linguist looks again
+and reconfirms it, or undoes it. Distinct from a change that no longer fits, where the analysis itself moved.
+_Avoid_: stale, drifted, invalid, conflict
+
+**Remove analysis**:
+Deleting one stored analysis from the FieldWorks project, staged like any other pending change and shown
+"now → removed". One analysis may be used by many places in the Texts, so Motif shows them before Apply.
+Cancelling any staged change is **Undo**, never Remove.
+_Avoid_: undo, discard, reject, clear
 
 **Correctness**:
 An Assessment kind measuring whether the parser reproduces the morphology of a word form's approved

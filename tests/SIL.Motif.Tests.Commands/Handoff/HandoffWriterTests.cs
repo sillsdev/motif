@@ -283,7 +283,7 @@ public sealed class HandoffWriterTests : IDisposable
                     var words = scope.Words.Select((word, index) => new WordAnalysis(
                         index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray();
                     return new AssessmentRaw.Batch(new BatchAnalysis(words,
-                        (int)scope.PerWordLimit.TotalMilliseconds, projectPath, [])
+                        (int)scope.PerWordLimit!.Value.TotalMilliseconds, projectPath, [])
                     { PerWordStepLimit = scope.PerWordStepLimit });
                 }
                 return new AssessmentRaw.WordMeasurements([]);
@@ -637,7 +637,7 @@ public sealed class HandoffWriterTests : IDisposable
                         analyzed ? WordOutcome.Analysed : WordOutcome.NoAnalysis, analyzed ? "sig" : "none");
                 }).ToArray();
                 return new AssessmentRaw.Batch(new BatchAnalysis(words,
-                    (int)scope.PerWordLimit.TotalMilliseconds, projectPath, [])
+                    (int)scope.PerWordLimit!.Value.TotalMilliseconds, projectPath, [])
                 { PerWordStepLimit = scope.PerWordStepLimit });
             }
             return new AssessmentRaw.WordMeasurements([]);

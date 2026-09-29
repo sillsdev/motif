@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,15 +12,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SIL.LCModel" Version="11.0.0-beta0150" />
+    <PackageReference Include="SIL.LCModel" Version="$(SilLCModelPackageVersion)" />
     <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
   </ItemGroup>
 
-  <!-- Pins libpalaso above what SIL.LCModel asks for (SilVersions.props), and lets a local override apply. -->
+  <!-- Pins LibPalaso above SIL.LCModel's 17.x requests; only Core and WritingSystems use the local override. -->
   <ItemGroup>
     <PackageReference Include="SIL.WritingSystems" Version="$(SilLibPalasoVersion)" />
     <PackageReference Include="SIL.Core" Version="$(SilLibPalasoVersion)" />
+    <PackageReference Include="SIL.Core.Desktop" Version="$(SilCoreDesktopVersion)" />
+    <PackageReference Include="SIL.Lexicon" Version="$(SilLexiconVersion)" />
   </ItemGroup>
 
 </Project>

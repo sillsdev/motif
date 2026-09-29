@@ -148,5 +148,10 @@
     "title": "Reorder queued work",
     "description": "Changes a job's position in the queue by moving it before another job or to either end. Use it when work across Known projects needs a different order.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "apply --all-pending": {
+    "title": "Apply pending changes",
+    "description": "Applies the current pending changes to the FieldWorks project as one unit of work. Use it after FieldWorks releases the project, then reload when Motif reports that changes were applied.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
   }
 }

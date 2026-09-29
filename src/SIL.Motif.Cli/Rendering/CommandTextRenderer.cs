@@ -253,7 +253,7 @@ public static class CommandTextRenderer
         return $"Default Selection: {selection.Name}{Environment.NewLine}" +
             $"  Texts:       {selection.TextIds.Count:N0}{Environment.NewLine}" +
             $"  Added words: {selection.AddedWords.Count:N0}{Environment.NewLine}" +
-            $"  Time limit:  {selection.PerWordLimitMs:N0} ms{Environment.NewLine}" +
+            $"  Time limit:  {(selection.PerWordLimitMs is { } timeLimit ? $"{timeLimit:N0} ms" : "none")}{Environment.NewLine}" +
             $"  Step limit:  {selection.PerWordStepLimit?.ToArgument() ?? "project default"}{Environment.NewLine}" +
             $"  Updated:     {selection.UpdatedUtc}{Environment.NewLine}";
     }

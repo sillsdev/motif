@@ -72,6 +72,8 @@ public sealed partial class MainWindow : Window
 
         workspace.UpdateWindowWidth(Width);
         SizeChanged += (_, e) => workspace.UpdateWindowWidth(e.NewSize.Width);
+        if (this.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout projectMenu)
+            projectMenu.Opened += (_, _) => _ = workspace.RefreshKnownProjectsAsync();
         // Coming back from FieldWorks is when a save it made is news; this reads, it never reruns.
         Activated += (_, _) => _ = workspace.CheckFreshnessAsync();
         workspace.RecentProjects.CollectionChanged += (_, _) => RebuildRecentProjects(workspace);

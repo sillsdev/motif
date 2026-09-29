@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
@@ -20,6 +21,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
+using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -27,6 +29,8 @@ using Xunit;
 namespace SIL.Motif.Tests.App.Lifetime;
 
 [Collection(MotifAppHostCollection.Name)]
+[TestCaseOrderer("SIL.Motif.Tests.App.Lifetime.AppStartupCompositionTestOrderer",
+    "SIL.Motif.Tests.App.Lifetime")]
 public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) : IDisposable
 {
     private static readonly TimeSpan StepLimit = TimeSpan.FromSeconds(30);
@@ -111,6 +115,50 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
     }
 
     [Fact]
+    public void TheErrorWindowCopiesItsReportAndClosesThroughItsButtons()
+    {
+        var host = MotifAppHost.Shared;
+        var clipboard = new RecordingClipboard();
+        var options = Options(NewRoot(), new RecordingProjectPicker()) with
+        {
+            CrashWindow = new CrashWindowServices(clipboard),
+        };
+
+        host.Run("copy and close the error window", StepLimit, async () =>
+        {
+            var session = host.Start(options);
+            await session.KnownProjectsLoaded;
+
+            int? exitCode = null;
+            EventHandler<ControlledApplicationLifetimeExitEventArgs> recordExitCode =
+                (_, args) => exitCode = args.ApplicationExitCode;
+            host.Lifetime.Exit += recordExitCode;
+
+            Dispatcher.UIThread.Post(() => throw new InvalidOperationException("copied through the error window"));
+            Dispatcher.UIThread.RunJobs();
+
+            var window = Assert.IsType<CrashWindow>(session.Crashes.Window);
+            Assert.True(window.IsVisible, "The error window did not open.");
+            var copy = window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                AutomationProperties.GetName(button) == "Copy details");
+            HeadlessClick.Click(window, copy, "Copy details");
+            Assert.Equal(window.Model.Report.ToText(), clipboard.Text);
+
+            var close = window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                AutomationProperties.GetName(button) == "Close");
+            HeadlessClick.Click(window, close, "Close");
+            Assert.False(window.IsVisible, "The Close button left the error window open.");
+
+            var closed = await Task.WhenAny(session.Closed, Task.Delay(TimeSpan.FromSeconds(5)))
+                .ConfigureAwait(false);
+            Assert.Same(session.Closed, closed);
+            Assert.True(session.Closed.IsCompletedSuccessfully, "Closing the error window did not close its session.");
+            Assert.Equal(SIL.Motif.App.App.CrashExitCode, exitCode);
+            host.RecordErrorWindowExitProved();
+        });
+    }
+
+    [Fact]
     public void TheRealStartupRunsTheSubstitutedParserRunnerAndClock()
     {
         var host = MotifAppHost.Shared;
@@ -130,6 +178,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             new ChosenFolderPicker(Path.Combine(handoffParent, "handoff")),
             new NoOpDragSource());
 
+        var stage = "project open and Baseline";
         host.Run("open, assess, write a Handoff, and check the pending change", JourneyLimit, async () =>
         {
             var culture = CultureInfo.CurrentCulture;
@@ -146,10 +195,12 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                         workspace.Baseline.ShownRefusal?.Sentence + ")");
                 Assert.NotEqual(true, workspace.Context.Setup?.IsOpen);
 
+                stage = "Assessment";
                 workspace.Selection.PastedWords = word;
                 await workspace.Assess.RunCommand.ExecuteAsync(null);
                 Assert.True(workspace.Assess.State == RunState.Completed, "The Assessment did not complete: " +
                     workspace.Assess.Refusal?.Code + " " + workspace.Assess.Refusal?.Message);
+                stage = "Handoff";
                 await ShowPageAsync(session, WorkspacePage.AiHandoff);
                 var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
                 await handoff.RunCommand.ExecuteAsync(null);
@@ -165,6 +216,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var windowRuns = FakeParser.Invocations(parser).Count(command => command == "batch");
                 Assert.True(windowRuns > 0, "The window's runs did not reach the substituted parser.");
 
+                stage = "Review with Measure/Trial";
                 await ShowPageAsync(session, WorkspacePage.Review);
                 var review = workspace.PageModel<ReviewPageModel>();
                 await Until(() => review.MeasureCommand.CanExecute(null), "the pending change did not reach Review");
@@ -180,7 +232,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             {
                 CultureInfo.CurrentCulture = culture;
             }
-        });
+        }, () => "current stage: " + stage);
     }
 
     private static string SeedPendingChange(WalkthroughProject project, string word)
@@ -285,6 +337,17 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             new NoOpDragSource());
     }
 
+    private sealed class RecordingClipboard : IClipboard
+    {
+        public string? Text { get; private set; }
+
+        public Task SetTextAsync(string text, CancellationToken cancellationToken = default)
+        {
+            Text = text;
+            return Task.CompletedTask;
+        }
+    }
+
     private string NewRoot()
     {
         var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.AppStartup", Guid.NewGuid().ToString("N"));
@@ -332,4 +395,15 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             PointerPressedEventArgs trigger, IReadOnlyList<string> filePaths, DragDropEffects allowedEffects) =>
             Task.FromResult(DragDropEffects.None);
     }
+}
+
+/// <summary>Runs the error-window test last because closing its real window ends the Avalonia dispatcher.</summary>
+public sealed class AppStartupCompositionTestOrderer : Xunit.Sdk.ITestCaseOrderer
+{
+    public IEnumerable<TTestCase> OrderTestCases<TTestCase>(IEnumerable<TTestCase> testCases)
+        where TTestCase : Xunit.Abstractions.ITestCase =>
+        testCases.OrderBy(testCase =>
+                testCase.TestMethod.Method.Name ==
+                nameof(AppStartupCompositionTests.TheErrorWindowCopiesItsReportAndClosesThroughItsButtons))
+            .ThenBy(testCase => testCase.TestMethod.Method.Name, StringComparer.Ordinal);
 }

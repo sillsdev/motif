@@ -10,25 +10,33 @@ public sealed class ApplyPendingResultTests
         new() { PropertyNameCaseInsensitive = true };
 
     [Fact]
-    public void NothingPendingIsExactlyASuccessThatAppliedNothing()
+    public void NothingPendingIncludesDisplayDataForTheNoOp()
     {
         var rendered = ProjectionJson.Serialize(ApplyPendingResult.NothingPending);
 
         using var document = JsonDocument.Parse(rendered);
-        Assert.Equal("{\"ok\":true,\"applied\":false}", JsonSerializer.Serialize(document.RootElement));
+        var root = document.RootElement;
+        Assert.Equal(["ok", "applied", "summary"],
+            root.EnumerateObject().Select(property => property.Name));
+        Assert.True(root.GetProperty("ok").GetBoolean());
+        Assert.False(root.GetProperty("applied").GetBoolean());
+        Assert.Equal("Nothing to apply.", root.GetProperty("summary").GetString());
     }
 
     [Fact]
     public void AnAppliedResultCarriesItsReceiptUnderOk()
     {
-        var rendered = ProjectionJson.Serialize(ApplyPendingResult.AppliedWith(Receipt()));
+        var rendered = ProjectionJson.Serialize(ApplyPendingResult.AppliedWith(
+            Receipt(), "Approved one analysis."));
 
         using var document = JsonDocument.Parse(rendered);
         var root = document.RootElement;
-        Assert.Equal(["ok", "applied", "receipt"], root.EnumerateObject().Select(property => property.Name));
+        Assert.Equal(["ok", "applied", "receipt", "summary"],
+            root.EnumerateObject().Select(property => property.Name));
         Assert.True(root.GetProperty("ok").GetBoolean());
         Assert.True(root.GetProperty("applied").GetBoolean());
         Assert.Equal("proposal/one", root.GetProperty("receipt").GetProperty("proposalId").GetString());
+        Assert.Equal("Approved one analysis.", root.GetProperty("summary").GetString());
     }
 
     [Fact]
@@ -37,7 +45,7 @@ public sealed class ApplyPendingResultTests
         var nothing = JsonSerializer.Deserialize<ApplyPendingResult>(
             ProjectionJson.Serialize(ApplyPendingResult.NothingPending), ReaderOptions);
         var applied = JsonSerializer.Deserialize<ApplyPendingResult>(
-            ProjectionJson.Serialize(ApplyPendingResult.AppliedWith(Receipt())), ReaderOptions);
+            ProjectionJson.Serialize(ApplyPendingResult.AppliedWith(Receipt(), "Approved one analysis.")), ReaderOptions);
 
         Assert.False(nothing!.Applied);
         Assert.Null(nothing.Receipt);

@@ -20,7 +20,7 @@ namespace SIL.Motif.Host.PanGloss;
 /// `AssignProcess_ContainsTheWholeProcessTreeAcrossItsLifetime`).
 /// </remarks>
 [SupportedOSPlatform("windows")]
-public sealed class WindowsCpuJob : IDisposable
+public sealed class WindowsCpuJob : PanGlossContainmentJob
 {
     /// <summary>The CPU hard-cap rate, in basis points of one CPU's worth of total machine time.</summary>
     public const int CpuRateHardCapBasisPoints = 2500;
@@ -40,13 +40,21 @@ public sealed class WindowsCpuJob : IDisposable
     private bool _disposed;
 
     /// <summary>Creates a job object and immediately applies the CPU hard cap and kill-on-close limit.</summary>
-    public WindowsCpuJob()
+    public WindowsCpuJob() : base(new PanGlossContainmentReport(
+        CpuRateHardCapBasisPoints,
+        JobMemoryLimitBytes,
+        AggregateMemoryLimit: true,
+        Cpu: "Windows Job Object hard cap at 2500 basis points.",
+        Memory: "10 GiB aggregate committed-memory hard limit.",
+        ProcessTree: "Job Object kill-on-close; each child is suspended until assigned.",
+        Limitations: Array.Empty<string>()))
     {
+        var jobMemoryLimit = CreateNativeMemoryLimit();
         _handle = NativeMethods.CreateJobObject(IntPtr.Zero, null);
         if (_handle.IsInvalid)
             throw new Win32Exception(Marshal.GetLastWin32Error());
         ApplyCpuRateControl();
-        ApplyKillOnClose();
+        ApplyKillOnClose(jobMemoryLimit);
     }
 
     /// <summary>
@@ -74,6 +82,31 @@ public sealed class WindowsCpuJob : IDisposable
         }
     }
 
+    /// <inheritdoc />
+    public override PanGlossChildProcess Start(ProcessStartInfo startInfo)
+    {
+        ArgumentNullException.ThrowIfNull(startInfo);
+        ThrowIfDisposed();
+        var process = Process.Start(startInfo) ?? throw new InvalidOperationException("The parser process did not start.");
+        try
+        {
+            AssignProcess(process);
+            return new PanGlossChildProcess(new WindowsPanGlossChildProcess(process));
+        }
+        catch
+        {
+            process.Dispose();
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public override void Terminate(PanGlossChildProcess process)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        if (!_disposed) Terminate();
+    }
+
     /// <summary>Terminates every process currently assigned to this job.</summary>
     public void Terminate()
     {
@@ -98,7 +131,7 @@ public sealed class WindowsCpuJob : IDisposable
             NativeMethods.JobObjectInfoClass.JobObjectBasicAccountingInformation).TotalProcesses;
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
@@ -116,7 +149,14 @@ public sealed class WindowsCpuJob : IDisposable
             });
     }
 
-    private void ApplyKillOnClose()
+    private static UIntPtr CreateNativeMemoryLimit()
+    {
+        if (UIntPtr.Size != sizeof(ulong))
+            throw new PlatformNotSupportedException("The 10 GiB PanGloss memory limit requires a 64-bit process.");
+        return new UIntPtr(JobMemoryLimitBytes);
+    }
+
+    private void ApplyKillOnClose(UIntPtr jobMemoryLimit)
     {
         SetInformation(NativeMethods.JobObjectInfoClass.JobObjectExtendedLimitInformation,
             new NativeMethods.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
@@ -126,7 +166,7 @@ public sealed class WindowsCpuJob : IDisposable
                     LimitFlags = NativeMethods.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
                         | NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY,
                 },
-                JobMemoryLimit = (UIntPtr)JobMemoryLimitBytes,
+                JobMemoryLimit = jobMemoryLimit,
             });
     }
 
@@ -174,6 +214,25 @@ public sealed class WindowsCpuJob : IDisposable
     {
         if (_disposed) throw new ObjectDisposedException(nameof(WindowsCpuJob));
     }
+}
+
+[SupportedOSPlatform("windows")]
+internal sealed class WindowsPanGlossChildProcess(Process process) : IPanGlossChildProcess
+{
+    public int Id => process.Id;
+    public int ExitCode => process.ExitCode;
+    public Task WaitForExitAsync(CancellationToken cancellationToken) => process.WaitForExitAsync(cancellationToken);
+    public Task<string> ReadStandardOutputAsync() => process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+    public Task<string> ReadStandardErrorAsync() => process.StandardError.ReadToEndAsync(CancellationToken.None);
+
+    public void KillProcessTree()
+    {
+        try { process.Kill(entireProcessTree: true); }
+        catch (InvalidOperationException) { }
+        catch (Win32Exception) { }
+    }
+
+    public void Dispose() => process.Dispose();
 }
 
 [SupportedOSPlatform("windows")]

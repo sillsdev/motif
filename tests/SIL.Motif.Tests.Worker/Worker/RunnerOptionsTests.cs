@@ -1,4 +1,5 @@
 using SIL.Motif.Worker;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
@@ -57,7 +58,7 @@ public sealed class RunnerOptionsTests : IDisposable
     [Fact]
     public void AParserArgumentNamingAMissingFileSelectsNoParser() =>
         Assert.Null(RunnerOptions.Read(
-            [RunnerOptions.ParserArgument, Path.Combine(_directory, "absent", "pangloss.exe")]).ParserPath);
+            [RunnerOptions.ParserArgument, Path.Combine(_directory, "absent", FakeParser.ExecutableFileName)]).ParserPath);
 
     [Fact]
     public void ResolveRootAndReadTakeTheRootVariable()
@@ -105,7 +106,7 @@ public sealed class RunnerOptionsTests : IDisposable
 
     private string ExistingParser()
     {
-        var parser = Path.Combine(_directory, "pangloss.exe");
+        var parser = Path.Combine(_directory, FakeParser.ExecutableFileName);
         File.WriteAllText(parser, "");
         return parser;
     }

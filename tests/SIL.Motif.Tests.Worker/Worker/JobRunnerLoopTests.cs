@@ -130,6 +130,39 @@ public sealed class JobRunnerLoopTests : IDisposable
     }
 
     [Fact]
+    public async Task AHandlerStoppedWhileItsRowWaitsBehindTheLaneLandsItCancelled()
+    {
+        var jobs = new JobRepository(_database);
+        jobs.Create("job-1", Project, "demo", "{}", Stamp());
+
+        await Loop((job, _) =>
+        {
+            job.Transition(JobStatus.WaitingForBaseline);
+            throw new OperationCanceledException();
+        }).RunUntilIdleAsync(CancellationToken.None);
+
+        // Left parked, the row is active forever: nothing reclaims it, and it keeps every later runner alive.
+        Assert.Equal(JobStatus.Cancelled, jobs.Get("job-1")!.Status);
+    }
+
+    [Fact]
+    public async Task AHandlerThatFailsWhileItsRowWaitsBehindTheLaneLandsItFailed()
+    {
+        var jobs = new JobRepository(_database);
+        jobs.Create("job-1", Project, "demo", "{}", Stamp());
+
+        await Loop((job, _) =>
+        {
+            job.Transition(JobStatus.WaitingForBaseline);
+            throw new InvalidOperationException("the lane went away");
+        }).RunUntilIdleAsync(CancellationToken.None);
+
+        var job = jobs.Get("job-1")!;
+        Assert.Equal(JobStatus.Failed, job.Status);
+        Assert.Contains("the lane went away", job.ResultJson!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AnEmptyQueueIsNotAnError()
     {
         var jobs = new JobRepository(_database);

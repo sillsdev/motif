@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class WorkspacePageTests
 {
-    private const string ProjectPath = @"C:\projects\one.fwdata";
+    private static readonly string ProjectPath = Path.Combine(Path.GetTempPath(), "projects", "one.fwdata");
 
     private static readonly DateTimeOffset Saved = new(2026, 9, 5, 10, 58, 0, TimeSpan.Zero);
 
@@ -290,7 +290,7 @@ public sealed class WorkspacePageTests
     public async Task OpenRecentListsTheKnownProjectsOtherThanTheOpenOneAndOpensTheChosenOne()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
-        const string other = @"C:\projects\two.fwdata";
+        var other = Path.Combine(Path.GetTempPath(), "projects", "two.fwdata");
         fake.KnownProjectsListIs(
         [
             new KnownProjectSummary(other, Saved),
@@ -314,7 +314,7 @@ public sealed class WorkspacePageTests
     public async Task TheProjectMenuOpensAnotherKnownProjectFromTheOverview()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
-        const string other = @"C:\projects\two.fwdata";
+        var other = Path.Combine(Path.GetTempPath(), "projects", "two.fwdata");
         fake.KnownProjectsListIs([new KnownProjectSummary(other, Saved)]);
         await workspace.Project.LoadKnownProjectsAsync();
         await ChooseProjectAsync(fake, projectPicker, workspace);

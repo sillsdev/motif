@@ -64,6 +64,7 @@ public sealed class SetupRefusalViewTests
         _avalonia.Invoke(() =>
         {
             var setup = workspace!.Context.Setup;
+            Assert.NotNull(setup);
             Assert.NotNull(setup.ShownRefusal);
             setup.IsOpen = true;
             var dialog = new SetupDialog { DataContext = setup };
@@ -90,11 +91,31 @@ public sealed class SetupRefusalViewTests
     }
 
     [Fact]
-    public void NoStepLimitGuidanceStillNamesThePerWordTimeLimit()
+    public void TheLimitsStepShowsAnEstimateAndNoTimeLimitInput()
     {
+        WorkspaceShellViewModel? workspace = null;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var projectPicker = new FakeProjectPicker();
+            var selection = new SelectionViewModel(fake);
+            workspace = new WorkspaceShellViewModel(
+                new ProjectViewModel(fake, projectPicker), new BaselineViewModel(fake), selection,
+                new AssessViewModel(fake, selection), new FakeFolderPicker(), new FakeDragSource(), fake);
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false)
+            {
+                ProjectLastWriteUtc = Saved,
+            });
+            fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+            projectPicker.PathToReturn = ProjectPath;
+            await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        }, TimeSpan.FromSeconds(10));
+
         _avalonia.Invoke(() =>
         {
-            var dialog = new SetupDialog();
+            var setup = workspace!.Context.Setup!;
+            setup.Step = 2;
+            var dialog = new SetupDialog { DataContext = setup };
             var window = new Window { Content = dialog, Width = 1000, Height = 800 };
             try
             {
@@ -102,10 +123,14 @@ public sealed class SetupRefusalViewTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                var guidance = dialog.GetLogicalDescendants().OfType<TextBlock>()
-                    .Select(block => block.Text ?? string.Empty)
-                    .Single(text => text.Contains("50,000,000 steps", StringComparison.Ordinal));
-                Assert.Contains("per-word time limit", guidance, StringComparison.OrdinalIgnoreCase);
+                var texts = dialog.GetLogicalDescendants().OfType<TextBlock>()
+                    .Select(block => block.Text ?? string.Empty).ToArray();
+                var numbers = dialog.GetLogicalDescendants().OfType<NumericUpDown>().ToArray();
+                Assert.Contains(setup.StepLimitEstimateText, texts);
+                Assert.Contains(texts, text => text.Contains("1,000,000 steps is the default", StringComparison.Ordinal));
+                Assert.DoesNotContain(numbers, number =>
+                    Avalonia.Automation.AutomationProperties.GetName(number) == "Time limit per word, in seconds");
+                Assert.Single(numbers);
             }
             finally
             {

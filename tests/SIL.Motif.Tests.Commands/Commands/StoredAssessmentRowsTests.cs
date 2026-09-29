@@ -101,9 +101,9 @@ public sealed class StoredAssessmentRowsTests : IDisposable
     [Fact]
     public void EachAssessmentKindNameIsTheStoredKind()
     {
-        Assert.Equal(AssessmentKind.ParseTime.ToStoredKind(), AssessmentKinds.ParseTime);
-        Assert.Equal(AssessmentKind.ObjectTiming.ToStoredKind(), AssessmentKinds.ObjectTiming);
-        Assert.Equal(AssessmentKind.Correctness.ToStoredKind(), AssessmentKinds.Correctness);
+        Assert.Equal(AssessmentKinds.ParseTime, AssessmentKind.ParseTime.ToStoredKind());
+        Assert.Equal(AssessmentKinds.ObjectTiming, AssessmentKind.ObjectTiming.ToStoredKind());
+        Assert.Equal(AssessmentKinds.Correctness, AssessmentKind.Correctness.ToStoredKind());
     }
 
     private static IReadOnlyList<string> Facts(IEnumerable<AssessmentWordResult> words) => words

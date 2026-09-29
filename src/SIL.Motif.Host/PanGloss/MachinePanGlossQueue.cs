@@ -1,30 +1,31 @@
 ﻿using System.Collections.Concurrent;
-using System.Runtime.Versioning;
 
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// Admits one user worker's PanGloss jobs in submission order, while every
-/// <see cref="MachinePanGlossQueue"/> on the machine competes for the same two capacity slots.
+/// Admits one user worker's PanGloss jobs in submission order against two shared capacity slots.
 /// </summary>
 /// <remarks>
+/// The slots are machine-wide by default. Test processes can set
+/// <c>MOTIF_TEST_PAN_GLOSS_SLOT_NAMESPACE</c> to isolate their slots; child processes inherit that scope.
 /// A job is admitted strictly in the order it was submitted to THIS queue: the queue does not start
 /// acquiring a slot for job N+1 until job N has already acquired one, though N and N+1 may then run
 /// concurrently (pinned by `RunAsync_AdmitsThreeProjectsInSubmissionOrder`). The two slots are
-/// machine-global rather than per-user, so independent queues never hold more than two between them,
-/// but which queue wins a given free slot is unspecified and never asserted (pinned by
+/// machine-global rather than per-user by default, so independent queues using the same slot names
+/// never hold more than two between them, but which queue wins a given free slot is unspecified and never asserted (pinned by
 /// `RunAsync_AcrossTwoUserNamespaces_NeverExceedsMachineCapacity`).
 /// </remarks>
-[SupportedOSPlatform("windows")]
 public sealed class MachinePanGlossQueue : IDisposable
 {
-    private static readonly string[] DefaultSlotNames =
+    private static readonly string[] MachineWideSlotNames =
     {
         "Global\\MotifPanGlossSlot-0",
         "Global\\MotifPanGlossSlot-1",
     };
 
-    // Machine leases are OS mutexes, not events, so a short poll is how a freed slot is noticed.
+    internal const string TestSlotNamespaceVariable = "MOTIF_TEST_PAN_GLOSS_SLOT_NAMESPACE";
+
+    // Machine leases are locks, not events, so polling is how a freed slot is noticed.
     private static readonly TimeSpan SlotPollInterval = TimeSpan.FromMilliseconds(10);
 
     private readonly IReadOnlyList<string> _slotNames;
@@ -36,8 +37,9 @@ public sealed class MachinePanGlossQueue : IDisposable
     private readonly Task _runner;
     private bool _disposed;
 
-    /// <summary>Creates a queue that competes for the machine's two fixed, well-known PanGloss slots.</summary>
-    public MachinePanGlossQueue() : this(DefaultSlotNames)
+    /// <summary>Creates a queue for the machine-wide slots, or an isolated test-process scope when configured.</summary>
+    public MachinePanGlossQueue() : this(GetDefaultSlotNames(
+        Environment.GetEnvironmentVariable(TestSlotNamespaceVariable)))
     {
     }
 
@@ -50,17 +52,27 @@ public sealed class MachinePanGlossQueue : IDisposable
         _runner = RunAsync();
     }
 
+    internal static IReadOnlyList<string> GetDefaultSlotNames(string? testProcessNamespace)
+    {
+        if (string.IsNullOrWhiteSpace(testProcessNamespace)) return MachineWideSlotNames;
+        return new[]
+        {
+            $"Global\\MotifPanGlossSlot-{testProcessNamespace}-0",
+            $"Global\\MotifPanGlossSlot-{testProcessNamespace}-1",
+        };
+    }
+
     /// <summary>The job id currently recorded against each held slot, for diagnosing contention.</summary>
     internal IReadOnlyDictionary<int, string> SlotOwnership => _slotOwnership;
 
     /// <summary>Observes each job object the moment a job is admitted into it. Set only by tests.</summary>
-    internal Action<WindowsCpuJob>? JobAdmitted { get; set; }
+    internal Action<PanGlossContainmentJob>? JobAdmitted { get; set; }
 
     /// <summary>
     /// Queues <paramref name="work"/> under <paramref name="jobId"/> and returns its result once the
     /// job has been admitted to a machine slot and has run to completion.
     /// </summary>
-    public Task<T> RunAsync<T>(string jobId, Func<WindowsCpuJob, CancellationToken, Task<T>> work,
+    public Task<T> RunAsync<T>(string jobId, Func<PanGlossContainmentJob, CancellationToken, Task<T>> work,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(jobId))
@@ -143,7 +155,7 @@ public sealed class MachinePanGlossQueue : IDisposable
     {
         try
         {
-            using var cpuJob = new WindowsCpuJob();
+            using var cpuJob = PanGlossContainment.CreateJob();
             JobAdmitted?.Invoke(cpuJob);
             await job.ExecuteAsync(cpuJob, linked.Token).ConfigureAwait(false);
         }
@@ -158,7 +170,7 @@ public sealed class MachinePanGlossQueue : IDisposable
     {
         // One owner per slot per wait: ownership is per-thread, and per-poll owners would churn threads.
         var owners = new WorkerMutexOwner[_slotNames.Count];
-        for (var i = 0; i < owners.Length; i++) owners[i] = new WorkerMutexOwner(_slotNames[i]);
+        for (var i = 0; i < owners.Length; i++) owners[i] = new WorkerMutexOwner(_slotNames[i], machineWide: true);
         var winner = -1;
         try
         {
@@ -214,16 +226,16 @@ public sealed class MachinePanGlossQueue : IDisposable
         public LinkedListNode<QueuedJob>? Node { get; set; }
         public CancellationTokenRegistration Registration { get; set; }
 
-        public abstract Task ExecuteAsync(WindowsCpuJob cpuJob, CancellationToken linkedToken);
+        public abstract Task ExecuteAsync(PanGlossContainmentJob cpuJob, CancellationToken linkedToken);
         public abstract void Cancel(CancellationToken token);
     }
 
     private sealed class QueuedJob<T> : QueuedJob
     {
-        private readonly Func<WindowsCpuJob, CancellationToken, Task<T>> _work;
+        private readonly Func<PanGlossContainmentJob, CancellationToken, Task<T>> _work;
         private readonly TaskCompletionSource<T> _completion;
 
-        public QueuedJob(string jobId, Func<WindowsCpuJob, CancellationToken, Task<T>> work,
+        public QueuedJob(string jobId, Func<PanGlossContainmentJob, CancellationToken, Task<T>> work,
             CancellationToken cancellationToken, TaskCompletionSource<T> completion)
             : base(jobId, cancellationToken)
         {
@@ -231,7 +243,7 @@ public sealed class MachinePanGlossQueue : IDisposable
             _completion = completion;
         }
 
-        public override async Task ExecuteAsync(WindowsCpuJob cpuJob, CancellationToken linkedToken)
+        public override async Task ExecuteAsync(PanGlossContainmentJob cpuJob, CancellationToken linkedToken)
         {
             try
             {

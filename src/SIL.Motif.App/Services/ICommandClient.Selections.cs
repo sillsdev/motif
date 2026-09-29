@@ -2,6 +2,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.App.Services;
 
@@ -19,4 +20,7 @@ public partial interface ICommandClient
 
     Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
         ShowConfigRequest request, CancellationToken cancellationToken);
+
+    Task<CommandOutcome<ParserStepRate>> ReadParserStepRateAsync(
+        string projectPath, CancellationToken cancellationToken);
 }

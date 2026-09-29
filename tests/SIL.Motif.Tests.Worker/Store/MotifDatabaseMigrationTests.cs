@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.Worker;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -256,7 +257,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "IngestedUtc|TEXT|1|0|", "Licence|TEXT|0|0|", "CapabilitiesJson|TEXT|0|0|", "AttributesJson|TEXT|0|0|"],
             ["AssessmentInvocations"] = ["InvocationId|TEXT|0|1|", "EvidenceJson|TEXT|1|0|"],
             ["NamedSelections"] = ["SelectionName|TEXT|0|1|", "TextIdsJson|TEXT|1|0|", "AddedWordsJson|TEXT|1|0|",
-                "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "PerWordLimitMs|INTEGER|1|0|",
+                "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "PerWordLimitMs|INTEGER|0|0|",
                 "PerWordStepLimit|INTEGER|0|0|"],
             ["DefaultSelection"] = ["Id|INTEGER|0|1|", "SelectionName|TEXT|1|0|"],
             ["Assessments"] = ["AssessmentId|TEXT|0|1|", "SelectionName|TEXT|1|0|", "SelectionWordsJson|TEXT|1|0|",
@@ -500,6 +501,26 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     }
 
     [Fact]
+    public void Schema25IsRefusedWithoutMigration()
+    {
+        const int previousSchema = 25;
+        var path = DatabasePath("schema-25.fwdata");
+        using (var connection = NewConnection(path))
+            Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {previousSchema};");
+
+        Assert.Equal(26, MotifSchema.CurrentSchema);
+        var refusal = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
+            path, Locator("schema-25.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
+
+        Assert.Contains("schema 25", refusal.Message);
+        Assert.Contains("schema 26", refusal.Message);
+        using var check = NewConnection(path);
+        Assert.Equal(previousSchema, PragmaInt(check, "user_version"));
+        Assert.Equal(MotifSchema.ApplicationId, PragmaInt(check, "application_id"));
+        Assert.Null(Scalar(check, "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1;"));
+    }
+
+    [Fact]
     public void MissingMetadataIsReportedAsCorruptionWithoutWrites()
     {
         var path = DatabasePath("missing-metadata.fwdata");
@@ -619,7 +640,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
 
         Assert.NotSame(first, second);
         // The lock guards creation only, so nothing holds it once the schema already exists.
-        Assert.False(File.Exists(path + ".owner.lock"));
+        Assert.Equal(OperatingSystem.IsWindows(), !File.Exists(path + ".owner.lock"));
     }
 
     [Fact]
@@ -628,9 +649,19 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         var path = DatabasePath("cross-thread.fwdata");
         var first = MotifDatabase.OpenOwned(path, Locator("cross-thread.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
         await Task.Run(first.Dispose);
-        Assert.False(File.Exists(path + ".owner.lock"));
+        Assert.Equal(OperatingSystem.IsWindows(), !File.Exists(path + ".owner.lock"));
 
         using var reopened = MotifDatabase.OpenOwned(path, Locator("cross-thread.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
+    }
+
+    [RequiresUnixFact]
+    public void OwnershipFileShareNoneExcludesAnotherStream()
+    {
+        var path = DatabasePath("exclusive-file-share.fwdata");
+        using var owner = MotifSqliteStore.AcquireOwnershipForTesting(path, TimeSpan.FromSeconds(1));
+
+        Assert.Throws<IOException>(() => new FileStream(path + ".owner.lock", FileMode.Open,
+            FileAccess.ReadWrite, FileShare.None));
     }
 
     private MotifDatabase Open(string fileName, int supportedSchema) => MotifDatabase.OpenOwned(
