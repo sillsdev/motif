@@ -12,7 +12,6 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Runner.Composers;

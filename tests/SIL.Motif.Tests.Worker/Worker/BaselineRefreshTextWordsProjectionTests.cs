@@ -89,8 +89,10 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
         var analysis = Assert.Single(wordform.Analyses);
         Assert.Equal(text.ApprovedAnalysisId, analysis.AnalysisId);
         Assert.Equal("approved", analysis.Opinion);
-        Assert.Equal(2, analysis.Identity.Morphs.Count);
-        Assert.Equal(_pristine.Seed.FirstLexemeFormId.ToString("D"), analysis.Identity.Morphs[0].Form);
+        var identity = analysis.Identity ?? throw new InvalidOperationException(
+            "The projected analysis has no approved morphology identity.");
+        Assert.Equal(2, identity.Morphs.Count);
+        Assert.Equal(_pristine.Seed.FirstLexemeFormId.ToString("D"), identity.Morphs[0].Form);
         Assert.False(string.IsNullOrWhiteSpace(analysis.Morphs[0].Entry));
         Assert.Equal(SeededProject.FirstGloss, analysis.Morphs[0].Gloss);
         Assert.False(string.IsNullOrWhiteSpace(analysis.Morphs[0].Category));

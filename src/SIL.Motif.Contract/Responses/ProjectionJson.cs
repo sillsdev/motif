@@ -3,12 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
 
-/// <summary>
-/// Serializes any projection record to JSON — the other renderer over the same object
-/// <see cref="CommandTextRenderer"/> turns into text (ADR 0021 decision 2). Structured emission is
-/// part of a report's definition of done, not a later flag, so every projection uses this rather
-/// than a bespoke writer per surface.
-/// </summary>
+/// <summary>Serializes projection records with Motif's camel-case, null omission, and wire-enum conventions.</summary>
 public static class ProjectionJson
 {
     private static readonly JsonSerializerOptions Options = new()
