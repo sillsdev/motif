@@ -40,17 +40,15 @@ public sealed class WordReadStateArgvTests : IDisposable
     }
 
     [Fact]
-    public void ReadStateRunsTheTypedCommandAndReportsAnAbsentBaseline()
+    public void ReadStateRefusesToMarkReadWithoutACurrentBaseline()
     {
         var textId = Guid.NewGuid();
         var result = Run($"word read-state --project \"{Project}\" --text {textId:D} --read --json",
             developerCommands: true);
 
-        Assert.True(result.ExitCode == 0, $"exit {result.ExitCode}: {result.Error}{result.Output}");
-        var response = ProjectionJson.Deserialize<WordReadStateResponse>(result.Output);
-        Assert.NotNull(response);
-        Assert.False(response!.HasBaseline);
-        Assert.Empty(response.ReadOccurrences);
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), result.ExitCode);
+        Assert.Contains("word.read-state-invalid", result.Error, StringComparison.Ordinal);
+        Assert.Contains("A current Baseline is required", result.Error, StringComparison.Ordinal);
     }
 
     private CliRun Run(string arguments, bool developerCommands)
