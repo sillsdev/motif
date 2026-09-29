@@ -244,6 +244,7 @@ public class FwDataProjectLoader
 
         var repositoryPath = Path.GetFullPath(configuredPath);
         Directory.CreateDirectory(repositoryPath);
+        RedirectDefaultWritingSystemRepository(repositoryPath);
         var repository = (CoreGlobalWritingSystemRepository?)Activator.CreateInstance(
             typeof(CoreGlobalWritingSystemRepository),
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -341,12 +342,29 @@ public class FwDataProjectLoader
         });
     }
 
+    // A repository's lock is named after its path, so a machine-wide default queued every test process's disposals.
+    private static void RedirectDefaultWritingSystemRepository(string repositoryPath)
+    {
+        // Each closed generic keeps its own default; the parameterless constructor reads the plain one.
+        foreach (var type in new[]
+                 {
+                     typeof(GlobalWritingSystemRepository<WritingSystemDefinition>),
+                     typeof(GlobalWritingSystemRepository<CoreWritingSystemDefinition>),
+                 })
+        {
+            var field = type.GetField("_defaultBasePath", BindingFlags.Static | BindingFlags.NonPublic) ??
+                throw new InvalidOperationException("SIL.WritingSystems no longer keeps the default repository " +
+                    $"path where '{WritingSystemRepositoryPathEnvironmentVariable}' sets it.");
+            field.SetValue(null, repositoryPath);
+        }
+    }
+
     // Key SingletonsContainer stores the shared writing-system repository under (BackendProvider.cs).
     private static readonly string GlobalWritingSystemRepositoryKey =
         typeof(CoreGlobalWritingSystemRepository).FullName!;
 
-    // One decoy for the process: the base holds a GlobalMutex, so one per scratch would leak a handle.
-    private static readonly DiscardingGlobalWritingSystemRepository SharedDecoy = new();
+    // One per process, as its base holds a GlobalMutex; built after Init picks the path that lock is named after.
+    private static DiscardingGlobalWritingSystemRepository? _sharedDecoy;
 
     // Swaps the decoy in for one cache open, so that cache is wired to it for life (see the decoy's remarks).
     private static IDisposable SuppressGlobalWritingSystemPersistence()
@@ -354,7 +372,7 @@ public class FwDataProjectLoader
         var restore = SingletonsContainer.Item(GlobalWritingSystemRepositoryKey) as CoreGlobalWritingSystemRepository;
         if (restore is not null) SingletonsContainer.Remove(GlobalWritingSystemRepositoryKey);
 
-        SingletonsContainer.Add(GlobalWritingSystemRepositoryKey, SharedDecoy);
+        SingletonsContainer.Add(GlobalWritingSystemRepositoryKey, _sharedDecoy ??= new DiscardingGlobalWritingSystemRepository());
         return new RestoreGlobalWritingSystemRepository(restore);
     }
 
