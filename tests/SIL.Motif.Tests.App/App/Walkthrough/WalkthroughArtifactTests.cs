@@ -52,11 +52,72 @@ public sealed class WalkthroughArtifactTests
         {
             File.WriteAllBytes(baselinePath, SolidPng(SKColors.White, 0));
             var allowedChangedPixels = (int)Math.Ceiling(
-                WalkthroughArtifacts.Width * WalkthroughArtifacts.Height * 0.01);
+                WalkthroughArtifacts.Width * WalkthroughArtifacts.Height * WalkthroughArtifacts.ChangedPixelTolerance);
             var tooDifferent = SolidPng(SKColors.White, allowedChangedPixels + 1);
 
             Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
                 WalkthroughArtifacts.CheckBaseline(baselinePath, tooDifferent, update: false));
+        }
+        finally
+        {
+            File.Delete(baselinePath);
+        }
+    }
+
+    [Fact]
+    public void BaselineComparisonUsesAtMostOneTenthPercentChangedPixels()
+    {
+        var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
+        try
+        {
+            File.WriteAllBytes(baselinePath, SolidPng(SKColors.White, 0));
+            var changedPixels = (int)Math.Ceiling(
+                WalkthroughArtifacts.Width * WalkthroughArtifacts.Height * 0.001) + 1;
+
+            Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                WalkthroughArtifacts.CheckBaseline(baselinePath, SolidPng(SKColors.White, changedPixels), update: false));
+        }
+        finally
+        {
+            File.Delete(baselinePath);
+        }
+    }
+
+    [Fact]
+    public void BaselineComparisonRejectsAnyDifferenceInsideACallout()
+    {
+        var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
+        try
+        {
+            File.WriteAllBytes(baselinePath, SolidPng(SKColors.White, 0));
+            var actual = PngWithPixel(new SKColor(254, 255, 255), 0, 0);
+            var callout = new WalkthroughCaptureCallout(
+                "motif-pages", "Project pages", new Avalonia.Rect(0, 0, 1, 1));
+
+            Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                WalkthroughArtifacts.CheckBaseline(baselinePath, actual, update: false, [callout]));
+        }
+        finally
+        {
+            File.Delete(baselinePath);
+        }
+    }
+
+    [Fact]
+    public void BaselineComparisonWritesADiffPngWhenItFails()
+    {
+        var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
+        try
+        {
+            File.WriteAllBytes(baselinePath, SolidPng(SKColors.White, 0));
+            var changedPixels = (int)Math.Ceiling(
+                WalkthroughArtifacts.Width * WalkthroughArtifacts.Height * WalkthroughArtifacts.ChangedPixelTolerance) + 1;
+
+            var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                WalkthroughArtifacts.CheckBaseline(baselinePath, SolidPng(SKColors.White, changedPixels), update: false));
+            var diffPath = failure.Message.Split("Diff PNG: ", StringSplitOptions.None).Last();
+            Assert.True(File.Exists(diffPath), failure.Message);
+            File.Delete(diffPath);
         }
         finally
         {
@@ -82,6 +143,16 @@ public sealed class WalkthroughArtifactTests
         bitmap.Erase(baseColor);
         for (var index = 0; index < changedPixels; index++)
             bitmap.SetPixel(index % bitmap.Width, index / bitmap.Width, SKColors.Black);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    private static byte[] PngWithPixel(SKColor color, int x, int y)
+    {
+        using var bitmap = new SKBitmap(WalkthroughArtifacts.Width, WalkthroughArtifacts.Height);
+        bitmap.Erase(SKColors.White);
+        bitmap.SetPixel(x, y, color);
         using var image = SKImage.FromBitmap(bitmap);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();

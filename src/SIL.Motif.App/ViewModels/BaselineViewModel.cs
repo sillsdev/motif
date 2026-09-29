@@ -21,13 +21,15 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
     public const string FreshnessSentence = "as of FieldWorks' last save";
 
     private readonly ICommandClient _commandClient;
+    private readonly TimeProvider _timeProvider;
     private string? _projectPath;
     private int _projectGeneration;
 
-    public BaselineViewModel(ICommandClient commandClient)
+    public BaselineViewModel(ICommandClient commandClient, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => _projectPath is not null);
     }
 
@@ -56,18 +58,18 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
 
     /// <summary>The Baseline's captured time in the current culture, or a placeholder before any capture.</summary>
     public string CapturedTimeText => SourceLastWriteUtc is { } savedUtc
-        ? savedUtc.ToLocalTime().ToString("f", CultureInfo.CurrentCulture)
+        ? TimeZoneInfo.ConvertTime(savedUtc, _timeProvider.LocalTimeZone).ToString("f", CultureInfo.CurrentCulture)
         : "No Baseline captured yet";
 
     /// <summary>Which FieldWorks save the Baseline copies, said as such so it is not read as the capture time.</summary>
     public string SavedText => SourceLastWriteUtc is { } savedUtc
-        ? $"From FieldWorks' save of {savedUtc.ToLocalTime().ToString("f", CultureInfo.CurrentCulture)}"
+        ? $"From FieldWorks' save of {TimeZoneInfo.ConvertTime(savedUtc, _timeProvider.LocalTimeZone).ToString("f", CultureInfo.CurrentCulture)}"
         : string.Empty;
 
     /// <summary>When Motif captured the Baseline, which can be long after the save it copies.</summary>
     public string CapturedAtText => Token is { } token &&
         DateTimeOffset.TryParse(token.CapturedUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var captured)
-            ? $"Captured {captured.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}"
+            ? $"Captured {TimeZoneInfo.ConvertTime(captured, _timeProvider.LocalTimeZone).ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}"
             : string.Empty;
 
     /// <summary>When Motif captured the Baseline, or <c>null</c> before any capture.</summary>

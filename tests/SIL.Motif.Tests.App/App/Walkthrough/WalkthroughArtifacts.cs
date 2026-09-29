@@ -73,8 +73,8 @@ internal static class WalkthroughArtifacts
     public const int Width = 1280;
     public const int Height = 720;
     public const int Fps = 30;
-    private const int ChannelTolerance = 12;
-    private const double ChangedPixelTolerance = 0.01;
+    private const int ChannelTolerance = 3;
+    internal const double ChangedPixelTolerance = 0.001;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -104,8 +104,9 @@ internal static class WalkthroughArtifacts
             var annotated = Annotate(repositoryRoot, capture.Png, capture.Callouts);
             var baselineRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets",
                 "WalkthroughBaselines", script.Id);
-            CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines);
-            CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines);
+            CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines, capture.Callouts);
+            CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines,
+                capture.Callouts);
             return new PreparedCapture(capture, caption, annotated);
         }).ToArray();
 
@@ -172,7 +173,8 @@ internal static class WalkthroughArtifacts
         return data.ToArray();
     }
 
-    internal static void CheckBaseline(string path, byte[] actual, bool update)
+    internal static void CheckBaseline(
+        string path, byte[] actual, bool update, IReadOnlyList<WalkthroughCaptureCallout>? callouts = null)
     {
         if (update)
         {
@@ -191,20 +193,48 @@ internal static class WalkthroughArtifacts
         Assert.Equal((Width, Height), (expectedBitmap!.Width, expectedBitmap.Height));
         Assert.Equal((Width, Height), (actualBitmap!.Width, actualBitmap.Height));
         var changed = 0;
+        var calloutChanged = 0;
+        using var diffBitmap = new SKBitmap(Width, Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        diffBitmap.Erase(new SKColor(0, 0, 0, 0));
         for (var y = 0; y < Height; y++)
         for (var x = 0; x < Width; x++)
         {
             var before = expectedBitmap.GetPixel(x, y);
             var after = actualBitmap.GetPixel(x, y);
-            if (Math.Abs(before.Red - after.Red) > ChannelTolerance ||
-                Math.Abs(before.Green - after.Green) > ChannelTolerance ||
-                Math.Abs(before.Blue - after.Blue) > ChannelTolerance)
+            var isCallout = callouts?.Any(callout =>
+                x + 0.5 >= callout.Bounds.X && x + 0.5 < callout.Bounds.Right &&
+                y + 0.5 >= callout.Bounds.Y && y + 0.5 < callout.Bounds.Bottom) == true;
+            var tolerance = isCallout ? 0 : ChannelTolerance;
+            var differs = Math.Abs(before.Red - after.Red) > tolerance ||
+                Math.Abs(before.Green - after.Green) > tolerance ||
+                Math.Abs(before.Blue - after.Blue) > tolerance || before.Alpha != after.Alpha;
+            if (differs)
+            {
                 changed++;
+                if (isCallout) calloutChanged++;
+                diffBitmap.SetPixel(x, y, new SKColor(255, 0, 128));
+            }
         }
 
         var allowed = (int)Math.Ceiling(Width * Height * ChangedPixelTolerance);
-        Assert.True(changed <= allowed,
-            $"Walkthrough baseline '{path}' differs in {changed:N0} pixels; tolerance is {allowed:N0} pixels.");
+        if (calloutChanged > 0 || changed > allowed)
+        {
+            var diffPath = WriteDiffPng(path, diffBitmap);
+            throw new Xunit.Sdk.XunitException(
+                $"Walkthrough baseline '{path}' differs in {changed:N0} pixels ({calloutChanged:N0} in callouts); " +
+                $"tolerance is {allowed:N0} pixels. Diff PNG: {diffPath}");
+        }
+    }
+
+    private static string WriteDiffPng(string baselinePath, SKBitmap diffBitmap)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "SIL.Motif.WalkthroughDiffs");
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, Path.GetFileNameWithoutExtension(baselinePath) + "-diff.png");
+        using var image = SKImage.FromBitmap(diffBitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        File.WriteAllBytes(path, data.ToArray());
+        return path;
     }
 
     private static string BuildWebVtt(IReadOnlyList<PreparedCapture> captures)

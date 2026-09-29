@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Avalonia.Media;
 using Avalonia.Media.Fonts;
 using Avalonia.Controls;
@@ -6,6 +7,7 @@ using Avalonia.Controls.Documents;
 using SIL.Motif.App;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -28,14 +30,17 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
         var help = WalkthroughHelpContent.Load(root, script.Id, "en");
         var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.Walkthrough", "engine", script.Id);
         WalkthroughTestFiles.DeleteDirectory(managedRoot);
+        var clock = new FixedClock(CaptureTime, TimeZoneInfo.Utc);
         using var project = new WalkthroughProject(pristine, managedRoot,
             new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc));
         if (script.Id == "open-project-overview")
         {
-            var client = RealCommandClient.Create(project.ManagedRoot);
+            var client = RealCommandClient.Create(project.ManagedRoot, timeProvider: clock);
             var baseline = await client.CaptureBaselineAsync(
                 new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
             Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+            Assert.Equal(CaptureTime,
+                DateTimeOffset.Parse(baseline.Value!.Token.CapturedUtc, CultureInfo.InvariantCulture));
             var selection = await client.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
                 project.FwDataPath, "Default", [project.TextId], []), CancellationToken.None);
             Assert.True(selection.Succeeded, selection.Refusal?.Message);
@@ -44,22 +49,40 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
             Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
         }
 
-        var clock = new FixedClock(CaptureTime);
         var captures = new List<WalkthroughCapture>();
         var deadline = Stopwatch.GetTimestamp() + 3 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
-            WalkthroughFonts.Register();
-            using var walkthrough = new WalkthroughWindow(
-                project.ManagedRoot, project.FwDataPath, timeProvider: clock);
-            walkthrough.Window.Width = WalkthroughArtifacts.Width;
-            walkthrough.Window.Height = WalkthroughArtifacts.Height;
-            walkthrough.Window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
-            walkthrough.Show();
-            Assert.Equal(1d, walkthrough.Window.RenderScaling);
-            WalkthroughReplay.Run(walkthrough, script, clock, captures, deadline);
-            return Task.CompletedTask;
+            var previousCulture = CultureInfo.CurrentCulture;
+            var previousUiCulture = CultureInfo.CurrentUICulture;
+            try
+            {
+                CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+                WalkthroughFonts.Register();
+                using var walkthrough = new WalkthroughWindow(
+                    project.ManagedRoot, project.FwDataPath, timeProvider: clock);
+                walkthrough.Window.Width = WalkthroughArtifacts.Width;
+                walkthrough.Window.Height = WalkthroughArtifacts.Height;
+                walkthrough.Window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
+                walkthrough.Show();
+                Assert.Equal(1d, walkthrough.Window.RenderScaling);
+                WalkthroughReplay.Run(walkthrough, script, clock, captures, deadline);
+                if (script.Id == "open-project-overview")
+                {
+                    Assert.Equal("Captured Thu 2 Apr, 12:00 PM", walkthrough.Workspace.Baseline.CapturedAtText);
+                    Assert.Equal("Thursday, April 2, 2026 12:00 PM", walkthrough.Workspace.Baseline.CapturedTimeText);
+                    Assert.Equal(CaptureTime,
+                        walkthrough.Workspace.PageModel<OverviewPageModel>().Overview!.MotifStoreCreatedUtc);
+                }
+                return Task.CompletedTask;
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = previousCulture;
+                CultureInfo.CurrentUICulture = previousUiCulture;
+            }
         }, WalkthroughSteps.Remaining(deadline));
 
         Assert.NotEmpty(captures);
