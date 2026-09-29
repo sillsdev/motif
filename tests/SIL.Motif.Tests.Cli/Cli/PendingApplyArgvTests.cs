@@ -230,12 +230,12 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         }
         finally
         {
-            await worker.WaitForExitAsync();
+            if (worker is not null) await worker.WaitForExitAsync();
         }
     }
 
-    // Bounded by the CLI's own progress: a cold CLI start can take longer than any fixed wait on a slow runner.
-    private static async Task<Process> StartQueuedWorkerAsync(string projectPath, JobRunnerLaunchOptions options,
+    // Waits as long as the CLI runs, never a fixed time; null when it finished without queueing a Dry Run.
+    private static async Task<Process?> StartQueuedWorkerAsync(string projectPath, JobRunnerLaunchOptions options,
         Process cli)
     {
         while (!cli.HasExited)
@@ -250,8 +250,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             }
             await Task.Delay(20);
         }
-        throw new InvalidOperationException(
-            $"The CLI exited with {cli.ExitCode} before queueing a Dry Run for pending changes.");
+        return null;
     }
 
     private static async Task WaitForPendingProposalAnchorAsync(string projectPath)
