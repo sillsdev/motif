@@ -19,7 +19,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
     public void AFirstProjectOpensCapturesSetsUpAndShowsItsFirstRun()
     {
         using var project = new TwoTextWalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
         var parser = FakeParser.Copy(project.ManagedRoot);
         var batchStarted = Path.Combine(project.ManagedRoot, "first-batch-started");
         var releaseBatch = Path.Combine(project.ManagedRoot, "release-first-batch");
@@ -171,9 +171,9 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 review.ReviewGroups.Select(group => group.Title));
             var removal = review.ReviewGroups.SelectMany(group => group.Items)
                 .Single(change => change.Kind == ChangeKinds.RemoveAnalysis);
-            Assert.Equal("Current opinion", removal.StagedTransition.Now);
+            Assert.Equal("Approved", removal.StagedTransition.Now);
             Assert.Equal("Removed", removal.StagedTransition.AfterApply);
-            Assert.Null(removal.NowOpinionMark);
+            Assert.Equal(OpinionMarkKind.Approved, removal.NowOpinionMark);
             Assert.Equal(OpinionMarkKind.None, removal.AfterOpinionMark);
             var spelling = review.ReviewGroups.SelectMany(group => group.Items)
                 .Single(change => change.Kind == ChangeKinds.IncorrectSpelling);
