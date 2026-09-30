@@ -201,7 +201,7 @@ public sealed class ViewTokenTests
     public void BulkActionsNameChosenTextsCountWordsAndExplainWordOnlyOpinions()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
-        var bulk = markup[..markup.IndexOf("<ScrollViewer Grid.Row=\"3\"", StringComparison.Ordinal)];
+        var bulk = markup[..markup.IndexOf("<ScrollViewer Grid.Row=\"2\"", StringComparison.Ordinal)];
         Assert.Contains("Select all", bulk, StringComparison.Ordinal);
         Assert.Contains("all chosen Texts", bulk, StringComparison.Ordinal);
         Assert.Contains("Approve one analysis at a time", bulk, StringComparison.Ordinal);

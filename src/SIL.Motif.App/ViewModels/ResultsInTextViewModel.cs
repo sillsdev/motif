@@ -90,6 +90,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         SetFilterCommand = new RelayCommand<ResultsInTextFilter>(filter => Filter = filter);
         SelectAllWordsCommand = new RelayCommand(SelectAllWords, CanSelectAllWords);
         ClearSelectedWordsCommand = new RelayCommand(ClearSelectedWords, () => HasCheckedWords);
+        ChooseWordsCommand = new RelayCommand(() => IsChoosingWords = !IsChoosingWords);
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
         TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });
         OpenPanGlossGuideCommand = new RelayCommand(() => OpenPanGlossGuide?.Invoke());
@@ -185,6 +186,24 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public string CheckedWordCountLabel => $"Selected {CheckedWordCount} of {AllCount} words";
 
     public bool HasCheckedWords => CheckedWordCount > 0;
+
+    /// <summary>Whether the reader asked to choose words, which shows a checkbox on every word strip.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowWordCheckboxes))]
+    [NotifyPropertyChangedFor(nameof(ChooseWordsLabel))]
+    private bool _isChoosingWords;
+
+    /// <summary>The Select menu's choosing toggle, named for what pressing it does.</summary>
+    public string ChooseWordsLabel => IsChoosingWords ? "Stop choosing words" : "Choose words";
+
+    /// <summary>Turns word choosing on or off from the Select menu.</summary>
+    public IRelayCommand ChooseWordsCommand { get; }
+
+    /// <summary>Whether word strips show their checkboxes: while choosing, or while any word is checked.</summary>
+    public bool ShowWordCheckboxes => IsChoosingWords || HasCheckedWords;
+
+    /// <summary>The Select menu's button, which counts the checked words once there are any.</summary>
+    public string SelectMenuLabel => HasCheckedWords ? $"{CheckedWordCount} selected ▾" : "Select ▾";
 
     public bool HasCheckedUncertainChanges => CheckedTokens.Any(token =>
         _changes.Items.Any(change => change.Word == token.Form && change.IsUncertain));
@@ -474,6 +493,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(HasNotAssessed));
         OnPropertyChanged(nameof(CheckedWordCount));
         OnPropertyChanged(nameof(HasCheckedWords));
+        OnPropertyChanged(nameof(ShowWordCheckboxes));
+        OnPropertyChanged(nameof(SelectMenuLabel));
         NotifyScopeCommands();
 
         var reselected = Texts.FirstOrDefault(text => text.Title == previousTitle) ?? Texts.FirstOrDefault();
@@ -587,6 +608,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             OnPropertyChanged(nameof(CheckedWordCountLabel));
             OnPropertyChanged(nameof(HasCheckedWords));
             OnPropertyChanged(nameof(HasCheckedUncertainChanges));
+            OnPropertyChanged(nameof(ShowWordCheckboxes));
+            OnPropertyChanged(nameof(SelectMenuLabel));
             OnPropertyChanged(nameof(SelectedReadStateCount));
             OnPropertyChanged(nameof(HasSelectedReadStateOccurrences));
             MarkSelectionReadCommand.NotifyCanExecuteChanged();

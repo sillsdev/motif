@@ -7,145 +7,159 @@
              x:Class="SIL.Motif.App.Views.ResultsInTextPanel"
              x:DataType="views:ResultsInTextPanel">
   <Grid ColumnDefinitions="*"
-        Margin="{DynamicResource Component.TextsPage.PageInset}">
-    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-      <ComboBox ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
-                IsVisible="{Binding InText.HasAssessment}"
-                MinWidth="{DynamicResource Component.TextsPage.SelectionPanelWidth}"
-                AutomationProperties.Name="Text to read">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="vm:ResultsTextViewModel"><TextBlock Text="{Binding Title}" /></DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
-
-      <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasResults}">
-        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-          <TextBlock Text="{Binding InText.SelectedReadStateCount}" IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
-                     AutomationProperties.Name="Selected occurrence count" />
-          <Button Content="Mark selected as read" Command="{Binding InText.MarkSelectionReadCommand}"
-                  IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
-                  AutomationProperties.Name="Mark selected occurrences as read" />
-          <Button Content="Mark selected as unread" Command="{Binding InText.MarkSelectionUnreadCommand}"
-                  IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
-                  AutomationProperties.Name="Mark selected occurrences as unread" />
-          <Button Content="Mark this Text as read" Command="{Binding InText.MarkTextReadCommand}"
-                  IsVisible="{Binding InText.HasAssessment}"
-                  AutomationProperties.Name="Mark the selected Text as read" />
-          <Button Content="Mark this Text as unread" Command="{Binding InText.MarkTextUnreadCommand}"
-                  IsVisible="{Binding InText.HasAssessment}"
-                  AutomationProperties.Name="Mark the selected Text as unread" />
-        </StackPanel>
-        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasResults}">
-        <WrapPanel>
-          <views:FilterChip Label="All occurrences" Count="{Binding InText.AllCount}"
+        Margin="{DynamicResource Component.TextsPage.ReaderInset}">
+    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+      <DockPanel LastChildFill="True">
+        <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
+                  IsVisible="{Binding InText.HasAssessment}" VerticalAlignment="Center"
+                  Width="{DynamicResource Component.TextsPage.TextPickerWidth}"
+                  Margin="{DynamicResource Intent.Gap.AfterRelated}"
+                  AutomationProperties.Name="Text to read">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ResultsTextViewModel"><TextBlock Text="{Binding Title}" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button DockPanel.Dock="Right" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
+                IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Select words for actions">
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Snug}"
+                          MaxWidth="{DynamicResource Component.TextsPage.ActionMenuWidth}">
+                <views:CopyableTextBlock Text="{Binding InText.CheckedWordCountLabel}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ScopeCountSummary}" />
+                <WrapPanel>
+                  <Button Classes="menuAction" Content="{Binding InText.ChooseWordsLabel}" Command="{Binding InText.ChooseWordsCommand}"
+                          AutomationProperties.Name="Choose words with checkboxes" />
+                  <Button Classes="menuAction" Content="Select all" Command="{Binding InText.SelectAllWordsCommand}"
+                          AutomationProperties.Name="Select all chosen word occurrences" />
+                  <Button Classes="menuAction" Content="Clear selection" Command="{Binding InText.ClearSelectedWordsCommand}"
+                          IsVisible="{Binding InText.HasCheckedWords}"
+                          AutomationProperties.Name="Clear selected word occurrences" />
+                </WrapPanel>
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding InText.HasCheckedWords}">
+                  <views:CopyableTextBlock Classes="section-title" Text="For the selected words" />
+                  <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                           Text="Approve one analysis at a time. Opinions apply to one word because each word has its own readings." />
+                  <WrapPanel>
+                    <Button Classes="menuAction" Content="Add readings as Unknown" Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuAction" Content="Accept the new set" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuAction" Content="Mark Incorrect" Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuAction" Content="Remove analyses" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuAction" Content="Undo changes" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuAction" Content="Check again" Command="{Binding InText.RecheckCheckedChangesCommand}"
+                            IsVisible="{Binding InText.HasCheckedUncertainChanges}" />
+                  </WrapPanel>
+                </StackPanel>
+                <views:CopyableTextBlock Classes="section-title" Text="In this Text" />
+                <WrapPanel>
+                  <Button Classes="menuAction" Content="Add readings as Unknown in this Text"
+                          Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                          AutomationProperties.Name="Add parser readings as Unknown in this Text" />
+                  <Button Classes="menuAction" Content="Accept new set in this Text" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                          AutomationProperties.Name="Accept new set for the selected Text" />
+                  <Button Classes="menuAction" Content="Mark spellings Incorrect in this Text"
+                          Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                          AutomationProperties.Name="Mark spellings Incorrect in the selected Text" />
+                  <Button Classes="menuAction" Content="Undo changes in this Text" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                          AutomationProperties.Name="Undo changes in the selected Text" />
+                </WrapPanel>
+                <Expander Header="{Binding InText.SelectedTextRemoveHeader}" IsVisible="{Binding InText.HasSelectedTextAnalyses}">
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding InText.SelectedTextRemovalPreview}" TextWrapping="Wrap" />
+                    <Button Content="Stage removal from this Text" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                            AutomationProperties.Name="Stage removal of the analyses used in this Text" />
+                  </StackPanel>
+                </Expander>
+                <views:CopyableTextBlock Classes="section-title" Text="In all chosen Texts" />
+                <WrapPanel>
+                  <Button Classes="menuAction" Content="Accept new set in Selection" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.AssessmentSelection}"
+                          AutomationProperties.Name="Accept new set for the Selection" />
+                  <Button Classes="menuAction" Content="Add readings as Unknown in all chosen Texts"
+                          Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                          AutomationProperties.Name="Add parser readings as Unknown in all chosen Texts" />
+                  <Button Classes="menuAction" Content="Mark spellings Incorrect in all chosen Texts"
+                          Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                          AutomationProperties.Name="Mark spellings Incorrect in all chosen Texts" />
+                  <Button Classes="menuAction" Content="Undo changes in all chosen Texts" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                          AutomationProperties.Name="Undo changes in all chosen Texts" />
+                  <Button Classes="menuAction" Content="Check again" Command="{Binding InText.RecheckChangesCommand}"
+                          AutomationProperties.Name="Check uncertain changes again" />
+                </WrapPanel>
+                <Expander Header="{Binding InText.ChosenTextsRemoveHeader}" IsVisible="{Binding InText.HasChosenTextAnalyses}">
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ChosenTextsRemovalPreview}" TextWrapping="Wrap" />
+                    <Button Content="Stage removal from all chosen Texts" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                            AutomationProperties.Name="Stage removal of the analyses used in all chosen Texts" />
+                  </StackPanel>
+                </Expander>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <Button DockPanel.Dock="Right" Classes="menuButton" Content="Mark read ▾" VerticalAlignment="Center"
+                Margin="{DynamicResource Intent.Gap.AfterRelated}"
+                IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Mark read or unread">
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                <Button Classes="menuAction" Content="Mark this Text as read" Command="{Binding InText.MarkTextReadCommand}"
+                        AutomationProperties.Name="Mark the selected Text as read" />
+                <Button Classes="menuAction" Content="Mark this Text as unread" Command="{Binding InText.MarkTextUnreadCommand}"
+                        AutomationProperties.Name="Mark the selected Text as unread" />
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}"
+                            IsVisible="{Binding InText.HasSelectedReadStateOccurrences}">
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding InText.CheckedWordCountLabel}"
+                                           AutomationProperties.Name="Selected occurrence count" />
+                  <Button Classes="menuAction" Content="Mark selected as read" Command="{Binding InText.MarkSelectionReadCommand}"
+                          AutomationProperties.Name="Mark selected occurrences as read" />
+                  <Button Classes="menuAction" Content="Mark selected as unread" Command="{Binding InText.MarkSelectionUnreadCommand}"
+                          AutomationProperties.Name="Mark selected occurrences as unread" />
+                </StackPanel>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <WrapPanel VerticalAlignment="Center" IsVisible="{Binding InText.HasResults}">
+          <views:FilterChip Classes="compact" Label="All" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}" />
-          <views:FilterChip Label="Unread" Count="{Binding InText.UnreadCount}"
+          <views:FilterChip Classes="compact" Label="Unread" Count="{Binding InText.UnreadCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Unread}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Unread}" />
-          <views:FilterChip Label="Needs a look" Count="{Binding InText.NeedsALookCount}"
-                            IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NeedsALook}}"
-                            Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NeedsALook}" />
-          <views:FilterChip Label="Differs from stored" Count="{Binding InText.DiffersCount}" Verdict="Differs"
+          <views:FilterChip Classes="compact" Label="Differs" Count="{Binding InText.DiffersCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Differs}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Differs}" />
-          <views:FilterChip Label="Not present" Count="{Binding InText.NewCount}" Verdict="New"
+          <views:FilterChip Classes="compact" Label="Not in FieldWorks" Count="{Binding InText.NewCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.New}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.New}" />
-          <views:FilterChip Label="No parse" Count="{Binding InText.NoParseCount}" Verdict="NoResult"
+          <views:FilterChip Classes="compact" Label="No parse" Count="{Binding InText.NoParseCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NoParse}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NoParse}" />
-          <views:FilterChip Label="Matches" Count="{Binding InText.MatchesCount}" Verdict="Agrees"
-                            IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Matches}}"
-                            Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Matches}" />
-          <views:FilterChip Label="Stopped at a limit" Count="{Binding InText.LimitCount}" Verdict="Limit"
+          <views:FilterChip Classes="compact" Label="Stopped" Count="{Binding InText.LimitCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Limit}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Limit}" />
-          <views:FilterChip Label="Skipped or not assessed" Count="{Binding InText.NotAssessedCount}"
+          <views:FilterChip Classes="compact" Label="Not parsed" Count="{Binding InText.NotAssessedCount}"
                             IsVisible="{Binding InText.HasNotAssessed}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NotAssessed}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NotAssessed}" />
         </WrapPanel>
-        <Expander Header="Actions by scope">
-          <WrapPanel>
-            <Button Content="Add readings as Unknown in this Text"
-                    Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                    AutomationProperties.Name="Add parser readings as Unknown in this Text" />
-            <Button Content="Accept new set in this Text" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                    AutomationProperties.Name="Accept new set for the selected Text" />
-            <Button Content="Mark spellings Incorrect in this Text"
-                    Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                    AutomationProperties.Name="Mark spellings Incorrect in the selected Text" />
-            <Button Content="Accept new set in Selection" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.AssessmentSelection}"
-                    AutomationProperties.Name="Accept new set for the Selection" />
-            <Button Content="Add readings as Unknown in all chosen Texts"
-                    Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                    AutomationProperties.Name="Add parser readings as Unknown in all chosen Texts" />
-            <Button Content="Mark spellings Incorrect in all chosen Texts"
-                    Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                    AutomationProperties.Name="Mark spellings Incorrect in all chosen Texts" />
-            <Expander Header="{Binding InText.SelectedTextRemoveHeader}" IsVisible="{Binding InText.HasSelectedTextAnalyses}">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                <views:CopyableTextBlock Classes="muted" Text="{Binding InText.SelectedTextRemovalPreview}" TextWrapping="Wrap" />
-                <Button Content="Stage removal from this Text" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                        AutomationProperties.Name="Stage removal of the analyses used in this Text" />
-              </StackPanel>
-            </Expander>
-            <Expander Header="{Binding InText.ChosenTextsRemoveHeader}" IsVisible="{Binding InText.HasChosenTextAnalyses}">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ChosenTextsRemovalPreview}" TextWrapping="Wrap" />
-                <Button Content="Stage removal from all chosen Texts" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                        AutomationProperties.Name="Stage removal of the analyses used in all chosen Texts" />
-              </StackPanel>
-            </Expander>
-            <Button Content="Undo changes in this Text" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                    AutomationProperties.Name="Undo changes in the selected Text" />
-            <Button Content="Undo changes in all chosen Texts" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                    AutomationProperties.Name="Undo changes in all chosen Texts" />
-            <Button Content="Check again" Command="{Binding InText.RecheckChangesCommand}"
-                    AutomationProperties.Name="Check uncertain changes again" />
-          </WrapPanel>
-        </Expander>
-        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasResults}">
-          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-            <views:CopyableTextBlock Text="{Binding InText.CheckedWordCountLabel}" FontWeight="SemiBold" />
-            <Button Content="Select all" Command="{Binding InText.SelectAllWordsCommand}"
-                    AutomationProperties.Name="Select all chosen word occurrences" />
-            <Button Content="Clear selection" Command="{Binding InText.ClearSelectedWordsCommand}"
-                    IsVisible="{Binding InText.HasCheckedWords}"
-                    AutomationProperties.Name="Clear selected word occurrences" />
-          </StackPanel>
-          <views:CopyableTextBlock Classes="muted" Text="Approve one analysis at a time. Opinions apply to one word because each word has its own readings."
-                                   IsVisible="{Binding InText.HasCheckedWords}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ScopeCountSummary}" />
-          <WrapPanel IsVisible="{Binding InText.HasCheckedWords}">
-            <Button Content="Add readings as Unknown" Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-            <Button Content="Accept the new set" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-            <Button Content="Mark Incorrect" Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-            <Button Content="Remove analyses" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-            <Button Content="Undo changes" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-            <Button Content="Check again" Command="{Binding InText.RecheckCheckedChangesCommand}"
-                    IsVisible="{Binding InText.HasCheckedUncertainChanges}" />
-          </WrapPanel>
-        </StackPanel>
-      </StackPanel>
-      </StackPanel>
+      </DockPanel>
 
-      <StackPanel Grid.Row="2" Spacing="{DynamicResource Intent.Space.Snug}">
+      <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
         <views:RefusalBlock DataContext="{Binding InText.ReadStateRefusal}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ReadStateNotice}" TextWrapping="Wrap"
                                  IsVisible="{Binding InText.HasReadStateNotice}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.Changes.CollectionNotice}" TextWrapping="Wrap"
                                  IsVisible="{Binding InText.Changes.CollectionNotice, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
       </StackPanel>
-      <StackPanel Grid.Row="3" Spacing="{DynamicResource Intent.Space.Related}"
+      <StackPanel Grid.Row="2" Spacing="{DynamicResource Intent.Space.Related}"
                   Margin="{DynamicResource Component.TextsPage.EmptyStateMargin}"
                   IsVisible="{Binding InText.HasMessage}">
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.Message}" TextWrapping="Wrap" />
         <Button Content="Choose texts" HorizontalAlignment="Left" IsVisible="{Binding InText.NeedsTexts}"
                 Click="OnGoToTextsClick" AutomationProperties.Name="Choose texts to analyze" />
       </StackPanel>
-      <ScrollViewer Grid.Row="3" IsVisible="{Binding InText.HasResults}">
+      <ScrollViewer Grid.Row="2" IsVisible="{Binding InText.HasResults}">
         <ItemsControl ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Text lines and parser results">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
@@ -167,6 +181,7 @@
                           <StackPanel Classes="analysisDensity" Spacing="{DynamicResource Intent.Space.Minimal}">
                             <DockPanel LastChildFill="False">
                               <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsSelectedForActions}"
+                                        IsVisible="{Binding $parent[views:ResultsInTextPanel].InText.ShowWordCheckboxes}"
                                         AutomationProperties.Name="{Binding SelectionAutomationName}" />
                               <controls:OpinionMark DockPanel.Dock="Left" Kind="{Binding PrimaryOpinionMarkKind}"
                                                      AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}"

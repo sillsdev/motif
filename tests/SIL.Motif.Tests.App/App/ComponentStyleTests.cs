@@ -200,6 +200,8 @@ public sealed class ComponentStyleTests
 
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.BackgroundProperty, "Intent.Clear");
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.MarginProperty, "Component.FilterChip.Margin");
+        yield return new("FilterChip", "a compact chip", host => Add(host, Press("filterChip", "compact")),
+            Button.PaddingProperty, "Component.FilterChip.CompactPadding");
         yield return new("FilterChip", "an active chip", host => Add(host, Press("filterChip", "active")),
             Button.ForegroundProperty, "Intent.Primary");
 
@@ -239,6 +241,8 @@ public sealed class ComponentStyleTests
             ProgressBar.HeightProperty, "Component.TopBar.ParseProgressHeight");
 
         yield return new("Menu", "a menu", host => Add(host, Stack("menu")), StackPanel.WidthProperty, "Component.Menu.Width");
+        yield return new("Menu", "a menu action", host => Add(host, Press("menuAction")), Button.MarginProperty, "Component.Menu.ActionGap");
+        yield return new("Menu", "a menu button", host => Add(host, Press("menuButton")), Button.HeightProperty, "Component.Menu.ButtonHeight");
         yield return new("Menu", "a menu entry", host => Add(host, Press("menuEntry")), Button.PaddingProperty, "Component.Menu.EntryPadding");
         yield return new("Menu", "a menu entry's detail", host => InsideButton(host, Press("menuEntry"), "menuDetail"),
             TextBlock.ForegroundProperty, "Intent.TextMuted");

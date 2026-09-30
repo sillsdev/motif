@@ -8,6 +8,9 @@
     <StaticResource x:Key="Component.FilterChip.Padding" ResourceKey="Primitive.Inset.9_3_9_3" />
     <StaticResource x:Key="Component.FilterChip.Radius" ResourceKey="Primitive.Radius.12" />
     <StaticResource x:Key="Component.FilterChip.Margin" ResourceKey="Primitive.Inset.0_0_4_4" />
+    <StaticResource x:Key="Component.FilterChip.CompactPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
+    <StaticResource x:Key="Component.FilterChip.CompactMargin" ResourceKey="Primitive.Inset.0_0_3_0" />
+    <StaticResource x:Key="Component.FilterChip.CompactHeight" ResourceKey="Primitive.Size.24" />
   </Styles.Resources>
   <Style Selector="Button.filterChip">
     <Setter Property="Padding" Value="{DynamicResource Component.FilterChip.Padding}" />
@@ -17,6 +20,16 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+  </Style>
+  <Style Selector="Button.filterChip.compact">
+    <Setter Property="Padding" Value="{DynamicResource Component.FilterChip.CompactPadding}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.FilterChip.CompactMargin}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.FilterChip.CompactHeight}" />
+    <Setter Property="Height" Value="{DynamicResource Component.FilterChip.CompactHeight}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector="Button.filterChip.compact StackPanel.filterChipRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
   <Style Selector="Button.filterChip.active">
     <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />

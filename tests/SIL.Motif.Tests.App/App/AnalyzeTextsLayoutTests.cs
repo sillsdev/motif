@@ -122,6 +122,84 @@ public sealed class AnalyzeTextsLayoutTests
         }, Deadline);
     }
 
+    [Fact]
+    public void TheTextPickerChipsMarkReadAndSelectShareOneRowAboveTheText()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
+                Settle(window);
+                var panel = Panel(window);
+                var controls = new List<Control>
+                {
+                    Named<ComboBox>(panel, "Text to read"),
+                    Named<Button>(panel, "Mark read or unread"),
+                    Named<Button>(panel, "Select words for actions"),
+                };
+                var chips = panel.GetVisualDescendants().OfType<FilterChip>()
+                    .Where(chip => chip.IsEffectivelyVisible).ToArray();
+                Assert.Equal(["All", "Unread", "Differs", "Not in FieldWorks", "No parse", "Stopped"],
+                    chips.Select(chip => chip.Label));
+                controls.AddRange(chips);
+
+                var bounds = controls.Select(control => BoundsIn(control, panel)).ToArray();
+                var rowTop = bounds.Min(rect => rect.Top);
+                var rowBottom = bounds.Max(rect => rect.Bottom);
+                Assert.True(bounds.Max(rect => rect.Top) < bounds.Min(rect => rect.Bottom),
+                    "The controls wrap: " + string.Join(", ", controls.Zip(bounds, (control, rect) =>
+                        $"{control.GetType().Name} at {rect}")));
+                Assert.True(rowBottom - rowTop <= 40, $"The control row is {rowBottom - rowTop} px deep.");
+                var firstWord = Strips(panel).Min(strip => BoundsIn(strip, panel).Top);
+                Assert.True(firstWord - rowBottom <= 48, $"The text starts {firstWord - rowBottom} px below the controls.");
+                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<Expander>(), expander =>
+                    expander.IsEffectivelyVisible && Equals(expander.Header, "Actions by scope"));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
+    public void WordCheckboxesWaitUntilTheReaderChoosesWords()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                bool AnyCheckboxShows() => Panel(window).GetVisualDescendants().OfType<CheckBox>().Any(box =>
+                    box.IsEffectivelyVisible && box.DataContext is ResultsTokenViewModel);
+                Assert.False(AnyCheckboxShows());
+
+                inText.ChooseWordsCommand.Execute(null);
+                Settle(window);
+                Assert.True(AnyCheckboxShows());
+
+                inText.ChooseWordsCommand.Execute(null);
+                Settle(window);
+                Assert.False(AnyCheckboxShows());
+                inText.SelectAllWordsCommand.Execute(null);
+                Settle(window);
+                Assert.True(AnyCheckboxShows(), "Checked words keep their checkboxes so they can be cleared.");
+                Assert.Equal($"{inText.AllCount} selected ▾", inText.SelectMenuLabel);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    internal static T Named<T>(Visual root, string name) where T : Control =>
+        Assert.Single(root.GetVisualDescendants().OfType<T>(), control =>
+            Avalonia.Automation.AutomationProperties.GetName(control) == name && control.IsEffectivelyVisible);
+
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAnalyzeTexts(
         int width = 1240, bool parse = true)
     {
