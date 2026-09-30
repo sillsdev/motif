@@ -623,7 +623,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     {
         var touched = analyses?.FirstOrDefault(analysis => analysis.Touched);
         var before = touched is { Stored: true } ? OpinionLabel(touched.Opinion)
-            : touched is not null || storedAnalysisId is null ? "Not in FieldWorks"
+            : touched is not null || storedAnalysisId is null ? StagedMarkingTransition.NotInFieldWorks
             : kind == ChangeKinds.Approve ? "Unknown" : "Current opinion";
         var after = kind switch
         {

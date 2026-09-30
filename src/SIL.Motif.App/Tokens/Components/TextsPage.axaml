@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.TextsPage.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.TextsPage.ReaderInset" ResourceKey="Primitive.Inset.0_12_12_12" />
+    <StaticResource x:Key="Component.TextsPage.ReaderInset" ResourceKey="Primitive.Inset.0_12_8_12" />
     <StaticResource x:Key="Component.TextsPage.DenseRowPadding" ResourceKey="Primitive.Inset.4_3_4_3" />
     <StaticResource x:Key="Component.TextsPage.ListQuestionPadding" ResourceKey="Primitive.Inset.8_12_8_12" />
     <StaticResource x:Key="Component.TextsPage.HeaderButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
@@ -33,6 +33,8 @@
     <StaticResource x:Key="Component.TextsPage.DenseRowMinHeight" ResourceKey="Primitive.Size.0" />
     <StaticResource x:Key="Component.TextsPage.SelectionPanelWidth" ResourceKey="Primitive.Size.220" />
     <StaticResource x:Key="Component.TextsPage.TextPickerWidth" ResourceKey="Primitive.Size.150" />
+    <StaticResource x:Key="Component.TextsPage.TextPickerMaxWidth" ResourceKey="Primitive.Size.210" />
+    <StaticResource x:Key="Component.TextsPage.TextPickerGap" ResourceKey="Primitive.Inset.0_0_4_0" />
     <StaticResource x:Key="Component.TextsPage.ActionMenuWidth" ResourceKey="Primitive.Size.420" />
     <StaticResource x:Key="Component.TextsPage.TextInspectorWidth" ResourceKey="Primitive.Size.300" />
     <StaticResource x:Key="Component.TextsPage.ReaderTextWidth" ResourceKey="Primitive.Size.220" />

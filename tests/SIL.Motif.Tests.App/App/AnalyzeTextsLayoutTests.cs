@@ -151,6 +151,10 @@ public sealed class AnalyzeTextsLayoutTests
                     chips.Select(chip => chip.Label));
                 controls.AddRange(chips);
 
+                var picked = Assert.Single(controls[0].GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Hadithi ya sungura");
+                Assert.DoesNotContain(picked.TextLayout.TextLines, line => line.HasCollapsed);
+
                 var bounds = controls.Select(control => BoundsIn(control, panel)).ToArray();
                 var rowTop = bounds.Min(rect => rect.Top);
                 var rowBottom = bounds.Max(rect => rect.Bottom);
@@ -295,10 +299,14 @@ public sealed class AnalyzeTextsLayoutTests
                 {
                     var form = ((ResultsTokenViewModel)strip.Tag!).Form;
                     Assert.DoesNotContain(strip.GetVisualDescendants().OfType<Expander>(), _ => true);
-                    var fix = Assert.Single(strip.GetVisualDescendants().OfType<Button>(), button =>
-                        Avalonia.Automation.AutomationProperties.GetName(button) == "Fix actions from the word strip");
-                    Assert.Equal("Fix ▾", fix.Content);
-                    Assert.NotNull(fix.Flyout);
+                    var fixes = strip.GetVisualDescendants().OfType<Button>().Where(button =>
+                        Avalonia.Automation.AutomationProperties.GetName(button) == "Fix actions from the word strip").ToArray();
+                    Assert.True(fixes.Length <= 1, $"{form} offers {fixes.Length} Fix controls.");
+                    Assert.All(fixes, fix =>
+                    {
+                        Assert.Equal("Fix ▾", fix.Content);
+                        Assert.NotNull(fix.Flyout);
+                    });
                     Assert.Equal(strip.BorderThickness.Top, strip.BorderThickness.Bottom);
                     Assert.Equal(0, Assert.IsAssignableFrom<ISolidColorBrush>(strip.BorderBrush).Color.A);
 

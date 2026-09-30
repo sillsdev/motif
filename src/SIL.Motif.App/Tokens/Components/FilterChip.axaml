@@ -9,7 +9,7 @@
     <StaticResource x:Key="Component.FilterChip.Radius" ResourceKey="Primitive.Radius.12" />
     <StaticResource x:Key="Component.FilterChip.Margin" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.FilterChip.CompactPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
-    <StaticResource x:Key="Component.FilterChip.CompactMargin" ResourceKey="Primitive.Inset.0_0_3_0" />
+    <StaticResource x:Key="Component.FilterChip.CompactMargin" ResourceKey="Primitive.Inset.0_0_2_0" />
     <StaticResource x:Key="Component.FilterChip.CompactHeight" ResourceKey="Primitive.Size.24" />
   </Styles.Resources>
   <Style Selector="Button.filterChip">

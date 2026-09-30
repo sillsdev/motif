@@ -116,8 +116,14 @@ public sealed record AnalysisMarkingAction(
 public sealed record StagedMarkingTransition(string Now, string AfterApply,
     string? StoredAnalysisId = null, int? ReadingIndex = null, string? FitStatus = null)
 {
+    /// <summary>What <see cref="Now"/> says for a reading FieldWorks does not hold, so the change adds it.</summary>
+    public const string NotInFieldWorks = "Not in FieldWorks";
+
     /// <summary>The transition as a short line of text.</summary>
     public string Text => $"{Now} → {AfterApply}";
+
+    /// <summary>Whether the change adds a reading FieldWorks does not hold yet.</summary>
+    public bool IsAddition => Now == NotInFieldWorks;
 }
 
 /// <summary>The complete FieldWorks and PanGloss evidence for one text occurrence.</summary>

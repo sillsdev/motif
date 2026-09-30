@@ -12,11 +12,14 @@
       <DockPanel LastChildFill="True">
         <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
                   IsVisible="{Binding InText.HasTexts}" VerticalAlignment="Center"
-                  Width="{DynamicResource Component.TextsPage.TextPickerWidth}"
-                  Margin="{DynamicResource Intent.Gap.AfterRelated}"
+                  MinWidth="{DynamicResource Component.TextsPage.TextPickerWidth}"
+                  MaxWidth="{DynamicResource Component.TextsPage.TextPickerMaxWidth}"
+                  Margin="{DynamicResource Component.TextsPage.TextPickerGap}"
                   AutomationProperties.Name="Text to read">
           <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:ResultsTextViewModel"><TextBlock Text="{Binding Title}" /></DataTemplate>
+            <DataTemplate x:DataType="vm:ResultsTextViewModel">
+              <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+            </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
         <Button DockPanel.Dock="Right" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
@@ -342,8 +345,8 @@
                                     <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
                                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
                                                 VerticalAlignment="Top">
-                                      <controls:OpinionMark Kind="{Binding OpinionMarkKind}" ToolTip.Tip="{Binding Opinion}" />
-                                      <views:CopyableTextBlock Text="{Binding Opinion}" FontWeight="SemiBold" />
+                                      <controls:OpinionMark Kind="{Binding OpinionMarkKind}" ToolTip.Tip="{Binding OpinionLabel}" />
+                                      <views:CopyableTextBlock Text="{Binding OpinionLabel}" FontWeight="SemiBold" />
                                     </StackPanel>
                                   </StackPanel>
                                 </DataTemplate>
