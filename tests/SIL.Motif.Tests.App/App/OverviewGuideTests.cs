@@ -1,8 +1,10 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Help;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -14,7 +16,7 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewGuideTests
 {
-    private static readonly string[] GuidePages = ["overview.md", "reading-the-overview.md"];
+    private static readonly string[] GuidePages = ["overview", "reading-the-overview"];
 
     private static readonly string[] RetiredCardNames = ["Accuracy", "Text Coverage", "**Timing**", "**Warnings**"];
 
@@ -26,7 +28,8 @@ public sealed class OverviewGuideTests
 
         foreach (var name in GuidePages)
         {
-            var guide = File.ReadAllText(Path.Combine(RepositoryRoot(), "help", "en", "guide", name));
+            var guide = HelpCatalog.Load(CultureInfo.GetCultureInfo("en")).GetHelpPage(HelpEntryKind.Guide, name);
+            Assert.NotNull(guide);
             foreach (var title in titles)
                 Assert.True(guide.Contains($"**{title}**", StringComparison.Ordinal), $"{name} does not name {title}");
             foreach (var retired in RetiredCardNames)
@@ -66,11 +69,4 @@ public sealed class OverviewGuideTests
         return titles;
     }
 
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Motif.sln")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate Motif.sln.");
-    }
 }

@@ -126,7 +126,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
             }, WalkthroughSteps.Remaining(deadline));
 
             if (script.Id == "explained-word-card")
-                Assert.Equal(["batch"], FakeParser.Invocations(project.ParserPath!));
+                Assert.Equal(["describe", "batch"], FakeParser.Invocations(project.ParserPath!));
             Assert.NotEmpty(captures);
             Assert.NotEmpty(clipSegments);
             Assert.Equal(0, clipSegments[0].StartMs);

@@ -1,4 +1,5 @@
-using SIL.Motif.Generator;
+using System.Globalization;
+using SIL.Motif.Help;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -9,8 +10,12 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class ReviewGuideWordsTests
 {
-    private static string Guide(string page) =>
-        File.ReadAllText(Path.Combine(RepoPaths.FindRepoRoot(), "help", "en", "guide", page + ".md"));
+    private static string Guide(string page)
+    {
+        var text = HelpCatalog.Load(CultureInfo.GetCultureInfo("en")).GetHelpPage(HelpEntryKind.Guide, page);
+        Assert.NotNull(text);
+        return text;
+    }
 
     [Theory]
     [InlineData("review-changes")]
