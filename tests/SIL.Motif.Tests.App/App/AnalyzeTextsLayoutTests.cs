@@ -388,6 +388,50 @@ public sealed class AnalyzeTextsLayoutTests
         }, Deadline);
     }
 
+    [Fact]
+    public void EachChipCountsTheStripsThatShowItsClass()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
+                Settle(window);
+                var panel = Panel(window);
+                var strips = Strips(panel).ToArray();
+                bool ShowsReading(Border strip) => Part(strip, "pangloss").GetVisualDescendants().OfType<TextBlock>()
+                    .Any(text => text.Classes.Contains("stripMorphForm") && text.IsEffectivelyVisible);
+                bool HoldsNothing(Border strip) =>
+                    VisibleText(Part(strip, "fieldworks")).StartsWith("Nothing in FieldWorks", StringComparison.Ordinal);
+                var showing = new Dictionary<string, int>(StringComparer.Ordinal)
+                {
+                    ["All"] = strips.Length,
+                    ["Unread"] = strips.Count(strip => HasPart(strip, "unread")),
+                    ["Differs"] = strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip)),
+                    ["Not in FieldWorks"] = strips.Count(strip => ShowsReading(strip) && HoldsNothing(strip)),
+                    ["No parse"] = strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "∅ No parse"),
+                    ["Stopped"] = strips.Count(strip =>
+                        VisibleText(Part(strip, "pangloss")) == "Stopped at the step limit"),
+                };
+
+                var chips = panel.GetVisualDescendants().OfType<FilterChip>()
+                    .Where(chip => chip.IsEffectivelyVisible).ToDictionary(chip => chip.Label!, chip => chip.Count);
+                Assert.Equal(showing, chips);
+                Assert.Contains(showing, pair => pair.Key != "All" && pair.Key != "Unread" && pair.Value > 0);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    internal static bool HasPart(Border strip, string part) =>
+        strip.GetVisualDescendants().OfType<Control>().Any(control =>
+            (Avalonia.Automation.AutomationProperties.GetAutomationId(control) ?? string.Empty)
+                .EndsWith("-" + part, StringComparison.Ordinal) && control.IsEffectivelyVisible);
+
     internal static Border StripOf(ResultsInTextPanel panel, string form) =>
         Assert.Single(Strips(panel), strip => strip.Tag is ResultsTokenViewModel token && token.Form == form);
 
