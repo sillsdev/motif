@@ -331,10 +331,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>
-    /// Rechecks pending changes, reads evidence for the new Baseline, then reloads every page and setup.
+    /// Reloads the current Draft, rechecks it when nonempty, then refreshes Baseline evidence and pages.
     /// </summary>
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
     {
+        await Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
         if (Changes.Count > 0)
             await Changes.RecheckAsync(cancellationToken).ConfigureAwait(true);
         if (ProjectPath is { } projectPath)

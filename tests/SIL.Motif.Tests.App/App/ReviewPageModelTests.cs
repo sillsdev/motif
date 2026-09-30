@@ -86,9 +86,33 @@ public sealed class ReviewPageModelTests
         await context.PublishBaselineCapturedAsync();
 
         Assert.Equal("revision/one", Assert.Single(fake.PendingRecheckRequests).ExpectedRevision);
-        Assert.Empty(fake.PendingLoadRequests);
+        Assert.Single(fake.PendingLoadRequests);
         Assert.True(Assert.Single(context.Changes.Items).IsUncertain);
         Assert.False(page.CanApply);
+    }
+
+    [Fact]
+    public async Task RefreshLoadsExternallyStagedChangesBeforeRechecking()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/empty", [], []));
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        Assert.Empty(context.Changes.Items);
+        fake.PendingLoadRequests.Clear();
+        var externallyStaged = Change("external", "first");
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/external",
+            [externallyStaged], [new ChangeFit("external", true, [])]));
+        fake.RecheckCompletesWith(new PendingChangesSnapshot("draft/one", "revision/refreshed",
+            [externallyStaged], [new ChangeFit("external", true, [])]));
+
+        await context.PublishBaselineCapturedAsync();
+
+        Assert.Equal("external", Assert.Single(context.Changes.Items).ChangeId);
+        Assert.Equal("revision/external", Assert.Single(fake.PendingRecheckRequests).ExpectedRevision);
+        Assert.Single(fake.PendingLoadRequests);
+        Assert.Null(context.Changes.ShownRefusal);
+        Assert.Equal("revision/refreshed", context.Changes.Snapshot.Revision);
     }
 
     [Fact]
