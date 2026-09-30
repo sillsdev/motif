@@ -104,6 +104,10 @@ read-only automatic variables `$IsWindows`, `$IsLinux` and `$IsMacOS`, and varia
 case-insensitive, so a script's own flag takes a distinct name, such as `$targetIsWindows` for the platform
 a package targets. Symptom: "Cannot overwrite variable IsWindows because it is read-only or constant."
 
+A native command's captured output is `$null` when it prints nothing, so join it as an array:
+`@($output) -join "`n"`. `[string]::Join(..., [string[]] $output)` throws "Value cannot be null" on a silent
+command.
+
 ### Test process isolation
 
 `test.ps1` runs each test project in its own process, several at once. Each process gets a private
