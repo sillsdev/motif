@@ -53,7 +53,8 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         SeededProject.SeedText(cache, _pristine.Seed);
         new FwDataProjectLoader().Save(cache);
         var fwDataPath = cache.ProjectId.Path;
-        var approved = ApprovedMorphologyReader.Read(cache)[SeededProject.AnalysedWordForm];
+        var approvedReadings = ApprovedMorphologyReader.Read(cache)[SeededProject.AnalysedWordForm];
+        var approved = Assert.Single(approvedReadings);
         string[] words =
             [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm, "motifa", "motifb", "motifc", "motifd"];
         var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(fwDataPath, "Default", [], words));
@@ -62,11 +63,15 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         var unbuilt = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, SeededProject.AnalysedWordForm, 5,
             false, false, false, [new ParseAnalysis([new ParseMorph(
                 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", null, null)])], []);
+        var resolvable = new ParseWordEvidence(ParseMorphEvidence.Schema, 5, "motifd", 30,
+            false, false, false,
+            [new ParseAnalysis(approved.Morphs.Select(morph => new ParseMorph(
+                morph.Form, morph.Msa, morph.InflType, null)).ToArray())], []);
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ParseTime
             ? new AssessmentRaw.Batch(new BatchAnalysis(
             [
                 new(0, SeededProject.AnalysedWordForm, 5, WordOutcome.Analysed, "sig")
-                    { Morphology = unbuilt, Correctness = MorphologyCorrectness.Compare(unbuilt, approved) },
+                    { Morphology = unbuilt, Correctness = MorphologyCorrectness.Compare(unbuilt, approvedReadings) },
                 new(1, SeededProject.UnanalysedWordForm, 4, WordOutcome.NoAnalysis, "-"),
                 // Stopped by the step limit while the time limit also ran out inside the search.
                 new(2, "motifa", 90, WordOutcome.Capped, "partial")
@@ -74,7 +79,7 @@ public sealed class StoredAssessmentRowsTests : IDisposable
                 new(3, "motifb", 1000, WordOutcome.TimedOut, "-"),
                 new(4, "motifc", 0, WordOutcome.Skipped, "-"),
                 new(5, "motifd", 30, WordOutcome.Analysed, "sig")
-                    { Morphology = new(ParseMorphEvidence.Schema, 5, "motifd", 30, true, false, false, [], []) },
+                    { Morphology = resolvable },
             ], 1000, fwDataPath, []) { PerWordStepLimit = 200000 })
             : new AssessmentRaw.WordMeasurements([]))
         {
@@ -94,6 +99,12 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         Assert.Equal(run.Value.InvocationId, stored.InvocationId);
         Assert.Equal(run.Value.Measurements.OrderBy(item => item.Kind),
             stored.Measurements.OrderBy(item => item.Kind));
+        var runReading = Assert.Single(run.Value.Words.Single(word => word.Word == "motifd")
+            .Readings!);
+        var storedReading = Assert.Single(stored.Words.Single(word => word.Word == "motifd")
+            .Readings!);
+        Assert.Equal(runReading.Morphs.Select(morph => (morph.Form, morph.Gloss, morph.Category)),
+            storedReading.Morphs.Select(morph => (morph.Form, morph.Gloss, morph.Category)));
         var missed = Assert.Single(stored.Words, word => word.Word == SeededProject.AnalysedWordForm).MissedApproved!;
         Assert.Equal(SeededProject.FirstGloss, Assert.Single(missed).Morphs[0].Gloss);
     }

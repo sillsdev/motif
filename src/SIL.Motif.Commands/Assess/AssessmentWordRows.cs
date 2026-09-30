@@ -93,7 +93,12 @@ internal static class AssessmentWordRows
     internal static AssessCommandResponse? FromStored(CurrentEvidenceSnapshot snapshot)
     {
         if (snapshot.Baseline is not { } baseline || snapshot.MatchingAssessment is not { } assessment) return null;
-        var words = snapshot.EffectiveWords.Select(FromRecorded).ToArray();
+        var words = snapshot.EffectiveWords.Select(word =>
+        {
+            var row = FromRecorded(word);
+            return snapshot.ResolvedReadingsByWord.TryGetValue(word.Word, out var readings)
+                ? row with { Readings = readings } : row;
+        }).ToArray();
         var summary = CompletionSummary(words);
         var invocationId = assessment.Invocation?.InvocationId ?? string.Empty;
         var measurements = new List<ProducedAssessmentReference>
