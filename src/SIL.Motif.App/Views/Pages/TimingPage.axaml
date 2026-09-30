@@ -131,20 +131,21 @@
             <Border Classes="card">
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                 <views:CopyableTextBlock Classes="section-title" Text="{Binding ScopeLabel}" />
-                <views:TimingKindBar Rows="{Binding KindTiming.Aggregates}"
+                <views:TimingKindBar x:Name="KindBar" Rows="{Binding KindTiming.Aggregates}"
                                      Height="{DynamicResource Component.Timing.BarHeight}"
-                                     FirstBrush="{DynamicResource Intent.Primary}"
-                                     SecondBrush="{DynamicResource Intent.Link}"
-                                     ThirdBrush="{DynamicResource Intent.Success}"
-                                     FourthBrush="{DynamicResource Intent.Warning}"
-                                     OtherBrush="{DynamicResource Intent.TextFaint}" />
-                <ItemsControl ItemsSource="{Binding KindTiming.Aggregates}"
+                                     FirstBrush="{DynamicResource Intent.Chart.Series1}"
+                                     SecondBrush="{DynamicResource Intent.Chart.Series2}"
+                                     ThirdBrush="{DynamicResource Intent.Chart.Series3}"
+                                     FourthBrush="{DynamicResource Intent.Chart.Series4}"
+                                     OtherBrush="{DynamicResource Intent.Chart.Other}" />
+                <ItemsControl ItemsSource="{Binding #KindBar.Legend}"
                               AutomationProperties.Name="Timing by kind">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="responses:TimingAggregateRow">
+                    <DataTemplate x:DataType="views:TimingKindLegendEntry">
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                        <views:CopyableTextBlock Text="{Binding Name, Converter={StaticResource KindLabel}}" />
-                        <views:CopyableTextBlock Classes="muted" Text="{Binding ShareOfTotal, StringFormat='{}{0:P0}'}" />
+                        <Border Classes="outcomeSegment swatch" Background="{Binding Brush}" />
+                        <views:CopyableTextBlock Text="{Binding Row.Name, Converter={StaticResource KindLabel}}" />
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding Row.ShareOfTotal, StringFormat='{}{0:P0}'}" />
                       </StackPanel>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

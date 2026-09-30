@@ -64,7 +64,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             word.ReadingGrades, word.MissedApproved?.Count ?? 0), word.MissedApproved),
     };
 
-    private static readonly AssessmentWordResult[] EveryKindOfWord =
+    internal static readonly AssessmentWordResult[] EveryKindOfWord =
     [
         Word("approved-kept", "analysed", ProjectStanding.Approved, "approved"),
         Word("approved-empty", "no-analysis", ProjectStanding.Approved),
@@ -82,7 +82,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         Word("skipped", "skipped", ProjectStanding.NotPresent),
     ];
 
-    private static CompareViewModel Compare(IEnumerable<AssessmentWordResult> rows) => CompareWithClient(rows).Compare;
+    internal static CompareViewModel Compare(IEnumerable<AssessmentWordResult> rows) => CompareWithClient(rows).Compare;
 
     private static (CompareViewModel Compare, FakeCommandClient Client) CompareWithClient(
         IEnumerable<AssessmentWordResult> rows)

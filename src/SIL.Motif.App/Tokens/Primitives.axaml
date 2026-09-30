@@ -41,9 +41,11 @@
   <Color x:Key="Primitive.Color.Blue900">#1D3354</Color>
 
   <Color x:Key="Primitive.Color.Green300">#6FCF87</Color>
+  <Color x:Key="Primitive.Color.Green700">#2B8A3E</Color>
   <Color x:Key="Primitive.Color.Green800">#1A6B2C</Color>
 
   <Color x:Key="Primitive.Color.Amber300">#E3B55E</Color>
+  <Color x:Key="Primitive.Color.Amber700">#B06A00</Color>
   <Color x:Key="Primitive.Color.Amber800">#8A5A00</Color>
 
   <Color x:Key="Primitive.Color.Clear">#00FFFFFF</Color>
@@ -68,6 +70,8 @@
 
   <Color x:Key="Primitive.Color.Violet25">#F6F0FF</Color>
   <Color x:Key="Primitive.Color.Violet200">#D9C2FF</Color>
+  <Color x:Key="Primitive.Color.Violet300">#B99CFF</Color>
+  <Color x:Key="Primitive.Color.Violet600">#7A4FD1</Color>
   <Color x:Key="Primitive.Color.Violet800">#54278F</Color>
   <Color x:Key="Primitive.Color.Violet975">#2B1C3B</Color>
 

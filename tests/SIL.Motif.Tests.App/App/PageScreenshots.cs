@@ -157,7 +157,7 @@ public sealed class PageScreenshots
             new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
-            fake);
+            fake, techDemoNotice: new TechDemoNoticeViewModel(new NoticeNotYetSeen(), new Launcher()));
         var window = new MainWindow();
         window.Compose(workspace);
         window.Show();
@@ -302,6 +302,19 @@ public sealed class PageScreenshots
     {
         public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(@"C:\Users\linguist\Documents\Motif Handoffs");
+    }
+
+    // The banner shows as it does on a first run: the harness never remembers an acknowledgment.
+    private sealed class NoticeNotYetSeen : ITechDemoNoticePreferences
+    {
+        public bool HasSeenTechDemoNotice => false;
+
+        public void MarkTechDemoNoticeSeen() { }
+    }
+
+    private sealed class Launcher : IUriLauncher
+    {
+        public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
     private sealed class Drag : IFileDragSource
