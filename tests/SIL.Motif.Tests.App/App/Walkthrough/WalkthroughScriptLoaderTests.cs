@@ -95,7 +95,7 @@ public sealed class WalkthroughScriptLoaderTests
         Assert.DoesNotContain(script.Steps, step => step.Kind == WalkthroughStepKind.Click &&
             step.AutomationId == "motif-run-assessment");
         Assert.DoesNotContain(script.Steps, step => step.Kind == WalkthroughStepKind.WaitFor &&
-            step.AutomationId == "motif-assessment-progress");
+            step.AutomationId == "motif-parse-all-words-progress");
     }
 
     [Theory]

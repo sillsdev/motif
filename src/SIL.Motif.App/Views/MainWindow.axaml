@@ -86,7 +86,7 @@
                            Value="{Binding ParseAllWordsProgressFraction}"
                            IsIndeterminate="{Binding ParseAllWordsProgressIsIndeterminate}"
                            AutomationProperties.Name="Parse all words progress"
-                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssessmentProgress}" />
+                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWordsProgress}" />
             </StackPanel>
             <Button Content="Cancel" Command="{Binding Assess.CancelCommand}"
                     Theme="{DynamicResource OutlineButton}" Classes="Tertiary"

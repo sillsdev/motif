@@ -21,9 +21,8 @@ public static class AutomationIds
     public const string SetupNext = "motif-setup-next";
     public const string SetupFinish = "motif-setup-finish";
     public const string ParseAllWords = "motif-parse-all-words";
-    public const string AssessmentProgress = "motif-assessment-progress";
+    public const string ParseAllWordsProgress = "motif-parse-all-words-progress";
     public const string CancelAssessment = "motif-cancel-assessment";
-    public const string RunAssessment = "motif-run-assessment";
     public const string ReviewChanges = "motif-review-changes";
     public const string MeasureChanges = "motif-measure-changes";
     public const string ApplyChanges = "motif-apply-changes";

@@ -112,7 +112,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath, timeProvider: clock);
             walkthrough.Show();
-            WalkthroughReplay.Run(walkthrough, script, help, clock, [], [], deadline);
+            WalkthroughReplay.Run(walkthrough, script, help, clock, [], [], deadline, FindRepositoryRoot());
 
             Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordInput));
             Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordResult));
