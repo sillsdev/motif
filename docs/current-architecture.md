@@ -8,21 +8,24 @@ Motif provides a command-line tool and a desktop application for working with Fi
 
 ## Project references
 
+The command line and desktop app use the same code to handle Motif work. A separate Worker program runs long jobs, so the front end can return while queued work continues.
+
 These arrows show direct `<ProjectReference>` edges in the current project files; they do not show package dependencies or runtime process launches.
 
 ```text
 SIL.Motif.App -> SIL.Motif.Commands, SIL.Motif.Contract, SIL.Motif.Help
-SIL.Motif.Cli -> SIL.Motif.Commands, SIL.Motif.Host, SIL.Motif.Runner, SIL.Motif.Worker,
+SIL.Motif.Cli -> SIL.Motif.Commands, SIL.Motif.Host, SIL.Motif.Runner, SIL.Motif.Worker.Runtime,
                  SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Projection, SIL.Motif.Help
 SIL.Motif.Commands -> SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.Model,
                       SIL.Motif.Projection, SIL.Motif.Runner, SIL.Motif.LiveHost,
-                      SIL.Motif.Worker
+                      SIL.Motif.Worker.Runtime
 SIL.Motif.Host -> SIL.Motif.Projection, SIL.Motif.Runner
 SIL.Motif.LiveHost -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Runner
 SIL.Motif.Model -> SIL.Motif.Contract
 SIL.Motif.Projection -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Runner
 SIL.Motif.Runner -> SIL.Motif.Contract, SIL.Motif.Model
-SIL.Motif.Worker -> SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.LiveHost
+SIL.Motif.Worker -> SIL.Motif.Worker.Runtime
+SIL.Motif.Worker.Runtime -> SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.LiveHost
 SIL.Motif.Contract -> (no Motif project references)
 SIL.Motif.Generator -> (no Motif project references)
 SIL.Motif.Help -> (no Motif project references)
@@ -30,7 +33,11 @@ SIL.Motif.Help -> (no Motif project references)
 
 `SIL.Motif.Contract` contains request and response shapes and has no LibLCM reference. `SIL.Motif.Projection` contains projections that need LibLCM types. All Motif projects target `net10.0`; integrations outside .NET use the CLI's JSON shapes rather than loading a Motif assembly in a `net48` process.
 
-`SIL.Motif.Worker` is currently an executable referenced by both `Commands` and `Cli`, so those consumers also inherit its executable project assets. The staged architecture plan calls for extracting the command-consumed implementation into a library while retaining the Worker executable identity; that correction is pending and is not represented as complete here.
+Reusable job, store, and project-runtime code lives in `SIL.Motif.Worker.Runtime`. `SIL.Motif.Commands` and the product CLI reference that library. `SIL.Motif.Worker` remains a separate executable that starts the runtime; it is discovered beside the running front end.
+
+Only the CLI test project adds a build-only project reference to `SIL.Motif.Worker`, with
+`ReferenceOutputAssembly="false"` and `Private="false"`. This makes the apphost available to
+sibling-process tests without adding the executable to the product CLI's references.
 
 ## Process coordination and project ownership
 
