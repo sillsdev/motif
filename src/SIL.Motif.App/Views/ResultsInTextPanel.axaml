@@ -288,7 +288,7 @@
                                 <Border Classes="stagedStrip" ToolTip.Tip="{Binding FitStatus}">
                                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
                                     <TextBlock Classes="stagedLabel" Text="Staged" />
-                                    <views:CopyableTextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
                                     <Button Classes="revealControl revealButton" Content="Undo"
                                             Command="{Binding $parent[views:ResultsInTextPanel].InText.Changes.RemoveCommand}"
                                             CommandParameter="{Binding Change}"
