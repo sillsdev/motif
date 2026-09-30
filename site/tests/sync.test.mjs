@@ -355,7 +355,7 @@ test('sync builds catalog, Walkthrough, API, and Developer pages', async (t) => 
 	await rm(path.join(help, 'guide', 'learn'), { recursive: true, force: true });
 	await rm(path.join(samples, 'synthetic-turkic', 'expected.json'));
 	exportedHelp.entries = exportedHelp.entries.filter((entry) => entry.kind !== 'guide'
-		|| !entry.code.startsWith('learn/') || entry.code === 'learn/index');
+		|| !entry.code.startsWith('learn/synthetic-turkic-'));
 	exportedHelp.entries.find((entry) => entry.kind === 'command').helpPage =
 		'# Open a project\n\nRead [Proposal](term:proposal) and [the agent guide](guide:agents/start-here).\n';
 	await writeFile(path.join(repository, 'help-export.json'), JSON.stringify(exportedHelp));
