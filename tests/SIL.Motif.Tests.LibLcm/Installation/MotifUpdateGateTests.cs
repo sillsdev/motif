@@ -78,6 +78,8 @@ public sealed class MotifUpdateGateTests
         childStart.ArgumentList.Add("--no-restore");
         childStart.ArgumentList.Add("--filter");
         childStart.ArgumentList.Add("FullyQualifiedName=SIL.Motif.Tests.LibLcm.Installation.MotifUpdateGateTests.ActivitiesCanShareTheGateAcrossProcesses");
+        childStart.Environment.Remove("MOTIF_TEST_SHARD");
+        childStart.Environment.Remove("MOTIF_TEST_SHARD_WEIGHTS");
         childStart.Environment[ChildGateNameVariable] = gateName;
         childStart.Environment[ChildReadyPathVariable] = readyFile;
         childStart.Environment[ChildReleasePathVariable] = releaseFile;
@@ -88,28 +90,38 @@ public sealed class MotifUpdateGateTests
         var error = child.StandardError.ReadToEndAsync();
         try
         {
-            await WaitUntilAsync(() => File.Exists(readyFile), TimeSpan.FromSeconds(15));
+            await WaitForChildReadyAsync(child, readyFile, output, error, TimeSpan.FromSeconds(15));
             using var parentActivity = MotifUpdateGate.TryAcquire(gateName);
             Assert.NotNull(parentActivity);
             Assert.Null(MotifUpdateGate.TryAcquireForUpdate(gateName));
 
             await File.WriteAllTextAsync(releaseFile, string.Empty);
-            await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));
-            Assert.True(child.ExitCode == 0, $"Child test failed. stdout: {await output} stderr: {await error}");
+            if (!await WaitForChildExitAsync(child, TimeSpan.FromSeconds(15)))
+            {
+                await KillChildTreeAndWaitForExitAsync(child);
+                throw new TimeoutException(
+                    $"Child test did not exit after release. {await ReadChildOutputAsync(output, error)}");
+            }
+            Assert.True(child.ExitCode == 0,
+                $"Child test exited with code {child.ExitCode}. {await ReadChildOutputAsync(output, error)}");
         }
         finally
         {
-            await File.WriteAllTextAsync(releaseFile, string.Empty);
-            if (!child.HasExited)
+            try
             {
-                try { await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15)); }
-                catch (TimeoutException)
+                await File.WriteAllTextAsync(releaseFile, string.Empty);
+            }
+            finally
+            {
+                try
                 {
-                    child.Kill(entireProcessTree: true);
-                    await child.WaitForExitAsync();
+                    await StopChildAsync(child);
+                }
+                finally
+                {
+                    if (Directory.Exists(scratch)) Directory.Delete(scratch, recursive: true);
                 }
             }
-            Directory.Delete(scratch, recursive: true);
         }
     }
 
@@ -134,5 +146,72 @@ public sealed class MotifUpdateGateTests
             if (DateTime.UtcNow > deadline) throw new TimeoutException("Condition was not met in time.");
             await Task.Delay(10);
         }
+    }
+
+    private static async Task WaitForChildReadyAsync(
+        Process child, string readyPath, Task<string> output, Task<string> error, TimeSpan timeout)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        while (!File.Exists(readyPath))
+        {
+            if (child.HasExited)
+            {
+                await child.WaitForExitAsync();
+                throw new InvalidOperationException(
+                    $"Child test exited with code {child.ExitCode} before signaling readiness. " +
+                    await ReadChildOutputAsync(output, error));
+            }
+            if (stopwatch.Elapsed >= timeout)
+            {
+                throw new TimeoutException(
+                    $"Child test did not signal readiness within {timeout}. " +
+                    await ReadChildOutputAsync(output, error));
+            }
+            await Task.Delay(10);
+        }
+    }
+
+    private static async Task<string> ReadChildOutputAsync(Task<string> output, Task<string> error)
+    {
+        var captures = Task.WhenAll(output, error);
+        await Task.WhenAny(captures, Task.Delay(TimeSpan.FromSeconds(5)));
+        _ = captures.Exception;
+        return $"stdout: {CaptureResult(output)}{Environment.NewLine}stderr: {CaptureResult(error)}";
+    }
+
+    private static string CaptureResult(Task<string> capture)
+    {
+        if (capture.IsCompletedSuccessfully) return capture.Result;
+        if (capture.IsFaulted) return $"<capture failed: {capture.Exception?.GetBaseException().Message}>";
+        return "<capture did not complete before the diagnostic deadline>";
+    }
+
+    private static async Task<bool> WaitForChildExitAsync(Process child, TimeSpan timeout)
+    {
+        try
+        {
+            await child.WaitForExitAsync().WaitAsync(timeout);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task StopChildAsync(Process child)
+    {
+        if (await WaitForChildExitAsync(child, TimeSpan.FromSeconds(15))) return;
+        await KillChildTreeAndWaitForExitAsync(child);
+    }
+
+    private static async Task KillChildTreeAndWaitForExitAsync(Process child)
+    {
+        if (!child.HasExited)
+        {
+            try { child.Kill(entireProcessTree: true); }
+            catch (InvalidOperationException) when (child.HasExited) { }
+        }
+        await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));
     }
 }
