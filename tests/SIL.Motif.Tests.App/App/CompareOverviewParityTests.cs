@@ -138,6 +138,19 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             {
                 ProjectStanding = word.ProjectStanding,
                 ReadingGrades = word.ReadingGrades,
+                StoredAnalyses = word.ProjectStanding == ProjectStanding.Approved
+                    ? [new ParserReading([new ParserReadingMorph("first", "", "", null, false, null)])
+                    {
+                        StoredAnalysisId = "stored-first",
+                        StoredAnalysisOpinion = ReadingGrade.Approved,
+                        Identity = new ApprovedMorphology([new ApprovedMorph("first", "msa-1", null, ["first"])]),
+                    },
+                    new ParserReading([new ParserReadingMorph("second", "", "", null, false, null)])
+                    {
+                        StoredAnalysisId = "stored-second",
+                        StoredAnalysisOpinion = ReadingGrade.Disapproved,
+                        Identity = new ApprovedMorphology([new ApprovedMorph("second", "msa-2", null, ["second"])]),
+                    }] : [],
                 Morphology = word.Morphology,
             }).ToArray();
             var table = new AssessWordsViewModel();

@@ -145,28 +145,36 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
     }
 
     [Theory]
-    [InlineData("same", "analysed", false, AnalysisMarkingClass.Same)]
-    [InlineData("different", "analysed", false, AnalysisMarkingClass.Conflict)]
-    [InlineData("extra", "analysed", false, AnalysisMarkingClass.Extra)]
-    [InlineData("none", "no-analysis", false, AnalysisMarkingClass.None)]
-    [InlineData("capped", "capped", true, AnalysisMarkingClass.Capped)]
+    [InlineData("same", "analysed", false, AnalysisMarkingClass.Same, CompareColumnKind.Match, "Agrees with FieldWorks", 0)]
+    [InlineData("different", "analysed", false, AnalysisMarkingClass.Conflict, CompareColumnKind.NoMatch, "Conflicts with a FieldWorks opinion", 1)]
+    [InlineData("extra", "analysed", false, AnalysisMarkingClass.Extra, CompareColumnKind.NoMatch, "Has additional readings", 1)]
+    [InlineData("none", "no-analysis", false, AnalysisMarkingClass.None, CompareColumnKind.NoParse, "No parse", 1)]
+    [InlineData("capped", "capped", true, AnalysisMarkingClass.Capped, CompareColumnKind.Timeout, "Search stopped at a limit", 1)]
+    [InlineData("incorrect-no-parse", "no-analysis", false, AnalysisMarkingClass.None, CompareColumnKind.NoParse, "No parse", 0)]
+    [InlineData("incorrect-capped", "capped", true, AnalysisMarkingClass.Conflict, CompareColumnKind.Timeout, "Conflicts with a FieldWorks opinion", 1)]
+    [InlineData("rebuilt-disapproved", "analysed", false, AnalysisMarkingClass.Conflict, CompareColumnKind.Match, "Conflicts with a FieldWorks opinion", 1)]
     public async Task AStoredAssessmentReadThroughTheCommandClientBuildsTheMarkingClass(
-        string name, string outcome, bool capped, AnalysisMarkingClass expected)
+        string name, string outcome, bool capped, AnalysisMarkingClass expected, CompareColumnKind expectedColumn,
+        string expectedLabel, int expectedListCount)
     {
-        using var project = await CreateProjectAsync();
+        using var project = await CreateProjectAsync(
+            name == "rebuilt-disapproved" ? "disapproved" : null, name.StartsWith("incorrect", StringComparison.Ordinal));
         var token = AnalyzedToken(project);
         var stored = Assert.Single(token.StoredAnalyses);
         var exact = StoredReading(stored);
         var readings = name switch
         {
-            "same" => new[] { exact },
+            "same" or "rebuilt-disapproved" => new[] { exact },
             "different" => [Guessed("different reading")],
             "extra" => new[] { exact, Guessed("extra reading") },
-            "none" => Array.Empty<ParseAnalysis>(),
+            "none" or "incorrect-no-parse" => Array.Empty<ParseAnalysis>(),
             _ => [Guessed("partial reading")],
         };
         RecordAssessment(project, [new AssessedWord(token.Form!, outcome, [])
         {
+            ProjectStanding = name.StartsWith("incorrect", StringComparison.Ordinal)
+                ? ProjectStanding.IncorrectSpelling
+                : name == "rebuilt-disapproved" ? ProjectStanding.Rejected : ProjectStanding.Approved,
             IsIncomplete = capped,
             Morphology = new ParseWordEvidence("v1", 0, token.Form!, 1, capped, false, false, readings, []),
         }]);
@@ -178,6 +186,24 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         var result = Assert.Single(assessment.Words);
 
         Assert.Equal(expected, AnalysisMarkingState.Create(token, result).PanGlossClass);
+        var table = new AssessWordsViewModel();
+        table.Load([result]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+        var row = Assert.Single(compare.Words);
+        var lists = new TextsListsViewModel(compare);
+        var inText = await LoadInTextAsync(project, assessment, null);
+        var card = ResultsToken(inText, token.Form!);
+        var placement = CompareViewModel.Place(Assert.Single(table.AllRows));
+
+        Assert.Equal(expected, row.Marking.PanGlossClass);
+        Assert.Equal(expected, card.Marking.PanGlossClass);
+        Assert.Equal(expectedLabel, card.PanGlossSummary);
+        Assert.Equal(expectedLabel, card.VerdictLabel);
+        Assert.Equal(expectedColumn, placement.Item2);
+        Assert.Equal(expectedListCount,
+            lists.Lists.Count(list => list.HasWords && list.Cells.Contains(new TextsListCell(
+                placement.Item1, placement.Item2))));
     }
 
     [Fact]
@@ -231,7 +257,7 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         Assert.Single(inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens),
             token => token.Form == form);
 
-    private async Task<MarkingCommandProject> CreateProjectAsync(string? opinion = null)
+    private async Task<MarkingCommandProject> CreateProjectAsync(string? opinion = null, bool incorrectSpelling = false)
     {
         var project = new WalkthroughProject(pristine);
         new FieldWorksSimulator(project.FwDataPath).SaveEdit(cache =>
@@ -252,6 +278,7 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
                     paragraph.ParseIsCurrent = true;
                 if (evaluation is { } value)
                     cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, value);
+                if (incorrectSpelling) ((IWfiWordform)analysis.Owner).SpellingStatus = 2;
             });
         });
 

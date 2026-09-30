@@ -96,6 +96,8 @@ internal static class AssessmentWordRows
         var words = snapshot.EffectiveWords.Select(word =>
         {
             var row = FromRecorded(word);
+            row = snapshot.StoredAnalysesByWord.TryGetValue(word.Word, out var stored)
+                ? row with { StoredAnalyses = stored } : row;
             return snapshot.ResolvedReadingsByWord.TryGetValue(word.Word, out var readings)
                 ? row with { Readings = readings } : row;
         }).ToArray();

@@ -473,20 +473,31 @@ public sealed partial class CompareViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Which cell a word belongs in. The column follows the outcome bar exactly; within the parsed words, Match means
-    /// the parser rebuilt what the project holds — for an approved word, every approved analysis, as the Approved
-    /// expectation requires, so a word that kept only some of them is not Kept.
+    /// Places the word from its morphology-backed marking class. Rebuilt rejected readings still occupy
+    /// Match when every parser reading matches a stored analysis, so the rejected row names that conflict.
     /// </summary>
     public static (WordProjectStatus Row, CompareColumnKind Column) Place(AssessWordRowViewModel word)
     {
         ArgumentNullException.ThrowIfNull(word);
-        var result = CompareSemantics.Place(new CompareWordFacts(
-            StandingWire(word.Standing),
-            word.Outcome, word.IsIncomplete, word.Morphology,
-            word.Readings.Select(reading => reading.Grade).Where(grade => grade is not null).Cast<string>().ToArray(),
-            word.MissedApproved.Count));
-        var row = WordProjectStatuses.FromStanding(result.Standing);
-        return (row, result.Column);
+        var row = word.Standing ?? WordProjectStatus.NotPresent;
+        var column = word.StoppedAtALimit ? CompareColumnKind.Timeout
+            : word.Outcome == "skipped" ? CompareColumnKind.Skipped
+            : !word.IsParsed || word.ReadingCount == 0 ? CompareColumnKind.NoParse
+            : word.Marking.PanGlossClass switch
+        {
+            AnalysisMarkingClass.Same => CompareColumnKind.Match,
+            AnalysisMarkingClass.Conflict when word.Marking.PanGlossReadings.Count > 0 &&
+                word.Marking.PanGlossReadings.All(reading => reading.MatchesStored) &&
+                word.Marking.FieldWorksAnalyses.Where(analysis => analysis.Opinion == ReadingGrade.Approved)
+                    .All(analysis => word.Marking.PanGlossReadings.Any(reading =>
+                        reading.MatchingAnalysisIds.Contains(analysis.StoredAnalysisId, StringComparer.Ordinal)))
+                => CompareColumnKind.Match,
+            AnalysisMarkingClass.None => CompareColumnKind.NoParse,
+            AnalysisMarkingClass.Capped => CompareColumnKind.Timeout,
+            AnalysisMarkingClass.NotAssessed => CompareColumnKind.Skipped,
+            _ => CompareColumnKind.NoMatch,
+        };
+        return (row, column);
     }
 
     /// <summary>What a cell means and how it is coloured, one entry per combination.</summary>

@@ -7,17 +7,36 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class TextsListsViewModelTests
 {
-    private static AssessmentWordResult Word(string form, string outcome, string standing, string? grade = null) =>
-        WithPriority(new AssessmentWordResult(form, outcome, outcome is "timed-out" or "capped", "Search completed", 10, null)
+    private static AssessmentWordResult Word(string form, string outcome, string standing, string? grade = null)
+    {
+        var storedOpinion = standing switch
+        {
+            ProjectStanding.Approved => ReadingGrade.Approved,
+            ProjectStanding.Candidate => ReadingGrade.Candidate,
+            ProjectStanding.Rejected => ReadingGrade.Disapproved,
+            _ => null,
+        };
+        var stored = storedOpinion is null ? [] : new[]
+        {
+            new ParserReading([])
+            {
+                StoredAnalysisId = "stored-" + form,
+                StoredAnalysisOpinion = storedOpinion,
+                Identity = new ApprovedMorphology([new ApprovedMorph(form, "n", null, ["entry"])]),
+            },
+        };
+        var parsedForm = grade == "no-opinion" ? form + "-other" : form;
+        return WithPriority(new AssessmentWordResult(form, outcome, outcome is "timed-out" or "capped", "Search completed", 10, null)
         {
             ProjectStanding = standing,
             OccurrenceCount = 1,
             ReadingGrades = grade is null ? null : [grade],
+            StoredAnalyses = stored,
             Readings = grade is null ? null : [new ParserReading([])],
             Morphology = grade is null ? null : new ParseWordEvidence("v1", 0, form, 10,
-                false, false, false, [new ParseAnalysis([])], []),
+                false, false, false, [new ParseAnalysis([new ParseMorph(parsedForm, "n", null, null)])], []),
         });
-
+    }
     private static AssessmentWordResult WithPriority(AssessmentWordResult word) => word with
     {
         FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(

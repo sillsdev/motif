@@ -16,6 +16,16 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class TextsRealClientTests(PristineProjectFixture pristine)
 {
+    private static object ParsedFirstForm => new
+    {
+        word = SeededProject.FirstForm,
+        outcome = "complete",
+        analyses = new[] { new { morphs = new[]
+        {
+            new { form = "11111111-1111-1111-1111-111111111111", msa = "22222222-2222-2222-2222-222222222222",
+                inflType = (string?)null, guessedString = (string?)null },
+        } } },
+    };
     [Fact]
     public async Task AParserBuiltApprovedReadingIsShownAsSameWithAnApprovedMark()
     {
@@ -118,10 +128,10 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
     public async Task EachListHoldsTheWordsItsQuestionNames()
     {
         using var project = await GrammarClientProject.OpenAsync(pristine);
-        project.Behave(new { words = new[]
+        project.Behave(new { words = new object[]
         {
             new { word = SeededProject.AnalysedWordForm, outcome = "no-analysis" },
-            new { word = SeededProject.FirstForm, outcome = "complete" },
+            ParsedFirstForm,
             new { word = SeededProject.SecondForm, outcome = "no-analysis" },
             new { word = "motifextra", outcome = "capped" },
         } });
@@ -191,7 +201,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             Assert.Equal(RunState.Completed, workspace.Assess.State);
             Assert.Equal("no-analysis", Assert.Single(workspace.Assess.Result!.Words).Outcome);
 
-            project.Behave(new { words = new[] { new { word = SeededProject.FirstForm, outcome = "complete" } } });
+            project.Behave(new { words = new[] { ParsedFirstForm } });
             await workspace.Assess.RunCommand.ExecuteAsync(null);
             Assert.Equal(RunState.Completed, workspace.Assess.State);
             Assert.Equal("analysed", Assert.Single(workspace.Assess.Result!.Words).Outcome);

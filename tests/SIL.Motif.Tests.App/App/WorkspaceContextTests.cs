@@ -436,7 +436,7 @@ public sealed class WorkspaceContextTests
 
         await timing.UseTextsListCommand.ExecuteAsync(null);
 
-        Assert.Equal(expected, fake.TimingRequests[0].ExplicitWords);
+        Assert.Equal(expected.Order(StringComparer.Ordinal), fake.TimingRequests[0].ExplicitWords!.Order(StringComparer.Ordinal));
     }
 
     [Fact]
