@@ -26,8 +26,8 @@ owner's ruling. The one external dependency that remains is the `pangloss` execu
 build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails — when
 it is not built, since "the parser is not built here" is an ordinary state of a developer's machine.
 
-**`./test.ps1` runs each test project as one or more processes, with concurrency capped at half the available
-processor count (rounded down, minimum one).** It discovers test projects listed in `Motif.sln` under `tests/`, so
+**`./test.ps1` runs each test project as one or more processes, with concurrency capped at a fifth of the
+available processor count (rounded down, minimum two), so four suites in four worktrees can run at once.** It discovers test projects listed in `Motif.sln` under `tests/`, so
 adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
 worker, and parser child processes. Opening two LibLCM caches at once inside one process races, so every
 class that opens one shares the serialized `LcmCacheTestCollection` in its test assembly. Separate test
