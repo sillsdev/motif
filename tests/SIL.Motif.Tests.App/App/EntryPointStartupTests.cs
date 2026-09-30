@@ -139,7 +139,23 @@ public sealed class EntryPointStartupTests
         Assert.Contains("DeleteSubKeyTree(RegistryKeyPath", registration, StringComparison.Ordinal);
         Assert.Contains("callback completed:", smoke, StringComparison.Ordinal);
         Assert.Contains("Velopack uninstaller output:", smoke, StringComparison.Ordinal);
+        Assert.Contains("--verbose --log $velopackUninstallLogPath --rootDir $install", smoke, StringComparison.Ordinal);
+        Assert.Contains("Velopack log candidate:", smoke, StringComparison.Ordinal);
         Assert.Contains("Get-MotifDiscoveryRegistryState", smoke, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnixPackageSmokeWaitsForThePackagedWorkerToExitBeforeCheckingItsJob()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var smoke = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-smoke-unix.sh"));
+        var queuedJob = smoke.IndexOf("job_id=$(MOTIF_SUPPRESS_KICK=1", StringComparison.Ordinal);
+        var workerWait = smoke.IndexOf("wait \"$worker_pid\"", StringComparison.Ordinal);
+        var statusCheck = smoke.IndexOf("job_json=$(\"$cli_shim\" jobs show", StringComparison.Ordinal);
+
+        Assert.True(queuedJob >= 0 && workerWait > queuedJob && statusCheck > workerWait,
+            "The Unix package smoke must queue without detaching, wait for its packaged Worker, then read the job.");
+        Assert.Contains("cat \"$worker_output\"", smoke, StringComparison.Ordinal);
     }
 
     private static Assembly LoadAppAssembly() =>

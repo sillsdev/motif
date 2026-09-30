@@ -26,6 +26,13 @@ if [[ "$RUNTIME_IDENTIFIER" == linux-x64 ]]; then
     cp "$INITIAL_PACKAGE_PATH" "$installed_image"
     chmod +x "$installed_image"
     "$installed_image" --appimage-extract-and-run --cli --version >/dev/null
+    appimage_extract_directory="$work_directory/appimage-extract"
+    mkdir -p "$appimage_extract_directory"
+    (
+        cd "$appimage_extract_directory"
+        "$installed_image" --appimage-extract >/dev/null
+    )
+    appimage_root="$appimage_extract_directory/squashfs-root"
     app_executable="$installed_image"
     app_arguments=(--appimage-extract-and-run --smoke)
     config_directory="${XDG_CONFIG_HOME:-$HOME/.config}/SIL/Motif"
@@ -44,6 +51,20 @@ else
     printf 'Unsupported Unix package RID: %s\n' "$RUNTIME_IDENTIFIER" >&2
     exit 1
 fi
+
+if [[ "$RUNTIME_IDENTIFIER" == linux-x64 ]]; then
+    worker_search_root="$appimage_root"
+else
+    worker_search_root="$app_bundle/Contents/MacOS"
+fi
+worker_executables=$(find "$worker_search_root" -type f -name SIL.Motif.Worker -perm -u+x -print)
+worker_executable_count=$(printf '%s\n' "$worker_executables" | sed '/^$/d' | wc -l | tr -d ' ')
+if [[ "$worker_executable_count" != 1 ]]; then
+    printf 'Expected one packaged Worker under %s; found %s:\n%s\n' \
+        "$worker_search_root" "$worker_executable_count" "$worker_executables" >&2
+    exit 1
+fi
+worker_executable=$(printf '%s\n' "$worker_executables" | sed -n '1p')
 
 cli_shim="$HOME/.local/bin/motif"
 if [[ ! -x "$cli_shim" ]]; then
@@ -85,26 +106,29 @@ if [[ ! -f "$project_path" ]]; then
 fi
 "$cli_shim" analyses --project "$project_path" >/dev/null
 
-job_id=$("$cli_shim" baseline-refresh --project "$project_path")
+job_id=$(MOTIF_SUPPRESS_KICK=1 "$cli_shim" baseline-refresh --project "$project_path")
 if [[ -z "$job_id" ]]; then
     printf 'Motif did not return a queued Worker job id.\n' >&2
     exit 1
 fi
-job_status=queued
-for _ in $(seq 1 120); do
-    job_json=$("$cli_shim" jobs show "$job_id" --project "$project_path" --json)
-    job_status=$(printf '%s\n' "$job_json" | sed -nE 's/.*"status"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
-    if [[ "$job_status" == completed ]]; then
-        break
-    fi
-    if [[ "$job_status" == failed || "$job_status" == cancelled ]]; then
-        printf 'Installed Worker job %s ended as %s: %s\n' "$job_id" "$job_status" "$job_json" >&2
-        exit 1
-    fi
-    sleep 1
-done
+worker_output="$work_directory/worker.log"
+"$worker_executable" --root "$MOTIF_WORKER_ROOT" --no-parser --idle-ms 1000 >"$worker_output" 2>&1 &
+worker_pid=$!
+set +e
+wait "$worker_pid"
+worker_exit_code=$?
+set -e
+if [[ "$worker_exit_code" -ne 0 ]]; then
+    printf 'Installed Worker exited with code %s; output follows:\n' "$worker_exit_code" >&2
+    cat "$worker_output" >&2
+    exit 1
+fi
+job_json=$("$cli_shim" jobs show "$job_id" --project "$project_path" --json)
+job_status=$(printf '%s\n' "$job_json" | sed -nE 's/.*"status"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
 if [[ "$job_status" != completed ]]; then
-    printf 'Installed Worker job %s did not complete; last status was %s.\n' "$job_id" "$job_status" >&2
+    printf 'Installed Worker job %s ended as %s after its Worker exited; Worker output follows:\n%s\n' \
+        "$job_id" "$job_status" "$job_json" >&2
+    cat "$worker_output" >&2
     exit 1
 fi
 

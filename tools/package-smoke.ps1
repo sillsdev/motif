@@ -158,8 +158,8 @@ if (-not $updated) {
     throw "Motif did not update from $ProductVersion to $NextProductVersion."
 }
 
-$updateExecutables = @(Get-ChildItem -LiteralPath $install -Filter 'Update.exe' -File -Recurse)
-if ($updateExecutables.Count -eq 0) {
+$updateExecutable = Join-Path $install 'Update.exe'
+if (-not (Test-Path -LiteralPath $updateExecutable -PathType Leaf)) {
     throw "Velopack's uninstaller is missing from $install."
 }
 
@@ -178,11 +178,39 @@ function Get-MotifDiscoveryRegistryState {
     }
 }
 
-$updateExecutable = $updateExecutables[0].FullName
 $uninstallTracePath = Join-Path $work 'uninstall-hook.log'
+$velopackUninstallLogPath = Join-Path $work 'velopack-uninstall.log'
 Remove-Item -LiteralPath $uninstallTracePath -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $velopackUninstallLogPath -Force -ErrorAction SilentlyContinue
+
+function Get-VelopackLogCandidates {
+    $paths = [System.Collections.Generic.List[string]]::new()
+    [void] $paths.Add($velopackUninstallLogPath)
+    $directories = @(
+        @{ Path = Join-Path $env:LOCALAPPDATA 'velopack'; Recurse = $false },
+        @{ Path = $env:TEMP; Recurse = $false },
+        @{ Path = $install; Recurse = $true }
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Path) }
+    foreach ($directory in $directories) {
+        $search = @{ LiteralPath = $directory.Path; Filter = 'velopack*.log'; File = $true }
+        if ($directory.Recurse) { $search.Recurse = $true }
+        if (Test-Path -LiteralPath $directory.Path -PathType Container) {
+            foreach ($candidate in Get-ChildItem @search) {
+                [void] $paths.Add($candidate.FullName)
+            }
+        }
+    }
+    return @($paths | Select-Object -Unique)
+}
+
+$velopackLogsBeforeUninstall = @{}
+foreach ($candidatePath in Get-VelopackLogCandidates) {
+    if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
+        $velopackLogsBeforeUninstall[$candidatePath] = [System.IO.File]::ReadAllText($candidatePath)
+    }
+}
 $env:MOTIF_PACKAGE_UNINSTALL_TRACE = $uninstallTracePath
-$uninstallOutput = & $updateExecutable uninstall --silent 2>&1
+$uninstallOutput = & $updateExecutable --verbose --log $velopackUninstallLogPath --rootDir $install uninstall --silent 2>&1
 $uninstallExitCode = $LASTEXITCODE
 $uninstallOutputText = @($uninstallOutput) -join [Environment]::NewLine
 Remove-Item Env:MOTIF_PACKAGE_UNINSTALL_TRACE -ErrorAction SilentlyContinue
@@ -192,7 +220,27 @@ $uninstallTrace = if (Test-Path -LiteralPath $uninstallTracePath -PathType Leaf)
     '<no callback trace>'
 }
 $registryState = Get-MotifDiscoveryRegistryState
+Write-Host "Velopack uninstall executable: $updateExecutable"
 Write-Host "Velopack uninstaller output: $uninstallOutputText"
+foreach ($candidatePath in (Get-VelopackLogCandidates)) {
+    if (-not $velopackLogsBeforeUninstall.ContainsKey($candidatePath)) {
+        $velopackLogsBeforeUninstall[$candidatePath] = $null
+    }
+}
+foreach ($candidatePath in $velopackLogsBeforeUninstall.Keys | Sort-Object) {
+    Write-Host "Velopack log candidate: $candidatePath"
+    if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
+        $logContents = [System.IO.File]::ReadAllText($candidatePath).Trim()
+    }
+    elseif ($null -ne $velopackLogsBeforeUninstall[$candidatePath]) {
+        $logContents = '[captured before uninstall; the source file was removed by uninstall]' +
+            [Environment]::NewLine + $velopackLogsBeforeUninstall[$candidatePath].Trim()
+    }
+    else {
+        $logContents = '<not created>'
+    }
+    Write-Host $logContents
+}
 Write-Host "Velopack uninstall hook trace: $uninstallTrace"
 Write-Host "Motif discovery registry state after uninstall: $registryState"
 if ($uninstallExitCode -ne 0) {
