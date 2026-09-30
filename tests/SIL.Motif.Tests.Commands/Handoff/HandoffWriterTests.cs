@@ -9,6 +9,7 @@ using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -492,21 +493,57 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
-    public void CancellationDuringGrammarImportLeavesNoDestinationDirectory()
+    public async Task InFlightImportCancellationCleansStagingAndAllowsRetry()
     {
         using var seeded = NewSeededScratch();
         var managedRoot = NewManagedRoot();
         var destination = Path.Combine(_root, "handoff-cancelled");
-        var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.Cancelled() };
+        Directory.CreateDirectory(destination);
+        var invoker = new HeldCancellationInvoker();
+        using var stopping = new CancellationTokenSource();
 
-        var outcome = HandoffCommand.Run(
+        var running = Task.Run(() => HandoffCommand.Run(
             new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false),
-            managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
+            managedRoot, NewAssessor(), invoker, onProgress: null, stopping.Token));
+        string incoming;
+        CancellationToken importToken;
+        CommandOutcome<HandoffCommandResponse> outcome;
+        try
+        {
+            importToken = await invoker.ImportStarted.WaitAsync(TimeSpan.FromMinutes(2));
+            Assert.True(importToken.CanBeCanceled);
+            Assert.False(importToken.IsCancellationRequested);
+
+            incoming = Assert.Single(Directory.GetDirectories(_root, ".incoming-*"));
+            AssertFile(incoming, "texts.json");
+            AssertFile(incoming, "parse_grammar_texts_assessment.py");
+            Assert.Empty(Directory.EnumerateFileSystemEntries(destination));
+
+            stopping.Cancel();
+            outcome = await running.WaitAsync(TimeSpan.FromMinutes(2));
+        }
+        finally
+        {
+            stopping.Cancel();
+            await running.WaitAsync(TimeSpan.FromMinutes(2));
+        }
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("handoff.cancelled", outcome.Refusal!.Code);
         Assert.Equal(FailureReason.Cancelled, outcome.Refusal.Reason);
-        Assert.False(Directory.Exists(destination));
+        Assert.True(importToken.IsCancellationRequested);
+        Assert.False(Directory.Exists(incoming));
+        Assert.True(Directory.Exists(destination));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(destination));
+
+        using var retryInvoker = NewInvoker();
+        var retry = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, AllWordformsAllTexts, false),
+            managedRoot, NewAssessor(), retryInvoker, onProgress: null, CancellationToken.None);
+
+        Assert.True(retry.Succeeded, retry.Refusal?.Message);
+        AssertFile(destination, "grammar.json");
+        Assert.Empty(Directory.GetDirectories(_root, ".incoming-*"));
     }
 
     [Fact]
@@ -774,6 +811,33 @@ public sealed class HandoffWriterTests : IDisposable
         public string FwDataPath => cache.ProjectId.Path;
         public Guid TextId => textId;
         public void Dispose() => cache.Dispose();
+    }
+
+    private sealed class HeldCancellationInvoker : IPanGlossInvoker
+    {
+        private readonly TaskCompletionSource<CancellationToken> _importStarted =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<CancellationToken> ImportStarted => _importStarted.Task;
+
+        public async Task<PanGlossOutcome> RunAsync(
+            PanGlossRequest request, string label, CancellationToken cancellationToken,
+            TimeSpan? wallClockCap = null)
+        {
+            if (request is not PanGlossRequest.Import)
+                throw new InvalidOperationException("The Handoff should request a grammar import.");
+
+            _importStarted.TrySetResult(cancellationToken);
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                return new PanGlossOutcome.Completed(string.Empty, string.Empty, TimeSpan.Zero);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return new PanGlossOutcome.Cancelled();
+            }
+        }
     }
 
 }
