@@ -464,6 +464,11 @@ test('sync publishes every authored Guide page from the built CLI export', async
 
 	const helpExportPath = path.join(root, 'help-export.json');
 	const { stdout } = await execFileAsync(cli, ['help', '--all', '--json'], {
+		env: {
+			...process.env,
+			MOTIF_WORKER_ROOT: path.join(root, 'worker'),
+			MOTIF_RUNNER_NAMESPACE: path.basename(root),
+		},
 		encoding: 'utf8',
 		maxBuffer: 16 * 1024 * 1024,
 		windowsHide: true,

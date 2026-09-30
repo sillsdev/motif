@@ -90,7 +90,11 @@ try {
 
     $helpExportPath = Join-Path $runRoot 'help-export.json'
     $helpErrorPath = Join-Path $runRoot 'help-export.stderr.log'
-    $helpProcess = Start-Process -FilePath $cliPath -ArgumentList @('help', '--all', '--json') -RedirectStandardOutput $helpExportPath -RedirectStandardError $helpErrorPath -Wait -PassThru -NoNewWindow
+    $helpEnvironment = @{
+        MOTIF_WORKER_ROOT = (Join-Path $runRoot 'worker')
+        MOTIF_RUNNER_NAMESPACE = ('documentation-' + [IO.Path]::GetFileName($runRoot))
+    }
+    $helpProcess = Start-Process -Environment $helpEnvironment -FilePath $cliPath -ArgumentList @('help', '--all', '--json') -RedirectStandardOutput $helpExportPath -RedirectStandardError $helpErrorPath -Wait -PassThru -NoNewWindow
     if ($helpProcess.ExitCode -ne 0) {
         $details = if (Test-Path -LiteralPath $helpErrorPath) {
             Get-Content -LiteralPath $helpErrorPath -Raw
