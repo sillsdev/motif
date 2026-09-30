@@ -173,10 +173,15 @@ internal static class WalkthroughArtifacts
                     (calloutIndex + 1).ToString(CultureInfo.InvariantCulture)) { Caption = callout.Caption }).ToArray());
         }).ToArray();
 
-        var clip = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS") == "1"
+        var clipsRequested = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS") == "1";
+        var requireClips = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS") == "1";
+        if (requireClips && !clipsRequested)
+            throw new InvalidOperationException("Required walkthrough video output is not enabled.");
+        var clip = clipsRequested
             ? WalkthroughClipComposer.TryCompose(directory, clipSegments ?? prepared.Select(item =>
                 new WalkthroughClipSegment(item.Capture.StartMs, item.Capture.DurationMs, item.Capture.Png,
-                    item.Capture.Callouts.FirstOrDefault()?.Bounds, WalkthroughClipSegmentKind.Capture, null)).ToArray())
+                    item.Capture.Callouts.FirstOrDefault()?.Bounds, WalkthroughClipSegmentKind.Capture, null)).ToArray(),
+                requireVideo: requireClips)
             : null;
         var manifest = new WalkthroughManifest(script.Id, help.Locale, help.Title, help.Description,
             Width, Height, Fps, manifestSteps, clip);

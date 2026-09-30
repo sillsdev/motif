@@ -241,6 +241,19 @@ public sealed class WalkthroughArtifactTests
     }
 
     [Fact]
+    public void RequiredClipCompositionFailsWhenFfmpegUnavailable()
+    {
+        var output = Path.Combine(Path.GetTempPath(), $"walkthrough-required-ffmpeg-{Guid.NewGuid():N}");
+        var missingFfmpeg = Path.Combine(output, "missing-ffmpeg.exe");
+
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            WalkthroughClipComposer.TryCompose(output, [], missingFfmpeg, requireVideo: true));
+
+        Assert.Contains("required", failure.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(Directory.Exists(output));
+    }
+
+    [Fact]
     public void ClipFrameCountsFollowRoundedTimelineBoundaries()
     {
         var segments = new[]

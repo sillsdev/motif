@@ -18,10 +18,13 @@ internal static class WalkthroughClipComposer
     }
 
     public static ManifestClip? TryCompose(
-        string outputDirectory, IReadOnlyList<WalkthroughClipSegment> segments, string ffmpegExecutable = "ffmpeg")
+        string outputDirectory, IReadOnlyList<WalkthroughClipSegment> segments, string ffmpegExecutable = "ffmpeg",
+        bool requireVideo = false)
     {
         if (!CanRunFfmpeg(ffmpegExecutable))
         {
+            const string message = "Required walkthrough video output needs ffmpeg on PATH.";
+            if (requireVideo) throw new InvalidOperationException(message);
             Console.WriteLine("Walkthrough clips skipped: ffmpeg is not available on PATH.");
             return null;
         }
@@ -44,6 +47,8 @@ internal static class WalkthroughClipComposer
         }
         catch (Exception exception) when (exception is Win32Exception or InvalidOperationException or IOException or TimeoutException)
         {
+            if (requireVideo)
+                throw new InvalidOperationException($"Required walkthrough video encoding failed: {exception.Message}", exception);
             Console.WriteLine($"Walkthrough clips skipped: ffmpeg could not encode the requested formats ({exception.Message}).");
             return null;
         }
