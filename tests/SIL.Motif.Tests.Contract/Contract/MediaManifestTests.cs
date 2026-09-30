@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Contract;
@@ -87,28 +88,18 @@ public sealed class MediaManifestTests
 
     private static string[] TrackedAndUntrackedFiles(string root)
     {
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = root,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-        };
+        var start = new ProcessStartInfo("git") { WorkingDirectory = root };
         start.ArgumentList.Add("ls-files");
         start.ArgumentList.Add("-z");
         start.ArgumentList.Add("--cached");
         start.ArgumentList.Add("--others");
         start.ArgumentList.Add("--exclude-standard");
 
-        using var process = Process.Start(start)
-            ?? throw new InvalidOperationException("Could not start git to enumerate repository files.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        if (process.ExitCode != 0)
-            throw new InvalidOperationException($"Could not enumerate repository files: {error}");
+        var result = ToolProcess.Run(start);
+        if (result.ExitCode != 0)
+            throw new InvalidOperationException($"Could not enumerate repository files: {result.Error}");
 
-        return output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        return result.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
     }
 
     private static bool IsMediaPath(string path) =>

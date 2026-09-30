@@ -454,23 +454,13 @@ public sealed class HandoffWriterTests : IDisposable
 
     private static string RunPythonHelper(string destination, params string[] arguments)
     {
-        var startInfo = new ProcessStartInfo(PythonExecutable.Path!)
-        {
-            WorkingDirectory = destination,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var startInfo = new ProcessStartInfo(PythonExecutable.Path!) { WorkingDirectory = destination };
         startInfo.ArgumentList.Add(Path.Combine(destination, "parse_grammar_texts_assessment.py"));
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
 
-        using var process = Process.Start(startInfo)!;
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
-        Assert.True(process.WaitForExit(15000), "The python helper did not exit within 15 seconds.");
-        Assert.True(process.ExitCode == 0, $"python exited {process.ExitCode}: {stderr}");
-        return stdout;
+        var result = ToolProcess.Run(startInfo);
+        Assert.True(result.ExitCode == 0, $"python exited {result.ExitCode}: {result.Error}");
+        return result.Output;
     }
 
     [Fact]

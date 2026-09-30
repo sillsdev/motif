@@ -85,6 +85,8 @@ public static class GitRelease
         var startInfo = new ProcessStartInfo("git")
         {
             WorkingDirectory = workingDirectory,
+            // An inherited pipe that another process is reading stalls git at startup on Windows.
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -98,8 +100,10 @@ public static class GitRelease
             using var process = Process.Start(startInfo)
                 ?? throw new GeneratorException($"Could not start git in '{workingDirectory}'.");
 
-            var stdout = process.StandardOutput.ReadToEnd();
+            process.StandardInput.Close();
+            var stdoutRead = process.StandardOutput.ReadToEndAsync();
             var stderr = process.StandardError.ReadToEnd();
+            var stdout = stdoutRead.GetAwaiter().GetResult();
             process.WaitForExit();
 
             if (process.ExitCode != 0)

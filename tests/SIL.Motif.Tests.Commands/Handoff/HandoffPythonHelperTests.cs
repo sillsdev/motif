@@ -64,21 +64,13 @@ public sealed class HandoffPythonHelperTests : IDisposable
     public void TheReaderScriptCompilesCleanly()
     {
         var scriptPath = WriteScriptToDisk();
-        var startInfo = new ProcessStartInfo(PythonExecutable.Path!)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var startInfo = new ProcessStartInfo(PythonExecutable.Path!);
         startInfo.ArgumentList.Add("-m");
         startInfo.ArgumentList.Add("py_compile");
         startInfo.ArgumentList.Add(scriptPath);
 
-        using var process = Process.Start(startInfo)!;
-        var stderr = process.StandardError.ReadToEnd();
-        Assert.True(process.WaitForExit(15000), "python -m py_compile did not exit within 15 seconds.");
-        Assert.True(process.ExitCode == 0, $"py_compile failed: {stderr}");
+        var result = ToolProcess.Run(startInfo);
+        Assert.True(result.ExitCode == 0, $"py_compile failed: {result.Error}");
     }
 
     private string WriteScriptToDisk()
@@ -90,22 +82,13 @@ public sealed class HandoffPythonHelperTests : IDisposable
 
     private static string RunHelp(string scriptPath)
     {
-        var startInfo = new ProcessStartInfo(PythonExecutable.Path!)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var startInfo = new ProcessStartInfo(PythonExecutable.Path!);
         startInfo.ArgumentList.Add(scriptPath);
         startInfo.ArgumentList.Add("--help");
 
-        using var process = Process.Start(startInfo)!;
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
-        Assert.True(process.WaitForExit(15000), "python --help did not exit within 15 seconds.");
-        Assert.True(process.ExitCode == 0, $"python --help exited {process.ExitCode}: {stderr}");
-        return stdout;
+        var result = ToolProcess.Run(startInfo);
+        Assert.True(result.ExitCode == 0, $"python --help exited {result.ExitCode}: {result.Error}");
+        return result.Output;
     }
 
     private static string ReadEmbeddedText(string resourceName)
