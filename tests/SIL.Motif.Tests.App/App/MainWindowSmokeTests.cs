@@ -786,6 +786,12 @@ public sealed class MainWindowSmokeTests
 
                 Assert.True(selected.IsCardOpen);
                 var resultsPanel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
+                var selectionBoxes = resultsPanel.GetLogicalDescendants().OfType<CheckBox>()
+                    .Where(checkBox => checkBox.IsEffectivelyVisible &&
+                        (AutomationProperties.GetName(checkBox) ?? string.Empty)
+                        .StartsWith("Select ", StringComparison.Ordinal))
+                    .ToArray();
+                Assert.Single(selectionBoxes);
                 var strip = resultsPanel.GetLogicalDescendants().OfType<Border>()
                     .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, selected));
                 var cardPopup = Assert.Single(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
@@ -808,6 +814,10 @@ public sealed class MainWindowSmokeTests
                 Assert.True(morphLink.IsHitTestVisible);
                 Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
+                workspace.CurrentPage = WorkspacePage.Review;
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.False(cardPopup.IsOpen);
             }
             finally
             {

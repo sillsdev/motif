@@ -40,7 +40,8 @@
                       <Border Classes="card reviewCard hoverReveal">
                         <StackPanel Classes="reviewRelated">
                           <DockPanel LastChildFill="True">
-                            <Border Classes="hoverReveal" DockPanel.Dock="Right">
+                            <Border Classes="hoverReveal" DockPanel.Dock="Right"
+                                    Background="{DynamicResource Intent.Clear}">
                               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
                                 <HyperlinkButton Classes="reviewLink revealControl revealLink" Content="Check again"
                                                  Command="{Binding $parent[views:ReviewPanel].Page.ReconfirmChangeCommand}"

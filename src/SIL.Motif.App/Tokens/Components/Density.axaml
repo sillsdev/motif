@@ -33,10 +33,10 @@
     <Setter Property="Height" Value="{DynamicResource Component.Density.NormalActionHeight}" />
   </Style>
   <Style Selector="Border.wordVerdict.analysisDensity">
-    <Setter Property="MinHeight" Value="{DynamicResource Component.Density.CompactWordHeight}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Density.CompactWordHeight}" />
   </Style>
   <Style Selector="Border.wordVerdict.analysisDensity.normal">
-    <Setter Property="MinHeight" Value="{DynamicResource Component.Density.NormalWordHeight}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Density.NormalWordHeight}" />
   </Style>
   <Style Selector="Border.wordVerdict.analysisDensity TextBlock">
     <Setter Property="FontSize" Value="{DynamicResource Component.Density.CompactWordType}" />

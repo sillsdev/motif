@@ -273,10 +273,6 @@
                                 </DockPanel>
                                 <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
                                 <views:CopyableTextBlock Text="{Binding VerdictLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
-                                <CheckBox Content="Select this occurrence for actions"
-                                          IsChecked="{Binding IsSelectedForActions, Mode=TwoWay}"
-                                          AutomationProperties.Name="Select this word occurrence for actions" />
-
                                 <views:CopyableTextBlock Classes="section-title" Text="FieldWorks"
                                                          FontSize="{DynamicResource Intent.Type.Body}" />
                                 <views:CopyableTextBlock Classes="muted" Text="Nothing is stored for this word."

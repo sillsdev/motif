@@ -11,6 +11,8 @@ namespace SIL.Motif.App.Views;
 /// <summary>The Analyze texts view, bound to its own view model.</summary>
 public sealed partial class ResultsInTextPanel : UserControl
 {
+    private readonly List<Control> _visibilityAncestors = [];
+
     public ResultsInTextPanel(ResultsInTextViewModel inText)
     {
         ArgumentNullException.ThrowIfNull(inText);
@@ -21,7 +23,31 @@ public sealed partial class ResultsInTextPanel : UserControl
 
     public ResultsInTextViewModel InText { get; }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        foreach (var ancestor in this.GetVisualAncestors().OfType<Control>())
+        {
+            _visibilityAncestors.Add(ancestor);
+            ancestor.PropertyChanged += OnAncestorPropertyChanged;
+        }
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        InText.CloseTokenCard();
+        foreach (var ancestor in _visibilityAncestors)
+            ancestor.PropertyChanged -= OnAncestorPropertyChanged;
+        _visibilityAncestors.Clear();
+        base.OnDetachedFromVisualTree(e);
+    }
+
     private void OnGoToTextsClick(object? sender, RoutedEventArgs e) => InText.OpenTexts?.Invoke();
+
+    private void OnAncestorPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs change)
+    {
+        if (change.Property == IsVisibleProperty && !IsEffectivelyVisible) InText.CloseTokenCard();
+    }
 
     // A press on a link in the block is the link's own; a press elsewhere on it opens the word's comparison.
     private async void OnTokenPressed(object? sender, PointerPressedEventArgs e)

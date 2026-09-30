@@ -24,9 +24,12 @@ internal static class HeadlessClick
         var aimed = Aim(window, control, accessibleName);
         var pressed = false;
         var clicked = false;
+        Visual? pressedSource = null;
         void OnPressed(object? sender, PointerPressedEventArgs e) => pressed = true;
+        void OnWindowPressed(object? sender, PointerPressedEventArgs e) => pressedSource = e.Source as Visual;
         void OnClicked(object? sender, RoutedEventArgs e) => clicked = true;
         control.AddHandler(InputElement.PointerPressedEvent, OnPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+        window.AddHandler(InputElement.PointerPressedEvent, OnWindowPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         if (control is Button button) button.Click += OnClicked;
         try
         {
@@ -37,6 +40,7 @@ internal static class HeadlessClick
         finally
         {
             control.RemoveHandler(InputElement.PointerPressedEvent, OnPressed);
+            window.RemoveHandler(InputElement.PointerPressedEvent, OnWindowPressed);
             if (control is Button clickable) clickable.Click -= OnClicked;
         }
         Dispatcher.UIThread.RunJobs();
@@ -57,6 +61,7 @@ internal static class HeadlessClick
             .TakeLast(12);
         Assert.Fail($"The click aimed at {aimed} missed '{accessibleName}', which is now at " +
             $"{now?.ToString() ?? "nowhere in the window"}: {why} " +
+            $"Pointer press source: {pressedSource?.GetType().Name ?? "none"}. " +
             $"Controls over the point: {string.Join("; ", overlays)}. Wait for whatever is still loading before clicking.");
     }
 

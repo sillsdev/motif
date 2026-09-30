@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
@@ -180,6 +181,13 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
             Assert.Equal("Current spelling", spelling.StagedTransition.Now);
             Assert.Equal("Incorrect", spelling.StagedTransition.AfterApply);
 
+            var openPopups = walkthrough.Window.GetLogicalDescendants().OfType<Popup>()
+                .Where(popup => popup.IsOpen)
+                .Select(popup => $"target={popup.PlacementTarget?.Name}; child={popup.Child?.GetType().Name}")
+                .ToArray();
+            Assert.True(openPopups.Length == 0, string.Join("; ", openPopups));
+            Assert.False(walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText.SelectedToken?.IsCardOpen ?? false,
+                "A word card remained open after leaving Analyze texts.");
             walkthrough.Click($"Undo: {SeededProject.AnalysedWordForm}");
             walkthrough.WaitUntil(() => changes.Items.Count == 1,
                 StepTimeout(deadline), "Undo did not remove the selected pending analysis removal");
