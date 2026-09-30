@@ -502,7 +502,7 @@ internal static class Program
         if (File.Exists(Path.Combine(AppContext.BaseDirectory, RecordInvocationsSentinel)))
             File.AppendAllText(Path.Combine(AppContext.BaseDirectory, InvocationsFileName), args[0] + "\n");
         var serialized = JsonSerializer.Serialize(args);
-        if (directory is null) return;
+        if (directory is null || IsBaselinePublication(directory)) return;
         File.WriteAllText(Path.Combine(directory, ArgvFileName), serialized);
         File.WriteAllText(Path.Combine(directory, EnvironmentFileName), JsonSerializer.Serialize(
             Environment.GetEnvironmentVariables().Keys.Cast<string>().OrderBy(name => name)));
