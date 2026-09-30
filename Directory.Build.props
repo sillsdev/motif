@@ -1,6 +1,12 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)SilVersions.props" />
 
+  <PropertyGroup Condition="'$(MOTIF_PACKAGE_INTERMEDIATE_ROOT)' != ''">
+    <BaseIntermediateOutputPath>$(MOTIF_PACKAGE_INTERMEDIATE_ROOT)/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+
   <PropertyGroup>
     <VersionPrefix>0.1.0</VersionPrefix>
     <RestorePackagesPath Condition="'$(RestorePackagesPath)' == '' and '$(NUGET_PACKAGES)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)/.nuget/packages</RestorePackagesPath>

@@ -10,9 +10,18 @@ public static class MotifInstallLifecycle
     /// <param name="args">The current process arguments passed to Velopack hook handling.</param>
     public static void Initialize(string[] args)
     {
+        ConfigureForStartup(VelopackApp.Build(), args).Run();
+        CompleteStartup();
+    }
+
+    /// <summary>Configures the app's Velopack callbacks and returns its builder for the entry point to run.</summary>
+    /// <param name="app">The Velopack app builder created by the executable entry point.</param>
+    /// <param name="args">The current process arguments passed to Velopack hook handling.</param>
+    public static VelopackApp ConfigureForStartup(VelopackApp app, string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(args);
-        var app = VelopackApp.Build()
-            .SetArgs(args)
+        app.SetArgs(args)
             .SetAutoApplyOnStartup(false)
             .OnFirstRun(_ => RegisterPackagedInstall())
             .OnRestarted(_ => RegisterPackagedInstall());
@@ -21,7 +30,12 @@ public static class MotifInstallLifecycle
             app.OnAfterInstallFastCallback(_ => InstallRegistration.RegisterCurrent())
                 .OnBeforeUninstallFastCallback(_ => InstallRegistration.UnregisterCurrent());
         }
-        app.Run();
+        return app;
+    }
+
+    /// <summary>Registers an installed package after Velopack has handled startup arguments.</summary>
+    public static void CompleteStartup()
+    {
         RegisterPackagedInstall();
     }
 

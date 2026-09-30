@@ -121,6 +121,10 @@ if (Test-Path -LiteralPath $output) {
 
 $stageName = "$outputName.staging-$([Guid]::NewGuid().ToString('N'))"
 $stage = [System.IO.Path]::GetFullPath((Join-Path $outputParentPath $stageName))
+$temporaryRoot = if ([string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) { [System.IO.Path]::GetTempPath() } else { $env:RUNNER_TEMP }
+$intermediateParentPath = Join-Path $temporaryRoot 'motif-package-build'
+$intermediateRoot = [System.IO.Path]::GetFullPath((Join-Path $intermediateParentPath $stageName))
+$previousIntermediateRoot = [Environment]::GetEnvironmentVariable('MOTIF_PACKAGE_INTERMEDIATE_ROOT', 'Process')
 $stageCreated = $false
 
 function Assert-NoReparsePointsInPath {
@@ -207,6 +211,8 @@ function Get-RelativePackagePath {
 }
 
 try {
+    Assert-NoReparsePointsInPath $intermediateParentPath
+    $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = $intermediateRoot
     & (Join-Path $repoRoot 'build.ps1') -Configuration Release
     if ($LASTEXITCODE -ne 0) {
         throw 'The release wrapper gate failed; no package was published.'
@@ -377,8 +383,18 @@ try {
     Write-Host "Portable development candidate written to $output" -ForegroundColor Green
 }
 finally {
+    if ($null -eq $previousIntermediateRoot) {
+        Remove-Item Env:MOTIF_PACKAGE_INTERMEDIATE_ROOT -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = $previousIntermediateRoot
+    }
     if ($stageCreated -and (Test-Path -LiteralPath $stage)) {
         Assert-SafeStagePath $stage $outputParentPath $stageName
         Remove-Item -LiteralPath $stage -Recurse -Force
+    }
+    if (Test-Path -LiteralPath $intermediateRoot) {
+        Assert-SafeStagePath $intermediateRoot $intermediateParentPath $stageName
+        Remove-Item -LiteralPath $intermediateRoot -Recurse -Force
     }
 }

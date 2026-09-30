@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Headless;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Installation;
+using Velopack;
 
 namespace SIL.Motif.App;
 
@@ -12,7 +13,8 @@ internal static class Program
     {
         // Motif's own error window reports an escaped error; Windows' dialog must not appear beside it.
         CrashDialogs.Suppress();
-        MotifInstallLifecycle.Initialize(args);
+        MotifInstallLifecycle.ConfigureForStartup(VelopackApp.Build(), args).Run();
+        MotifInstallLifecycle.CompleteStartup();
         if (args.Length > 0 && args[0] == "--smoke")
             return Smoke();
         if (args.Length > 0 && args[0] == "--cli")

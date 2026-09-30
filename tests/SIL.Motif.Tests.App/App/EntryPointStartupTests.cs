@@ -41,6 +41,19 @@ public sealed class EntryPointStartupTests
             $"{executable}'s entry point first calls {first?.DeclaringType?.FullName}.{first?.Name}, not CrashDialogs.Suppress.");
     }
 
+    [Fact]
+    public void AppMainRunsVelopackHooksFromThePackagedEntryPoint()
+    {
+        var assembly = ProductContext.LoadFromAssemblyPath(Path.Combine(BuildOutput.ProductDirectory, "SIL.Motif.App.dll"));
+        var entryPoint = assembly.EntryPoint ?? throw new InvalidOperationException("SIL.Motif.App has no entry point.");
+        var calls = CalledMethods(UserCode(entryPoint)).ToArray();
+        var build = Array.FindIndex(calls, IsVelopackBuild);
+        var run = Array.FindIndex(calls, IsVelopackRun);
+
+        Assert.True(build >= 0, "SIL.Motif.App's entry point must call VelopackApp.Build.");
+        Assert.True(run > build, "SIL.Motif.App's entry point must call VelopackApp.Run after Build.");
+    }
+
     private static AssemblyLoadContext ProductLoadContext()
     {
         var context = new AssemblyLoadContext("Motif's built executables");
@@ -63,7 +76,9 @@ public sealed class EntryPointStartupTests
             : main;
     }
 
-    private static MethodBase? FirstCall(MethodBase method)
+    private static MethodBase? FirstCall(MethodBase method) => CalledMethods(method).FirstOrDefault();
+
+    private static IEnumerable<MethodBase> CalledMethods(MethodBase method)
     {
         var il = method.GetMethodBody()!.GetILAsByteArray()!;
         for (var offset = 0; offset < il.Length;)
@@ -77,12 +92,18 @@ public sealed class EntryPointStartupTests
                 var called = method.Module.ResolveMethod(BitConverter.ToInt32(il, offset),
                     method.DeclaringType?.GetGenericArguments(), null);
                 // Top-level statements open by allocating their closure, which runs none of Motif's code.
-                if (called?.DeclaringType?.IsDefined(typeof(CompilerGeneratedAttribute)) != true) return called;
+                if (called is not null && called.DeclaringType?.IsDefined(typeof(CompilerGeneratedAttribute)) != true)
+                    yield return called;
             }
             offset += OperandSize(code, il, offset);
         }
-        return null;
     }
+
+    private static bool IsVelopackBuild(MethodBase method) =>
+        method.DeclaringType?.FullName == "Velopack.VelopackApp" && method.Name == "Build";
+
+    private static bool IsVelopackRun(MethodBase method) =>
+        method.DeclaringType?.FullName == "Velopack.VelopackApp" && method.Name == "Run";
 
     private static int OperandSize(OpCode code, byte[] il, int offset) => code.OperandType switch
     {
