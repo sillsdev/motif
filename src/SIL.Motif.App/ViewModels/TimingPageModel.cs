@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -16,7 +17,14 @@ public sealed record OpenTimingRequest(IReadOnlyList<string> Words, string? Rule
 /// <summary>The Timing page's model: where the latest Assessment's parse time went.</summary>
 public sealed partial class TimingPageModel : PageModel
 {
+    /// <summary>What the page says, where the numbers would be, when no parse time was measured.</summary>
+    public const string NoTimingRecordedText =
+        "No parse times were recorded for these words. Parse all words to measure them.";
+
+    private const string StepLimitCompletion = "Step limit";
+
     private int _loadGeneration;
+    private bool _isLoadingTiming;
     private IReadOnlyList<string>? _explicitWords;
     private TimingWordSet _wordSet = new TimingWordSet.All();
     private CancellationTokenSource? _rerunCancellation;
@@ -116,6 +124,40 @@ public sealed partial class TimingPageModel : PageModel
             KindTiming.Words.FirstOrDefault(word => word.Word == slow.Word)?.Completion ?? "Finished")).ToArray() ?? [];
 
     public bool HasTiming => KindTiming is not null;
+
+    /// <summary>Whether the stored parse times for the chosen words are being read.</summary>
+    public bool IsLoadingTiming => _isLoadingTiming;
+
+    /// <summary>Whether an open project has no measured parse time to show, and no read is pending or refused.</summary>
+    public bool ShowNoTimingRecorded => Context.ProjectPath is not null && !Context.NeedsAssessment &&
+        KindTiming is null && !_isLoadingTiming && TimingRefusal is null;
+
+    /// <summary>Whether the chosen words have measured parse times to lead the page with.</summary>
+    public bool HasHeadline => MeasuredWords.Count > 0;
+
+    /// <summary>The chosen words' summed parse time, as PanGloss measured it.</summary>
+    public string HeadlineTotal => HasHeadline ? SpeedText.Duration(MeasuredWords.Sum(word => word.ElapsedMs!.Value))
+        : string.Empty;
+
+    /// <summary>Which words the total covers: all of them, or the group chosen above.</summary>
+    public string HeadlineTotalCaption => !HasHeadline ? string.Empty
+        : MeasuredWords.Count == 1 ? "for 1 word"
+        : $"for {(IsAllSelected ? "all" : "these")} {MeasuredWords.Count:N0} words";
+
+    /// <summary>The chosen words' median parse time.</summary>
+    public string HeadlineMedian => HasHeadline && KindTiming?.MedianMs is { } median
+        ? SpeedText.PerWord(median) : string.Empty;
+
+    /// <summary>How many of the chosen words stopped at the step limit.</summary>
+    public string HeadlineStopped => KindTiming?.Words
+        .Count(word => word.Completion == StepLimitCompletion).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
+        ?? string.Empty;
+
+    /// <summary>The caption under the stopped-word count.</summary>
+    public string HeadlineStoppedCaption => "stopped at the step limit";
+
+    private IReadOnlyList<TimingWordRow> MeasuredWords =>
+        KindTiming?.Words.Where(word => word.ElapsedMs is not null).ToArray() ?? [];
     public bool HasSelectedWords => KindTiming?.WordCount > 0;
     public bool ShowEmptySelection => KindTiming is { WordCount: 0 };
     public bool ShowStaleTiming => HasTiming && Context.Evidence.IsStale;
@@ -224,6 +266,7 @@ public sealed partial class TimingPageModel : PageModel
     {
         CancelRerun();
         _loadGeneration++;
+        _isLoadingTiming = false;
         Focus = null;
         FocusedTiming = null;
         FocusedTimingRefusal = null;
@@ -404,11 +447,20 @@ public sealed partial class TimingPageModel : PageModel
         RuleTiming = null;
         RuleDetail = null;
         TimingRefusal = null;
+        _isLoadingTiming = true;
         RaiseTimingState();
         var top = _wordSet is TimingWordSet.Slowest ? Math.Max(1, SlowestCount) : 10;
-        var kind = await Context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId,
-            WordSet, "kind", Top: top, ExplicitWords: _explicitWords,
-            OverrideAssessmentIds: CurrentTimingOverrides), cancellationToken).ConfigureAwait(true);
+        CommandOutcome<TimingResponse> kind;
+        try
+        {
+            kind = await Context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId,
+                WordSet, "kind", Top: top, ExplicitWords: _explicitWords,
+                OverrideAssessmentIds: CurrentTimingOverrides), cancellationToken).ConfigureAwait(true);
+        }
+        finally
+        {
+            if (generation == _loadGeneration) _isLoadingTiming = false;
+        }
         if (generation != _loadGeneration || Context.ProjectPath != projectPath) return;
         if (!kind.Succeeded)
         {
@@ -533,7 +585,9 @@ public sealed partial class TimingPageModel : PageModel
             nameof(SlowestWords), nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),
             nameof(HasTimingRefusal), nameof(ShowStaleTiming), nameof(ScopeLabel),
-            nameof(PercentileSummary), nameof(RuleSummary),
+            nameof(PercentileSummary), nameof(RuleSummary), nameof(IsLoadingTiming),
+            nameof(ShowNoTimingRecorded), nameof(HasHeadline), nameof(HeadlineTotal),
+            nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),
         }) OnPropertyChanged(property);
         RaiseFocusState();
         RaiseStoredTimingState();
@@ -544,7 +598,9 @@ public sealed partial class TimingPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkspaceContext.ProjectPath)) OnPropertyChanged(nameof(ShowNoTimingRecorded));
         if (e.PropertyName != nameof(WorkspaceContext.NeedsAssessment)) return;
+        OnPropertyChanged(nameof(ShowNoTimingRecorded));
         OnPropertyChanged(nameof(ShowNoEvidence));
         OnPropertyChanged(nameof(ShowStatistics));
         OnPropertyChanged(nameof(ShowStoredTiming));
