@@ -70,6 +70,8 @@ the rule was broken.
   layout allows that file while its owner process is alive.
 - Paths: `Path.Combine` and `Path.GetTempPath()` (macOS temp lives under `/var/folders/…`); apphosts carry
   `.exe` on Windows only. Test fakes write only into test-owned folders.
+- A pattern that filters paths matches both separators, `[\\/]`: a filter written for `\obj\` lets
+  generated files through on Linux and macOS (the comment gate's `bin`/`obj` filter did).
 
 ### Timing and waits
 
