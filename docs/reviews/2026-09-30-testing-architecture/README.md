@@ -57,6 +57,7 @@ The staged plan repairs behavior and shared documentation before extracting reus
 - [Implementation tracking](implementation.md)
 - [First-fixes second opinion](sol-first-fixes.md)
 - [Capture second opinion](sol-capture-fixes.md)
+- [Request admission second opinion](sol-admission-follow-up.md)
 - [Release validation second opinion](sol-release-validation.md)
 - [Worker runtime second opinion](sol-runtime-split.md)
 - [Retired parser coverage map](retired-parser-coverage.md)
