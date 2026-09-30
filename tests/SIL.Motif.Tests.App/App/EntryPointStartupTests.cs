@@ -181,6 +181,8 @@ public sealed class EntryPointStartupTests
         Assert.Contains("SIL.Motif.App.runtimeconfig.json", release, StringComparison.Ordinal);
         Assert.Contains("motif.runtimeconfig.json", release, StringComparison.Ordinal);
         Assert.Contains("SIL.Motif.Worker.runtimeconfig.json", release, StringComparison.Ordinal);
+        Assert.Contains("$workerPublishDirectory $workerBuildDirectory", release, StringComparison.Ordinal);
+        Assert.Contains("-p:MotifBinRoot=$BuildOutputRoot", release, StringComparison.Ordinal);
         var unixSmoke = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-smoke-unix.sh"));
         Assert.Contains("cmp -- \"$staged_worker_runtime_config\" \"$worker_runtime_config\"", unixSmoke, StringComparison.Ordinal);
     }

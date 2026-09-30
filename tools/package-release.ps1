@@ -180,7 +180,8 @@ function Assert-SafeStagePath {
 function Publish-MotifProject {
     param(
         [string] $ProjectPath,
-        [string] $Destination
+        [string] $Destination,
+        [string] $BuildOutputRoot
     )
 
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
@@ -195,6 +196,9 @@ function Publish-MotifProject {
         '-p:MotifPortablePackage=true',
         '--nologo'
     )
+    if (-not [string]::IsNullOrEmpty($BuildOutputRoot)) {
+        $arguments += "-p:MotifBinRoot=$BuildOutputRoot"
+    }
     & dotnet publish @arguments
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet publish failed for $ProjectPath."
@@ -248,7 +252,9 @@ try {
     $workerPublishDirectory = Join-Path $intermediateRoot 'worker-publish'
     Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $stage
     Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $stage
-    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishDirectory
+    # App and CLI leave a framework-dependent Worker runtimeconfig in the shared bin that a publish there keeps.
+    $workerBuildDirectory = (Join-Path $intermediateRoot 'worker-build') + [System.IO.Path]::DirectorySeparatorChar
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishDirectory $workerBuildDirectory
 
     $workerAssets = @(
         $workerEntryPointName,
