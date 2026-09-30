@@ -184,7 +184,7 @@ Remove-Item -LiteralPath $uninstallTracePath -Force -ErrorAction SilentlyContinu
 $env:MOTIF_PACKAGE_UNINSTALL_TRACE = $uninstallTracePath
 $uninstallOutput = & $updateExecutable uninstall --silent 2>&1
 $uninstallExitCode = $LASTEXITCODE
-$uninstallOutputText = [string]::Join([Environment]::NewLine, [string[]] $uninstallOutput)
+$uninstallOutputText = @($uninstallOutput) -join [Environment]::NewLine
 Remove-Item Env:MOTIF_PACKAGE_UNINSTALL_TRACE -ErrorAction SilentlyContinue
 $uninstallTrace = if (Test-Path -LiteralPath $uninstallTracePath -PathType Leaf) {
     [System.IO.File]::ReadAllText($uninstallTracePath).Trim()
