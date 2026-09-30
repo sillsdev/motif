@@ -60,7 +60,10 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         Word("skipped", "skipped", ProjectStanding.NotPresent),
     ];
 
-    private static CompareViewModel Compare(IEnumerable<AssessmentWordResult> rows)
+    private static CompareViewModel Compare(IEnumerable<AssessmentWordResult> rows) => CompareWithClient(rows).Compare;
+
+    private static (CompareViewModel Compare, FakeCommandClient Client) CompareWithClient(
+        IEnumerable<AssessmentWordResult> rows)
     {
         var fake = new FakeCommandClient();
         var changes = new ChangesViewModel(fake);
@@ -69,7 +72,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         words.Load(rows.ToArray());
         var compare = new CompareViewModel { Changes = changes };
         compare.Load(words.AllRows);
-        return compare;
+        return (compare, fake);
     }
 
     [Fact]
@@ -207,16 +210,19 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     [Fact]
     public async Task NoCommandOnTheMatrixOrListsChangesAnOpinion()
     {
-        var compare = Compare(EveryKindOfWord);
+        var (compare, client) = CompareWithClient(EveryKindOfWord);
         var lists = new TextsListsViewModel(compare);
         compare.ClearSelectionCommand.Execute(null);
-        foreach (var word in compare.Words) word.IsChecked = true;
         object?[] parameters = [null, ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.Candidate];
+        var commands = new object[] { compare, lists }.SelectMany(owner => owner.GetType().GetProperties()
+                .Where(property => typeof(ICommand).IsAssignableFrom(property.PropertyType))
+                .Select(property => (ICommand)property.GetValue(owner)!))
+            .ToArray();
 
-        foreach (var owner in new object[] { compare, lists })
-            foreach (var command in owner.GetType().GetProperties()
-                         .Where(property => typeof(ICommand).IsAssignableFrom(property.PropertyType))
-                         .Select(property => (ICommand)property.GetValue(owner)!))
+        foreach (var ticked in compare.Words.ToArray())
+        {
+            foreach (var word in compare.Words) word.IsChecked = ReferenceEquals(word, ticked);
+            foreach (var command in commands)
                 foreach (var parameter in parameters)
                 {
                     bool can;
@@ -226,10 +232,12 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
                     if (command is IAsyncRelayCommand asyncCommand) await asyncCommand.ExecuteAsync(parameter);
                     else command.Execute(parameter);
                 }
+        }
 
+        Assert.DoesNotContain(client.PendingPutRequests, request =>
+            request.Change.Kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate);
         Assert.DoesNotContain(compare.Changes.Items, change =>
             change.Kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate);
-        Assert.Null(typeof(CompareWordViewModel).GetProperty("SelectedReading"));
     }
 
     [Theory]
