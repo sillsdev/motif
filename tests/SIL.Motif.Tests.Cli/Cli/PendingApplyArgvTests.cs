@@ -244,7 +244,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var worker = StartWorker(runner.Options with { IdleTimeout = TimeSpan.FromMinutes(5) });
         try
         {
-            await WaitForPendingProposalAnchorAsync(path);
+            await WaitForPendingProposalAnchorAsync(path, added.Value.DraftId!, process);
             try
             {
                 await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
@@ -299,19 +299,29 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         return Process.Start(start)!;
     }
 
-    private static async Task WaitForPendingProposalAnchorAsync(string projectPath)
+    private static async Task WaitForPendingProposalAnchorAsync(
+        string projectPath, string proposalId, Process process)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(15);
-        while (DateTime.UtcNow < deadline)
+        while (!PendingProposalHasAnchor(projectPath, proposalId))
         {
-            using var database = ProjectMotifDatabase.Open(projectPath);
-            using var connection = database.OpenConnection();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT AnchorJson FROM Proposals ORDER BY rowid DESC LIMIT 1;";
-            if (command.ExecuteScalar() is string) return;
-            await Task.Delay(20);
+            if (process.HasExited)
+            {
+                if (PendingProposalHasAnchor(projectPath, proposalId)) return;
+                throw new InvalidOperationException(
+                    $"The CLI exited with code {process.ExitCode} before writing the pending Proposal's Dry Run anchor.");
+            }
+            await Task.Delay(100);
         }
-        throw new TimeoutException("The CLI did not bind its completed Dry Run to the pending Proposal.");
+    }
+
+    private static bool PendingProposalHasAnchor(string projectPath, string proposalId)
+    {
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT AnchorJson FROM Proposals WHERE ProposalId = $proposalId;";
+        command.Parameters.AddWithValue("$proposalId", proposalId);
+        return command.ExecuteScalar() is string { Length: > 0 };
     }
 
     // The save-boundary contract has FieldWorks release the project before it calls the verb.
