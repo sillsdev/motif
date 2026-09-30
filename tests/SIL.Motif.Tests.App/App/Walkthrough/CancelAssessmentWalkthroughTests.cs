@@ -14,29 +14,32 @@ public sealed class CancelAssessmentWalkthroughTests
     public void CancellingAssessmentLeavesNoInvocationAndAllowsARerun()
     {
         using var project = new ConformanceProject();
+        var parserPath = PanglossProcesses.CopyExecutable(project.ManagedRoot);
         var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
-            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
             WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);
 
-            var existing = PanglossProcesses.Snapshot();
+            var existing = PanglossProcesses.Snapshot(parserPath);
             var appeared = new HashSet<int>();
             WalkthroughSteps.StartSlowAssessment(walkthrough, deadline);
-            PanglossProcesses.TrackNew(existing, appeared);
+            walkthrough.WaitUntil(() =>
+            {
+                PanglossProcesses.TrackNew(parserPath, existing, appeared);
+                return appeared.Count > 0;
+            }, WalkthroughSteps.Remaining(deadline), "the isolated PanGloss process did not start");
 
             walkthrough.Click("Cancel the running Assessment");
             walkthrough.WaitUntil(() =>
             {
-                PanglossProcesses.TrackNew(existing, appeared);
                 return walkthrough.Workspace.Assess.State == RunState.Cancelled;
             }, WalkthroughSteps.Remaining(deadline), "the Assessment cancellation did not complete");
-            walkthrough.WaitUntil(() =>
-            {
-                PanglossProcesses.TrackNew(existing, appeared);
-                return !PanglossProcesses.AnyAlive(appeared);
-            }, TimeSpan.FromSeconds(10), "the cancelled Assessment left a PanGloss process alive");
+            Assert.NotEmpty(appeared);
+            Assert.False(PanglossProcesses.AnyAlive(parserPath, appeared),
+                "the cancelled Assessment left its PanGloss process alive");
 
             Assert.Equal("assessment.cancelled", walkthrough.Workspace.Assess.Refusal?.Code);
             Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);

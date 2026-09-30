@@ -33,5 +33,6 @@ internal static class WalkthroughWindowReopen
                 !ReferenceEquals(before, command.ExecutionTask) && command.ExecutionTask is { IsCompleted: true },
             TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
         Assert.NotSame(before, command.ExecutionTask);
+        Assert.Equal(projectPath, walkthrough.Workspace.Context.ProjectPath);
     }
 }

@@ -132,10 +132,22 @@ public sealed class PristineProjectFixture : IDisposable
     {
         Directory.CreateDirectory(destDir);
         foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            if (IsMotifStoreArtifact(file)) continue;
             File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), overwrite: true);
+        }
 
         foreach (var subDir in Directory.GetDirectories(sourceDir))
             CopyDirectory(subDir, Path.Combine(destDir, Path.GetFileName(subDir)));
+    }
+
+    private static bool IsMotifStoreArtifact(string path)
+    {
+        var name = Path.GetFileName(path);
+        var store = NewLangProjFixture.ProjectName + ".motif.db";
+        return name.Equals(store, StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith(store + "-", StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith(store + ".", StringComparison.OrdinalIgnoreCase);
     }
 
     public void Dispose()

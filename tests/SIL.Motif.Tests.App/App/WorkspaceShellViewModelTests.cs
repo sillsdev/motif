@@ -321,31 +321,50 @@ public sealed class WorkspaceShellViewModelTests
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         workspace.Selection.Texts[0].IsChecked = true;
 
-        var allowParsing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var parsingReported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var outcome = new TaskCompletionSource<CommandOutcome<AssessCommandResponse>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        fake.OnAssess(async (_, progress, _) =>
+        var allowProgress = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var parsingDisplayed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancelledRefusal = new Refusal(
+            "assessment.cancelled", FailureReason.Cancelled, "The Assessment run was cancelled.");
+        fake.OnAssess(async (_, progress, cancellationToken) =>
         {
-            progress.Report(new AssessmentProgress(AssessmentStage.Capturing, 0, null, "Starting..."));
-            await allowParsing.Task;
+            await allowProgress.Task.WaitAsync(cancellationToken);
             progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing..."));
-            parsingReported.SetResult();
-            return await outcome.Task;
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return CommandOutcome<AssessCommandResponse>.Refused(cancelledRefusal);
+            }
+            throw new InvalidOperationException("The held Assessment completed before it was cancelled.");
         });
+
+        workspace.Assess.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(AssessViewModel.Progress) &&
+                workspace.Assess.Progress?.Stage == AssessmentStage.Parsing)
+                parsingDisplayed.TrySetResult();
+        };
 
         var running = workspace.Assess.RunCommand.ExecuteAsync(null);
         Assert.True(workspace.Assess.IsActive);
+        Assert.Null(workspace.Assess.Progress);
         Assert.True(workspace.ConfigureCommand.CanExecute(null));
         workspace.ConfigureCommand.Execute(null);
         Assert.True(workspace.Context.Setup!.IsOpen);
 
-        allowParsing.SetResult();
-        await parsingReported.Task;
+        allowProgress.SetResult();
+        await parsingDisplayed.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
+        Assert.Equal(AssessmentStage.Parsing, workspace.Assess.Progress?.Stage);
         Assert.True(workspace.Context.Setup.IsOpen);
-        outcome.SetResult(CommandOutcome<AssessCommandResponse>.Success(NewAssessResponse("run")));
+        workspace.Assess.CancelCommand.Execute(null);
         await running;
+        Assert.Equal(RunState.Cancelled, workspace.Assess.State);
+        Assert.True(workspace.Context.Setup.IsOpen);
+        await workspace.Context.Setup.SkipCommand.ExecuteAsync(null);
+        Assert.False(workspace.Context.Setup.IsOpen);
     }
 
     [Fact]
@@ -457,6 +476,7 @@ public sealed class WorkspaceShellViewModelTests
         projectPicker.PathToReturn = ProjectPath;
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
 
+        Assert.Equal("Capture a Baseline to choose Texts.", workspace.Selection.TextsEmptyMessage);
         Assert.False(workspace.ConfigureCommand.CanExecute(null));
         Assert.Equal(WorkspaceShellViewModel.ConfigureNeedsBaselineText, workspace.ConfigureDetailText);
 
@@ -467,6 +487,11 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.True(workspace.ConfigureCommand.CanExecute(null));
         Assert.Equal("Texts, added words and limits", workspace.ConfigureDetailText);
+        var page = workspace.CurrentPage;
+        workspace.ConfigureCommand.Execute(null);
+        Assert.True(workspace.Context.Setup!.IsOpen);
+        Assert.Equal(0, workspace.Context.Setup.Step);
+        Assert.Equal(page, workspace.CurrentPage);
     }
 
     [Fact]

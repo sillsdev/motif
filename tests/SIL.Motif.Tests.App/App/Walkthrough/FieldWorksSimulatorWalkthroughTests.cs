@@ -225,7 +225,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
         var parser = FakeParser.Copy(project.ManagedRoot);
         var prompt = "See what applying does to the numbers.";
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parser);
@@ -249,6 +249,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.WaitUntil(
                 () => !review.IsMeasuring && review.NumbersText != prompt,
                 StepFor(deadline), "the pending change was not checked");
+            WaitForMeasurementDisplay(walkthrough, review, deadline);
             Assert.Null(review.MeasurementRefusal);
             Assert.False(applyButton.IsEffectivelyEnabled);
             Assert.False(string.IsNullOrWhiteSpace(review.ApplyBlockReason));
@@ -258,9 +259,15 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.Window.Show();
             walkthrough.Window.Activate();
             Dispatcher.UIThread.RunJobs();
+            var freshnessCheck = walkthrough.Workspace.CheckFreshnessAsync();
+            var concurrentFreshnessCheck = walkthrough.Workspace.CheckFreshnessAsync();
+            var checksShareTask = ReferenceEquals(freshnessCheck, concurrentFreshnessCheck);
+            await Task.WhenAll(freshnessCheck, concurrentFreshnessCheck);
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.Baseline.FieldWorksHeldProject,
                 StepFor(deadline), "the window did not clear the held-project status after release");
+            WaitForMeasurementDisplay(walkthrough, review, deadline);
+            Assert.True(checksShareTask, "Concurrent activation checks should share one freshness read.");
             walkthrough.Click("Check what applying does to the numbers");
             Assert.True(review.IsMeasuring);
             walkthrough.WaitUntil(
@@ -276,10 +283,22 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             var receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
                 .Single(text => text.Text == review.ReceiptText);
             Assert.True(receipt.IsEffectivelyVisible);
-            return Task.CompletedTask;
         }, TimeSpan.FromSeconds(60));
     }
 
     private static TimeSpan StepFor(long deadline) => TimeSpan.FromTicks(Math.Min(
         WalkthroughSteps.Remaining(deadline).Ticks, TimeSpan.FromSeconds(30).Ticks));
+
+    private static void WaitForMeasurementDisplay(
+        WalkthroughWindow walkthrough, ReviewPageModel review, long deadline)
+    {
+        var numbers = walkthrough.Named<CopyableTextBlock>("ReviewNumbersText");
+        var progress = walkthrough.Named<CopyableTextBlock>("ReviewMeasurementProgress");
+        walkthrough.WaitUntil(
+            () => !review.IsMeasuring && numbers.Text == review.NumbersText &&
+                progress.IsEffectivelyVisible == review.IsMeasuring,
+            StepFor(deadline), "Review's displayed measurement state did not catch up with its model");
+        walkthrough.Window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+    }
 }

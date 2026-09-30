@@ -16,48 +16,47 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
     {
         using var firstProject = new ConformanceProject();
         using var secondProject = new WalkthroughProject(pristine);
+        var parserPath = PanglossProcesses.CopyExecutable(firstProject.ManagedRoot);
         var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             using var walkthrough = new WalkthroughWindow(
-                firstProject.ManagedRoot, firstProject.FwDataPath);
+                firstProject.ManagedRoot, firstProject.FwDataPath, parserPath: parserPath);
             WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);
 
-            var existing = PanglossProcesses.Snapshot();
+            var existing = PanglossProcesses.Snapshot(parserPath);
             var appeared = new HashSet<int>();
             WalkthroughSteps.StartSlowAssessment(walkthrough, deadline);
-            PanglossProcesses.TrackNew(existing, appeared);
+            walkthrough.WaitUntil(() =>
+            {
+                PanglossProcesses.TrackNew(parserPath, existing, appeared);
+                return appeared.Count > 0;
+            }, WalkthroughSteps.Remaining(deadline), "the isolated PanGloss process did not start");
 
             Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
 
             walkthrough.Click("Cancel the running Assessment");
             walkthrough.WaitUntil(() =>
             {
-                PanglossProcesses.TrackNew(existing, appeared);
                 return walkthrough.Workspace.Assess.State == RunState.Cancelled;
             }, WalkthroughSteps.Remaining(deadline), "the first Assessment did not cancel");
+            Assert.NotEmpty(appeared);
+            Assert.False(PanglossProcesses.AnyAlive(parserPath, appeared),
+                "the first Assessment's PanGloss process survived cancellation");
             Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
 
             walkthrough.ProjectPath = secondProject.FwDataPath;
             walkthrough.ChooseNewProject();
             walkthrough.WaitUntil(() =>
-            {
-                PanglossProcesses.TrackNew(existing, appeared);
-                return walkthrough.Workspace.Assess.State == RunState.Idle &&
+                walkthrough.Workspace.Assess.State == RunState.Idle &&
                     walkthrough.Workspace.Assess.Result is null &&
                     walkthrough.Workspace.Assess.Refusal is null &&
                     !walkthrough.Workspace.Context.HasEvidence &&
                     walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
-                    walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.";
-            }, WalkthroughSteps.Remaining(deadline), "browsing to the second project did not clear the first run");
+                    walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
+                WalkthroughSteps.Remaining(deadline), "browsing to the second project did not clear the first run");
             walkthrough.SkipSetup();
-            walkthrough.WaitUntil(() =>
-            {
-                PanglossProcesses.TrackNew(existing, appeared);
-                return !PanglossProcesses.AnyAlive(appeared);
-            }, TimeSpan.FromSeconds(10), "switching projects left the first PanGloss process alive");
-
             Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
             Assert.Equal("Capture a Baseline to choose Texts.",
                 walkthrough.Workspace.Selection.TextsEmptyMessage);

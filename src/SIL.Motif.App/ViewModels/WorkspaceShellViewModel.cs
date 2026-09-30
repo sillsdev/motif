@@ -38,6 +38,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private readonly ICommandClient _commandClient;
     private string? _storeDeletionProject;
     private Task _reloadAfterRefresh = Task.CompletedTask;
+    private Task? _freshnessCheckTask;
     private bool _isRefreshing;
     private bool _refreshCancelled;
     private bool _refreshed;
@@ -318,9 +319,15 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// evidence again, so a save FieldWorks made, or an Assessment recorded, while the window was elsewhere shows at
     /// once. Reads only; nothing reruns.
     /// </summary>
-    public async Task CheckFreshnessAsync(CancellationToken cancellationToken = default)
+    public Task CheckFreshnessAsync(CancellationToken cancellationToken = default)
     {
-        if (!HasProject || _isRefreshing) return;
+        if (_freshnessCheckTask is { IsCompleted: false }) return _freshnessCheckTask;
+        if (!HasProject || _isRefreshing) return Task.CompletedTask;
+        return _freshnessCheckTask = ReadFreshnessAsync(cancellationToken);
+    }
+
+    private async Task ReadFreshnessAsync(CancellationToken cancellationToken)
+    {
         await Baseline.CheckAsync(cancellationToken).ConfigureAwait(true);
         await Context.Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
         if (Context.ProjectPath is { } projectPath && ProjectReconciliationMarker.Exists(projectPath))

@@ -23,6 +23,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -46,9 +47,9 @@ public sealed class MainWindowSmokeTests
     public MainWindowSmokeTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
-    public void F1OpensHelpForTheCurrentPage()
+    public async Task F1OpensHelpForTheCurrentPage()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
             workspace.CurrentPage = WorkspacePage.Timing;
@@ -67,8 +68,16 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Timing shows where recorded parse time went",
                     helpView.FindControl<TextBlock>("HelpDescription")?.Text);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                var renderedTextProjection = markdownRenderer.RenderedTextProjection ??
-                    throw new Xunit.Sdk.XunitException("The help text was not rendered.");
+                var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                markdownRenderer.PropertyChanged += (_, changed) =>
+                {
+                    if (changed.Property == MarkdownRenderer.RenderedTextProjectionProperty)
+                        projectionCommitted.TrySetResult();
+                };
+                if (markdownRenderer.RenderedTextProjection is not null) projectionCommitted.TrySetResult();
+                await projectionCommitted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                var renderedTextProjection = Assert.IsType<MarkdownTextProjection>(
+                    markdownRenderer.RenderedTextProjection);
                 Assert.Contains("More time does not fix a search that reached its step limit",
                     string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString())));
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
@@ -79,7 +88,7 @@ public sealed class MainWindowSmokeTests
             {
                 window.Close();
             }
-        });
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -325,6 +334,20 @@ public sealed class MainWindowSmokeTests
                 Assert.False(
                     string.IsNullOrWhiteSpace(EffectiveAccessibleName(control)),
                     $"{control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name.");
+
+            workspace.Context.ProjectPath = @"C:\projects\one.fwdata";
+            workspace.CurrentPage = WorkspacePage.Timing;
+            var pickedWords = Assert.Single(window.GetLogicalDescendants().OfType<TextBox>(), input =>
+                AutomationProperties.GetName(input) == "Words picked by hand");
+            pickedWords.Text = "motifa";
+            window.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            var pickWords = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                AutomationProperties.GetName(button) == "Pick words");
+            Assert.True(pickWords.IsEffectivelyVisible);
+            Assert.True(pickWords.IsEffectivelyEnabled);
         });
     }
 
@@ -383,6 +406,7 @@ public sealed class MainWindowSmokeTests
         _avalonia.Invoke(() =>
         {
             var (workspace, window, _) = NewComposedWindow();
+            var fake = (FakeCommandClient)workspace.Context.Commands;
             try
             {
                 using var statisticsDocument = JsonDocument.Parse(
@@ -417,24 +441,39 @@ public sealed class MainWindowSmokeTests
                 RaiseLeftPointerPress(statisticsCell, window);
                 Assert.Same(workspace.PageModel<TimingPageModel>().Statistics.Rows[0], statistics.SelectedItem);
 
-                workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Load([
-                    new GrammarWarning(
-                        GrammarDiagnosticLevel.Warning, "Entry",
-                        [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Text)],
-                        [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)],
-                        "warning: lex entry: dropped")
-                    {
-                        Group = "Dropped item",
-                        Code = "fwdata.dropped-item",
-                        Guidance = "Restore the missing item in FieldWorks.",
-                    }]);
-                workspace.PageModel<WarningsPageModel>().Grammar.HasBaseline = true;
-                workspace.PageModel<WarningsPageModel>().Grammar.HasChecked = true;
+                var warning = new GrammarWarning(
+                    GrammarDiagnosticLevel.Warning, "Entry",
+                    [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Object,
+                        ObjectId: "entry-1", FieldWorksKind: "LexEntry",
+                        FieldWorksLink: "silfw://motif.test/project/entry-1")],
+                    [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)],
+                    "warning: lex entry: dropped")
+                {
+                    Group = "Dropped item",
+                    Code = "fwdata.dropped-item",
+                    Guidance = "Restore the missing item in FieldWorks.",
+                };
+                const string projectPath = @"C:\projects\aweti.fwdata";
+                fake.CheckGrammarCompletesWith(new GrammarCheckResponse([warning], HasBaseline: true));
+                var grammarModel = workspace.PageModel<WarningsPageModel>().Grammar;
+                grammarModel.LoadStored(projectPath, new GrammarCheckResponse([], HasBaseline: true));
                 workspace.CurrentPage = WorkspacePage.Warnings;
-                workspace.PageModel<WarningsPageModel>().Grammar.Warnings.SelectGroupCommand.Execute(
-                    Assert.Single(workspace.PageModel<WarningsPageModel>().Grammar.Warnings.WarningGroups));
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var checkAgain = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Check the grammar again" &&
+                    button.IsEffectivelyVisible);
+                Assert.True(checkAgain.IsEffectivelyEnabled);
+                ClickButton(window, checkAgain);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(projectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
+                grammarModel.Warnings.SelectGroupCommand.Execute(
+                    Assert.Single(grammarModel.Warnings.WarningGroups));
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
                 Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
@@ -443,6 +482,8 @@ public sealed class MainWindowSmokeTests
                 var grammar = window.GetVisualDescendants().OfType<DataGrid>()
                     .Single(grid => AutomationProperties.GetName(grid) == "Grammar warnings");
                 AssertSelectableCells(grammar);
+                Assert.Contains(grammar.GetVisualDescendants().OfType<HyperlinkButton>(), link =>
+                    link.Classes.Contains("warningObjectLink") && link.IsEffectivelyVisible);
             }
             finally
             {
@@ -860,8 +901,12 @@ public sealed class MainWindowSmokeTests
                 var page = workspace.PageModel<TextsPageModel>();
                 var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
                 var textId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+                var secondTextId = Guid.Parse("22222222-2222-2222-2222-222222222222");
                 var stored = new ProjectAnalysis("analysis-1",
                     [new ParserReadingMorph("motif-", "book", "n", null, false, null)]);
+                fake.ListTextsCompletesWith(new TextInventoryResponse(
+                    [new TextChoiceSummary(textId, "Alpha"), new TextChoiceSummary(secondTextId, "Beta")],
+                    HasBaseline: true));
                 fake.ListTextWordsCompletesWith(new TextWordsResponse(
                     [new TextWord("kitabu", null,
                         [new WordOccurrence(textId, "Alpha", 1, "kitabu.", "approved", stored)], [stored], [])],
@@ -869,6 +914,7 @@ public sealed class MainWindowSmokeTests
                         [new TextLine(1, [new TextToken("kitabu", "kitabu", null, "approved")
                             { Analysis = stored }])])],
                     HasBaseline: true));
+                await workspace.Selection.SetProjectAsync(@"C:\projects\one.fwdata");
                 await page.Words.SetProjectAsync(@"C:\projects\one.fwdata");
                 workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
                 window.Show();
@@ -882,6 +928,13 @@ public sealed class MainWindowSmokeTests
                 Assert.True(readText.IsEffectivelyVisible);
                 Assert.True(wordList.IsEffectivelyVisible);
                 Assert.Equal(AnalyzeTextsView.WordList, wordList.CommandParameter);
+                var textChooser = Assert.Single(window.GetLogicalDescendants().OfType<ListBox>(), list =>
+                    AutomationProperties.GetName(list) == "Texts to analyze");
+                var secondText = Assert.Single(textChooser.GetLogicalDescendants().OfType<CheckBox>(), checkBox =>
+                    Equals(checkBox.Content, "Beta"));
+                HeadlessClick.Click(window, secondText, "Beta");
+                Assert.True(secondText.IsChecked);
+                Assert.Contains(secondTextId, workspace.Selection.ChosenTextIds);
                 var pageView = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
                 var readerHost = pageView.FindControl<ContentControl>("AnalyzeReaderHost");
                 var wordListHost = pageView.FindControl<ContentControl>("WordListHost");
@@ -945,13 +998,25 @@ public sealed class MainWindowSmokeTests
                 };
                 var page = workspace.PageModel<TextsPageModel>();
                 page.TextsLists.SelectListCommand.Execute(page.TextsLists.Lists.Single(list =>
-                    list.Name == "Approved, not parsed"));
+                    list.Name == "Approved, parsed differently"));
                 workspace.Context.OpenTexts(TextsTab.Lists);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
+                var namedLists = panel.GetLogicalDescendants().OfType<Button>()
+                    .Where(button => AutomationProperties.GetName(button)?.StartsWith(
+                        "Open the ", StringComparison.Ordinal) == true)
+                    .ToArray();
+                Assert.Equal(7, namedLists.Length);
+                var parsedDifferently = Assert.Single(namedLists, button =>
+                    AutomationProperties.GetName(button) == "Open the Approved, parsed differently word list");
+                ClickButton(window, parsedDifferently);
+                Assert.Equal("Approved, parsed differently", page.TextsLists.SelectedList?.Name);
+                Assert.True(Assert.Single(panel.GetLogicalDescendants().OfType<ListBox>(), list =>
+                    AutomationProperties.GetName(list) == "Words in the selected list").IsEffectivelyVisible);
+
                 var listHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "AI Handoff for the whole selected list");
                 var checkedHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
@@ -961,6 +1026,14 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal("AI Handoff", checkedHandoff.Content);
                 Assert.Same(page.TextsLists.HandOffListCommand, listHandoff.Command);
                 Assert.Same(page.TextsLists.HandOffCheckedWordsCommand, checkedHandoff.Command);
+
+                var changedTab = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "What changed tab");
+                ClickButton(window, changedTab);
+                window.UpdateLayout();
+                Assert.Equal(TextsTab.WhatChanged, page.Tab);
+                var pageView = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                Assert.True(pageView.FindControl<ContentControl>("DifferenceHost")!.IsEffectivelyVisible);
             }
             finally
             {
