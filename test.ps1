@@ -18,10 +18,10 @@
   that remains is the `pangloss` executable, a separate Rust build gated by `RealParserFactAttribute`
   -- those tests skip, rather than fail, when it is not built.
 
-  Each test project runs in one or more separate processes, with concurrent processes capped at a fifth of the
+  Each test project runs in one or more separate processes, with concurrent processes capped at a sixth of the
   available processor count (at least two). Test processes start CLI, worker and parser child processes, and
   the cap is sized so that four suites running side by side in separate worktrees still share the machine
-  without oversubscribing it; at half the processors each, four suites spent a third more CPU and took longer. Classes that open a LibLCM cache share a serialized xUnit collection within their
+  without oversubscribing it: on 20 processors, four suites at 10 processes each took 326 s, at 3 each 276-300 s. Classes that open a LibLCM cache share a serialized xUnit collection within their
   assembly, because two caches opening in one process race; a project that declares
   <MotifTestShards>N</MotifTestShards> is split by test class into N processes, which cannot race, so its
   LibLCM tests run N at a time. Classes are dealt to shards by the seconds tests/test-shard-weights.json records
@@ -145,7 +145,7 @@ $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
 $availableProcessors = [Environment]::ProcessorCount
 # Sized so four suites side by side do not oversubscribe the machine; see the help text.
-$projectConcurrency = [Math]::Max(2, [int][Math]::Floor($availableProcessors / 5))
+$projectConcurrency = [Math]::Max(2, [int][Math]::Floor($availableProcessors / 6))
 # The biggest projects start first, so the throttle does not leave one long shard running alone at the end.
 $testRuns = @(foreach ($project in @($testProjects | Sort-Object -Property Shards -Descending)) {
     for ($index = 0; $index -lt $project.Shards; $index++) {
