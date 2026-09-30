@@ -4,6 +4,8 @@ using Avalonia.LogicalTree;
 using SIL.LCModel;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -17,6 +19,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
     public void ApplyingFromReviewShowsTheReceiptClearsTheBadgeAndStalesTheNumbersUntilRefresh()
     {
         using var project = new WalkthroughProject(pristine);
+        var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var change = PendingChangeFixture.AddIncorrectSpelling(
             project.FwDataPath, project.ManagedRoot, "apply-read-back-word");
         var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
@@ -24,7 +27,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             using var walkthrough = new WalkthroughWindow(
-                project.ManagedRoot, project.FwDataPath, parserPath: FakeParser.ExecutablePath);
+                project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
             walkthrough.Show();
             walkthrough.ChooseNewProject();
             walkthrough.WaitUntil(
@@ -33,10 +36,34 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                     walkthrough.Workspace.Context.Setup?.IsOpen == true &&
                     walkthrough.Workspace.Context.Changes.Items.Count == 1,
                 WalkthroughSteps.Remaining(deadline), "the prepared project did not open with its pending change");
-            walkthrough.SkipSetup();
 
-            WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
+            SetupWalkthroughActions.FinishFirstRun(
+                walkthrough, SeededProject.TextTitle, StepCap.DefaultSteps.ToString(),
+                WalkthroughSteps.Remaining(deadline));
+            walkthrough.SetFakeParserBehavior(new
+            {
+                words = new[]
+                {
+                    new { word = SeededProject.AnalysedWordForm, outcome = "complete", signature = "before-refresh" },
+                },
+            });
+            var batchesBeforeManualAssessment = FakeParser.Invocations(parserPath).Count(command => command == "batch");
+            walkthrough.TypePastedWords(SeededProject.AnalysedWordForm);
+            walkthrough.Click("Run the Assessment");
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Completed &&
+                    walkthrough.Workspace.Context.EvidencePublication.IsCompleted &&
+                    FakeParser.Invocations(parserPath).Count(command => command == "batch") > batchesBeforeManualAssessment,
+                WalkthroughSteps.Remaining(deadline), "the initial Assessment did not publish its fake measurement");
             Assert.True(walkthrough.Workspace.Context.Evidence.HasAssessment);
+            var beforeRefreshResult = Assert.IsType<AssessCommandResponse>(walkthrough.Workspace.Assess.Result);
+            var beforeRefreshWord = Assert.Single(beforeRefreshResult.Words,
+                word => word.Word == SeededProject.AnalysedWordForm);
+            Assert.Equal("before-refresh", beforeRefreshWord.RawSignature);
+            var beforeRefreshToken = Assert.IsType<SIL.Motif.Contract.Baselines.BaselineToken>(
+                walkthrough.Workspace.Baseline.Token);
+            var beforeRefreshSourceLastWrite = Assert.IsType<DateTimeOffset>(
+                walkthrough.Workspace.Baseline.SourceLastWriteUtc);
 
             walkthrough.ShowPage(WorkspacePage.Review);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
@@ -86,14 +113,80 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             Assert.Contains("stale until you refresh", freshnessDetail.Text,
                 StringComparison.Ordinal);
 
+            var batchInvocationsBeforeRefresh = FakeParser.Invocations(parserPath)
+                .Count(command => command == "batch");
             walkthrough.Click("Refresh the project");
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.RefreshCommand.IsRunning &&
-                    walkthrough.Workspace.Assess.State == RunState.Completed &&
-                    !walkthrough.Workspace.Context.Evidence.IsStale,
-                WalkthroughSteps.Remaining(deadline), "Refresh did not replace the stale numbers");
+                    walkthrough.Workspace.Freshness == ProjectFreshness.Refreshed &&
+                    walkthrough.Workspace.Baseline.Token != beforeRefreshToken,
+                WalkthroughSteps.Remaining(deadline), "Refresh did not capture a new Baseline");
+            Assert.Equal(batchInvocationsBeforeRefresh,
+                FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+            Assert.NotEqual(beforeRefreshToken, walkthrough.Workspace.Baseline.Token);
+            var refreshedSourceLastWrite = Assert.IsType<DateTimeOffset>(
+                walkthrough.Workspace.Baseline.SourceLastWriteUtc);
+            Assert.NotEqual(beforeRefreshSourceLastWrite, refreshedSourceLastWrite);
+            Assert.Equal(File.GetLastWriteTimeUtc(project.FwDataPath), refreshedSourceLastWrite.UtcDateTime);
+            Assert.Null(walkthrough.Workspace.Context.Evidence.Assessment);
+            Assert.True(walkthrough.Workspace.Context.NeedsAssessment);
+            Assert.Equal("Refreshed. Parse all words to update the numbers.",
+                walkthrough.Workspace.FreshnessDetail);
             Assert.True(freshnessLabel.IsEffectivelyVisible);
             Assert.Equal("Refreshed", freshnessLabel.Text);
+            Assert.True(freshnessDetail.IsEffectivelyVisible);
+            Assert.Equal(walkthrough.Workspace.FreshnessDetail, freshnessDetail.Text);
+
+            var startedPath = Path.Combine(project.ManagedRoot, "refreshed-parser-started");
+            var releasePath = Path.Combine(project.ManagedRoot, "release-refreshed-parser");
+            walkthrough.SetFakeParserBehavior(new
+            {
+                startedPath,
+                holdUntilPath = releasePath,
+                words = new[]
+                {
+                    new
+                    {
+                        word = SeededProject.AnalysedWordForm,
+                        outcome = "complete",
+                        signature = "after-refresh",
+                    },
+                },
+            });
+            walkthrough.ShowPage(WorkspacePage.Texts);
+            SetupWalkthroughActions.ClickParseAllWordsFromTexts(walkthrough);
+            try
+            {
+                walkthrough.WaitUntil(
+                    () => File.Exists(startedPath) || walkthrough.Workspace.Assess.State is
+                        RunState.Completed or RunState.Refused or RunState.Cancelled,
+                    WalkthroughSteps.Remaining(deadline), "Parse all words did not reach the recording fake");
+                Assert.True(File.Exists(startedPath), "Parse all words completed without starting the fake parser.");
+                var invocationsWhileHeld = FakeParser.Invocations(parserPath);
+                Assert.Equal(batchInvocationsBeforeRefresh + 1,
+                    invocationsWhileHeld.Count(command => command == "batch"));
+                Assert.Equal("batch", invocationsWhileHeld[^1]);
+            }
+            finally
+            {
+                File.WriteAllText(releasePath, string.Empty);
+            }
+
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Completed &&
+                    walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+                WalkthroughSteps.Remaining(deadline), "the explicit Parse all words action did not finish");
+            var afterRefreshResult = Assert.IsType<AssessCommandResponse>(walkthrough.Workspace.Assess.Result);
+            var refreshedWord = Assert.Single(afterRefreshResult.Words,
+                word => word.Word == SeededProject.AnalysedWordForm);
+            Assert.Equal("after-refresh", refreshedWord.RawSignature);
+            Assert.NotEqual(beforeRefreshWord.RawSignature, refreshedWord.RawSignature);
+            Assert.Equal(
+                batchInvocationsBeforeRefresh + 1,
+                FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+            Assert.Equal("after-refresh", Assert.Single(
+                walkthrough.Workspace.Context.Evidence.Words,
+                word => word.Word == SeededProject.AnalysedWordForm).RawSignature);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
