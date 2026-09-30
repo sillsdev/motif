@@ -178,9 +178,10 @@ public sealed partial class OverviewPageModel : PageModel
         $"{FormatPercent(overview.TextCoverage.OccurrenceCoveragePercent)} of their " +
         $"{overview.TextCoverage.TotalOccurrences:N0} occurrences";
 
-    /// <summary>The no-parse, stopped and skipped word counts returned by the Overview command.</summary>
+    /// <summary>The no-parse, stopped and skipped word counts; stopped words hit either a step or a time limit.</summary>
     public string TextCoverageBreakdown => !HasAssessment || Overview is not { } overview ? string.Empty :
-        $"{overview.TextCoverage.NoParseWords:N0} no parse · {overview.TextCoverage.UnknownWords:N0} stopped · " +
+        $"{overview.TextCoverage.NoParseWords:N0} no parse · " +
+        $"{overview.TextCoverage.UnknownWords:N0} stopped (step or time limit) · " +
         $"{overview.TextCoverage.SkippedWords:N0} skipped";
 
     /// <summary>The word outcomes that make up the Selection coverage bar.</summary>
@@ -235,12 +236,14 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>Whether the Overview response contains its stored grammar warning summary.</summary>
     public bool HasWarningSummary => Overview?.Warnings is not null;
 
-    /// <summary>The warning and error counts, or the findings total when the levels were not recorded.</summary>
+    /// <summary>
+    /// Every grammar finding, the number the Warnings page's sidebar badge also shows, then the errors among them.
+    /// </summary>
     public string WarningsCount => Overview?.Warnings switch
     {
-        { WarningCount: { } warnings, ErrorCount: { } errors } =>
-            $"{SpeedText.Count(warnings, "warning", "warnings")} · {SpeedText.Count(errors, "error", "errors")}",
-        { Count: { } count } => SpeedText.Count(count, "finding", "findings"),
+        { Count: { } count, ErrorCount: { } errors } =>
+            $"{SpeedText.Count(count, "warning", "warnings")} · {SpeedText.Count(errors, "error", "errors")}",
+        { Count: { } count } => SpeedText.Count(count, "warning", "warnings"),
         _ => "Not checked yet",
     };
 

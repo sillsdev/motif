@@ -71,7 +71,7 @@
             RowSpacing="{DynamicResource Intent.Space.Group}">
         <Button Grid.Row="0" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTimingCommand}"
                 IsVisible="{Binding ShowTiles}"
-                AutomationProperties.Name="Open Timing">
+                AutomationProperties.Name="Open Speed in Timing">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Speed" DockPanel.Dock="Left" />
@@ -85,7 +85,7 @@
 
         <Button Grid.Row="0" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenTextCoverageCommand}"
                 IsVisible="{Binding ShowTiles}"
-                AutomationProperties.Name="Open Text Coverage in Texts">
+                AutomationProperties.Name="Open Text coverage in Texts">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Text coverage" DockPanel.Dock="Left" />
@@ -94,14 +94,14 @@
             <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageWords}" TextWrapping="Wrap" />
             <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding TextCoverageSegments}" ShowLegend="False"
-                              AutomationProperties.Name="Text Coverage outcomes" />
+                              AutomationProperties.Name="Text coverage outcomes" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding TextCoverageBreakdown}" TextWrapping="Wrap" />
           </StackPanel>
         </Button>
 
         <Button Grid.Row="1" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenAccuracyCommand}"
                 IsVisible="{Binding ShowTiles}"
-                AutomationProperties.Name="Open accuracy in Texts">
+                AutomationProperties.Name="Open Approved analyses kept in the Matrix">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Approved analyses kept" DockPanel.Dock="Left" />
@@ -110,14 +110,14 @@
             <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding AccuracyCaption}" TextWrapping="Wrap" />
             <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding AccuracySegments}" ShowLegend="False"
-                              AutomationProperties.Name="Accuracy outcomes" />
+                              AutomationProperties.Name="Approved analyses kept outcomes" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding AccuracyBreakdown}" TextWrapping="Wrap" />
           </StackPanel>
         </Button>
 
         <Button Grid.Row="1" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenWarningsCommand}"
                 IsVisible="{Binding ShowWarningsTile}"
-                AutomationProperties.Name="Open Warnings">
+                AutomationProperties.Name="Open Grammar warnings in Warnings">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Grammar warnings" DockPanel.Dock="Left" />

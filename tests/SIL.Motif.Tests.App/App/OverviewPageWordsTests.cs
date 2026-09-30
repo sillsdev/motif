@@ -83,12 +83,12 @@ public sealed class OverviewPageWordsTests
 
         Assert.Equal("118 of 142 words parse", page.TextCoverageMain);
         Assert.Equal("83% of the words in your Selection · 88% of their 611 occurrences", page.TextCoverageWords);
-        Assert.Equal("17 no parse · 5 stopped · 2 skipped", page.TextCoverageBreakdown);
+        Assert.Equal("17 no parse · 5 stopped (step or time limit) · 2 skipped", page.TextCoverageBreakdown);
         Assert.Equal("71 of 84 rebuilt", page.AccuracyMain);
         Assert.Equal("The grammar still builds 71 of the 84 words you approved in FieldWorks.", page.AccuracyCaption);
         Assert.Equal("11 approved words lost · 2 not finished · 1 disapproved analysis still built · " +
             "PanGloss confirms 9 of 14 words marked Unknown", page.AccuracyBreakdown);
-        Assert.Equal("20 warnings · 0 errors", page.WarningsCount);
+        Assert.Equal("24 warnings · 0 errors", page.WarningsCount);
         Assert.Equal("4 worth a look", page.WarningsDetails);
         foreach (var text in new[]
                  {
@@ -98,6 +98,58 @@ public sealed class OverviewPageWordsTests
                  })
             foreach (var word in EngineWords)
                 Assert.DoesNotContain(word, text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task TheWarningsTileAndTheSidebarBadgeGiveOneCount()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        var warnings = new WarningsPageModel(context);
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse(
+            [.. Enumerable.Range(0, 20).Select(_ => Finding(GrammarDiagnosticLevel.Warning)),
+             .. Enumerable.Range(0, 4).Select(_ => Finding(GrammarDiagnosticLevel.Information))],
+            HasBaseline: true));
+        fake.OverviewCompletesWith(Populated());
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal("24", warnings.Badge);
+        Assert.StartsWith(warnings.Badge + " warnings", page.WarningsCount, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EachTileIsNamedForScreenReadersByItsVisibleTitle()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContext();
+            var page = new OverviewPageModel(context);
+            fake.OverviewCompletesWith(Populated());
+            await context.OpenProjectAsync(ProjectPath);
+
+            var window = Show(page);
+            try
+            {
+                var tiles = window.GetLogicalDescendants().OfType<Button>()
+                    .Where(button => button.Classes.Contains("overviewTile")).ToArray();
+                Assert.Equal(4, tiles.Length);
+                foreach (var tile in tiles)
+                {
+                    var title = tile.GetLogicalDescendants().OfType<TextBlock>()
+                        .Single(text => text.Classes.Contains("overviewTileTitle")).Text!;
+                    Assert.Contains(title, Avalonia.Automation.AutomationProperties.GetName(tile),
+                        StringComparison.OrdinalIgnoreCase);
+                    foreach (var bar in tile.GetLogicalDescendants().OfType<OutcomeBar>())
+                        Assert.Contains(title, Avalonia.Automation.AutomationProperties.GetName(bar),
+                            StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -191,7 +243,7 @@ public sealed class OverviewPageWordsTests
                     .Where(button => button.Classes.Contains("overviewTile") && button.IsEffectivelyVisible)
                     .OrderBy(button => Grid.GetRow(button)).ThenBy(button => Grid.GetColumn(button))
                     .Select(button => Avalonia.Automation.AutomationProperties.GetName(button)).ToArray();
-                Assert.Equal("Open Timing", tiles[0]);
+                Assert.Equal("Open Speed in Timing", tiles[0]);
             }
             finally
             {
@@ -224,6 +276,13 @@ public sealed class OverviewPageWordsTests
         window.UpdateLayout();
         return window;
     }
+
+    private static GrammarWarning Finding(GrammarDiagnosticLevel level) =>
+        new(level, string.Empty, [], [new GrammarWarningPart("a finding", GrammarWarningPartRole.Text)], "a finding")
+        {
+            Group = "Findings",
+            Code = "test.finding",
+        };
 
     private static (FakeCommandClient Fake, WorkspaceContext Context) NewContext()
     {

@@ -38,7 +38,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Assert.NotNull(result);
             Assert.NotEmpty(result!.Words);
             walkthrough.ShowPage(WorkspacePage.Overview);
-            walkthrough.Click("Open accuracy in Texts");
+            walkthrough.Click("Open Approved analyses kept in the Matrix");
             Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.CurrentPage);
             Assert.Equal(TextsTab.Matrix, walkthrough.Workspace.PageModel<TextsPageModel>().Tab);
             Assert.Contains(walkthrough.Workspace.Assess.Compare.Cells,
@@ -106,7 +106,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Assert.NotEqual(oldScope, timing.ScopeLabel);
 
             walkthrough.ShowPage(WorkspacePage.Overview);
-            walkthrough.Click("Open Text Coverage in Texts");
+            walkthrough.Click("Open Text coverage in Texts");
             var comparedWord = walkthrough.Workspace.Assess.Compare.Words.First().Word;
             walkthrough.ShowTextsTab(TextsTab.Matrix);
             var tick = walkthrough.Find<CheckBox>($"Tick {comparedWord} for a change");

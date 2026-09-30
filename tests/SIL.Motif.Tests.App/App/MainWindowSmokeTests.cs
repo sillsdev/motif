@@ -280,8 +280,8 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
                     .Single(item => item.Text == overviewModel.SpeedMedian).FontWeight);
                 var tiles = window.GetLogicalDescendants().OfType<Button>()
-                    .Where(item => AutomationProperties.GetName(item) is "Open Text Coverage in Texts" or
-                        "Open accuracy in Texts" or "Open Timing" or "Open Warnings");
+                    .Where(item => AutomationProperties.GetName(item) is "Open Text coverage in Texts" or
+                        "Open Approved analyses kept in the Matrix" or "Open Speed in Timing" or "Open Grammar warnings in Warnings");
                 Assert.All(tiles, tile =>
                 {
                     Assert.Equal(Avalonia.Layout.HorizontalAlignment.Stretch, tile.HorizontalAlignment);
