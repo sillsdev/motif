@@ -25,7 +25,7 @@ A green run should prove that the intended tests ran, and bulk actions must leav
 - [x] Remove inherited shard selection from the filtered update-gate child; race readiness against child lifetime and report bounded stdout/stderr. Preserve the actual cross-process gate assertion.
 - [x] Stop iterative Analyze Texts staging at the first failure for add readings, Incorrect spelling and checked-word Accept New Set. Retain earlier staged changes and the typed refusal; atomic batch staging is a separate design, not implied by atomic Apply.
 - [x] Add PanGloss to the website's current Guide outline and a real-content sync regression using actual CLI export in an isolated destination. Do not silently omit unlisted pages.
-- [ ] Align visible/accessibility names, shared Apply summaries and Guide actions with ADR 0049's Approved, Disapproved and Unknown vocabulary.
+- [x] Align visible/accessibility names, shared Apply summaries and Guide actions with ADR 0049's Approved, Disapproved and Unknown vocabulary.
 
 Detailed work: [testing and behavior](2026-09-30-testing-behavior-remediation.md), [documentation authority](2026-09-30-documentation-authority.md).
 
@@ -37,8 +37,8 @@ The same source should supply short explanations, full pages and stable links fo
 - [ ] Add explicit Guide lookup/export to CLI and consume the catalog from the App. Preserve command/glossary lookup and control overrides.
 - [ ] Render site Guide pages, outline labels and home-card summaries from exported metadata and pages. Keep presentation ordering separate, with missing/duplicate/nonexistent-entry checks.
 - [ ] Locate shared authored user content under `src/SIL.Motif.Help/Content`, following the owner's near-code preference; move it once and update every consumer, translation input and test path. Embedded logical names and public routes are contracts to preserve. Add no dual-reader fallback.
-- [ ] Make README orientation/setup links, replace stale current architecture prose with one maintained implementation-oriented overview, and turn CLI API prose into links to shared agent guides/generated reference.
-- [ ] Mark superseded plans as historical. Preserve ADR rationale; amend a decision only when a new decision is recorded.
+- [x] Make README orientation/setup links, replace stale current architecture prose with one maintained implementation-oriented overview, and turn CLI API prose into links to shared agent guides/generated reference.
+- [x] Mark superseded plans as historical. Preserve ADR rationale; amend a decision only when a new decision is recorded.
 
 Detailed work: [documentation authority](2026-09-30-documentation-authority.md).
 

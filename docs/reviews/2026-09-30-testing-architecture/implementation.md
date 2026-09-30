@@ -21,9 +21,9 @@ Each worker has a separate source scope to prevent competing changes. A dispatch
 | fix-gate | review/fix-gate | Filtered child sharding/readiness diagnostics | Reviewed and integrated: `f728cc22` |
 | fix-bulk | review/fix-bulk | Analyze Texts bulk staging failure handling and tests | Reviewed and integrated: `20216741` |
 | fix-site | review/fix-site | Real-content website Guide inventory regression | Reviewed and integrated: `d7820da9` |
-| fix-vocabulary | review/fix-vocabulary | Visible analysis actions, shared summaries, user Guide wording | Running |
+| fix-vocabulary | review/fix-vocabulary | Visible analysis actions, shared summaries, user Guide wording | Reviewed and integrated: `bce211da` |
 | fix-test-ownership | review/fix-test-ownership | Imported grammar benchmark ownership and fake-self-test accounting | Running |
-| fix-doc-orientation | review/fix-doc-orientation | Current architecture authority, README/API orientation and historical plans | Running |
+| fix-doc-orientation | review/fix-doc-orientation | Current architecture authority, README/API orientation and historical plans | Reviewed and integrated: `06518a01` |
 
 ## Following waves
 
@@ -43,3 +43,5 @@ The finished worktrees are reused with fresh workers: `fix-capture` owns evidenc
 A completed change needs evidence from the actual owning boundary. Fixture-only website success and parserless runs do not establish release integration confidence.
 
 Use `./build.ps1` and `./test.ps1`, with shared MSBuild/compiler reuse disabled and Avalonia telemetry opted out. Preserve ordinary parserless local skips; final real-parser validation selects the hash-verified release in `pangloss-release.json`. Site checks use real CLI export and newly generated required media, then build the website. Linux/macOS checks remain CI evidence when no local Unix environment is available.
+
+The vocabulary and orientation workers have been reused as `fix-usage` and `fix-release-docs`. The first three integrated fixes received an independent Sol xhigh review with no actionable findings. The capture review identified loss of morphology payload-to-artifact binding; that change is being corrected before integration. Parent-owned retired-protocol cleanup preserves a current Batch identity integration test and its explicit coverage map.
