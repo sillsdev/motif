@@ -327,6 +327,59 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
+    public void ConfigureEntryExplainsWhyItWaitsForTheFirstBaseline()
+    {
+        var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = FakeComposedWindow.Create(fake);
+            try
+            {
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+                await workspace.SetProjectAsync(@"C:\projects\one.fwdata");
+
+                var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
+                var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
+                flyout.ShowAt(menuButton);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                var flyoutPanel = Assert.IsAssignableFrom<Panel>(flyout.Content);
+                var configure = flyoutPanel.GetLogicalDescendants().OfType<Button>()
+                    .Single(button => AutomationProperties.GetName(button) == "Configure the project");
+                Assert.False(configure.IsEffectivelyEnabled);
+                Assert.Contains(configure.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                    text.Text == WorkspaceShellViewModel.ConfigureNeedsBaselineText && text.IsEffectivelyVisible);
+
+                flyout.Hide();
+                fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+                    new BaselineToken("project-1", "sha256:" + new string('a', 64), "1",
+                        "2026-09-05T00:00:00Z", "sha256:" + new string('b', 64)),
+                    @"C:\projects\one.fwdata", DateTimeOffset.UtcNow, false, false));
+                fake.ListTextsCompletesWith(new TextInventoryResponse(
+                    [new TextChoiceSummary(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Alpha")],
+                    HasBaseline: true));
+                await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+                flyout.ShowAt(menuButton);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                configure = flyoutPanel.GetLogicalDescendants().OfType<Button>()
+                    .Single(button => AutomationProperties.GetName(button) == "Configure the project");
+                Assert.True(configure.IsEffectivelyEnabled);
+                Assert.Contains(configure.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Texts, added words and limits" && text.IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public void ProjectMenuIsDisabledWhileAnAssessmentRunsAndReturnsWhenItEnds()
     {
         _avalonia.Invoke(() =>
