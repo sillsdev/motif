@@ -3,13 +3,12 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Parser;
 
-/// <summary>Skips a test that needs a genuine parser, not merely a parser-shaped process.</summary>
+/// <summary>Runs Motif integration checks against the pinned PanGloss release.</summary>
 /// <remarks>
-/// A fake cannot serve these. They assert that every morpheme the parser names is an object the project
-/// contains, and that the fallback engine agrees on which words parse — both of which a fake would satisfy
-/// by echoing back whatever the test told it, turning the assertion into a tautology. A green test proving
-/// nothing is worse than a skipped one, because it looks like coverage.
-/// Assertions about Motif's own plumbing take a fake instead; see <c>GrammarCoverageProvenanceTests</c>.
+/// These checks exercise Motif's real parser requests and inspect returned identities, analyses, trace data,
+/// and saved evidence. They verify Motif's integration with a released parser; PanGloss owns parser
+/// conformance. A missing local executable keeps the checks skipped. Release validation supplies and verifies
+/// the pinned artifact and checks for skips caused by its absence.
 /// </remarks>
 public sealed class RealParserFactAttribute : FactAttribute
 {

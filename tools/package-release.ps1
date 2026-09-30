@@ -16,38 +16,15 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
+Import-Module (Join-Path $PSScriptRoot 'PanGlossRelease.psm1') -Force
 if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
-    $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
-    if ([OperatingSystem]::IsWindows() -and $architecture -eq [System.Runtime.InteropServices.Architecture]::X64) {
-        $RuntimeIdentifier = 'win-x64'
-    }
-    elseif ([OperatingSystem]::IsLinux() -and $architecture -eq [System.Runtime.InteropServices.Architecture]::X64) {
-        $RuntimeIdentifier = 'linux-x64'
-    }
-    elseif ([OperatingSystem]::IsMacOS() -and $architecture -eq [System.Runtime.InteropServices.Architecture]::Arm64) {
-        $RuntimeIdentifier = 'osx-arm64'
-    }
-    elseif ([OperatingSystem]::IsMacOS() -and $architecture -eq [System.Runtime.InteropServices.Architecture]::X64) {
-        $RuntimeIdentifier = 'osx-x64'
-    }
-    else {
-        throw "Cannot select a supported RID for $([System.Runtime.InteropServices.RuntimeInformation]::OSDescription) $architecture."
-    }
+    $RuntimeIdentifier = Get-CurrentPanGlossRuntimeIdentifier
 }
-
-$parserPin = Get-Content -LiteralPath (Join-Path $repoRoot 'pangloss-release.json') -Raw | ConvertFrom-Json
-$supportedRids = @('win-x64', 'linux-x64', 'osx-arm64', 'osx-x64')
-if ($RuntimeIdentifier -notin $supportedRids) {
-    throw "Unsupported runtime identifier '$RuntimeIdentifier'; expected one of: $($supportedRids -join ', ')."
-}
-$parserAssetProperty = $parserPin.assets.PSObject.Properties[$RuntimeIdentifier]
-if ($null -eq $parserAssetProperty) {
-    throw "no PanGloss build for $RuntimeIdentifier"
-}
-$parserAsset = $parserAssetProperty.Value
-if ($parserAsset.sha256 -notmatch '^[0-9a-f]{64}$') {
-    throw 'pangloss-release.json does not carry a lowercase SHA-256.'
-}
+$pinnedParser = Get-PinnedPanGlossArtifact -RepositoryRoot $repoRoot -RuntimeIdentifier $RuntimeIdentifier -ArtifactPath $ParserArtifact
+$RuntimeIdentifier = $pinnedParser.RuntimeIdentifier
+$parserPin = [pscustomobject]@{ tag = $pinnedParser.Tag; version = $pinnedParser.Version }
+$parserAsset = [pscustomobject]@{ url = $pinnedParser.Url; sha256 = $pinnedParser.Sha256 }
+$parser = Get-Item -LiteralPath $pinnedParser.Path -ErrorAction Stop
 $icuPayloadPath = Join-Path $repoRoot 'tools/icu-payload.json'
 if (-not (Test-Path -LiteralPath $icuPayloadPath -PathType Leaf)) {
     throw "SIL ICU payload declaration is missing: $icuPayloadPath"
@@ -81,29 +58,6 @@ $icuBuildOutputRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot 'bin/Re
 $icuBuildOutputDirectory = [System.IO.Path]::GetFullPath((Join-Path $icuBuildOutputRoot $icuNativeOutputDirectory))
 $parserFileName = if ($targetIsWindows) { 'pangloss.exe' } else { 'pangloss' }
 $entryPointSuffix = if ($targetIsWindows) { '.exe' } else { '' }
-if ([string]::IsNullOrWhiteSpace($ParserArtifact)) {
-    $downloadDirectory = Join-Path $repoRoot ".tmp/pangloss/$($parserPin.tag)/$RuntimeIdentifier"
-    $downloadFileName = [System.IO.Path]::GetFileName([Uri] $parserAsset.url)
-    $ParserArtifact = Join-Path $downloadDirectory $downloadFileName
-    if (-not (Test-Path -LiteralPath $ParserArtifact -PathType Leaf)) {
-        New-Item -ItemType Directory -Path $downloadDirectory -Force | Out-Null
-        Invoke-WebRequest -Uri $parserAsset.url -OutFile $ParserArtifact
-    }
-}
-
-$parser = Get-Item -LiteralPath $ParserArtifact -ErrorAction Stop
-if (-not $parser.PSIsContainer -and $parser.Length -eq 0) {
-    throw "PanGloss artifact is empty: $($parser.FullName)"
-}
-if ($parser.PSIsContainer) {
-    throw "PanGloss artifact is not a file: $($parser.FullName)"
-}
-
-$pinnedParserHash = (Get-FileHash -LiteralPath $parser.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($pinnedParserHash -ne $parserAsset.sha256) {
-    throw "PanGloss artifact is not the pinned $($parserPin.tag) for $RuntimeIdentifier (sha256 $pinnedParserHash): $($parser.FullName)"
-}
-
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repoRoot ".tmp/release-candidate/$ProductVersion/$RuntimeIdentifier"
 }
