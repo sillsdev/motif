@@ -49,7 +49,7 @@ Motif invokes PanGloss through a child process. The Host contains the process ad
 
 ## Help ownership today
 
-The `SIL.Motif.Help` project supplies shared Help data to the CLI and App. Its current authored files remain under the repository's `help/` directory and are embedded with logical resource names beginning `help/`. The documentation-authority plan stages a one-time move to `src/SIL.Motif.Help/Content/`; the move has not happened yet.
+The `SIL.Motif.Help` project supplies shared Help data to the CLI, App and site. Its authored files live under `src/SIL.Motif.Help/Content/` and are embedded with logical resource names beginning `help/`, so runtime readers continue to load `help/<locale>/...`.
 
 ## Normative references
 

@@ -5,63 +5,27 @@ import { convertXmlDocsToMarkdown } from '../../tools/xml-docs-to-markdown.mjs';
 const guideSections = [
 	{
 		title: 'Get started',
-		pages: [
-			['what-is-motif', 'What Motif does'],
-			['install', 'Installing Motif'],
-			['open-a-project', 'Opening a project'],
-			['first-run-setup', 'Choosing what to measure'],
-			['reading-the-overview', 'Reading the Overview'],
-		],
+		pages: ['what-is-motif', 'install', 'open-a-project', 'first-run-setup', 'reading-the-overview'],
 	},
 	{
 		title: 'Pages of the window',
-		pages: [
-			['overview', 'Overview'],
-			['texts', 'Texts: Text Coverage and choosing texts'],
-			['try-a-word', 'Try a Word: parse one word and see why'],
-			['timing', 'Timing: which words are slow to parse'],
-			['warnings', 'Warnings: grammar findings and what to do about them'],
-			['review-changes', 'Review changes: what applying would do'],
-			['ai-handoff', 'AI Handoff: giving an AI agent the context it needs'],
-		],
+		pages: ['overview', 'texts', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	},
 	{
 		title: 'Everyday tasks',
-		pages: [
-			['refresh-numbers', 'Bring the numbers up to date after FieldWorks saves'],
-			['change-an-analysis', 'Change an analysis and keep it pending'],
-			['replace-a-pending-change', 'Replace or remove a pending change'],
-			['apply-to-fieldworks', 'Apply your changes to the FieldWorks project'],
-			['when-a-change-no-longer-fits', 'A change that no longer fits'],
-			['switch-projects', 'Switch between projects'],
-			['cancel-a-long-run', 'Cancel a run that is taking too long'],
-			['when-something-goes-wrong', 'Crash reports, diagnostics, and what to send'],
-		],
+		pages: ['refresh-numbers', 'change-an-analysis', 'replace-a-pending-change', 'apply-to-fieldworks', 'when-a-change-no-longer-fits', 'switch-projects', 'cancel-a-long-run', 'when-something-goes-wrong'],
 	},
 	{
 		title: 'Concepts',
-		pages: [
-			['baseline', 'Baseline'],
-			['assessment', 'Assessment'],
-			['pangloss', 'PanGloss'],
-			['text-coverage', 'Text Coverage'],
-			['default-selection', 'Default Selection'],
-			['drift', 'Drift'],
-			['pending-changes', 'Pending changes'],
-		],
+		pages: ['baseline', 'assessment', 'pangloss', 'text-coverage', 'default-selection', 'drift', 'pending-changes'],
 	},
 	{
 		title: 'For AI agents and scripts',
-		pages: [
-			['agents/start-here', 'Using Motif from an agent'],
-			['agents/output-and-exit-codes', 'The JSON envelope, failure contract and exit codes'],
-			['agents/measure-a-grammar', 'Measure a grammar'],
-			['agents/work-with-jobs', 'Work with jobs'],
-			['agents/handoff', 'Read a Handoff'],
-		],
+		pages: ['agents/start-here', 'agents/output-and-exit-codes', 'agents/measure-a-grammar', 'agents/work-with-jobs', 'agents/handoff'],
 	},
 ];
-const guideOrder = new Map(guideSections.flatMap((section, sectionIndex) => section.pages.map(([slug], pageIndex) => [slug, sectionIndex * 100 + pageIndex])));
+const guideCodes = guideSections.flatMap((section) => section.pages);
+const guideOrder = new Map(guideCodes.map((code, index) => [code, index + 1]));
 const learnSidebarOrder = [
 	'index',
 	'what-the-parser-knows',
@@ -74,7 +38,8 @@ const learnSidebarOrder = [
 	'why-a-grammar-is-slow',
 	'working-with-an-ai-consultant',
 ];
-const learnOrderBySlug = new Map(learnSidebarOrder.map((slug, index) => [slug, index]));
+const learnOrderByCode = new Map(learnSidebarOrder.map((slug, index) => [`learn/${slug}`, index]));
+const homeFeatureCodes = ['overview', 'texts', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'];
 const sampleIdByLearnPrefix = new Map([['turkish', 'synthetic-turkic']]);
 
 function yamlString(value) {
@@ -126,11 +91,50 @@ function commandMetadata(entry) {
 	return lines.length ? `${lines.join('\n\n')}\n\n` : '';
 }
 
-function entryKindPath(entry) {
-	if (entry.kind === 'command') return `reference/commands/${entry.slug}`;
-	if (entry.kind === 'term') return `reference/terms/${entry.slug}`;
-	if (entry.kind === 'ui') return `reference/controls/${entry.slug}`;
-	throw new Error(`Unknown help entry kind: ${entry.kind}`);
+function entryUrlPath(entry) {
+	return new URL(entry.url).pathname;
+}
+
+function entrySiteRoute(entry, siteRoot, locale) {
+	let url;
+	try {
+		url = new URL(entry.url);
+	} catch {
+		throw new Error(`Invalid help entry URL: ${entry.kind} ${entry.code}`);
+	}
+	if (url.origin !== new URL(siteRoot).origin || url.search || url.hash || !url.pathname.endsWith('/')) {
+		throw new Error(`Invalid help entry URL: ${entry.kind} ${entry.code}`);
+	}
+	let route = url.pathname;
+	if (locale !== 'en') {
+		const localePrefix = `/${locale}/`;
+		if (!route.startsWith(localePrefix)) throw new Error(`Help entry URL has the wrong locale: ${entry.kind} ${entry.code}`);
+		route = `/${route.slice(localePrefix.length)}`;
+	}
+	const segment = (value) => {
+		const decoded = value.split('/').map((part) => decodeURIComponent(part));
+		if (decoded.some((part) => !part || part === '.' || part === '..')) {
+			throw new Error(`Invalid help entry route: ${entry.kind} ${entry.code}`);
+		}
+		return decoded.join('/');
+	};
+	let relativePath;
+	if (entry.kind === 'guide') {
+		if (route === '/learn/') relativePath = 'learn/index.md';
+		else if (route.startsWith('/learn/')) relativePath = `learn/${segment(route.slice('/learn/'.length, -1))}.md`;
+		else if (route.startsWith('/guide/')) relativePath = `guide/${segment(route.slice('/guide/'.length, -1))}.md`;
+	} else {
+		const prefix = {
+			command: '/reference/commands/',
+			term: '/reference/terms/',
+			ui: '/reference/controls/',
+		}[entry.kind];
+		if (prefix && route.startsWith(prefix)) {
+			relativePath = `reference/${entry.kind === 'ui' ? 'controls' : `${entry.kind}s`}/${segment(route.slice(prefix.length, -1))}.md`;
+		}
+	}
+	if (!relativePath) throw new Error(`Help entry URL does not match its kind: ${entry.kind} ${entry.code}`);
+	return { relativePath, href: url.pathname };
 }
 
 function publicWalkthroughAsset(id, asset) {
@@ -159,7 +163,7 @@ function resolveHelpTarget(kind, code, entries, walkthroughs) {
 	code = decodeURIComponent(code);
 	const entry = entries.find((candidate) => candidate.kind === entryKind && candidate.code === code);
 	if (!entry) throw new Error(`Unknown ${kind} help link: ${code}`);
-	return `/${entryKindPath(entry)}/`;
+	return entryUrlPath(entry);
 }
 
 function rewriteHelpLinks(markdown, entries, walkthroughs) {
@@ -167,7 +171,7 @@ function rewriteHelpLinks(markdown, entries, walkthroughs) {
 		const target = resolveHelpTarget('shot', code, entries, walkthroughs);
 		return target ? `![${alt}](${target})` : alt;
 	});
-	return withScreenshots.replace(/(!?\[[^\]]*\]\()((?:cmd|term|ui):[^)]+)(\))/g, (_, prefix, target, suffix) => {
+	return withScreenshots.replace(/(!?\[[^\]]*\]\()((?:cmd|term|ui|guide):[^)]+)(\))/g, (_, prefix, target, suffix) => {
 		const colon = target.indexOf(':');
 		const destination = resolveHelpTarget(target.slice(0, colon), target.slice(colon + 1), entries, walkthroughs);
 		return `${prefix}${destination}${suffix}`;
@@ -195,109 +199,106 @@ function rewriteDeveloperLinks(markdown, sourcePath, docsRoot, includedDocs, rep
 	});
 }
 
-async function markdownFiles(root) {
-	const files = [];
-	for (const entry of await readdir(root, { withFileTypes: true })) {
-		const fullPath = path.join(root, entry.name);
-		if (entry.isDirectory()) files.push(...await markdownFiles(fullPath));
-		else if (entry.isFile() && entry.name.endsWith('.md')) files.push(fullPath);
-	}
-	return files.sort();
-}
-
-async function writeHelpPages({ helpRoot, outputRoot, locale, entries, walkthroughs }) {
-	const mdFiles = await markdownFiles(helpRoot).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
-	const sourcePages = new Map();
-	for (const file of mdFiles) {
-		const relative = path.relative(helpRoot, file).replaceAll('\\', '/');
-		sourcePages.set(relative, await readFile(file, 'utf8'));
-	}
-
-	for (const entry of entries) {
-		const route = entryKindPath(entry);
-		const sourcePath = `${entry.kind === 'ui' ? 'ui' : `${entry.kind}s`}/${entry.slug}.md`;
-		const body = stripFrontmatterAndComments(sourcePages.get(sourcePath) ?? (typeof entry.helpPage === 'string' ? entry.helpPage : ''));
-		const title = entry.title || entry.code;
-		const description = entry.description || `Help for ${entry.code}.`;
-		const safeBody = stripDuplicateTitle(rewriteHelpLinks(body, entries, walkthroughs), title);
-		const content = `${frontmatter(title, description)}${entry.kind === 'command' ? commandMetadata(entry) : ''}${safeBody || description}\n`;
-		const localeRoot = locale === 'en' ? outputRoot : path.join(outputRoot, locale);
-		const destination = path.join(localeRoot, route + '.md');
+async function writeHelpPages({ contentRoot, locale, entries, siteRoot, walkthroughs }) {
+	for (const entry of entries.filter((candidate) => candidate.kind !== 'guide')) {
+		if (entry.helpPage !== null && typeof entry.helpPage !== 'string') {
+			throw new Error(`Help entry has invalid Help page content: ${entry.kind} ${entry.code}`);
+		}
+		const route = entrySiteRoute(entry, siteRoot, locale);
+		const markdown = stripFrontmatterAndComments(entry.helpPage ?? '');
+		const body = stripDuplicateTitle(rewriteHelpLinks(markdown, entries, walkthroughs), entry.title);
+		const content = `${frontmatter(entry.title, entry.description)}${entry.kind === 'command' ? commandMetadata(entry) : ''}${body || entry.description}\n`;
+		const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
+		const destination = path.join(localeRoot, ...route.relativePath.split('/'));
 		await mkdir(path.dirname(destination), { recursive: true });
 		await writeFile(destination, content);
 	}
 }
 
-async function writeGuidePages({ helpRoot, contentRoot, locale, entries, walkthroughs }) {
-	const guideRoot = path.join(helpRoot, 'guide');
-	const sources = await markdownFiles(guideRoot).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
-	const pages = new Map();
-	const learnPages = new Map();
-	for (const sourcePath of sources) {
-		const slug = path.relative(guideRoot, sourcePath).replaceAll('\\', '/').replace(/\.md$/i, '');
-		if (slug.startsWith('learn/')) {
-			learnPages.set(slug.slice('learn/'.length), { sourcePath });
-		} else {
-			if (!guideOrder.has(slug)) throw new Error(`Guide page is missing from the published outline: ${slug}`);
-			pages.set(slug, { sourcePath, order: guideOrder.get(slug) + 1 });
+async function writeGuidePages({ contentRoot, locale, entries, siteRoot, walkthroughs }) {
+	const guideEntries = entries.filter((entry) => entry.kind === 'guide');
+	const guideByCode = new Map(guideEntries.map((entry) => [entry.code, entry]));
+	const outlineCodes = new Set();
+	if (guideEntries.length) {
+		for (const code of guideCodes) {
+			if (outlineCodes.has(code)) throw new Error(`Duplicate Guide outline code: ${code}`);
+			outlineCodes.add(code);
+			if (!guideByCode.has(code)) throw new Error(`Guide outline references missing Guide entry: ${code}`);
 		}
+		const unlisted = guideEntries.find((entry) => !entry.code.startsWith('learn/') && !outlineCodes.has(entry.code));
+		if (unlisted) throw new Error(`Guide page is missing from the published outline: ${unlisted.code}`);
 	}
-
-	for (const [slug, page] of pages) {
-		const markdown = stripFrontmatterAndComments(await readFile(page.sourcePath, 'utf8'));
-		const title = markdownTitle(markdown, slug.split('/').at(-1));
-		const description = markdownDescription(markdown, `Guide to ${title}.`);
-		const body = stripDuplicateTitle(rewriteHelpLinks(markdown, entries, walkthroughs), title);
+	for (const [index, entry] of guideEntries.filter((candidate) => !candidate.code.startsWith('learn/')).entries()) {
+		if (typeof entry.helpPage !== 'string') throw new Error(`Guide entry has no Help page: ${entry.code}`);
+		const route = entrySiteRoute(entry, siteRoot, locale);
+		if (!route.relativePath.startsWith('guide/')) throw new Error(`Guide entry URL is not a Guide route: ${entry.code}`);
+		const markdown = stripFrontmatterAndComments(entry.helpPage);
+		const body = stripDuplicateTitle(rewriteHelpLinks(markdown, entries, walkthroughs), entry.title);
 		const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
-		const destination = path.join(localeRoot, 'guide', `${slug}.md`);
+		const destination = path.join(localeRoot, ...route.relativePath.split('/'));
 		await mkdir(path.dirname(destination), { recursive: true });
-		await writeFile(destination, `${frontmatter(title, description, page.order)}${body}\n`);
+		await writeFile(destination, `${frontmatter(entry.title, entry.description, guideOrder.get(entry.code) ?? index + 1)}${body}\n`);
 	}
 
-	const orderedLearnPages = [...learnPages].sort(([leftSlug], [rightSlug]) => {
-		const leftOrder = learnOrderBySlug.get(leftSlug) ?? Number.MAX_SAFE_INTEGER;
-		const rightOrder = learnOrderBySlug.get(rightSlug) ?? Number.MAX_SAFE_INTEGER;
-		return leftOrder - rightOrder || leftSlug.localeCompare(rightSlug);
-	});
-	const learnLinks = [];
-	for (const [index, [slug, page]] of orderedLearnPages.entries()) {
-		const markdown = stripFrontmatterAndComments(await readFile(page.sourcePath, 'utf8'));
-		const title = markdownTitle(markdown, slug.split('/').at(-1));
-		const description = markdownDescription(markdown, `Learn from ${title}.`);
-		const body = stripDuplicateTitle(rewriteHelpLinks(markdown, entries, walkthroughs), title);
-		const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
-		const destination = path.join(localeRoot, 'learn', `${slug}.md`);
-		await mkdir(path.dirname(destination), { recursive: true });
-		await writeFile(destination, `${frontmatter(title, description, index + 1)}${body}\n`);
-		const localePrefix = locale === 'en' ? '' : `/${locale}`;
-		learnLinks.push(`- [${title}](${localePrefix}/learn/${slug}/)`);
-	}
-
-	const sections = guideSections.map((section) => {
-		const links = section.pages
-			.filter(([slug]) => pages.has(slug))
-			.map(([slug, title]) => `- [${title}](/guide/${slug}/)`);
-		return links.length ? `## ${section.title}\n\n${links.join('\n')}` : '';
-	}).filter(Boolean);
-	const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
-	const indexPage = path.join(localeRoot, 'guide', 'index.md');
-	await mkdir(path.dirname(indexPage), { recursive: true });
-	await writeFile(indexPage, `${frontmatter('Guide', 'Learn to use Motif and follow its pages in the order designed for linguists.', 0)}${sections.join('\n\n')}\n`);
-	const learnIndex = path.join(localeRoot, 'learn', 'index.md');
-	await mkdir(path.dirname(learnIndex), { recursive: true });
-	await writeFile(learnIndex, `${frontmatter('Learn', 'Step-by-step lessons for learning Motif with sample language projects.', 0)}${learnLinks.join('\n')}\n`);
+	const orderedLearnPages = guideEntries.filter((entry) => entry.code.startsWith('learn/') && entry.code !== 'learn/index')
+		.sort((left, right) => {
+			const leftOrder = learnOrderByCode.get(left.code) ?? Number.MAX_SAFE_INTEGER;
+			const rightOrder = learnOrderByCode.get(right.code) ?? Number.MAX_SAFE_INTEGER;
+			return leftOrder - rightOrder || left.code.localeCompare(right.code);
+		});
+	const learnIndexEntry = guideByCode.get('learn/index');
+	if (orderedLearnPages.length && !learnIndexEntry) throw new Error('Guide catalog is missing learn/index.');
+	const orderedPages = learnIndexEntry ? [learnIndexEntry, ...orderedLearnPages] : orderedLearnPages;
 	const lessonsBySample = new Map();
 	const speedLessons = new Map();
-	for (const [slug] of orderedLearnPages) {
+	for (const [index, entry] of orderedPages.entries()) {
+		if (typeof entry.helpPage !== 'string') throw new Error(`Guide entry has no Help page: ${entry.code}`);
+		const route = entrySiteRoute(entry, siteRoot, locale);
+		if (!route.relativePath.startsWith('learn/')) throw new Error(`Learn entry URL is not a Learn route: ${entry.code}`);
+		const markdown = stripFrontmatterAndComments(entry.helpPage);
+		const body = stripDuplicateTitle(rewriteHelpLinks(markdown, entries, walkthroughs), entry.title);
+		const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
+		const destination = path.join(localeRoot, ...route.relativePath.split('/'));
+		await mkdir(path.dirname(destination), { recursive: true });
+		const order = entry.code === 'learn/index' ? 0 : index;
+		await writeFile(destination, `${frontmatter(entry.title, entry.description, order)}${body}\n`);
+
+		if (entry.code === 'learn/index') continue;
+		const slug = entry.code.slice('learn/'.length);
 		const lessonPrefix = slug.split('/')[0];
 		const languagePrefix = lessonPrefix.split('-')[0];
 		const sampleId = lessonPrefix.startsWith('synthetic-')
 			? lessonPrefix.split('-').slice(0, 2).join('-')
 			: sampleIdByLearnPrefix.get(languagePrefix) ?? `sample-${languagePrefix}`;
-		if (!lessonsBySample.has(sampleId)) lessonsBySample.set(sampleId, slug);
-		if (/(^|[-/])speed([-/.]|$)/.test(slug)) speedLessons.set(sampleId, slug);
+		if (!lessonsBySample.has(sampleId)) lessonsBySample.set(sampleId, route.href);
+		if (/(^|[-/])speed([-/.]|$)/.test(slug)) speedLessons.set(sampleId, route.href);
 	}
-	return { learnLessons: learnPages.size, lessonsBySample, speedLessons };
+
+	const sections = guideSections.map((section) => {
+		const links = section.pages.map((code) => {
+			const entry = guideByCode.get(code);
+			if (!entry) return null;
+			return `- [${entry.title}](${entrySiteRoute(entry, siteRoot, locale).href})`;
+		}).filter(Boolean);
+		return links.length ? `## ${section.title}\n\n${links.join('\n')}` : '';
+	}).filter(Boolean);
+	if (guideEntries.length) {
+		const localeRoot = locale === 'en' ? contentRoot : path.join(contentRoot, locale);
+		const indexPage = path.join(localeRoot, 'guide', 'index.md');
+		await mkdir(path.dirname(indexPage), { recursive: true });
+		await writeFile(indexPage, `${frontmatter('Guide', 'Learn to use Motif and follow its pages in the order designed for linguists.', 0)}${sections.join('\n\n')}\n`);
+	}
+
+	const features = homeFeatureCodes.map((code) => {
+		const entry = guideByCode.get(code);
+		if (!entry && guideEntries.length) throw new Error(`Homepage feature references missing Guide entry: ${code}`);
+		return entry ? {
+			title: entry.title,
+			description: entry.description,
+			href: entrySiteRoute(entry, siteRoot, locale).href,
+		} : null;
+	}).filter(Boolean);
+	return { learnLessons: orderedLearnPages.length, lessonsBySample, speedLessons, features };
 }
 
 function validSample(sample, directoryId) {
@@ -344,10 +345,8 @@ async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRo
 			}
 		}
 
-		const speedLesson = speedLessons.get(sample.id);
-		const hasSpeedLesson = speedLesson !== undefined;
-		const lessonSlug = lessonsBySample.get(sample.id);
-		const localePrefix = locale === 'en' ? '' : `/${locale}`;
+		const speedLessonHref = speedLessons.get(sample.id);
+		const hasSpeedLesson = speedLessonHref !== undefined;
 		homeSamples.push({
 			id: sample.id,
 			title: sample.title,
@@ -356,9 +355,9 @@ async function writeSamplesPage({ samplesRoot, samplesOut, contentRoot, publicRo
 			summary: sample.summary,
 			disclaimer: sample.disclaimer,
 			downloads: downloadUrls,
-			lessonsHref: lessonSlug ? `${localePrefix}/learn/${lessonSlug}/` : null,
+			lessonsHref: lessonsBySample.get(sample.id) ?? null,
 			speedLesson: hasSpeedLesson,
-			speedLessonHref: speedLesson ? `${localePrefix}/learn/${speedLesson}/` : null,
+			speedLessonHref: speedLessonHref ?? null,
 		});
 		sections.push([
 			`<a id="${sample.id}"></a>`,
@@ -510,24 +509,18 @@ async function cleanGeneratedPaths(paths) {
 	}
 }
 
-export async function syncSiteContent({ repository, site, helpExportPath, helpRoot, walkthroughRoot, docsRoot, apiXmlPath, samplesRoot, samplesOut }) {
+export async function syncSiteContent({ repository, site, helpExportPath, walkthroughRoot, docsRoot, apiXmlPath, samplesRoot, samplesOut }) {
 	const contentRoot = path.join(site, 'src', 'content', 'docs');
 	const publicRoot = path.join(site, 'public');
 	const helpExport = JSON.parse(await readFile(helpExportPath, 'utf8'));
-	if (!helpExport.locale || !Array.isArray(helpExport.entries)) throw new Error('Invalid help export.');
-	try {
-		await readdir(path.join(helpRoot, helpExport.locale));
-		helpRoot = path.join(helpRoot, helpExport.locale);
-	} catch (error) {
-		if (error.code !== 'ENOENT') throw error;
-	}
+	if (!helpExport.locale || !helpExport.siteRoot || !Array.isArray(helpExport.entries)) throw new Error('Invalid help export.');
 	const localeRoot = helpExport.locale === 'en' ? contentRoot : path.join(contentRoot, helpExport.locale);
 	const generatedPaths = [
 		path.join(contentRoot, 'reference', 'commands'),
 		path.join(contentRoot, 'reference', 'terms'),
 		path.join(contentRoot, 'reference', 'controls'),
 		path.join(contentRoot, 'reference', 'api'),
-		path.join(contentRoot, 'guide', 'walkthroughs'),
+		path.join(contentRoot, 'guide'),
 		path.join(localeRoot, 'learn'),
 		path.join(localeRoot, 'samples'),
 		path.join(contentRoot, 'developers'),
@@ -537,10 +530,16 @@ export async function syncSiteContent({ repository, site, helpExportPath, helpRo
 	];
 	await cleanGeneratedPaths(generatedPaths);
 
+	const seenEntries = new Set();
 	for (const entry of helpExport.entries) {
-		if (!entry.kind || !entry.code || !entry.title || !entry.description || entry.slug !== slugify(entry.code)) {
+		const key = `${entry.kind}:${entry.code}`;
+		const expectedSlug = entry.kind === 'guide' ? entry.code : slugify(entry.code);
+		if (!entry.kind || !entry.code || !entry.title || !entry.description || entry.slug !== expectedSlug || !entry.url) {
 			throw new Error(`Invalid help entry: ${entry.code ?? '(missing code)'}`);
 		}
+		if (seenEntries.has(key)) throw new Error(`Duplicate help entry: ${entry.kind} ${entry.code}`);
+		seenEntries.add(key);
+		entrySiteRoute(entry, helpExport.siteRoot, helpExport.locale);
 	}
 	const walkthroughs = await writeWalkthroughPages({
 		walkthroughRoot,
@@ -548,8 +547,11 @@ export async function syncSiteContent({ repository, site, helpExportPath, helpRo
 		dataRoot: path.join(site, 'src', 'data', 'walkthroughs'),
 		publicRoot,
 	});
-	await writeHelpPages({ helpRoot, outputRoot: contentRoot, locale: helpExport.locale, entries: helpExport.entries, walkthroughs });
-	const learn = await writeGuidePages({ helpRoot, contentRoot, locale: helpExport.locale, entries: helpExport.entries, walkthroughs });
+	await writeHelpPages({ contentRoot, locale: helpExport.locale, entries: helpExport.entries, siteRoot: helpExport.siteRoot, walkthroughs });
+	const learn = await writeGuidePages({ contentRoot, locale: helpExport.locale, entries: helpExport.entries, siteRoot: helpExport.siteRoot, walkthroughs });
+	const dataRoot = path.join(site, 'src', 'data');
+	await mkdir(dataRoot, { recursive: true });
+	await writeFile(path.join(dataRoot, 'guide-features.json'), `${JSON.stringify(learn.features, null, 2)}\n`);
 	const samples = await writeSamplesPage({
 		samplesRoot,
 		samplesOut,

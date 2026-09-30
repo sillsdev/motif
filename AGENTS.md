@@ -217,10 +217,10 @@ component file gets a `StyleInclude` in `App.axaml` and a case in `ComponentStyl
 ## Help text and the documentation site
 
 **Every Released command ships with its Help text** ([ADR 0047](docs/adr/0047-generated-help-walkthroughs-and-docs-site.md)):
-a Title of at most 30 characters and a one-to-three-sentence Description in `help/en/commands.json`, and a
-Help page at `help/en/commands/<slug>.md`. `HelpCatalogTests.EnglishCatalogCoversEveryReleasedCommandAndRequiredTerms`
+a Title of at most 30 characters and a one-to-three-sentence Description in `src/SIL.Motif.Help/Content/en/commands.json`, and a
+Help page at `src/SIL.Motif.Help/Content/en/commands/<slug>.md`. `HelpCatalogTests.EnglishCatalogCoversEveryReleasedCommandAndRequiredTerms`
 fails the suite when a Released command lacks any of them, so adding or promoting a command means writing them.
-Glossary terms live the same way in `terms.json` and `terms/`; the Guide lives in `help/en/guide/`.
+Glossary terms live the same way in `terms.json` and `terms/`; the Guide lives in `src/SIL.Motif.Help/Content/en/guide/`.
 
 Help pages and Guide pages are plain CommonMark read by three readers — `motif help`, the window and the site —
 so they carry no front matter, MDX or HTML. Cross-links name codes, not URLs: `[text](cmd:assess)`,

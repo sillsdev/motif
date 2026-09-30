@@ -37,13 +37,13 @@ dotnet tool install --global vpk --version 1.2.158
 ./tools/package-release.ps1 -ProductVersion 0.1.0
 ```
 
-The [package workflow](.github/workflows/package.yml) creates Windows per-user Setup, Linux AppImage, and macOS portable ZIP artifacts. The [Install Guide](help/en/guide/install.md) describes the supported Windows setup; Unix packaging and native ICU inputs are documented by the [workflow](.github/workflows/package.yml) and [pinned ICU payload manifest](tools/icu-payload.json).
+The [package workflow](.github/workflows/package.yml) creates Windows per-user Setup, Linux AppImage, and macOS portable ZIP artifacts. The [Install Guide](src/SIL.Motif.Help/Content/en/guide/install.md) describes the supported Windows setup; Unix packaging and native ICU inputs are documented by the [workflow](.github/workflows/package.yml) and [pinned ICU payload manifest](tools/icu-payload.json).
 
 For builds against a local LibPalaso checkout, see [the opt-in NuGet override instructions](AGENTS.md#building-against-a-local-libpalaso-opt-in-off-by-default). The override is off by default; package-cache settings and the package source remain separate.
 
 ## Documentation site
 
-The CLI, App and site share authored user Help. Its files still live under [`help/`](help/) and `SIL.Motif.Help` embeds them with logical names beginning `help/`; the planned move to `src/SIL.Motif.Help/Content/` is recorded in the [documentation-authority plan](docs/superpowers/plans/2026-09-30-documentation-authority.md#task-4-move-content-once-and-repair-current-orientation).
+The CLI, App and site share authored user Help owned by [`src/SIL.Motif.Help/Content/`](src/SIL.Motif.Help/Content/). `SIL.Motif.Help` embeds these files with logical resource names beginning `help/`, preserving the runtime names `help/<locale>/...`.
 
 Build the CLI first, export the shared Help catalog, then run the site's sync tests and production build with Node 22.12 or later:
 
@@ -65,7 +65,7 @@ The site reads the exported Help rather than maintaining a second authored copy.
 - [Current architecture](docs/current-architecture.md) — project references, command sharing, process coordination, cache ownership and Help content location.
 - [CLI and command API](docs/cli-api.md) — where current command usage and Guides are maintained.
 - [Semantic change contract](docs/change-set-contract.md) and [Proposal lifecycle](docs/proposal-lifecycle.md) — normative change and workflow details.
-- [Shared Help and agent Guides](help/en/guide/) — user-facing Guides as they are authored today.
+- [Shared Help and agent Guides](src/SIL.Motif.Help/Content/en/guide/) — user-facing Guides owned by `SIL.Motif.Help`.
 - [Assessment scope](docs/assessment-scope-design.md) and [parser handoff](docs/pangloss-grammar-assessment-handoff-spec.md) — parser evidence and integration details.
 - [Repository instructions](AGENTS.md) — build, test, vocabulary and contribution rules.
 

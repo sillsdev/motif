@@ -171,7 +171,7 @@ public sealed class WalkthroughScriptLoaderTests
     [Fact]
     public void HelpKeysCalloutCaptionsByCaptureStepAndAutomationId()
     {
-        var path = Path.Combine(FindRepositoryRoot(), "help", "en", "walkthroughs", "open-project-overview.json");
+        var path = Path.Combine(FindRepositoryRoot(), "src", "SIL.Motif.Help", "Content", "en", "walkthroughs", "open-project-overview.json");
         using var help = JsonDocument.Parse(File.ReadAllText(path));
 
         var caption = help.RootElement.GetProperty("callouts").GetProperty("overview")

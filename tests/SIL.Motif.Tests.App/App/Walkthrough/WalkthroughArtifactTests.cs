@@ -26,7 +26,7 @@ public sealed class WalkthroughArtifactTests
             Directory.CreateDirectory(fontDirectory);
             File.Copy(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets", "Fonts", "Andika-Bold.ttf"),
                 Path.Combine(fontDirectory, "Andika-Bold.ttf"));
-            var helpPath = Path.Combine(root, "help", "en", "walkthroughs", "example.json");
+            var helpPath = Path.Combine(root, "src", "SIL.Motif.Help", "Content", "en", "walkthroughs", "example.json");
             Directory.CreateDirectory(Path.GetDirectoryName(helpPath)!);
             File.WriteAllText(helpPath,
                 """{"id":"example","title":"Example","description":"A walkthrough.","steps":{"overview":"Overview caption."},"callouts":{"overview":{"motif-pages":"Project pages"}}}""");

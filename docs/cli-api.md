@@ -14,7 +14,7 @@ motif help <command> --full
 motif help --all --json
 ```
 
-The shared user-facing Guides, including agent Guides, are authored under [`help/en/guide/`](../help/en/guide/). For current agent guidance, see [Start here](../help/en/guide/agents/start-here.md), [Output and exit codes](../help/en/guide/agents/output-and-exit-codes.md), and [Work with jobs](../help/en/guide/agents/work-with-jobs.md). Command and glossary Help is also authored under `help/en/` today and embedded by `SIL.Motif.Help`; the planned move to `src/SIL.Motif.Help/Content/` is recorded in the [documentation-authority plan](superpowers/plans/2026-09-30-documentation-authority.md#task-4-move-content-once-and-repair-current-orientation).
+The shared user-facing Guides, including agent Guides, are authored under [`src/SIL.Motif.Help/Content/en/guide/`](../src/SIL.Motif.Help/Content/en/guide/). For current agent guidance, see [Start here](../src/SIL.Motif.Help/Content/en/guide/agents/start-here.md), [Output and exit codes](../src/SIL.Motif.Help/Content/en/guide/agents/output-and-exit-codes.md), and [Work with jobs](../src/SIL.Motif.Help/Content/en/guide/agents/work-with-jobs.md). Command and glossary Help is authored under `src/SIL.Motif.Help/Content/en/` and embedded by `SIL.Motif.Help` with logical resource names beginning `help/`.
 
 ## Process and data boundary
 
@@ -27,4 +27,4 @@ FieldWorks integration follows the save-boundary contract: release the project, 
 - [Current architecture](current-architecture.md) — actual project-reference graph and ownership boundaries.
 - [Semantic change contract](change-set-contract.md) — portable Proposal input and semantic rules.
 - [Proposal lifecycle](proposal-lifecycle.md) — workflow and state transitions.
-- [Shared Help and agent Guides](../help/en/guide/) — product explanations for CLI and desktop readers.
+- [Shared Help and agent Guides](../src/SIL.Motif.Help/Content/en/guide/) — product explanations for CLI and desktop readers.

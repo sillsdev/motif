@@ -63,4 +63,4 @@ The evidence behind every recipe, with file and line citations, is in `docs/rese
 `liblcm-recipes.md` (LibLCM, FieldWorks `HCLoader`, PanGloss source), `flexicon-harvest-grammar.md`
 (Flexicon, FLExTools, FlexToolsMCP), and `own-guidance-review.md` (our guidance and Andy Black's).
 Linguists get the same content in plain words on the Learn page *Modelling a grammar the parser can use*
-(`help/en/guide/learn/modelling-a-grammar-the-parser-can-use.md`).
+(`src/SIL.Motif.Help/Content/en/guide/learn/modelling-a-grammar-the-parser-can-use.md`).

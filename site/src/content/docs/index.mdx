@@ -14,6 +14,7 @@ import HomeMarquee from '../../components/home/HomeMarquee.astro';
 import HowItFits from '../../components/home/HowItFits.astro';
 import HomeBetaFaq from '../../components/home/HomeBetaFaq.astro';
 import HomeLocalizedText from '../../components/home/HomeLocalizedText.astro';
+import guideFeatures from '../../data/guide-features.json';
 
 <div class="home-page">
 	<HomeHero>
@@ -32,7 +33,7 @@ import HomeLocalizedText from '../../components/home/HomeLocalizedText.astro';
 			</article>
 			<article class="home-exchange__consultant">
 				<h2>AI consultant, reading Motif’s Handoff</h2>
-				<p>Every failing word stops at the plural. Your <em>-lar</em> allomorph has an environment that only allows front vowels before it. In FieldWorks, open the plural suffix and change that environment to back vowels — then Refresh in Motif to check.</p>
+				<p>Every failing word stops at the plural. Your <em>-lar</em> allomorph has an environment that only allows front vowels before it. In FieldWorks, open the plural suffix and change that environment to back vowels — then choose <strong>Parse all words</strong> in Motif to check.</p>
 			</article>
 			<p class="home-exchange__note"><HomeLocalizedText message="home.syntheticExchangeNote" /></p>
 		</div>
@@ -135,15 +136,7 @@ import HomeLocalizedText from '../../components/home/HomeLocalizedText.astro';
 
 	<HomeSection id="features">
 		<h2>Everything in one window</h2>
-		<HomeFeatureGrid features={[
-			{ title: 'Overview', href: 'guide/overview/', description: 'Where the grammar stands, from the last run.' },
-			{ title: 'Texts', href: 'guide/texts/', description: 'Text Coverage, and which texts to measure.' },
-			{ title: 'Try a Word', href: 'guide/try-a-word/', description: 'Parse one word and see why.' },
-			{ title: 'Timing', href: 'guide/timing/', description: 'Which words are slow, and what makes them slow.' },
-			{ title: 'Warnings', href: 'guide/warnings/', description: 'Grammar findings and what to do about them.' },
-			{ title: 'Review changes', href: 'guide/review-changes/', description: 'What applying your changes would do.' },
-			{ title: 'AI Handoff', href: 'guide/ai-handoff/', description: 'Everything your AI consultant needs, in five files.' },
-		]} guideHref="guide/" guideTitle="Read the Guide →" guideDescription="Every page, step by step." />
+		<HomeFeatureGrid features={guideFeatures} guideHref="guide/" guideTitle="Read the Guide →" guideDescription="Every page, step by step." />
 	</HomeSection>
 
 	<HowItFits id="how-it-fits" diagramAlt="FieldWorks holds the project. Motif measures it with the PanGloss parser and explains which words fail and why. You fix the grammar in FieldWorks, or apply a reviewed change from Motif, then refresh.">

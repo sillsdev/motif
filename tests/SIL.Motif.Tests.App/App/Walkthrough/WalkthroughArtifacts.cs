@@ -16,7 +16,7 @@ internal sealed record WalkthroughHelpContent(
 {
     public static WalkthroughHelpContent Load(string root, string id, string locale)
     {
-        var path = Path.Combine(root, "help", locale, "walkthroughs", $"{id}.json");
+        var path = Path.Combine(root, "src", "SIL.Motif.Help", "Content", locale, "walkthroughs", $"{id}.json");
         using var document = JsonDocument.Parse(File.ReadAllBytes(path));
         var element = document.RootElement;
         RequireProperties(element, "id", "title", "description", "steps", "callouts");
