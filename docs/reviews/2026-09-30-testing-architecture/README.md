@@ -61,6 +61,7 @@ The staged plan repairs behavior and shared documentation before extracting reus
 - [Release validation second opinion](sol-release-validation.md)
 - [Worker runtime second opinion](sol-runtime-split.md)
 - [Explicit usage second opinion](sol-usage-follow-up.md)
+- [Shared documentation second opinion](sol-help-move-follow-up.md)
 - [Retired parser coverage map](retired-parser-coverage.md)
 
 ## Adjudicated findings
