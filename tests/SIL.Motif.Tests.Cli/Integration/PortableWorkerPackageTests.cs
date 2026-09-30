@@ -7,11 +7,12 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Integration;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
+public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, ITestOutputHelper output)
 {
     private static readonly TimeSpan PublishBound = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);
@@ -40,32 +41,40 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
         {
             Directory.CreateDirectory(workspacePath);
             var workerPublish = Path.Combine(workspacePath, "worker-publish");
-            var appIntermediateRoot = Path.Combine(workspacePath, "app-intermediate");
-            var cliIntermediateRoot = Path.Combine(workspacePath, "cli-intermediate");
-            var workerIntermediateRoot = Path.Combine(workspacePath, "worker-intermediate");
-            var appBuildRoot = Path.Combine(workspacePath, "app-build") + Path.DirectorySeparatorChar;
-            var cliBuildRoot = Path.Combine(workspacePath, "cli-build") + Path.DirectorySeparatorChar;
-            var workerBuildRoot = Path.Combine(workspacePath, "worker-build") + Path.DirectorySeparatorChar;
+            var intermediateRoot = Path.Combine(workspacePath, "intermediate");
+            var motifBinRoot = Path.Combine(workspacePath, "build") + Path.DirectorySeparatorChar;
             Directory.CreateDirectory(package);
 
             var repoRoot = FindRepoRoot();
             var rid = RuntimeIdentifier();
-            await PublishAsync(Path.Combine(repoRoot, "src", "SIL.Motif.App", "SIL.Motif.App.csproj"),
-                package, rid, appIntermediateRoot, appBuildRoot);
-            AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "App publish");
-            Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
-                "The App publish did not include the reusable Worker runtime library.");
-            await PublishAsync(Path.Combine(repoRoot, "src", "SIL.Motif.Cli", "SIL.Motif.Cli.csproj"),
-                package, rid, cliIntermediateRoot, cliBuildRoot);
-            AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "CLI publish");
-            Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
-                "The CLI publish did not include the reusable Worker runtime library.");
-            var icuPayload = ReadIcuPayload(repoRoot, rid);
-            if (!OperatingSystem.IsWindows()) StageIcuPayload(package, icuPayload);
-            AssertIcuPayload(package, icuPayload);
-            await PublishAsync(Path.Combine(repoRoot, "src", "SIL.Motif.Worker", "SIL.Motif.Worker.csproj"),
-                workerPublish, rid, workerIntermediateRoot, workerBuildRoot);
-            AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "Worker publish");
+            var totalPublishStopwatch = Stopwatch.StartNew();
+            try
+            {
+                await PublishMeasuredAsync(output, "App",
+                    Path.Combine(repoRoot, "src", "SIL.Motif.App", "SIL.Motif.App.csproj"),
+                    package, rid, intermediateRoot, motifBinRoot);
+                AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "App publish");
+                Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
+                    "The App publish did not include the reusable Worker runtime library.");
+                await PublishMeasuredAsync(output, "CLI",
+                    Path.Combine(repoRoot, "src", "SIL.Motif.Cli", "SIL.Motif.Cli.csproj"),
+                    package, rid, intermediateRoot, motifBinRoot);
+                AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "CLI publish");
+                Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
+                    "The CLI publish did not include the reusable Worker runtime library.");
+                var icuPayload = ReadIcuPayload(repoRoot, rid);
+                if (!OperatingSystem.IsWindows()) StageIcuPayload(package, icuPayload);
+                AssertIcuPayload(package, icuPayload);
+                await PublishMeasuredAsync(output, "Worker",
+                    Path.Combine(repoRoot, "src", "SIL.Motif.Worker", "SIL.Motif.Worker.csproj"),
+                    workerPublish, rid, intermediateRoot, motifBinRoot);
+                AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "Worker publish");
+            }
+            finally
+            {
+                totalPublishStopwatch.Stop();
+                output.WriteLine("All portable publishes elapsed: " + totalPublishStopwatch.Elapsed);
+            }
 
             foreach (var frontEndExcludedAsset in new[]
             {
@@ -176,6 +185,21 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
         Assert.True(process.ExitCode == 0,
             "dotnet publish failed for " + Path.GetFileName(projectPath) + "." + Environment.NewLine +
             output + Environment.NewLine + error);
+    }
+
+    private static async Task PublishMeasuredAsync(ITestOutputHelper output, string publishName,
+        string projectPath, string outputPath, string rid, string intermediateRoot, string motifBinRoot)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            await PublishAsync(projectPath, outputPath, rid, intermediateRoot, motifBinRoot);
+        }
+        finally
+        {
+            stopwatch.Stop();
+            output.WriteLine(publishName + " publish elapsed: " + stopwatch.Elapsed);
+        }
     }
 
     private static async Task<CliResult> RunCliAsync(string executable, string project, string root,
