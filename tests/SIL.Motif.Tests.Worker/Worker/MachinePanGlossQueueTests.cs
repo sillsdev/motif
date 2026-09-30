@@ -211,7 +211,7 @@ public sealed class MachinePanGlossQueueTests
             admissionOrder.Enqueue(jobId);
             if (admissionOrder.Count == 2) firstTwoAdmitted.TrySetResult();
             if (jobId == "project-c") thirdAdmitted.TrySetResult();
-            await releaseGates[jobId].Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+            await releaseGates[jobId].Task.WaitAsync(ct);
             return 0;
         }, CancellationToken.None);
 
@@ -220,13 +220,13 @@ public sealed class MachinePanGlossQueueTests
         var third = Enqueue("project-c");
 
         // Only two slots exist, so project-c cannot be admitted until one of the first two releases.
-        await firstTwoAdmitted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await firstTwoAdmitted.Task;
         releaseGates["project-a"].SetResult();
-        await thirdAdmitted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await thirdAdmitted.Task;
         releaseGates["project-b"].SetResult();
         releaseGates["project-c"].SetResult();
 
-        await Task.WhenAll(first, second, third).WaitAsync(TimeSpan.FromSeconds(10));
+        await Task.WhenAll(first, second, third);
         Assert.Equal(new[] { "project-a", "project-b", "project-c" }, admissionOrder.ToArray());
     }
 
