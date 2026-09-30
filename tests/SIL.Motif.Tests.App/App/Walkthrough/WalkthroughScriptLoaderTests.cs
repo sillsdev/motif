@@ -92,12 +92,10 @@ public sealed class WalkthroughScriptLoaderTests
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-pangloss", targets);
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-pangloss", targets);
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged", targets);
-        Assert.Contains(script.Steps, step => step.Kind == WalkthroughStepKind.Click &&
+        Assert.DoesNotContain(script.Steps, step => step.Kind == WalkthroughStepKind.Click &&
             step.AutomationId == "motif-run-assessment");
-        Assert.Contains(script.Steps, step => step.Kind == WalkthroughStepKind.WaitFor &&
-            step.AutomationId == "motif-assessment-progress" && step.Condition == "visible");
-        Assert.Contains(script.Steps, step => step.Kind == WalkthroughStepKind.WaitFor &&
-            step.AutomationId == "motif-assessment-progress" && step.Condition == "hidden");
+        Assert.DoesNotContain(script.Steps, step => step.Kind == WalkthroughStepKind.WaitFor &&
+            step.AutomationId == "motif-assessment-progress");
     }
 
     [Theory]

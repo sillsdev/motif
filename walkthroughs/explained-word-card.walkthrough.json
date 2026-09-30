@@ -6,11 +6,6 @@
     { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
     { "id": "open-texts", "kind": "click", "automationId": "motif-page-texts" },
     { "id": "open-analyze-texts", "kind": "click", "automationId": "motif-analyze-texts-tab" },
-    { "id": "wait-for-run-button", "kind": "waitFor", "automationId": "motif-run-assessment", "condition": "enabled", "timeoutMs": 30000 },
-    { "id": "run-assessment", "kind": "click", "automationId": "motif-run-assessment" },
-    { "id": "wait-for-assessment-start", "kind": "waitFor", "automationId": "motif-assessment-progress", "condition": "visible", "timeoutMs": 30000 },
-    { "id": "wait-for-assessment-complete", "kind": "waitFor", "automationId": "motif-assessment-progress", "condition": "hidden", "timeoutMs": 30000 },
-    { "id": "open-analyze-texts-after-run", "kind": "click", "automationId": "motif-analyze-texts-tab" },
     { "id": "wait-for-first-word", "kind": "waitFor", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word", "condition": "visible", "timeoutMs": 30000 },
     { "id": "wait-for-evler-approval", "kind": "waitFor", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action", "condition": "visible", "timeoutMs": 30000 },
 
