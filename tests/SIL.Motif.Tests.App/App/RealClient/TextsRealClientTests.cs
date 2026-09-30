@@ -252,9 +252,9 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
     public async Task ListsOpenOnAListWithWordsWhenTheFirstListIsEmpty()
     {
         using var project = await GrammarClientProject.OpenAsync(pristine);
-        project.Behave(new { words = new[]
+        project.Behave(new { words = new object[]
         {
-            new { word = SeededProject.FirstForm, outcome = "complete" },
+            ParsedFirstForm,
             new { word = SeededProject.SecondForm, outcome = "no-analysis" },
         } });
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

@@ -22,19 +22,40 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         RegexOptions.IgnoreCase)]
     private static partial Regex RetiredWord();
 
+    // Stored analyses carry a morph identity so the matcher can place each word, as a real Assessment does.
     private static AssessmentWordResult Word(string form, string outcome, string standing, string? grade = null,
-        int missedApproved = 0) =>
-        WithPriority(new AssessmentWordResult(form, outcome, outcome is "timed-out" or "capped", "Search completed", 10, null)
+        int missedApproved = 0)
+    {
+        var storedOpinion = standing switch
+        {
+            ProjectStanding.Approved => ReadingGrade.Approved,
+            ProjectStanding.Candidate => ReadingGrade.Candidate,
+            ProjectStanding.Rejected => ReadingGrade.Disapproved,
+            _ => null,
+        };
+        var stored = storedOpinion is null ? [] : new[]
+        {
+            new ParserReading([])
+            {
+                StoredAnalysisId = "stored-" + form,
+                StoredAnalysisOpinion = storedOpinion,
+                Identity = new ApprovedMorphology([new ApprovedMorph(form, "n", null, ["entry"])]),
+            },
+        };
+        var parsedForm = grade == "no-opinion" ? form + "-other" : form;
+        return WithPriority(new AssessmentWordResult(form, outcome, outcome is "timed-out" or "capped", "Search completed", 10, null)
         {
             ProjectStanding = standing,
             OccurrenceCount = 1,
             ReadingGrades = grade is null ? null : [grade],
+            StoredAnalyses = stored,
             Readings = grade is null ? null : [new ParserReading([new ParserReadingMorph(form, "gloss", "n", null, false, null)])],
             MissedApproved = Enumerable.Range(0, missedApproved)
                 .Select(_ => new ParserReading([new ParserReadingMorph(form, "gloss", "n", null, false, null)])).ToArray(),
             Morphology = grade is null ? null : new ParseWordEvidence("v1", 0, form, 10,
-                false, false, false, [new ParseAnalysis([])], []),
+                false, false, false, [new ParseAnalysis([new ParseMorph(parsedForm, "n", null, null)])], []),
         });
+    }
 
     private static AssessmentWordResult WithPriority(AssessmentWordResult word) => word with
     {
